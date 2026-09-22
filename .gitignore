@@ -1,0 +1,27 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+**/.env
+!**/.env.example
+
+# Backend / Gradle
+backend/.gradle/
+backend/build/
+backend/out/
+*.log
+
+# Frontend / Node
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/*.tsbuildinfo
+
+# Misc
+coverage/
