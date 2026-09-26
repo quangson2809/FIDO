@@ -125,6 +125,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addToCart = (product: any, size?: string | number, color?: string, quantity: number = 1) => {
+    // Implementation placeholder
     void size;
     void color;
     void quantity;
@@ -135,56 +136,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setCartItems((prev) => prev.filter((item) => item.id !== itemId));
 
   const updateCartQuantity = (itemId: string, quantity: number) => {
-    setCartItems((prev) =>
-      quantity <= 0
-        ? prev.filter((item) => item.id !== itemId)
-        : prev.map((item) => (item.id === itemId ? { ...item, quantity } : item)),
-    );
+    void itemId;
+    void quantity;
   };
 
   const applyVoucher = (code: string): boolean => {
-    setAppliedVoucher(code);
+    void code;
     return true;
   };
 
-  const removeVoucher = () => {
-    setAppliedVoucher('');
-    setVoucherDiscount(0);
-  };
-
+  const removeVoucher = () => {};
   const updateOrderRecipient = (orderId: string, phone: string, address: string, note?: string) => {
-    setOrders((prev) =>
-      prev.map((order) =>
-        order.id === orderId
-          ? {
-              ...order,
-              customerPhone: phone,
-              recipientAddress: address,
-              deliveryNote: note,
-            }
-          : order,
-      ),
-    );
+    void orderId;
+    void phone;
+    void address;
+    void note;
   };
-
   const updateOrderStatus = (orderId: string, status: OrderStatus) => {
-    setOrders((prev) =>
-      prev.map((order) => (order.id === orderId ? { ...order, status } : order)),
-    );
+    void orderId;
+    void status;
   };
-
   const createOrder = (orderData: Partial<Order>): Order => {
-    const order = orderData as Order;
-    setOrders((prev) => [order, ...prev]);
-    return order;
+    void orderData;
+    return {} as Order;
   };
-
   const toggleWishlist = (productId: string) => {
-    setWishlist((prev) =>
-      prev.includes(productId)
-        ? prev.filter((id) => id !== productId)
-        : [...prev, productId],
-    );
+    void productId;
   };
 
   const updateUserProfile = (
