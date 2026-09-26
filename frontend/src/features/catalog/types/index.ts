@@ -1,10 +1,9 @@
-export interface ProductDto {
-  product_id: number;
-  name: string;
-  base_price: number;
-  sale_status: string;
-}
+import { ProductDetailDto, ProductSummaryDto, CatalogMetaDto } from '../../../mocks/apiData';
+
+export type { ProductDetailDto, ProductSummaryDto, CatalogMetaDto };
 
 export interface CatalogService {
-  getProducts(): Promise<ProductDto[]>;
+  getProducts(): Promise<ProductDetailDto[]>;
+  getProductById(productId: number): Promise<ProductDetailDto>;
+  getMeta(): Promise<CatalogMetaDto>;
 }
