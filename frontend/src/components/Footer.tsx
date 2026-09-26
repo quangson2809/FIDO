@@ -165,14 +165,6 @@ export const Footer: React.FC = () => {
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-white/50 gap-4">
           <div className="flex items-center gap-3">
             <p>© 2026 FIDO Fashion. All rights reserved. Slogan: Fit - Innovate - Devote - Open</p>
-            <span>•</span>
-            <button
-              onClick={() => setCurrentScreen('admin')}
-              className="text-white/60 hover:text-[#E8C75B] transition-colors flex items-center gap-1"
-            >
-              <span className="material-symbols-outlined text-xs">admin_panel_settings</span>
-              Cổng Quản Trị Đơn Hàng
-            </button>
           </div>
           <div className="flex items-center gap-4 flex-wrap justify-center">
             <span>Phương thức thanh toán:</span>
