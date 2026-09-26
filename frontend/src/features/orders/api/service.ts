@@ -1,17 +1,28 @@
-import { OrderSummaryDto, OrderService } from '../types';
+import { OrderService, OrderCustomerDetailDto, OrderSummaryDto } from '../types';
+import { mockOrderDetails, mockOrderSummaries } from '../../../mocks/apiData';
 import { apiClient } from '../../../services/http/apiClient';
 import { API_MODE } from '../../../constants/app';
 
-const mockOrders: OrderSummaryDto[] = [{ order_id: 1, order_code: 'ORD001', total_amount: 1500000, status: 'DELIVERED' }];
-
 const mockOrderService: OrderService = {
-  async getOrders() { return mockOrders; }
+  async getOrders() {
+    return mockOrderSummaries;
+  },
+  async getOrderById(orderId) {
+    const order = mockOrderDetails.find((item) => item.order_id === orderId);
+    if (!order) throw new Error(`Mock order ${orderId} not found`);
+    return order;
+  },
 };
 
 const realOrderService: OrderService = {
-  async getOrders() { return apiClient.get<OrderSummaryDto[], OrderSummaryDto[]>('/orders'); }
+  async getOrders() {
+    const response = await apiClient.get<{ data: OrderSummaryDto[] }, { data: OrderSummaryDto[] }>('/me/orders');
+    return response.data;
+  },
+  async getOrderById(orderId) {
+    const response = await apiClient.get<{ data: OrderCustomerDetailDto }, { data: OrderCustomerDetailDto }>(`/me/orders/${orderId}`);
+    return response.data;
+  },
 };
 
-export const orderService = API_MODE === 'mock' 
-  ? mockOrderService 
-  : realOrderService;
+export const orderService = API_MODE === 'mock' ? mockOrderService : realOrderService;
