@@ -311,7 +311,7 @@ export const ProductDetailScreen: React.FC = () => {
               <div className="flex items-center gap-2 pt-1">
                 <span className="w-2 h-2 rounded-full bg-[#1B5038] animate-pulse"></span>
                 <p className="text-[13px] text-[#1B5038] font-medium">
-                  Còn hàng ({product.inStockCount} chiếc tại Atelier Flagship TP.HCM)
+                  Còn khả dụng ({product.inStockCount} chiếc)
                 </p>
               </div>
             </div>
@@ -398,7 +398,7 @@ export const ProductDetailScreen: React.FC = () => {
                 </span>
                 <div className="flex flex-col">
                   <span className="text-[13px] font-bold text-[#0B2419]">
-                    Giao Hàng Hỏa Tốc 2H Trong Nội Thành
+                    Giao Nội Bộ Hoặc Đơn Vị Ngoài
                   </span>
                   <span className="text-[12px] text-[#424844]">
                     Đóng gói hộp quà cao cấp, nhận hàng ngay trong ngày tại TP.HCM &amp; Hà Nội.
@@ -408,9 +408,9 @@ export const ProductDetailScreen: React.FC = () => {
               <div className="flex items-start gap-3 p-3 bg-[#f3f4ef]">
                 <span className="material-symbols-outlined text-[#0B2419] text-[22px] shrink-0 mt-0.5">sync</span>
                 <div className="flex flex-col">
-                  <span className="text-[13px] font-bold text-[#0B2419]">Đổi Size Tận Nhà 15 Ngày Miễn Phí</span>
+                  <span className="text-[13px] font-bold text-[#0B2419]">Đổi / Hoàn Tại Cửa Hàng Trong 02 Ngày</span>
                   <span className="text-[12px] text-[#424844]">
-                    Shipper giao size mới và thu hồi size cũ tận nơi hoàn toàn miễn phí.
+                    Áp dụng theo điều kiện nhãn/mác sau khi đơn COMPLETED.
                   </span>
                 </div>
               </div>
