@@ -11,7 +11,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ScreenId, CartItem, Order, OrderStatus, UserProfile } from '../types';
 import { getPathForScreen, getScreenFromPath } from '../routes/paths';
 import { mockUiCartItems, mockUiOrders, mockUiUserProfile, toUiProduct } from '../mocks/uiData';
-import { mockProductDetails } from '../mocks/apiData';
+import { mockProductDetails, mockVouchers } from '../mocks/apiData';
 
 interface AppContextType {
   currentScreen: ScreenId;
@@ -176,40 +176,70 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const applyVoucher = (code: string): boolean => {
-    void code;
-    return true;
+    const normalized = code.trim().toUpperCase();
+    const exists = mockVouchers.some((voucher) => voucher.code === normalized);
+    if (exists) {
+      setAppliedVoucher(normalized);
+      setVoucherDiscount(0);
+    }
+    return exists;
   };
 
-  const removeVoucher = () => {};
+  const removeVoucher = () => {
+    setAppliedVoucher('');
+    setVoucherDiscount(0);
+  };
+
   const updateOrderRecipient = (orderId: string, phone: string, address: string, note?: string) => {
-    void orderId;
-    void phone;
-    void address;
-    void note;
+    setOrders((prev) =>
+      prev.map((order) =>
+        order.id === orderId
+          ? {
+              ...order,
+              customerPhone: phone,
+              recipientAddress: address,
+              deliveryNote: note,
+              recipient: order.recipient
+                ? { ...order.recipient, phone, address, note }
+                : { fullName: order.customerName, phone, address, note },
+              updatedAt: new Date().toISOString(),
+            }
+          : order,
+      ),
+    );
   };
+
   const updateOrderStatus = (orderId: string, status: OrderStatus) => {
-    void orderId;
-    void status;
+    setOrders((prev) =>
+      prev.map((order) =>
+        order.id === orderId
+          ? { ...order, status, updatedAt: new Date().toISOString() }
+          : order,
+      ),
+    );
   };
+
   const createOrder = (orderData: Partial<Order>): Order => {
     const nextNumber = orders.length + 1;
+    const now = new Date().toISOString();
     const created: Order = {
+      ...orderData,
       id: orderData.id ?? `ORD-MOCK-${String(nextNumber).padStart(3, '0')}`,
       customerName: orderData.customerName ?? `Tài khoản #${userProfile.id}`,
       customerPhone: orderData.customerPhone ?? userProfile.phone,
       customerEmail: orderData.customerEmail ?? userProfile.email,
       recipientAddress: orderData.recipientAddress ?? userProfile.addresses[0]?.address ?? '',
-      createdAt: orderData.createdAt ?? new Date().toISOString(),
-      updatedAt: orderData.updatedAt ?? new Date().toISOString(),
+      createdAt: orderData.createdAt ?? now,
+      updatedAt: orderData.updatedAt ?? now,
       status: orderData.status ?? 'PENDING',
       paymentMethod: 'COD',
       paymentStatus: 'UNPAID_COD',
       paymentStatusLabel: 'Chưa thu COD',
       items: orderData.items ?? [],
       subtotal: orderData.subtotal ?? 0,
+      voucherDiscount: 0,
       shippingFee: orderData.shippingFee ?? 0,
       total: orderData.total ?? orderData.subtotal ?? 0,
-      ...orderData,
     };
     setOrders((prev) => [created, ...prev]);
     setCartItems([]);
