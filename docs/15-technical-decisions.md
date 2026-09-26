@@ -117,3 +117,41 @@ Administrative bootstrap credentials must remain external; never hardcode shared
 - Catalog metadata returns the existing relational masters; gender/season/style values are derived from stored Product values.
 - Catalog writes are audited in the same service transaction.
 - Product/Variant creation does not create or mutate Inventory. A missing Inventory row is read as available quantity 0; Phase 4 owns stock mutation/upsert behavior.
+
+
+## Phase 4 technical decisions
+
+### Supplier usage-state encoding
+
+The approved source fixes two Supplier usage meanings: usable for new receiving work and stopped from further use while historical GoodsReceipt references remain intact. Encode the technical literals as:
+
+- `ACTIVE`
+- `INACTIVE`
+
+This is only a literal naming decision. No Supplier delete lifecycle is added. A new GoodsReceipt may use only an `ACTIVE` Supplier; historical receipts remain readable after that Supplier becomes `INACTIVE`.
+
+### Inventory authorization capabilities
+
+Define technical capabilities for APIs #46–57:
+
+- `INVENTORY_READ` — read APIs #46, #47, #50, #51, #55 and #57.
+- `INVENTORY_WRITE` — mutation APIs #48, #49, #52–54 and #56.
+
+`SUPERADMIN` may perform both capabilities. Do not automatically grant either capability to `ADMIN` or any employee role.
+
+### Receipt code generation
+
+The API contract requires the server to generate `receipt_code`, while the business sources do not lock a human numbering scheme. Use an opaque unique code `GR-<UUID>` within the existing 40-character column.
+
+No date, sequence, branch, supplier or accounting meaning is inferred from that code.
+
+### Inventory row invariant
+
+DD-DB-01 defines exactly one `inventories` row per ProductVariant for the one-warehouse baseline.
+
+Phase 4 therefore:
+- backfills a zero-quantity row for a pre-existing Variant that has none;
+- initializes a zero-quantity row when Catalog creates a new Variant;
+- keeps ordinary stock changes behind inventory business services so each non-zero movement has its matching ledger entry.
+
+Creating the zero row is initialization, not a stock movement; it does not create an InventoryTransaction.
