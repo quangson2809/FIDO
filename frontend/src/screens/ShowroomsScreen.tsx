@@ -7,25 +7,27 @@ export const ShowroomsScreen: React.FC = () => {
   const [showrooms, setShowrooms] = useState<any[]>([]);
   const [selectedShowroom, setSelectedShowroom] = useState<any>(null);
 
-  React.useEffect(() => {
-    showroomService.getShowrooms().then(list => {
-      setShowrooms(list);
-      setSelectedShowroom(list[0]);
-    });
-  }, []);
-
-  if (!selectedShowroom) return <div>Loading...</div>;
-  // ... rest of the component
   const [bookingDate, setBookingDate] = useState('2026-09-28');
   const [bookingTime, setBookingTime] = useState('15:00');
   const [guestCount, setGuestCount] = useState('1');
   const [serviceType, setServiceType] = useState('fitting-ready-to-wear');
   const [notes, setNotes] = useState('');
 
+  React.useEffect(() => {
+    showroomService.getShowrooms().then(list => {
+      setShowrooms(list);
+      setSelectedShowroom(list[0] ?? null);
+    });
+  }, []);
+
+  if (!selectedShowroom) {
+    return <div className="min-h-[50vh] flex items-center justify-center text-sm text-[#687069]">Đang tải fixture showroom...</div>;
+  }
+
   const handleBookingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     showToast(
-      `Đã xác nhận đặt lịch hẹn Fitting tại ${selectedShowroom.name} vào ${bookingTime} ngày ${bookingDate}. Concierge sẽ gọi xác nhận trong 15 phút!`
+      `Fixture UI: lịch ${bookingTime} ngày ${bookingDate} tại ${selectedShowroom.name}. Baseline hiện không khóa API booking showroom.`
     );
   };
 
