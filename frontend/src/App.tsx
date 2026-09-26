@@ -15,7 +15,7 @@ import { PolicyScreen } from './screens/PolicyScreen';
 import { AuthScreen } from './screens/AuthScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { ShowroomsScreen } from './screens/ShowroomsScreen';
-import { AdminScreen } from './screens/AdminScreen';
+import { AdminScreen } from './screens/AdminScreen';\nimport { AdminLoginScreen } from './screens/AdminLoginScreen';
 
 const MainContent: React.FC = () => {
   const { currentScreen, toastMessage } = useApp();
