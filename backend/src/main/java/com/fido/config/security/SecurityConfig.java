@@ -68,7 +68,10 @@ public class SecurityConfig {
                                 "/api/v1/admin/categories/**",
                                 "/api/v1/admin/brands/**",
                                 "/api/v1/admin/size-systems/**",
-                                "/api/v1/admin/colors/**"
+                                "/api/v1/admin/colors/**",
+                                "/api/v1/admin/suppliers/**",
+                                "/api/v1/admin/goods-receipts/**",
+                                "/api/v1/admin/inventory/**"
                         )
                         .authenticated()
 

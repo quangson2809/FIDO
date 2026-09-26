@@ -1,6 +1,7 @@
 package com.fido.modules.product.service;
 
 import com.fido.modules.audit.service.AuditService;
+import com.fido.modules.inventory.service.InventoryAvailabilityService;
 import com.fido.modules.product.dto.request.BrandRequest;
 import com.fido.modules.product.dto.request.CategoryCreateRequest;
 import com.fido.modules.product.dto.request.CategoryPatchRequest;
@@ -65,6 +66,7 @@ public class CatalogAdminService {
     private final SizeValueRepository sizeValues;
     private final ColorRepository colors;
 
+    private final InventoryAvailabilityService inventory;
     private final CatalogQueryService query;
     private final AuditService audit;
     private final EntityManager em;
@@ -78,6 +80,7 @@ public class CatalogAdminService {
             SizeSystemRepository sizeSystems,
             SizeValueRepository sizeValues,
             ColorRepository colors,
+            InventoryAvailabilityService inventory,
             CatalogQueryService query,
             AuditService audit,
             EntityManager em
@@ -92,6 +95,7 @@ public class CatalogAdminService {
         this.sizeValues = sizeValues;
         this.colors = colors;
 
+        this.inventory = inventory;
         this.query = query;
         this.audit = audit;
         this.em = em;
@@ -761,6 +765,7 @@ public class CatalogAdminService {
             variant.setSaleStatus(item.saleStatus());
 
             variants.save(variant);
+            inventory.initializeVariant(variant.getVariantId());
         }
     }
 

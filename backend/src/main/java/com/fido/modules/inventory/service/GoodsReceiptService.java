@@ -126,7 +126,7 @@ public class GoodsReceiptService {
             GoodsReceiptCreateRequest request
     ) {
         requireActiveSupplier(request.supplier_id());
-        validateItems(request.items());
+        validateCreateItems(request.items());
 
         GoodsReceipt receipt = new GoodsReceipt();
         receipt.setReceiptCode(generateReceiptCode());
@@ -179,7 +179,7 @@ public class GoodsReceiptService {
         receipts.save(receipt);
 
         if (request.isItemsPresent()) {
-            validateItems(request.getItems());
+            validatePatchItems(request.getItems());
 
             items.deleteByReceiptId(receiptId);
 
@@ -380,7 +380,7 @@ public class GoodsReceiptService {
         }
     }
 
-    private void validateItems(
+    private void validateCreateItems(
             List<GoodsReceiptCreateRequest.ItemInput> requested
     ) {
         var variantIds = new HashSet<Long>();
@@ -394,7 +394,7 @@ public class GoodsReceiptService {
         }
     }
 
-    private void validateItems(
+    private void validatePatchItems(
             List<GoodsReceiptPatchRequest.ItemInput> requested
     ) {
         var variantIds = new HashSet<Long>();

@@ -657,15 +657,13 @@ class CatalogPhase3HttpTests {
 
         db.update(
                 """
-                INSERT INTO inventories(
-                    variant_id,
-                    available_quantity,
-                    updated_at
-                )
-                VALUES (?, ?, CURRENT_TIMESTAMP)
+                UPDATE inventories
+                SET available_quantity = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE variant_id = ?
                 """,
-                variantId,
-                5
+                5,
+                variantId
         );
 
         var list = call(
