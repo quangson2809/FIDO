@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { mockStaffAccounts } from '../mocks/apiData';
 
 export const AdminLoginScreen: React.FC = () => {
   const { setCurrentScreen, showToast } = useApp();
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('0900000001');
+  const [password, setPassword] = useState('mock-password');
   const [showPassword, setShowPassword] = useState(false);
   const [validationError, setValidationError] = useState('');
 
@@ -17,12 +18,15 @@ export const AdminLoginScreen: React.FC = () => {
       return;
     }
 
-    setValidationError('');
+    const staff = mockStaffAccounts.find((item) => item.account.phone === normalizedPhone);
+    if (!staff) {
+      setValidationError('Số điện thoại không thuộc fixture tài khoản nội bộ.');
+      return;
+    }
 
-    // FE currently runs with mock services. This keeps the admin login flow testable
-    // without inventing backend authentication rules. Real authentication will use
-    // POST /api/v1/auth/login when the backend auth contract is wired into the FE.
-    showToast('Đăng nhập quản trị thành công trong chế độ giao diện thử nghiệm.');
+    setValidationError('');
+    const roles = staff.roles.map((role) => role.code).join(', ');
+    showToast(`Mock login thành công · account #${staff.account.account_id} · ${roles}`);
     setCurrentScreen('admin');
   };
 
@@ -132,6 +136,28 @@ export const AdminLoginScreen: React.FC = () => {
               <p className="text-sm text-[#424844] mt-2 leading-relaxed">
                 Đăng nhập bằng số điện thoại nội bộ và mật khẩu. Phiên hiện tại không yêu cầu OTP.
               </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 mb-5">
+              {mockStaffAccounts.slice(0, 2).map((staff) => (
+                <button
+                  key={staff.account.account_id}
+                  type="button"
+                  onClick={() => {
+                    setPhone(staff.account.phone ?? '');
+                    setPassword('mock-password');
+                    setValidationError('');
+                  }}
+                  className="px-3 py-2 border border-[#E2E5DE] bg-white hover:bg-[#FAF9F5] rounded text-left"
+                >
+                  <span className="block text-[10px] uppercase tracking-wider text-[#687069]">
+                    {staff.roles.map((role) => role.code).join(', ')}
+                  </span>
+                  <span className="block text-xs font-bold text-[#0B2419] mt-0.5">
+                    {staff.account.phone}
+                  </span>
+                </button>
+              ))}
             </div>
 
             <form className="space-y-5" onSubmit={handleSubmit}>
