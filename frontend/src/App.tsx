@@ -53,23 +53,29 @@ const StorefrontLayout: React.FC = () => (
 
 const ProductDetailRoute: React.FC = () => {
   const { productId } = useParams<{ productId: string }>();
-  const { setSelectedProductId } = useApp();
+  const { selectedProductId, setSelectedProductId } = useApp();
 
   useEffect(() => {
-    if (productId) setSelectedProductId(productId);
-  }, [productId, setSelectedProductId]);
+    if (productId && productId !== selectedProductId) {
+      setSelectedProductId(productId);
+    }
+  }, [productId, selectedProductId, setSelectedProductId]);
 
+  if (productId && productId !== selectedProductId) return null;
   return <ProductDetailScreen />;
 };
 
 const OrderDetailRoute: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
-  const { setSelectedOrderId } = useApp();
+  const { selectedOrderId, setSelectedOrderId } = useApp();
 
   useEffect(() => {
-    if (orderId) setSelectedOrderId(orderId);
-  }, [orderId, setSelectedOrderId]);
+    if (orderId && orderId !== selectedOrderId) {
+      setSelectedOrderId(orderId);
+    }
+  }, [orderId, selectedOrderId, setSelectedOrderId]);
 
+  if (orderId && orderId !== selectedOrderId) return null;
   return <OrderDetailScreen />;
 };
 
