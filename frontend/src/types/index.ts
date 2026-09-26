@@ -16,8 +16,10 @@ export type ScreenId =
 
 export type OrderStatus =
   | 'PENDING'
+  | 'CONFIRMED'
   | 'PREPARING'
   | 'SHIPPING'
+  | 'DELIVERY_FAILED'
   | 'COMPLETED'
   | 'RETURNED'
   | 'CANCELLED'
