@@ -1,7 +1,10 @@
 import React, { useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { mockInventoryRows, mockInventoryTransactions, InventoryRowDto } from '../../mocks/apiData';
 
 export const AdminInventoryView: React.FC<{ showToast: (msg: string) => void }> = ({ showToast }) => {
+  const location = useLocation();
+  const isHistory = location.pathname.endsWith('/history');
   const [items, setItems] = useState<InventoryRowDto[]>(mockInventoryRows);
   const [query, setQuery] = useState('');
   const [adjusting, setAdjusting] = useState<InventoryRowDto | null>(null);
@@ -21,6 +24,40 @@ export const AdminInventoryView: React.FC<{ showToast: (msg: string) => void }> 
     showToast(`Mock POST inventory/adjustments: variant #${adjusting.variant_id}, delta ${delta}`);
     setAdjusting(null); setDelta(0);
   };
+
+  if (isHistory) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <div className="text-[11px] font-bold text-[#1B5038] uppercase tracking-widest">InventoryTransactionDto</div>
+          <h1 className="font-['Playfair_Display',serif] text-3xl font-bold text-[#0B2419]">Ledger biến động tồn kho</h1>
+          <p className="text-sm text-[#687069] mt-1">Ledger mock là immutable; không thêm balance_after vì contract không có field này.</p>
+        </div>
+        <div className="bg-white border rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="bg-[#F5F6F2]"><tr><th className="p-3 text-left">txn_id</th><th>variant_id</th><th>delta</th><th>type</th><th>order</th><th>goods receipt</th><th>actor</th><th className="text-left">reason</th><th>created_at</th></tr></thead>
+              <tbody className="divide-y">
+                {mockInventoryTransactions.map((txn)=>(
+                  <tr key={txn.txn_id}>
+                    <td className="p-3 font-bold">#{txn.txn_id}</td>
+                    <td className="text-center">#{txn.variant_id}</td>
+                    <td className={`text-center font-bold ${txn.quantity_delta < 0 ? 'text-[#BA1A1A]' : 'text-[#1B5038]'}`}>{txn.quantity_delta > 0 ? '+' : ''}{txn.quantity_delta}</td>
+                    <td className="text-center font-mono">{txn.transaction_type}</td>
+                    <td className="text-center">{txn.order_id ? '#'+txn.order_id : '—'}</td>
+                    <td className="text-center">{txn.goods_receipt_id ? '#'+txn.goods_receipt_id : '—'}</td>
+                    <td className="text-center">#{txn.actor_account_id}</td>
+                    <td className="p-3">{txn.reason ?? '—'}</td>
+                    <td className="text-center whitespace-nowrap">{txn.created_at}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
