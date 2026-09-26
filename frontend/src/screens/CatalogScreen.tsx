@@ -37,6 +37,19 @@ export const CatalogScreen: React.FC = () => {
       );
     }
 
+    if (selectedCategory !== 'Tất cả' && selectedCategory) {
+      list = list.filter((p) => p.category.toLowerCase() === selectedCategory.toLowerCase());
+    }
+    if (selectedBrand !== 'Tất cả' && selectedBrand) {
+      list = list.filter((p) => p.brand.toLowerCase() === selectedBrand.toLowerCase());
+    }
+    if (selectedSize !== 'Tất cả' && selectedSize) {
+      list = list.filter((p) => p.sizes.some((size: string | number) => String(size) === String(selectedSize)));
+    }
+    if (selectedColor !== 'Tất cả' && selectedColor) {
+      list = list.filter((p) => p.colors.some((color: { name: string }) => color.name === selectedColor));
+    }
+
     if (sortOption === 'price-asc') {
       list.sort((a, b) => a.price - b.price);
     } else if (sortOption === 'price-desc') {
@@ -44,7 +57,7 @@ export const CatalogScreen: React.FC = () => {
     }
 
     return list;
-  }, [searchTerm, sortOption]);
+  }, [products, searchTerm, selectedCategory, selectedBrand, selectedSize, selectedColor, sortOption]);
 
   const handleOpenProduct = (id: string) => {
     setSelectedProductId(id);
