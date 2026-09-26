@@ -266,9 +266,9 @@ export const Header: React.FC = () => {
           {/* Admin shortcut button */}
           <button
             type="button"
-            onClick={() => setCurrentScreen('admin')}
+            onClick={() => setCurrentScreen('admin-login')}
             className={`hidden md:inline-flex items-center gap-1 px-3 py-1.5 rounded text-[12px] font-bold uppercase tracking-wider transition-all border ${
-              currentScreen === 'admin'
+              currentScreen === 'admin' || currentScreen === 'admin-login'
                 ? 'bg-[#E8C75B] text-[#071A12] border-[#E8C75B]'
                 : 'bg-[#F5F6F2] text-[#0B2419] hover:bg-[#FAF4DF] border-[#E2E5DE]'
             }`}
