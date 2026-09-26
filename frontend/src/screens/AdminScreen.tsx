@@ -688,8 +688,8 @@ export const AdminScreen: React.FC = () => {
             {/* 2. Sản phẩm */}
             {activeMenu === 'products' && (
               <AdminProductsView
-                onSelectProduct={(_id) => handleNavClick('product-detail', 'Chi tiết sản phẩm')}
-                onEditProduct={(_id) => handleNavClick('product-detail', 'Chi tiết sản phẩm')}
+                onSelectProduct={(id) => navigate(`/admin/products/${encodeURIComponent(id)}`)}
+                onEditProduct={(id) => navigate(`/admin/products/${encodeURIComponent(id)}`)}
                 onNavigateTab={handleNavClick}
                 showToast={showToast}
               />
@@ -1265,7 +1265,7 @@ export const AdminScreen: React.FC = () => {
                                     </button>
 
                                     <button
-                                      onClick={() => handleNavClick('order-detail', `Đơn hàng #${order.id}`)}
+                                      onClick={() => navigate(`/admin/orders/${encodeURIComponent(order.id)}`)}
                                       className="px-2.5 py-1 bg-[#0B2419] hover:bg-[#1B5038] text-[#E5C358] font-medium text-[11px] rounded transition-colors"
                                       title="Mở toàn trang chi tiết đơn hàng (Screen 4)"
                                     >
@@ -1312,7 +1312,7 @@ export const AdminScreen: React.FC = () => {
                   onClick={() => {
                     const orderId = selectedOrder.id;
                     setSelectedOrder(null);
-                    handleNavClick('order-detail', `Đơn hàng #${orderId}`);
+                    navigate(`/admin/orders/${encodeURIComponent(orderId)}`);
                   }}
                   className="px-2.5 py-1 bg-[#E5C358] text-[#0B2419] hover:bg-[#d8b548] text-xs font-semibold rounded flex items-center gap-1 transition-colors"
                   title="Mở toàn màn hình theo bố cục Admin Screen 4"
