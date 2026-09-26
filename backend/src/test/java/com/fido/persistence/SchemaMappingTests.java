@@ -47,8 +47,9 @@ class SchemaMappingTests {
             assertEquals("com.fido.modules." + owners.get(table) + ".entity", type.getPackageName());
             mapped.add(table);
             Object key = switch (table) {
-                case "account_roles" -> new AccountRoleId(1L,1L);
-                case "role_permissions" -> new RolePermissionId(1L,1L);
+                case "roles" -> 101L;
+                case "account_roles" -> new AccountRoleId(1L,101L);
+                case "role_permissions" -> new RolePermissionId(101L,1L);
                 default -> 1L;
             };
             assertNotNull(em.find(type, key), "Cannot read fixture for " + table);

@@ -9,4 +9,6 @@ import java.util.Optional;
 public interface RolePermissionRepository extends Repository<RolePermission, RolePermissionId> {
     Optional<RolePermission> findById(RolePermissionId id);
     RolePermission save(RolePermission entity);
+    void deleteByRoleId(Long roleId);
+    boolean existsByPermissionId(Long permissionId);
 }

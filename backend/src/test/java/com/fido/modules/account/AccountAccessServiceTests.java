@@ -20,9 +20,10 @@ class AccountAccessServiceTests {
 
     private void fixture() {
         jdbc.update("INSERT INTO accounts (account_id,password_hash,created_at,updated_at) VALUES (201,'never-expose-this',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),(202,'other-hash',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),(203,'admin-hash',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
-        jdbc.update("INSERT INTO roles (role_id,code,name) VALUES (201,'test-role-a','A'),(202,'test-role-b','B'),(203,'admin','Administrator')");
+        jdbc.update("INSERT INTO roles (role_id,code,name) VALUES (201,'test-role-a','A'),(202,'test-role-b','B'),(203,'test-placeholder','Administrator')");
         jdbc.update("INSERT INTO permissions (permission_id,code,name) VALUES (201,'test.read','Read'),(202,'test.write','Write')");
-        jdbc.update("INSERT INTO account_roles VALUES (201,201),(201,202),(203,203)");
+        jdbc.update("INSERT INTO account_roles VALUES (201,201),(201,202)");
+        jdbc.update("INSERT INTO account_roles SELECT 203,role_id FROM roles WHERE code = 'SUPERADMIN'");
         jdbc.update("INSERT INTO role_permissions VALUES (201,201),(202,201),(202,202)");
     }
 

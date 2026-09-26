@@ -10,6 +10,10 @@ import java.util.Optional;
 public interface PermissionRepository extends Repository<Permission, Long> {
     Optional<Permission> findById(Long id);
     Permission save(Permission entity);
+    List<Permission> findAllByOrderByPermissionIdAsc();
+    void delete(Permission permission);
+    @Query("select p from Permission p join RolePermission rp on rp.permissionId=p.permissionId where rp.roleId=:roleId")
+    List<Permission> findByRole(@Param("roleId") Long roleId);
 
     @Query("""
         select distinct p from Permission p

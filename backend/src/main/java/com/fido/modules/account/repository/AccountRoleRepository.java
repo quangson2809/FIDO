@@ -9,4 +9,7 @@ import java.util.Optional;
 public interface AccountRoleRepository extends Repository<AccountRole, AccountRoleId> {
     Optional<AccountRole> findById(AccountRoleId id);
     AccountRole save(AccountRole entity);
+    void deleteByAccountId(Long accountId);
+    boolean existsByRoleId(Long roleId);
+    long countByRoleId(Long roleId);
 }

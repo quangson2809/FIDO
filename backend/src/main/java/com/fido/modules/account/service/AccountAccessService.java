@@ -36,7 +36,7 @@ public class AccountAccessService {
     public boolean isAdministrator(Long accountId) {
         if (accountId == null || accounts.findById(accountId).isEmpty()) return false;
         return roles.findAssignedToAccount(accountId).stream()
-                .anyMatch(role -> "admin".equals(role.getCode()));
+                .anyMatch(role -> "SUPERADMIN".equals(role.getCode()));
     }
 
     /** The caller must use an approved operation-to-permission mapping; no catalog is invented here. */
@@ -44,7 +44,7 @@ public class AccountAccessService {
         if (accountId == null || permissionCode == null || permissionCode.isBlank()
                 || accounts.findById(accountId).isEmpty()) return false;
         if (roles.findAssignedToAccount(accountId).stream()
-                .anyMatch(role -> "admin".equals(role.getCode()))) return true;
+                .anyMatch(role -> "SUPERADMIN".equals(role.getCode()))) return true;
         return permissions.findGrantedToAccount(accountId).stream()
                 .anyMatch(permission -> permissionCode.equals(permission.getCode()));
     }

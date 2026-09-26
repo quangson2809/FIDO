@@ -1,9 +1,9 @@
 INSERT INTO accounts VALUES (1,'test-only-hash','0900000001',NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
 INSERT INTO addresses VALUES (1,1,'Test address',CURRENT_TIMESTAMP);
-INSERT INTO roles VALUES (1,'fixture-role','Fixture role',NULL);
+INSERT INTO roles VALUES (101,'fixture-role','Fixture role',NULL);
 INSERT INTO permissions VALUES (1,'fixture-permission','Fixture permission');
-INSERT INTO account_roles VALUES (1,1);
-INSERT INTO role_permissions VALUES (1,1);
+INSERT INTO account_roles VALUES (1,101);
+INSERT INTO role_permissions VALUES (101,1);
 INSERT INTO categories VALUES (1,NULL,'Root');
 INSERT INTO brands VALUES (1,'Fixture brand');
 INSERT INTO size_systems VALUES (1,'fixture-size-system','Fixture system');

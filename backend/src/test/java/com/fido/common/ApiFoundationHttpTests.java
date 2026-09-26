@@ -33,7 +33,7 @@ class ApiFoundationHttpTests {
 
     @Test
     void httpSerializationUsesSnakeCaseAndDataEnvelope() throws Exception {
-        var response = get("/__test/object");
+        var response = get("/api/v1/catalog/__test/object");
         assertEquals(200, response.statusCode());
         assertEquals("{\"data\":{\"account_id\":7}}", response.body());
     }
@@ -41,7 +41,7 @@ class ApiFoundationHttpTests {
     @Test
     void centralizedErrorsKeepFrameworkStatusAndHideInternals() throws Exception {
         for (String route : new String[]{"failure", "missing"}) {
-            var response = get("/__test/" + route + "?trace=true&message=true");
+            var response = get("/api/v1/catalog/__test/" + route + "?trace=true&message=true");
             assertEquals(route.equals("failure") ? 500 : 404, response.statusCode());
             assertFalse(response.body().contains("PRIVATE_SQL_DETAIL"));
             assertFalse(response.body().contains("IllegalStateException"));
@@ -58,13 +58,13 @@ class ApiFoundationHttpTests {
     static class SampleController {
         record Sample(long accountId) {}
 
-        @GetMapping("/__test/object")
+        @GetMapping("/api/v1/catalog/__test/object")
         ApiResponse<Sample> object() { return ApiResponse.of(new Sample(7)); }
 
-        @GetMapping("/__test/failure")
+        @GetMapping("/api/v1/catalog/__test/failure")
         void failure() { throw new IllegalStateException("PRIVATE_SQL_DETAIL"); }
 
-        @GetMapping("/__test/missing")
+        @GetMapping("/api/v1/catalog/__test/missing")
         void missing() { throw new ResponseStatusException(HttpStatus.NOT_FOUND, "PRIVATE_SQL_DETAIL"); }
     }
 }

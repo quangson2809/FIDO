@@ -60,8 +60,8 @@ class DatabaseConstraintsTests {
         rejects("INSERT INTO cart_items VALUES (2,1,1,1)");
         rejects("INSERT INTO goods_receipt_items VALUES (2,1,1,1)");
         rejects("INSERT INTO inventories VALUES (1,0,CURRENT_TIMESTAMP)");
-        rejects("INSERT INTO account_roles VALUES (1,1)");
-        rejects("INSERT INTO role_permissions VALUES (1,1)");
+        rejects("INSERT INTO account_roles VALUES (1,101)");
+        rejects("INSERT INTO role_permissions VALUES (101,1)");
         rejects("INSERT INTO payments SELECT * FROM payments");
         rejects("INSERT INTO shipping_infos SELECT * FROM shipping_infos");
     }

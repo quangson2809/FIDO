@@ -8,4 +8,7 @@ import java.util.Optional;
 public interface AddressRepository extends Repository<Address, Long> {
     Optional<Address> findById(Long id);
     Address save(Address entity);
+    java.util.List<Address> findByAccountIdOrderByAddressIdAsc(Long accountId);
+    Optional<Address> findByAddressIdAndAccountId(Long addressId, Long accountId);
+    void delete(Address address);
 }

@@ -13,6 +13,12 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 public class ApiExceptionHandler {
     @ExceptionHandler(Exception.class)
     public void handle(Exception exception, HttpServletResponse response) throws IOException {
+        if (exception instanceof org.springframework.dao.DataIntegrityViolationException) {
+            response.sendError(409); return;
+        }
+        if (exception instanceof org.springframework.security.access.AccessDeniedException) {
+            response.sendError(403); return;
+        }
         if (exception instanceof ErrorResponse error) {
             response.sendError(error.getStatusCode().value());
             return;
