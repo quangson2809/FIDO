@@ -117,8 +117,8 @@ export const resolveAdminRoute = (pathname: string): { menuKey: string; breadcru
   if (pathname === '/admin/inventory/history') return { menuKey: 'history', breadcrumb: 'Lịch sử biến động' };
   if (pathname === '/admin/inventory') return { menuKey: 'inventory', breadcrumb: 'Tồn kho' };
   if (pathname === '/admin/suppliers') return { menuKey: 'suppliers', breadcrumb: 'Nhà cung cấp' };
-  if (pathname.startsWith('/admin/customers/detail')) return { menuKey: 'customer-detail', breadcrumb: 'Chi tiết khách hàng' };
   if (pathname === '/admin/customers') return { menuKey: 'crm', breadcrumb: 'Khách hàng (CRM)' };
+  if (pathname.startsWith('/admin/customers/')) return { menuKey: 'customer-detail', breadcrumb: 'Chi tiết khách hàng' };
   if (pathname === '/admin/vouchers') return { menuKey: 'vouchers', breadcrumb: 'Quản lý Voucher' };
   if (pathname === '/admin/staff') return { menuKey: 'employees', breadcrumb: 'Tài khoản nhân viên' };
   if (pathname === '/admin/roles') return { menuKey: 'rbac', breadcrumb: 'Vai trò & Quyền (RBAC)' };
