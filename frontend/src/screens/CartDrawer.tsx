@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 
 export const CartDrawer: React.FC = () => {
@@ -16,7 +16,25 @@ export const CartDrawer: React.FC = () => {
     addToCart
   } = useApp();
 
-  if (!isCartOpen) return null;
+  useEffect(() => {
+    if (!isCartOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsCartOpen(false);
+      }
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isCartOpen, setIsCartOpen]);
 
   const subtotal = cartItems && cartItems.length > 0
     ? cartItems.reduce((acc, item) => acc + (item.price || 0) * item.quantity, 0)
@@ -41,16 +59,25 @@ export const CartDrawer: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden" id="cart-drawer-container">
+    <div
+      className={`fixed inset-0 z-50 overflow-hidden ${isCartOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
+      id="cart-drawer-container"
+      aria-hidden={!isCartOpen}
+    >
       {/* Dimmed Backdrop Overlay with subtle blur */}
       <div
-        className="fixed inset-0 bg-[#071A12]/60 backdrop-blur-sm transition-opacity duration-300 ease-out"
+        className={`fixed inset-0 bg-[#071A12]/60 backdrop-blur-sm transition-opacity duration-300 ease-out ${isCartOpen ? 'opacity-100' : 'opacity-0'}`}
         onClick={() => setIsCartOpen(false)}
       ></div>
 
       {/* Slide-in Drawer Container from Right */}
       <div className="fixed inset-y-0 right-0 max-w-full flex pl-4 sm:pl-6">
-        <aside className="w-screen max-w-[480px] bg-[#fdfdfb] shadow-2xl flex flex-col h-full border-l border-[#E8E9E3] relative z-10 transition-transform duration-300 ease-out animate-in slide-in-from-right">
+        <aside
+          role="dialog"
+          aria-modal="true"
+          aria-label="Giỏ hàng"
+          className={`w-screen max-w-[480px] bg-[#fdfdfb] shadow-2xl flex flex-col h-full border-l border-[#E8E9E3] relative z-10 transform-gpu will-change-transform transition-transform duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${isCartOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        >
           {/* 1. Drawer Header */}
           <div className="px-6 py-5 border-b border-[#E8E9E3] bg-[#FFFFFF] flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5">
