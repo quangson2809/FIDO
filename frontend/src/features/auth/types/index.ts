@@ -1,8 +1,7 @@
-export interface UserProfileDto {
-  account_id: number;
-  email: string;
-  full_name: string;
-}
+import { MeDto } from '../../../mocks/apiData';
+
+export type { MeDto };
+
 export interface AuthService {
-  getProfile(): Promise<UserProfileDto>;
+  getProfile(): Promise<MeDto>;
 }
