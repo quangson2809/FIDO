@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { catalogService } from '../features/catalog/api/service';
-import { ProductDto } from '../features/catalog/types';
+import { toUiProduct } from '../mocks/uiData';
 
 export const ProductDetailScreen: React.FC = () => {
   const {
@@ -17,10 +17,11 @@ export const ProductDetailScreen: React.FC = () => {
   const [products, setProducts] = useState<any[]>([]);
 
   React.useEffect(() => {
-    catalogService.getProducts().then(all => {
+    catalogService.getProducts().then((items) => {
+      const all = items.map(toUiProduct);
       setProducts(all);
-      const p = all.find((p: any) => p.product_id.toString() === selectedProductId) || all[0];
-      setProduct(p);
+      const selected = all.find((item) => item.product_id.toString() === selectedProductId) || all[0];
+      setProduct(selected);
     });
   }, [selectedProductId]);
 
