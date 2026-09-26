@@ -1,0 +1,273 @@
+package com.fido.modules.cart.service;
+
+import com.fido.modules.cart.dto.request.CartItemCreateRequest;
+import com.fido.modules.cart.dto.request.CartItemQuantityRequest;
+import com.fido.modules.cart.dto.response.CartDto;
+import com.fido.modules.cart.dto.response.CartItemDto;
+import com.fido.modules.cart.entity.Cart;
+import com.fido.modules.cart.entity.CartItem;
+import com.fido.modules.cart.repository.CartItemRepository;
+import com.fido.modules.cart.repository.CartRepository;
+import com.fido.modules.product.service.CatalogVariantReadService;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+@Transactional
+public class CartService {
+
+    private final CartRepository carts;
+    private final CartItemRepository items;
+    private final CatalogVariantReadService catalog;
+
+    public CartService(
+            CartRepository carts,
+            CartItemRepository items,
+            CatalogVariantReadService catalog
+    ) {
+        this.carts = carts;
+        this.items = items;
+        this.catalog = catalog;
+    }
+
+    public CartDto current(Long accountId) {
+        Cart cart = currentOrCreate(accountId);
+        return toDto(cart);
+    }
+
+    public CartDto add(
+            Long accountId,
+            CartItemCreateRequest request
+    ) {
+        Cart cart = currentOrCreate(accountId);
+
+        var variant = catalog.get(request.variant_id());
+
+        if (!variant.purchasable()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT);
+        }
+
+        CartItem item = items
+                .findByCartIdAndVariantId(
+                        cart.getCartId(),
+                        request.variant_id()
+                )
+                .orElseGet(() -> {
+                    CartItem created = new CartItem();
+                    created.setCartId(cart.getCartId());
+                    created.setVariantId(request.variant_id());
+                    created.setQuantity(0);
+                    return created;
+                });
+
+        try {
+            item.setQuantity(
+                    Math.addExact(
+                            item.getQuantity(),
+                            request.quantity()
+                    )
+            );
+        } catch (ArithmeticException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        }
+
+        items.save(item);
+        touch(cart);
+
+        return toDto(cart);
+    }
+
+    public CartDto updateQuantity(
+            Long accountId,
+            Long cartItemId,
+            CartItemQuantityRequest request
+    ) {
+        Cart cart = currentOrCreate(accountId);
+
+        CartItem item = ownedItem(
+                cart.getCartId(),
+                cartItemId
+        );
+
+        item.setQuantity(request.quantity());
+        items.save(item);
+
+        touch(cart);
+
+        return toDto(cart);
+    }
+
+    public CartDto deleteItem(
+            Long accountId,
+            Long cartItemId
+    ) {
+        Cart cart = currentOrCreate(accountId);
+
+        CartItem item = ownedItem(
+                cart.getCartId(),
+                cartItemId
+        );
+
+        items.delete(item);
+        touch(cart);
+
+        return toDto(cart);
+    }
+
+    public CartDto clear(Long accountId) {
+        Cart cart = currentOrCreate(accountId);
+
+        items.deleteByCartId(
+                cart.getCartId()
+        );
+
+        touch(cart);
+
+        return toDto(cart);
+    }
+
+    @Transactional(readOnly = true)
+    public CheckoutCartView checkoutView(Long accountId) {
+        return carts
+                .findFirstByAccountIdOrderByUpdatedAtDescCartIdDesc(accountId)
+                .map(this::toCheckoutView)
+                .orElseGet(() ->
+                        new CheckoutCartView(
+                                null,
+                                List.of(),
+                                BigDecimal.ZERO
+                        )
+                );
+    }
+
+    private Cart currentOrCreate(Long accountId) {
+        return carts
+                .findFirstByAccountIdOrderByUpdatedAtDescCartIdDesc(accountId)
+                .orElseGet(() -> {
+                    Cart cart = new Cart();
+                    cart.setAccountId(accountId);
+                    return carts.save(cart);
+                });
+    }
+
+    private CartItem ownedItem(
+            Long cartId,
+            Long cartItemId
+    ) {
+        return items
+                .findByCartItemIdAndCartId(
+                        cartItemId,
+                        cartId
+                )
+                .orElseThrow(() ->
+                        new ResponseStatusException(HttpStatus.NOT_FOUND)
+                );
+    }
+
+    private CartDto toDto(Cart cart) {
+        var itemDtos = items
+                .findAllByCartIdOrderByCartItemIdAsc(
+                        cart.getCartId()
+                )
+                .stream()
+                .map(this::toItemDto)
+                .toList();
+
+        BigDecimal subtotal = itemDtos.stream()
+                .map(CartItemDto::line_total)
+                .reduce(
+                        BigDecimal.ZERO,
+                        BigDecimal::add
+                );
+
+        return new CartDto(
+                cart.getCartId(),
+                cart.getAccountId(),
+                itemDtos,
+                subtotal,
+                cart.getCreatedAt(),
+                cart.getUpdatedAt()
+        );
+    }
+
+    private CartItemDto toItemDto(CartItem item) {
+        var variant = catalog.get(
+                item.getVariantId()
+        );
+
+        BigDecimal lineTotal = variant.unitPrice()
+                .multiply(
+                        BigDecimal.valueOf(item.getQuantity())
+                );
+
+        return new CartItemDto(
+                item.getCartItemId(),
+                item.getVariantId(),
+                item.getQuantity(),
+                variant.productName(),
+                variant.size(),
+                variant.color(),
+                variant.unitPrice(),
+                lineTotal,
+                variant.availableQuantity()
+        );
+    }
+
+    private CheckoutCartView toCheckoutView(Cart cart) {
+        var checkoutItems = items
+                .findAllByCartIdOrderByCartItemIdAsc(
+                        cart.getCartId()
+                )
+                .stream()
+                .map(item -> {
+                    var variant = catalog.get(
+                            item.getVariantId()
+                    );
+
+                    BigDecimal lineTotal = variant.unitPrice()
+                            .multiply(
+                                    BigDecimal.valueOf(item.getQuantity())
+                            );
+
+                    return new CheckoutCartView.Item(
+                            item.getVariantId(),
+                            item.getQuantity(),
+                            variant.productName(),
+                            variant.size(),
+                            variant.color(),
+                            variant.unitPrice(),
+                            lineTotal,
+                            variant.availableQuantity(),
+                            variant.purchasable()
+                    );
+                })
+                .toList();
+
+        BigDecimal subtotal = checkoutItems.stream()
+                .map(CheckoutCartView.Item::lineTotal)
+                .reduce(
+                        BigDecimal.ZERO,
+                        BigDecimal::add
+                );
+
+        return new CheckoutCartView(
+                cart.getCartId(),
+                checkoutItems,
+                subtotal
+        );
+    }
+
+    private void touch(Cart cart) {
+        cart.setUpdatedAt(
+                LocalDateTime.now(ZoneOffset.UTC)
+        );
+
+        carts.save(cart);
+    }
+}
