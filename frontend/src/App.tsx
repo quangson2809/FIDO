@@ -15,7 +15,8 @@ import { PolicyScreen } from './screens/PolicyScreen';
 import { AuthScreen } from './screens/AuthScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { ShowroomsScreen } from './screens/ShowroomsScreen';
-import { AdminScreen } from './screens/AdminScreen';\nimport { AdminLoginScreen } from './screens/AdminLoginScreen';
+import { AdminScreen } from './screens/AdminScreen';
+import { AdminLoginScreen } from './screens/AdminLoginScreen';
 
 const MainContent: React.FC = () => {
   const { currentScreen, toastMessage } = useApp();
@@ -53,6 +54,23 @@ const MainContent: React.FC = () => {
         return <HomeScreen />;
     }
   };
+
+  // Standalone admin login: no storefront shell and no admin navigation.
+  if (currentScreen === 'admin-login') {
+    return (
+      <div className="min-h-screen bg-[#071710] font-['Plus_Jakarta_Sans',sans-serif]">
+        <AdminLoginScreen />
+        {toastMessage && (
+          <div className="fixed bottom-6 right-4 sm:right-8 z-50">
+            <div className="bg-[#0B2419] text-white px-5 py-3 shadow-2xl border border-[#E8C75B]/30 flex items-center gap-3 rounded-lg">
+              <span className="material-symbols-outlined text-[#E8C75B] text-xl">info</span>
+              <span className="text-xs sm:text-sm font-medium">{toastMessage}</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // Dedicated Admin layout: do NOT wrap in customer Header/Footer/CartDrawer
   if (currentScreen === 'admin') {
