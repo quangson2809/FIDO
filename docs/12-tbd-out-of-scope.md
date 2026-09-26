@@ -1,17 +1,24 @@
-# 12 — TBD, Yellow Warnings, Phase-Later & Explicit Exclusions
+# 12 — TBD, Deferred Work, Hard Blockers & Explicit Exclusions
 
-This file is a **do-not-invent list**.
+This file prevents invented business behavior. It must not be used to stop implementation for ordinary technical choices.
 
-## 1. Yellow: business need exists but implementation is not fully locked
+## 1. How to use this file
 
-### Guest Order lookup
+Classify each unresolved point:
 
-`POST /api/v1/orders/lookup` need exists, but token/OTP/secret, TTL, rate limit and verification channel are TBD. Do not finalize request/response/security behavior.
+- **HARD BLOCK** if proceeding requires inventing business behavior, public API/security semantics, persistent business meaning/schema, state/money/stock semantics or an external contract.
+- **DEFERRED FEATURE** if the source explicitly postpones the feature.
+- **TECHNICAL DECISION** if the semantics are already fixed and only implementation naming/organization remains. Technical decisions are recorded in `docs/15-technical-decisions.md` and do not block a phase.
 
-### Voucher behavior
+## 2. Current hard/deferred business gaps
 
-Voucher table currently locks only `voucher_id` + `code`. Still TBD:
+### Guest Order lookup — HARD BLOCK for final guest-lookup security only
 
+`POST /api/v1/orders/lookup` is required, but token/OTP/secret, TTL, rate limit, masking and verification channel are not locked. Do not finalize a weak phone-only lookup. This does not block authenticated order APIs.
+
+### Voucher behavior — DEFERRED slice
+
+Only `voucher_id` + `code` are locked. Still unresolved:
 - discount type/value;
 - effective dates;
 - minimum order;
@@ -20,21 +27,37 @@ Voucher table currently locks only `voucher_id` + `code`. Still TBD:
 - stacking;
 - active/inactive lifecycle.
 
-Do not add `is_enabled`, date fields, usage tables or eligibility logic without refinement.
+Do not add fields/tables/rules for these. Authenticated Cart and voucher-less Quote may proceed.
 
-### Create Order dedupe
+### Create Order dedupe — HARD BLOCK for retry guarantee only
 
-API #20 is baseline, but idempotency request-token/dedupe mechanism is application/physical-design TBD. Do not add a schema field merely because it is a common pattern.
+API #20 remains baseline, but request-token/dedupe behavior for retry/double-click is physical/application design TBD. Do not add a schema field merely because it is common. Other Order creation/state logic may proceed; do not claim retry-safe create until this is resolved.
 
-### Guest cart
+### Guest cart — DEFERRED slice
 
-Cart allows nullable account logically, but guest session key, TTL, persistence and login merge behavior are TBD.
+Logical Cart permits nullable account. Guest session key, TTL, persistence and login merge are not locked. Authenticated Cart may proceed.
 
-### Login identity
+### Employee permission matrix — DEFERRED assignment policy
 
-Phone/email/both as primary login identifier, uniqueness/verification and password-policy details are not fully locked.
+The exact mapping of employee roles/groups to business capabilities is not locked. Do not auto-grant operation permissions to ADMIN or other employee roles.
 
-## 2. Phase later / not a separate baseline resource
+This does **not** prohibit defining technical capability identifiers required by code. The current technical decision uses capability codes such as `CATALOG_READ` / `CATALOG_WRITE`; role assignment remains configuration/business policy.
+
+## 3. Technical points that are NOT blockers
+
+Do not block implementation solely because of:
+
+- Java class/method/repository method names;
+- mapper/private-helper structure;
+- query implementation choice;
+- exception class naming;
+- package decomposition inside an approved module;
+- technical enum literal names when source semantics are fixed;
+- capability/permission code names when authorization semantics are fixed.
+
+Example: Catalog source fixes the distinction between “đang bán”, “ngừng bán” and “hết tồn” but not the literal enum names. `ON_SALE` / `STOPPED` are therefore a technical encoding, not a new business rule.
+
+## 4. Phase later / not a separate baseline resource
 
 - Notification API/table/provider/template/event/retry/retention.
 - Detailed Size Guide content/measurement storage.
@@ -44,36 +67,32 @@ Phone/email/both as primary login identifier, uniqueness/verification and passwo
 - Content draft/publish/version lifecycle.
 - Report materialized/aggregate tables without performance evidence.
 
-## 3. APIs explicitly invalid for current baseline
+## 5. APIs explicitly invalid for current baseline
 
 Do not implement:
-
 - `POST /api/v1/admin/staff-accounts/{accountId}/disable`;
 - `POST /api/v1/admin/vouchers/{voucherId}/disable`;
 - shipping carrier tracking/reference endpoint;
 - `/api/v1/admin/shipping/options`;
-- generic `/api/v1/admin/business-configuration` system settings;
+- generic `/api/v1/admin/business-configuration`;
 - `POST /api/v1/admin/content-pages/{pageId}/publish`.
 
-## 4. Product scope exclusions
+## 6. Product scope exclusions
 
 - online payment/payment gateway/bank callback;
 - marketplace/multi-vendor;
-- multiple warehouses/WMS/warehouse transfers;
+- multiple warehouses/WMS/transfers;
 - Purchase Order/purchase approval;
 - automatic carrier tracking API;
 - online customer return request/pickup/automatic refund;
 - complex loyalty/recommendation AI;
 - ERP/WMS/POS/native mobile integration unless separately required.
 
-## 5. Metrics/operations still TBD
+## 7. Metrics/operations still TBD
 
-Do not invent numerical requirements for:
-
+Do not invent numeric targets for:
 - SLA/response time/load;
 - RPO/RTO;
 - product/SKU scale;
-- business retention periods;
+- retention periods;
 - exact supported browser list.
-
-Use TBD markers and wait for explicit decision/testing evidence.

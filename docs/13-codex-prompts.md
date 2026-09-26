@@ -1,118 +1,177 @@
 # 13 — Codex Task Prompts
 
-## A. Master prompt — use before any coding phase
+## A. Master implementation prompt
 
 ```text
 ROLE
 You are the backend implementer for FIDO.
 
 OBJECTIVE
-Implement only the requested backend phase using the repository's existing Java/Spring/build/database stack.
+Implement only the requested backend phase using the repository's current Java/Spring/Gradle/MySQL stack.
 
 MANDATORY INPUT
-Read AGENTS.md and docs/00-source-of-truth.md through docs/12-tbd-out-of-scope.md before changing code. Inspect the current repository first.
+Read:
+- backend/AGENTS.md
+- docs/00-source-of-truth.md
+- docs/01-architecture-package-structure.md
+- docs/02-module-ownership.md
+- relevant docs/03..10
+- docs/11-implementation-phases.md
+- docs/12-tbd-out-of-scope.md
+- docs/15-technical-decisions.md
+
+Inspect current branch HEAD before changing code.
+
+DECISION CLASSIFICATION
+For every unresolved point classify it as:
+
+HARD BLOCK:
+Only when proceeding would invent/change business behavior, public API semantics, security guarantee, persistent business meaning/schema, state machine, money/stock semantics or external integration contract.
+Stop only the affected slice.
+
+TECHNICAL DECISION:
+Class/method/repository naming, query strategy, mapper/private helper design, technical enum literal names with fixed semantics, capability code naming, package decomposition inside an approved module.
+Choose the smallest conventional implementation, record it in docs/15-technical-decisions.md, add tests, and CONTINUE.
+
+DEFERRED FEATURE:
+Explicit source TBD/phase-later functionality.
+Skip only that slice and CONTINUE all independent work.
+
+Never mark a whole phase BLOCKED solely because of a technical naming/design choice.
 
 ARCHITECTURE
-Preserve com.fido modular monolith/package-by-feature:
+Preserve com.fido Modular Monolith + Package by Feature:
 account, product, cart, promotion, order, inventory, audit, report, content.
-Inside each module use controller/service/repository/entity/dto/mapper only as needed.
-Do not create root business layers.
-
-RULES
-- Never invent API fields, DB fields, states, permission codes, workflows or business rules.
-- Never implement a TBD/Phase-later item as if approved.
-- Cross-module access through Service/query contract, never another module's Repository.
-- Controller has no business logic.
-- Transaction boundaries live in Service.
-- Entity is never returned directly by Controller.
-- Preserve current dependency versions/config; do not upgrade unless task says so.
-- Add tests for every rule and transaction changed.
+No cross-module Repository calls.
+Controller has no business logic.
+Service owns orchestration/transactions.
+Entity never leaves Controller as REST output.
 
 PROCESS
-1) inspect; 2) map task to source IDs/tables/API; 3) identify blockers; 4) make smallest coherent change; 5) run tests; 6) review diff.
-
-OUTPUT
-Report changed files, source IDs implemented, tests/results, invariants verified, and remaining TBD/blockers.
-Do not start a later phase.
+1. Inspect branch/code.
+2. Map phase to source IDs/APIs/tables.
+3. Classify unresolved points.
+4. Implement all non-blocked work.
+5. Record technical decisions.
+6. Run relevant tests/build.
+7. Review diff.
+8. Report PASS/PARTIAL only from evidence.
+Do not open the next phase before the gate passes.
 ```
 
-## B. Phase 1 prompt — data foundation
+## B. Phase 3 — Catalog continuation prompt
 
 ```text
-Implement Phase 1 only from docs/11-implementation-phases.md.
-Reconcile the persistence model with the exact 28-table ownership in docs/03-data-model.md.
-Use the migration/ORM technology already in the repo.
-Add DB/JPA constraints where supported, but do not add speculative fields/tables.
-Specifically exclude notifications, order timeline, after_sales_case, unit_cost, voucher rule fields, account_status, shipping tracking reference and generic system_settings.
-Verify schema/entity mapping and tests. Stop after Phase 1.
+Implement Phase 3 only from docs/11-implementation-phases.md.
+
+Do NOT stop for ordinary technical choices.
+
+Implement public/admin Catalog APIs #11–13 and #27–45.
+
+Locked business/data rules:
+- Category is a tree; prevent cycles.
+- Product only belongs to a leaf Category.
+- Product selects one SizeSystem.
+- Variant SizeValue must belong to Product SizeSystem.
+- Product + SizeValue + Color is unique.
+- effective_price = override_price when non-null, otherwise base_price.
+- sellable availability derives from Product sale state + Variant sale state + inventory.available_quantity.
+- zero inventory is not the same as stopped sale.
+- do not rewrite historical Variant identity after order history.
+
+Approved technical encodings:
+- sale-state literals: ON_SALE and STOPPED.
+- catalog capabilities: CATALOG_READ and CATALOG_WRITE.
+- SUPERADMIN may perform both.
+- do not automatically grant either capability to ADMIN or any employee role; role assignment remains business/configuration data.
+
+Source TBD that must NOT block the rest:
+- default public sort;
+- special direct-URL behavior for a stopped Product;
+- detailed size-guide model;
+- exact gender/season/style enum sets.
+
+For TBD slices, implement no speculative lifecycle/redirect/model. Continue all independent Catalog work.
+
+Add service/repository/API/authorization tests.
+Run backend tests.
+Stop after Phase 3 and report evidence.
 ```
 
-## C. Phase 2 prompt — account/RBAC
+## C. Phase 4 — Inventory & Receiving
 
 ```text
-Implement Phase 2 only: account/auth/RBAC green APIs.
-Use API #1-7 and #58-69 from docs/04-api-contract.md and DTO/JWT rules in docs/05-dto-contract.md.
-Permission CRUD #66-69 is part of the current 77-API baseline.
-Do not implement account disable or refresh token.
-Do not invent login identifier policy or employee permission-code matrix. If production auth cannot be completed because the repo has no locked identifier strategy, expose the blocker instead of guessing.
-Add ownership and authorization tests. Stop after Phase 2.
+Implement Phase 4 only.
+Supplier/GoodsReceipt/Inventory/InventoryTransaction APIs #46–57.
+GoodsReceipt confirm must increase availability exactly once.
+Every stock mutation must create immutable ledger movement in the same transaction.
+Manual adjustment requires permission, actor, reason and audit.
+No unit_cost and no direct overwrite endpoint.
+Do not block on technical method/query naming.
+Run transaction/idempotency tests and stop after Phase 4.
 ```
 
-## D. Phase 3 prompt — product/catalog
+## D. Phase 5 — Cart / Quote
 
 ```text
-Implement Phase 3 only: public/admin catalog APIs #11-13 and #27-45.
-Enforce Category tree/no-cycle, leaf-only Product, Product SizeSystem, Variant SizeValue compatibility, unique Product+Size+Color, effective price fallback, sale-state vs zero-stock distinction and immutable historical Variant meaning.
-Do not add a detailed size-guide model or invent gender/season/style enum values.
-Add unit/integration/API tests. Stop after Phase 3.
+Implement Phase 5 only.
+Implement all non-deferred Cart/Quote behavior for #14–19.
+Cart never reserves/deducts inventory.
+Quote recalculates server-side and has no side effect.
+Guest-session mechanics and voucher rules are deferred slices, not reasons to block authenticated Cart or voucher-less Quote.
+Run tests and stop after Phase 5.
 ```
 
-## E. Phase 4 prompt — inventory
+## E. Phase 6 — Order / COD
 
 ```text
-Implement Phase 4 only: Supplier, GoodsReceipt, Inventory and InventoryTransaction APIs #46-57.
-Receipt confirmation must be transactionally idempotent and increase sellable availability exactly once.
-All stock changes must write immutable ledger entries. Manual adjustments require reason and cannot make stock negative.
-No unit_cost. No direct inventory overwrite endpoint.
-Run transaction tests. Stop after Phase 4.
+Implement Phase 6 only: APIs #8–10 and #20–26.
+Implement snapshots, exact Order/Payment state machines, atomic confirm, cancel restore, COD collect/refund, delivery-failure and baseline after-sales behavior.
+Use Inventory service contract, never InventoryRepository directly.
+Create-order dedupe is a blocker only for the retry/double-submit guarantee; continue independent Order behavior.
+Add concurrency/idempotency/rollback tests.
+Stop after Phase 6.
 ```
 
-## F. Phase 5 prompt — cart/quote
+## F. Phase 7 — Operations
 
 ```text
-Implement Phase 5 only: cart APIs #14-18 and checkout quote #19 within currently resolved identity/security constraints.
-Cart does not reserve inventory. Quote performs server-side revalidation/calculation only and has no side effect.
-Voucher calculation remains blocked unless voucher refinement exists in repo/docs.
-Guest session key/TTL/merge behavior is TBD; do not invent it.
-Stop and report any portion blocked by guest identity.
+Implement Phase 7 only: audit #70, report #71, content #72–75, customers #76–77.
+No aggregate report table without evidence.
+No content publish/version lifecycle.
+Guest Orders do not become Accounts.
+Run permission/query/API tests and stop after Phase 7.
 ```
 
-## G. Phase 6 prompt — Order/COD
+## G. Independent review prompt
 
 ```text
-Implement Phase 6 only: Order views/create/commands #8-10 and #20-26.
-Before coding API #20, confirm the repo contains an approved create-order dedupe/idempotency mechanism; if absent, flag it as a blocker rather than adding a new schema field.
-Implement the exact Order/Payment state machines, snapshots, atomic confirm, cancel restock, COD collect/refund, delivery failure and after-sales command semantics.
-Use inventory service contract for stock effects; never InventoryRepository directly.
-Add concurrency/idempotency/rollback tests. Stop after Phase 6.
-```
+ROLE
+You are an independent backend reviewer for the completed phase.
 
-## H. Phase 7 prompt — supporting modules
-
-```text
-Implement Phase 7 only: audit #70, report #71, content #72-75, customers #76-77.
-Report is query-based; do not create aggregate tables without performance evidence.
-Content has no draft/publish/version lifecycle.
-Customer admin represents registered Account customers; guest Orders do not become Account rows.
-Add permission/query/API tests. Stop after Phase 7.
-```
-
-## I. Review prompt
-
-```text
-Review this phase as an independent backend reviewer.
-Check against AGENTS.md and docs/00..14, not against generic e-commerce assumptions.
-Find: source deviations, invented fields/rules/endpoints, module-boundary violations, direct cross-module repository calls, missing transaction boundaries, state-machine defects, stock/idempotency bugs, Entity leakage, missing security/audit, missing tests.
-For every finding provide severity, source rule, exact file/location, why it is wrong, and minimal remediation.
 Do not modify code and do not open the next phase.
+
+Review against backend/AGENTS.md and docs/00..15.
+Check:
+- source deviations;
+- invented business fields/rules/endpoints;
+- module-boundary violations;
+- cross-module Repository calls;
+- transaction/state/stock/idempotency defects;
+- Entity leakage;
+- missing authorization/audit;
+- missing tests;
+- false blockers where a technical decision should have been made and documented.
+
+For each finding:
+ID
+SEVERITY
+FILE/LOCATION
+SOURCE/CONTRACT
+PROBLEM
+IMPACT
+MINIMAL FIX
+
+Verdict:
+PHASE X: PASS | REJECT
 ```

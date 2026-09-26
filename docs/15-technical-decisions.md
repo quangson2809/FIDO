@@ -1,51 +1,109 @@
 # Implementation decisions — 2026-09-26
 
+This file contains **technical implementation decisions** approved by the project owner or safely chosen to encode already-approved source semantics. It must not be used to invent new business rules.
+
 ## Explicitly approved by project owner
 
 - Preserve Java 17, Spring Boot 4.0.3, Gradle and MySQL from the repository.
 - Use Flyway to version the schema. Hibernate validates mappings; it does not create or update the schema.
 - Login uses the account phone number. Login does not require phone verification.
-- Owner update: `ADMIN` identifies employees; `SUPERADMIN` is the highest administrator. Lowercase `admin` is no longer privileged. Phone values must be unique.
-- Bootstrap the initial account with role `SUPERADMIN`, from external credentials. The owner delegated JWT library selection: Spring Security Resource Server with Nimbus JOSE/JWT, versions managed by Boot.
+- `ADMIN` identifies employees; `SUPERADMIN` is the highest administrator. Lowercase `admin` is not privileged. Phone values are unique.
+- Bootstrap the initial account with role `SUPERADMIN` from external credentials.
+- JWT library: Spring Security Resource Server with Nimbus JOSE/JWT, versions managed by Boot.
 
-## Implementation conventions
+## Decision policy
 
-- UTC timestamps, stored as TIMESTAMP(6). Entity lifecycle callbacks assign UTC creation/update times. No actor or timestamp is taken from request data.
-- Flyway V1 maps the DD-DB-01 v1.3.0 data dictionary without adding account login constraints. Authentication-specific decisions belong to a subsequent migration when Phase 2 is implemented.
-- Foreign references are scalar IDs in JPA; SQL FKs enforce integrity. This avoids foreign entities crossing module service contracts. Composite junction keys use explicit ID classes.
-- History repositories expose no delete method. Audit, inventory ledger and order-item snapshots are immutable Hibernate entities. Later services must still enforce workflow invariants.
-- The existing Spring Boot `/error` renderer remains in use. Common advice preserves framework error statuses and suppresses technical exception details. No new error DTO or business error-code catalog is established.
-- CI tests both H2 in MySQL mode and a MySQL 8.4 service. Production MySQL must support enforced CHECK constraints (8.0.16 or newer); CI's version does not upgrade a deployed database.
-- Do not baseline an unknown populated database automatically. V1 is for an empty schema; existing production data would require a separate reviewed migration plan.
+Unresolved points are classified before implementation:
+- HARD BLOCK — missing business/API/security/schema/state/money/stock/external-contract meaning.
+- TECHNICAL DECISION — semantics fixed; implementation naming/organization remains. Decide here and continue.
+- DEFERRED FEATURE — explicitly phase-later/TBD; skip only that slice.
 
-## Canonical inputs
+Ordinary technical decisions do not require stakeholder confirmation when they preserve approved semantics and public contracts.
 
-- `docs/00` through `docs/14` and `reference/*.csv` are the supplied FIDO BE Java Codex Kit, now tracked with the repository.
-- Schema authority: `07_Thiet_ke_du_lieu_CSDL_Website_Ban_Quan_Ao_v1.3.0_catalog_final.docx`, DD-DB-01 v1.3.0, section 5 pp. 15–27 and section 6 constraints. The original is available in the owner's Library.
-- API detail source: `DANH MỤC API TINH GỌN THEO CSDL .pdf` is an available 73-endpoint snapshot. Use it only for unchanged DTO details. The kit and explicit owner instruction establish the 77-endpoint baseline; the older PDF does not override permission CRUD #66–69 or renumber the newer endpoints.
+## Foundation conventions
 
-## Still out of scope / unresolved
+- UTC timestamps stored as TIMESTAMP(6).
+- Entity lifecycle callbacks assign UTC creation/update times. No actor or timestamp comes from request data.
+- Flyway V1 maps DD-DB-01 v1.3.0.
+- Foreign references are scalar IDs in JPA; SQL FKs enforce integrity.
+- Composite junction keys use explicit ID classes.
+- History repositories expose no delete method.
+- Audit, inventory ledger and order-item snapshots are immutable records/entities where appropriate.
+- Existing Spring Boot `/error` rendering remains; no custom public error envelope has been introduced.
+- CI tests H2 in MySQL mode and MySQL 8.4.
+- V1 targets an empty schema; populated production databases require a separate reviewed migration plan.
 
-- Employee permission-code matrix, guest session identity/TTL/merge, voucher rules and size-guide detail remain TBD.
-- No account status lifecycle, refresh token, notification, order timeline, after-sales case, unit cost, shipping tracking or system-settings table.
-- Administrative bootstrap credentials must come from external configuration; never hardcode or seed a shared password in SQL.
+## Phase 2 decisions already implemented
 
-## Phase 2 implementation conventions
+- Flyway V2 adds UNIQUE(phone) and seeds ADMIN/SUPERADMIN roles.
+- JWT uses HS256 with externally configured Base64 secret; role/permission data is reloaded from DB rather than trusted from JWT claims.
+- System roles cannot be deleted.
+- RBAC writes protect the last SUPERADMIN assignment.
+- Staff means an account currently assigned ADMIN or SUPERADMIN.
+- Staff creation without explicit role_ids assigns ADMIN; explicit assignments must include ADMIN or SUPERADMIN.
+- Permission rows are managed data.
+- API #58–69 currently require SUPERADMIN.
+- Mutations use service transactions including audit where implemented.
+- Validation/auth/error status mapping follows existing Boot behavior.
+- No refresh API/account lifecycle/status/guest identity/voucher behavior was introduced.
 
-- Flyway V2 adds UNIQUE(phone) and seeds ADMIN/SUPERADMIN roles. It does not rewrite old role assignments or merge duplicate phones. Existing null phones remain for schema compatibility; register/staff-create require a phone. No country-code/format normalization policy is introduced.
-- JWT: HS256 with a Base64 key of at least 32 random bytes, configured issuer (default fido), configurable TTL (default 900 seconds). Require numeric positive sub, iat, exp, valid signature/issuer/timestamps. Role/permission access is reloaded from DB, not trusted from token claims.
-- System roles cannot be deleted; role codes are stable. A serialized RBAC write transaction protects the last SUPERADMIN assignment from removal. These safeguards preserve the owner-defined administrative boundary.
-- Staff means current ADMIN or SUPERADMIN assignment. Staff create without role_ids assigns ADMIN. Explicit role_ids must include ADMIN or SUPERADMIN on creation. PATCH role_ids fully replaces assignments: removing both means the account no longer appears in staff views.
-- Permission codes are data managed by SUPERADMIN; no employee operation-to-permission catalog is seeded. API #58–69 require SUPERADMIN. Future employee operations must use approved permission mappings.
-- Mutations use one service transaction, including audit. RBAC writes serialize on the SUPERADMIN role row. Audit action strings identify commands, not new permission codes; no password/token/profile values are written into audit descriptions.
-- HTTP validation=400, invalid/missing authentication=401, unauthorized=403, missing resource=404, uniqueness/reference conflict=409, using existing Boot error rendering. No custom error envelope.
-- BCrypt's existing 72-byte input limit is enforced rather than silently truncating passwords; no extra password-complexity business policy is added.
-- Unspecified routes deny access until implemented. Test-only HTTP fixture uses the public catalog prefix; it is absent from the production artifact.
-- No refresh API, account lifecycle/status, guest identity, voucher rules or Phase 3 implementation.
+## Phase 3 technical decisions
 
-## Run Phase 2
+### Catalog sale-state encoding
 
-Set JWT_SECRET_BASE64 to a cryptographically random Base64 value containing at least 32 bytes; do not commit the value. Optional JWT_ISSUER and JWT_TTL_SECONDS override the technical defaults.
-For the first startup, set SUPERADMIN_BOOTSTRAP_ENABLED=true, SUPERADMIN_PHONE and SUPERADMIN_PASSWORD. Disable bootstrap and remove its password from runtime configuration after successful initialization. The bootstrap is idempotent, does not reset an existing password, and refuses to promote an existing ordinary account with the same phone.
+The data/requirements already distinguish:
+- an item that is allowed to be sold;
+- an item that is stopped from sale;
+- an item that is still on sale but has zero available inventory.
 
-Sources: owner decisions in this session and current consolidated Google Doc 1WNaHu6g_-XINTVcUvGX9vSJnpSyLff-PebkkDk_9mMk, Appendix A.3.1 / A.4 APIs 1–7, 58–69 (read 2026-09-26). The 73-endpoint PDF is no longer needed for Phase 2 contract details.
+The source leaves the **technical enum/literal names** open. Encode the two sale-state meanings as:
+
+- `ON_SALE`
+- `STOPPED`
+
+These literals apply to both Product and ProductVariant `sale_status`.
+
+This is not a new business lifecycle. Do not add DRAFT/ARCHIVED/DELETED/etc.
+
+Sellable/purchasable availability remains derived from:
+- Product sale status;
+- Variant sale status;
+- `inventories.available_quantity`.
+
+Zero inventory must not mutate sale status.
+
+### Catalog authorization capabilities
+
+Define technical permission capabilities:
+
+- `CATALOG_READ` — admin/back-office read endpoints #27, #28, #33.
+- `CATALOG_WRITE` — catalog mutations #29–32 and #34–45.
+
+`SUPERADMIN` may perform both capabilities as the highest technical administrator.
+
+Do **not** automatically grant either capability to `ADMIN` or another employee role. The employee role-to-permission matrix remains business configuration/TBD. Assignment occurs only through RBAC data/configuration.
+
+Public catalog #11–13 remains public according to the API contract.
+
+## Canonical source notes
+
+- Schema authority: `07_Thiet_ke_du_lieu_CSDL_Website_Ban_Quan_Ao_v1.3.0_catalog_final.docx`.
+- Current API authority: consolidated `DANH MỤC API TINH GỌN THEO CSDL` with 77 baseline APIs and Appendix A.
+- Older API v5/phase snapshots may provide history but do not override the current consolidated contract.
+- Modeling Class/Sequence diagrams guide responsibility/order of interaction; they do not override the current physical schema or force Java framework method names.
+
+## Still deferred/unresolved
+
+- Employee role-to-permission assignment matrix.
+- Guest session identity/TTL/merge.
+- Guest order lookup verification/security details.
+- Voucher business rules.
+- Detailed size guide.
+- Notification/provider/template/retry/retention.
+- Create-order retry/dedupe mechanism.
+- Order timeline resource.
+- Structured/item-level after-sales case.
+- GoodsReceipt unit_cost.
+- Performance/SLA/RPO/RTO/retention numeric targets.
+
+Administrative bootstrap credentials must remain external; never hardcode shared secrets.

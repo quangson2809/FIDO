@@ -1,125 +1,217 @@
-# 11 — Backend Implementation Phases for Codex
+# 11 — Backend Deep Implementation Phases
 
-The sequence minimizes rework and follows dependencies. Codex must finish/verify one phase before opening the next.
+The backend is delivered in nine cohesive phases. Do not fragment the system into one phase per endpoint. Each phase should complete the largest coherent domain slice that can be implemented safely from the approved sources.
 
-## Phase 0 — Repository discovery & architecture guard
+## Blocker policy used by every phase
 
-**Goal:** understand the existing BE before writing business code.
+Before stopping, classify the unresolved point:
 
-Tasks:
-- inspect build file, Java/Spring version, package tree, config, DB/migration, security, tests;
-- compare current tree to the agreed modular structure;
-- create/move only structural scaffolding required by the agreed tree;
-- no speculative entities/business rules;
-- document any architecture-affecting missing decision.
+- **HARD BLOCK** — proceeding changes/invents business behavior, public API semantics, security guarantee, persistent business meaning/schema, state machine, money/stock semantics or an external contract.
+- **TECHNICAL DECISION** — implementation naming/organization/algorithm choice with already-fixed semantics. Decide minimally, record in `docs/15-technical-decisions.md`, test, continue.
+- **DEFERRED FEATURE** — explicitly phase-later/TBD feature. Skip only the affected slice and continue the phase.
 
-Exit: project builds/tests; no fake domain implementation.
+A blocker in one slice does not block unrelated work in the same phase.
 
-## Phase 1 — Common/API foundation + persistence baseline
+## Phase 0 — Canonicalization & engineering guard
 
-**Goal:** establish reusable technical foundation and 28-table mapping/migrations using the repo's already selected DB/migration technology.
+**Goal:** create one implementable interpretation of the Analyst sources and current repository without inventing business behavior.
 
 Tasks:
-- common response/pagination model matching Analyst API;
-- centralized exception infrastructure without inventing a public error contract;
-- base auditing/timestamp convention as already supported by stack;
-- entity/repository skeletons for approved tables;
-- DB constraints/unique/FK/checks that are portable in current DB;
-- no Notification/after_sales/table timeline/unit_cost fields.
+- inspect Java/Spring/Gradle/DB/migration/security/test setup;
+- apply `docs/00-source-of-truth.md` when sources differ;
+- reconcile Class/Sequence diagrams against DD-DB-01 v1.3.0 and current API;
+- keep architecture Modular Monolith + Package by Feature;
+- record repository-approved technical decisions in `docs/15-technical-decisions.md`;
+- classify all known gaps into HARD BLOCK / TECHNICAL DECISION / DEFERRED FEATURE.
 
-Exit: schema/entity mapping tested; table count/ownership reconciles with 28-table baseline.
+Exit:
+- build/tests pass;
+- architecture/source authority is documented;
+- no fake business implementation;
+- ordinary technical choices are not left as stakeholder blockers.
 
-## Phase 2 — account + authentication/RBAC
+## Phase 1 — Persistence foundation
 
-Implement green APIs #1–7 and #58–69, plus account-side foundations for #3/#4 and customer/admin reads later.
+**Goal:** implement the exact relational baseline and common API foundation.
 
-Do not invent:
-- login identifier policy;
-- account enabled/disabled lifecycle;
-- detailed employee permission-code matrix;
-- refresh token endpoint.
+Scope:
+- common response/pagination/exception infrastructure;
+- Flyway baseline for the approved 28 tables;
+- JPA entities/repositories;
+- FK/unique/check/index rules supported by current MySQL;
+- immutable history conventions.
 
-If login identifier is not already locked in repo/config, stop at that material decision for production login behavior.
+Do not add Notification, order timeline, after-sales case, unit_cost, voucher-rule fields, account_status, tracking or system settings.
 
-## Phase 3 — product/catalog
+Exit:
+- schema/entity mapping reconciles with the 28-table baseline;
+- migration/mapping/constraint tests pass.
 
-Implement #11–13 and #27–45.
+## Phase 2 — Identity, authentication, RBAC & audit foundation
+
+**Goal:** complete account/auth/RBAC green APIs and a reusable authorization foundation.
+
+Implement APIs #1–7 and #58–69.
+
+Rules:
+- use approved phone-login decision from `docs/15`;
+- SUPERADMIN remains highest technical administrator;
+- do not create account status/disable lifecycle or refresh token;
+- role-to-business-permission matrix remains unassigned unless explicitly approved;
+- capability identifiers needed by implemented endpoints are technical decisions, not blockers;
+- every admin endpoint checks authorization server-side;
+- important writes include audit in the same service transaction where required.
+
+Exit:
+- auth/profile/address/staff/role/permission flows work;
+- ownership/authorization/RBAC tests pass.
+
+## Phase 3 — Complete Catalog domain
+
+**Goal:** deliver public and admin Catalog as one cohesive vertical slice.
+
+Implement APIs #11–13 and #27–45.
 
 Must enforce:
-- tree/no cycle;
-- Product leaf Category;
-- SizeSystem/SizeValue consistency;
-- unique Variant combination;
-- effective price/availability derivation;
-- history-safe updates/deletes.
+- Category tree and no cycle;
+- Product belongs only to a leaf Category;
+- Product selects one SizeSystem;
+- Variant SizeValue belongs to that Product SizeSystem;
+- Product + SizeValue + Color unique;
+- effective price = variant override price else Product base price;
+- sellable availability derives from Product sale state + Variant sale state + inventory availability;
+- zero stock is not the same as stopped sale;
+- historical Variant identity is not rewritten after order history exists.
 
-## Phase 4 — inventory/receiving
+Technical decisions already approved for implementation:
+- sale-state literals: `ON_SALE`, `STOPPED`; these encode the already-documented meanings “đang bán” and “ngừng bán” and do not add a new lifecycle;
+- capability identifiers: `CATALOG_READ` and `CATALOG_WRITE`;
+- SUPERADMIN may perform both capabilities;
+- no employee role is automatically granted either capability; role-to-permission assignment remains data/business configuration.
 
-Implement #46–57.
+Important nuance:
+- default sorting and direct public URL behavior for a stopped Product remain source TBD; do not let those details block the rest of Catalog. Use no speculative special redirect/tombstone lifecycle.
+
+Exit:
+- public/admin catalog API tests pass;
+- constraints/business rules above are tested;
+- no detailed size-guide model or invented gender/season/style enum set.
+
+## Phase 4 — Inventory & Receiving
+
+**Goal:** complete Supplier, GoodsReceipt, Inventory and ledger behavior.
+
+Implement APIs #46–57.
 
 Must prove:
-- receipt confirm once;
-- inventory never negative;
-- every movement has ledger/source/actor/time;
-- manual adjustment requires reason;
-- no unit_cost field.
+- GoodsReceipt DRAFT can be edited; CONFIRMED stock-affecting items are immutable;
+- confirmation increases sellable availability exactly once;
+- every stock mutation writes an immutable InventoryTransaction in the same transaction;
+- manual adjustment requires permission, reason, actor and audit;
+- stock never becomes negative;
+- no `unit_cost` field.
 
-## Phase 5 — cart + checkout calculation
+Exit:
+- transaction/idempotency/rollback tests pass.
 
-Implement #14–19 to the extent guest identity mechanism is available.
+## Phase 5 — Cart, Checkout Quote & Promotion integration
 
-- Cart never reserves stock.
-- Quote never creates Order/deducts stock.
-- Voucher-specific calculation remains blocked until voucher rules are refined.
-- Do not invent guest session key/TTL/merge behavior.
+**Goal:** complete all non-speculative Cart/Checkout behavior without waiting for unrelated TBDs.
 
-## Phase 6 — Order creation & operations
+Implement APIs #14–19 where source is ready.
 
-Implement #20–26 and customer Order views #8–10.
+Must enforce:
+- Cart never reserves/deducts stock;
+- quote has no persistence side effect and never creates Order;
+- server recalculates effective prices/availability;
+- authenticated cart path is implementable independently.
 
-Prerequisite: an approved create-Order dedupe mechanism for production-safe API #20.
+Deferred slices:
+- guest-session key/TTL/persistence/merge;
+- voucher eligibility/calculation beyond locked `voucher_id/code`.
+
+These deferred slices do not block authenticated Cart or voucher-less Quote.
+
+Exit:
+- all non-deferred Cart/Quote behavior and tests pass.
+
+## Phase 6 — Order, COD, Fulfillment & baseline After-sales
+
+**Goal:** deliver the complete order state machine and stock/payment consistency.
+
+Implement APIs #8–10 and #20–26.
 
 Implement:
-- snapshots;
-- state machine;
-- atomic confirmation;
-- cancel restock;
-- COD conditional transitions;
-- shipping manual info;
-- delivery failure semantics;
-- after-sales command without new resource/table.
+- PENDING creation with immutable snapshots and UNPAID Payment;
+- no stock deduction on create;
+- atomic PENDING -> CONFIRMED stock check/deduction;
+- PREPARING/SHIPPING/COMPLETED/DELIVERY_FAILED/CANCELLED/RETURNED transitions;
+- cancel stock restoration exactly once when prior deduction occurred;
+- COD UNPAID -> PAID -> REFUNDED;
+- COMPLETE only when SHIPPING and PAID;
+- DELIVERY_FAILED does not auto-restock;
+- RETURNED does not auto-restock without actual returned sellable stock;
+- recipient editable only through PREPARING;
+- after-sales remains command-based, no new case resource/table.
 
-## Phase 7 — audit, reporting, content, customer back-office
+Create-order dedupe is a HARD BLOCK only for the retry/double-submit guarantee itself; it must not prevent implementation/testing of the rest of Order behavior.
+
+Exit:
+- state, rollback, idempotency and concurrency tests pass for implemented guarantees.
+
+## Phase 7 — Operations: Audit, Reporting, Content & Customer back-office
 
 Implement:
-- #70 audit query;
-- #71 report overview;
-- #72–75 content pages;
+- #70 audit;
+- #71 report;
+- #72–75 content;
 - #76–77 customer back-office.
 
-No report aggregate table unless performance evidence and a new decision require it. No content publish lifecycle.
+Rules:
+- report remains query-based;
+- no report aggregate table without measured need and new decision;
+- no content draft/publish/version lifecycle;
+- guest Orders do not become Accounts;
+- do not expose unnecessary PII.
 
-## Phase 8 — hardening
+Exit:
+- authorization/query/API/report adjustment tests pass.
 
-- concurrency tests;
-- idempotency/retry tests;
-- authorization matrix tests using only approved role/permission setup;
-- index/query review;
-- secure logging/PII review;
-- integration/API regression of all green implemented contracts;
-- unresolved yellow/TBD list remains explicit.
+## Phase 8 — Hardening & delivery readiness
 
-## Phase gate output template
+No new feature work.
 
-For every phase Codex reports:
+Verify:
+- all implemented baseline APIs against current API contract;
+- architecture boundaries and no cross-module Repository access;
+- no Entity leakage from controllers;
+- JWT/RBAC/ownership;
+- secure logging and PII handling;
+- stock/payment/receipt concurrency and retry safety;
+- transaction rollback;
+- indexes/query behavior;
+- full regression.
+
+Final status must classify every endpoint/requirement as:
+- IMPLEMENTED;
+- DEFERRED/BLOCKED WITH SOURCE;
+- OUT OF SCOPE.
+
+Do not report COMPLETE while a Must baseline slice has an unresolved hard blocker.
+
+## Phase gate output
 
 ```text
 PHASE:
+STATUS: PASS | PARTIAL | BLOCKED | FAIL
 SOURCE IDS IMPLEMENTED:
+APIS IMPLEMENTED:
 FILES CHANGED:
-SCHEMA/API CHANGES:
+SCHEMA CHANGES:
+TECHNICAL DECISIONS RECORDED:
 TESTS RUN + RESULT:
 INVARIANTS VERIFIED:
-TBD/BLOCKERS REMAINING:
-NEXT PHASE READY: YES/NO
+DEFERRED SLICES:
+HARD BLOCKERS REMAINING:
+NEXT PHASE READY: YES | NO
 ```
