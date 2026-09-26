@@ -13,6 +13,10 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 public class ApiExceptionHandler {
     @ExceptionHandler(Exception.class)
     public void handle(Exception exception, HttpServletResponse response) throws IOException {
+        if (exception instanceof org.springframework.http.converter.HttpMessageNotReadableException
+                || exception instanceof org.springframework.beans.TypeMismatchException) {
+            response.sendError(400); return;
+        }
         if (exception instanceof org.springframework.dao.DataIntegrityViolationException) {
             response.sendError(409); return;
         }

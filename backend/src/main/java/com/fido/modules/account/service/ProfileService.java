@@ -15,8 +15,9 @@ public class ProfileService {
     private final AccountRepository accounts;
     private final AddressRepository addresses;
     private final AccountAccessService access;
-    public ProfileService(AccountRepository accounts,AddressRepository addresses,AccountAccessService access) {
-        this.accounts=accounts;this.addresses=addresses;this.access=access;
+    private final jakarta.persistence.EntityManager em;
+    public ProfileService(AccountRepository accounts,AddressRepository addresses,AccountAccessService access,jakarta.persistence.EntityManager em) {
+        this.accounts=accounts;this.addresses=addresses;this.access=access;this.em=em;
     }
     @Transactional(readOnly=true)
     public MeDto me(Long actor) {
@@ -31,7 +32,7 @@ public class ProfileService {
             account.setPhone(request.phone());
         }
         if(request.email()!=null) account.setEmail(request.email());
-        accounts.save(account);
+        accounts.save(account);em.flush();
         return AccountMapper.account(account);
     }
     public AddressDto addAddress(Long actor,AddressRequest request) {

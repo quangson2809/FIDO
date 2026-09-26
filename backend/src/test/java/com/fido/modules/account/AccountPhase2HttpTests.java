@@ -73,6 +73,8 @@ class AccountPhase2HttpTests {
         assertEquals(200,call("PATCH","/api/v1/me",token,Map.of("email","person@example.test")).status);
         assertEquals(p,db.queryForObject("SELECT phone FROM accounts WHERE account_id=?",String.class,id));
         assertEquals(200,call("PATCH","/api/v1/me",token,Map.of()).status);
+        assertEquals(400,call("POST","/api/v1/auth/register",null,Map.of("phone",phone(),"password","x".repeat(73))).status);
+        assertEquals(400,call("POST","/api/v1/auth/register",null,Map.of("phone",phone(),"password"," ")).status);
         assertEquals(400,call("POST","/api/v1/auth/register",null,Map.of("phone",phone(),"password",PASSWORD,"role","SUPERADMIN")).status);
         assertEquals(400,call("PATCH","/api/v1/me",token,Collections.singletonMap("phone",null)).status);
         assertEquals(401,call("POST","/api/v1/auth/login",null,Map.of("identifier",p,"password","wrong")).status);
@@ -131,6 +133,8 @@ class AccountPhase2HttpTests {
     }
     @Test void rolePermissionCrudReplacementAuditAndRollback() throws Exception {
         String token=root();String suffix=UUID.randomUUID().toString();
+        assertEquals(400,call("PATCH","/api/v1/admin/roles/not-an-id",token,Map.of("name","Bad")).status);
+        assertEquals(400,call("POST","/api/v1/admin/permissions",token,Map.of("code"," ","name","Bad")).status);
         var p=call("POST","/api/v1/admin/permissions",token,Map.of("code","test."+suffix,"name","Test permission"));assertEquals(201,p.status,p.body);
         long permission=p.data.get("data").get("permission_id").asLong();permissionIds.add(permission);
         assertEquals(200,call("PATCH","/api/v1/admin/permissions/"+permission,token,Map.of("name","Updated")).status);

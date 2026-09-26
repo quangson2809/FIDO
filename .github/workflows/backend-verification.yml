@@ -53,6 +53,7 @@ jobs:
           path: backend/build/test-results/test
 
       - name: Test migration and mapping with MySQL
+        id: mysql-tests
         working-directory: backend
         env:
           TEST_DB_URL: jdbc:mysql://127.0.0.1:3306/fido_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
@@ -62,7 +63,7 @@ jobs:
         run: ./gradlew --no-daemon test --rerun-tasks
 
       - name: Keep MySQL test reports
-        if: always()
+        if: always() && steps.mysql-tests.outcome != 'skipped'
         uses: actions/upload-artifact@v4
         with:
           name: backend-mysql-test-reports
