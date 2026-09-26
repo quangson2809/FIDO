@@ -89,7 +89,7 @@ export const Footer: React.FC = () => {
                   onClick={() => setCurrentScreen('policy')}
                   className="hover:text-white transition-colors text-left"
                 >
-                  Chính sách đổi trả 15 ngày
+                  Chính sách đổi / hoàn trong 02 ngày
                 </button>
               </li>
               <li>
@@ -107,7 +107,7 @@ export const Footer: React.FC = () => {
                   onClick={() => setCurrentScreen('showrooms')}
                   className="hover:text-white transition-colors text-left"
                 >
-                  Hỗ trợ lên gấu quần miễn phí
+                  Thông tin chăm sóc sản phẩm
                 </button>
               </li>
               <li>
@@ -168,7 +168,7 @@ export const Footer: React.FC = () => {
           </div>
           <div className="flex items-center gap-4 flex-wrap justify-center">
             <span>Phương thức thanh toán:</span>
-            <span className="font-semibold text-white/80 tracking-wider">COD • VISA • MASTERCARD • VNPAY</span>
+            <span className="font-semibold text-white/80 tracking-wider">COD</span>
           </div>
         </div>
       </div>
