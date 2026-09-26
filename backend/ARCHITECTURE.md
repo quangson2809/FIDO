@@ -56,3 +56,30 @@ Future order and inventory work must preserve atomic stock checks and updates,
 restore stock on eligible cancellations, keep COD payment status independent
 from order status, preserve order-item snapshots, and make important actions
 auditable.
+
+
+## Phase 0 repository discovery baseline
+
+Verified against `main` at `416e6f64e3b1ddf71a82fd34cb43f962bd03a130` on 2026-09-26:
+
+| Concern | Repository choice/status |
+| --- | --- |
+| Build | Gradle Kotlin DSL with the checked-in Gradle wrapper |
+| Java | 17 toolchain |
+| Framework | Spring Boot 4.0.3; Spring Data JPA |
+| Database | MySQL Connector/J and a MySQL development datasource are configured |
+| Schema migration | No migration tool dependency or migration scripts are present |
+| Security | Spring Security is configured; the current `permitAll` rule is temporary bootstrap configuration |
+| JWT | No JWT library or token configuration is present |
+| Mapping | No mapper library is configured; add none unless an implementation need is approved |
+| Tests | JUnit 5, Spring Boot Test, Spring Security Test and H2; the only current test loads the application context |
+
+The agreed nine business modules and global technical packages are already present under `com.fido`. They contain package markers rather than business implementations, so Phase 0 requires no package moves or additional placeholder classes.
+
+### Decisions to resolve before dependent phases
+
+- **Phase 1 schema work:** choose and record a migration tool before adding schema migrations. The current repository has not selected one; no migration files were introduced in Phase 0.
+- **Authentication phase:** select/confirm a JWT implementation and configuration before implementing token behavior. The current project has Spring Security only; login identity remains subject to the documented TBD.
+- **Canonical implementation docs:** the Codex engineering kit was supplied as a task attachment and is not tracked in this repository. The primary Analyst documents referenced by its source-of-truth file are also absent from the repository tree. Establish a canonical tracked documentation location before later phases depend on those files being available from a checkout.
+
+These are discovery findings only. They do not authorize speculative dependencies, migrations, authentication behavior, or business/API implementation.
