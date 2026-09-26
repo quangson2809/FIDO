@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { catalogService } from '../features/catalog/api/service';
+import { toUiProduct } from '../mocks/uiData';
 
 export const CatalogScreen: React.FC = () => {
   const { setCurrentScreen, setSelectedProductId, addToCart, wishlist, toggleWishlist } = useApp();
@@ -19,7 +20,7 @@ export const CatalogScreen: React.FC = () => {
   const [products, setProducts] = useState<any[]>([]);
   
   React.useEffect(() => {
-    catalogService.getProducts().then(setProducts);
+    catalogService.getProducts().then((items) => setProducts(items.map(toUiProduct)));
   }, []);
 
   // Search and filter
