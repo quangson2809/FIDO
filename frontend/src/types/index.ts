@@ -11,7 +11,7 @@ export type ScreenId =
   | 'auth'
   | 'profile'
   | 'showrooms'
-  | 'admin';
+  | 'admin-login'\n  | 'admin';
 
 export type OrderStatus =
   | 'PENDING'
