@@ -13,9 +13,9 @@ export const Header: React.FC = () => {
       <div className="w-full bg-[#0B2419] text-[#FFFDF5] py-2 px-4 sm:px-8 text-center text-[11px] font-semibold tracking-[0.14em] uppercase flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
         <span>HÀNG CÓ SẴN TẠI CỬA HÀNG - THỬ ĐỒ TRỰC TIẾP</span>
         <span className="opacity-40 hidden sm:inline">•</span>
-        <span>GIAO HỎA TỐC 2H TRONG NỘI THÀNH</span>
+        <span>GIAO NỘI BỘ / ĐƠN VỊ NGOÀI THEO ĐIỀU PHỐI</span>
         <span className="opacity-40 hidden sm:inline">•</span>
-        <span className="hidden md:inline">ĐỔI SIZE TẬN NHÀ 15 NGÀY MIỄN PHÍ</span>
+        <span className="hidden md:inline">ĐỔI / HOÀN TẠI CỬA HÀNG TRONG 02 NGÀY</span>
       </div>
 
       {/* Main Header */}
@@ -153,7 +153,7 @@ export const Header: React.FC = () => {
                   className="w-full text-left px-4 py-2 text-[13px] text-[#625f4e] hover:bg-[#F5F6F2] font-medium flex items-center gap-1.5 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px]">policy</span>
-                  <span>Chính Sách Đổi Trả 15 Ngày</span>
+                  <span>Chính Sách Đổi / Hoàn</span>
                 </button>
               </div>
             )}
