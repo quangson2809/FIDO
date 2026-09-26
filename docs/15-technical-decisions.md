@@ -155,3 +155,43 @@ Phase 4 therefore:
 - keeps ordinary stock changes behind inventory business services so each non-zero movement has its matching ledger entry.
 
 Creating the zero row is initialization, not a stock movement; it does not create an InventoryTransaction.
+
+
+## Phase 5 technical decisions
+
+### Authenticated cart slice while guest identity is deferred
+
+The public contract keeps Cart/Checkout guest intent, but the source explicitly leaves guest session key, TTL, persistence and merge behavior unresolved.
+
+Phase 5 therefore implements the complete authenticated path for APIs #14–19. Until guest identity/security is approved:
+
+- `/api/v1/cart/**` requires a valid JWT;
+- `/api/v1/checkout/quote` requires a valid JWT;
+- no guest cookie, session key, hidden fingerprint or merge policy is invented.
+
+This is a deferred transport/identity slice, not a removal of the guest business requirement.
+
+### Current authenticated cart selection
+
+DD-DB-01 allows an Account to reference multiple Cart rows and does not define an active/status field. For the authenticated Phase 5 slice, the current Cart is the most recently updated Cart for that Account, using `cart_id` as the deterministic tie-breaker. If none exists, the backend lazily creates one.
+
+Clearing a Cart removes its items but keeps the Cart row, because the baseline exposes DELETE `/cart` as “empty the cart” and does not define Cart archival/deletion lifecycle.
+
+### POST item behavior
+
+The source distinguishes “add” from PATCH “change quantity”. Therefore:
+
+- POST `/cart/items` adds the requested positive quantity to an existing row for the same Variant, or creates a new row;
+- PATCH `/cart/items/{cartItemId}` replaces the row quantity with the requested positive quantity.
+
+This preserves the schema invariant `UNIQUE(cart_id, variant_id)`.
+
+### Voucher-deferred quote behavior
+
+Voucher rules are explicitly not implement-ready. Voucher-less quote is implemented with `discount = 0` and `voucher = null`.
+
+If `voucher_code` is supplied before the voucher rules are approved, API #19 returns HTTP 501 rather than silently accepting, ignoring or inventing a discount rule.
+
+### Shipping fee configuration
+
+BRULE-03 fixes the baseline normal shipping fee at 30,000 VND. The implementation exposes it as configuration `app.checkout.shipping-fee` with baseline default `30000.00`; it is server-derived and never accepted from the client.
