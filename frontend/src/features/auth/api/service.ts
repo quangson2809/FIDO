@@ -1,17 +1,19 @@
-import { UserProfileDto, AuthService } from '../types';
+import { AuthService, MeDto } from '../types';
+import { mockMe } from '../../../mocks/apiData';
 import { apiClient } from '../../../services/http/apiClient';
 import { API_MODE } from '../../../constants/app';
 
-const mockProfile: UserProfileDto = { account_id: 1, email: 'user@fido.com', full_name: 'Nguyen Van A' };
-
 const mockAuthService: AuthService = {
-  async getProfile() { return mockProfile; }
+  async getProfile() {
+    return mockMe;
+  },
 };
 
 const realAuthService: AuthService = {
-  async getProfile() { return apiClient.get<UserProfileDto, UserProfileDto>('/profile'); }
+  async getProfile() {
+    const response = await apiClient.get<{ data: MeDto }, { data: MeDto }>('/me');
+    return response.data;
+  },
 };
 
-export const authService = API_MODE === 'mock' 
-  ? mockAuthService 
-  : realAuthService;
+export const authService = API_MODE === 'mock' ? mockAuthService : realAuthService;
