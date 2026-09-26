@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Order, OrderStatus } from '../types';
 import { AdminDashboardView } from './admin/AdminDashboardView';
@@ -17,13 +18,13 @@ import { AdminStaffView } from './admin/AdminStaffView';
 import { AdminRolesView } from './admin/AdminRolesView';
 import { AdminReportsView } from './admin/AdminReportsView';
 import { AdminSettingsView } from './admin/AdminSettingsView';
+import { getAdminPath, resolveAdminRoute } from '../routes/paths';
 
 export const AdminScreen: React.FC = () => {
   const { orders, updateOrderStatus, updateOrderRecipient, setCurrentScreen, showToast } = useApp();
-
-  // Active navigation menu tab
-  const [activeMenu, setActiveMenu] = useState<string>('orders');
-  const [activeBreadcrumb, setActiveBreadcrumb] = useState<string>('Quản lý Đơn hàng');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { menuKey: activeMenu, breadcrumb: activeBreadcrumb } = resolveAdminRoute(location.pathname);
 
   // Mobile sidebar toggle
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -168,9 +169,8 @@ export const AdminScreen: React.FC = () => {
     setSelectedOrderIds([]);
   };
 
-  const handleNavClick = (menuKey: string, breadcrumb: string) => {
-    setActiveMenu(menuKey);
-    setActiveBreadcrumb(breadcrumb);
+  const handleNavClick = (menuKey: string, _breadcrumb: string) => {
+    navigate(getAdminPath(menuKey));
     setMobileSidebarOpen(false);
     if (menuKey === 'orders') {
       setFilterStatus('all');
