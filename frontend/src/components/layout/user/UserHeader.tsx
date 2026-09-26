@@ -11,9 +11,9 @@ export const UserHeader: React.FC = () => {
       <div className="w-full bg-[#0B2419] text-[#FFFDF5] py-2 px-4 sm:px-8 text-center text-[11px] font-semibold tracking-[0.14em] uppercase flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
         <span>HÀNG CÓ SẴN TẠI CỬA HÀNG - THỬ ĐỒ TRỰC TIẾP</span>
         <span className="opacity-40 hidden sm:inline">•</span>
-        <span>GIAO HỎA TỐC 2H TRONG NỘI THÀNH</span>
+        <span>GIAO NỘI BỘ / ĐƠN VỊ NGOÀI THEO ĐIỀU PHỐI</span>
         <span className="opacity-40 hidden sm:inline">•</span>
-        <span className="hidden md:inline">ĐỔI SIZE TẬN NHÀ 15 NGÀY MIỄN PHÍ</span>
+        <span className="hidden md:inline">ĐỔI / HOÀN TẠI CỬA HÀNG TRONG 02 NGÀY</span>
       </div>
 
       <header className="sticky top-0 left-0 w-full h-[68px] bg-white border-b border-[#E2E5DE] z-40 px-4 sm:px-8 flex items-center justify-between shadow-sm">
