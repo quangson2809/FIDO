@@ -132,27 +132,27 @@ export const HomeScreen: React.FC = () => {
               <div className="flex items-start gap-4">
                 <span className="material-symbols-outlined text-[#0B2419] text-[28px] mt-0.5">bolt</span>
                 <div className="space-y-1">
-                  <h4 className="text-[16px] font-bold text-[#0B2419]">Giao Hỏa Tốc 2H</h4>
+                  <h4 className="text-[16px] font-bold text-[#0B2419]">Giao Hàng Theo Điều Phối</h4>
                   <p className="text-[13px] text-[#424844] leading-relaxed">
-                    Nhận hàng ngay trong 2 giờ tại nội thành. Miễn phí từ 599.000đ.
+                    Giao nội bộ hoặc qua đơn vị vận chuyển ngoài theo phương án vận hành.
                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-4">
                 <span className="material-symbols-outlined text-[#0B2419] text-[28px] mt-0.5">published_with_changes</span>
                 <div className="space-y-1">
-                  <h4 className="text-[16px] font-bold text-[#0B2419]">Đổi Size Tận Nơi 15 Ngày Miễn Phí</h4>
+                  <h4 className="text-[16px] font-bold text-[#0B2419]">Đổi / Hoàn Tại Cửa Hàng Trong 02 Ngày</h4>
                   <p className="text-[13px] text-[#424844] leading-relaxed">
-                    Shipper mang tận nơi đổi size vừa vặn, hoàn toàn không tốn phí.
+                    Áp dụng sau khi đơn COMPLETED và đáp ứng điều kiện nhãn/mác.
                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-4">
                 <span className="material-symbols-outlined text-[#0B2419] text-[28px] mt-0.5">straighten</span>
                 <div className="space-y-1">
-                  <h4 className="text-[16px] font-bold text-[#0B2419]">Lên Gấu Miễn Phí Lấy Ngay</h4>
+                  <h4 className="text-[16px] font-bold text-[#0B2419]">Hỗ Trợ Tại Cửa Hàng</h4>
                   <p className="text-[13px] text-[#424844] leading-relaxed">
-                    Hỗ trợ lên gấu quần miễn phí lấy ngay tại cửa hàng chỉ trong 15 phút.
+                    Các hỗ trợ tại cửa hàng thực hiện theo chính sách nội dung đã được duyệt.
                   </p>
                 </div>
               </div>
@@ -603,7 +603,7 @@ export const HomeScreen: React.FC = () => {
                   PHOM DÁNG MAY SẴN CHUẨN MỰC.
                 </h2>
                 <p className="text-[15px] text-[#424844] font-light leading-relaxed">
-                  Bộ sưu tập may sẵn sẵn sàng giao ngay của Atelier Vert mang lại trải nghiệm vừa vặn hoàn hảo mà không cần chờ đợi đặt may. Ứng dụng hệ thống bảng size chuẩn hóa cho vóc dáng nam giới Việt, hàng có sẵn đủ size để bạn lựa chọn và nhận ngay chỉ sau 2 giờ.
+                  Bộ sưu tập may sẵn sẵn sàng giao ngay của Atelier Vert mang lại trải nghiệm vừa vặn hoàn hảo mà không cần chờ đợi đặt may. Ứng dụng hệ thống bảng size chuẩn hóa cho vóc dáng nam giới Việt, hàng có sẵn đủ size để bạn lựa chọn và nhận hàng theo phương án giao được xác nhận.
                 </p>
 
                 <div className="grid grid-cols-2 gap-4 pt-2">
@@ -612,7 +612,7 @@ export const HomeScreen: React.FC = () => {
                       Sẵn Sàng Giao Ngay
                     </span>
                     <p className="text-[12px] text-[#424844]">
-                      Hàng có sẵn tại hệ thống showroom, giao hỏa tốc 2H nội thành.
+                      Hàng khả dụng được xác định theo variant và available_quantity.
                     </p>
                   </div>
                   <div className="bg-[#FFFDF5] p-4 border border-[#E8E9E3]">
@@ -620,7 +620,7 @@ export const HomeScreen: React.FC = () => {
                       Lên Gấu Lấy Ngay
                     </span>
                     <p className="text-[12px] text-[#424844]">
-                      Hỗ trợ lên gấu quần miễn phí lấy ngay tại cửa hàng chỉ 15 phút.
+                      Các hỗ trợ tại cửa hàng áp dụng theo chính sách được duyệt.
                     </p>
                   </div>
                 </div>
