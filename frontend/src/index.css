@@ -1,13 +1,94 @@
 @import "tailwindcss";
-@plugin "daisyui";
 
-html {
-  min-width: 320px;
-  background: var(--color-base-200);
+@theme {
+  --color-forest-darkest: #071A12;
+  --color-forest-deep: #0B2419;
+  --color-forest-mid: #123A29;
+  --color-forest-light: #1B5038;
+  --color-accent-yellow: #E8C75B;
+  --color-surface-ivory: #FFFDF5;
+  --color-surface-cream: #FAF4DF;
+  --color-surface-cream-deep: #F4E8BF;
+  --color-surface-pure: #FFFFFF;
+  --color-surface: #f8faf4;
+  --color-surface-bright: #f8faf4;
+  --color-surface-dim: #d9dbd5;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f3f4ef;
+  --color-surface-container: #edeee9;
+  --color-surface-container-high: #e7e9e3;
+  --color-surface-container-highest: #e1e3de;
+  --color-charcoal-black: #101310;
+  --color-muted-grey: #687069;
+  --color-border-subtle: #E8E9E3;
+  --color-tertiary: #725c00;
+  --color-tertiary-container: #c7a840;
+  --color-tertiary-fixed: #ffe081;
+  --color-tertiary-fixed-dim: #e5c458;
+  --color-secondary: #625f4e;
+  --color-secondary-container: #e5e0cb;
+  --color-secondary-fixed: #e8e2ce;
+  --color-secondary-fixed-dim: #ccc7b3;
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-surface: #191c19;
+  --color-on-surface-variant: #424844;
+  --color-on-primary-container: #738d7e;
+  --color-on-secondary-fixed: #1e1c0f;
+  --color-on-secondary-fixed-variant: #4a4738;
+  --color-on-tertiary-fixed: #231b00;
+  --color-on-tertiary-fixed-variant: #564500;
+  --color-on-tertiary-container: #4d3e00;
+
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-body-md: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display-lg: "Playfair Display", Georgia, serif;
+  --font-headline-lg: "Playfair Display", Georgia, serif;
+  --font-headline-md: "Playfair Display", Georgia, serif;
+  --font-headline-sm: "Playfair Display", Georgia, serif;
+  --font-title-lg: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-title-md: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-label-lg: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-label-sm: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
+@layer base {
+  body {
+    font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    color: #191c19;
+    background-color: #ffffff;
+  }
+
+  h1, h2, h3, .font-serif, .font-display-lg, .font-headline-lg, .font-headline-md, .font-headline-sm {
+    font-family: "Playfair Display", Georgia, serif;
+  }
+}
+
+/* Material symbols utility styling */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'liga';
+}
+
+/* Custom scrollbar hiding */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
