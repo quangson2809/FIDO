@@ -10,6 +10,8 @@ import React, {
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ScreenId, CartItem, Order, OrderStatus, UserProfile } from '../types';
 import { getPathForScreen, getScreenFromPath } from '../routes/paths';
+import { mockUiCartItems, mockUiOrders, mockUiUserProfile, toUiProduct } from '../mocks/uiData';
+import { mockProductDetails } from '../mocks/apiData';
 
 interface AppContextType {
   currentScreen: ScreenId;
@@ -57,26 +59,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const selectedOrderIdRef = useRef('1');
 
   const [isCartOpen, setIsCartOpenState] = useState<boolean>(false);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>(mockUiCartItems);
   const [freeHemming, setFreeHemming] = useState<boolean>(true);
   const [hemmingNote, setHemmingNote] = useState<string>('');
   const [appliedVoucher, setAppliedVoucher] = useState<string>('');
   const [voucherDiscount, setVoucherDiscount] = useState<number>(0);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<Order[]>(mockUiOrders);
   const [wishlist, setWishlist] = useState<string[]>([]);
-  const [userProfile, setUserProfile] = useState<UserProfile>({
-    id: '1',
-    fullName: 'Nguyễn Văn A',
-    name: 'Nguyễn Văn A',
-    phone: '',
-    email: 'user@fido.com',
-    tier: 'ATELIER PRIVILEGE VIP',
-    tierPoints: 24500,
-    nextTierPoints: 30000,
-    avatarInitials: 'NA',
-    joinedDate: '2024',
-    addresses: [],
-  });
+  const [userProfile, setUserProfile] = useState<UserProfile>(mockUiUserProfile);
   const [toast, setToast] = useState<{ message: string; visible: boolean }>({
     message: '',
     visible: false,
@@ -125,19 +115,64 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addToCart = (product: any, size?: string | number, color?: string, quantity: number = 1) => {
-    // Implementation placeholder
-    void size;
-    void color;
-    void quantity;
-    showToast(`Đã thêm ${product.name} vào giỏ hàng`);
+    const productId = Number(product.product_id ?? product.id);
+    const source = mockProductDetails.find((item) => item.product_id === productId);
+    if (!source) return;
+
+    const variant =
+      source.variants.find((item) =>
+        (size == null || item.size.display_name === String(size)) &&
+        (color == null || item.color.name === color),
+      ) ?? source.variants[0];
+
+    if (!variant) return;
+
+    const uiProduct = toUiProduct(source);
+    const existing = cartItems.find((item) =>
+      item.productId === String(productId) &&
+      String(item.size) === variant.size.display_name &&
+      item.color === variant.color.name,
+    );
+
+    if (existing) {
+      setCartItems((prev) =>
+        prev.map((item) =>
+          item.id === existing.id
+            ? { ...item, quantity: Math.min(item.quantity + quantity, variant.available_quantity) }
+            : item,
+        ),
+      );
+    } else {
+      setCartItems((prev) => [
+        ...prev,
+        {
+          id: `mock-${variant.variant_id}`,
+          productId: String(productId),
+          name: source.name,
+          sku: variant.sku ?? '',
+          price: variant.effective_price,
+          imageUrl: uiProduct.imageUrl,
+          size: variant.size.display_name,
+          color: variant.color.name,
+          quantity: Math.min(quantity, variant.available_quantity),
+          fabricSummary: source.material_care ?? '',
+          badge: source.sale_status,
+        },
+      ]);
+    }
+
+    showToast(`Đã thêm ${source.name} vào giỏ hàng mock`);
   };
 
   const removeFromCart = (itemId: string) =>
     setCartItems((prev) => prev.filter((item) => item.id !== itemId));
 
   const updateCartQuantity = (itemId: string, quantity: number) => {
-    void itemId;
-    void quantity;
+    setCartItems((prev) =>
+      quantity <= 0
+        ? prev.filter((item) => item.id !== itemId)
+        : prev.map((item) => (item.id === itemId ? { ...item, quantity } : item)),
+    );
   };
 
   const applyVoucher = (code: string): boolean => {
@@ -157,11 +192,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     void status;
   };
   const createOrder = (orderData: Partial<Order>): Order => {
-    void orderData;
-    return {} as Order;
+    const nextNumber = orders.length + 1;
+    const created: Order = {
+      id: orderData.id ?? `ORD-MOCK-${String(nextNumber).padStart(3, '0')}`,
+      customerName: orderData.customerName ?? `Tài khoản #${userProfile.id}`,
+      customerPhone: orderData.customerPhone ?? userProfile.phone,
+      customerEmail: orderData.customerEmail ?? userProfile.email,
+      recipientAddress: orderData.recipientAddress ?? userProfile.addresses[0]?.address ?? '',
+      createdAt: orderData.createdAt ?? new Date().toISOString(),
+      updatedAt: orderData.updatedAt ?? new Date().toISOString(),
+      status: orderData.status ?? 'PENDING',
+      paymentMethod: 'COD',
+      paymentStatus: 'UNPAID_COD',
+      paymentStatusLabel: 'Chưa thu COD',
+      items: orderData.items ?? [],
+      subtotal: orderData.subtotal ?? 0,
+      shippingFee: orderData.shippingFee ?? 0,
+      total: orderData.total ?? orderData.subtotal ?? 0,
+      ...orderData,
+    };
+    setOrders((prev) => [created, ...prev]);
+    setCartItems([]);
+    return created;
   };
   const toggleWishlist = (productId: string) => {
-    void productId;
+    setWishlist((prev) =>
+      prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId],
+    );
   };
 
   const updateUserProfile = (
