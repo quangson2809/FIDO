@@ -138,7 +138,10 @@ class AccountPhase2HttpTests {
         var p=call("POST","/api/v1/admin/permissions",token,Map.of("code","test."+suffix,"name","Test permission"));assertEquals(201,p.status,p.body);
         long permission=p.data.get("data").get("permission_id").asLong();permissionIds.add(permission);
         assertEquals(200,call("PATCH","/api/v1/admin/permissions/"+permission,token,Map.of("name","Updated")).status);
-        assertEquals(200,call("GET","/api/v1/admin/permissions",token,null).status);
+        var permissionPage=call("GET","/api/v1/admin/permissions",token,null);
+        assertEquals(200,permissionPage.status);
+        assertEquals(20,permissionPage.data.get("meta").get("page_size").asInt());
+        assertEquals(400,call("GET","/api/v1/admin/permissions?page_size=101",token,null).status);
         var r=call("POST","/api/v1/admin/roles",token,Map.of("code","test."+suffix,"name","Role","permission_ids",List.of(permission)));
         assertEquals(201,r.status,r.body);long role=r.data.get("data").get("role_id").asLong();roleIds.add(role);
         assertEquals(409,call("DELETE","/api/v1/admin/permissions/"+permission,token,null).status);

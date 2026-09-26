@@ -35,8 +35,13 @@ public class RbacService {
             permissions.findAllByOrderByPermissionIdAsc().stream().map(AccountMapper::permission).toList());
     }
     @Transactional(readOnly=true)
-    public List<PermissionDto> permissions() {
-        return permissions.findAllByOrderByPermissionIdAsc().stream().map(AccountMapper::permission).toList();
+    public com.fido.common.response.ApiListResponse<PermissionDto> permissions(Integer page,Integer pageSize) {
+        com.fido.common.response.Pagination pagination;
+        try {pagination=com.fido.common.response.Pagination.of(page,pageSize);}
+        catch(IllegalArgumentException ex) {throw new ResponseStatusException(HttpStatus.BAD_REQUEST);}
+        var result=permissions.findAllByOrderByPermissionIdAsc(pagination.toPageable());
+        return com.fido.common.response.ApiListResponse.of(result.getContent().stream().map(AccountMapper::permission).toList(),
+            pagination.meta(result.getTotalElements()));
     }
     public RoleDetailDto createRole(Long actor,RoleCreateRequest request) {
         lock();

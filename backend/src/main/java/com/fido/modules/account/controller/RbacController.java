@@ -16,8 +16,9 @@ public class RbacController {
     private final RbacService service;
     public RbacController(RbacService service) {this.service=service;}
     @GetMapping("/access-control") public ApiResponse<AccessControlDto> accessControl() {return ApiResponse.of(service.accessControl());}
-    @GetMapping("/permissions") public ApiListResponse<PermissionDto> permissions() {
-        var values=service.permissions();return ApiListResponse.of(values,new PaginationMeta(1,values.size(),values.size(),values.isEmpty()?0:1));
+    @GetMapping("/permissions") public ApiListResponse<PermissionDto> permissions(
+        @RequestParam(required=false) Integer page,@RequestParam(name="page_size",required=false) Integer pageSize) {
+        return service.permissions(page,pageSize);
     }
     @PostMapping("/roles") @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<RoleDetailDto> role(@AuthenticationPrincipal Jwt jwt,@Valid @RequestBody RoleCreateRequest request) {
