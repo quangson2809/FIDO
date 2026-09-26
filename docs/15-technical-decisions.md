@@ -107,3 +107,13 @@ Public catalog #11–13 remains public according to the API contract.
 - Performance/SLA/RPO/RTO/retention numeric targets.
 
 Administrative bootstrap credentials must remain external; never hardcode shared secrets.
+
+
+## Phase 3 implementation details recorded during coding
+
+- Public Catalog list includes only Product `ON_SALE` rows that have at least one Variant `ON_SALE`; zero inventory does not mutate or replace sale status.
+- Public size/color/price filters are evaluated against sale-enabled Variants. Price range uses effective price: Variant override when present, otherwise Product base price.
+- Direct detail lookup does not invent redirect/tombstone behavior for a stopped Product; it returns the existing record with explicit Product/Variant `sale_status` and current `available_quantity`. Purchase flows must still enforce purchasability.
+- Catalog metadata returns the existing relational masters; gender/season/style values are derived from stored Product values.
+- Catalog writes are audited in the same service transaction.
+- Product/Variant creation does not create or mutate Inventory. A missing Inventory row is read as available quantity 0; Phase 4 owns stock mutation/upsert behavior.

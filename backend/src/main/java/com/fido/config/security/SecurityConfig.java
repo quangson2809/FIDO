@@ -29,6 +29,9 @@ public class SecurityConfig {
                     "/v3/api-docs/**","/swagger-ui/**","/swagger-ui.html").permitAll()
                 .requestMatchers("/api/v1/admin/staff-accounts/**","/api/v1/admin/access-control",
                     "/api/v1/admin/roles/**","/api/v1/admin/permissions/**").hasAuthority("ROLE_SUPERADMIN")
+                .requestMatchers("/api/v1/admin/products/**","/api/v1/admin/catalog/meta",
+                    "/api/v1/admin/categories/**","/api/v1/admin/brands/**",
+                    "/api/v1/admin/size-systems/**","/api/v1/admin/colors/**").authenticated()
                 .requestMatchers("/api/v1/me","/api/v1/me/**").authenticated()
                 .anyRequest().denyAll())
             .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(token -> {
@@ -36,7 +39,6 @@ public class SecurityConfig {
                     .orElseThrow(() -> new OAuth2AuthenticationException("invalid_token"));
                 var authorities=new ArrayList<SimpleGrantedAuthority>();
                 account.roles().forEach(r -> authorities.add(new SimpleGrantedAuthority("ROLE_"+r.code())));
-                // Prefix permissions to avoid a permission code impersonating a role authority.
                 account.permissions().forEach(p -> authorities.add(new SimpleGrantedAuthority("PERMISSION_"+p.code())));
                 return new JwtAuthenticationToken(token,authorities);
             })));
