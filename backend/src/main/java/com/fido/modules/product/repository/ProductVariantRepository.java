@@ -1,11 +1,16 @@
 package com.fido.modules.product.repository;
 
 import com.fido.modules.product.entity.ProductVariant;
-import org.springframework.data.repository.Repository;
+import java.util.List;
 import java.util.Optional;
+import org.springframework.data.repository.Repository;
 
-/** Persistence only. Delete operations are intentionally not exposed by default. */
 public interface ProductVariantRepository extends Repository<ProductVariant, Long> {
     Optional<ProductVariant> findById(Long id);
+    Optional<ProductVariant> findByVariantIdAndProductId(Long variantId, Long productId);
     ProductVariant save(ProductVariant entity);
+    List<ProductVariant> findAllByProductIdOrderByVariantIdAsc(Long productId);
+    boolean existsByProductIdAndSizeValueIdAndColorId(Long productId, Long sizeValueId, Long colorId);
+    boolean existsBySizeValueId(Long sizeValueId);
+    boolean existsByColorId(Long colorId);
 }
