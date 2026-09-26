@@ -15,28 +15,29 @@ export const ProductDetailScreen: React.FC = () => {
 
   const [product, setProduct] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [selectedColor, setSelectedColor] = useState('');
+  const [selectedSize, setSelectedSize] = useState<string | number>('');
+  const [quantity, setQuantity] = useState(1);
+  const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
+  const [openAccordions, setOpenAccordions] = useState<number[]>([0]);
 
   React.useEffect(() => {
     catalogService.getProducts().then((items) => {
       const all = items.map(toUiProduct);
       setProducts(all);
       const selected = all.find((item) => item.product_id.toString() === selectedProductId) || all[0];
-      setProduct(selected);
+      setProduct(selected ?? null);
+      setActiveImageIndex(0);
+      setSelectedColor(selected?.colors[0]?.name ?? '');
+      setSelectedSize(selected?.sizes[0] ?? '');
+      setQuantity(1);
     });
   }, [selectedProductId]);
 
-  if (!product) return <div>Loading...</div>;
+  if (!product) return <div className="min-h-[50vh] flex items-center justify-center text-sm text-[#687069]">Đang tải sản phẩm mock...</div>;
 
   const isFavorite = wishlist.includes(product.product_id.toString());
-  // ... adapt remaining UI using product object ...
-
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [selectedColor, setSelectedColor] = useState(product.colors[0]?.name || 'Dark Indigo (Xanh Chàm Đậm)');
-  const [selectedSize, setSelectedSize] = useState<string | number>(product.sizes[2] || 31);
-  const [quantity, setQuantity] = useState(1);
-  const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
-  const [openAccordions, setOpenAccordions] = useState<number[]>([0]);
-
   const gallery = product.galleryImages && product.galleryImages.length > 0 ? product.galleryImages : [product.imageUrl];
 
   const nextImage = () => {
@@ -66,9 +67,9 @@ export const ProductDetailScreen: React.FC = () => {
   };
 
   const handleAddCombo = () => {
-    const shirtProduct = products.find((p: any) => p.product_id.toString() === '2') || products[1];
+    const suggestedProduct = products.find((item: any) => item.product_id !== product.product_id);
     addToCart(product, selectedSize, selectedColor, 1);
-    addToCart(shirtProduct, 'L', 'Xám Khói Smoke', 1);
+    if (suggestedProduct) addToCart(suggestedProduct, undefined, undefined, 1);
     setIsCartOpen(true);
   };
 
