@@ -822,8 +822,8 @@ export const mockOrderDetails: OrderAdminDetailDto[] = [
   makeOrder(9004, 'ORD-20260925-014', 'SHIPPING', [orderItem(4, 10302, 1), orderItem(5, 10502, 1)], 'UNPAID', '2026-09-25T12:30:00+07:00', { allowed_actions: ['COMPLETE', 'DELIVERY_FAILED'] }),
   makeOrder(9005, 'ORD-20260925-011', 'DELIVERY_FAILED', [orderItem(6, 10401, 1)], 'UNPAID', '2026-09-25T09:40:00+07:00', { customer_service_note: 'Liên hệ lại khách trước khi giao lại.', allowed_actions: ['RETRY', 'CANCEL'] }),
   makeOrder(9006, 'ORD-20260924-020', 'COMPLETED', [orderItem(7, 10002, 1), orderItem(8, 10203, 1)], 'PAID', '2026-09-24T11:00:00+07:00'),
-  makeOrder(9007, 'ORD-20260923-018', 'RETURNED', [orderItem(9, 10103, 1)], 'REFUNDED', '2026-09-23T13:10:00+07:00', { customer_service_note: 'Hoàn trả toàn đơn tại cửa hàng.' }),
-  makeOrder(9008, 'ORD-20260922-010', 'CANCELLED', [orderItem(10, 10301, 1)], 'UNPAID', '2026-09-22T16:20:00+07:00'),
+  makeOrder(9007, 'ORD-20260923-018', 'RETURNED', [orderItem(9, 10103, 1)], 'REFUNDED', '2026-09-23T13:10:00+07:00', { customer_account_id: 1002, customer_service_note: 'Hoàn trả toàn đơn tại cửa hàng.' }),
+  makeOrder(9008, 'ORD-20260922-010', 'CANCELLED', [orderItem(10, 10301, 1)], 'UNPAID', '2026-09-22T16:20:00+07:00', { customer_account_id: 1003 }),
 ];
 
 export const mockOrderSummaries: OrderSummaryDto[] = mockOrderDetails.map((order) => ({
