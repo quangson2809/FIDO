@@ -1,20 +1,20 @@
 import { ShowroomDto, ShowroomService } from '../types';
-import { apiClient } from '../../../services/http/apiClient';
-import { API_MODE } from '../../../constants/app';
+import { mockUiShowrooms } from '../../../mocks/uiData';
 
-const mockShowrooms: ShowroomDto[] = [
-  { id: '1', name: 'Atelier Vert Flagship Hà Nội', city: 'Hà Nội', address: '128 Nguyễn Trãi', phone: '0900000001', imageUrl: '...', openingHours: '09:00 - 21:30' },
-  { id: '2', name: 'Atelier Vert Flagship TP.HCM', city: 'TP.HCM', address: '250 Lê Thánh Tôn', phone: '0900000002', imageUrl: '...', openingHours: '09:00 - 21:30' }
-];
-
+// Showroom is a presentation fixture. The baseline API document does not define
+// a dedicated showroom endpoint, so real-mode code must not invent one here.
 const mockShowroomService: ShowroomService = {
-  async getShowrooms() { return mockShowrooms; }
+  async getShowrooms() {
+    return mockUiShowrooms.map((showroom) => ({
+      id: showroom.id,
+      name: showroom.name,
+      city: showroom.city === 'hn' ? 'Hà Nội' : 'TP. Hồ Chí Minh',
+      address: showroom.address,
+      phone: showroom.phone,
+      imageUrl: showroom.imageUrl,
+      openingHours: showroom.openingHours,
+    }));
+  },
 };
 
-const realShowroomService: ShowroomService = {
-  async getShowrooms() { return apiClient.get<ShowroomDto[], ShowroomDto[]>('/showrooms'); }
-};
-
-export const showroomService = API_MODE === 'mock' 
-  ? mockShowroomService 
-  : realShowroomService;
+export const showroomService = mockShowroomService;
