@@ -19,7 +19,7 @@ export const ScreenSwitcherBar: React.FC = () => {
     { id: 'auth', label: '10. Đăng Nhập / Đăng Ký', icon: 'lock' },
     { id: 'profile', label: '11. Hồ Sơ Tài Khoản', icon: 'account_circle' },
     { id: 'showrooms', label: '12. Hệ Thống Showroom', icon: 'storefront' },
-    { id: 'admin', label: '13. Quản Trị (Admin Console)', icon: 'admin_panel_settings', badge: 'Admin' }
+    { id: 'admin-login', label: '13. Đăng Nhập Quản Trị', icon: 'admin_panel_settings', badge: 'Admin' }
   ];
 
   return (
@@ -109,9 +109,9 @@ export const ScreenSwitcherBar: React.FC = () => {
           </button>
           <button
             type="button"
-            onClick={() => setCurrentScreen('admin')}
+            onClick={() => setCurrentScreen('admin-login')}
             className={`px-2.5 py-1 text-xs rounded-full transition-colors whitespace-nowrap font-bold flex items-center gap-1 ${
-              currentScreen === 'admin'
+              currentScreen === 'admin' || currentScreen === 'admin-login'
                 ? 'bg-[#E8C75B] text-[#071A12]'
                 : 'bg-emerald-950 text-emerald-300 hover:bg-emerald-900'
             }`}
