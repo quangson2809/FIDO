@@ -26,10 +26,11 @@ const colorHex: Record<string, string> = {
   Nâu: '#76533A',
 };
 
-export const toUiProduct = (product: ProductDetailDto): Product => {
+export const toUiProduct = (product: ProductDetailDto): Product & { product_id: number } => {
   const firstVariant = product.variants[0];
   const imageUrl = product.images[0]?.image_url ?? '';
   return {
+    product_id: product.product_id,
     id: String(product.product_id),
     sku: firstVariant?.sku ?? `P-${product.product_id}`,
     name: product.name,
