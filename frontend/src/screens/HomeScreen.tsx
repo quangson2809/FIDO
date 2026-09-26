@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { catalogService } from '../features/catalog/api/service';
+import { toUiProduct } from '../mocks/uiData';
 
 export const HomeScreen: React.FC = () => {
   const { setCurrentScreen, setSelectedProductId, addToCart, wishlist, toggleWishlist } = useApp();
@@ -10,7 +11,7 @@ export const HomeScreen: React.FC = () => {
   const [products, setProducts] = useState<any[]>([]);
   
   React.useEffect(() => {
-    catalogService.getProducts().then(setProducts);
+    catalogService.getProducts().then((items) => setProducts(items.map(toUiProduct)));
   }, []);
 
   const filteredFeaturedProducts = products.slice(0, 6).filter((p) => {
