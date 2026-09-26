@@ -8,7 +8,7 @@ export const MyOrdersScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   const isPending = (status: OrderStatus) =>
-    status === 'processing' || status === 'PENDING' || status === 'PREPARING';
+    status === 'processing' || status === 'PENDING' || status === 'CONFIRMED' || status === 'PREPARING';
   const isShipping = (status: OrderStatus) =>
     status === 'shipping' || status === 'SHIPPING';
   const isCompleted = (status: OrderStatus) =>
@@ -45,7 +45,7 @@ export const MyOrdersScreen: React.FC = () => {
         </span>
       );
     }
-    if (status === 'confirmed') {
+    if (status === 'confirmed' || status === 'CONFIRMED') {
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-700 border border-blue-500/20">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
@@ -66,6 +66,20 @@ export const MyOrdersScreen: React.FC = () => {
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-800 border border-emerald-500/20">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
           Giao thành công
+        </span>
+      );
+    }
+    if (status === 'DELIVERY_FAILED') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-orange-500/10 text-orange-700 border border-orange-500/20">
+          Giao thất bại
+        </span>
+      );
+    }
+    if (status === 'RETURNED') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-violet-500/10 text-violet-700 border border-violet-500/20">
+          Đã hoàn trả
         </span>
       );
     }
