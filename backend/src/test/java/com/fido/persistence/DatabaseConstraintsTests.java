@@ -3,7 +3,8 @@ package com.fido.persistence;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DataAccessException;
+import java.sql.SQLException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
@@ -19,7 +20,15 @@ class DatabaseConstraintsTests {
     @Autowired JdbcTemplate jdbc;
 
     private void rejects(String sql) {
-        assertThrows(DataIntegrityViolationException.class, () -> jdbc.update(sql), sql);
+        DataAccessException failure = assertThrows(DataAccessException.class, () -> jdbc.update(sql), sql);
+        Throwable cause = failure.getMostSpecificCause();
+        assertInstanceOf(SQLException.class, cause);
+        SQLException databaseError = (SQLException) cause;
+        // MySQL reports CHECK violations as HY000 / 3819 rather than SQLSTATE class 23.
+        assertTrue((databaseError.getSQLState() != null && databaseError.getSQLState().startsWith("23"))
+                || ("HY000".equals(databaseError.getSQLState()) && databaseError.getErrorCode() == 3819),
+                () -> "Expected integrity violation, got " + databaseError.getSQLState()
+                        + " / " + databaseError.getErrorCode() + " for " + sql);
     }
 
     @Test

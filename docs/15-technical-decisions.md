@@ -22,7 +22,7 @@
 
 - `docs/00` through `docs/14` and `reference/*.csv` are the supplied FIDO BE Java Codex Kit, now tracked with the repository.
 - Schema authority: `07_Thiet_ke_du_lieu_CSDL_Website_Ban_Quan_Ao_v1.3.0_catalog_final.docx`, DD-DB-01 v1.3.0, section 5 pp. 15–27 and section 6 constraints. The original is available in the owner's Library.
-- API authority: `DANH MỤC API TINH GỌN THEO CSDL .pdf`, current consolidated contract, available in the owner's Library.
+- API detail source: `DANH MỤC API TINH GỌN THEO CSDL .pdf` is an available 73-endpoint snapshot. Use it only for unchanged DTO details. The kit and explicit owner instruction establish the 77-endpoint baseline; the older PDF does not override permission CRUD #66–69 or renumber the newer endpoints.
 
 ## Still out of scope / unresolved
 
