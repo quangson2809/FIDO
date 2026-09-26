@@ -104,15 +104,15 @@ export const getAdminPath = (menuKey: string): string =>
   ADMIN_PATHS[menuKey] ?? APP_PATHS.admin;
 
 export const resolveAdminRoute = (pathname: string): { menuKey: string; breadcrumb: string } => {
-  if (pathname.startsWith('/admin/products/detail')) return { menuKey: 'product-detail', breadcrumb: 'Chi tiết sản phẩm' };
   if (pathname === '/admin/products') return { menuKey: 'products', breadcrumb: 'Sản phẩm' };
+  if (pathname.startsWith('/admin/products/')) return { menuKey: 'product-detail', breadcrumb: 'Chi tiết sản phẩm' };
   if (pathname === '/admin/catalog/categories') return { menuKey: 'categories', breadcrumb: 'Danh mục' };
   if (pathname === '/admin/catalog/brands') return { menuKey: 'brands', breadcrumb: 'Thương hiệu' };
   if (pathname === '/admin/catalog/sizes') return { menuKey: 'sizes', breadcrumb: 'Hệ size' };
   if (pathname === '/admin/catalog/colors') return { menuKey: 'colors', breadcrumb: 'Màu sắc' };
-  if (pathname.startsWith('/admin/orders/detail')) return { menuKey: 'order-detail', breadcrumb: 'Chi tiết đơn hàng' };
   if (pathname === '/admin/orders/tailoring') return { menuKey: 'tailoring', breadcrumb: 'Điều phối cắt may' };
   if (pathname === '/admin/orders') return { menuKey: 'orders', breadcrumb: 'Quản lý Đơn hàng' };
+  if (pathname.startsWith('/admin/orders/')) return { menuKey: 'order-detail', breadcrumb: 'Chi tiết đơn hàng' };
   if (pathname === '/admin/goods-receipts') return { menuKey: 'inward', breadcrumb: 'Phiếu nhập kho' };
   if (pathname === '/admin/inventory/history') return { menuKey: 'history', breadcrumb: 'Lịch sử biến động' };
   if (pathname === '/admin/inventory') return { menuKey: 'inventory', breadcrumb: 'Tồn kho' };
