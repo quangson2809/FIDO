@@ -1,8 +1,15 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+  ReactNode,
+} from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ScreenId, CartItem, Order, OrderStatus, UserProfile } from '../types';
-import { catalogService } from '../features/catalog/api/service';
-import { authService } from '../features/auth/api/service';
-import { orderService } from '../features/orders/api/service';
+import { getPathForScreen, getScreenFromPath } from '../routes/paths';
 
 interface AppContextType {
   currentScreen: ScreenId;
@@ -41,10 +48,15 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [currentScreen, setCurrentScreen] = useState<ScreenId>('home');
-  const [selectedProductId, setSelectedProductId] = useState<string>('1');
-  const [selectedOrderId, setSelectedOrderId] = useState<string>('1');
-  const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const [selectedProductIdState, setSelectedProductIdState] = useState<string>('1');
+  const [selectedOrderIdState, setSelectedOrderIdState] = useState<string>('1');
+  const selectedProductIdRef = useRef('1');
+  const selectedOrderIdRef = useRef('1');
+
+  const [isCartOpen, setIsCartOpenState] = useState<boolean>(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [freeHemming, setFreeHemming] = useState<boolean>(true);
   const [hemmingNote, setHemmingNote] = useState<string>('');
@@ -65,7 +77,47 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     joinedDate: '2024',
     addresses: [],
   });
-  const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
+  const [toast, setToast] = useState<{ message: string; visible: boolean }>({
+    message: '',
+    visible: false,
+  });
+
+  const currentScreen = useMemo(
+    () => getScreenFromPath(location.pathname),
+    [location.pathname],
+  );
+
+  const setSelectedProductId = useCallback((id: string) => {
+    selectedProductIdRef.current = id;
+    setSelectedProductIdState(id);
+  }, []);
+
+  const setSelectedOrderId = useCallback((id: string) => {
+    selectedOrderIdRef.current = id;
+    setSelectedOrderIdState(id);
+  }, []);
+
+  const setIsCartOpen = useCallback((open: boolean) => {
+    setIsCartOpenState(open);
+  }, []);
+
+  const setCurrentScreen = useCallback(
+    (screen: ScreenId) => {
+      if (screen === 'cart') {
+        setIsCartOpenState(true);
+        return;
+      }
+
+      navigate(
+        getPathForScreen(
+          screen,
+          selectedProductIdRef.current,
+          selectedOrderIdRef.current,
+        ),
+      );
+    },
+    [navigate],
+  );
 
   const showToast = (msg: string) => {
     setToast({ message: msg, visible: true });
@@ -73,18 +125,72 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addToCart = (product: any, size?: string | number, color?: string, quantity: number = 1) => {
-      // Implementation placeholder
-      showToast(`Đã thêm ${product.name} vào giỏ hàng`);
+    void size;
+    void color;
+    void quantity;
+    showToast(`Đã thêm ${product.name} vào giỏ hàng`);
   };
-  const removeFromCart = (itemId: string) => setCartItems(prev => prev.filter(i => i.id !== itemId));
-  const updateCartQuantity = (itemId: string, quantity: number) => {};
-  const applyVoucher = (code: string): boolean => true;
-  const removeVoucher = () => {};
-  const updateOrderRecipient = (orderId: string, phone: string, address: string, note?: string) => {};
-  const updateOrderStatus = (orderId: string, status: OrderStatus) => {};
-  const createOrder = (orderData: Partial<Order>): Order => ({} as any);
-  const toggleWishlist = (productId: string) => {};
-  const updateUserProfile = (dataOrPhone: Partial<UserProfile> | string, email?: string) => {
+
+  const removeFromCart = (itemId: string) =>
+    setCartItems((prev) => prev.filter((item) => item.id !== itemId));
+
+  const updateCartQuantity = (itemId: string, quantity: number) => {
+    setCartItems((prev) =>
+      quantity <= 0
+        ? prev.filter((item) => item.id !== itemId)
+        : prev.map((item) => (item.id === itemId ? { ...item, quantity } : item)),
+    );
+  };
+
+  const applyVoucher = (code: string): boolean => {
+    setAppliedVoucher(code);
+    return true;
+  };
+
+  const removeVoucher = () => {
+    setAppliedVoucher('');
+    setVoucherDiscount(0);
+  };
+
+  const updateOrderRecipient = (orderId: string, phone: string, address: string, note?: string) => {
+    setOrders((prev) =>
+      prev.map((order) =>
+        order.id === orderId
+          ? {
+              ...order,
+              customerPhone: phone,
+              recipientAddress: address,
+              deliveryNote: note,
+            }
+          : order,
+      ),
+    );
+  };
+
+  const updateOrderStatus = (orderId: string, status: OrderStatus) => {
+    setOrders((prev) =>
+      prev.map((order) => (order.id === orderId ? { ...order, status } : order)),
+    );
+  };
+
+  const createOrder = (orderData: Partial<Order>): Order => {
+    const order = orderData as Order;
+    setOrders((prev) => [order, ...prev]);
+    return order;
+  };
+
+  const toggleWishlist = (productId: string) => {
+    setWishlist((prev) =>
+      prev.includes(productId)
+        ? prev.filter((id) => id !== productId)
+        : [...prev, productId],
+    );
+  };
+
+  const updateUserProfile = (
+    dataOrPhone: Partial<UserProfile> | string,
+    email?: string,
+  ) => {
     setUserProfile((profile) =>
       typeof dataOrPhone === 'string'
         ? { ...profile, phone: dataOrPhone, ...(email ? { email } : {}) }
@@ -93,15 +199,41 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   return (
-    <AppContext.Provider value={{
-        currentScreen, setCurrentScreen, selectedProductId, setSelectedProductId,
-        selectedOrderId, setSelectedOrderId, isCartOpen, setIsCartOpen, cartItems,
-        addToCart, removeFromCart, updateCartQuantity, freeHemming, setFreeHemming,
-        hemmingNote, setHemmingNote, appliedVoucher, voucherDiscount, applyVoucher,
-        removeVoucher, orders, updateOrderRecipient, updateOrderStatus, createOrder,
-        wishlist, toggleWishlist, userProfile, updateUserProfile, toast, 
-        toastMessage: toast.visible ? toast.message : null, showToast
-    }}>
+    <AppContext.Provider
+      value={{
+        currentScreen,
+        setCurrentScreen,
+        selectedProductId: selectedProductIdState,
+        setSelectedProductId,
+        selectedOrderId: selectedOrderIdState,
+        setSelectedOrderId,
+        isCartOpen,
+        setIsCartOpen,
+        cartItems,
+        addToCart,
+        removeFromCart,
+        updateCartQuantity,
+        freeHemming,
+        setFreeHemming,
+        hemmingNote,
+        setHemmingNote,
+        appliedVoucher,
+        voucherDiscount,
+        applyVoucher,
+        removeVoucher,
+        orders,
+        updateOrderRecipient,
+        updateOrderStatus,
+        createOrder,
+        wishlist,
+        toggleWishlist,
+        userProfile,
+        updateUserProfile,
+        toast,
+        toastMessage: toast.visible ? toast.message : null,
+        showToast,
+      }}
+    >
       {children}
     </AppContext.Provider>
   );
