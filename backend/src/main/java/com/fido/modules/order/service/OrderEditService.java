@@ -1,0 +1,177 @@
+package com.fido.modules.order.service;
+
+import com.fido.modules.audit.service.AuditService;
+import com.fido.modules.order.dto.request.AdminOrderPatchRequest;
+import com.fido.modules.order.dto.request.RecipientPatchRequest;
+import com.fido.modules.order.dto.response.OrderAdminDetailDto;
+import com.fido.modules.order.dto.response.OrderCustomerDetailDto;
+import com.fido.modules.order.entity.Order;
+import com.fido.modules.order.entity.ShippingInfo;
+import com.fido.modules.order.repository.OrderRepository;
+import com.fido.modules.order.repository.ShippingInfoRepository;
+import java.util.Objects;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+@Transactional
+public class OrderEditService {
+
+    private static final String EDIT =
+            "hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_ORDER_EDIT')";
+
+    private final OrderRepository orders;
+    private final ShippingInfoRepository shipping;
+    private final OrderQueryService query;
+    private final AuditService audit;
+
+    public OrderEditService(
+            OrderRepository orders,
+            ShippingInfoRepository shipping,
+            OrderQueryService query,
+            AuditService audit
+    ) {
+        this.orders = orders;
+        this.shipping = shipping;
+        this.query = query;
+        this.audit = audit;
+    }
+
+    public OrderCustomerDetailDto updateRecipient(
+            Long accountId,
+            Long orderId,
+            RecipientPatchRequest request
+    ) {
+        Order order = locked(orderId);
+
+        if (!Objects.equals(
+                order.getCustomerAccountId(),
+                accountId
+        )) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+
+        if (!request.isPhonePresent()
+                && !request.isAddressPresent()) {
+            return query.customerDetailInternal(order);
+        }
+
+        requireRecipientEditable(order);
+
+        if (request.isPhonePresent()) {
+            order.setRecipientPhone(
+                    request.getRecipientPhone()
+            );
+        }
+
+        if (request.isAddressPresent()) {
+            order.setRecipientAddress(
+                    request.getRecipientAddress()
+            );
+        }
+
+        orders.save(order);
+
+        audit.record(
+                accountId,
+                "ORDER_RECIPIENT_UPDATE",
+                "ORDER",
+                orderId
+        );
+
+        return query.customerDetailInternal(order);
+    }
+
+    @PreAuthorize(EDIT)
+    public OrderAdminDetailDto updateAdmin(
+            Long actor,
+            Long orderId,
+            AdminOrderPatchRequest request
+    ) {
+        Order order = locked(orderId);
+
+        boolean recipientChange =
+                request.isPhonePresent()
+                || request.isEmailPresent()
+                || request.isAddressPresent();
+
+        if (recipientChange) {
+            requireRecipientEditable(order);
+        }
+
+        if (request.isPhonePresent()) {
+            order.setRecipientPhone(
+                    request.getRecipientPhone()
+            );
+        }
+
+        if (request.isEmailPresent()) {
+            order.setRecipientEmail(
+                    request.getRecipientEmail()
+            );
+        }
+
+        if (request.isAddressPresent()) {
+            order.setRecipientAddress(
+                    request.getRecipientAddress()
+            );
+        }
+
+        if (request.isNotePresent()) {
+            order.setCustomerServiceNote(
+                    request.getCustomerServiceNote()
+            );
+        }
+
+        orders.save(order);
+
+        if (request.isShippingInfoPresent()) {
+            var input = request.getShippingInfo();
+
+            ShippingInfo info = shipping
+                    .findById(orderId)
+                    .orElseGet(() -> {
+                        ShippingInfo created =
+                                new ShippingInfo();
+                        created.setOrderId(orderId);
+                        return created;
+                    });
+
+            info.setDeliveryMode(
+                    input.delivery_mode()
+            );
+            info.setCarrierName(
+                    input.carrier_name()
+            );
+
+            shipping.save(info);
+        }
+
+        audit.record(
+                actor,
+                "ORDER_ADMIN_UPDATE",
+                "ORDER",
+                orderId
+        );
+
+        return query.adminDetailInternal(order);
+    }
+
+    private void requireRecipientEditable(Order order) {
+        if (!OrderPolicy.recipientEditable(
+                order.getOrderStatus()
+        )) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT);
+        }
+    }
+
+    private Order locked(Long orderId) {
+        return orders.findByIdForUpdate(orderId)
+                .orElseThrow(() ->
+                        new ResponseStatusException(HttpStatus.NOT_FOUND)
+                );
+    }
+}
