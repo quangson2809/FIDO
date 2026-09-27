@@ -312,12 +312,19 @@ public class OrderActionService {
         }
 
         boolean stockWasDeducted =
-                !OrderPolicy.PENDING.equals(
-                        order.getOrderStatus()
-                );
+                inventoryTransactions
+                        .existsByOrderIdAndTransactionType(
+                                order.getOrderId(),
+                                OrderPolicy.ORDER_CONFIRM_OUT
+                        );
 
         boolean stockAlreadyReturned =
                 inventoryTransactions
+                        .existsByOrderIdAndTransactionType(
+                                order.getOrderId(),
+                                OrderPolicy.ORDER_CANCEL_IN
+                        )
+                || inventoryTransactions
                         .existsByOrderIdAndTransactionType(
                                 order.getOrderId(),
                                 OrderPolicy.DELIVERY_RETURN_IN
