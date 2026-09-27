@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { mockProductDetails } from '../../mocks/apiData';
+import { mockAdminProductDetails, mockAdminProductSummaries, mockCategories, mockBrands } from '../../mocks/apiData';
 
 const money = (value: number) => value.toLocaleString('vi-VN') + '₫';
 
@@ -12,14 +12,14 @@ export const AdminProductsView: React.FC<{
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
-  const filtered = useMemo(() => mockProductDetails.filter((product) => {
+  const filtered = useMemo(() => mockAdminProductDetails.filter((product) => {
     const matchText = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       String(product.product_id).includes(searchTerm);
     return matchText && (statusFilter === 'ALL' || product.sale_status === statusFilter);
   }), [searchTerm, statusFilter]);
 
-  const variantCount = mockProductDetails.reduce((sum, product) => sum + product.variants.length, 0);
-  const stock = mockProductDetails.reduce((sum, product) =>
+  const variantCount = mockAdminProductDetails.reduce((sum, product) => sum + product.variants.length, 0);
+  const stock = mockAdminProductDetails.reduce((sum, product) =>
     sum + product.variants.reduce((inner, variant) => inner + variant.available_quantity, 0), 0);
 
   return (
@@ -37,7 +37,7 @@ export const AdminProductsView: React.FC<{
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white border rounded-lg p-5"><div className="text-xs text-[#687069]">Sản phẩm mock</div><div className="text-3xl font-bold">{mockProductDetails.length}</div></div>
+        <div className="bg-white border rounded-lg p-5"><div className="text-xs text-[#687069]">Sản phẩm mock</div><div className="text-3xl font-bold">{mockAdminProductSummaries.length}</div></div>
         <div className="bg-white border rounded-lg p-5"><div className="text-xs text-[#687069]">Variant</div><div className="text-3xl font-bold">{variantCount}</div></div>
         <div className="bg-white border rounded-lg p-5"><div className="text-xs text-[#687069]">Available quantity</div><div className="text-3xl font-bold">{stock}</div></div>
       </div>
@@ -47,7 +47,7 @@ export const AdminProductsView: React.FC<{
           <input value={searchTerm} onChange={(e)=>setSearchTerm(e.target.value)} placeholder="Tìm tên hoặc product_id..." className="px-3 py-2 border rounded text-xs min-w-[260px]" />
           <select value={statusFilter} onChange={(e)=>setStatusFilter(e.target.value)} className="px-3 py-2 border rounded text-xs">
             <option value="ALL">Tất cả trạng thái</option>
-            {[...new Set(mockProductDetails.map((product)=>product.sale_status))].map((status)=><option key={status}>{status}</option>)}
+            {[...new Set(mockAdminProductDetails.map((product)=>product.sale_status))].map((status)=><option key={status}>{status}</option>)}
           </select>
         </div>
         <div className="overflow-x-auto">
