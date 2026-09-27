@@ -70,7 +70,7 @@ public class AdminCatalogQueryService {
                 pageSize
         );
 
-        Specification<Product> specification = adminSpec(
+        Specification<Product> specification = CatalogSpecifications.adminProducts(
                 q,
                 categoryId,
                 brandId,
