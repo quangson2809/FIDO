@@ -8,4 +8,8 @@ import java.util.Optional;
 public interface ContentPageRepository extends Repository<ContentPage, Long> {
     Optional<ContentPage> findById(Long id);
     ContentPage save(ContentPage entity);
+    Optional<ContentPage> findByPageCode(String pageCode);
+    java.util.List<ContentPage> findAllByOrderByPageIdAsc();
+    void flush();
 }
+

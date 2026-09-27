@@ -250,3 +250,24 @@ The business meanings “internal delivery” and “external carrier entered ma
 - InventoryCommandService owns zero-row initialization as well as stock/ledger writes. ProductAdminService joins its existing transaction when initializing new variants; InventoryAvailabilityService only reads quantities. No stock movement or ledger entry is introduced for zero initialization.
 - Pagination raises a dedicated IllegalArgumentException subtype for invalid bounds. ApiExceptionHandler maps only that subtype to the existing HTTP 400 renderer; unrelated programming errors remain HTTP 500. Services call Pagination.of directly.
 - API routes, request/response DTOs, schema, order/payment states, capability assignments and stock semantics are unchanged.
+
+
+## Phase 7 operations — 2026-09-27
+
+Sources: consolidated API Appendix A #70–77, SRS FR-29/30/31, BRULE-13, Customer Admin / FR-27; DB v1.3.0 audit_logs/content_pages/accounts/orders.
+
+- Capabilities: `AUDIT_READ`, `CONTENT_READ`, `CONTENT_WRITE`, `CUSTOMER_READ`. SUPERADMIN may use them; no employee role receives them automatically. Content read and write are separate capabilities.
+- API #73 follows its specific Appendix A contract: `{data: ContentPageDto[]}`, all small content pages including content, ordered by page_id. It has no pagination parameters or separate detail endpoint. This specific source contract takes precedence over the generic list convention (docs/00).
+- Audit filters combine with AND, timestamp bounds are inclusive UTC values consistent with stored timestamps and the existing inventory API; deterministic newest audit_id first. No audit write/delete endpoint.
+- Content page_code is immutable through PATCH. Non-null title/content reject explicit null; omitted fields remain unchanged. Actor derives from JWT and timestamp from the entity lifecycle; flush before mapping ensures PATCH returns the persisted timestamp. Audit shares the content transaction. No content lifecycle or schema change.
+- Customer queries start from existing Accounts, with phone/email search and stable account_id ordering; no synthetic guest Account, inferred phone/email ownership, minimum-order requirement or new customer-role predicate. Customer stats aggregate all linked orders in one query for the current account page. Detail includes only the documented AccountDto/AddressDto/OrderSummaryDto. Account calls CustomerOrderQueryService, never OrderRepository or Order entities; the module read contract also enforces CUSTOMER_READ. Order detail summaries join Payment in one query.
+
+### API #71 — HARD BLOCK, monetary/reporting semantics
+
+API Appendix A defines from/to dates, completed_sales, returned_adjustment, net_sales and orders_by_status. SRS FR-30 / BRULE-13 and FRS require COMPLETED recognition and a separate RETURNED adjustment. DB defines completed_at and returned_at, but none of these sources locks:
+
+1. Whether sales includes shipping (`total_snapshot`) or excludes shipping (`subtotal_snapshot - discount_snapshot`).
+2. Whether a return adjusts its completion period or its return period, including a return in a later period and whether the adjustment uses order value or refunded amount.
+3. Which date bounds the orders_by_status population (creation date vs recognition date), and the reporting business timezone.
+
+These change money and public report semantics, so backend/AGENTS.md requires stakeholder clarification for this slice. No guessed report, aggregate table, or successful placeholder response is introduced. API #71 remains unimplemented and denied by the existing route fallback; the other Phase 7 endpoints continue independently. Phase 7 stays PARTIAL and Phase 8 must not begin until this blocker is resolved and adjustment tests pass.

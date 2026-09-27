@@ -8,6 +8,14 @@ import java.util.Optional;
 public interface AccountRepository extends Repository<Account, Long> {
     Optional<Account> findById(Long id);
     Account save(Account entity);
+    @org.springframework.data.jpa.repository.Query("""
+        select a from Account a
+        where :q is null or a.phone like concat('%',:q,'%') or a.email like concat('%',:q,'%')
+        order by a.accountId
+        """)
+    org.springframework.data.domain.Page<Account> findCustomers(
+        @org.springframework.data.repository.query.Param("q") String q,
+        org.springframework.data.domain.Pageable pageable);
     Optional<Account> findByPhone(String phone);
     boolean existsByPhone(String phone);
     boolean existsByPhoneAndAccountIdNot(String phone, Long accountId);
@@ -23,3 +31,4 @@ public interface AccountRepository extends Repository<Account, Long> {
         @org.springframework.data.repository.query.Param("roleId") Long roleId,
         org.springframework.data.domain.Pageable pageable);
 }
+

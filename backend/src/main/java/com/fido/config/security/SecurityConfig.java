@@ -71,7 +71,12 @@ public class SecurityConfig {
                                 "/api/v1/admin/colors/**",
                                 "/api/v1/admin/suppliers/**",
                                 "/api/v1/admin/goods-receipts/**",
-                                "/api/v1/admin/inventory/**"
+                                "/api/v1/admin/inventory/**",
+                                "/api/v1/admin/audit-logs",
+                                "/api/v1/admin/content-pages",
+                                "/api/v1/admin/content-pages/**",
+                                "/api/v1/admin/customers",
+                                "/api/v1/admin/customers/**"
                         )
                         .authenticated()
 
@@ -130,3 +135,4 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 }
+
