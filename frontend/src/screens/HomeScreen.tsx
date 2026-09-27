@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { catalogService } from '../features/catalog/api/service';
 import { toUiProduct } from '../mocks/uiData';
+import { mockBrands } from '../mocks/apiData';
 
 export const HomeScreen: React.FC = () => {
   const { setCurrentScreen, setSelectedProductId, addToCart, wishlist, toggleWishlist } = useApp();
@@ -382,7 +383,7 @@ export const HomeScreen: React.FC = () => {
                 </h3>
               </div>
               <span className="text-[11px] text-[#1B5038] tracking-widest uppercase font-bold">
-                7 ĐỐI TÁC DANH TIẾNG NỔI BẬT
+                ${mockBrands.length} THƯƠNG HIỆU TRONG MOCK
               </span>
             </div>
 
@@ -398,18 +399,12 @@ export const HomeScreen: React.FC = () => {
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-[#E8C75B]"></span>
                 TẤT CẢ THƯƠNG HIỆU
-                <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full">58</span>
+                <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full">{products.length}</span>
               </button>
 
-              {[
-                { name: 'Atelier Vert Heritage', count: 22, icon: 'spa' },
-                { name: 'Urban Wear Studio', count: 12, icon: 'apartment' },
-                { name: 'Kurabo Okayama Denim', count: 9, icon: 'water_drop' },
-                { name: 'Albini Luxury Cotton', count: 7, icon: 'texture' },
-                { name: 'Loro Piana Fabrics', count: 4, icon: 'diamond' },
-                { name: 'Minimalist Man', count: 8, icon: 'tune' },
-                { name: 'Local Atelier Craft', count: 6, icon: 'brush' }
-              ].map((brand) => (
+              {mockBrands.map((brand) => {
+                const count = products.filter((product) => product.brand === brand.name).length;
+                return (
                 <button
                   key={brand.name}
                   onClick={() => setSelectedBrand(brand.name)}
@@ -419,13 +414,14 @@ export const HomeScreen: React.FC = () => {
                       : 'bg-white hover:bg-[#FFFDF5] text-[#0B2419] border-[#E8E9E3]'
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[16px] text-[#687069]">{brand.icon}</span>
+                  <span className="material-symbols-outlined text-[16px] text-[#687069]">sell</span>
                   {brand.name}
                   <span className="text-[10px] text-[#687069] bg-[#edeee9] px-1.5 py-0.5 rounded">
-                    {brand.count}
+                    {count}
                   </span>
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
