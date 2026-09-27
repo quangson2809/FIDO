@@ -74,17 +74,6 @@ public interface InventoryRepository extends Repository<Inventory, Long> {
             Pageable pageable
     );
 
-    @Query(
-            value = """
-                    SELECT COUNT(*)
-                    FROM product_variants
-                    WHERE variant_id = :variantId
-                    """,
-            nativeQuery = true
-    )
-    long countVariant(
-            @Param("variantId") Long variantId
-    );
 
     @Modifying(
             flushAutomatically = true,

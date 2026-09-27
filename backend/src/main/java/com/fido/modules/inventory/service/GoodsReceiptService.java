@@ -9,8 +9,8 @@ import com.fido.modules.inventory.entity.GoodsReceipt;
 import com.fido.modules.inventory.entity.GoodsReceiptItem;
 import com.fido.modules.inventory.repository.GoodsReceiptItemRepository;
 import com.fido.modules.inventory.repository.GoodsReceiptRepository;
-import com.fido.modules.inventory.repository.InventoryRepository;
 import com.fido.modules.inventory.repository.SupplierRepository;
+import com.fido.modules.product.service.CatalogVariantReferenceService;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.HashSet;
@@ -33,7 +33,7 @@ public class GoodsReceiptService {
     private final GoodsReceiptRepository receipts;
     private final GoodsReceiptItemRepository items;
     private final SupplierRepository suppliers;
-    private final InventoryRepository inventories;
+    private final CatalogVariantReferenceService variants;
     private final InventoryCommandService inventoryCommands;
     private final GoodsReceiptQueryService query;
     private final AuditService audit;
@@ -42,7 +42,7 @@ public class GoodsReceiptService {
             GoodsReceiptRepository receipts,
             GoodsReceiptItemRepository items,
             SupplierRepository suppliers,
-            InventoryRepository inventories,
+            CatalogVariantReferenceService variants,
             InventoryCommandService inventoryCommands,
             GoodsReceiptQueryService query,
             AuditService audit
@@ -50,7 +50,7 @@ public class GoodsReceiptService {
         this.receipts = receipts;
         this.items = items;
         this.suppliers = suppliers;
-        this.inventories = inventories;
+        this.variants = variants;
         this.inventoryCommands = inventoryCommands;
         this.query = query;
         this.audit = audit;
@@ -351,9 +351,7 @@ public class GoodsReceiptService {
     }
 
     private void validateVariant(Long variantId) {
-        if (inventories.countVariant(variantId) == 0) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-        }
+        variants.requireExists(variantId);
     }
 
     private GoodsReceipt receipt(Long receiptId) {

@@ -4,6 +4,7 @@ import com.fido.modules.inventory.entity.Inventory;
 import com.fido.modules.inventory.entity.InventoryTransaction;
 import com.fido.modules.inventory.repository.InventoryRepository;
 import com.fido.modules.inventory.repository.InventoryTransactionRepository;
+import com.fido.modules.product.service.CatalogVariantReferenceService;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -23,13 +24,16 @@ public class InventoryCommandService {
 
     private final InventoryRepository inventories;
     private final InventoryTransactionRepository transactions;
+    private final CatalogVariantReferenceService variants;
 
     public InventoryCommandService(
             InventoryRepository inventories,
-            InventoryTransactionRepository transactions
+            InventoryTransactionRepository transactions,
+            CatalogVariantReferenceService variants
     ) {
         this.inventories = inventories;
         this.transactions = transactions;
+        this.variants = variants;
     }
 
     public void receiveGoods(
@@ -242,9 +246,7 @@ public class InventoryCommandService {
     }
 
     private void requireVariantExists(Long variantId) {
-        if (inventories.countVariant(variantId) == 0) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-        }
+        variants.requireExists(variantId);
     }
 
     private void ensureInventoryRow(Long variantId) {
