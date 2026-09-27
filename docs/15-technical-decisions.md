@@ -242,3 +242,10 @@ The business meanings “internal delivery” and “external carrier entered ma
 `RETURN` is implemented as the staff command that records an accepted return outcome for a COMPLETED order: Order becomes RETURNED, `returned_at` and reason/note are recorded and audited. It does not automatically restock and does not automatically refund; refund remains the explicit API #25 command after an accepted return.
 
 `EXCHANGE_SIZE` remains deferred because the approved sources explicitly leave target-variant movement, old-variant restock eligibility, price difference, partial exchange and OrderStatus effects TBD. API #26 returns HTTP 501 for that operation rather than inventing movement/payment semantics.
+
+
+## Structural refactor follow-up — 2026-09-27
+
+- InventoryCommandService owns zero-row initialization as well as stock/ledger writes. ProductAdminService joins its existing transaction when initializing new variants; InventoryAvailabilityService only reads quantities. No stock movement or ledger entry is introduced for zero initialization.
+- Pagination raises a dedicated IllegalArgumentException subtype for invalid bounds. ApiExceptionHandler maps only that subtype to the existing HTTP 400 renderer; unrelated programming errors remain HTTP 500. Services call Pagination.of directly.
+- API routes, request/response DTOs, schema, order/payment states, capability assignments and stock semantics are unchanged.

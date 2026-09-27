@@ -24,7 +24,8 @@ public class ApiExceptionHandler {
             Exception exception,
             HttpServletResponse response
     ) throws IOException {
-        if (exception instanceof HttpMessageNotReadableException
+        if (exception instanceof InvalidPaginationException
+                || exception instanceof HttpMessageNotReadableException
                 || exception instanceof TypeMismatchException) {
             response.sendError(400);
             return;
@@ -59,3 +60,4 @@ public class ApiExceptionHandler {
         );
     }
 }
+

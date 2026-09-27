@@ -1,7 +1,7 @@
 package com.fido.modules.product.service;
 
 import com.fido.modules.audit.service.AuditService;
-import com.fido.modules.inventory.service.InventoryAvailabilityService;
+import com.fido.modules.inventory.service.InventoryCommandService;
 import com.fido.modules.product.dto.request.ProductCreateRequest;
 import com.fido.modules.product.dto.request.ProductPatchRequest;
 import com.fido.modules.product.dto.request.VariantBatchCreateRequest;
@@ -37,7 +37,7 @@ public class ProductAdminService {
     private final ProductRepository products;
     private final ProductVariantRepository variants;
     private final ProductImageRepository images;
-    private final InventoryAvailabilityService inventory;
+    private final InventoryCommandService inventory;
     private final CatalogReferenceService references;
     private final AdminCatalogQueryService query;
     private final AuditService audit;
@@ -47,7 +47,7 @@ public class ProductAdminService {
             ProductRepository products,
             ProductVariantRepository variants,
             ProductImageRepository images,
-            InventoryAvailabilityService inventory,
+            InventoryCommandService inventory,
             CatalogReferenceService references,
             AdminCatalogQueryService query,
             AuditService audit,
@@ -402,3 +402,4 @@ public class ProductAdminService {
     ) {
     }
 }
+

@@ -1,6 +1,7 @@
 package com.fido.common;
 
 import com.fido.common.response.ApiResponse;
+import com.fido.common.response.Pagination;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -49,6 +50,15 @@ class ApiFoundationHttpTests {
         }
     }
 
+    @Test
+    void invalidPaginationIsBadRequestButProgrammingErrorsRemainServerErrors() throws Exception {
+        var invalidPage = get("/api/v1/catalog/__test/pagination");
+        assertEquals(400, invalidPage.statusCode());
+        var programmingError = get("/api/v1/catalog/__test/illegal-argument");
+        assertEquals(500, programmingError.statusCode());
+        assertFalse(programmingError.body().contains("PRIVATE_SQL_DETAIL"));
+    }
+
     @TestConfiguration(proxyBeanMethods = false)
     static class Fixture {
         @Bean SampleController sampleController() { return new SampleController(); }
@@ -64,7 +74,14 @@ class ApiFoundationHttpTests {
         @GetMapping("/api/v1/catalog/__test/failure")
         void failure() { throw new IllegalStateException("PRIVATE_SQL_DETAIL"); }
 
+        @GetMapping("/api/v1/catalog/__test/pagination")
+        void pagination() { Pagination.of(0, 20); }
+
+        @GetMapping("/api/v1/catalog/__test/illegal-argument")
+        void illegalArgument() { throw new IllegalArgumentException("PRIVATE_SQL_DETAIL"); }
+
         @GetMapping("/api/v1/catalog/__test/missing")
         void missing() { throw new ResponseStatusException(HttpStatus.NOT_FOUND, "PRIVATE_SQL_DETAIL"); }
     }
 }
+

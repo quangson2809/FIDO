@@ -62,13 +62,7 @@ public class StaffService {
             Integer page,
             Integer pageSize
     ) {
-        Pagination pagination;
-
-        try {
-            pagination = Pagination.of(page, pageSize);
-        } catch (IllegalArgumentException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-        }
+        Pagination pagination = Pagination.of(page, pageSize);
 
         var result = accounts.findStaff(
                 q,
@@ -266,3 +260,4 @@ public class StaffService {
                 .orElseThrow();
     }
 }
+

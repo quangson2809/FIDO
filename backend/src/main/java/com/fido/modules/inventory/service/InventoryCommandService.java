@@ -44,7 +44,7 @@ public class InventoryCommandService {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
         for (StockLine line : lines) {
-            ensureInventoryRow(line.variantId());
+            initializeVariant(line.variantId());
 
             increment(
                     line.variantId(),
@@ -71,7 +71,7 @@ public class InventoryCommandService {
             String reason
     ) {
         requireVariantExists(variantId);
-        ensureInventoryRow(variantId);
+        initializeVariant(variantId);
 
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
@@ -249,7 +249,7 @@ public class InventoryCommandService {
         variants.requireExists(variantId);
     }
 
-    private void ensureInventoryRow(Long variantId) {
+    public void initializeVariant(Long variantId) {
         if (inventories.findById(variantId).isPresent()) {
             return;
         }
@@ -292,3 +292,4 @@ public class InventoryCommandService {
         }
     }
 }
+

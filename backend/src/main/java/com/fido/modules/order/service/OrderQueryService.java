@@ -59,7 +59,7 @@ public class OrderQueryService {
             OrderPolicy.requireOrderStatus(orderStatus);
         }
 
-        Pagination pagination = pagination(page, pageSize);
+        Pagination pagination = Pagination.of(page, pageSize);
 
         Specification<Order> specification =
                 OrderSpecifications.customerOrders(accountId, orderStatus);
@@ -117,7 +117,7 @@ public class OrderQueryService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         }
 
-        Pagination pagination = pagination(page, pageSize);
+        Pagination pagination = Pagination.of(page, pageSize);
 
         var result = orders.findAll(
                 OrderSpecifications.adminOrders(
@@ -259,15 +259,5 @@ public class OrderQueryService {
                         )
                 );
     }
-
-    private Pagination pagination(
-            Integer page,
-            Integer pageSize
-    ) {
-        try {
-            return Pagination.of(page, pageSize);
-        } catch (IllegalArgumentException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-        }
-    }
 }
+

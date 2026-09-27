@@ -1,5 +1,6 @@
 package com.fido.common.response;
 
+import com.fido.common.exception.InvalidPaginationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
@@ -16,9 +17,7 @@ public record Pagination(int page, int pageSize) {
         if (page < 1
                 || pageSize < 1
                 || pageSize > MAX_PAGE_SIZE) {
-            throw new IllegalArgumentException(
-                    "Invalid pagination bounds"
-            );
+            throw new InvalidPaginationException();
         }
     }
 
@@ -61,3 +60,4 @@ public record Pagination(int page, int pageSize) {
         );
     }
 }
+

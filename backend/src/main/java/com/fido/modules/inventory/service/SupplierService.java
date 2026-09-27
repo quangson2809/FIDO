@@ -52,7 +52,7 @@ public class SupplierService {
             InventoryPolicy.requireSupplierStatus(usageStatus);
         }
 
-        Pagination pagination = pagination(page, pageSize);
+        Pagination pagination = Pagination.of(page, pageSize);
 
         Specification<Supplier> specification =
                 supplierSpec(q, usageStatus);
@@ -214,15 +214,5 @@ public class SupplierService {
                         new ResponseStatusException(HttpStatus.NOT_FOUND)
                 );
     }
-
-    private Pagination pagination(
-            Integer page,
-            Integer pageSize
-    ) {
-        try {
-            return Pagination.of(page, pageSize);
-        } catch (IllegalArgumentException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-        }
-    }
 }
+

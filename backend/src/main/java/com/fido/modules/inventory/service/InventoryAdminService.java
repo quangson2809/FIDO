@@ -12,7 +12,6 @@ import com.fido.modules.inventory.repository.InventoryRepository;
 import com.fido.modules.inventory.repository.InventoryTransactionRepository;
 import jakarta.persistence.criteria.Predicate;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
@@ -59,7 +58,7 @@ public class InventoryAdminService {
             Integer page,
             Integer pageSize
     ) {
-        Pagination pagination = pagination(page, pageSize);
+        Pagination pagination = Pagination.of(page, pageSize);
 
         var result = inventories.search(
                 variantId,
@@ -127,7 +126,7 @@ public class InventoryAdminService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         }
 
-        Pagination pagination = pagination(page, pageSize);
+        Pagination pagination = Pagination.of(page, pageSize);
 
         var result = transactions.findAll(
                 transactionSpec(
@@ -229,12 +228,6 @@ public class InventoryAdminService {
         };
     }
 
-    private void validateVariant(Long variantId) {
-        if (inventories.countVariant(variantId) == 0) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-        }
-    }
-
     private String normalize(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -242,15 +235,5 @@ public class InventoryAdminService {
 
         return value.trim();
     }
-
-    private Pagination pagination(
-            Integer page,
-            Integer pageSize
-    ) {
-        try {
-            return Pagination.of(page, pageSize);
-        } catch (IllegalArgumentException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-        }
-    }
 }
+

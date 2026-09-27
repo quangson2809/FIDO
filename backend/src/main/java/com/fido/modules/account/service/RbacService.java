@@ -81,13 +81,7 @@ public class RbacService {
             Integer page,
             Integer pageSize
     ) {
-        Pagination pagination;
-
-        try {
-            pagination = Pagination.of(page, pageSize);
-        } catch (IllegalArgumentException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-        }
+        Pagination pagination = Pagination.of(page, pageSize);
 
         var result = permissions.findAllByOrderByPermissionIdAsc(
                 pagination.toPageable()
@@ -328,3 +322,4 @@ public class RbacService {
                 );
     }
 }
+

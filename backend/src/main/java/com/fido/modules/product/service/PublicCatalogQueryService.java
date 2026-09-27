@@ -81,7 +81,7 @@ public class PublicCatalogQueryService {
                 maxPrice
         );
 
-        Pagination pagination = pagination(
+        Pagination pagination = Pagination.of(
                 page,
                 pageSize
         );
@@ -247,20 +247,6 @@ public class PublicCatalogQueryService {
         }
     }
 
-    private Pagination pagination(
-            Integer page,
-            Integer pageSize
-    ) {
-        try {
-            return Pagination.of(
-                    page,
-                    pageSize
-            );
-        } catch (IllegalArgumentException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-        }
-    }
-
     private Map<Long, Category> categoryMap() {
         var result = new HashMap<Long, Category>();
 
@@ -315,3 +301,4 @@ public class PublicCatalogQueryService {
         return brand;
     }
 }
+

@@ -58,7 +58,7 @@ public class GoodsReceiptQueryService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         }
 
-        Pagination pagination = pagination(page, pageSize);
+        Pagination pagination = Pagination.of(page, pageSize);
 
         var result = receipts.findAll(
                 receiptSpec(
@@ -177,15 +177,5 @@ public class GoodsReceiptQueryService {
             );
         };
     }
-
-    private Pagination pagination(
-            Integer page,
-            Integer pageSize
-    ) {
-        try {
-            return Pagination.of(page, pageSize);
-        } catch (IllegalArgumentException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-        }
-    }
 }
+

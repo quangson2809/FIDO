@@ -65,7 +65,7 @@ public class AdminCatalogQueryService {
             CatalogPolicy.requireSaleStatus(saleStatus);
         }
 
-        Pagination pagination = pagination(
+        Pagination pagination = Pagination.of(
                 page,
                 pageSize
         );
@@ -232,18 +232,5 @@ public class AdminCatalogQueryService {
                 references.brand(brandId)
         );
     }
-
-    private Pagination pagination(
-            Integer page,
-            Integer pageSize
-    ) {
-        try {
-            return Pagination.of(
-                    page,
-                    pageSize
-            );
-        } catch (IllegalArgumentException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-        }
-    }
 }
+

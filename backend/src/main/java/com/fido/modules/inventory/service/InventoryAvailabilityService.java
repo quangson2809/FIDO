@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Cross-module contract for current sellable availability.
- * Phase 4 also owns initialization of the one-row-per-variant invariant.
  */
 @Service
 @Transactional(readOnly = true)
@@ -48,18 +47,5 @@ public class InventoryAvailabilityService {
                 );
 
         return result;
-    }
-
-    @Transactional
-    public void initializeVariant(Long variantId) {
-        if (inventories.findById(variantId).isPresent()) {
-            return;
-        }
-
-        Inventory inventory = new Inventory();
-        inventory.setVariantId(variantId);
-        inventory.setAvailableQuantity(0);
-
-        inventories.save(inventory);
     }
 }
