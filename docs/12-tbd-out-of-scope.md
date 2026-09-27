@@ -37,6 +37,17 @@ API #20 remains baseline, but request-token/dedupe behavior for retry/double-cli
 
 Logical Cart permits nullable account. Guest session key, TTL, persistence and login merge are not locked. Authenticated Cart may proceed.
 
+### Exchange-size automation — DEFERRED slice
+
+The baseline confirms in-store size exchange as a business scenario, but the implementation semantics remain unresolved:
+- target Variant selection/movement;
+- whether and when the old Variant returns to sellable stock;
+- price differences;
+- partial-line/partial-order exchange;
+- resulting OrderStatus/payment effects.
+
+API #26 accepts the operation name at the contract boundary, but the current implementation returns HTTP 501 for `EXCHANGE_SIZE` rather than inventing stock/payment/state behavior. The source-ready `RETURN` outcome remains implemented without automatic restock or automatic refund.
+
 ### Employee permission matrix — DEFERRED assignment policy
 
 The exact mapping of employee roles/groups to business capabilities is not locked. Do not auto-grant operation permissions to ADMIN or other employee roles.
