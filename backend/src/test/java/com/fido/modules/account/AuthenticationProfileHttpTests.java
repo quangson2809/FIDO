@@ -70,12 +70,12 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
 
         assertEquals(
                 200,
-                me.status
+                me.status()
         );
 
         assertEquals(
                 accountId,
-                me.data
+                me.data()
                         .get("data")
                         .get("account")
                         .get("account_id")
@@ -84,14 +84,14 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
 
         assertEquals(
                 0,
-                me.data
+                me.data()
                         .get("data")
                         .get("roles")
                         .size()
         );
 
         assertFalse(
-                me.body.contains("password")
+                me.body().contains("password")
         );
 
         assertEquals(
@@ -101,7 +101,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                         "/api/v1/me",
                         token,
                         Map.of("email", "person@example.test")
-                ).status
+                ).status()
         );
 
         assertEquals(
@@ -120,7 +120,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                         "/api/v1/me",
                         token,
                         Map.of()
-                ).status
+                ).status()
         );
 
         assertEquals(
@@ -133,7 +133,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "phone", phone(),
                                 "password", "x".repeat(73)
                         )
-                ).status
+                ).status()
         );
 
         assertEquals(
@@ -146,7 +146,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "phone", phone(),
                                 "password", " "
                         )
-                ).status
+                ).status()
         );
 
         assertEquals(
@@ -160,7 +160,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "password", PASSWORD,
                                 "role", "SUPERADMIN"
                         )
-                ).status
+                ).status()
         );
 
         assertEquals(
@@ -170,7 +170,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                         "/api/v1/me",
                         token,
                         Collections.singletonMap("phone", null)
-                ).status
+                ).status()
         );
 
         assertEquals(
@@ -183,7 +183,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "identifier", phone,
                                 "password", "wrong"
                         )
-                ).status
+                ).status()
         );
 
         assertEquals(
@@ -196,7 +196,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "identifier", phone(),
                                 "password", "wrong"
                         )
-                ).status
+                ).status()
         );
     }
 
@@ -215,7 +215,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "phone", phone,
                                 "password", PASSWORD
                         )
-                ).status
+                ).status()
         );
 
         String otherPhone = phone();
@@ -228,7 +228,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                         "/api/v1/me",
                         login(otherPhone),
                         Map.of("phone", phone)
-                ).status
+                ).status()
         );
 
         String concurrentPhone = phone();
@@ -270,9 +270,9 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
             );
 
             for (var result : results) {
-                if (result.status == 201) {
+                if (result.status() == 201) {
                     created.add(
-                            result.data
+                            result.data()
                                     .get("data")
                                     .get("account_id")
                                     .asLong()
@@ -306,7 +306,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                         "/api/v1/me",
                         null,
                         null
-                ).status
+                ).status()
         );
 
         assertEquals(
@@ -316,7 +316,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                         "/api/v1/me",
                         "not-a-jwt",
                         null
-                ).status
+                ).status()
         );
 
         String[] parts = token.split("\\.");
@@ -331,7 +331,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                         "/api/v1/me",
                         String.join(".", parts),
                         null
-                ).status
+                ).status()
         );
 
         for (String mode : List.of(
@@ -383,7 +383,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                             "/api/v1/me",
                             invalidToken,
                             null
-                    ).status,
+                    ).status(),
                     mode
             );
         }

@@ -59,10 +59,10 @@ class AddressHttpTests extends AccountHttpSupport {
 
         assertEquals(
                 201,
-                added.status
+                added.status()
         );
 
-        long addressId = added.data
+        long addressId = added.data()
                 .get("data")
                 .get("address_id")
                 .asLong();
@@ -76,7 +76,7 @@ class AddressHttpTests extends AccountHttpSupport {
                         path,
                         secondToken,
                         Map.of("address_text", "Other")
-                ).status
+                ).status()
         );
 
         assertEquals(
@@ -86,7 +86,7 @@ class AddressHttpTests extends AccountHttpSupport {
                         path,
                         secondToken,
                         null
-                ).status
+                ).status()
         );
 
         assertEquals(
@@ -99,7 +99,7 @@ class AddressHttpTests extends AccountHttpSupport {
                                 "address_text", "Test",
                                 "account_id", 999
                         )
-                ).status
+                ).status()
         );
 
         assertEquals(
@@ -109,7 +109,7 @@ class AddressHttpTests extends AccountHttpSupport {
                         path,
                         firstToken,
                         Map.of("address_text", "Updated")
-                ).status
+                ).status()
         );
 
         assertEquals(
@@ -119,7 +119,7 @@ class AddressHttpTests extends AccountHttpSupport {
                         path,
                         firstToken,
                         null
-                ).status
+                ).status()
         );
     }
 }

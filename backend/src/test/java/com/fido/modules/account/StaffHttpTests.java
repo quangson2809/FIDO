@@ -58,11 +58,11 @@ class StaffHttpTests extends AccountHttpSupport {
 
         assertEquals(
                 201,
-                added.status,
-                added.body
+                added.status(),
+                added.body()
         );
 
-        long accountId = added.data
+        long accountId = added.data()
                 .get("data")
                 .get("account")
                 .get("account_id")
@@ -77,7 +77,7 @@ class StaffHttpTests extends AccountHttpSupport {
 
         assertEquals(
                 "ADMIN",
-                added.data
+                added.data()
                         .get("data")
                         .get("roles")
                         .get(0)
@@ -92,7 +92,7 @@ class StaffHttpTests extends AccountHttpSupport {
                         "/api/v1/admin/staff-accounts/" + accountId,
                         token,
                         null
-                ).status
+                ).status()
         );
 
         var page = call(
@@ -107,12 +107,12 @@ class StaffHttpTests extends AccountHttpSupport {
 
         assertEquals(
                 200,
-                page.status
+                page.status()
         );
 
         assertEquals(
                 1,
-                page.data
+                page.data()
                         .get("meta")
                         .get("total")
                         .asInt()
@@ -120,7 +120,7 @@ class StaffHttpTests extends AccountHttpSupport {
 
         assertEquals(
                 20,
-                page.data
+                page.data()
                         .get("meta")
                         .get("page_size")
                         .asInt()
@@ -133,7 +133,7 @@ class StaffHttpTests extends AccountHttpSupport {
                         "/api/v1/admin/staff-accounts?page_size=101",
                         token,
                         null
-                ).status
+                ).status()
         );
 
         assertEquals(
@@ -143,7 +143,7 @@ class StaffHttpTests extends AccountHttpSupport {
                         "/api/v1/admin/roles/" + adminRoleId,
                         token,
                         null
-                ).status
+                ).status()
         );
 
         assertEquals(
@@ -156,7 +156,7 @@ class StaffHttpTests extends AccountHttpSupport {
                                 "email", "staff@example.test",
                                 "role_ids", List.of()
                         )
-                ).status
+                ).status()
         );
 
         assertEquals(
@@ -166,7 +166,7 @@ class StaffHttpTests extends AccountHttpSupport {
                         "/api/v1/admin/staff-accounts/" + accountId,
                         token,
                         null
-                ).status
+                ).status()
         );
 
         var me = call(
@@ -176,7 +176,7 @@ class StaffHttpTests extends AccountHttpSupport {
                 null
         );
 
-        long rootId = me.data
+        long rootId = me.data()
                 .get("data")
                 .get("account")
                 .get("account_id")
@@ -189,7 +189,7 @@ class StaffHttpTests extends AccountHttpSupport {
                         "/api/v1/admin/staff-accounts/" + rootId,
                         token,
                         Map.of("role_ids", List.of(adminRoleId))
-                ).status
+                ).status()
         );
     }
 }

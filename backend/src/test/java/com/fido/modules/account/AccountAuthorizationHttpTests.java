@@ -65,7 +65,7 @@ class AccountAuthorizationHttpTests extends AccountHttpSupport {
                             path,
                             null,
                             null
-                    ).status
+                    ).status()
             );
 
             assertEquals(
@@ -75,7 +75,7 @@ class AccountAuthorizationHttpTests extends AccountHttpSupport {
                             path,
                             token,
                             null
-                    ).status
+                    ).status()
             );
         }
 
@@ -91,7 +91,7 @@ class AccountAuthorizationHttpTests extends AccountHttpSupport {
                         "/api/v1/admin/access-control",
                         token,
                         null
-                ).status
+                ).status()
         );
 
         db.update(
@@ -114,7 +114,7 @@ class AccountAuthorizationHttpTests extends AccountHttpSupport {
                         "/api/v1/admin/access-control",
                         token,
                         null
-                ).status
+                ).status()
         );
     }
 }

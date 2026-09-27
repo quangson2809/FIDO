@@ -52,7 +52,7 @@ class RbacHttpTests extends AccountHttpSupport {
                         "/api/v1/admin/roles/not-an-id",
                         token,
                         Map.of("name", "Bad")
-                ).status
+                ).status()
         );
 
         assertEquals(
@@ -65,7 +65,7 @@ class RbacHttpTests extends AccountHttpSupport {
                                 "code", " ",
                                 "name", "Bad"
                         )
-                ).status
+                ).status()
         );
 
         var permissionResponse = call(
@@ -80,11 +80,11 @@ class RbacHttpTests extends AccountHttpSupport {
 
         assertEquals(
                 201,
-                permissionResponse.status,
-                permissionResponse.body
+                permissionResponse.status(),
+                permissionResponse.body()
         );
 
-        long permissionId = permissionResponse.data
+        long permissionId = permissionResponse.data()
                 .get("data")
                 .get("permission_id")
                 .asLong();
@@ -98,7 +98,7 @@ class RbacHttpTests extends AccountHttpSupport {
                         "/api/v1/admin/permissions/" + permissionId,
                         token,
                         Map.of("name", "Updated")
-                ).status
+                ).status()
         );
 
         var permissionPage = call(
@@ -110,12 +110,12 @@ class RbacHttpTests extends AccountHttpSupport {
 
         assertEquals(
                 200,
-                permissionPage.status
+                permissionPage.status()
         );
 
         assertEquals(
                 20,
-                permissionPage.data
+                permissionPage.data()
                         .get("meta")
                         .get("page_size")
                         .asInt()
@@ -128,7 +128,7 @@ class RbacHttpTests extends AccountHttpSupport {
                         "/api/v1/admin/permissions?page_size=101",
                         token,
                         null
-                ).status
+                ).status()
         );
 
         var roleResponse = call(
@@ -144,11 +144,11 @@ class RbacHttpTests extends AccountHttpSupport {
 
         assertEquals(
                 201,
-                roleResponse.status,
-                roleResponse.body
+                roleResponse.status(),
+                roleResponse.body()
         );
 
-        long roleId = roleResponse.data
+        long roleId = roleResponse.data()
                 .get("data")
                 .get("role_id")
                 .asLong();
@@ -162,7 +162,7 @@ class RbacHttpTests extends AccountHttpSupport {
                         "/api/v1/admin/permissions/" + permissionId,
                         token,
                         null
-                ).status
+                ).status()
         );
 
         assertEquals(
@@ -175,7 +175,7 @@ class RbacHttpTests extends AccountHttpSupport {
                                 "name", "Must rollback",
                                 "permission_ids", List.of(Long.MAX_VALUE)
                         )
-                ).status
+                ).status()
         );
 
         assertEquals(
@@ -207,7 +207,7 @@ class RbacHttpTests extends AccountHttpSupport {
                         "/api/v1/admin/roles/" + roleId,
                         token,
                         patch
-                ).status
+                ).status()
         );
 
         assertEquals(
@@ -226,7 +226,7 @@ class RbacHttpTests extends AccountHttpSupport {
                         "/api/v1/admin/permissions/" + permissionId,
                         token,
                         null
-                ).status
+                ).status()
         );
 
         permissionIds.remove(permissionId);
@@ -238,7 +238,7 @@ class RbacHttpTests extends AccountHttpSupport {
                         "/api/v1/admin/roles/" + roleId,
                         token,
                         null
-                ).status
+                ).status()
         );
 
         roleIds.remove(roleId);
