@@ -14,7 +14,7 @@ import com.fido.modules.product.dto.response.CategoryDto;
 import com.fido.modules.product.dto.response.ColorDto;
 import com.fido.modules.product.dto.response.SizeSystemDto;
 import com.fido.modules.product.service.CatalogMasterDataService;
-import com.fido.modules.product.service.CatalogQueryService;
+import com.fido.modules.product.service.CatalogMetaService;
 import com.fido.modules.product.service.SizeSystemAdminService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -34,16 +34,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/admin")
 public class AdminCatalogMasterController {
 
-    private final CatalogQueryService query;
+    private final CatalogMetaService metaService;
     private final CatalogMasterDataService masterData;
     private final SizeSystemAdminService sizeSystems;
 
     public AdminCatalogMasterController(
-            CatalogQueryService query,
+            CatalogMetaService metaService,
             CatalogMasterDataService masterData,
             SizeSystemAdminService sizeSystems
     ) {
-        this.query = query;
+        this.metaService = metaService;
         this.masterData = masterData;
         this.sizeSystems = sizeSystems;
     }
@@ -51,7 +51,7 @@ public class AdminCatalogMasterController {
     @GetMapping("/catalog/meta")
     public ApiResponse<CatalogMetaDto> meta() {
         return ApiResponse.of(
-                query.adminMeta()
+                metaService.meta()
         );
     }
 

@@ -33,7 +33,7 @@ public class SizeSystemAdminService {
     private final ProductRepository products;
     private final ProductVariantRepository variants;
     private final CatalogReferenceService references;
-    private final CatalogQueryService query;
+    private final CatalogMetaService metaService;
     private final AuditService audit;
     private final EntityManager em;
 
@@ -43,7 +43,7 @@ public class SizeSystemAdminService {
             ProductRepository products,
             ProductVariantRepository variants,
             CatalogReferenceService references,
-            CatalogQueryService query,
+            CatalogMetaService metaService,
             AuditService audit,
             EntityManager em
     ) {
@@ -52,7 +52,7 @@ public class SizeSystemAdminService {
         this.products = products;
         this.variants = variants;
         this.references = references;
-        this.query = query;
+        this.metaService = metaService;
         this.audit = audit;
         this.em = em;
     }
@@ -97,7 +97,7 @@ public class SizeSystemAdminService {
                 sizeSystem.getSizeSystemId()
         );
 
-        return query.sizeSystemDtoInternal(
+        return metaService.sizeSystemDto(
                 sizeSystem.getSizeSystemId()
         );
     }
@@ -136,7 +136,7 @@ public class SizeSystemAdminService {
                 sizeSystemId
         );
 
-        return query.sizeSystemDtoInternal(sizeSystemId);
+        return metaService.sizeSystemDto(sizeSystemId);
     }
 
     @PreAuthorize(WRITE)

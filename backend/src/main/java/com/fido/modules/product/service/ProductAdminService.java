@@ -39,7 +39,7 @@ public class ProductAdminService {
     private final ProductImageRepository images;
     private final InventoryAvailabilityService inventory;
     private final CatalogReferenceService references;
-    private final CatalogQueryService query;
+    private final AdminCatalogQueryService query;
     private final AuditService audit;
     private final EntityManager em;
 
@@ -49,7 +49,7 @@ public class ProductAdminService {
             ProductImageRepository images,
             InventoryAvailabilityService inventory,
             CatalogReferenceService references,
-            CatalogQueryService query,
+            AdminCatalogQueryService query,
             AuditService audit,
             EntityManager em
     ) {
@@ -127,7 +127,7 @@ public class ProductAdminService {
                 product.getProductId()
         );
 
-        return query.adminDetailInternal(
+        return query.detailInternal(
                 product.getProductId()
         );
     }
@@ -229,7 +229,7 @@ public class ProductAdminService {
                 productId
         );
 
-        return query.adminDetailInternal(productId);
+        return query.detailInternal(productId);
     }
 
     @PreAuthorize(WRITE)
@@ -265,7 +265,7 @@ public class ProductAdminService {
                 productId
         );
 
-        return query.adminVariantsInternal(productId);
+        return query.variantsInternal(productId);
     }
 
     @PreAuthorize(WRITE)
@@ -310,7 +310,7 @@ public class ProductAdminService {
                 variantId
         );
 
-        return query.adminVariantInternal(
+        return query.variantInternal(
                 productId,
                 variantId
         );

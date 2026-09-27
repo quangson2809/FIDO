@@ -5,7 +5,7 @@ import com.fido.common.response.ApiResponse;
 import com.fido.modules.product.dto.response.CatalogMetaDto;
 import com.fido.modules.product.dto.response.ProductDetailDto;
 import com.fido.modules.product.dto.response.ProductSummaryDto;
-import com.fido.modules.product.service.CatalogQueryService;
+import com.fido.modules.product.service.PublicCatalogQueryService;
 import java.math.BigDecimal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,9 +17,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/catalog")
 public class PublicCatalogController {
 
-    private final CatalogQueryService service;
+    private final PublicCatalogQueryService service;
 
-    public PublicCatalogController(CatalogQueryService service) {
+    public PublicCatalogController(PublicCatalogQueryService service) {
         this.service = service;
     }
 

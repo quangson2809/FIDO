@@ -9,7 +9,7 @@ import com.fido.modules.product.dto.request.VariantPatchRequest;
 import com.fido.modules.product.dto.response.AdminProductDetailDto;
 import com.fido.modules.product.dto.response.AdminProductSummaryDto;
 import com.fido.modules.product.dto.response.AdminVariantDto;
-import com.fido.modules.product.service.CatalogQueryService;
+import com.fido.modules.product.service.AdminCatalogQueryService;
 import com.fido.modules.product.service.ProductAdminService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -30,11 +30,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/admin")
 public class AdminProductController {
 
-    private final CatalogQueryService query;
+    private final AdminCatalogQueryService query;
     private final ProductAdminService products;
 
     public AdminProductController(
-            CatalogQueryService query,
+            AdminCatalogQueryService query,
             ProductAdminService products
     ) {
         this.query = query;
