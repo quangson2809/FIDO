@@ -239,6 +239,7 @@ public class CartService {
                             item.getVariantId(),
                             item.getQuantity(),
                             variant.productName(),
+                            variant.sku(),
                             variant.size(),
                             variant.color(),
                             variant.unitPrice(),

@@ -17,6 +17,7 @@ public record CheckoutCartView(
             Long variantId,
             Integer quantity,
             String productName,
+            String sku,
             String size,
             String color,
             BigDecimal unitPrice,
