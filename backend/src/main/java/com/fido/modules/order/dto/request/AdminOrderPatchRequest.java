@@ -34,15 +34,22 @@ public class AdminOrderPatchRequest {
     private boolean notePresent;
     private boolean shippingInfoPresent;
 
-    public String getRecipientPhone() { return recipientPhone; }
+    public String getRecipientPhone() {
+        return recipientPhone;
+    }
 
-    @JsonSetter(value = "recipient_phone", nulls = Nulls.FAIL)
+    @JsonSetter(
+            value = "recipient_phone",
+            nulls = Nulls.FAIL
+    )
     public void setRecipientPhone(String value) {
         recipientPhone = value;
         phonePresent = true;
     }
 
-    public String getRecipientEmail() { return recipientEmail; }
+    public String getRecipientEmail() {
+        return recipientEmail;
+    }
 
     @JsonSetter("recipient_email")
     public void setRecipientEmail(String value) {
@@ -50,15 +57,22 @@ public class AdminOrderPatchRequest {
         emailPresent = true;
     }
 
-    public String getRecipientAddress() { return recipientAddress; }
+    public String getRecipientAddress() {
+        return recipientAddress;
+    }
 
-    @JsonSetter(value = "recipient_address", nulls = Nulls.FAIL)
+    @JsonSetter(
+            value = "recipient_address",
+            nulls = Nulls.FAIL
+    )
     public void setRecipientAddress(String value) {
         recipientAddress = value;
         addressPresent = true;
     }
 
-    public String getCustomerServiceNote() { return customerServiceNote; }
+    public String getCustomerServiceNote() {
+        return customerServiceNote;
+    }
 
     @JsonSetter("customer_service_note")
     public void setCustomerServiceNote(String value) {
@@ -66,19 +80,43 @@ public class AdminOrderPatchRequest {
         notePresent = true;
     }
 
-    public ShippingInfoInput getShippingInfo() { return shippingInfo; }
+    public ShippingInfoInput getShippingInfo() {
+        return shippingInfo;
+    }
 
-    @JsonSetter(value = "shipping_info", nulls = Nulls.FAIL)
+    @JsonSetter(
+            value = "shipping_info",
+            nulls = Nulls.FAIL
+    )
     public void setShippingInfo(ShippingInfoInput value) {
         shippingInfo = value;
         shippingInfoPresent = true;
     }
 
-    @JsonIgnore public boolean isPhonePresent() { return phonePresent; }
-    @JsonIgnore public boolean isEmailPresent() { return emailPresent; }
-    @JsonIgnore public boolean isAddressPresent() { return addressPresent; }
-    @JsonIgnore public boolean isNotePresent() { return notePresent; }
-    @JsonIgnore public boolean isShippingInfoPresent() { return shippingInfoPresent; }
+    @JsonIgnore
+    public boolean isPhonePresent() {
+        return phonePresent;
+    }
+
+    @JsonIgnore
+    public boolean isEmailPresent() {
+        return emailPresent;
+    }
+
+    @JsonIgnore
+    public boolean isAddressPresent() {
+        return addressPresent;
+    }
+
+    @JsonIgnore
+    public boolean isNotePresent() {
+        return notePresent;
+    }
+
+    @JsonIgnore
+    public boolean isShippingInfoPresent() {
+        return shippingInfoPresent;
+    }
 
     public record ShippingInfoInput(
             @NotBlank @Size(max = 30) String delivery_mode,

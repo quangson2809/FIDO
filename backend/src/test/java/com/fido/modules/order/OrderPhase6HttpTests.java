@@ -723,6 +723,25 @@ class OrderPhase6HttpTests {
                 ).status()
         );
 
+        assertEquals(
+                403,
+                action(
+                        admin,
+                        orderId,
+                        "CONFIRM"
+                ).status()
+        );
+
+        assertEquals(
+                403,
+                call(
+                        "PATCH",
+                        "/api/v1/admin/orders/" + orderId,
+                        admin.token(),
+                        Map.of("customer_service_note", "Denied")
+                ).status()
+        );
+
         var adminDetail = call(
                 "GET",
                 "/api/v1/admin/orders/" + orderId,
