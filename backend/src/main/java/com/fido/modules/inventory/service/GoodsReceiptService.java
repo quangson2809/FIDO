@@ -234,6 +234,26 @@ public class GoodsReceiptService {
 
         validateStoredItems(receiptItems);
 
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+
+        int transitioned = receipts.confirmDraft(
+                receiptId,
+                actor,
+                now
+        );
+
+        if (transitioned == 0) {
+            GoodsReceipt after = receipt(receiptId);
+
+            if (InventoryPolicy.RECEIPT_CONFIRMED.equals(
+                    after.getReceiptStatus()
+            )) {
+                return detailInternal(after);
+            }
+
+            throw new ResponseStatusException(HttpStatus.CONFLICT);
+        }
+
         var stockLines = receiptItems.stream()
                 .map(item ->
                         new InventoryCommandService.StockLine(
