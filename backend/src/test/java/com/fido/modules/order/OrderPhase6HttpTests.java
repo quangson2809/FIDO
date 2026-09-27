@@ -11,6 +11,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -740,6 +744,35 @@ class OrderPhase6HttpTests {
                         .contains("CONFIRM")
         );
 
+        String orderCode = adminDetail.data()
+                .get("data")
+                .get("order_code")
+                .asText();
+
+        var adminList = call(
+                "GET",
+                "/api/v1/admin/orders"
+                        + "?order_code=" + orderCode
+                        + "&order_status=PENDING"
+                        + "&payment_status=UNPAID",
+                root.token(),
+                null
+        );
+
+        assertEquals(
+                200,
+                adminList.status(),
+                adminList.body()
+        );
+
+        assertEquals(
+                1,
+                adminList.data()
+                        .get("meta")
+                        .get("total")
+                        .asInt()
+        );
+
         assertEquals(
                 200,
                 call(
@@ -1362,4 +1395,86 @@ class OrderPhase6HttpTests {
                 ).status()
         );
     }
+
+    @Test
+    void concurrentConfirmDeductsStockExactlyOnce()
+            throws Exception {
+        User customer = user();
+        User root = superadmin();
+
+        CatalogFixture fixture = createVariant(
+                2,
+                100000,
+                null
+        );
+
+        long orderId = createOrder(
+                customer,
+                fixture,
+                1
+        );
+
+        var executor = Executors.newFixedThreadPool(2);
+
+        try {
+            var gate = new CountDownLatch(1);
+
+            Callable<Result> task = () -> {
+                gate.await();
+
+                return action(
+                        root,
+                        orderId,
+                        "CONFIRM"
+                );
+            };
+
+            var first = executor.submit(task);
+            var second = executor.submit(task);
+
+            gate.countDown();
+
+            var results = List.of(
+                    first.get(30, TimeUnit.SECONDS),
+                    second.get(30, TimeUnit.SECONDS)
+            );
+
+            assertEquals(
+                    List.of(200, 200),
+                    results.stream()
+                            .map(Result::status)
+                            .sorted()
+                            .toList()
+            );
+        } finally {
+            executor.shutdownNow();
+        }
+
+        assertEquals(
+                1,
+                stock(fixture.variantId())
+        );
+
+        assertEquals(
+                1,
+                movementCount(
+                        orderId,
+                        "ORDER_CONFIRM_OUT"
+                )
+        );
+
+        assertEquals(
+                "CONFIRMED",
+                db.queryForObject(
+                        """
+                        SELECT order_status
+                        FROM orders
+                        WHERE order_id=?
+                        """,
+                        String.class,
+                        orderId
+                )
+        );
+    }
+
 }
