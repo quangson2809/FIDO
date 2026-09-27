@@ -1015,8 +1015,11 @@ export const mockReportOverview: ReportOverviewDto = {
 };
 
 export const mockContentPages: ContentPageDto[] = [
-  { page_id: 901, page_code: 'RETURN_POLICY', title: 'Chính sách đổi trả', content: 'Nội dung chính sách đổi trả dùng cho môi trường mock.', updated_by_account_id: 2001, updated_at: '2026-09-26T19:00:00+07:00' },
-  { page_id: 902, page_code: 'SHIPPING_POLICY', title: 'Chính sách giao hàng', content: 'Nội dung chính sách giao hàng COD dùng cho môi trường mock.', updated_by_account_id: 2001, updated_at: '2026-09-26T19:05:00+07:00' },
+  { page_id: 901, page_code: 'RETURN_POLICY', title: 'Chính sách đổi / hoàn', content: 'Đổi size/hoàn trả xử lý tại cửa hàng trong 02 ngày từ COMPLETED theo điều kiện nhãn/mác.', updated_by_account_id: 2001, updated_at: '2026-09-26T19:00:00+07:00' },
+  { page_id: 902, page_code: 'SHIPPING_POLICY', title: 'Chính sách giao hàng', content: 'Giao nội bộ hoặc đơn vị vận chuyển ngoài được ghi nhận thủ công; baseline không tích hợp tracking API.', updated_by_account_id: 2001, updated_at: '2026-09-26T19:05:00+07:00' },
+  { page_id: 903, page_code: 'PRIVACY', title: 'Quyền riêng tư', content: 'Nội dung mock phục vụ FR-31; nội dung pháp lý chi tiết cần doanh nghiệp phê duyệt.', updated_by_account_id: 2001, updated_at: '2026-09-26T19:10:00+07:00' },
+  { page_id: 904, page_code: 'CONTACT', title: 'Liên hệ', content: 'Nội dung mock phục vụ trang liên hệ theo FR-31.', updated_by_account_id: 2001, updated_at: '2026-09-26T19:15:00+07:00' },
+  { page_id: 905, page_code: 'BUSINESS_INFO', title: 'Thông tin doanh nghiệp', content: 'Nội dung mock phục vụ công bố thông tin doanh nghiệp theo FR-31.', updated_by_account_id: 2001, updated_at: '2026-09-26T19:20:00+07:00' },
 ];
 
 export const mockCustomerSummaries: CustomerSummaryDto[] = mockAccounts
