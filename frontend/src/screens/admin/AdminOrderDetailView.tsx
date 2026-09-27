@@ -23,12 +23,50 @@ export const AdminOrderDetailView: React.FC<{
       PREPARE: 'PREPARING',
       SHIP: 'SHIPPING',
       DELIVERY_FAILED: 'DELIVERY_FAILED',
-      RETRY: 'SHIPPING',
+      RETRY_DELIVERY: 'SHIPPING',
       CANCEL: 'CANCELLED',
       COMPLETE: 'COMPLETED',
     };
+    if (action === 'COMPLETE' && order.payment.payment_status !== 'PAID') {
+      showToast('COMPLETE bị chặn: COD phải PAID trước.');
+      return;
+    }
     setOrder((prev)=>({...prev, order_status: nextStatus[action] ?? prev.order_status}));
     showToast(`Mock POST /api/v1/admin/orders/${order.order_id}/actions { action: "${action}" }`);
+  };
+
+  const runPaymentAction = (action: 'COLLECT_COD' | 'REFUND') => {
+    setOrder((prev) => {
+      if (action === 'COLLECT_COD') {
+        if (prev.payment.payment_status !== 'UNPAID') return prev;
+        return {
+          ...prev,
+          payment: {
+            ...prev.payment,
+            payment_status: 'PAID',
+            amount_received: prev.payment.amount_due,
+            collected_by_account_id: 2002,
+            collected_at: new Date().toISOString(),
+          },
+          allowed_actions:
+            prev.order_status === 'SHIPPING'
+              ? Array.from(new Set([...prev.allowed_actions, 'COMPLETE']))
+              : prev.allowed_actions,
+        };
+      }
+      if (prev.payment.payment_status !== 'PAID') return prev;
+      return {
+        ...prev,
+        payment: {
+          ...prev.payment,
+          payment_status: 'REFUNDED',
+          amount_refunded: prev.payment.amount_received,
+          refunded_by_account_id: 2002,
+          refunded_at: new Date().toISOString(),
+        },
+      };
+    });
+    showToast(`Mock POST /api/v1/admin/orders/${order.order_id}/payment-actions { action: "${action}" }`);
   };
 
   return (
@@ -41,9 +79,15 @@ export const AdminOrderDetailView: React.FC<{
           <p className="text-xs text-[#687069]">order_id #{order.order_id} · account {order.customer_account_id ? '#'+order.customer_account_id : 'guest'}</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {order.payment.payment_status === 'UNPAID' && (
+            <button onClick={()=>runPaymentAction('COLLECT_COD')} className="px-3 py-2 bg-[#E8C75B] text-[#071A12] text-xs font-bold rounded">COLLECT_COD</button>
+          )}
+          {order.order_status === 'RETURNED' && order.payment.payment_status === 'PAID' && (
+            <button onClick={()=>runPaymentAction('REFUND')} className="px-3 py-2 bg-[#E8C75B] text-[#071A12] text-xs font-bold rounded">REFUND</button>
+          )}
           {order.allowed_actions.length ? order.allowed_actions.map((action)=>(
             <button key={action} onClick={()=>runAction(action)} className="px-3 py-2 bg-[#0B2419] text-white text-xs font-bold rounded">{action}</button>
-          )) : <span className="px-3 py-2 bg-[#F5F6F2] text-xs font-bold rounded">Không có action mock</span>}
+          )) : <span className="px-3 py-2 bg-[#F5F6F2] text-xs font-bold rounded">Không có state action mock</span>}
         </div>
       </div>
 
