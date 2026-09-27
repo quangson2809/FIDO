@@ -81,7 +81,6 @@ export interface OrderItem {
   product?: Product;
   selectedColor?: string;
   selectedSize?: string | number;
-  customTailoringNote?: string;
 }
 
 export interface OrderRecipient {
@@ -91,7 +90,6 @@ export interface OrderRecipient {
   district?: string;
   city?: string;
   note?: string;
-  deliveryTimeWindow?: string;
 }
 
 export interface Order {
