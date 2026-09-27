@@ -14,9 +14,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -29,6 +26,7 @@ public class OrderActionService {
     private final OrderItemRepository items;
     private final PaymentRepository payments;
     private final InventoryCommandService inventoryCommands;
+    private final OrderActionPolicy actionPolicy;
     private final OrderQueryService query;
     private final AuditService audit;
 
@@ -37,6 +35,7 @@ public class OrderActionService {
             OrderItemRepository items,
             PaymentRepository payments,
             InventoryCommandService inventoryCommands,
+            OrderActionPolicy actionPolicy,
             OrderQueryService query,
             AuditService audit
     ) {
@@ -44,6 +43,7 @@ public class OrderActionService {
         this.items = items;
         this.payments = payments;
         this.inventoryCommands = inventoryCommands;
+        this.actionPolicy = actionPolicy;
         this.query = query;
         this.audit = audit;
     }
@@ -53,8 +53,7 @@ public class OrderActionService {
             Long orderId,
             OrderActionRequest request
     ) {
-        String capability = capability(request.action());
-        requireCapability(capability);
+        actionPolicy.requireCapabilityFor(request.action());
 
         if (List.of(
                 "CANCEL",
@@ -447,42 +446,6 @@ public class OrderActionService {
                         )
                 )
                 .toList();
-    }
-
-    private String capability(String action) {
-        return switch (action) {
-            case "CONFIRM", "PREPARE" ->
-                    OrderPolicy.ORDER_PROCESS;
-            case "SHIP", "RETRY_DELIVERY", "COMPLETE" ->
-                    OrderPolicy.ORDER_FULFILLMENT;
-            case "DELIVERY_FAILED", "CANCEL", "DELIVERY_RETURN_IN" ->
-                    OrderPolicy.ORDER_EXCEPTION;
-            default -> throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST
-            );
-        };
-    }
-
-    private void requireCapability(String permission) {
-        Authentication authentication =
-                SecurityContextHolder.getContext().getAuthentication();
-
-        boolean allowed = authentication != null
-                && authentication.getAuthorities()
-                        .stream()
-                        .anyMatch(authority ->
-                                "ROLE_SUPERADMIN".equals(
-                                        authority.getAuthority()
-                                )
-                                || ("PERMISSION_" + permission)
-                                        .equals(
-                                                authority.getAuthority()
-                                        )
-                        );
-
-        if (!allowed) {
-            throw new AccessDeniedException("Forbidden");
-        }
     }
 
     private Order locked(Long orderId) {

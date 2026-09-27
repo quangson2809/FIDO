@@ -2,7 +2,6 @@ package com.fido.modules.order.service;
 
 import com.fido.common.response.ApiListResponse;
 import com.fido.common.response.Pagination;
-import com.fido.modules.inventory.service.InventoryCommandService;
 import com.fido.modules.order.dto.response.OrderAdminDetailDto;
 import com.fido.modules.order.dto.response.OrderCustomerDetailDto;
 import com.fido.modules.order.dto.response.OrderSummaryDto;
@@ -23,8 +22,6 @@ import java.util.Objects;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -40,20 +37,20 @@ public class OrderQueryService {
     private final OrderItemRepository items;
     private final PaymentRepository payments;
     private final ShippingInfoRepository shipping;
-    private final InventoryCommandService inventoryCommands;
+    private final OrderActionPolicy actionPolicy;
 
     public OrderQueryService(
             OrderRepository orders,
             OrderItemRepository items,
             PaymentRepository payments,
             ShippingInfoRepository shipping,
-            InventoryCommandService inventoryCommands
+            OrderActionPolicy actionPolicy
     ) {
         this.orders = orders;
         this.items = items;
         this.payments = payments;
         this.shipping = shipping;
-        this.inventoryCommands = inventoryCommands;
+        this.actionPolicy = actionPolicy;
     }
 
     public ApiListResponse<OrderSummaryDto> customerOrders(
@@ -224,7 +221,7 @@ public class OrderQueryService {
                 order.getCustomerServiceNote(),
                 order.getCancelReason(),
                 OrderMapper.paymentAdmin(payment),
-                allowedActions(order, payment)
+                actionPolicy.allowedActions(order, payment)
         );
     }
 
@@ -233,124 +230,6 @@ public class OrderQueryService {
                 order,
                 payment(order.getOrderId())
         );
-    }
-
-    private List<String> allowedActions(
-            Order order,
-            Payment payment
-    ) {
-        var actions = new ArrayList<String>();
-
-        switch (order.getOrderStatus()) {
-            case OrderPolicy.PENDING -> {
-                addIfAllowed(
-                        actions,
-                        "CONFIRM",
-                        OrderPolicy.ORDER_PROCESS
-                );
-                addIfAllowed(
-                        actions,
-                        "CANCEL",
-                        OrderPolicy.ORDER_EXCEPTION
-                );
-            }
-            case OrderPolicy.CONFIRMED -> {
-                addIfAllowed(
-                        actions,
-                        "PREPARE",
-                        OrderPolicy.ORDER_PROCESS
-                );
-                addIfAllowed(
-                        actions,
-                        "CANCEL",
-                        OrderPolicy.ORDER_EXCEPTION
-                );
-            }
-            case OrderPolicy.PREPARING -> {
-                addIfAllowed(
-                        actions,
-                        "SHIP",
-                        OrderPolicy.ORDER_FULFILLMENT
-                );
-                addIfAllowed(
-                        actions,
-                        "CANCEL",
-                        OrderPolicy.ORDER_EXCEPTION
-                );
-            }
-            case OrderPolicy.SHIPPING -> {
-                addIfAllowed(
-                        actions,
-                        "DELIVERY_FAILED",
-                        OrderPolicy.ORDER_EXCEPTION
-                );
-
-                if (OrderPolicy.PAID.equals(payment.getPaymentStatus())) {
-                    addIfAllowed(
-                            actions,
-                            "COMPLETE",
-                            OrderPolicy.ORDER_FULFILLMENT
-                    );
-                }
-            }
-            case OrderPolicy.DELIVERY_FAILED -> {
-                boolean alreadyReturned =
-                        inventoryCommands
-                                .orderStockState(order.getOrderId())
-                                .deliveryReturned();
-
-                if (!alreadyReturned) {
-                    addIfAllowed(
-                            actions,
-                            "RETRY_DELIVERY",
-                            OrderPolicy.ORDER_FULFILLMENT
-                    );
-                    addIfAllowed(
-                            actions,
-                            "DELIVERY_RETURN_IN",
-                            OrderPolicy.ORDER_EXCEPTION
-                    );
-                }
-
-                addIfAllowed(
-                        actions,
-                        "CANCEL",
-                        OrderPolicy.ORDER_EXCEPTION
-                );
-            }
-            default -> {
-                // Terminal/baseline after-sales states expose no order-state command.
-            }
-        }
-
-        return actions;
-    }
-
-    private void addIfAllowed(
-            List<String> actions,
-            String action,
-            String permission
-    ) {
-        if (hasCapability(permission)) {
-            actions.add(action);
-        }
-    }
-
-    private boolean hasCapability(String permission) {
-        Authentication authentication =
-                SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null) {
-            return false;
-        }
-
-        return authentication.getAuthorities()
-                .stream()
-                .anyMatch(authority ->
-                        "ROLE_SUPERADMIN".equals(authority.getAuthority())
-                        || ("PERMISSION_" + permission)
-                                .equals(authority.getAuthority())
-                );
     }
 
     private Specification<Order> customerSpec(
