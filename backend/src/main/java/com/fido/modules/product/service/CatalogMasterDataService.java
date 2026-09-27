@@ -89,7 +89,7 @@ public class CatalogMasterDataService {
                 category.getCategoryId()
         );
 
-        return CatalogMapper.references.category(category);
+        return CatalogMapper.category(category);
     }
 
     @PreAuthorize(WRITE)
@@ -125,7 +125,7 @@ public class CatalogMasterDataService {
                 categoryId
         );
 
-        return CatalogMapper.references.category(category);
+        return CatalogMapper.category(category);
     }
 
     @PreAuthorize(WRITE)
@@ -171,7 +171,7 @@ public class CatalogMasterDataService {
                 brand.getBrandId()
         );
 
-        return CatalogMapper.references.brand(brand);
+        return CatalogMapper.brand(brand);
     }
 
     @PreAuthorize(WRITE)
@@ -193,7 +193,7 @@ public class CatalogMasterDataService {
                 brandId
         );
 
-        return CatalogMapper.references.brand(brand);
+        return CatalogMapper.brand(brand);
     }
 
     @PreAuthorize(WRITE)
@@ -237,7 +237,7 @@ public class CatalogMasterDataService {
                 color.getColorId()
         );
 
-        return CatalogMapper.references.color(color);
+        return CatalogMapper.color(color);
     }
 
     @PreAuthorize(WRITE)
@@ -277,7 +277,7 @@ public class CatalogMasterDataService {
                 colorId
         );
 
-        return CatalogMapper.references.color(color);
+        return CatalogMapper.color(color);
     }
 
     @PreAuthorize(WRITE)
