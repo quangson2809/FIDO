@@ -24,7 +24,6 @@ export const ADMIN_PATHS: Record<string, string> = {
   sizes: '/admin/catalog/sizes',
   colors: '/admin/catalog/colors',
   orders: '/admin/orders',
-  tailoring: '/admin/orders/tailoring',
   'order-detail': '/admin/orders/detail',
   'don-hang-detail': '/admin/orders/detail',
   inward: '/admin/goods-receipts',
@@ -110,7 +109,6 @@ export const resolveAdminRoute = (pathname: string): { menuKey: string; breadcru
   if (pathname === '/admin/catalog/brands') return { menuKey: 'brands', breadcrumb: 'Thương hiệu' };
   if (pathname === '/admin/catalog/sizes') return { menuKey: 'sizes', breadcrumb: 'Hệ size' };
   if (pathname === '/admin/catalog/colors') return { menuKey: 'colors', breadcrumb: 'Màu sắc' };
-  if (pathname === '/admin/orders/tailoring') return { menuKey: 'tailoring', breadcrumb: 'Điều phối cắt may' };
   if (pathname === '/admin/orders') return { menuKey: 'orders', breadcrumb: 'Quản lý Đơn hàng' };
   if (pathname.startsWith('/admin/orders/')) return { menuKey: 'order-detail', breadcrumb: 'Chi tiết đơn hàng' };
   if (pathname === '/admin/goods-receipts') return { menuKey: 'inward', breadcrumb: 'Phiếu nhập kho' };
