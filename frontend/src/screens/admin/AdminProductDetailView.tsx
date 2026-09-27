@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { mockCatalogMeta, mockProductDetails } from '../../mocks/apiData';
+import { mockCatalogMeta, mockAdminProductDetails } from '../../mocks/apiData';
 
 export const AdminProductDetailView: React.FC<{
   onNavigateTab: (tab: string, breadcrumb: string) => void;
@@ -9,7 +9,7 @@ export const AdminProductDetailView: React.FC<{
   const location = useLocation();
   const routeId = location.pathname.split('/').filter(Boolean).at(-1) ?? '';
   const existing = useMemo(
-    () => mockProductDetails.find((item) => String(item.product_id) === routeId),
+    () => mockAdminProductDetails.find((item) => String(item.product_id) === routeId),
     [routeId],
   );
   const isNew = routeId === 'new' || !existing;
@@ -58,8 +58,8 @@ export const AdminProductDetailView: React.FC<{
             {existing?.variants.map((variant)=>(
               <div key={variant.variant_id} className="p-3 bg-[#FAF9F5] rounded text-xs">
                 <div className="font-bold">{variant.sku ?? 'Không SKU'}</div>
-                <div className="text-[#687069]">{variant.size.display_name} · {variant.color.name}</div>
-                <div className="mt-1 flex justify-between"><span>{variant.effective_price.toLocaleString('vi-VN')}₫</span><span>Tồn {variant.available_quantity}</span></div>
+                <div className="text-[#687069]">size_value_id #{variant.size_value_id} · color_id #{variant.color_id}</div>
+                <div className="mt-1 flex justify-between"><span>{variant.override_price == null ? 'Dùng base_price' : variant.override_price.toLocaleString('vi-VN') + '₫'}</span><span>Tồn {variant.available_quantity}</span></div>
               </div>
             ))}
             {!existing && <p className="text-xs text-[#687069]">Variant được thêm sau khi tạo Product qua endpoint variants.</p>}
