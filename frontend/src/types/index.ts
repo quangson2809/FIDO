@@ -109,7 +109,7 @@ export interface Order {
   returnReason?: string;
   status: OrderStatus;
   statusLabel?: string;
-  paymentMethod: 'COD' | 'CARD' | 'VNPAY';
+  paymentMethod: 'COD';
   paymentStatus: 'UNPAID_COD' | 'COLLECTED_COD' | 'PAID' | 'REFUNDED';
   paymentStatusLabel: string;
   items: OrderItem[];
@@ -119,9 +119,7 @@ export interface Order {
   shippingFee: number;
   total: number;
   totalAmount?: number;
-  trackingNumber?: string;
   courier?: string;
-  estimatedDelivery?: string;
   recipient?: OrderRecipient;
 }
 
