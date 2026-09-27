@@ -294,17 +294,6 @@ public class OrderQueryService {
                 }
             }
             case OrderPolicy.DELIVERY_FAILED -> {
-                addIfAllowed(
-                        actions,
-                        "RETRY_DELIVERY",
-                        OrderPolicy.ORDER_FULFILLMENT
-                );
-                addIfAllowed(
-                        actions,
-                        "CANCEL",
-                        OrderPolicy.ORDER_EXCEPTION
-                );
-
                 boolean alreadyReturned =
                         inventoryTransactions
                                 .existsByOrderIdAndTransactionType(
@@ -315,10 +304,21 @@ public class OrderQueryService {
                 if (!alreadyReturned) {
                     addIfAllowed(
                             actions,
+                            "RETRY_DELIVERY",
+                            OrderPolicy.ORDER_FULFILLMENT
+                    );
+                    addIfAllowed(
+                            actions,
                             "DELIVERY_RETURN_IN",
                             OrderPolicy.ORDER_EXCEPTION
                     );
                 }
+
+                addIfAllowed(
+                        actions,
+                        "CANCEL",
+                        OrderPolicy.ORDER_EXCEPTION
+                );
             }
             default -> {
                 // Terminal/baseline after-sales states expose no order-state command.
