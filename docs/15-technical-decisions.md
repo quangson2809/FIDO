@@ -116,7 +116,7 @@ Administrative bootstrap credentials must remain external; never hardcode shared
 - Direct detail lookup does not invent redirect/tombstone behavior for a stopped Product; it returns the existing record with explicit Product/Variant `sale_status` and current `available_quantity`. Purchase flows must still enforce purchasability.
 - Catalog metadata returns the existing relational masters; gender/season/style values are derived from stored Product values.
 - Catalog writes are audited in the same service transaction.
-- Product/Variant creation does not create or mutate Inventory. A missing Inventory row is read as available quantity 0; Phase 4 owns stock mutation/upsert behavior.
+- Product/Variant creation does not perform a stock movement. When a new Variant is created, Catalog calls the Inventory module to initialize its required zero-quantity row; later stock changes remain owned by Inventory.
 
 
 ## Phase 4 technical decisions
@@ -246,6 +246,7 @@ The business meanings “internal delivery” and “external carrier entered ma
 
 ## Structural refactor follow-up — 2026-09-27
 
+- Inventory no longer calls back into Product for Variant validation. The Phase 4 one-row-per-Variant invariant makes the Inventory row the module-local tracked-Variant reference; Product remains responsible for creating that zero row through InventoryCommandService when a Variant is created. This removes the Product ↔ Inventory circular service dependency without changing stock semantics.
 - InventoryCommandService owns zero-row initialization as well as stock/ledger writes. ProductAdminService joins its existing transaction when initializing new variants; InventoryAvailabilityService only reads quantities. No stock movement or ledger entry is introduced for zero initialization.
 - Pagination raises a dedicated IllegalArgumentException subtype for invalid bounds. ApiExceptionHandler maps only that subtype to the existing HTTP 400 renderer; unrelated programming errors remain HTTP 500. Services call Pagination.of directly.
 - API routes, request/response DTOs, schema, order/payment states, capability assignments and stock semantics are unchanged.

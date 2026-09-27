@@ -45,7 +45,7 @@ order -----> product (snapshot/product/variant read)
 order -----> promotion (only locked voucher behavior)
 order -----> inventory (confirm/cancel/return stock commands)
 order -----> audit
-inventory -> product (variant existence/identity read)
+product ---> inventory (availability read and zero-row initialization for new variants)
 inventory -> audit
 account ---> audit (important RBAC changes)
 content ---> audit (important admin changes where required)
