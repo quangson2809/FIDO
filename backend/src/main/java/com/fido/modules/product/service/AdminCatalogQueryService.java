@@ -117,20 +117,12 @@ public class AdminCatalogQueryService {
         );
 
         var adminVariants = productVariants.stream()
-                .map(variant -> new AdminVariantDto(
-                        variant.getVariantId(),
-                        variant.getProductId(),
-                        variant.getSizeValueId(),
-                        variant.getColorId(),
-                        variant.getSku(),
-                        variant.getOverridePrice(),
-                        variant.getSaleStatus(),
+                .map(variant -> CatalogMapper.adminVariant(
+                        variant,
                         availabilityByVariantId.getOrDefault(
                                 variant.getVariantId(),
                                 0
-                        ),
-                        variant.getCreatedAt(),
-                        variant.getUpdatedAt()
+                        )
                 ))
                 .toList();
 
@@ -178,20 +170,12 @@ public class AdminCatalogQueryService {
         );
 
         return productVariants.stream()
-                .map(variant -> new AdminVariantDto(
-                        variant.getVariantId(),
-                        variant.getProductId(),
-                        variant.getSizeValueId(),
-                        variant.getColorId(),
-                        variant.getSku(),
-                        variant.getOverridePrice(),
-                        variant.getSaleStatus(),
+                .map(variant -> CatalogMapper.adminVariant(
+                        variant,
                         availabilityByVariantId.getOrDefault(
                                 variant.getVariantId(),
                                 0
-                        ),
-                        variant.getCreatedAt(),
-                        variant.getUpdatedAt()
+                        )
                 ))
                 .toList();
     }
@@ -209,17 +193,9 @@ public class AdminCatalogQueryService {
                         new ResponseStatusException(HttpStatus.NOT_FOUND)
                 );
 
-        return new AdminVariantDto(
-                variant.getVariantId(),
-                variant.getProductId(),
-                variant.getSizeValueId(),
-                variant.getColorId(),
-                variant.getSku(),
-                variant.getOverridePrice(),
-                variant.getSaleStatus(),
-                inventory.availableQuantity(variant.getVariantId()),
-                variant.getCreatedAt(),
-                variant.getUpdatedAt()
+        return CatalogMapper.adminVariant(
+                variant,
+                inventory.availableQuantity(variant.getVariantId())
         );
     }
 
