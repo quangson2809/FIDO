@@ -107,3 +107,8 @@ Do not invent numeric targets for:
 - product/SKU scale;
 - retention periods;
 - exact supported browser list.
+
+
+## 8. Phase 7 report blocker found during implementation
+
+API #71 / FR-30 / BRULE-13 is a HARD BLOCK only for report calculation: sales amount basis (including/excluding shipping), return adjustment value and period, date basis for status counts, and report timezone are not locked by the checked API/SRS/FRS/DB sources. See docs/15 for the exact decisions required. APIs #70 and #72–77 are independent and can ship with their tests. This is not a deferred optional report: Phase 7 stays PARTIAL until the Must report and its adjustment tests are implemented.

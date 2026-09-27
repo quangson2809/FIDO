@@ -157,3 +157,22 @@ Required: category, SizeSystem, name, base price, sale status. Optional fields f
 ## 6. Error contract warning
 
 Analyst Docs require understandable business errors with no technical leakage, but do not lock a specific JSON error envelope/status-code matrix. Implement centralized exception handling according to the existing repository contract; do not invent a public error schema and declare it baseline without an explicit decision.
+
+
+## 7. Phase 7 Appendix A details
+
+Transcribed field contracts from the current consolidated API (checked 2026-09-27):
+
+| API | DTO | Fields |
+|---|---|---|
+| #70 | AuditLogDto | audit_id, actor_account_id, action, target_type, target_id (string), description?, created_at |
+| #72 | PublicContentPageDto | page_code, title, content, updated_at |
+| #73–75 | ContentPageDto | page_id, page_code, title, content, updated_by_account_id, updated_at |
+| #76 | CustomerSummaryDto | account_id, phone?, email?, order_count, last_order_at? |
+| #77 | CustomerDetailDto | account: AccountDto, addresses: AddressDto[], orders: OrderSummaryDto[] |
+
+#70 filters: actor_account_id, action, target_type, target_id, from, to, page, page_size. #76 filters: q, page, page_size. Both return data plus PaginationMeta.
+
+#73 specifically returns the full small content-page list as `{data: ContentPageDto[]}` without paging parameters. #74 requires page_code/title/content. #75 accepts only optional title/content, neither nullable; page_code stays stable. Public content never includes the internal page ID or actor ID.
+
+#71's ReportOverviewDto remains source-defined but unimplemented pending the monetary/time rules in docs/15. Its fields are from, to, completed_sales, returned_adjustment, net_sales and orders_by_status; no guessed calculation is part of this contract.
