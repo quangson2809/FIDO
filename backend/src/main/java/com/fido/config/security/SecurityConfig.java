@@ -80,7 +80,14 @@ public class SecurityConfig {
                                 "/api/v1/me/**",
                                 "/api/v1/cart",
                                 "/api/v1/cart/**",
-                                "/api/v1/checkout/quote"
+                                "/api/v1/checkout/quote",
+                                "/api/v1/orders"
+                        )
+                        .authenticated()
+
+                        .requestMatchers(
+                                "/api/v1/admin/orders",
+                                "/api/v1/admin/orders/**"
                         )
                         .authenticated()
 
