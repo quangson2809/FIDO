@@ -58,8 +58,10 @@ class ContentPageApiTest extends OperationsHttpSupport {
         var created = call("POST", ADMIN, root.token(), Map.of("page_code", code, "title", "Original", "content", "Text"));
         assertEquals(201, created.status());
         long id = created.body().get("data").get("page_id").asLong();
+        com.fido.modules.audit.service.AuditService auditTarget =
+                org.springframework.test.util.AopTestUtils.getUltimateTargetObject(audit);
         org.mockito.Mockito.doThrow(new IllegalStateException("Audit unavailable"))
-                .when(audit).record(root.id(), "CONTENT_UPDATE", "CONTENT_PAGE", id);
+                .when(auditTarget).record(root.id(), "CONTENT_UPDATE", "CONTENT_PAGE", id);
         assertEquals(500, call("PATCH", ADMIN + "/" + id, root.token(), Map.of("title", "Must rollback")).status());
         assertEquals("Original", db.queryForObject("SELECT title FROM content_pages WHERE page_id=?", String.class, id));
         assertEquals(1, db.queryForObject("SELECT count(*) FROM audit_logs WHERE actor_account_id=? AND target_type='CONTENT_PAGE' AND target_id=?", Integer.class, root.id(), Long.toString(id)));
