@@ -14,6 +14,7 @@ import com.fido.modules.product.mapper.CatalogMapper;
 import com.fido.modules.product.repository.ProductImageRepository;
 import com.fido.modules.product.repository.ProductRepository;
 import com.fido.modules.product.repository.ProductVariantRepository;
+import java.util.List;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -107,24 +108,7 @@ public class AdminCatalogQueryService {
     AdminProductDetailDto detailInternal(Long productId) {
         Product product = references.product(productId);
 
-        var productVariants =
-                variants.findAllByProductIdOrderByVariantIdAsc(productId);
-
-        var availabilityByVariantId = inventory.availableQuantities(
-                productVariants.stream()
-                        .map(ProductVariant::getVariantId)
-                        .toList()
-        );
-
-        var adminVariants = productVariants.stream()
-                .map(variant -> CatalogMapper.adminVariant(
-                        variant,
-                        availabilityByVariantId.getOrDefault(
-                                variant.getVariantId(),
-                                0
-                        )
-                ))
-                .toList();
+        var adminVariants = readVariants(productId);
 
         var productImages = images
                 .findAllByProductIdOrderByImageIdAsc(productId)
@@ -157,9 +141,13 @@ public class AdminCatalogQueryService {
         );
     }
 
-    java.util.List<AdminVariantDto> variantsInternal(Long productId) {
+    List<AdminVariantDto> variantsInternal(Long productId) {
         references.product(productId);
 
+        return readVariants(productId);
+    }
+
+    private List<AdminVariantDto> readVariants(Long productId) {
         var productVariants =
                 variants.findAllByProductIdOrderByVariantIdAsc(productId);
 
