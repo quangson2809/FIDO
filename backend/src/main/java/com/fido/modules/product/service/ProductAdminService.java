@@ -63,6 +63,7 @@ public class ProductAdminService {
         this.em = em;
     }
 
+    @PreAuthorize(WRITE)
     public AdminProductDetailDto createProduct(
             Long actor,
             ProductCreateRequest request
@@ -131,6 +132,7 @@ public class ProductAdminService {
         );
     }
 
+    @PreAuthorize(WRITE)
     public AdminProductDetailDto updateProduct(
             Long actor,
             Long productId,
@@ -230,6 +232,7 @@ public class ProductAdminService {
         return query.adminDetailInternal(productId);
     }
 
+    @PreAuthorize(WRITE)
     public List<AdminVariantDto> createVariants(
             Long actor,
             Long productId,
@@ -265,6 +268,7 @@ public class ProductAdminService {
         return query.adminVariantsInternal(productId);
     }
 
+    @PreAuthorize(WRITE)
     public AdminVariantDto updateVariant(
             Long actor,
             Long productId,

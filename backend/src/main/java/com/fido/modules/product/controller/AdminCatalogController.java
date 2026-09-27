@@ -21,7 +21,9 @@ import com.fido.modules.product.dto.response.CatalogMetaDto;
 import com.fido.modules.product.dto.response.CategoryDto;
 import com.fido.modules.product.dto.response.ColorDto;
 import com.fido.modules.product.dto.response.SizeSystemDto;
-import com.fido.modules.product.service.CatalogAdminService;
+import com.fido.modules.product.service.CatalogMasterDataService;
+import com.fido.modules.product.service.ProductAdminService;
+import com.fido.modules.product.service.SizeSystemAdminService;
 import com.fido.modules.product.service.CatalogQueryService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -44,14 +46,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminCatalogController {
 
     private final CatalogQueryService query;
-    private final CatalogAdminService admin;
+    private final ProductAdminService products;
+    private final CatalogMasterDataService masterData;
+    private final SizeSystemAdminService sizeSystems;
 
     public AdminCatalogController(
             CatalogQueryService query,
-            CatalogAdminService admin
+            ProductAdminService products,
+            CatalogMasterDataService masterData,
+            SizeSystemAdminService sizeSystems
     ) {
         this.query = query;
-        this.admin = admin;
+        this.products = products;
+        this.masterData = masterData;
+        this.sizeSystems = sizeSystems;
     }
 
     @GetMapping("/products")
@@ -91,7 +99,7 @@ public class AdminCatalogController {
             @Valid @RequestBody ProductCreateRequest request
     ) {
         return ApiResponse.of(
-                admin.createProduct(
+                products.createProduct(
                         actor(jwt),
                         request
                 )
@@ -105,7 +113,7 @@ public class AdminCatalogController {
             @Valid @RequestBody ProductPatchRequest request
     ) {
         return ApiResponse.of(
-                admin.updateProduct(
+                products.updateProduct(
                         actor(jwt),
                         productId,
                         request
@@ -121,7 +129,7 @@ public class AdminCatalogController {
             @Valid @RequestBody VariantBatchCreateRequest request
     ) {
         return ApiResponse.of(
-                admin.createVariants(
+                products.createVariants(
                         actor(jwt),
                         productId,
                         request
@@ -137,7 +145,7 @@ public class AdminCatalogController {
             @Valid @RequestBody VariantPatchRequest request
     ) {
         return ApiResponse.of(
-                admin.updateVariant(
+                products.updateVariant(
                         actor(jwt),
                         productId,
                         variantId,
@@ -160,7 +168,7 @@ public class AdminCatalogController {
             @Valid @RequestBody CategoryCreateRequest request
     ) {
         return ApiResponse.of(
-                admin.createCategory(
+                masterData.createCategory(
                         actor(jwt),
                         request
                 )
@@ -174,7 +182,7 @@ public class AdminCatalogController {
             @Valid @RequestBody CategoryPatchRequest request
     ) {
         return ApiResponse.of(
-                admin.updateCategory(
+                masterData.updateCategory(
                         actor(jwt),
                         categoryId,
                         request
@@ -188,7 +196,7 @@ public class AdminCatalogController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long categoryId
     ) {
-        admin.deleteCategory(
+        masterData.deleteCategory(
                 actor(jwt),
                 categoryId
         );
@@ -201,7 +209,7 @@ public class AdminCatalogController {
             @Valid @RequestBody BrandRequest request
     ) {
         return ApiResponse.of(
-                admin.createBrand(
+                masterData.createBrand(
                         actor(jwt),
                         request
                 )
@@ -215,7 +223,7 @@ public class AdminCatalogController {
             @Valid @RequestBody BrandRequest request
     ) {
         return ApiResponse.of(
-                admin.updateBrand(
+                masterData.updateBrand(
                         actor(jwt),
                         brandId,
                         request
@@ -229,7 +237,7 @@ public class AdminCatalogController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long brandId
     ) {
-        admin.deleteBrand(
+        masterData.deleteBrand(
                 actor(jwt),
                 brandId
         );
@@ -242,7 +250,7 @@ public class AdminCatalogController {
             @Valid @RequestBody SizeSystemCreateRequest request
     ) {
         return ApiResponse.of(
-                admin.createSizeSystem(
+                sizeSystems.createSizeSystem(
                         actor(jwt),
                         request
                 )
@@ -256,7 +264,7 @@ public class AdminCatalogController {
             @Valid @RequestBody SizeSystemPatchRequest request
     ) {
         return ApiResponse.of(
-                admin.updateSizeSystem(
+                sizeSystems.updateSizeSystem(
                         actor(jwt),
                         sizeSystemId,
                         request
@@ -270,7 +278,7 @@ public class AdminCatalogController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long sizeSystemId
     ) {
-        admin.deleteSizeSystem(
+        sizeSystems.deleteSizeSystem(
                 actor(jwt),
                 sizeSystemId
         );
@@ -283,7 +291,7 @@ public class AdminCatalogController {
             @Valid @RequestBody ColorCreateRequest request
     ) {
         return ApiResponse.of(
-                admin.createColor(
+                masterData.createColor(
                         actor(jwt),
                         request
                 )
@@ -297,7 +305,7 @@ public class AdminCatalogController {
             @Valid @RequestBody ColorPatchRequest request
     ) {
         return ApiResponse.of(
-                admin.updateColor(
+                masterData.updateColor(
                         actor(jwt),
                         colorId,
                         request
@@ -311,7 +319,7 @@ public class AdminCatalogController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long colorId
     ) {
-        admin.deleteColor(
+        masterData.deleteColor(
                 actor(jwt),
                 colorId
         );

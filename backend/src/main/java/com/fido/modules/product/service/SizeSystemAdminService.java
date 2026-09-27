@@ -57,6 +57,7 @@ public class SizeSystemAdminService {
         this.em = em;
     }
 
+    @PreAuthorize(WRITE)
     public SizeSystemDto createSizeSystem(
             Long actor,
             SizeSystemCreateRequest request
@@ -101,6 +102,7 @@ public class SizeSystemAdminService {
         );
     }
 
+    @PreAuthorize(WRITE)
     public SizeSystemDto updateSizeSystem(
             Long actor,
             Long sizeSystemId,
@@ -137,6 +139,7 @@ public class SizeSystemAdminService {
         return query.sizeSystemDtoInternal(sizeSystemId);
     }
 
+    @PreAuthorize(WRITE)
     public void deleteSizeSystem(
             Long actor,
             Long sizeSystemId

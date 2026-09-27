@@ -63,6 +63,7 @@ public class CatalogMasterDataService {
         this.em = em;
     }
 
+    @PreAuthorize(WRITE)
     public CategoryDto createCategory(
             Long actor,
             CategoryCreateRequest request
@@ -91,6 +92,7 @@ public class CatalogMasterDataService {
         return CatalogMapper.references.category(category);
     }
 
+    @PreAuthorize(WRITE)
     public CategoryDto updateCategory(
             Long actor,
             Long categoryId,
@@ -126,6 +128,7 @@ public class CatalogMasterDataService {
         return CatalogMapper.references.category(category);
     }
 
+    @PreAuthorize(WRITE)
     public void deleteCategory(
             Long actor,
             Long categoryId
@@ -150,6 +153,7 @@ public class CatalogMasterDataService {
         );
     }
 
+    @PreAuthorize(WRITE)
     public BrandDto createBrand(
             Long actor,
             BrandRequest request
@@ -170,6 +174,7 @@ public class CatalogMasterDataService {
         return CatalogMapper.references.brand(brand);
     }
 
+    @PreAuthorize(WRITE)
     public BrandDto updateBrand(
             Long actor,
             Long brandId,
@@ -191,6 +196,7 @@ public class CatalogMasterDataService {
         return CatalogMapper.references.brand(brand);
     }
 
+    @PreAuthorize(WRITE)
     public void deleteBrand(
             Long actor,
             Long brandId
@@ -212,6 +218,7 @@ public class CatalogMasterDataService {
         );
     }
 
+    @PreAuthorize(WRITE)
     public ColorDto createColor(
             Long actor,
             ColorCreateRequest request
@@ -233,6 +240,7 @@ public class CatalogMasterDataService {
         return CatalogMapper.references.color(color);
     }
 
+    @PreAuthorize(WRITE)
     public ColorDto updateColor(
             Long actor,
             Long colorId,
@@ -272,6 +280,7 @@ public class CatalogMasterDataService {
         return CatalogMapper.references.color(color);
     }
 
+    @PreAuthorize(WRITE)
     public void deleteColor(
             Long actor,
             Long colorId
