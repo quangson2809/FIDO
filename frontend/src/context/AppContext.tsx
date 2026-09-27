@@ -26,10 +26,6 @@ interface AppContextType {
   addToCart: (product: any, size?: string | number, color?: string, quantity?: number) => void;
   removeFromCart: (itemId: string) => void;
   updateCartQuantity: (itemId: string, quantity: number) => void;
-  freeHemming: boolean;
-  setFreeHemming: (enabled: boolean) => void;
-  hemmingNote: string;
-  setHemmingNote: (note: string) => void;
   appliedVoucher: string;
   voucherDiscount: number;
   applyVoucher: (code: string) => boolean;
@@ -60,8 +56,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [isCartOpen, setIsCartOpenState] = useState<boolean>(false);
   const [cartItems, setCartItems] = useState<CartItem[]>(mockUiCartItems);
-  const [freeHemming, setFreeHemming] = useState<boolean>(true);
-  const [hemmingNote, setHemmingNote] = useState<string>('');
   const [appliedVoucher, setAppliedVoucher] = useState<string>('');
   const [voucherDiscount, setVoucherDiscount] = useState<number>(0);
   const [orders, setOrders] = useState<Order[]>(mockUiOrders);
