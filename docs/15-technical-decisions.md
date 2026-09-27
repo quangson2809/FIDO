@@ -195,3 +195,50 @@ If `voucher_code` is supplied before the voucher rules are approved, API #19 ret
 ### Shipping fee configuration
 
 BRULE-03 fixes the baseline normal shipping fee at 30,000 VND. The implementation exposes it as configuration `app.checkout.shipping-fee` with baseline default `30000.00`; it is server-derived and never accepted from the client.
+
+
+## Phase 6 technical decisions
+
+### Authenticated order creation while guest identity remains deferred
+
+API #20 is implemented for authenticated accounts only because guest session identity/verification is still source-TBD. No guest cookie, hidden fingerprint, phone-only lookup secret or merge rule is invented.
+
+The business transaction creates a PENDING Order, immutable OrderItem snapshots and one UNPAID Payment without deducting stock.
+
+### Create-order retry/double-submit guarantee remains blocked
+
+The baseline requires logical dedupe but does not approve an idempotency key, schema column, request token or client fingerprint. Phase 6 therefore does not claim retry/double-click dedupe for API #20.
+
+The endpoint is otherwise implemented and tested. No hidden uniqueness heuristic is used as a fake idempotency guarantee.
+
+### Voucher slice remains deferred
+
+Until voucher eligibility/calculation rules are approved, API #20 rejects a non-blank `voucher_code` with HTTP 501. Voucher-less orders snapshot `discount = 0` and `voucher_id = null`.
+
+### Order authorization capabilities
+
+Technical capability identifiers encode the already-required operation-level authorization without assigning them to employee roles:
+
+- `ORDER_READ` — admin order list/detail;
+- `ORDER_EDIT` — recipient/customer-service/shipping-info PATCH;
+- `ORDER_PROCESS` — CONFIRM and PREPARE;
+- `ORDER_FULFILLMENT` — SHIP, RETRY_DELIVERY and COMPLETE;
+- `ORDER_EXCEPTION` — DELIVERY_FAILED, CANCEL and DELIVERY_RETURN_IN;
+- `ORDER_PAYMENT` — COLLECT_COD and REFUND;
+- `ORDER_AFTER_SALES` — after-sales RETURN command.
+
+`SUPERADMIN` bypasses these capabilities. `ADMIN` receives none automatically. The employee role-to-capability assignment matrix remains business configuration/TBD.
+
+### Order code generation
+
+The source requires server-generated `order_code` but does not lock a human numbering format. Use opaque `ORD-<UUID>` inside the existing 40-character unique column. No accounting/date sequence semantics are inferred.
+
+### Shipping delivery mode
+
+The business meanings “internal delivery” and “external carrier entered manually” are fixed, but technical enum literals are explicitly TBD. Phase 6 therefore stores the supplied non-blank `delivery_mode` string within the existing column and does not invent a closed enum or tracking fields.
+
+### Baseline after-sales boundary
+
+`RETURN` is implemented as the staff command that records an accepted return outcome for a COMPLETED order: Order becomes RETURNED, `returned_at` and reason/note are recorded and audited. It does not automatically restock and does not automatically refund; refund remains the explicit API #25 command after an accepted return.
+
+`EXCHANGE_SIZE` remains deferred because the approved sources explicitly leave target-variant movement, old-variant restock eligibility, price difference, partial exchange and OrderStatus effects TBD. API #26 returns HTTP 501 for that operation rather than inventing movement/payment semantics.

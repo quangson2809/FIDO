@@ -16,4 +16,9 @@ public interface InventoryTransactionRepository
     Optional<InventoryTransaction> findById(Long id);
 
     InventoryTransaction save(InventoryTransaction entity);
+
+    boolean existsByOrderIdAndTransactionType(
+            Long orderId,
+            String transactionType
+    );
 }
