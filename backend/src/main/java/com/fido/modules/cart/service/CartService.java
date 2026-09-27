@@ -197,25 +197,18 @@ public class CartService {
     }
 
     private CartItemDto toItemDto(CartItem item) {
-        var variant = catalog.get(
-                item.getVariantId()
-        );
-
-        BigDecimal lineTotal = variant.unitPrice()
-                .multiply(
-                        BigDecimal.valueOf(item.getQuantity())
-                );
+        ResolvedCartItem resolved = resolve(item);
 
         return new CartItemDto(
                 item.getCartItemId(),
                 item.getVariantId(),
                 item.getQuantity(),
-                variant.productName(),
-                variant.size(),
-                variant.color(),
-                variant.unitPrice(),
-                lineTotal,
-                variant.availableQuantity()
+                resolved.variant().productName(),
+                resolved.variant().size(),
+                resolved.variant().color(),
+                resolved.variant().unitPrice(),
+                resolved.lineTotal(),
+                resolved.variant().availableQuantity()
         );
     }
 
@@ -225,15 +218,10 @@ public class CartService {
                         cart.getCartId()
                 )
                 .stream()
-                .map(item -> {
-                    var variant = catalog.get(
-                            item.getVariantId()
-                    );
-
-                    BigDecimal lineTotal = variant.unitPrice()
-                            .multiply(
-                                    BigDecimal.valueOf(item.getQuantity())
-                            );
+                .map(this::resolve)
+                .map(resolved -> {
+                    CartItem item = resolved.item();
+                    var variant = resolved.variant();
 
                     return new CheckoutCartView.Item(
                             item.getVariantId(),
@@ -243,7 +231,7 @@ public class CartService {
                             variant.size(),
                             variant.color(),
                             variant.unitPrice(),
-                            lineTotal,
+                            resolved.lineTotal(),
                             variant.availableQuantity(),
                             variant.purchasable()
                     );
@@ -264,6 +252,23 @@ public class CartService {
         );
     }
 
+    private ResolvedCartItem resolve(CartItem item) {
+        var variant = catalog.get(
+                item.getVariantId()
+        );
+
+        BigDecimal lineTotal = variant.unitPrice()
+                .multiply(
+                        BigDecimal.valueOf(item.getQuantity())
+                );
+
+        return new ResolvedCartItem(
+                item,
+                variant,
+                lineTotal
+        );
+    }
+
     private void touch(Cart cart) {
         cart.setUpdatedAt(
                 LocalDateTime.now(ZoneOffset.UTC)
@@ -271,4 +276,11 @@ public class CartService {
 
         carts.save(cart);
     }
+    private record ResolvedCartItem(
+            CartItem item,
+            CatalogVariantReadService.VariantView variant,
+            BigDecimal lineTotal
+    ) {
+    }
+
 }
