@@ -159,14 +159,14 @@ export interface AdminProductSummaryDto {
   updated_at: string;
 }
 
-export interface AdminProductDetailDto extends ProductDetailDto {
+export type AdminProductDetailDto = Omit<ProductDetailDto, 'variants'> & {
   category_id: number;
   brand_id: number | null;
   size_system_id: number;
   variants: AdminVariantDto[];
   created_at: string;
   updated_at: string;
-}
+};
 
 export interface CatalogMetaDto {
   categories: CategoryDto[];
