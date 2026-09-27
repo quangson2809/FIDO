@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { mockAdminProductDetails, mockAdminProductSummaries, mockCategories, mockBrands } from '../../mocks/apiData';
+import { mockAdminProductDetails, mockAdminProductSummaries } from '../../mocks/apiData';
 
 const money = (value: number) => value.toLocaleString('vi-VN') + '₫';
 
