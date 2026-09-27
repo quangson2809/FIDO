@@ -53,10 +53,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [selectedProductIdState, setSelectedProductIdState] = useState<string>('1');
-  const [selectedOrderIdState, setSelectedOrderIdState] = useState<string>('1');
-  const selectedProductIdRef = useRef('1');
-  const selectedOrderIdRef = useRef('1');
+  const [selectedProductIdState, setSelectedProductIdState] = useState<string>('101');
+  const [selectedOrderIdState, setSelectedOrderIdState] = useState<string>('ORD-20260926-001');
+  const selectedProductIdRef = useRef('101');
+  const selectedOrderIdRef = useRef('ORD-20260926-001');
 
   const [isCartOpen, setIsCartOpenState] = useState<boolean>(false);
   const [cartItems, setCartItems] = useState<CartItem[]>(mockUiCartItems);
