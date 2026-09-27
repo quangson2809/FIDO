@@ -18,10 +18,10 @@ Total: **28 tables**.
 
 ## 2. API ownership
 
-- `account`: API #1–10, #58–69, #76–77.
+- `account`: API #1–7, #58–69, #76–77.
 - `product`: API #11–13, #27–45.
 - `cart`: API #14–18.
-- `order`: API #19–26.
+- `order`: API #8–10, #19–26.
 - `inventory`: API #46–57.
 - `audit`: API #70.
 - `report`: API #71.
