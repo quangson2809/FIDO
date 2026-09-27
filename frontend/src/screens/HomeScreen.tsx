@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { catalogService } from '../features/catalog/api/service';
 import { toUiProduct } from '../mocks/uiData';
-import { mockBrands } from '../mocks/apiData';
+import { mockBrands, mockCategories } from '../mocks/apiData';
 
 export const HomeScreen: React.FC = () => {
   const { setCurrentScreen, setSelectedProductId, addToCart, wishlist, toggleWishlist } = useApp();
@@ -56,7 +56,7 @@ export const HomeScreen: React.FC = () => {
                 <div className="inline-flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-[#E8C75B]"></span>
                   <span className="text-[10px] tracking-[0.2em] text-[#0B2419] font-bold uppercase">
-                    BỘ SƯU TẬP MAY SẴN SẴN SÀNG GIAO NGAY • RTW 2025
+                    CATALOG MOCK • DATA CONTRACT v1.3
                   </span>
                 </div>
                 <h1 className="font-serif text-4xl sm:text-5xl lg:text-[56px] text-[#0B2419] tracking-tight font-normal leading-[1.08]">
@@ -64,7 +64,7 @@ export const HomeScreen: React.FC = () => {
                   <span className="italic font-normal text-[#123A29]">TỐI GIẢN.</span>
                 </h1>
                 <p className="text-[15px] sm:text-[16px] text-[#424844] max-w-md font-light leading-relaxed pt-2">
-                  Bộ sưu tập thời trang may sẵn cao cấp (Ready-to-Wear) hội tụ phom dáng may sẵn chuẩn mực, chất liệu thượng hạng và hàng có sẵn đủ size tại hệ thống showroom trên toàn quốc.
+                  Dữ liệu catalog mock dùng đúng Product, Category, Brand, SizeSystem, Color, Variant, giá hiệu lực và available_quantity để test toàn bộ luồng FE.
                 </p>
                 <div className="pt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                   <button
@@ -89,21 +89,21 @@ export const HomeScreen: React.FC = () => {
               {/* Metric Accent Footer */}
               <div className="pt-10 pb-2 grid grid-cols-3 gap-4 text-[#0B2419] border-t border-[#E8E9E3]/70">
                 <div>
-                  <span className="font-serif text-2xl font-bold block">ĐỦ SIZE</span>
+                  <span className="font-serif text-2xl font-bold block">VARIANT</span>
                   <span className="text-[10px] text-[#424844] font-semibold uppercase tracking-wider">
-                    S Đến XXL Có Sẵn
+                    Size + màu theo dữ liệu
                   </span>
                 </div>
                 <div>
-                  <span className="font-serif text-2xl font-bold block">2 GIỜ</span>
+                  <span className="font-serif text-2xl font-bold block">30.000₫</span>
                   <span className="text-[10px] text-[#424844] font-semibold uppercase tracking-wider">
-                    Giao Hỏa Tốc
+                    Phí giao mặc định
                   </span>
                 </div>
                 <div>
-                  <span className="font-serif text-2xl font-bold block">100%</span>
+                  <span className="font-serif text-2xl font-bold block">01 KHO</span>
                   <span className="text-[10px] text-[#424844] font-semibold uppercase tracking-wider">
-                    Có Sẵn Showroom
+                    Baseline tồn kho
                   </span>
                 </div>
               </div>
@@ -119,7 +119,7 @@ export const HomeScreen: React.FC = () => {
               <div className="absolute bottom-6 right-6 lg:bottom-10 lg:right-10 bg-[#071A12]/85 backdrop-blur-md text-[#FFFDF5] px-4 py-2.5 flex items-center gap-3 shadow-lg">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#E8C75B] animate-ping"></span>
                 <span className="text-[10px] uppercase font-bold tracking-widest">
-                  Hàng Có Sẵn Tại Hệ Thống Showroom • Sẵn Sàng Giao Ngay
+                  Khả dụng mua = sale_status + available_quantity
                 </span>
               </div>
             </div>
@@ -160,9 +160,9 @@ export const HomeScreen: React.FC = () => {
               <div className="flex items-start gap-4">
                 <span className="material-symbols-outlined text-[#0B2419] text-[28px] mt-0.5">storefront</span>
                 <div className="space-y-1">
-                  <h4 className="text-[16px] font-bold text-[#0B2419]">Hàng Có Sẵn Tại Showroom</h4>
+                  <h4 className="text-[16px] font-bold text-[#0B2419]">Một Kho Baseline</h4>
                   <p className="text-[13px] text-[#424844] leading-relaxed">
-                    Đầy đủ size số từ S đến XXL sẵn sàng thử trực tiếp tại showroom.
+                    Inventory mock theo variant và available_quantity; không giả định đa kho.
                   </p>
                 </div>
               </div>
@@ -202,57 +202,34 @@ export const HomeScreen: React.FC = () => {
               </div>
             </div>
 
-            {/* Cây Danh Mục Chi Tiết Dạng Chips Cha/Con */}
-            <div className="bg-[#FFFDF5] p-4 sm:p-5 border border-[#E8E9E3] space-y-3">
-              {/* Cây Áo */}
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider font-semibold text-[#0B2419] bg-[#edeee9] px-2.5 py-1">
-                  <span className="material-symbols-outlined text-[16px]">checkroom</span> Áo (Cha):
-                </span>
-                {[
-                  { name: 'Áo thun', count: 12 },
-                  { name: 'Áo sơ mi', count: 18 },
-                  { name: 'Áo polo', count: 9 },
-                  { name: 'Áo khoác & Blazer', count: 14 }
-                ].map((cat) => (
-                  <button
-                    key={cat.name}
-                    onClick={() => {
-                      setCurrentScreen('catalog');
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    className="px-3 py-1 bg-white hover:bg-[#0B2419] hover:text-white text-[12px] text-[#424844] transition-colors border border-[#E8E9E3]"
-                  >
-                    {cat.name} <span className="text-[10px] text-[#687069] ml-1">({cat.count})</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="w-full h-px bg-[#E8E9E3]/70"></div>
-
-              {/* Cây Quần */}
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider font-semibold text-[#0B2419] bg-[#edeee9] px-2.5 py-1">
-                  <span className="material-symbols-outlined text-[16px]">dry_cleaning</span> Quần (Cha):
-                </span>
-                {[
-                  { name: 'Quần jeans', count: 24 },
-                  { name: 'Quần tây âu', count: 16 },
-                  { name: 'Quần short', count: 10 },
-                  { name: 'Quần kaki / Chinos', count: 8 }
-                ].map((cat) => (
-                  <button
-                    key={cat.name}
-                    onClick={() => {
-                      setCurrentScreen('catalog');
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    className="px-3 py-1 bg-white hover:bg-[#0B2419] hover:text-white text-[12px] text-[#424844] transition-colors border border-[#E8E9E3]"
-                  >
-                    {cat.name} <span className="text-[10px] text-[#687069] ml-1">({cat.count})</span>
-                  </button>
-                ))}
-              </div>
+            {/* Category tree mock from CatalogMetaDto */}
+            <div className="bg-[#FFFDF5] p-4 sm:p-5 border border-[#E8E9E3] space-y-4">
+              {mockCategories.filter((category) => category.parent_category_id === null).map((root) => {
+                const children = mockCategories.filter((category) => category.parent_category_id === root.category_id);
+                return (
+                  <div key={root.category_id} className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider font-semibold text-[#0B2419] bg-[#edeee9] px-2.5 py-1">
+                      <span className="material-symbols-outlined text-[16px]">account_tree</span>
+                      {root.name}
+                    </span>
+                    {children.map((category) => {
+                      const count = products.filter((product) => product.category === category.name).length;
+                      return (
+                        <button
+                          key={category.category_id}
+                          onClick={() => {
+                            setCurrentScreen('catalog');
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className="px-3 py-1 bg-white hover:bg-[#0B2419] hover:text-white text-[12px] text-[#424844] transition-colors border border-[#E8E9E3]"
+                        >
+                          {category.name} <span className="text-[10px] text-[#687069] ml-1">({count})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Cards Danh Mục Trực Quan Sinh Động */}
@@ -260,7 +237,7 @@ export const HomeScreen: React.FC = () => {
               {/* Card 1: Quần Jean & Denim */}
               <div
                 onClick={() => {
-                  setSelectedProductId('prod-1');
+                  setSelectedProductId('101');
                   setCurrentScreen('product-detail');
                 }}
                 className="group relative aspect-[3/4] overflow-hidden flex flex-col justify-end p-6 bg-[#e7e9e3] cursor-pointer"
@@ -273,11 +250,11 @@ export const HomeScreen: React.FC = () => {
                 <div className="absolute inset-0 bg-gradient-to-t from-[#071A12]/90 via-[#071A12]/30 to-transparent"></div>
                 <div className="relative z-10 space-y-1 text-white">
                   <span className="text-[10px] tracking-widest uppercase text-[#E8C75B] block font-bold">
-                    24 MẪU THIẾT KẾ • QUẦN CHA
+                    1 SẢN PHẨM MOCK • CATEGORY 21
                   </span>
                   <h3 className="font-serif text-xl tracking-wide">QUẦN JEAN &amp; DENIM</h3>
                   <p className="text-[12px] text-[#e7e9e3] font-light line-clamp-1">
-                    Ống suông, Slim-fit, Dệt Selvedge Kurabo
+                    Quần Jeans Selvedge 14oz · Kurabo Okayama Denim
                   </p>
                   <span className="text-[11px] uppercase tracking-widest text-[#FFFDF5]/90 flex items-center gap-1 group-hover:translate-x-1 transition-transform pt-1 font-semibold">
                     Khám phá danh mục <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
@@ -288,7 +265,7 @@ export const HomeScreen: React.FC = () => {
               {/* Card 2: Áo Sơ Mi & Polo */}
               <div
                 onClick={() => {
-                  setSelectedProductId('prod-2');
+                  setSelectedProductId('103');
                   setCurrentScreen('product-detail');
                 }}
                 className="group relative aspect-[3/4] overflow-hidden flex flex-col justify-end p-6 bg-[#e7e9e3] cursor-pointer"
@@ -301,11 +278,11 @@ export const HomeScreen: React.FC = () => {
                 <div className="absolute inset-0 bg-gradient-to-t from-[#071A12]/90 via-[#071A12]/30 to-transparent"></div>
                 <div className="relative z-10 space-y-1 text-white">
                   <span className="text-[10px] tracking-widest uppercase text-[#E8C75B] block font-bold">
-                    27 MẪU THIẾT KẾ • ÁO CHA
+                    1 SẢN PHẨM MOCK • CATEGORY 11
                   </span>
                   <h3 className="font-serif text-xl tracking-wide">ÁO SƠ MI &amp; POLO</h3>
                   <p className="text-[12px] text-[#e7e9e3] font-light line-clamp-1">
-                    Linen tự nhiên, Cotton Albini, Cuban collar
+                    Áo Sơ Mi Linen · Albini Fabric
                   </p>
                   <span className="text-[11px] uppercase tracking-widest text-[#FFFDF5]/90 flex items-center gap-1 group-hover:translate-x-1 transition-transform pt-1 font-semibold">
                     Khám phá danh mục <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
@@ -316,7 +293,7 @@ export const HomeScreen: React.FC = () => {
               {/* Card 3: Áo Khoác & Blazer */}
               <div
                 onClick={() => {
-                  setSelectedProductId('prod-4');
+                  setSelectedProductId('105');
                   setCurrentScreen('product-detail');
                 }}
                 className="group relative aspect-[3/4] overflow-hidden flex flex-col justify-end p-6 bg-[#e7e9e3] cursor-pointer"
@@ -329,11 +306,11 @@ export const HomeScreen: React.FC = () => {
                 <div className="absolute inset-0 bg-gradient-to-t from-[#071A12]/90 via-[#071A12]/30 to-transparent"></div>
                 <div className="relative z-10 space-y-1 text-white">
                   <span className="text-[10px] tracking-widest uppercase text-[#E8C75B] block font-bold">
-                    14 MẪU THIẾT KẾ • ÁO CHA
+                    1 SẢN PHẨM MOCK • CATEGORY 13
                   </span>
                   <h3 className="font-serif text-xl tracking-wide">ÁO KHOÁC &amp; BLAZER</h3>
                   <p className="text-[12px] text-[#e7e9e3] font-light line-clamp-1">
-                    Tailored Jacket, Len Ý Loro Piana may sẵn
+                    Blazer linen cấu trúc nhẹ · dữ liệu mock
                   </p>
                   <span className="text-[11px] uppercase tracking-widest text-[#FFFDF5]/90 flex items-center gap-1 group-hover:translate-x-1 transition-transform pt-1 font-semibold">
                     Khám phá danh mục <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
@@ -344,7 +321,7 @@ export const HomeScreen: React.FC = () => {
               {/* Card 4: Quần Short & Kaki */}
               <div
                 onClick={() => {
-                  setSelectedProductId('prod-6');
+                  setSelectedProductId('102');
                   setCurrentScreen('product-detail');
                 }}
                 className="group relative aspect-[3/4] overflow-hidden flex flex-col justify-end p-6 bg-[#e7e9e3] cursor-pointer"
@@ -357,11 +334,11 @@ export const HomeScreen: React.FC = () => {
                 <div className="absolute inset-0 bg-gradient-to-t from-[#071A12]/90 via-[#071A12]/30 to-transparent"></div>
                 <div className="relative z-10 space-y-1 text-white">
                   <span className="text-[10px] tracking-widest uppercase text-[#E8C75B] block font-bold">
-                    18 MẪU THIẾT KẾ • QUẦN CHA
+                    1 SẢN PHẨM MOCK • CATEGORY 22
                   </span>
-                  <h3 className="font-serif text-xl tracking-wide">QUẦN SHORT &amp; TÂY ÂU</h3>
+                  <h3 className="font-serif text-xl tracking-wide">QUẦN TÂY &amp; KHAKI</h3>
                   <p className="text-[12px] text-[#e7e9e3] font-light line-clamp-1">
-                    Phom may đo phẳng phiu, co giãn nhẹ
+                    Quần Âu Gurkha Cạp Cao · dữ liệu mock
                   </p>
                   <span className="text-[11px] uppercase tracking-widest text-[#FFFDF5]/90 flex items-center gap-1 group-hover:translate-x-1 transition-transform pt-1 font-semibold">
                     Khám phá danh mục <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
@@ -383,7 +360,7 @@ export const HomeScreen: React.FC = () => {
                 </h3>
               </div>
               <span className="text-[11px] text-[#1B5038] tracking-widest uppercase font-bold">
-                ${mockBrands.length} THƯƠNG HIỆU TRONG MOCK
+                {mockBrands.length} THƯƠNG HIỆU TRONG MOCK
               </span>
             </div>
 
