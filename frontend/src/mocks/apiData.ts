@@ -147,6 +147,27 @@ export interface AdminVariantDto {
   updated_at: string;
 }
 
+export interface AdminProductSummaryDto {
+  product_id: number;
+  name: string;
+  category_id: number;
+  brand_id: number | null;
+  size_system_id: number;
+  base_price: number;
+  sale_status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminProductDetailDto extends ProductDetailDto {
+  category_id: number;
+  brand_id: number | null;
+  size_system_id: number;
+  variants: AdminVariantDto[];
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CatalogMetaDto {
   categories: CategoryDto[];
   brands: BrandDto[];
@@ -181,6 +202,7 @@ export interface CartDto {
 export interface VoucherDto {
   voucher_id: number;
   code: string;
+  value: number;
 }
 
 export interface CheckoutItemDto {
@@ -251,6 +273,19 @@ export interface OrderSummaryDto {
   created_at: string;
   completed_at: string | null;
   returned_at: string | null;
+}
+
+export interface OrderConfirmationDto {
+  order_id: number;
+  order_code: string;
+  order_status: 'PENDING';
+  payment: PaymentPublicDto;
+  subtotal: number;
+  discount: number;
+  shipping_fee: number;
+  total: number;
+  recipient: RecipientDto;
+  created_at: string;
 }
 
 export interface OrderCustomerDetailDto {
@@ -685,6 +720,43 @@ export const mockProductDetails: ProductDetailDto[] = [
   },
 ];
 
+export const mockAdminProductDetails: AdminProductDetailDto[] = mockProductDetails.map((product) => {
+  const created_at = '2026-08-01T09:00:00+07:00';
+  const updated_at = '2026-09-26T20:00:00+07:00';
+  return {
+    ...product,
+    category_id: product.category.category_id,
+    brand_id: product.brand?.brand_id ?? null,
+    size_system_id: product.size_system.size_system_id,
+    variants: product.variants.map((variant) => ({
+      variant_id: variant.variant_id,
+      product_id: product.product_id,
+      size_value_id: variant.size.size_value_id,
+      color_id: variant.color.color_id,
+      sku: variant.sku,
+      override_price: variant.effective_price === product.base_price ? null : variant.effective_price,
+      sale_status: variant.sale_status,
+      available_quantity: variant.available_quantity,
+      created_at,
+      updated_at,
+    })),
+    created_at,
+    updated_at,
+  };
+});
+
+export const mockAdminProductSummaries: AdminProductSummaryDto[] = mockAdminProductDetails.map((product) => ({
+  product_id: product.product_id,
+  name: product.name,
+  category_id: product.category_id,
+  brand_id: product.brand_id,
+  size_system_id: product.size_system_id,
+  base_price: product.base_price,
+  sale_status: product.sale_status,
+  created_at: product.created_at,
+  updated_at: product.updated_at,
+}));
+
 export const mockProductSummaries: ProductSummaryDto[] = mockProductDetails.map((product) => ({
   product_id: product.product_id,
   name: product.name,
@@ -735,8 +807,8 @@ export const mockCart: CartDto = {
 };
 
 export const mockVouchers: VoucherDto[] = [
-  { voucher_id: 801, code: 'FIDO100' },
-  { voucher_id: 802, code: 'WELCOME' },
+  { voucher_id: 801, code: 'FIDO100', value: 100000 },
+  { voucher_id: 802, code: 'WELCOME', value: 50000 },
 ];
 
 const orderItem = (order_item_id: number, variantId: number, quantity: number): OrderItemDto => {
@@ -766,11 +838,11 @@ const payment = (
   actor: number | null = null,
 ): PaymentAdminDto => ({
   payment_status: status,
-  amount_due: status === 'UNPAID' ? total : 0,
-  amount_received: status === 'PAID' ? total : 0,
+  amount_due: total,
+  amount_received: status === 'PAID' || status === 'REFUNDED' ? total : 0,
   amount_refunded: status === 'REFUNDED' ? total : 0,
-  collected_by_account_id: status === 'PAID' ? actor : null,
-  collected_at: status === 'PAID' ? '2026-09-25T15:10:00+07:00' : null,
+  collected_by_account_id: status === 'PAID' || status === 'REFUNDED' ? actor : null,
+  collected_at: status === 'PAID' || status === 'REFUNDED' ? '2026-09-25T15:10:00+07:00' : null,
   refunded_by_account_id: status === 'REFUNDED' ? actor : null,
   refunded_at: status === 'REFUNDED' ? '2026-09-26T14:20:00+07:00' : null,
 });
@@ -786,7 +858,7 @@ const makeOrder = (
 ): OrderAdminDetailDto => {
   const subtotal = items.reduce((sum, item) => sum + item.line_total, 0);
   const discount = 0;
-  const shipping_fee = 0;
+  const shipping_fee = 30000;
   const total = subtotal - discount + shipping_fee;
   return {
     order_id,
@@ -819,11 +891,17 @@ export const mockOrderDetails: OrderAdminDetailDto[] = [
   makeOrder(9001, 'ORD-20260926-001', 'PENDING', [orderItem(1, 10003, 1)], 'UNPAID', '2026-09-26T08:15:00+07:00', { allowed_actions: ['CONFIRM', 'CANCEL'] }),
   makeOrder(9002, 'ORD-20260926-002', 'CONFIRMED', [orderItem(2, 10102, 1)], 'UNPAID', '2026-09-26T09:20:00+07:00', { allowed_actions: ['PREPARE', 'CANCEL'] }),
   makeOrder(9003, 'ORD-20260926-003', 'PREPARING', [orderItem(3, 10202, 2)], 'UNPAID', '2026-09-26T10:45:00+07:00', { allowed_actions: ['SHIP', 'CANCEL'] }),
-  makeOrder(9004, 'ORD-20260925-014', 'SHIPPING', [orderItem(4, 10302, 1), orderItem(5, 10502, 1)], 'UNPAID', '2026-09-25T12:30:00+07:00', { allowed_actions: ['COMPLETE', 'DELIVERY_FAILED'] }),
-  makeOrder(9005, 'ORD-20260925-011', 'DELIVERY_FAILED', [orderItem(6, 10401, 1)], 'UNPAID', '2026-09-25T09:40:00+07:00', { customer_service_note: 'Liên hệ lại khách trước khi giao lại.', allowed_actions: ['RETRY', 'CANCEL'] }),
+  makeOrder(9004, 'ORD-20260925-014', 'SHIPPING', [orderItem(4, 10302, 1), orderItem(5, 10502, 1)], 'PAID', '2026-09-25T12:30:00+07:00', { allowed_actions: ['COMPLETE', 'DELIVERY_FAILED'] }),
+  makeOrder(9005, 'ORD-20260925-011', 'DELIVERY_FAILED', [orderItem(6, 10401, 1)], 'UNPAID', '2026-09-25T09:40:00+07:00', { customer_service_note: 'Liên hệ lại khách trước khi giao lại.', allowed_actions: ['RETRY_DELIVERY', 'CANCEL', 'DELIVERY_RETURN_IN'] }),
   makeOrder(9006, 'ORD-20260924-020', 'COMPLETED', [orderItem(7, 10002, 1), orderItem(8, 10203, 1)], 'PAID', '2026-09-24T11:00:00+07:00'),
   makeOrder(9007, 'ORD-20260923-018', 'RETURNED', [orderItem(9, 10103, 1)], 'REFUNDED', '2026-09-23T13:10:00+07:00', { customer_account_id: 1002, customer_service_note: 'Hoàn trả toàn đơn tại cửa hàng.' }),
   makeOrder(9008, 'ORD-20260922-010', 'CANCELLED', [orderItem(10, 10301, 1)], 'UNPAID', '2026-09-22T16:20:00+07:00', { customer_account_id: 1003 }),
+  makeOrder(9009, 'ORD-20260927-001', 'SHIPPING', [orderItem(11, 10501, 1)], 'UNPAID', '2026-09-27T09:15:00+07:00', {
+    customer_account_id: null,
+    recipient: { phone: '0934555666', email: null, address: '12 Lê Lợi, Quận 1, TP. Hồ Chí Minh' },
+    shipping_info: { delivery_mode: 'MANUAL_EXTERNAL', carrier_name: 'Đơn vị vận chuyển ngoài' },
+    allowed_actions: ['DELIVERY_FAILED'],
+  }),
 ];
 
 export const mockOrderSummaries: OrderSummaryDto[] = mockOrderDetails.map((order) => ({
@@ -903,9 +981,9 @@ export const mockInventoryRows: InventoryRowDto[] = variants.map(({ product, var
 export const mockInventoryTransactions: InventoryTransactionDto[] = [
   { txn_id: 6001, variant_id: 10003, quantity_delta: 20, transaction_type: 'GOODS_RECEIPT', order_id: null, goods_receipt_id: 401, actor_account_id: 2003, reason: 'Xác nhận phiếu nhập GR-20260926-001', created_at: '2026-09-26T09:30:00+07:00' },
   { txn_id: 6002, variant_id: 10004, quantity_delta: 20, transaction_type: 'GOODS_RECEIPT', order_id: null, goods_receipt_id: 401, actor_account_id: 2003, reason: 'Xác nhận phiếu nhập GR-20260926-001', created_at: '2026-09-26T09:30:00+07:00' },
-  { txn_id: 6003, variant_id: 10002, quantity_delta: -1, transaction_type: 'ORDER_CONFIRMED', order_id: 9006, goods_receipt_id: null, actor_account_id: 2002, reason: 'Xác nhận đơn ORD-20260924-020', created_at: '2026-09-24T11:10:00+07:00' },
+  { txn_id: 6003, variant_id: 10002, quantity_delta: -1, transaction_type: 'ORDER_CONFIRM_OUT', order_id: 9006, goods_receipt_id: null, actor_account_id: 2002, reason: 'Xác nhận đơn ORD-20260924-020', created_at: '2026-09-24T11:10:00+07:00' },
   { txn_id: 6004, variant_id: 10203, quantity_delta: -1, transaction_type: 'ORDER_CONFIRMED', order_id: 9006, goods_receipt_id: null, actor_account_id: 2002, reason: 'Xác nhận đơn ORD-20260924-020', created_at: '2026-09-24T11:10:00+07:00' },
-  { txn_id: 6005, variant_id: 10103, quantity_delta: 1, transaction_type: 'RETURN', order_id: 9007, goods_receipt_id: null, actor_account_id: 2002, reason: 'Hoàn tồn đơn trả lại', created_at: '2026-09-26T14:20:00+07:00' },
+  { txn_id: 6005, variant_id: 10103, quantity_delta: 1, transaction_type: 'CUSTOMER_RETURN_IN', order_id: 9007, goods_receipt_id: null, actor_account_id: 2002, reason: 'Hoàn tồn đơn trả lại', created_at: '2026-09-26T14:20:00+07:00' },
   { txn_id: 6006, variant_id: 10301, quantity_delta: 2, transaction_type: 'ADJUSTMENT_IN', order_id: null, goods_receipt_id: null, actor_account_id: 2003, reason: 'Kiểm kê điều chỉnh tăng', created_at: '2026-09-26T16:00:00+07:00' },
 ];
 
