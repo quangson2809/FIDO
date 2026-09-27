@@ -22,11 +22,29 @@ public class AuditService {
             String targetType,
             Long targetId
     ) {
+        record(
+                actor,
+                action,
+                targetType,
+                targetId,
+                null
+        );
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void record(
+            Long actor,
+            String action,
+            String targetType,
+            Long targetId,
+            String description
+    ) {
         AuditLog log = new AuditLog();
         log.setActorAccountId(actor);
         log.setAction(action);
         log.setTargetType(targetType);
         log.setTargetId(targetId.toString());
+        log.setDescription(description);
 
         logs.save(log);
     }

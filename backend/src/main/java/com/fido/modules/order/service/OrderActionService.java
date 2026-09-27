@@ -156,7 +156,12 @@ public class OrderActionService {
                 actor,
                 "ORDER_CONFIRM",
                 "ORDER",
-                order.getOrderId()
+                order.getOrderId(),
+                transitionDescription(
+                        OrderPolicy.PENDING,
+                        OrderPolicy.CONFIRMED,
+                        reason
+                )
         );
 
         return query.adminDetailInternal(order);
@@ -196,7 +201,12 @@ public class OrderActionService {
                 actor,
                 "ORDER_DELIVERY_FAILED",
                 "ORDER",
-                order.getOrderId()
+                order.getOrderId(),
+                transitionDescription(
+                        OrderPolicy.SHIPPING,
+                        OrderPolicy.DELIVERY_FAILED,
+                        reason
+                )
         );
 
         return query.adminDetailInternal(order);
@@ -236,7 +246,12 @@ public class OrderActionService {
                 actor,
                 "ORDER_RETRY_DELIVERY",
                 "ORDER",
-                order.getOrderId()
+                order.getOrderId(),
+                transitionDescription(
+                        OrderPolicy.DELIVERY_FAILED,
+                        OrderPolicy.SHIPPING,
+                        null
+                )
         );
 
         return query.adminDetailInternal(order);
@@ -283,7 +298,12 @@ public class OrderActionService {
                 actor,
                 "ORDER_COMPLETE",
                 "ORDER",
-                order.getOrderId()
+                order.getOrderId(),
+                transitionDescription(
+                        OrderPolicy.SHIPPING,
+                        OrderPolicy.COMPLETED,
+                        null
+                )
         );
 
         return query.adminDetailInternal(order);
@@ -357,6 +377,8 @@ public class OrderActionService {
             }
         }
 
+        String sourceStatus = order.getOrderStatus();
+
         order.setOrderStatus(OrderPolicy.CANCELLED);
         order.setCancelReason(
                 reason == null || reason.isBlank()
@@ -370,7 +392,12 @@ public class OrderActionService {
                 actor,
                 "ORDER_CANCEL",
                 "ORDER",
-                order.getOrderId()
+                order.getOrderId(),
+                transitionDescription(
+                        sourceStatus,
+                        OrderPolicy.CANCELLED,
+                        reason
+                )
         );
 
         return query.adminDetailInternal(order);
@@ -427,7 +454,11 @@ public class OrderActionService {
                 actor,
                 "ORDER_DELIVERY_RETURN_IN",
                 "ORDER",
-                order.getOrderId()
+                order.getOrderId(),
+                reason == null || reason.isBlank()
+                        ? "physical delivery return"
+                        : "physical delivery return; reason="
+                                + reason.trim()
         );
 
         return query.adminDetailInternal(order);
@@ -459,7 +490,12 @@ public class OrderActionService {
                 actor,
                 auditAction,
                 "ORDER",
-                order.getOrderId()
+                order.getOrderId(),
+                transitionDescription(
+                        expected,
+                        target,
+                        null
+                )
         );
 
         return query.adminDetailInternal(order);
@@ -544,6 +580,20 @@ public class OrderActionService {
                 .orElseThrow(() ->
                         new ResponseStatusException(HttpStatus.NOT_FOUND)
                 );
+    }
+
+    private String transitionDescription(
+            String from,
+            String to,
+            String reason
+    ) {
+        String description = from + " -> " + to;
+
+        if (reason == null || reason.isBlank()) {
+            return description;
+        }
+
+        return description + "; reason=" + reason.trim();
     }
 
     private String appendNote(

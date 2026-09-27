@@ -95,7 +95,9 @@ public class OrderPaymentService {
                 actor,
                 "ORDER_COD_COLLECT",
                 "ORDER",
-                order.getOrderId()
+                order.getOrderId(),
+                "UNPAID -> PAID; amount="
+                        + payment.getAmountReceived()
         );
 
         return OrderMapper.paymentAdmin(payment);
@@ -136,7 +138,9 @@ public class OrderPaymentService {
                 actor,
                 "ORDER_REFUND",
                 "ORDER",
-                order.getOrderId()
+                order.getOrderId(),
+                "PAID -> REFUNDED; amount="
+                        + payment.getAmountRefunded()
         );
 
         return OrderMapper.paymentAdmin(payment);

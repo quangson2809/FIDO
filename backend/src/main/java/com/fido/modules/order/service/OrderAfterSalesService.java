@@ -93,7 +93,9 @@ public class OrderAfterSalesService {
                 actor,
                 "ORDER_RETURN_ACCEPT",
                 "ORDER",
-                orderId
+                orderId,
+                "COMPLETED -> RETURNED; reason="
+                        + reason.trim()
         );
 
         return query.adminDetailInternal(order);
