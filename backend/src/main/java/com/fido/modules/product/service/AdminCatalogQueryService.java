@@ -51,6 +51,7 @@ public class AdminCatalogQueryService {
         this.metaService = metaService;
     }
 
+    @PreAuthorize(READ)
     public ApiListResponse<AdminProductSummaryDto> adminProducts(
             String q,
             Long categoryId,
@@ -93,10 +94,12 @@ public class AdminCatalogQueryService {
         );
     }
 
+    @PreAuthorize(READ)
     public AdminProductDetailDto adminDetail(Long productId) {
         return detailInternal(productId);
     }
 
+    @PreAuthorize(READ)
     public CatalogMetaDto adminMeta() {
         return metaService.meta();
     }
