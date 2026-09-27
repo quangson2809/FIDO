@@ -29,11 +29,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/admin/goods-receipts")
 public class GoodsReceiptController {
 
+    private final GoodsReceiptQueryService query;
     private final GoodsReceiptService service;
 
     public GoodsReceiptController(
+            GoodsReceiptQueryService query,
             GoodsReceiptService service
     ) {
+        this.query = query;
         this.service = service;
     }
 

@@ -90,7 +90,7 @@ public class GoodsReceiptQueryService {
         );
     }
 
-    private GoodsReceiptDetailDto detailInternal(
+    GoodsReceiptDetailDto detailInternal(
             GoodsReceipt receipt
     ) {
         var receiptItems = items
