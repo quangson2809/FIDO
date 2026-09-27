@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 
 export const CheckoutScreen: React.FC = () => {
-  const { cartItems, userProfile, createOrder, setCurrentScreen, setSelectedOrderId, showToast } = useApp();
+  const { cartItems, userProfile, appliedVoucher, applyVoucher, removeVoucher, createOrder, setCurrentScreen, setSelectedOrderId, showToast } = useApp();
   const [phone, setPhone] = useState(userProfile.phone);
   const [email, setEmail] = useState(userProfile.email);
   const [address, setAddress] = useState(userProfile.addresses[0]?.address ?? '');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [voucherCode, setVoucherCode] = useState('FIDO100');
+  const [voucherMessage, setVoucherMessage] = useState('');
 
   const subtotal = cartItems.reduce((sum,item)=>sum + item.price * item.quantity,0);
   const discount = 0;
@@ -41,6 +43,7 @@ export const CheckoutScreen: React.FC = () => {
       voucherDiscount: discount,
       shippingFee,
       total,
+      voucherCode: appliedVoucher || undefined,
     });
     setSelectedOrderId(order.id);
     setIsSubmitting(false);
@@ -72,6 +75,27 @@ export const CheckoutScreen: React.FC = () => {
               <label className="text-xs font-bold">Địa chỉ *</label>
               <textarea required rows={4} value={address} onChange={(e)=>setAddress(e.target.value)} className="w-full mt-1 px-3 py-2.5 border rounded"/>
             </div>
+            <div className="border-t pt-4">
+              <label className="text-xs font-bold">voucher_code</label>
+              <div className="mt-1 flex gap-2">
+                <input value={voucherCode} onChange={(e)=>setVoucherCode(e.target.value.toUpperCase())} className="flex-1 px-3 py-2 border rounded text-xs font-mono" placeholder="FIDO100" />
+                <button
+                  type="button"
+                  onClick={()=>{
+                    const ok = applyVoucher(voucherCode);
+                    setVoucherMessage(ok
+                      ? 'Voucher tồn tại trong fixture; rule giảm giá vẫn TBD nên discount mock = 0.'
+                      : 'Voucher không tồn tại trong fixture.');
+                  }}
+                  className="px-3 py-2 border rounded text-xs font-bold"
+                >
+                  Test quote
+                </button>
+                {appliedVoucher && <button type="button" onClick={()=>{removeVoucher();setVoucherMessage('');}} className="px-3 py-2 border rounded text-xs font-bold">Bỏ</button>}
+              </div>
+              {voucherMessage && <p className="text-[10px] text-[#687069] mt-2">{voucherMessage}</p>}
+            </div>
+
             <div className="text-[11px] text-[#687069] bg-[#FAF9F5] p-3 rounded">
               Client không gửi total/status cho API thật; các giá trị ở mock UI được tính để test hiển thị, backend phải revalidate và snapshot khi tạo đơn.
             </div>
@@ -91,6 +115,7 @@ export const CheckoutScreen: React.FC = () => {
             </div>
             <div className="p-5 border-t space-y-2 text-xs">
               <div className="flex justify-between"><span>Subtotal</span><strong>{subtotal.toLocaleString('vi-VN')}₫</strong></div>
+              <div className="flex justify-between"><span>Voucher</span><strong>{appliedVoucher || '—'}</strong></div>
               <div className="flex justify-between"><span>Discount mock</span><strong>{discount.toLocaleString('vi-VN')}₫</strong></div>
               <div className="flex justify-between"><span>Shipping mock</span><strong>{shippingFee.toLocaleString('vi-VN')}₫</strong></div>
               <div className="flex justify-between text-base border-t pt-3"><span>Total</span><strong>{total.toLocaleString('vi-VN')}₫</strong></div>
