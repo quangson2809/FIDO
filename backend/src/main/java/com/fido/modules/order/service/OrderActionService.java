@@ -302,19 +302,15 @@ public class OrderActionService {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
-        boolean stockWasDeducted =
-                !OrderPolicy.PENDING.equals(
+        boolean restoreBeforeShipment =
+                OrderPolicy.CONFIRMED.equals(
+                        order.getOrderStatus()
+                )
+                || OrderPolicy.PREPARING.equals(
                         order.getOrderStatus()
                 );
 
-        boolean stockAlreadyReturned =
-                inventoryTransactions
-                        .existsByOrderIdAndTransactionType(
-                                order.getOrderId(),
-                                OrderPolicy.DELIVERY_RETURN_IN
-                        );
-
-        if (stockWasDeducted && !stockAlreadyReturned) {
+        if (restoreBeforeShipment) {
             LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
             for (OrderItem item : orderItems(order.getOrderId())) {
@@ -365,9 +361,27 @@ public class OrderActionService {
             Order order,
             String reason
     ) {
-        if (!OrderPolicy.DELIVERY_FAILED.equals(
-                order.getOrderStatus()
-        )) {
+        boolean failedDelivery =
+                OrderPolicy.DELIVERY_FAILED.equals(
+                        order.getOrderStatus()
+                );
+
+        boolean cancelledAfterShipment =
+                OrderPolicy.CANCELLED.equals(
+                        order.getOrderStatus()
+                )
+                && inventoryTransactions
+                        .existsByOrderIdAndTransactionType(
+                                order.getOrderId(),
+                                OrderPolicy.ORDER_CONFIRM_OUT
+                        )
+                && !inventoryTransactions
+                        .existsByOrderIdAndTransactionType(
+                                order.getOrderId(),
+                                OrderPolicy.ORDER_CANCEL_IN
+                        );
+
+        if (!failedDelivery && !cancelledAfterShipment) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 

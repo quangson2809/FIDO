@@ -1311,6 +1311,26 @@ class OrderPhase6HttpTests {
 
         assertEquals(
                 200,
+                action(root, failedOrderId, "CANCEL").status()
+        );
+
+        // Cancelling a failed delivery does not imply the parcel is physically back.
+        assertEquals(
+                4,
+                stock(first.variantId())
+        );
+
+        assertEquals(
+                0,
+                movementCount(
+                        failedOrderId,
+                        "ORDER_CANCEL_IN"
+                )
+        );
+
+        // The later physical return is the event that restores sellable stock.
+        assertEquals(
+                200,
                 action(
                         root,
                         failedOrderId,
@@ -1352,24 +1372,6 @@ class OrderPhase6HttpTests {
                         failedOrderId,
                         "RETRY_DELIVERY"
                 ).status()
-        );
-
-        assertEquals(
-                200,
-                action(root, failedOrderId, "CANCEL").status()
-        );
-
-        assertEquals(
-                5,
-                stock(first.variantId())
-        );
-
-        assertEquals(
-                0,
-                movementCount(
-                        failedOrderId,
-                        "ORDER_CANCEL_IN"
-                )
         );
 
         long pendingCancelOrderId = createOrder(
