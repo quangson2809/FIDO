@@ -71,7 +71,7 @@ export const AdminScreen: React.FC = () => {
     if (activeMenu === 'brands') return <AdminCatalogMetaView initialTab="brands" showToast={showToast} />;
     if (activeMenu === 'sizes') return <AdminCatalogMetaView initialTab="sizes" showToast={showToast} />;
     if (activeMenu === 'colors') return <AdminCatalogMetaView initialTab="colors" showToast={showToast} />;
-    if (activeMenu === 'orders' || activeMenu === 'tailoring') return <AdminOrdersView showToast={showToast} />;
+    if (activeMenu === 'orders') return <AdminOrdersView showToast={showToast} />;
     if (activeMenu === 'order-detail') return <AdminOrderDetailView onNavigateTab={(key)=>go(key)} showToast={showToast} />;
     if (activeMenu === 'inward') return <AdminInwardView onNavigateTab={(key)=>go(key)} showToast={showToast} />;
     if (activeMenu === 'inventory' || activeMenu === 'history') return <AdminInventoryView showToast={showToast} />;
