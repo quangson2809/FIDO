@@ -2,7 +2,7 @@ package com.fido.modules.order.service;
 
 import com.fido.common.response.ApiListResponse;
 import com.fido.common.response.Pagination;
-import com.fido.modules.inventory.repository.InventoryTransactionRepository;
+import com.fido.modules.inventory.service.InventoryCommandService;
 import com.fido.modules.order.dto.response.OrderAdminDetailDto;
 import com.fido.modules.order.dto.response.OrderCustomerDetailDto;
 import com.fido.modules.order.dto.response.OrderSummaryDto;
@@ -40,20 +40,20 @@ public class OrderQueryService {
     private final OrderItemRepository items;
     private final PaymentRepository payments;
     private final ShippingInfoRepository shipping;
-    private final InventoryTransactionRepository inventoryTransactions;
+    private final InventoryCommandService inventoryCommands;
 
     public OrderQueryService(
             OrderRepository orders,
             OrderItemRepository items,
             PaymentRepository payments,
             ShippingInfoRepository shipping,
-            InventoryTransactionRepository inventoryTransactions
+            InventoryCommandService inventoryCommands
     ) {
         this.orders = orders;
         this.items = items;
         this.payments = payments;
         this.shipping = shipping;
-        this.inventoryTransactions = inventoryTransactions;
+        this.inventoryCommands = inventoryCommands;
     }
 
     public ApiListResponse<OrderSummaryDto> customerOrders(
@@ -295,11 +295,9 @@ public class OrderQueryService {
             }
             case OrderPolicy.DELIVERY_FAILED -> {
                 boolean alreadyReturned =
-                        inventoryTransactions
-                                .existsByOrderIdAndTransactionType(
-                                        order.getOrderId(),
-                                        OrderPolicy.DELIVERY_RETURN_IN
-                                );
+                        inventoryCommands
+                                .orderStockState(order.getOrderId())
+                                .deliveryReturned();
 
                 if (!alreadyReturned) {
                     addIfAllowed(

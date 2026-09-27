@@ -1,9 +1,7 @@
 package com.fido.modules.order.service;
 
 import com.fido.modules.audit.service.AuditService;
-import com.fido.modules.inventory.entity.InventoryTransaction;
-import com.fido.modules.inventory.repository.InventoryRepository;
-import com.fido.modules.inventory.repository.InventoryTransactionRepository;
+import com.fido.modules.inventory.service.InventoryCommandService;
 import com.fido.modules.order.dto.request.OrderActionRequest;
 import com.fido.modules.order.dto.response.OrderAdminDetailDto;
 import com.fido.modules.order.entity.Order;
@@ -13,7 +11,6 @@ import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
@@ -30,8 +27,7 @@ public class OrderActionService {
     private final OrderRepository orders;
     private final OrderItemRepository items;
     private final PaymentRepository payments;
-    private final InventoryRepository inventories;
-    private final InventoryTransactionRepository inventoryTransactions;
+    private final InventoryCommandService inventoryCommands;
     private final OrderQueryService query;
     private final AuditService audit;
 
@@ -39,16 +35,14 @@ public class OrderActionService {
             OrderRepository orders,
             OrderItemRepository items,
             PaymentRepository payments,
-            InventoryRepository inventories,
-            InventoryTransactionRepository inventoryTransactions,
+            InventoryCommandService inventoryCommands,
             OrderQueryService query,
             AuditService audit
     ) {
         this.orders = orders;
         this.items = items;
         this.payments = payments;
-        this.inventories = inventories;
-        this.inventoryTransactions = inventoryTransactions;
+        this.inventoryCommands = inventoryCommands;
         this.query = query;
         this.audit = audit;
     }
@@ -124,30 +118,12 @@ public class OrderActionService {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
-        List<OrderItem> orderItems = orderItems(order.getOrderId());
-
-        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-
-        for (OrderItem item : orderItems) {
-            int updated = inventories.adjustIfNonNegative(
-                    item.getVariantId(),
-                    -item.getQuantity(),
-                    now
-            );
-
-            if (updated != 1) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT);
-            }
-
-            recordInventory(
-                    actor,
-                    order.getOrderId(),
-                    item.getVariantId(),
-                    -item.getQuantity(),
-                    OrderPolicy.ORDER_CONFIRM_OUT,
-                    reason
-            );
-        }
+        inventoryCommands.deductConfirmedOrder(
+                actor,
+                order.getOrderId(),
+                stockLines(order.getOrderId()),
+                reason
+        );
 
         order.setOrderStatus(OrderPolicy.CONFIRMED);
         orders.save(order);
@@ -228,14 +204,12 @@ public class OrderActionService {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
-        boolean physicallyReturned =
-                inventoryTransactions
-                        .existsByOrderIdAndTransactionType(
-                                order.getOrderId(),
-                                OrderPolicy.DELIVERY_RETURN_IN
-                        );
+        var stockState =
+                inventoryCommands.orderStockState(
+                        order.getOrderId()
+                );
 
-        if (physicallyReturned) {
+        if (stockState.deliveryReturned()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
@@ -331,50 +305,18 @@ public class OrderActionService {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
-        boolean stockWasDeducted =
-                inventoryTransactions
-                        .existsByOrderIdAndTransactionType(
-                                order.getOrderId(),
-                                OrderPolicy.ORDER_CONFIRM_OUT
-                        );
-
-        boolean stockAlreadyReturned =
-                inventoryTransactions
-                        .existsByOrderIdAndTransactionType(
-                                order.getOrderId(),
-                                OrderPolicy.ORDER_CANCEL_IN
-                        )
-                || inventoryTransactions
-                        .existsByOrderIdAndTransactionType(
-                                order.getOrderId(),
-                                OrderPolicy.DELIVERY_RETURN_IN
-                        );
-
-        if (stockWasDeducted && !stockAlreadyReturned) {
-            LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-
-            for (OrderItem item : orderItems(order.getOrderId())) {
-                int updated = inventories.increment(
-                        item.getVariantId(),
-                        item.getQuantity(),
-                        now
+        var stockState =
+                inventoryCommands.orderStockState(
+                        order.getOrderId()
                 );
 
-                if (updated != 1) {
-                    throw new IllegalStateException(
-                            "Inventory row missing during cancellation"
-                    );
-                }
-
-                recordInventory(
-                        actor,
-                        order.getOrderId(),
-                        item.getVariantId(),
-                        item.getQuantity(),
-                        OrderPolicy.ORDER_CANCEL_IN,
-                        reason
-                );
-            }
+        if (stockState.deducted() && !stockState.restored()) {
+            inventoryCommands.restoreCancelledOrder(
+                    actor,
+                    order.getOrderId(),
+                    stockLines(order.getOrderId()),
+                    reason
+            );
         }
 
         String sourceStatus = order.getOrderStatus();
@@ -414,41 +356,21 @@ public class OrderActionService {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
-        boolean alreadyReturned =
-                inventoryTransactions
-                        .existsByOrderIdAndTransactionType(
-                                order.getOrderId(),
-                                OrderPolicy.DELIVERY_RETURN_IN
-                        );
+        var stockState =
+                inventoryCommands.orderStockState(
+                        order.getOrderId()
+                );
 
-        if (alreadyReturned) {
+        if (stockState.deliveryReturned()) {
             return query.adminDetailInternal(order);
         }
 
-        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-
-        for (OrderItem item : orderItems(order.getOrderId())) {
-            int updated = inventories.increment(
-                    item.getVariantId(),
-                    item.getQuantity(),
-                    now
-            );
-
-            if (updated != 1) {
-                throw new IllegalStateException(
-                        "Inventory row missing during delivery return"
-                );
-            }
-
-            recordInventory(
-                    actor,
-                    order.getOrderId(),
-                    item.getVariantId(),
-                    item.getQuantity(),
-                    OrderPolicy.DELIVERY_RETURN_IN,
-                    reason
-            );
-        }
+        inventoryCommands.restoreDeliveryReturn(
+                actor,
+                order.getOrderId(),
+                stockLines(order.getOrderId()),
+                reason
+        );
 
         audit.record(
                 actor,
@@ -514,29 +436,16 @@ public class OrderActionService {
         return orderItems;
     }
 
-    private void recordInventory(
-            Long actor,
-            Long orderId,
-            Long variantId,
-            int quantityDelta,
-            String type,
-            String reason
-    ) {
-        InventoryTransaction transaction =
-                new InventoryTransaction();
-
-        transaction.setVariantId(variantId);
-        transaction.setQuantityDelta(quantityDelta);
-        transaction.setTransactionType(type);
-        transaction.setOrderId(orderId);
-        transaction.setActorAccountId(actor);
-        transaction.setReason(
-                reason == null || reason.isBlank()
-                        ? null
-                        : reason.trim()
-        );
-
-        inventoryTransactions.save(transaction);
+    private List<InventoryCommandService.StockLine> stockLines(Long orderId) {
+        return orderItems(orderId)
+                .stream()
+                .map(item ->
+                        new InventoryCommandService.StockLine(
+                                item.getVariantId(),
+                                item.getQuantity()
+                        )
+                )
+                .toList();
     }
 
     private String capability(String action) {

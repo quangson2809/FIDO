@@ -10,18 +10,14 @@ import com.fido.modules.inventory.dto.response.GoodsReceiptDetailDto;
 import com.fido.modules.inventory.dto.response.GoodsReceiptSummaryDto;
 import com.fido.modules.inventory.entity.GoodsReceipt;
 import com.fido.modules.inventory.entity.GoodsReceiptItem;
-import com.fido.modules.inventory.entity.Inventory;
-import com.fido.modules.inventory.entity.InventoryTransaction;
 import com.fido.modules.inventory.mapper.InventoryMapper;
 import com.fido.modules.inventory.repository.GoodsReceiptItemRepository;
 import com.fido.modules.inventory.repository.GoodsReceiptRepository;
 import com.fido.modules.inventory.repository.InventoryRepository;
-import com.fido.modules.inventory.repository.InventoryTransactionRepository;
 import com.fido.modules.inventory.repository.SupplierRepository;
 import jakarta.persistence.criteria.Predicate;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -48,7 +44,7 @@ public class GoodsReceiptService {
     private final GoodsReceiptItemRepository items;
     private final SupplierRepository suppliers;
     private final InventoryRepository inventories;
-    private final InventoryTransactionRepository transactions;
+    private final InventoryCommandService inventoryCommands;
     private final AuditService audit;
 
     public GoodsReceiptService(
@@ -56,14 +52,14 @@ public class GoodsReceiptService {
             GoodsReceiptItemRepository items,
             SupplierRepository suppliers,
             InventoryRepository inventories,
-            InventoryTransactionRepository transactions,
+            InventoryCommandService inventoryCommands,
             AuditService audit
     ) {
         this.receipts = receipts;
         this.items = items;
         this.suppliers = suppliers;
         this.inventories = inventories;
-        this.transactions = transactions;
+        this.inventoryCommands = inventoryCommands;
         this.audit = audit;
     }
 
@@ -237,52 +233,20 @@ public class GoodsReceiptService {
 
         validateStoredItems(receiptItems);
 
-        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        var stockLines = receiptItems.stream()
+                .map(item ->
+                        new InventoryCommandService.StockLine(
+                                item.getVariantId(),
+                                item.getQuantity()
+                        )
+                )
+                .toList();
 
-        int transitioned = receipts.confirmDraft(
-                receiptId,
+        inventoryCommands.receiveGoods(
                 actor,
-                now
+                receiptId,
+                stockLines
         );
-
-        if (transitioned == 0) {
-            GoodsReceipt after = receipt(receiptId);
-
-            if (InventoryPolicy.RECEIPT_CONFIRMED.equals(
-                    after.getReceiptStatus()
-            )) {
-                return detailInternal(after);
-            }
-
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
-        }
-
-        for (GoodsReceiptItem item : receiptItems) {
-            ensureInventoryRow(item.getVariantId());
-
-            int updated = inventories.increment(
-                    item.getVariantId(),
-                    item.getQuantity(),
-                    now
-            );
-
-            if (updated != 1) {
-                throw new IllegalStateException(
-                        "Inventory row missing during receipt confirmation"
-                );
-            }
-
-            InventoryTransaction transaction =
-                    new InventoryTransaction();
-
-            transaction.setVariantId(item.getVariantId());
-            transaction.setQuantityDelta(item.getQuantity());
-            transaction.setTransactionType(InventoryPolicy.RECEIPT_IN);
-            transaction.setGoodsReceiptId(receiptId);
-            transaction.setActorAccountId(actor);
-
-            transactions.save(transaction);
-        }
 
         audit.record(
                 actor,
@@ -448,18 +412,6 @@ public class GoodsReceiptService {
         if (inventories.countVariant(variantId) == 0) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
-    }
-
-    private void ensureInventoryRow(Long variantId) {
-        if (inventories.findById(variantId).isPresent()) {
-            return;
-        }
-
-        Inventory inventory = new Inventory();
-        inventory.setVariantId(variantId);
-        inventory.setAvailableQuantity(0);
-
-        inventories.save(inventory);
     }
 
     private GoodsReceipt receipt(Long receiptId) {

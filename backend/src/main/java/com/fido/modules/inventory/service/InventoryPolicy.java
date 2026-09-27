@@ -16,6 +16,9 @@ public final class InventoryPolicy {
     public static final String RECEIPT_IN = "RECEIPT_IN";
     public static final String ADJUSTMENT_IN = "ADJUSTMENT_IN";
     public static final String ADJUSTMENT_OUT = "ADJUSTMENT_OUT";
+    public static final String ORDER_CONFIRM_OUT = "ORDER_CONFIRM_OUT";
+    public static final String ORDER_CANCEL_IN = "ORDER_CANCEL_IN";
+    public static final String DELIVERY_RETURN_IN = "DELIVERY_RETURN_IN";
 
     public static final String INVENTORY_READ = "INVENTORY_READ";
     public static final String INVENTORY_WRITE = "INVENTORY_WRITE";

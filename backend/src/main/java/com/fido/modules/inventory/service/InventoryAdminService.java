@@ -6,7 +6,6 @@ import com.fido.modules.audit.service.AuditService;
 import com.fido.modules.inventory.dto.request.InventoryAdjustmentRequest;
 import com.fido.modules.inventory.dto.response.InventoryRowDto;
 import com.fido.modules.inventory.dto.response.InventoryTransactionDto;
-import com.fido.modules.inventory.entity.Inventory;
 import com.fido.modules.inventory.entity.InventoryTransaction;
 import com.fido.modules.inventory.mapper.InventoryMapper;
 import com.fido.modules.inventory.repository.InventoryRepository;
@@ -34,15 +33,18 @@ public class InventoryAdminService {
 
     private final InventoryRepository inventories;
     private final InventoryTransactionRepository transactions;
+    private final InventoryCommandService inventoryCommands;
     private final AuditService audit;
 
     public InventoryAdminService(
             InventoryRepository inventories,
             InventoryTransactionRepository transactions,
+            InventoryCommandService inventoryCommands,
             AuditService audit
     ) {
         this.inventories = inventories;
         this.transactions = transactions;
+        this.inventoryCommands = inventoryCommands;
         this.audit = audit;
     }
 
@@ -88,35 +90,13 @@ public class InventoryAdminService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         }
 
-        validateVariant(request.variant_id());
-        ensureInventoryRow(request.variant_id());
-
-        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-
-        int updated = inventories.adjustIfNonNegative(
-                request.variant_id(),
-                request.quantity_delta(),
-                now
-        );
-
-        if (updated != 1) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
-        }
-
         InventoryTransaction transaction =
-                new InventoryTransaction();
-
-        transaction.setVariantId(request.variant_id());
-        transaction.setQuantityDelta(request.quantity_delta());
-        transaction.setTransactionType(
-                request.quantity_delta() > 0
-                        ? InventoryPolicy.ADJUSTMENT_IN
-                        : InventoryPolicy.ADJUSTMENT_OUT
-        );
-        transaction.setActorAccountId(actor);
-        transaction.setReason(request.reason().trim());
-
-        transactions.save(transaction);
+                inventoryCommands.adjustManually(
+                        actor,
+                        request.variant_id(),
+                        request.quantity_delta(),
+                        request.reason()
+                );
 
         audit.record(
                 actor,
@@ -253,18 +233,6 @@ public class InventoryAdminService {
         if (inventories.countVariant(variantId) == 0) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
-    }
-
-    private void ensureInventoryRow(Long variantId) {
-        if (inventories.findById(variantId).isPresent()) {
-            return;
-        }
-
-        Inventory inventory = new Inventory();
-        inventory.setVariantId(variantId);
-        inventory.setAvailableQuantity(0);
-
-        inventories.save(inventory);
     }
 
     private String normalize(String value) {
