@@ -123,7 +123,9 @@ public class GoodsReceiptService {
             GoodsReceiptCreateRequest request
     ) {
         requireActiveSupplier(request.supplier_id());
-        validateCreateItems(request.items());
+
+        var requestedItems = createItems(request.items());
+        validateItems(requestedItems);
 
         GoodsReceipt receipt = new GoodsReceipt();
         receipt.setReceiptCode(generateReceiptCode());
@@ -137,7 +139,7 @@ public class GoodsReceiptService {
 
         saveItems(
                 receipt.getReceiptId(),
-                request.items()
+                requestedItems
         );
 
         audit.record(
@@ -176,13 +178,14 @@ public class GoodsReceiptService {
         receipts.save(receipt);
 
         if (request.isItemsPresent()) {
-            validatePatchItems(request.getItems());
+            var requestedItems = patchItems(request.getItems());
+            validateItems(requestedItems);
 
             items.deleteByReceiptId(receiptId);
 
-            savePatchItems(
+            saveItems(
                     receiptId,
-                    request.getItems()
+                    requestedItems
             );
         }
 
@@ -339,58 +342,54 @@ public class GoodsReceiptService {
 
     private void saveItems(
             Long receiptId,
-            List<GoodsReceiptCreateRequest.ItemInput> requested
+            List<ReceiptItemInput> requested
     ) {
         for (var item : requested) {
             GoodsReceiptItem row = new GoodsReceiptItem();
             row.setReceiptId(receiptId);
-            row.setVariantId(item.variant_id());
+            row.setVariantId(item.variantId());
             row.setQuantity(item.quantity());
 
             items.save(row);
         }
     }
 
-    private void savePatchItems(
-            Long receiptId,
-            List<GoodsReceiptPatchRequest.ItemInput> requested
-    ) {
-        for (var item : requested) {
-            GoodsReceiptItem row = new GoodsReceiptItem();
-            row.setReceiptId(receiptId);
-            row.setVariantId(item.variant_id());
-            row.setQuantity(item.quantity());
+    private void validateItems(List<ReceiptItemInput> requested) {
+        var variantIds = new HashSet<Long>();
 
-            items.save(row);
+        for (var item : requested) {
+            validateVariant(item.variantId());
+
+            if (!variantIds.add(item.variantId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT);
+            }
         }
     }
 
-    private void validateCreateItems(
+    private List<ReceiptItemInput> createItems(
             List<GoodsReceiptCreateRequest.ItemInput> requested
     ) {
-        var variantIds = new HashSet<Long>();
-
-        for (var item : requested) {
-            validateVariant(item.variant_id());
-
-            if (!variantIds.add(item.variant_id())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT);
-            }
-        }
+        return requested.stream()
+                .map(item ->
+                        new ReceiptItemInput(
+                                item.variant_id(),
+                                item.quantity()
+                        )
+                )
+                .toList();
     }
 
-    private void validatePatchItems(
+    private List<ReceiptItemInput> patchItems(
             List<GoodsReceiptPatchRequest.ItemInput> requested
     ) {
-        var variantIds = new HashSet<Long>();
-
-        for (var item : requested) {
-            validateVariant(item.variant_id());
-
-            if (!variantIds.add(item.variant_id())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT);
-            }
-        }
+        return requested.stream()
+                .map(item ->
+                        new ReceiptItemInput(
+                                item.variant_id(),
+                                item.quantity()
+                        )
+                )
+                .toList();
     }
 
     private void validateStoredItems(
@@ -539,4 +538,10 @@ public class GoodsReceiptService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         }
     }
+    private record ReceiptItemInput(
+            Long variantId,
+            Integer quantity
+    ) {
+    }
+
 }
