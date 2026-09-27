@@ -1,30 +1,22 @@
 package com.fido.modules.inventory.service;
 
-import com.fido.common.response.ApiListResponse;
-import com.fido.common.response.Pagination;
 import com.fido.modules.audit.service.AuditService;
 import com.fido.modules.inventory.dto.request.GoodsReceiptActionRequest;
 import com.fido.modules.inventory.dto.request.GoodsReceiptCreateRequest;
 import com.fido.modules.inventory.dto.request.GoodsReceiptPatchRequest;
 import com.fido.modules.inventory.dto.response.GoodsReceiptDetailDto;
-import com.fido.modules.inventory.dto.response.GoodsReceiptSummaryDto;
 import com.fido.modules.inventory.entity.GoodsReceipt;
 import com.fido.modules.inventory.entity.GoodsReceiptItem;
-import com.fido.modules.inventory.mapper.InventoryMapper;
 import com.fido.modules.inventory.repository.GoodsReceiptItemRepository;
 import com.fido.modules.inventory.repository.GoodsReceiptRepository;
 import com.fido.modules.inventory.repository.InventoryRepository;
 import com.fido.modules.inventory.repository.SupplierRepository;
-import jakarta.persistence.criteria.Predicate;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -35,9 +27,6 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional
 public class GoodsReceiptService {
 
-    private static final String READ =
-            "hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_INVENTORY_READ')";
-
     private static final String WRITE =
             "hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_INVENTORY_WRITE')";
 
@@ -46,6 +35,7 @@ public class GoodsReceiptService {
     private final SupplierRepository suppliers;
     private final InventoryRepository inventories;
     private final InventoryCommandService inventoryCommands;
+    private final GoodsReceiptQueryService query;
     private final AuditService audit;
 
     public GoodsReceiptService(
@@ -54,6 +44,7 @@ public class GoodsReceiptService {
             SupplierRepository suppliers,
             InventoryRepository inventories,
             InventoryCommandService inventoryCommands,
+            GoodsReceiptQueryService query,
             AuditService audit
     ) {
         this.receipts = receipts;
@@ -61,60 +52,8 @@ public class GoodsReceiptService {
         this.suppliers = suppliers;
         this.inventories = inventories;
         this.inventoryCommands = inventoryCommands;
+        this.query = query;
         this.audit = audit;
-    }
-
-    @PreAuthorize(READ)
-    @Transactional(readOnly = true)
-    public ApiListResponse<GoodsReceiptSummaryDto> list(
-            String receiptCode,
-            Long supplierId,
-            String receiptStatus,
-            LocalDate dateFrom,
-            LocalDate dateTo,
-            Integer page,
-            Integer pageSize
-    ) {
-        if (receiptStatus != null) {
-            InventoryPolicy.requireReceiptStatus(receiptStatus);
-        }
-
-        if (dateFrom != null
-                && dateTo != null
-                && dateFrom.isAfter(dateTo)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-        }
-
-        Pagination pagination = pagination(page, pageSize);
-
-        var result = receipts.findAll(
-                receiptSpec(
-                        receiptCode,
-                        supplierId,
-                        receiptStatus,
-                        dateFrom,
-                        dateTo
-                ),
-                pagination.toPageable()
-        );
-
-        var data = result.getContent()
-                .stream()
-                .map(InventoryMapper::receiptSummary)
-                .toList();
-
-        return ApiListResponse.of(
-                data,
-                pagination.meta(result.getTotalElements())
-        );
-    }
-
-    @PreAuthorize(READ)
-    @Transactional(readOnly = true)
-    public GoodsReceiptDetailDto detail(Long receiptId) {
-        return detailInternal(
-                receipt(receiptId)
-        );
     }
 
     @PreAuthorize(WRITE)
@@ -149,7 +88,7 @@ public class GoodsReceiptService {
                 receipt.getReceiptId()
         );
 
-        return detailInternal(receipt);
+        return query.detailInternal(receipt);
     }
 
     @PreAuthorize(WRITE)
@@ -196,7 +135,7 @@ public class GoodsReceiptService {
                 receiptId
         );
 
-        return detailInternal(receipt);
+        return query.detailInternal(receipt);
     }
 
     @PreAuthorize(WRITE)
@@ -223,7 +162,7 @@ public class GoodsReceiptService {
         if (InventoryPolicy.RECEIPT_CONFIRMED.equals(
                 current.getReceiptStatus()
         )) {
-            return detailInternal(current);
+            return query.detailInternal(current);
         }
 
         if (!InventoryPolicy.RECEIPT_DRAFT.equals(
@@ -251,7 +190,7 @@ public class GoodsReceiptService {
             if (InventoryPolicy.RECEIPT_CONFIRMED.equals(
                     after.getReceiptStatus()
             )) {
-                return detailInternal(after);
+                return query.detailInternal(after);
             }
 
             throw new ResponseStatusException(HttpStatus.CONFLICT);
@@ -279,7 +218,7 @@ public class GoodsReceiptService {
                 receiptId
         );
 
-        return detailInternal(
+        return query.detailInternal(
                 receipt(receiptId)
         );
     }
@@ -293,7 +232,7 @@ public class GoodsReceiptService {
         if (InventoryPolicy.RECEIPT_CANCELLED.equals(
                 current.getReceiptStatus()
         )) {
-            return detailInternal(current);
+            return query.detailInternal(current);
         }
 
         if (!InventoryPolicy.RECEIPT_DRAFT.equals(
@@ -318,25 +257,8 @@ public class GoodsReceiptService {
                 receiptId
         );
 
-        return detailInternal(
+        return query.detailInternal(
                 receipt(receiptId)
-        );
-    }
-
-    private GoodsReceiptDetailDto detailInternal(
-            GoodsReceipt receipt
-    ) {
-        var receiptItems = items
-                .findAllByReceiptIdOrderByReceiptItemIdAsc(
-                        receipt.getReceiptId()
-                )
-                .stream()
-                .map(InventoryMapper::receiptItem)
-                .toList();
-
-        return InventoryMapper.receiptDetail(
-                receipt,
-                receiptItems
         );
     }
 
@@ -464,80 +386,6 @@ public class GoodsReceiptService {
                         .toUpperCase(Locale.ROOT);
     }
 
-    private Specification<GoodsReceipt> receiptSpec(
-            String receiptCode,
-            Long supplierId,
-            String receiptStatus,
-            LocalDate dateFrom,
-            LocalDate dateTo
-    ) {
-        return (root, query, cb) -> {
-            var predicates = new ArrayList<Predicate>();
-
-            if (receiptCode != null && !receiptCode.isBlank()) {
-                predicates.add(
-                        cb.like(
-                                cb.lower(root.get("receiptCode")),
-                                "%"
-                                        + receiptCode.trim()
-                                                .toLowerCase(Locale.ROOT)
-                                        + "%"
-                        )
-                );
-            }
-
-            if (supplierId != null) {
-                predicates.add(
-                        cb.equal(
-                                root.get("supplierId"),
-                                supplierId
-                        )
-                );
-            }
-
-            if (receiptStatus != null) {
-                predicates.add(
-                        cb.equal(
-                                root.get("receiptStatus"),
-                                receiptStatus
-                        )
-                );
-            }
-
-            if (dateFrom != null) {
-                predicates.add(
-                        cb.greaterThanOrEqualTo(
-                                root.get("receiptDate"),
-                                dateFrom
-                        )
-                );
-            }
-
-            if (dateTo != null) {
-                predicates.add(
-                        cb.lessThanOrEqualTo(
-                                root.get("receiptDate"),
-                                dateTo
-                        )
-                );
-            }
-
-            return cb.and(
-                    predicates.toArray(Predicate[]::new)
-            );
-        };
-    }
-
-    private Pagination pagination(
-            Integer page,
-            Integer pageSize
-    ) {
-        try {
-            return Pagination.of(page, pageSize);
-        } catch (IllegalArgumentException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-        }
-    }
     private record ReceiptItemInput(
             Long variantId,
             Integer quantity

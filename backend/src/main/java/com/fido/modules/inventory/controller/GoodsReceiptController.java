@@ -7,6 +7,7 @@ import com.fido.modules.inventory.dto.request.GoodsReceiptCreateRequest;
 import com.fido.modules.inventory.dto.request.GoodsReceiptPatchRequest;
 import com.fido.modules.inventory.dto.response.GoodsReceiptDetailDto;
 import com.fido.modules.inventory.dto.response.GoodsReceiptSummaryDto;
+import com.fido.modules.inventory.service.GoodsReceiptQueryService;
 import com.fido.modules.inventory.service.GoodsReceiptService;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
@@ -54,7 +55,7 @@ public class GoodsReceiptController {
             @RequestParam(name = "page_size", required = false)
                     Integer pageSize
     ) {
-        return service.list(
+        return query.list(
                 receiptCode,
                 supplierId,
                 receiptStatus,
@@ -70,7 +71,7 @@ public class GoodsReceiptController {
             @PathVariable Long receiptId
     ) {
         return ApiResponse.of(
-                service.detail(receiptId)
+                query.detail(receiptId)
         );
     }
 
