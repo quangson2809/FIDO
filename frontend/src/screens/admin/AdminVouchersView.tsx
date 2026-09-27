@@ -10,7 +10,7 @@ export const AdminVouchersView: React.FC<{ showToast: (msg: string) => void }> =
     const normalized = code.trim().toUpperCase();
     if (!normalized) return;
     const nextId = Math.max(0, ...vouchers.map((item) => item.voucher_id)) + 1;
-    setVouchers((prev) => [{ voucher_id: nextId, code: normalized }, ...prev]);
+    setVouchers((prev) => [{ voucher_id: nextId, code: normalized, value: 0 }, ...prev]);
     setCode('');
     showToast('Mock POST /api/v1/admin/vouchers: payload chỉ gồm code theo baseline.');
   };
@@ -20,7 +20,7 @@ export const AdminVouchersView: React.FC<{ showToast: (msg: string) => void }> =
       <div>
         <div className="text-[11px] uppercase tracking-widest font-bold text-[#1B5038]">VoucherDto</div>
         <h1 className="font-['Playfair_Display',serif] text-3xl font-bold text-[#0B2419] mt-1">Voucher</h1>
-        <p className="text-sm text-[#687069]">Không mock rule giảm giá chưa được khóa. Dữ liệu baseline chỉ dùng mã voucher.</p>
+        <p className="text-sm text-[#687069]">Hiển thị voucher_id/code/value theo DTO; không suy diễn value là phần trăm hay số tiền khi rule còn TBD.</p>
       </div>
 
       <form onSubmit={createVoucher} className="bg-white border rounded-lg p-4 flex flex-col sm:flex-row gap-3">
@@ -30,11 +30,12 @@ export const AdminVouchersView: React.FC<{ showToast: (msg: string) => void }> =
 
       <div className="bg-white border rounded-lg overflow-hidden">
         <table className="w-full text-xs">
-          <thead className="bg-[#F5F6F2]"><tr><th className="p-3 text-left">voucher_id</th><th className="text-left">code</th><th className="text-right p-3">Thao tác</th></tr></thead>
+          <thead className="bg-[#F5F6F2]"><tr><th className="p-3 text-left">voucher_id</th><th className="text-left">code</th><th className="text-left">value</th><th className="text-right p-3">Thao tác</th></tr></thead>
           <tbody className="divide-y">{vouchers.map((voucher)=>(
             <tr key={voucher.voucher_id}>
               <td className="p-3">{voucher.voucher_id}</td>
               <td className="font-mono font-bold">{voucher.code}</td>
+              <td>{voucher.value}</td>
               <td className="p-3 text-right">
                 <button onClick={()=>showToast(`Mock PATCH voucher #${voucher.voucher_id}: chỉ cập nhật code`)} className="px-3 py-1 border rounded">Sửa</button>
               </td>
