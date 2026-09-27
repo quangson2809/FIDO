@@ -10,7 +10,6 @@ import com.fido.modules.inventory.entity.GoodsReceiptItem;
 import com.fido.modules.inventory.repository.GoodsReceiptItemRepository;
 import com.fido.modules.inventory.repository.GoodsReceiptRepository;
 import com.fido.modules.inventory.repository.SupplierRepository;
-import com.fido.modules.product.service.CatalogVariantReferenceService;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.HashSet;
@@ -33,7 +32,6 @@ public class GoodsReceiptService {
     private final GoodsReceiptRepository receipts;
     private final GoodsReceiptItemRepository items;
     private final SupplierRepository suppliers;
-    private final CatalogVariantReferenceService variants;
     private final InventoryCommandService inventoryCommands;
     private final GoodsReceiptQueryService query;
     private final AuditService audit;
@@ -42,7 +40,6 @@ public class GoodsReceiptService {
             GoodsReceiptRepository receipts,
             GoodsReceiptItemRepository items,
             SupplierRepository suppliers,
-            CatalogVariantReferenceService variants,
             InventoryCommandService inventoryCommands,
             GoodsReceiptQueryService query,
             AuditService audit
@@ -50,7 +47,6 @@ public class GoodsReceiptService {
         this.receipts = receipts;
         this.items = items;
         this.suppliers = suppliers;
-        this.variants = variants;
         this.inventoryCommands = inventoryCommands;
         this.query = query;
         this.audit = audit;
@@ -351,7 +347,7 @@ public class GoodsReceiptService {
     }
 
     private void validateVariant(Long variantId) {
-        variants.requireExists(variantId);
+        inventoryCommands.requireTrackedVariant(variantId);
     }
 
     private GoodsReceipt receipt(Long receiptId) {
