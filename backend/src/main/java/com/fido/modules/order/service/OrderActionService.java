@@ -61,6 +61,15 @@ public class OrderActionService {
         String capability = capability(request.action());
         requireCapability(capability);
 
+        if (List.of(
+                "CANCEL",
+                "DELIVERY_FAILED"
+        ).contains(request.action())
+                && (request.reason() == null
+                || request.reason().isBlank())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        }
+
         Order order = locked(orderId);
 
         return switch (request.action()) {
@@ -302,15 +311,19 @@ public class OrderActionService {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
-        boolean restoreBeforeShipment =
-                OrderPolicy.CONFIRMED.equals(
-                        order.getOrderStatus()
-                )
-                || OrderPolicy.PREPARING.equals(
+        boolean stockWasDeducted =
+                !OrderPolicy.PENDING.equals(
                         order.getOrderStatus()
                 );
 
-        if (restoreBeforeShipment) {
+        boolean stockAlreadyReturned =
+                inventoryTransactions
+                        .existsByOrderIdAndTransactionType(
+                                order.getOrderId(),
+                                OrderPolicy.DELIVERY_RETURN_IN
+                        );
+
+        if (stockWasDeducted && !stockAlreadyReturned) {
             LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
             for (OrderItem item : orderItems(order.getOrderId())) {
@@ -361,27 +374,9 @@ public class OrderActionService {
             Order order,
             String reason
     ) {
-        boolean failedDelivery =
-                OrderPolicy.DELIVERY_FAILED.equals(
-                        order.getOrderStatus()
-                );
-
-        boolean cancelledAfterShipment =
-                OrderPolicy.CANCELLED.equals(
-                        order.getOrderStatus()
-                )
-                && inventoryTransactions
-                        .existsByOrderIdAndTransactionType(
-                                order.getOrderId(),
-                                OrderPolicy.ORDER_CONFIRM_OUT
-                        )
-                && !inventoryTransactions
-                        .existsByOrderIdAndTransactionType(
-                                order.getOrderId(),
-                                OrderPolicy.ORDER_CANCEL_IN
-                        );
-
-        if (!failedDelivery && !cancelledAfterShipment) {
+        if (!OrderPolicy.DELIVERY_FAILED.equals(
+                order.getOrderStatus()
+        )) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 

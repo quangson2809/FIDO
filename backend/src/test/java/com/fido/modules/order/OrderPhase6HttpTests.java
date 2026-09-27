@@ -420,13 +420,23 @@ class OrderPhase6HttpTests {
             long orderId,
             String action
     ) throws Exception {
+        Object body = List.of(
+                "CANCEL",
+                "DELIVERY_FAILED"
+        ).contains(action)
+                ? Map.of(
+                        "action", action,
+                        "reason", "Phase 6 test reason"
+                )
+                : Map.of("action", action);
+
         return call(
                 "POST",
                 "/api/v1/admin/orders/"
                         + orderId
                         + "/actions",
                 operator.token(),
-                Map.of("action", action)
+                body
         );
     }
 
@@ -1311,26 +1321,6 @@ class OrderPhase6HttpTests {
 
         assertEquals(
                 200,
-                action(root, failedOrderId, "CANCEL").status()
-        );
-
-        // Cancelling a failed delivery does not imply the parcel is physically back.
-        assertEquals(
-                4,
-                stock(first.variantId())
-        );
-
-        assertEquals(
-                0,
-                movementCount(
-                        failedOrderId,
-                        "ORDER_CANCEL_IN"
-                )
-        );
-
-        // The later physical return is the event that restores sellable stock.
-        assertEquals(
-                200,
                 action(
                         root,
                         failedOrderId,
@@ -1372,6 +1362,24 @@ class OrderPhase6HttpTests {
                         failedOrderId,
                         "RETRY_DELIVERY"
                 ).status()
+        );
+
+        assertEquals(
+                200,
+                action(root, failedOrderId, "CANCEL").status()
+        );
+
+        assertEquals(
+                5,
+                stock(first.variantId())
+        );
+
+        assertEquals(
+                0,
+                movementCount(
+                        failedOrderId,
+                        "ORDER_CANCEL_IN"
+                )
         );
 
         long pendingCancelOrderId = createOrder(

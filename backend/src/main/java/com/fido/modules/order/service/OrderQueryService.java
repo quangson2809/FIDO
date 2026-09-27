@@ -320,40 +320,8 @@ public class OrderQueryService {
                         OrderPolicy.ORDER_EXCEPTION
                 );
             }
-            case OrderPolicy.CANCELLED -> {
-                boolean stockWasDeducted =
-                        inventoryTransactions
-                                .existsByOrderIdAndTransactionType(
-                                        order.getOrderId(),
-                                        OrderPolicy.ORDER_CONFIRM_OUT
-                                );
-
-                boolean restoredBeforeShipment =
-                        inventoryTransactions
-                                .existsByOrderIdAndTransactionType(
-                                        order.getOrderId(),
-                                        OrderPolicy.ORDER_CANCEL_IN
-                                );
-
-                boolean deliveryReturned =
-                        inventoryTransactions
-                                .existsByOrderIdAndTransactionType(
-                                        order.getOrderId(),
-                                        OrderPolicy.DELIVERY_RETURN_IN
-                                );
-
-                if (stockWasDeducted
-                        && !restoredBeforeShipment
-                        && !deliveryReturned) {
-                    addIfAllowed(
-                            actions,
-                            "DELIVERY_RETURN_IN",
-                            OrderPolicy.ORDER_EXCEPTION
-                    );
-                }
-            }
             default -> {
-                // Other terminal/baseline after-sales states expose no order-state command.
+                // Terminal/baseline after-sales states expose no order-state command.
             }
         }
 
