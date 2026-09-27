@@ -10,7 +10,7 @@ export const CheckoutScreen: React.FC = () => {
 
   const subtotal = cartItems.reduce((sum,item)=>sum + item.price * item.quantity,0);
   const discount = 0;
-  const shippingFee = 0;
+  const shippingFee = 30000;
   const total = subtotal - discount + shippingFee;
 
   const submit = (event: React.FormEvent) => {
@@ -54,7 +54,7 @@ export const CheckoutScreen: React.FC = () => {
         <div className="mb-6">
           <div className="text-[10px] uppercase tracking-widest font-bold text-[#1B5038]">Checkout / COD</div>
           <h1 className="font-['Playfair_Display',serif] text-3xl font-bold text-[#0B2419] mt-1">Xác nhận thông tin nhận hàng</h1>
-          <p className="text-sm text-[#687069] mt-1">Quote/order mock không tự bịa rule voucher. Discount và shipping fee đang dùng giá trị server-derived mock = 0.</p>
+          <p className="text-sm text-[#687069] mt-1">Quote/order mock không tự bịa rule voucher. Discount giữ 0 khi rule còn TBD; phí giao mặc định 30.000₫ theo FR-09.</p>
         </div>
 
         <form onSubmit={submit} className="grid lg:grid-cols-[1fr_420px] gap-6 items-start">
