@@ -1382,7 +1382,100 @@ class OrderPhase6HttpTests {
                 )
         );
 
-        long pendingCancelOrderId = createOrder(
+        long failedCancelOrderId = createOrder(
+                customer,
+                first,
+                1
+        );
+
+        assertEquals(
+                200,
+                action(root, failedCancelOrderId, "CONFIRM").status()
+        );
+
+        assertEquals(
+                4,
+                stock(first.variantId())
+        );
+
+        assertEquals(
+                200,
+                action(root, failedCancelOrderId, "PREPARE").status()
+        );
+
+        assertEquals(
+                200,
+                action(root, failedCancelOrderId, "SHIP").status()
+        );
+
+        assertEquals(
+                200,
+                action(
+                        root,
+                        failedCancelOrderId,
+                        "DELIVERY_FAILED"
+                ).status()
+        );
+
+        assertEquals(
+                4,
+                stock(first.variantId())
+        );
+
+        assertEquals(
+                400,
+                call(
+                        "POST",
+                        "/api/v1/admin/orders/"
+                                + failedCancelOrderId
+                                + "/actions",
+                        root.token(),
+                        Map.of("action", "CANCEL")
+                ).status()
+        );
+
+        assertEquals(
+                4,
+                stock(first.variantId())
+        );
+
+        assertEquals(
+                200,
+                action(
+                        root,
+                        failedCancelOrderId,
+                        "CANCEL"
+                ).status()
+        );
+
+        assertEquals(
+                5,
+                stock(first.variantId())
+        );
+
+        assertEquals(
+                1,
+                movementCount(
+                        failedCancelOrderId,
+                        "ORDER_CANCEL_IN"
+                )
+        );
+
+        assertEquals(
+                200,
+                action(
+                        root,
+                        failedCancelOrderId,
+                        "CANCEL"
+                ).status()
+        );
+
+        assertEquals(
+                5,
+                stock(first.variantId())
+        );
+
+                long pendingCancelOrderId = createOrder(
                 customer,
                 first,
                 1
