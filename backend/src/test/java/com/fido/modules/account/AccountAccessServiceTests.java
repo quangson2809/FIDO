@@ -106,16 +106,16 @@ class AccountAccessServiceTests {
         );
 
         assertFalse(
-                access.isAdministrator(201L)
+                access.isSuperadmin(201L)
         );
     }
 
     @Test
-    void recognizesApprovedAdminRoleWithoutInventingPermissionGrants() {
+    void recognizesSuperadminRoleWithoutInventingPermissionGrants() {
         fixture();
 
         assertTrue(
-                access.isAdministrator(203L)
+                access.isSuperadmin(203L)
         );
 
 
@@ -157,7 +157,7 @@ class AccountAccessServiceTests {
         );
 
         assertFalse(
-                access.isAdministrator(203L)
+                access.isSuperadmin(203L)
         );
 
     }
@@ -173,11 +173,11 @@ class AccountAccessServiceTests {
         );
 
         assertFalse(
-                access.isAdministrator(null)
+                access.isSuperadmin(null)
         );
 
         assertFalse(
-                access.isAdministrator(-1L)
+                access.isSuperadmin(-1L)
         );
 
     }

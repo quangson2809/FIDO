@@ -51,13 +51,13 @@ public class SuperadminBootstrapService {
             );
         }
 
-        Role role = roles.lockAdministration()
+        Role role = roles.lockSuperadminRole()
                 .orElseThrow();
 
         var existing = accounts.findByPhone(phone);
 
         if (existing.isPresent()) {
-            if (!access.isAdministrator(existing.get().getAccountId())) {
+            if (!access.isSuperadmin(existing.get().getAccountId())) {
                 throw new IllegalStateException(
                         "Bootstrap phone already belongs to a non-superadmin account"
                 );

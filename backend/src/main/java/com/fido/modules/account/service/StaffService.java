@@ -99,7 +99,7 @@ public class StaffService {
             Long actor,
             StaffCreateRequest request
     ) {
-        lock();
+        lockSuperadminRole();
 
         if (accounts.existsByPhone(request.phone())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
@@ -157,7 +157,7 @@ public class StaffService {
             Long accountId,
             StaffPatchRequest request
     ) {
-        Role highestRole = lock();
+        Role superadminRole = lockSuperadminRole();
 
         requireStaff(accountId);
 
@@ -182,14 +182,14 @@ public class StaffService {
         if (request.role_ids() != null) {
             var resolvedRoles = resolve(request.role_ids());
 
-            boolean removingHighest = access.isAdministrator(accountId)
+            boolean removingSuperadmin = access.isSuperadmin(accountId)
                     && resolvedRoles.stream()
                             .noneMatch(role ->
                                     "SUPERADMIN".equals(role.getCode())
                             );
 
-            if (removingHighest
-                    && assignments.countByRoleId(highestRole.getRoleId()) <= 1) {
+            if (removingSuperadmin
+                    && assignments.countByRoleId(superadminRole.getRoleId()) <= 1) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT);
             }
 
@@ -255,8 +255,8 @@ public class StaffService {
         }
     }
 
-    private Role lock() {
-        return roles.lockAdministration()
+    private Role lockSuperadminRole() {
+        return roles.lockSuperadminRole()
                 .orElseThrow();
     }
 }

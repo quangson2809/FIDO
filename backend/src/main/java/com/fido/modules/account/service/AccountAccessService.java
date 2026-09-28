@@ -61,7 +61,7 @@ public class AccountAccessService {
                 });
     }
 
-    public boolean isAdministrator(Long accountId) {
+    public boolean isSuperadmin(Long accountId) {
         if (accountId == null
                 || accounts.findById(accountId).isEmpty()) {
             return false;
