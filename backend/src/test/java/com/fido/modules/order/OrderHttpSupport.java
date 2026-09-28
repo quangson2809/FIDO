@@ -42,6 +42,7 @@ abstract class OrderHttpSupport {
     final List<Long> accounts = new ArrayList<>();
     final List<Long> orderIds = new ArrayList<>();
     final List<CatalogFixture> fixtures = new ArrayList<>();
+    final List<Long> customRoles = new ArrayList<>();
 
     record Result(
             int status,
@@ -192,6 +193,58 @@ abstract class OrderHttpSupport {
                 """,
                 user.accountId()
         );
+
+        return user;
+    }
+
+    User employeeWithPermission(String permissionCode)
+            throws Exception {
+        User user = plainAdmin();
+        String roleCode = "order-test-"
+                + UUID.randomUUID()
+                        .toString()
+                        .replace("-", "")
+                        .substring(0, 12);
+
+        db.update(
+                "INSERT INTO roles(code,name) VALUES (?,?)",
+                roleCode,
+                "Order authorization test"
+        );
+
+        long roleId = db.queryForObject(
+                "SELECT role_id FROM roles WHERE code=?",
+                Long.class,
+                roleCode
+        );
+
+        customRoles.add(roleId);
+
+        db.update(
+                """
+                INSERT INTO account_roles(account_id,role_id)
+                VALUES (?,?)
+                """,
+                user.accountId(),
+                roleId
+        );
+
+        int mapped = db.update(
+                """
+                INSERT INTO role_permissions(role_id,permission_id)
+                SELECT ?, permission_id
+                FROM permissions
+                WHERE code=?
+                """,
+                roleId,
+                permissionCode
+        );
+
+        if (mapped != 1) {
+            throw new IllegalStateException(
+                    "Missing permission fixture: " + permissionCode
+            );
+        }
 
         return user;
     }
@@ -573,6 +626,18 @@ abstract class OrderHttpSupport {
             db.update(
                     "DELETE FROM accounts WHERE account_id=?",
                     accountId
+            );
+        }
+
+        for (Long roleId : customRoles) {
+            db.update(
+                    "DELETE FROM role_permissions WHERE role_id=?",
+                    roleId
+            );
+
+            db.update(
+                    "DELETE FROM roles WHERE role_id=?",
+                    roleId
             );
         }
     }

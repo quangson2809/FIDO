@@ -117,4 +117,61 @@ class AccountAuthorizationHttpTests extends AccountHttpSupport {
                 ).status()
         );
     }
+
+    @Test
+    void jwtAuthorityClaimsAreIgnoredAndDatabaseAccessIsReloaded()
+            throws Exception {
+        String phone = phone();
+        long accountId = register(phone);
+        String token = tokenWithUntrustedAuthorities(accountId);
+
+        assertEquals(
+                403,
+                call(
+                        "GET",
+                        "/api/v1/admin/access-control",
+                        token,
+                        null
+                ).status()
+        );
+
+        grant(
+                accountId,
+                "SUPERADMIN"
+        );
+
+        assertEquals(
+                200,
+                call(
+                        "GET",
+                        "/api/v1/admin/access-control",
+                        token,
+                        null
+                ).status()
+        );
+    }
+
+    private String tokenWithUntrustedAuthorities(long accountId) {
+        Instant now = Instant.now();
+
+        var claims = JwtClaimsSet.builder()
+                .issuer("fido")
+                .subject(Long.toString(accountId))
+                .issuedAt(now)
+                .expiresAt(now.plusSeconds(300))
+                .claim("roles", List.of("SUPERADMIN"))
+                .claim("permissions", List.of("ORDER_READ"))
+                .build();
+
+        var header = JwsHeader
+                .with(MacAlgorithm.HS256)
+                .build();
+
+        return encoder.encode(
+                JwtEncoderParameters.from(
+                        header,
+                        claims
+                )
+        ).getTokenValue();
+    }
 }

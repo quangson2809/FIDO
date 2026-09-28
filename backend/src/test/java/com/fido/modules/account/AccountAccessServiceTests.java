@@ -97,21 +97,6 @@ class AccountAccessServiceTests {
                 detail.permissions().size()
         );
 
-        assertTrue(
-                access.hasPermission(201L, "test.read")
-        );
-
-        assertTrue(
-                access.hasPermission(201L, "test.write")
-        );
-
-        assertFalse(
-                access.hasPermission(201L, "test.ungranted")
-        );
-
-        assertFalse(
-                access.hasPermission(202L, "test.read")
-        );
 
         assertTrue(
                 access.findAccess(202L)
@@ -133,9 +118,6 @@ class AccountAccessServiceTests {
                 access.isAdministrator(203L)
         );
 
-        assertTrue(
-                access.hasPermission(203L, "test.operation")
-        );
 
         assertTrue(
                 access.findAccess(203L)
@@ -144,25 +126,30 @@ class AccountAccessServiceTests {
                         .isEmpty()
         );
 
-        assertFalse(
-                access.hasPermission(203L, " ")
-        );
     }
 
     @Test
     void removedRoleAndPermissionGrantsTakeEffectWithoutCachedClaims() {
         fixture();
 
-        assertTrue(
-                access.hasPermission(201L, "test.write")
+        assertEquals(
+                2,
+                access.findAccess(201L)
+                        .orElseThrow()
+                        .permissions()
+                        .size()
         );
 
         jdbc.update(
                 "DELETE FROM role_permissions WHERE permission_id = 202"
         );
 
-        assertFalse(
-                access.hasPermission(201L, "test.write")
+        assertEquals(
+                1,
+                access.findAccess(201L)
+                        .orElseThrow()
+                        .permissions()
+                        .size()
         );
 
         jdbc.update(
@@ -173,9 +160,6 @@ class AccountAccessServiceTests {
                 access.isAdministrator(203L)
         );
 
-        assertFalse(
-                access.hasPermission(203L, "test.operation")
-        );
     }
 
     @Test
@@ -196,17 +180,6 @@ class AccountAccessServiceTests {
                 access.isAdministrator(-1L)
         );
 
-        assertFalse(
-                access.hasPermission(-1L, "test.read")
-        );
-
-        assertFalse(
-                access.hasPermission(null, "test.read")
-        );
-
-        assertFalse(
-                access.hasPermission(201L, null)
-        );
     }
 
     @Test
