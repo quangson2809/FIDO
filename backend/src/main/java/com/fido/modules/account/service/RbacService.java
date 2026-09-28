@@ -316,7 +316,7 @@ public class RbacService {
 
     private void lock() {
         roles
-                .lockAdministration()
+                .lockSuperadminRole()
                 .orElseThrow(() ->
                         new IllegalStateException("System role missing")
                 );
