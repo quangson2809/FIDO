@@ -98,7 +98,9 @@ class DevDataSeedServiceTests {
         delete("DELETE FROM size_values WHERE size_value_id BETWEEN 941001 AND 941006");
         delete("DELETE FROM size_systems WHERE size_system_id BETWEEN 940001 AND 940002");
         delete("DELETE FROM brands WHERE brand_id BETWEEN 930001 AND 930002");
-        delete("DELETE FROM categories WHERE category_id BETWEEN 920001 AND 920005");
+        delete("DELETE FROM categories WHERE category_id IN (920003,920005)");
+        delete("DELETE FROM categories WHERE category_id IN (920002,920004)");
+        delete("DELETE FROM categories WHERE category_id = 920001");
     }
 
     @Test
