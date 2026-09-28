@@ -43,6 +43,7 @@ abstract class OrderHttpSupport {
     final List<Long> orderIds = new ArrayList<>();
     final List<CatalogFixture> fixtures = new ArrayList<>();
     final List<Long> customRoles = new ArrayList<>();
+    final List<Long> createdPermissions = new ArrayList<>();
 
     record Result(
             int status,
@@ -200,6 +201,7 @@ abstract class OrderHttpSupport {
     User employeeWithPermission(String permissionCode)
             throws Exception {
         User user = plainAdmin();
+        long permissionId = ensurePermission(permissionCode);
         String roleCode = "order-test-"
                 + UUID.randomUUID()
                         .toString()
@@ -229,24 +231,44 @@ abstract class OrderHttpSupport {
                 roleId
         );
 
-        int mapped = db.update(
+        db.update(
                 """
                 INSERT INTO role_permissions(role_id,permission_id)
-                SELECT ?, permission_id
-                FROM permissions
-                WHERE code=?
+                VALUES (?,?)
                 """,
                 roleId,
+                permissionId
+        );
+
+        return user;
+    }
+
+    private long ensurePermission(String permissionCode) {
+        var existing = db.query(
+                "SELECT permission_id FROM permissions WHERE code=?",
+                (resultSet, rowNumber) -> resultSet.getLong(1),
                 permissionCode
         );
 
-        if (mapped != 1) {
-            throw new IllegalStateException(
-                    "Missing permission fixture: " + permissionCode
-            );
+        if (!existing.isEmpty()) {
+            return existing.get(0);
         }
 
-        return user;
+        db.update(
+                "INSERT INTO permissions(code,name) VALUES (?,?)",
+                permissionCode,
+                permissionCode
+        );
+
+        long permissionId = db.queryForObject(
+                "SELECT permission_id FROM permissions WHERE code=?",
+                Long.class,
+                permissionCode
+        );
+
+        createdPermissions.add(permissionId);
+
+        return permissionId;
     }
 
     CatalogFixture createVariant(
@@ -638,6 +660,13 @@ abstract class OrderHttpSupport {
             db.update(
                     "DELETE FROM roles WHERE role_id=?",
                     roleId
+            );
+        }
+
+        for (Long permissionId : createdPermissions) {
+            db.update(
+                    "DELETE FROM permissions WHERE permission_id=?",
+                    permissionId
             );
         }
     }
