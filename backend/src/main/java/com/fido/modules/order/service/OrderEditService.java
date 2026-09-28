@@ -12,6 +12,7 @@ import com.fido.modules.order.repository.ShippingInfoRepository;
 import java.util.Objects;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -89,7 +90,8 @@ public class OrderEditService {
     public OrderAdminDetailDto updateAdmin(
             Long actor,
             Long orderId,
-            AdminOrderPatchRequest request
+            AdminOrderPatchRequest request,
+            Authentication authentication
     ) {
         Order order = locked(orderId);
 
@@ -157,7 +159,7 @@ public class OrderEditService {
                 orderId
         );
 
-        return query.adminDetailInternal(order);
+        return query.adminDetailInternal(order, authentication);
     }
 
     private void requireRecipientEditable(Order order) {

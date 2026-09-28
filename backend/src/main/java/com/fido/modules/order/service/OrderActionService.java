@@ -14,6 +14,8 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -26,7 +28,6 @@ public class OrderActionService {
     private final OrderItemRepository items;
     private final PaymentRepository payments;
     private final InventoryCommandService inventoryCommands;
-    private final OrderActionPolicy actionPolicy;
     private final OrderQueryService query;
     private final AuditService audit;
 
@@ -35,7 +36,6 @@ public class OrderActionService {
             OrderItemRepository items,
             PaymentRepository payments,
             InventoryCommandService inventoryCommands,
-            OrderActionPolicy actionPolicy,
             OrderQueryService query,
             AuditService audit
     ) {
@@ -43,18 +43,19 @@ public class OrderActionService {
         this.items = items;
         this.payments = payments;
         this.inventoryCommands = inventoryCommands;
-        this.actionPolicy = actionPolicy;
         this.query = query;
         this.audit = audit;
     }
 
+    @PreAuthorize(
+            "@orderAuthorization.canExecute(authentication, #request.action())"
+    )
     public OrderAdminDetailDto action(
             Long actor,
             Long orderId,
-            OrderActionRequest request
+            OrderActionRequest request,
+            Authentication authentication
     ) {
-        actionPolicy.requireCapabilityFor(request.action());
-
         if (List.of(
                 "CANCEL",
                 "DELIVERY_FAILED"
@@ -66,7 +67,7 @@ public class OrderActionService {
 
         Order order = locked(orderId);
 
-        return switch (request.action()) {
+        Order result = switch (request.action()) {
             case "CONFIRM" ->
                     confirm(actor, order, request.reason());
             case "PREPARE" ->
@@ -99,9 +100,14 @@ public class OrderActionService {
                     HttpStatus.BAD_REQUEST
             );
         };
+
+        return query.adminDetailInternal(
+                result,
+                authentication
+        );
     }
 
-    private OrderAdminDetailDto confirm(
+    private Order confirm(
             Long actor,
             Order order,
             String reason
@@ -109,7 +115,7 @@ public class OrderActionService {
         if (OrderPolicy.CONFIRMED.equals(
                 order.getOrderStatus()
         )) {
-            return query.adminDetailInternal(order);
+            return order;
         }
 
         if (!OrderPolicy.PENDING.equals(
@@ -140,10 +146,10 @@ public class OrderActionService {
                 )
         );
 
-        return query.adminDetailInternal(order);
+        return order;
     }
 
-    private OrderAdminDetailDto deliveryFailed(
+    private Order deliveryFailed(
             Long actor,
             Order order,
             String reason
@@ -151,7 +157,7 @@ public class OrderActionService {
         if (OrderPolicy.DELIVERY_FAILED.equals(
                 order.getOrderStatus()
         )) {
-            return query.adminDetailInternal(order);
+            return order;
         }
 
         if (!OrderPolicy.SHIPPING.equals(
@@ -185,17 +191,17 @@ public class OrderActionService {
                 )
         );
 
-        return query.adminDetailInternal(order);
+        return order;
     }
 
-    private OrderAdminDetailDto retryDelivery(
+    private Order retryDelivery(
             Long actor,
             Order order
     ) {
         if (OrderPolicy.SHIPPING.equals(
                 order.getOrderStatus()
         )) {
-            return query.adminDetailInternal(order);
+            return order;
         }
 
         if (!OrderPolicy.DELIVERY_FAILED.equals(
@@ -228,17 +234,17 @@ public class OrderActionService {
                 )
         );
 
-        return query.adminDetailInternal(order);
+        return order;
     }
 
-    private OrderAdminDetailDto complete(
+    private Order complete(
             Long actor,
             Order order
     ) {
         if (OrderPolicy.COMPLETED.equals(
                 order.getOrderStatus()
         )) {
-            return query.adminDetailInternal(order);
+            return order;
         }
 
         if (!OrderPolicy.SHIPPING.equals(
@@ -280,10 +286,10 @@ public class OrderActionService {
                 )
         );
 
-        return query.adminDetailInternal(order);
+        return order;
     }
 
-    private OrderAdminDetailDto cancel(
+    private Order cancel(
             Long actor,
             Order order,
             String reason
@@ -291,7 +297,7 @@ public class OrderActionService {
         if (OrderPolicy.CANCELLED.equals(
                 order.getOrderStatus()
         )) {
-            return query.adminDetailInternal(order);
+            return order;
         }
 
         boolean cancellable = List.of(
@@ -342,10 +348,10 @@ public class OrderActionService {
                 )
         );
 
-        return query.adminDetailInternal(order);
+        return order;
     }
 
-    private OrderAdminDetailDto deliveryReturnIn(
+    private Order deliveryReturnIn(
             Long actor,
             Order order,
             String reason
@@ -362,7 +368,7 @@ public class OrderActionService {
                 );
 
         if (stockState.deliveryReturned()) {
-            return query.adminDetailInternal(order);
+            return order;
         }
 
         inventoryCommands.restoreDeliveryReturn(
@@ -383,10 +389,10 @@ public class OrderActionService {
                                 + reason.trim()
         );
 
-        return query.adminDetailInternal(order);
+        return order;
     }
 
-    private OrderAdminDetailDto simpleTransition(
+    private Order simpleTransition(
             Long actor,
             Order order,
             String expected,
@@ -394,7 +400,7 @@ public class OrderActionService {
             String auditAction
     ) {
         if (target.equals(order.getOrderStatus())) {
-            return query.adminDetailInternal(order);
+            return order;
         }
 
         if (!expected.equals(order.getOrderStatus())
@@ -420,7 +426,7 @@ public class OrderActionService {
                 )
         );
 
-        return query.adminDetailInternal(order);
+        return order;
     }
 
     private List<OrderItem> orderItems(Long orderId) {

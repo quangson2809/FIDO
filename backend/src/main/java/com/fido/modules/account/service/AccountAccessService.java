@@ -74,36 +74,4 @@ public class AccountAccessService {
                 );
     }
 
-    /**
-     * The caller must use an approved operation-to-permission mapping;
-     * no catalog is invented here.
-     */
-    public boolean hasPermission(
-            Long accountId,
-            String permissionCode
-    ) {
-        if (accountId == null
-                || permissionCode == null
-                || permissionCode.isBlank()
-                || accounts.findById(accountId).isEmpty()) {
-            return false;
-        }
-
-        boolean isSuperadmin = roles
-                .findAssignedToAccount(accountId)
-                .stream()
-                .anyMatch(role ->
-                        "SUPERADMIN".equals(role.getCode())
-                );
-
-        if (isSuperadmin) {
-            return true;
-        }
-
-        return permissions.findGrantedToAccount(accountId)
-                .stream()
-                .anyMatch(permission ->
-                        permissionCode.equals(permission.getCode())
-                );
-    }
 }

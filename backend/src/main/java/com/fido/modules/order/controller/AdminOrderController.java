@@ -17,6 +17,7 @@ import com.fido.modules.order.service.OrderQueryService;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -83,16 +84,21 @@ public class AdminOrderController {
 
     @GetMapping("/{orderId}")
     public ApiResponse<OrderAdminDetailDto> detail(
+            Authentication authentication,
             @PathVariable Long orderId
     ) {
         return ApiResponse.of(
-                query.adminDetail(orderId)
+                query.adminDetail(
+                        orderId,
+                        authentication
+                )
         );
     }
 
     @PatchMapping("/{orderId}")
     public ApiResponse<OrderAdminDetailDto> update(
             @AuthenticationPrincipal Jwt jwt,
+            Authentication authentication,
             @PathVariable Long orderId,
             @Valid @RequestBody AdminOrderPatchRequest request
     ) {
@@ -100,7 +106,8 @@ public class AdminOrderController {
                 edit.updateAdmin(
                         actor(jwt),
                         orderId,
-                        request
+                        request,
+                        authentication
                 )
         );
     }
@@ -108,6 +115,7 @@ public class AdminOrderController {
     @PostMapping("/{orderId}/actions")
     public ApiResponse<OrderAdminDetailDto> action(
             @AuthenticationPrincipal Jwt jwt,
+            Authentication authentication,
             @PathVariable Long orderId,
             @Valid @RequestBody OrderActionRequest request
     ) {
@@ -115,7 +123,8 @@ public class AdminOrderController {
                 actions.action(
                         actor(jwt),
                         orderId,
-                        request
+                        request,
+                        authentication
                 )
         );
     }
@@ -138,6 +147,7 @@ public class AdminOrderController {
     @PostMapping("/{orderId}/after-sales")
     public ApiResponse<OrderAdminDetailDto> afterSales(
             @AuthenticationPrincipal Jwt jwt,
+            Authentication authentication,
             @PathVariable Long orderId,
             @Valid @RequestBody AfterSalesRequest request
     ) {
@@ -145,7 +155,8 @@ public class AdminOrderController {
                 afterSales.process(
                         actor(jwt),
                         orderId,
-                        request
+                        request,
+                        authentication
                 )
         );
     }

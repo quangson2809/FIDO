@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -38,11 +39,12 @@ public class OrderAfterSalesService {
     public OrderAdminDetailDto process(
             Long actor,
             Long orderId,
-            AfterSalesRequest request
+            AfterSalesRequest request,
+            Authentication authentication
     ) {
         return switch (request.operation()) {
             case "RETURN" ->
-                    acceptReturn(actor, orderId, request.reason());
+                    acceptReturn(actor, orderId, request.reason(), authentication);
             case "EXCHANGE_SIZE" ->
                     throw new ResponseStatusException(
                             HttpStatus.NOT_IMPLEMENTED
@@ -56,7 +58,8 @@ public class OrderAfterSalesService {
     private OrderAdminDetailDto acceptReturn(
             Long actor,
             Long orderId,
-            String reason
+            String reason,
+            Authentication authentication
     ) {
         Order order = orders
                 .findByIdForUpdate(orderId)
@@ -67,7 +70,7 @@ public class OrderAfterSalesService {
         if (OrderPolicy.RETURNED.equals(
                 order.getOrderStatus()
         )) {
-            return query.adminDetailInternal(order);
+            return query.adminDetailInternal(order, authentication);
         }
 
         if (!OrderPolicy.COMPLETED.equals(
@@ -98,7 +101,7 @@ public class OrderAfterSalesService {
                         + reason.trim()
         );
 
-        return query.adminDetailInternal(order);
+        return query.adminDetailInternal(order, authentication);
     }
 
     private String appendNote(

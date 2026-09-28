@@ -54,31 +54,7 @@ public class SecurityConfig {
                         )
                         .permitAll()
 
-                        .requestMatchers(
-                                "/api/v1/admin/staff-accounts/**",
-                                "/api/v1/admin/access-control",
-                                "/api/v1/admin/reports/overview",
-                                "/api/v1/admin/roles/**",
-                                "/api/v1/admin/permissions/**"
-                        )
-                        .hasAuthority("ROLE_SUPERADMIN")
-
-                        .requestMatchers(
-                                "/api/v1/admin/products/**",
-                                "/api/v1/admin/catalog/meta",
-                                "/api/v1/admin/categories/**",
-                                "/api/v1/admin/brands/**",
-                                "/api/v1/admin/size-systems/**",
-                                "/api/v1/admin/colors/**",
-                                "/api/v1/admin/suppliers/**",
-                                "/api/v1/admin/goods-receipts/**",
-                                "/api/v1/admin/inventory/**",
-                                "/api/v1/admin/audit-logs",
-                                "/api/v1/admin/content-pages",
-                                "/api/v1/admin/content-pages/**",
-                                "/api/v1/admin/customers",
-                                "/api/v1/admin/customers/**"
-                        )
+                        .requestMatchers("/api/v1/admin/**")
                         .authenticated()
 
                         .requestMatchers(
@@ -88,12 +64,6 @@ public class SecurityConfig {
                                 "/api/v1/cart/**",
                                 "/api/v1/checkout/quote",
                                 "/api/v1/orders"
-                        )
-                        .authenticated()
-
-                        .requestMatchers(
-                                "/api/v1/admin/orders",
-                                "/api/v1/admin/orders/**"
                         )
                         .authenticated()
 

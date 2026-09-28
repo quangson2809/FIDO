@@ -18,6 +18,7 @@ import java.util.Objects;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -34,19 +35,22 @@ public class OrderQueryService {
     private final PaymentRepository payments;
     private final ShippingInfoRepository shipping;
     private final OrderActionPolicy actionPolicy;
+    private final OrderAuthorization authorization;
 
     public OrderQueryService(
             OrderRepository orders,
             OrderItemRepository items,
             PaymentRepository payments,
             ShippingInfoRepository shipping,
-            OrderActionPolicy actionPolicy
+            OrderActionPolicy actionPolicy,
+            OrderAuthorization authorization
     ) {
         this.orders = orders;
         this.items = items;
         this.payments = payments;
         this.shipping = shipping;
         this.actionPolicy = actionPolicy;
+        this.authorization = authorization;
     }
 
     public ApiListResponse<OrderSummaryDto> customerOrders(
@@ -142,9 +146,13 @@ public class OrderQueryService {
     }
 
     @PreAuthorize(READ)
-    public OrderAdminDetailDto adminDetail(Long orderId) {
+    public OrderAdminDetailDto adminDetail(
+            Long orderId,
+            Authentication authentication
+    ) {
         return adminDetailInternal(
-                order(orderId)
+                order(orderId),
+                authentication
         );
     }
 
@@ -182,7 +190,10 @@ public class OrderQueryService {
         );
     }
 
-    OrderAdminDetailDto adminDetailInternal(Order order) {
+    OrderAdminDetailDto adminDetailInternal(
+            Order order,
+            Authentication authentication
+    ) {
         var orderItems = items
                 .findAllByOrderIdOrderByOrderItemIdAsc(
                         order.getOrderId()
@@ -217,7 +228,10 @@ public class OrderQueryService {
                 order.getCustomerServiceNote(),
                 order.getCancelReason(),
                 OrderMapper.paymentAdmin(payment),
-                actionPolicy.allowedActions(order, payment)
+                authorization.filterAllowed(
+                        authentication,
+                        actionPolicy.allowedActions(order, payment)
+                )
         );
     }
 

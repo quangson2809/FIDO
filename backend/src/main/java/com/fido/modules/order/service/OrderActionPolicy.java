@@ -5,32 +5,21 @@ import com.fido.modules.order.entity.Order;
 import com.fido.modules.order.entity.Payment;
 import java.util.ArrayList;
 import java.util.List;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Owns action-to-capability mapping and action visibility.
- * Transition execution stays in OrderActionService.
+ * Owns state-aware action visibility.
+ * Actor capability authorization is enforced separately by OrderAuthorization.
  */
 @Service
 public class OrderActionPolicy {
 
-    private final OrderAccessService access;
     private final InventoryCommandService inventoryCommands;
 
     public OrderActionPolicy(
-            OrderAccessService access,
             InventoryCommandService inventoryCommands
     ) {
-        this.access = access;
         this.inventoryCommands = inventoryCommands;
-    }
-
-    public void requireCapabilityFor(String action) {
-        access.requireCapability(
-                capability(action)
-        );
     }
 
     public List<String> allowedActions(
@@ -41,54 +30,22 @@ public class OrderActionPolicy {
 
         switch (order.getOrderStatus()) {
             case OrderPolicy.PENDING -> {
-                addIfAllowed(
-                        actions,
-                        "CONFIRM",
-                        OrderPolicy.ORDER_PROCESS
-                );
-                addIfAllowed(
-                        actions,
-                        "CANCEL",
-                        OrderPolicy.ORDER_EXCEPTION
-                );
+                actions.add("CONFIRM");
+                actions.add("CANCEL");
             }
             case OrderPolicy.CONFIRMED -> {
-                addIfAllowed(
-                        actions,
-                        "PREPARE",
-                        OrderPolicy.ORDER_PROCESS
-                );
-                addIfAllowed(
-                        actions,
-                        "CANCEL",
-                        OrderPolicy.ORDER_EXCEPTION
-                );
+                actions.add("PREPARE");
+                actions.add("CANCEL");
             }
             case OrderPolicy.PREPARING -> {
-                addIfAllowed(
-                        actions,
-                        "SHIP",
-                        OrderPolicy.ORDER_FULFILLMENT
-                );
-                addIfAllowed(
-                        actions,
-                        "CANCEL",
-                        OrderPolicy.ORDER_EXCEPTION
-                );
+                actions.add("SHIP");
+                actions.add("CANCEL");
             }
             case OrderPolicy.SHIPPING -> {
-                addIfAllowed(
-                        actions,
-                        "DELIVERY_FAILED",
-                        OrderPolicy.ORDER_EXCEPTION
-                );
+                actions.add("DELIVERY_FAILED");
 
                 if (OrderPolicy.PAID.equals(payment.getPaymentStatus())) {
-                    addIfAllowed(
-                            actions,
-                            "COMPLETE",
-                            OrderPolicy.ORDER_FULFILLMENT
-                    );
+                    actions.add("COMPLETE");
                 }
             }
             case OrderPolicy.DELIVERY_FAILED -> {
@@ -98,23 +55,11 @@ public class OrderActionPolicy {
                                 .deliveryReturned();
 
                 if (!deliveryReturned) {
-                    addIfAllowed(
-                            actions,
-                            "RETRY_DELIVERY",
-                            OrderPolicy.ORDER_FULFILLMENT
-                    );
-                    addIfAllowed(
-                            actions,
-                            "DELIVERY_RETURN_IN",
-                            OrderPolicy.ORDER_EXCEPTION
-                    );
+                    actions.add("RETRY_DELIVERY");
+                    actions.add("DELIVERY_RETURN_IN");
                 }
 
-                addIfAllowed(
-                        actions,
-                        "CANCEL",
-                        OrderPolicy.ORDER_EXCEPTION
-                );
+                actions.add("CANCEL");
             }
             default -> {
                 // Terminal/baseline after-sales states expose no state action.
@@ -122,29 +67,5 @@ public class OrderActionPolicy {
         }
 
         return actions;
-    }
-
-    private String capability(String action) {
-        return switch (action) {
-            case "CONFIRM", "PREPARE" ->
-                    OrderPolicy.ORDER_PROCESS;
-            case "SHIP", "RETRY_DELIVERY", "COMPLETE" ->
-                    OrderPolicy.ORDER_FULFILLMENT;
-            case "DELIVERY_FAILED", "CANCEL", "DELIVERY_RETURN_IN" ->
-                    OrderPolicy.ORDER_EXCEPTION;
-            default -> throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST
-            );
-        };
-    }
-
-    private void addIfAllowed(
-            List<String> actions,
-            String action,
-            String permission
-    ) {
-        if (access.hasCapability(permission)) {
-            actions.add(action);
-        }
     }
 }
