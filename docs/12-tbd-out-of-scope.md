@@ -109,6 +109,6 @@ Do not invent numeric targets for:
 - exact supported browser list.
 
 
-## 8. Phase 7 report blocker found during implementation
+## 8. Phase 7 report decision — resolved 2026-09-28
 
-API #71 / FR-30 / BRULE-13 is a HARD BLOCK only for report calculation: sales amount basis (including/excluding shipping), return adjustment value and period, date basis for status counts, and report timezone are not locked by the checked API/SRS/FRS/DB sources. See docs/15 for the exact decisions required. APIs #70 and #72–77 are independent and can ship with their tests. This is not a deferred optional report: Phase 7 stays PARTIAL until the Must report and its adjustment tests are implemented.
+The user resolved API #71 / FR-30 / BRULE-13: include shipping in received sales, subtract the returned order value in its original completion period, count current statuses by order creation date, and use Asia/Ho_Chi_Minh dates. See docs/15 for formulas and boundaries. This is no longer a Phase 7 blocker. Existing guest/voucher/dedupe and other earlier-phase deferred items remain unchanged.

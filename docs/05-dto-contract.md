@@ -175,4 +175,4 @@ Transcribed field contracts from the current consolidated API (checked 2026-09-2
 
 #73 specifically returns the full small content-page list as `{data: ContentPageDto[]}` without paging parameters. #74 requires page_code/title/content. #75 accepts only optional title/content, neither nullable; page_code stays stable. Public content never includes the internal page ID or actor ID.
 
-#71's ReportOverviewDto remains source-defined but unimplemented pending the monetary/time rules in docs/15. Its fields are from, to, completed_sales, returned_adjustment, net_sales and orders_by_status; no guessed calculation is part of this contract.
+#71 requires from/to dates and returns ReportOverviewDto: from, to, completed_sales, returned_adjustment, net_sales and orders_by_status. The user-approved formulas, Vietnam timezone and completion/creation date bases are documented in docs/15 (2026-09-28). orders_by_status maps all eight baseline status codes to integer counts.

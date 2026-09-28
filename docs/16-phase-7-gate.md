@@ -1,3 +1,5 @@
+> Update 2026-09-28: the report blocker below is resolved by the user decisions in docs/15. API #71 and its tests are now implemented; final verification of this follow-up is pending. The following section records the previous seven-endpoint gate and will be superseded after CI.
+
 # Phase 7 implementation gate
 
 - PHASE: 7 — Audit, Reporting, Content & Customer back-office

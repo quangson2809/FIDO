@@ -262,12 +262,23 @@ Sources: consolidated API Appendix A #70–77, SRS FR-29/30/31, BRULE-13, Custom
 - Content page_code is immutable through PATCH. Non-null title/content reject explicit null; omitted fields remain unchanged. Actor derives from JWT and timestamp from the entity lifecycle; timestamps use the existing TIMESTAMP(6) microsecond precision, and flush before mapping ensures PATCH returns the persisted timestamp. Audit shares the content transaction. No content lifecycle or schema change.
 - Customer queries start from existing Accounts, with phone/email search and stable account_id ordering; no synthetic guest Account, inferred phone/email ownership, minimum-order requirement or new customer-role predicate. Customer stats aggregate all linked orders in one query for the current account page. Detail includes only the documented AccountDto/AddressDto/OrderSummaryDto. Account calls CustomerOrderQueryService, never OrderRepository or Order entities; the module read contract also enforces CUSTOMER_READ. Order detail summaries join Payment in one query.
 
-### API #71 — HARD BLOCK, monetary/reporting semantics
+### API #71 — resolved by stakeholder decisions, 2026-09-28
 
-API Appendix A defines from/to dates, completed_sales, returned_adjustment, net_sales and orders_by_status. SRS FR-30 / BRULE-13 and FRS require COMPLETED recognition and a separate RETURNED adjustment. DB defines completed_at and returned_at, but none of these sources locks:
+The user explicitly approved these rules in the Phase 7 conversation:
 
-1. Whether sales includes shipping (`total_snapshot`) or excludes shipping (`subtotal_snapshot - discount_snapshot`).
-2. Whether a return adjusts its completion period or its return period, including a return in a later period and whether the adjustment uses order value or refunded amount.
-3. Which date bounds the orders_by_status population (creation date vs recognition date), and the reporting business timezone.
+- Sales is the amount received from the order, including shipping paid by the customer.
+- A returned order deducts its full order value from its original completion period, regardless of the later return/refund date.
+- Order-status counts use order creation date; sales uses completion date.
+- Report dates use Vietnam time (`Asia/Ho_Chi_Minh`).
 
-These change money and public report semantics, so backend/AGENTS.md requires stakeholder clarification for this slice. No guessed report, aggregate table, or successful placeholder response is introduced. API #71 remains unimplemented and denied by the existing route fallback; the other Phase 7 endpoints continue independently. Phase 7 stays PARTIAL and Phase 8 must not begin until this blocker is resolved and adjustment tests pass.
+Implementation of the existing ReportOverviewDto:
+
+- `completed_sales`: sum `payments.amount_received` for orders with `completed_at` in the requested period and current status COMPLETED or RETURNED. RETURNED retains its original recognized sale in this gross amount. Baseline COD collection sets amount_received to amount_due (the order total, including shipping).
+- `returned_adjustment`: positive sum of `orders.total_snapshot` for RETURNED orders in the same completion cohort. It does not depend on `amount_refunded` or filter by returned_at.
+- `net_sales = completed_sales - returned_adjustment`. The adjustment is never subtracted twice; a return in a later month restates the completion month.
+- `orders_by_status`: counts current order statuses among orders created in the requested date range. All eight baseline status keys are present, with zero for absent statuses. This is not a historical status-at-period-end reconstruction; no timeline resource is introduced.
+- Required `from`/`to` are inclusive local dates. Convert Vietnam midnight at `from` and midnight after `to` into UTC, then query `[start, end)` against existing UTC timestamps. JDBC binds LocalDateTime using JDBC 4.2, avoiding dependence on the JVM default timezone for conversion.
+- API #71 remains highest-administrator-only per its source actor: SUPERADMIN at both HTTP and service boundaries; no employee capability/role grant is invented.
+- ReportRepository performs two aggregate read queries across Order/Payment tables without foreign repositories/entities, per docs/01's explicit report-read allowance. The read-only REPEATABLE_READ service transaction keeps both aggregates in one snapshot. No aggregate table, migration, cached report or order mutation.
+
+The earlier monetary/time HARD BLOCK is resolved. Phase 7's gate now depends on successful API/adjustment tests, recorded in docs/16; earlier-phase deferred slices are unchanged.

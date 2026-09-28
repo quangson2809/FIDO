@@ -57,6 +57,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/v1/admin/staff-accounts/**",
                                 "/api/v1/admin/access-control",
+                                "/api/v1/admin/reports/overview",
                                 "/api/v1/admin/roles/**",
                                 "/api/v1/admin/permissions/**"
                         )
