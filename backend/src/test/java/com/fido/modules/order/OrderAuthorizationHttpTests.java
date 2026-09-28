@@ -81,6 +81,24 @@ class OrderAuthorizationHttpTests extends OrderHttpSupport {
         );
 
         assertEquals(200, confirmed.status(), confirmed.body());
+
+        assertEquals(
+                1,
+                db.queryForObject(
+                        """
+                        SELECT COUNT(*)
+                        FROM audit_logs
+                        WHERE actor_account_id=?
+                          AND target_type='ORDER'
+                          AND target_id=?
+                          AND action='ORDER_CONFIRM'
+                        """,
+                        Integer.class,
+                        operator.accountId(),
+                        Long.toString(orderId)
+                )
+        );
+
         assertTrue(
                 confirmed.data()
                         .get("data")
@@ -229,6 +247,24 @@ class OrderAuthorizationHttpTests extends OrderHttpSupport {
         assertEquals(
                 200,
                 action(root, rootOrder, "CONFIRM").status()
+        );
+    }
+
+    @Test
+    void invalidOrderActionFailsAtRequestValidation() throws Exception {
+        User root = superadmin();
+        long orderId = pendingOrder();
+
+        assertEquals(
+                400,
+                call(
+                        "POST",
+                        "/api/v1/admin/orders/"
+                                + orderId
+                                + "/actions",
+                        root.token(),
+                        Map.of("action", "ABC")
+                ).status()
         );
     }
 
