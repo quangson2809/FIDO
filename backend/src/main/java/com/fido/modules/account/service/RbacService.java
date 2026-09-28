@@ -100,7 +100,7 @@ public class RbacService {
             Long actor,
             RoleCreateRequest request
     ) {
-        lock();
+        lockSuperadminRole();
 
         Role role = new Role();
         role.setCode(request.code());
@@ -127,7 +127,7 @@ public class RbacService {
             Long roleId,
             RolePatchRequest request
     ) {
-        lock();
+        lockSuperadminRole();
 
         Role role = role(roleId);
 
@@ -160,7 +160,7 @@ public class RbacService {
             Long actor,
             Long roleId
     ) {
-        lock();
+        lockSuperadminRole();
 
         Role role = role(roleId);
 
@@ -188,7 +188,7 @@ public class RbacService {
             Long actor,
             PermissionCreateRequest request
     ) {
-        lock();
+        lockSuperadminRole();
 
         Permission permission = new Permission();
         permission.setCode(request.code());
@@ -212,7 +212,7 @@ public class RbacService {
             Long permissionId,
             PermissionPatchRequest request
     ) {
-        lock();
+        lockSuperadminRole();
 
         Permission permission = permission(permissionId);
 
@@ -240,7 +240,7 @@ public class RbacService {
             Long actor,
             Long permissionId
     ) {
-        lock();
+        lockSuperadminRole();
 
         Permission permission = permission(permissionId);
 
@@ -314,7 +314,7 @@ public class RbacService {
         );
     }
 
-    private void lock() {
+    private void lockSuperadminRole() {
         roles
                 .lockSuperadminRole()
                 .orElseThrow(() ->
