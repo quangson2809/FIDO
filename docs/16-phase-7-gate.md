@@ -1,16 +1,13 @@
-> Update 2026-09-28: the report blocker below is resolved by the user decisions in docs/15. API #71 and its tests are now implemented; final verification of this follow-up is pending. The following section records the previous seven-endpoint gate and will be superseded after CI.
-
-# Phase 7 implementation gate
+# Phase 7 implementation gate — 2026-09-28
 
 - PHASE: 7 — Audit, Reporting, Content & Customer back-office
-- STATUS: PARTIAL
-- SOURCE IDS IMPLEMENTED: API #70, #72–77; SRS FR-29, FR-31, Customer Admin / FR-27; current consolidated API Appendix A; DB v1.3.0.
-- APIS IMPLEMENTED: audit list/filter; public content read; admin content list/create/update; customer list/detail (7 endpoints).
-- SCHEMA CHANGES: none. Content timestamps are truncated to the existing TIMESTAMP(6) precision before persistence/response.
-- TECHNICAL DECISIONS RECORDED: docs/15; DTO source details in docs/05; report blocker in docs/12.
-- DEFERRED SLICES: no new optional feature introduced; content publish/version and report aggregate tables remain out of scope.
-- HARD BLOCKERS REMAINING: API #71 report amount/period/status-count/timezone semantics, detailed in docs/15. This Must endpoint remains unimplemented; no successful placeholder report.
-- NEXT PHASE READY: NO. Phase 8 has not started.
+- STATUS: PASS
+- SOURCE IDS IMPLEMENTED: API #70–77; SRS FR-29/30/31, BRULE-13, Customer Admin / FR-27; consolidated API Appendix A; DB v1.3.0; report decisions approved by the user on 2026-09-28.
+- APIS IMPLEMENTED: all 8 Phase 7 endpoints — audit list/filter, report overview, public content read, admin content list/create/update, customer list/detail.
+- SCHEMA CHANGES: none. Existing content TIMESTAMP(6) precision is preserved.
+- TECHNICAL DECISIONS RECORDED: docs/15; DTO contracts in docs/05; resolved report blocker in docs/12.
+- HARD BLOCKERS REMAINING IN PHASE 7: none.
+- NEXT PHASE READY: YES for the Phase 7 gate. Phase 8 has not started; earlier-phase deferred guest/voucher/dedupe and other documented limitations remain and must be assessed during readiness review.
 
 ## Changed code
 
@@ -18,29 +15,30 @@
 |---|---|
 | audit | AuditController, AuditQueryService, AuditLogDto and filtered repository reads |
 | content | ContentPageController/Service/Mapper; public/admin DTOs; create/PATCH validation; repository reads/flush; microsecond timestamps |
-| account | CustomerController, CustomerQueryService, CustomerSummaryDto/CustomerDetailDto; account search |
-| order | CustomerOrderQueryService and CustomerOrderStats contract; grouped counts/latest date and joined summary query |
-| security | Explicit authenticated routes; service capability checks; no automatic employee grants |
-| tests | AuditQueryApiTest, ContentPageApiTest, CustomerQueryApiTest and shared HTTP fixture support |
+| account | CustomerController, CustomerQueryService, customer DTOs and account search |
+| order | CustomerOrderQueryService and CustomerOrderStats; grouped counts/latest date and joined summaries |
+| report | ReportController, ReportService, ReportRepository, ReportOverviewDto; two read-only aggregates in one repeatable-read transaction |
+| security | Explicit routes and service authorization; report is SUPERADMIN-only; no automatic employee grants |
+| tests | AuditQueryApiTest, ContentPageApiTest, CustomerQueryApiTest, ReportApiTest and shared HTTP support |
 
-## Invariants verified
+## Verified rules and boundaries
 
-- Controllers return DTOs, not entities; no cross-module Repository/entity imports.
-- Account aggregates order data only through an authorized Order query service. Stats use one grouped query per page, and detail summaries join Payment directly.
-- Guest orders stay separate even when recipient phone matches an account. Only customer_account_id links account order history.
-- No password hash, role configuration or admin payment actor fields in customer responses; public content omits page_id and actor.
-- Content PATCH preserves omitted fields and page_code; explicit null/blank required fields fail validation.
-- Content write and audit share a transaction; an injected audit failure rolls back the already-flushed content update.
-- Audit combined filters, inclusive time bounds, stable pagination, invalid bounds and missing permission are tested.
-- CONTENT_READ and CONTENT_WRITE are independent; CUSTOMER_READ does not grant Order admin permission.
-- Existing stock/order/payment code and schema are unchanged; full regression remains part of CI.
+- Controllers return DTOs; no foreign Repository/entity imports. Report reads Order/Payment tables directly through an aggregate-only JDBC repository, as explicitly allowed by docs/01, and does not own their lifecycle.
+- Account obtains order summaries through the authorized Order query service. Guest orders are not inferred from matching phone/email or converted into Accounts.
+- Customer/public content responses expose only their documented fields; no credential, role configuration or admin payment actor leakage.
+- Content PATCH preserves omitted fields and page_code, rejects null/blank required fields, and rolls back its flushed update if audit fails.
+- Audit combined filters, inclusive UTC timestamp bounds, stable pagination and authorization are tested. Content read/write capabilities remain independent; CUSTOMER_READ does not grant Order admin access.
+- Report completed_sales includes received money, including shipping, for the completion-period cohort (COMPLETED and subsequent RETURNED orders). Returned adjustment subtracts full order value exactly once in that same completion period, independent of return/refund date or refund execution.
+- Status counts use creation dates and current statuses, including zero counts for absent baseline states.
+- Vietnam local date bounds convert to UTC with an exclusive next-day upper bound; both midnight edges and the final microsecond are tested.
+- Paid but incomplete orders do not contribute sales. Discounts, shipping, guest orders, a later-month return, refund after return, repeated reads, empty results, authorization and invalid/missing dates are covered.
+- No stock/order/payment write behavior, migration or report aggregate table is introduced.
 
-## Tests run and result
+## Verification
 
-- Tested code commit: `44ce0845eb3028d2aa019105a6b1c0446d4c94fc`.
-- GitHub Actions run: https://github.com/quangson2809/FIDO/actions/runs/36337946315 — SUCCESS.
-- H2: clean build and full test suite — PASS.
-- MySQL: migration/mapping and full test suite rerun — PASS.
-- Static review: no foreign module Repository/entity imports, no entity/repository controller imports, no migration change; diff whitespace check clean.
-- Local Gradle could not download its distribution due to restricted network; executable verification was performed by the existing CI workflow.
-- API #71 report adjustment tests are not claimed: the report remains blocked on the decisions above.
+- Code commit: `ea8e0ddcc445f7c4670d8a9773df9cc37c52bfdc`.
+- GitHub Actions: https://github.com/quangson2809/FIDO/actions/runs/36364851952
+- H2: `./gradlew --no-daemon clean build` — PASS.
+- MySQL 8.4: `./gradlew --no-daemon test --rerun-tasks` — PASS.
+- Static boundary review and diff whitespace checks — PASS.
+- The former PARTIAL gate is superseded by the approved report rules and this full Phase 7 verification. This is not a claim that all earlier-phase deferred functionality or production readiness is complete.
