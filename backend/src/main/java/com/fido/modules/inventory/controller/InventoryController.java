@@ -6,6 +6,7 @@ import com.fido.modules.inventory.dto.request.InventoryAdjustmentRequest;
 import com.fido.modules.inventory.dto.response.InventoryRowDto;
 import com.fido.modules.inventory.dto.response.InventoryTransactionDto;
 import com.fido.modules.inventory.service.InventoryAdminService;
+import com.fido.modules.inventory.service.InventoryTransactionFilter;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -95,15 +96,17 @@ public class InventoryController {
                     Integer pageSize
     ) {
         return service.transactions(
-                variantId,
-                transactionType,
-                orderId,
-                goodsReceiptId,
-                actorAccountId,
-                from,
-                to,
-                page,
-                pageSize
+                new InventoryTransactionFilter(
+                        variantId,
+                        transactionType,
+                        orderId,
+                        goodsReceiptId,
+                        actorAccountId,
+                        from,
+                        to,
+                        page,
+                        pageSize
+                )
         );
     }
 

@@ -11,7 +11,6 @@ import com.fido.modules.inventory.mapper.InventoryMapper;
 import com.fido.modules.inventory.repository.InventoryRepository;
 import com.fido.modules.inventory.repository.InventoryTransactionRepository;
 import jakarta.persistence.criteria.Predicate;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
@@ -110,34 +109,21 @@ public class InventoryAdminService {
     @PreAuthorize(READ)
     @Transactional(readOnly = true)
     public ApiListResponse<InventoryTransactionDto> transactions(
-            Long variantId,
-            String transactionType,
-            Long orderId,
-            Long goodsReceiptId,
-            Long actorAccountId,
-            LocalDateTime from,
-            LocalDateTime to,
-            Integer page,
-            Integer pageSize
+            InventoryTransactionFilter filter
     ) {
-        if (from != null
-                && to != null
-                && from.isAfter(to)) {
+        if (filter.from() != null
+                && filter.to() != null
+                && filter.from().isAfter(filter.to())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         }
 
-        Pagination pagination = Pagination.of(page, pageSize);
+        Pagination pagination = Pagination.of(
+                filter.page(),
+                filter.pageSize()
+        );
 
         var result = transactions.findAll(
-                transactionSpec(
-                        variantId,
-                        transactionType,
-                        orderId,
-                        goodsReceiptId,
-                        actorAccountId,
-                        from,
-                        to
-                ),
+                transactionSpec(filter),
                 pagination.toPageable()
         );
 
@@ -153,71 +139,71 @@ public class InventoryAdminService {
     }
 
     private Specification<InventoryTransaction> transactionSpec(
-            Long variantId,
-            String transactionType,
-            Long orderId,
-            Long goodsReceiptId,
-            Long actorAccountId,
-            LocalDateTime from,
-            LocalDateTime to
+            InventoryTransactionFilter filter
     ) {
         return (root, query, cb) -> {
             var predicates = new ArrayList<Predicate>();
 
-            if (variantId != null) {
+            if (filter.variantId() != null) {
                 predicates.add(
-                        cb.equal(root.get("variantId"), variantId)
+                        cb.equal(
+                                root.get("variantId"),
+                                filter.variantId()
+                        )
                 );
             }
 
-            if (transactionType != null
-                    && !transactionType.isBlank()) {
+            if (filter.transactionType() != null
+                    && !filter.transactionType().isBlank()) {
                 predicates.add(
                         cb.equal(
                                 root.get("transactionType"),
-                                transactionType.trim()
+                                filter.transactionType().trim()
                         )
                 );
             }
 
-            if (orderId != null) {
+            if (filter.orderId() != null) {
                 predicates.add(
-                        cb.equal(root.get("orderId"), orderId)
+                        cb.equal(
+                                root.get("orderId"),
+                                filter.orderId()
+                        )
                 );
             }
 
-            if (goodsReceiptId != null) {
+            if (filter.goodsReceiptId() != null) {
                 predicates.add(
                         cb.equal(
                                 root.get("goodsReceiptId"),
-                                goodsReceiptId
+                                filter.goodsReceiptId()
                         )
                 );
             }
 
-            if (actorAccountId != null) {
+            if (filter.actorAccountId() != null) {
                 predicates.add(
                         cb.equal(
                                 root.get("actorAccountId"),
-                                actorAccountId
+                                filter.actorAccountId()
                         )
                 );
             }
 
-            if (from != null) {
+            if (filter.from() != null) {
                 predicates.add(
                         cb.greaterThanOrEqualTo(
                                 root.get("createdAt"),
-                                from
+                                filter.from()
                         )
                 );
             }
 
-            if (to != null) {
+            if (filter.to() != null) {
                 predicates.add(
                         cb.lessThanOrEqualTo(
                                 root.get("createdAt"),
-                                to
+                                filter.to()
                         )
                 );
             }
@@ -236,4 +222,3 @@ public class InventoryAdminService {
         return value.trim();
     }
 }
-
