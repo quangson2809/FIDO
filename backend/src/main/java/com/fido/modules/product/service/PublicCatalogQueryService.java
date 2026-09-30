@@ -21,8 +21,10 @@ import com.fido.modules.product.repository.ProductImageRepository;
 import com.fido.modules.product.repository.ProductRepository;
 import com.fido.modules.product.repository.ProductVariantRepository;
 import java.math.BigDecimal;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -80,10 +82,15 @@ public class PublicCatalogQueryService {
                 pagination.toPageable()
         );
 
-        Map<Long, Category> categoriesById = categoryMap();
-        Map<Long, Brand> brandsById = brandMap();
+        List<Product> productsOnPage = result.getContent();
 
-        var data = result.getContent()
+        Map<Long, Category> categoriesById =
+                categoryMap(productsOnPage);
+
+        Map<Long, Brand> brandsById =
+                brandMap(productsOnPage);
+
+        var data = productsOnPage
                 .stream()
                 .map(product -> new ProductSummaryDto(
                         product.getProductId(),
@@ -225,32 +232,45 @@ public class PublicCatalogQueryService {
         }
     }
 
-    private Map<Long, Category> categoryMap() {
-        var result = new HashMap<Long, Category>();
+    private Map<Long, Category> categoryMap(
+            List<Product> productsOnPage
+    ) {
+        var categoryIds = productsOnPage.stream()
+                .map(Product::getCategoryId)
+                .distinct()
+                .toList();
 
-        categories.findAllByOrderByCategoryIdAsc()
-                .forEach(category ->
-                        result.put(
-                                category.getCategoryId(),
-                                category
-                        )
-                );
+        if (categoryIds.isEmpty()) {
+            return Map.of();
+        }
 
-        return result;
+        return categories.findAllByCategoryIdIn(categoryIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        Category::getCategoryId,
+                        Function.identity()
+                ));
     }
 
-    private Map<Long, Brand> brandMap() {
-        var result = new HashMap<Long, Brand>();
+    private Map<Long, Brand> brandMap(
+            List<Product> productsOnPage
+    ) {
+        var brandIds = productsOnPage.stream()
+                .map(Product::getBrandId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
 
-        brands.findAllByOrderByBrandIdAsc()
-                .forEach(brand ->
-                        result.put(
-                                brand.getBrandId(),
-                                brand
-                        )
-                );
+        if (brandIds.isEmpty()) {
+            return Map.of();
+        }
 
-        return result;
+        return brands.findAllByBrandIdIn(brandIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        Brand::getBrandId,
+                        Function.identity()
+                ));
     }
 
     private Category requiredCategory(
