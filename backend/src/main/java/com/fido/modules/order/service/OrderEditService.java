@@ -1,6 +1,9 @@
 package com.fido.modules.order.service;
 
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEvent;
 import com.fido.modules.audit.service.AuditService;
+import com.fido.modules.audit.service.AuditTargetType;
 import com.fido.modules.order.dto.request.AdminOrderPatchRequest;
 import com.fido.modules.order.dto.request.RecipientPatchRequest;
 import com.fido.modules.order.dto.response.OrderAdminDetailDto;
@@ -77,10 +80,12 @@ public class OrderEditService {
         orders.save(order);
 
         audit.record(
-                accountId,
-                "ORDER_RECIPIENT_UPDATE",
-                "ORDER",
-                orderId
+                AuditEvent.of(
+                        accountId,
+                        AuditAction.ORDER_RECIPIENT_UPDATE,
+                        AuditTargetType.ORDER,
+                        orderId
+                )
         );
 
         return query.customerDetailInternal(order);
@@ -113,10 +118,12 @@ public class OrderEditService {
         );
 
         audit.record(
-                actor,
-                "ORDER_ADMIN_UPDATE",
-                "ORDER",
-                orderId
+                AuditEvent.of(
+                        actor,
+                        AuditAction.ORDER_ADMIN_UPDATE,
+                        AuditTargetType.ORDER,
+                        orderId
+                )
         );
 
         return query.adminDetailInternal(order, authentication);

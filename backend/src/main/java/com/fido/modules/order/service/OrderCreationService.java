@@ -1,6 +1,9 @@
 package com.fido.modules.order.service;
 
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEvent;
 import com.fido.modules.audit.service.AuditService;
+import com.fido.modules.audit.service.AuditTargetType;
 import com.fido.modules.cart.service.CheckoutCartView;
 import com.fido.modules.order.dto.request.CreateOrderRequest;
 import com.fido.modules.order.dto.response.OrderConfirmationDto;
@@ -68,10 +71,12 @@ public class OrderCreationService {
         );
 
         audit.record(
-                accountId,
-                "ORDER_CREATE",
-                "ORDER",
-                order.getOrderId()
+                AuditEvent.of(
+                        accountId,
+                        AuditAction.ORDER_CREATE,
+                        AuditTargetType.ORDER,
+                        order.getOrderId()
+                )
         );
 
         return OrderMapper.confirmation(

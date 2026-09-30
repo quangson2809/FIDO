@@ -1,6 +1,9 @@
 package com.fido.modules.order.service;
 
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEvent;
 import com.fido.modules.audit.service.AuditService;
+import com.fido.modules.audit.service.AuditTargetType;
 import com.fido.modules.order.dto.request.PaymentActionRequest;
 import com.fido.modules.order.dto.response.PaymentAdminDto;
 import com.fido.modules.order.entity.Order;
@@ -92,12 +95,14 @@ public class OrderPaymentService {
         payments.save(payment);
 
         audit.record(
-                actor,
-                "ORDER_COD_COLLECT",
-                "ORDER",
-                order.getOrderId(),
-                "UNPAID -> PAID; amount="
+                AuditEvent.described(
+                        actor,
+                        AuditAction.ORDER_COD_COLLECT,
+                        AuditTargetType.ORDER,
+                        order.getOrderId(),
+                        "UNPAID -> PAID; amount="
                         + payment.getAmountReceived()
+                )
         );
 
         return OrderMapper.paymentAdmin(payment);
@@ -135,12 +140,14 @@ public class OrderPaymentService {
         payments.save(payment);
 
         audit.record(
-                actor,
-                "ORDER_REFUND",
-                "ORDER",
-                order.getOrderId(),
-                "PAID -> REFUNDED; amount="
+                AuditEvent.described(
+                        actor,
+                        AuditAction.ORDER_REFUND,
+                        AuditTargetType.ORDER,
+                        order.getOrderId(),
+                        "PAID -> REFUNDED; amount="
                         + payment.getAmountRefunded()
+                )
         );
 
         return OrderMapper.paymentAdmin(payment);

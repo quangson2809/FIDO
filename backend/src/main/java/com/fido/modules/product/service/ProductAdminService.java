@@ -1,6 +1,9 @@
 package com.fido.modules.product.service;
 
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEvent;
 import com.fido.modules.audit.service.AuditService;
+import com.fido.modules.audit.service.AuditTargetType;
 import com.fido.modules.inventory.service.InventoryCommandService;
 import com.fido.modules.product.dto.request.ProductCreateRequest;
 import com.fido.modules.product.dto.request.ProductPatchRequest;
@@ -121,10 +124,12 @@ public class ProductAdminService {
         em.flush();
 
         audit.record(
-                actor,
-                "PRODUCT_CREATE",
-                "PRODUCT",
-                product.getProductId()
+                AuditEvent.of(
+                        actor,
+                        AuditAction.PRODUCT_CREATE,
+                        AuditTargetType.PRODUCT,
+                        product.getProductId()
+                )
         );
 
         return query.detailInternal(
@@ -159,10 +164,12 @@ public class ProductAdminService {
         em.flush();
 
         audit.record(
-                actor,
-                "PRODUCT_UPDATE",
-                "PRODUCT",
-                productId
+                AuditEvent.of(
+                        actor,
+                        AuditAction.PRODUCT_UPDATE,
+                        AuditTargetType.PRODUCT,
+                        productId
+                )
         );
 
         return query.detailInternal(productId);
@@ -329,10 +336,12 @@ public class ProductAdminService {
         em.flush();
 
         audit.record(
-                actor,
-                "VARIANT_CREATE",
-                "PRODUCT",
-                productId
+                AuditEvent.of(
+                        actor,
+                        AuditAction.VARIANT_CREATE,
+                        AuditTargetType.PRODUCT,
+                        productId
+                )
         );
 
         return query.variantsInternal(productId);
@@ -374,10 +383,12 @@ public class ProductAdminService {
         em.flush();
 
         audit.record(
-                actor,
-                "VARIANT_UPDATE",
-                "VARIANT",
-                variantId
+                AuditEvent.of(
+                        actor,
+                        AuditAction.VARIANT_UPDATE,
+                        AuditTargetType.VARIANT,
+                        variantId
+                )
         );
 
         return query.variantInternal(

@@ -1,6 +1,9 @@
 package com.fido.modules.product.service;
 
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEvent;
 import com.fido.modules.audit.service.AuditService;
+import com.fido.modules.audit.service.AuditTargetType;
 import com.fido.modules.product.dto.request.SizeSystemCreateRequest;
 import com.fido.modules.product.dto.request.SizeSystemPatchRequest;
 import com.fido.modules.product.dto.response.SizeSystemDto;
@@ -93,10 +96,12 @@ public class SizeSystemAdminService {
         em.flush();
 
         audit.record(
-                actor,
-                "SIZE_SYSTEM_CREATE",
-                "SIZE_SYSTEM",
-                sizeSystem.getSizeSystemId()
+                AuditEvent.of(
+                        actor,
+                        AuditAction.SIZE_SYSTEM_CREATE,
+                        AuditTargetType.SIZE_SYSTEM,
+                        sizeSystem.getSizeSystemId()
+                )
         );
 
         return metaService.sizeSystemDto(
@@ -132,10 +137,12 @@ public class SizeSystemAdminService {
         em.flush();
 
         audit.record(
-                actor,
-                "SIZE_SYSTEM_UPDATE",
-                "SIZE_SYSTEM",
-                sizeSystemId
+                AuditEvent.of(
+                        actor,
+                        AuditAction.SIZE_SYSTEM_UPDATE,
+                        AuditTargetType.SIZE_SYSTEM,
+                        sizeSystemId
+                )
         );
 
         return metaService.sizeSystemDto(sizeSystemId);
@@ -169,10 +176,12 @@ public class SizeSystemAdminService {
         em.flush();
 
         audit.record(
-                actor,
-                "SIZE_SYSTEM_DELETE",
-                "SIZE_SYSTEM",
-                sizeSystemId
+                AuditEvent.of(
+                        actor,
+                        AuditAction.SIZE_SYSTEM_DELETE,
+                        AuditTargetType.SIZE_SYSTEM,
+                        sizeSystemId
+                )
         );
     }
 

@@ -6,7 +6,10 @@ import com.fido.modules.account.entity.Role;
 import com.fido.modules.account.repository.AccountRepository;
 import com.fido.modules.account.repository.AccountRoleRepository;
 import com.fido.modules.account.repository.RoleRepository;
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEvent;
 import com.fido.modules.audit.service.AuditService;
+import com.fido.modules.audit.service.AuditTargetType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -86,10 +89,12 @@ public class SuperadminBootstrapService {
         assignments.save(mapping);
 
         audit.record(
-                account.getAccountId(),
-                "SUPERADMIN_BOOTSTRAP",
-                "ACCOUNT",
-                account.getAccountId()
+                AuditEvent.of(
+                        account.getAccountId(),
+                        AuditAction.SUPERADMIN_BOOTSTRAP,
+                        AuditTargetType.ACCOUNT,
+                        account.getAccountId()
+                )
         );
     }
 }

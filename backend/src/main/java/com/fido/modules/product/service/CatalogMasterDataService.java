@@ -1,6 +1,9 @@
 package com.fido.modules.product.service;
 
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEvent;
 import com.fido.modules.audit.service.AuditService;
+import com.fido.modules.audit.service.AuditTargetType;
 import com.fido.modules.product.dto.request.BrandRequest;
 import com.fido.modules.product.dto.request.CategoryCreateRequest;
 import com.fido.modules.product.dto.request.CategoryPatchRequest;
@@ -83,10 +86,12 @@ public class CatalogMasterDataService {
         em.flush();
 
         audit.record(
-                actor,
-                "CATEGORY_CREATE",
-                "CATEGORY",
-                category.getCategoryId()
+                AuditEvent.of(
+                        actor,
+                        AuditAction.CATEGORY_CREATE,
+                        AuditTargetType.CATEGORY,
+                        category.getCategoryId()
+                )
         );
 
         return CatalogMapper.category(category);
@@ -119,10 +124,12 @@ public class CatalogMasterDataService {
         em.flush();
 
         audit.record(
-                actor,
-                "CATEGORY_UPDATE",
-                "CATEGORY",
-                categoryId
+                AuditEvent.of(
+                        actor,
+                        AuditAction.CATEGORY_UPDATE,
+                        AuditTargetType.CATEGORY,
+                        categoryId
+                )
         );
 
         return CatalogMapper.category(category);
@@ -146,10 +153,12 @@ public class CatalogMasterDataService {
         em.flush();
 
         audit.record(
-                actor,
-                "CATEGORY_DELETE",
-                "CATEGORY",
-                categoryId
+                AuditEvent.of(
+                        actor,
+                        AuditAction.CATEGORY_DELETE,
+                        AuditTargetType.CATEGORY,
+                        categoryId
+                )
         );
     }
 
@@ -165,10 +174,12 @@ public class CatalogMasterDataService {
         em.flush();
 
         audit.record(
-                actor,
-                "BRAND_CREATE",
-                "BRAND",
-                brand.getBrandId()
+                AuditEvent.of(
+                        actor,
+                        AuditAction.BRAND_CREATE,
+                        AuditTargetType.BRAND,
+                        brand.getBrandId()
+                )
         );
 
         return CatalogMapper.brand(brand);
@@ -187,10 +198,12 @@ public class CatalogMasterDataService {
         em.flush();
 
         audit.record(
-                actor,
-                "BRAND_UPDATE",
-                "BRAND",
-                brandId
+                AuditEvent.of(
+                        actor,
+                        AuditAction.BRAND_UPDATE,
+                        AuditTargetType.BRAND,
+                        brandId
+                )
         );
 
         return CatalogMapper.brand(brand);
@@ -211,10 +224,12 @@ public class CatalogMasterDataService {
         em.flush();
 
         audit.record(
-                actor,
-                "BRAND_DELETE",
-                "BRAND",
-                brandId
+                AuditEvent.of(
+                        actor,
+                        AuditAction.BRAND_DELETE,
+                        AuditTargetType.BRAND,
+                        brandId
+                )
         );
     }
 
@@ -231,10 +246,12 @@ public class CatalogMasterDataService {
         em.flush();
 
         audit.record(
-                actor,
-                "COLOR_CREATE",
-                "COLOR",
-                color.getColorId()
+                AuditEvent.of(
+                        actor,
+                        AuditAction.COLOR_CREATE,
+                        AuditTargetType.COLOR,
+                        color.getColorId()
+                )
         );
 
         return CatalogMapper.color(color);
@@ -271,10 +288,12 @@ public class CatalogMasterDataService {
         em.flush();
 
         audit.record(
-                actor,
-                "COLOR_UPDATE",
-                "COLOR",
-                colorId
+                AuditEvent.of(
+                        actor,
+                        AuditAction.COLOR_UPDATE,
+                        AuditTargetType.COLOR,
+                        colorId
+                )
         );
 
         return CatalogMapper.color(color);
@@ -295,10 +314,12 @@ public class CatalogMasterDataService {
         em.flush();
 
         audit.record(
-                actor,
-                "COLOR_DELETE",
-                "COLOR",
-                colorId
+                AuditEvent.of(
+                        actor,
+                        AuditAction.COLOR_DELETE,
+                        AuditTargetType.COLOR,
+                        colorId
+                )
         );
     }
 

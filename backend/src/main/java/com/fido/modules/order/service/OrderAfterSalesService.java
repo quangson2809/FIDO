@@ -1,6 +1,9 @@
 package com.fido.modules.order.service;
 
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEvent;
 import com.fido.modules.audit.service.AuditService;
+import com.fido.modules.audit.service.AuditTargetType;
 import com.fido.modules.order.dto.request.AfterSalesRequest;
 import com.fido.modules.order.dto.response.OrderAdminDetailDto;
 import com.fido.modules.order.entity.Order;
@@ -93,12 +96,14 @@ public class OrderAfterSalesService {
         orders.save(order);
 
         audit.record(
-                actor,
-                "ORDER_RETURN_ACCEPT",
-                "ORDER",
-                orderId,
-                "COMPLETED -> RETURNED; reason="
+                AuditEvent.described(
+                        actor,
+                        AuditAction.ORDER_RETURN_ACCEPT,
+                        AuditTargetType.ORDER,
+                        orderId,
+                        "COMPLETED -> RETURNED; reason="
                         + reason.trim()
+                )
         );
 
         return query.adminDetailInternal(order, authentication);
