@@ -1,7 +1,7 @@
 package com.fido.modules.order.service;
 
 import com.fido.modules.audit.service.AuditService;
-import com.fido.modules.cart.service.CartService;
+import com.fido.modules.cart.service.CheckoutCartView;
 import com.fido.modules.order.dto.request.CreateOrderRequest;
 import com.fido.modules.order.dto.response.OrderConfirmationDto;
 import com.fido.modules.order.entity.Order;
@@ -12,121 +12,60 @@ import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @Transactional
 public class OrderCreationService {
 
-    private final CartService cart;
+    private final CheckoutCalculationService checkout;
     private final OrderRepository orders;
     private final OrderItemRepository items;
     private final PaymentRepository payments;
     private final AuditService audit;
-    private final BigDecimal shippingFee;
 
     public OrderCreationService(
-            CartService cart,
+            CheckoutCalculationService checkout,
             OrderRepository orders,
             OrderItemRepository items,
             PaymentRepository payments,
-            AuditService audit,
-            @Value("${app.checkout.shipping-fee:30000.00}")
-                    BigDecimal shippingFee
+            AuditService audit
     ) {
-        if (shippingFee.signum() < 0) {
-            throw new IllegalArgumentException(
-                    "Checkout shipping fee cannot be negative"
-            );
-        }
-
-        this.cart = cart;
+        this.checkout = checkout;
         this.orders = orders;
         this.items = items;
         this.payments = payments;
         this.audit = audit;
-        this.shippingFee = shippingFee;
     }
 
     public OrderConfirmationDto create(
             Long accountId,
             CreateOrderRequest request
     ) {
-        if (request.voucher_code() != null
-                && !request.voucher_code().isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_IMPLEMENTED
-            );
-        }
+        CheckoutCalculation calculation = checkout.calculate(
+                accountId,
+                request.voucher_code()
+        );
 
-        var current = cart.checkoutView(accountId);
+        Order order = persistOrder(
+                accountId,
+                request,
+                calculation
+        );
 
-        if (current.items().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
-        }
+        persistOrderItems(
+                order.getOrderId(),
+                calculation.items()
+        );
 
-        current.items().forEach(item -> {
-            boolean enoughInventory =
-                    item.availableQuantity() != null
-                    && item.availableQuantity() >= item.quantity();
-
-            if (!item.purchasable() || !enoughInventory) {
-                throw new ResponseStatusException(
-                        HttpStatus.CONFLICT
-                );
-            }
-        });
-
-        BigDecimal subtotal = current.subtotal();
-        BigDecimal discount = BigDecimal.ZERO;
-        BigDecimal total = subtotal
-                .subtract(discount)
-                .add(shippingFee);
-
-        Order order = new Order();
-        order.setOrderCode(generateOrderCode());
-        order.setCustomerAccountId(accountId);
-        order.setRecipientPhone(request.recipient_phone());
-        order.setRecipientEmail(request.recipient_email());
-        order.setRecipientAddress(request.recipient_address());
-        order.setSubtotalSnapshot(subtotal);
-        order.setDiscountSnapshot(discount);
-        order.setShippingFeeSnapshot(shippingFee);
-        order.setTotalSnapshot(total);
-        order.setVoucherId(null);
-        order.setOrderStatus(OrderPolicy.PENDING);
-
-        orders.save(order);
-
-        for (var cartItem : current.items()) {
-            OrderItem orderItem = new OrderItem();
-            orderItem.setOrderId(order.getOrderId());
-            orderItem.setVariantId(cartItem.variantId());
-            orderItem.setProductNameSnapshot(cartItem.productName());
-            orderItem.setSkuSnapshot(cartItem.sku());
-            orderItem.setSizeSnapshot(cartItem.size());
-            orderItem.setColorSnapshot(cartItem.color());
-            orderItem.setUnitPriceSnapshot(cartItem.unitPrice());
-            orderItem.setQuantity(cartItem.quantity());
-            orderItem.setLineTotalSnapshot(cartItem.lineTotal());
-
-            items.save(orderItem);
-        }
-
-        Payment payment = new Payment();
-        payment.setOrderId(order.getOrderId());
-        payment.setPaymentStatus(OrderPolicy.UNPAID);
-        payment.setAmountDue(total);
-        payment.setAmountReceived(BigDecimal.ZERO);
-        payment.setAmountRefunded(BigDecimal.ZERO);
-
-        payments.save(payment);
+        Payment payment = persistInitialPayment(
+                order.getOrderId(),
+                calculation.total()
+        );
 
         audit.record(
                 accountId,
@@ -139,6 +78,61 @@ public class OrderCreationService {
                 order,
                 payment
         );
+    }
+
+    private Order persistOrder(
+            Long accountId,
+            CreateOrderRequest request,
+            CheckoutCalculation calculation
+    ) {
+        Order order = new Order();
+        order.setOrderCode(generateOrderCode());
+        order.setCustomerAccountId(accountId);
+        order.setRecipientPhone(request.recipient_phone());
+        order.setRecipientEmail(request.recipient_email());
+        order.setRecipientAddress(request.recipient_address());
+        order.setSubtotalSnapshot(calculation.subtotal());
+        order.setDiscountSnapshot(calculation.discount());
+        order.setShippingFeeSnapshot(calculation.shippingFee());
+        order.setTotalSnapshot(calculation.total());
+        order.setVoucherId(null);
+        order.setOrderStatus(OrderPolicy.PENDING);
+
+        return orders.save(order);
+    }
+
+    private void persistOrderItems(
+            Long orderId,
+            List<CheckoutCartView.Item> cartItems
+    ) {
+        for (CheckoutCartView.Item cartItem : cartItems) {
+            OrderItem orderItem = new OrderItem();
+            orderItem.setOrderId(orderId);
+            orderItem.setVariantId(cartItem.variantId());
+            orderItem.setProductNameSnapshot(cartItem.productName());
+            orderItem.setSkuSnapshot(cartItem.sku());
+            orderItem.setSizeSnapshot(cartItem.size());
+            orderItem.setColorSnapshot(cartItem.color());
+            orderItem.setUnitPriceSnapshot(cartItem.unitPrice());
+            orderItem.setQuantity(cartItem.quantity());
+            orderItem.setLineTotalSnapshot(cartItem.lineTotal());
+
+            items.save(orderItem);
+        }
+    }
+
+    private Payment persistInitialPayment(
+            Long orderId,
+            BigDecimal total
+    ) {
+        Payment payment = new Payment();
+        payment.setOrderId(orderId);
+        payment.setPaymentStatus(OrderPolicy.UNPAID);
+        payment.setAmountDue(total);
+        payment.setAmountReceived(BigDecimal.ZERO);
+        payment.setAmountRefunded(BigDecimal.ZERO);
+
+        return payments.save(payment);
     }
 
     private String generateOrderCode() {
