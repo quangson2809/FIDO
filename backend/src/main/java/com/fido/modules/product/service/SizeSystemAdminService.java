@@ -15,6 +15,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -207,7 +209,7 @@ public class SizeSystemAdminService {
         );
     }
 
-    private HashMap<Long, SizeValue> indexById(
+    private Map<Long, SizeValue> indexById(
             List<SizeValue> values
     ) {
         var result = new HashMap<Long, SizeValue>();
@@ -225,8 +227,8 @@ public class SizeSystemAdminService {
     private void upsertRequestedValue(
             Long sizeSystemId,
             SizeSystemPatchRequest.SizeValueInput item,
-            HashMap<Long, SizeValue> valuesById,
-            HashSet<Long> keptIds
+            Map<Long, SizeValue> valuesById,
+            Set<Long> keptIds
     ) {
         if (item.size_value_id() == null) {
             createSizeValue(
@@ -299,7 +301,7 @@ public class SizeSystemAdminService {
 
     private void deleteRemovedValues(
             List<SizeValue> currentValues,
-            HashSet<Long> keptIds
+            Set<Long> keptIds
     ) {
         for (SizeValue value : currentValues) {
             if (keptIds.contains(value.getSizeValueId())) {
