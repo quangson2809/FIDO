@@ -189,64 +189,128 @@ public class SizeSystemAdminService {
                         sizeSystemId
                 );
 
-        var valuesById = new HashMap<Long, SizeValue>();
-        currentValues.forEach(value ->
-                valuesById.put(
+        var valuesById = indexById(currentValues);
+        var keptIds = new HashSet<Long>();
+
+        for (var item : requested) {
+            upsertRequestedValue(
+                    sizeSystemId,
+                    item,
+                    valuesById,
+                    keptIds
+            );
+        }
+
+        deleteRemovedValues(
+                currentValues,
+                keptIds
+        );
+    }
+
+    private HashMap<Long, SizeValue> indexById(
+            List<SizeValue> values
+    ) {
+        var result = new HashMap<Long, SizeValue>();
+
+        values.forEach(value ->
+                result.put(
                         value.getSizeValueId(),
                         value
                 )
         );
 
-        var keptIds = new HashSet<Long>();
+        return result;
+    }
 
-        for (var item : requested) {
-            if (item.size_value_id() == null) {
-                SizeValue value = new SizeValue();
-                value.setSizeSystemId(sizeSystemId);
-                value.setCode(item.code());
-                value.setDisplayName(item.display_name());
-                value.setSortOrder(item.sort_order());
+    private void upsertRequestedValue(
+            Long sizeSystemId,
+            SizeSystemPatchRequest.SizeValueInput item,
+            HashMap<Long, SizeValue> valuesById,
+            HashSet<Long> keptIds
+    ) {
+        if (item.size_value_id() == null) {
+            createSizeValue(
+                    sizeSystemId,
+                    item
+            );
+            return;
+        }
 
-                sizeValues.save(value);
+        Long sizeValueId = item.size_value_id();
+
+        if (!keptIds.add(sizeValueId)) {
+            conflict();
+        }
+
+        SizeValue value = valuesById.get(sizeValueId);
+
+        if (value == null) {
+            notFound();
+        }
+
+        requireMeaningChangeAllowed(
+                value,
+                item
+        );
+
+        applySizeValuePatch(
+                value,
+                item
+        );
+
+        sizeValues.save(value);
+    }
+
+    private void createSizeValue(
+            Long sizeSystemId,
+            SizeSystemPatchRequest.SizeValueInput item
+    ) {
+        SizeValue value = new SizeValue();
+        value.setSizeSystemId(sizeSystemId);
+        value.setCode(item.code());
+        value.setDisplayName(item.display_name());
+        value.setSortOrder(item.sort_order());
+
+        sizeValues.save(value);
+    }
+
+    private void requireMeaningChangeAllowed(
+            SizeValue value,
+            SizeSystemPatchRequest.SizeValueInput item
+    ) {
+        boolean meaningChanges =
+                !value.getCode().equals(item.code())
+                || !value.getDisplayName().equals(item.display_name());
+
+        if (meaningChanges
+                && variants.existsBySizeValueId(value.getSizeValueId())) {
+            conflict();
+        }
+    }
+
+    private void applySizeValuePatch(
+            SizeValue value,
+            SizeSystemPatchRequest.SizeValueInput item
+    ) {
+        value.setCode(item.code());
+        value.setDisplayName(item.display_name());
+        value.setSortOrder(item.sort_order());
+    }
+
+    private void deleteRemovedValues(
+            List<SizeValue> currentValues,
+            HashSet<Long> keptIds
+    ) {
+        for (SizeValue value : currentValues) {
+            if (keptIds.contains(value.getSizeValueId())) {
                 continue;
             }
 
-            if (!keptIds.add(item.size_value_id())) {
+            if (variants.existsBySizeValueId(value.getSizeValueId())) {
                 conflict();
             }
 
-            SizeValue value = valuesById.get(
-                    item.size_value_id()
-            );
-
-            if (value == null) {
-                notFound();
-            }
-
-            boolean meaningChanges =
-                    !value.getCode().equals(item.code())
-                    || !value.getDisplayName().equals(item.display_name());
-
-            if (meaningChanges
-                    && variants.existsBySizeValueId(value.getSizeValueId())) {
-                conflict();
-            }
-
-            value.setCode(item.code());
-            value.setDisplayName(item.display_name());
-            value.setSortOrder(item.sort_order());
-
-            sizeValues.save(value);
-        }
-
-        for (SizeValue value : currentValues) {
-            if (!keptIds.contains(value.getSizeValueId())) {
-                if (variants.existsBySizeValueId(value.getSizeValueId())) {
-                    conflict();
-                }
-
-                sizeValues.delete(value);
-            }
+            sizeValues.delete(value);
         }
     }
 
