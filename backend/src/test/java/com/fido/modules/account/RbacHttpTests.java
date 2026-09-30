@@ -155,6 +155,45 @@ class RbacHttpTests extends AccountHttpSupport {
 
         roleIds.add(roleId);
 
+        var accessControl = call(
+                "GET",
+                "/api/v1/admin/access-control",
+                token,
+                null
+        );
+
+        assertEquals(
+                200,
+                accessControl.status(),
+                accessControl.body()
+        );
+
+        boolean roleFound = false;
+
+        for (var roleNode :
+                accessControl.data().get("data").get("roles")) {
+            if (roleNode.get("role_id").asLong() != roleId) {
+                continue;
+            }
+
+            roleFound = true;
+
+            assertEquals(
+                    1,
+                    roleNode.get("permissions").size()
+            );
+
+            assertEquals(
+                    permissionId,
+                    roleNode.get("permissions")
+                            .get(0)
+                            .get("permission_id")
+                            .asLong()
+            );
+        }
+
+        assertTrue(roleFound);
+
         assertEquals(
                 409,
                 call(
