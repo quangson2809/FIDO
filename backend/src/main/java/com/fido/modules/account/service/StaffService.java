@@ -173,43 +173,16 @@ public class StaffService {
             StaffCreateRequest request
     ) {
         lockSuperadminRole();
+        requireCreatePhoneAvailable(request.phone());
 
-        if (accounts.existsByPhone(request.phone())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
-        }
+        List<Role> selectedRoles =
+                resolveCreateRoles(request.role_ids());
 
-        var roleIds = request.role_ids() == null
-                ? List.of(
-                        roles.findByCode("ADMIN")
-                                .orElseThrow()
-                                .getRoleId()
-                )
-                : request.role_ids();
-
-        var resolvedRoles = resolve(roleIds);
-
-        boolean hasStaffRole = resolvedRoles.stream()
-                .anyMatch(role ->
-                        Set.of("ADMIN", "SUPERADMIN")
-                                .contains(role.getCode())
-                );
-
-        if (!hasStaffRole) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-        }
-
-        Account account = new Account();
-        account.setPhone(request.phone());
-        account.setEmail(request.email());
-        account.setPasswordHash(
-                authentication.hashPassword(request.password())
-        );
-
-        accounts.save(account);
+        Account account = createAccount(request);
 
         replace(
                 account.getAccountId(),
-                resolvedRoles
+                selectedRoles
         );
 
         em.flush();
@@ -237,40 +210,16 @@ public class StaffService {
         Account account = accounts.findById(accountId)
                 .orElseThrow();
 
-        if (request.phone() != null) {
-            if (accounts.existsByPhoneAndAccountIdNot(
-                    request.phone(),
-                    accountId
-            )) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT);
-            }
+        applyAccountPatch(
+                account,
+                request
+        );
 
-            account.setPhone(request.phone());
-        }
-
-        if (request.email() != null) {
-            account.setEmail(request.email());
-        }
-
-        if (request.role_ids() != null) {
-            var resolvedRoles = resolve(request.role_ids());
-
-            boolean removingSuperadmin = access.isSuperadmin(accountId)
-                    && resolvedRoles.stream()
-                            .noneMatch(role ->
-                                    "SUPERADMIN".equals(role.getCode())
-                            );
-
-            if (removingSuperadmin
-                    && assignments.countByRoleId(superadminRole.getRoleId()) <= 1) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT);
-            }
-
-            replace(
-                    accountId,
-                    resolvedRoles
-            );
-        }
+        applyRolePatch(
+                accountId,
+                request,
+                superadminRole
+        );
 
         em.flush();
 
@@ -283,6 +232,131 @@ public class StaffService {
 
         return access.findAccess(accountId)
                 .orElseThrow();
+    }
+
+    private void requireCreatePhoneAvailable(String phone) {
+        if (accounts.existsByPhone(phone)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT);
+        }
+    }
+
+    private List<Role> resolveCreateRoles(
+            List<Long> requestedRoleIds
+    ) {
+        List<Long> roleIds = requestedRoleIds == null
+                ? List.of(defaultAdminRoleId())
+                : requestedRoleIds;
+
+        List<Role> selectedRoles = resolve(roleIds);
+        requireStaffRole(selectedRoles);
+
+        return selectedRoles;
+    }
+
+    private Long defaultAdminRoleId() {
+        return roles.findByCode("ADMIN")
+                .orElseThrow()
+                .getRoleId();
+    }
+
+    private void requireStaffRole(
+            List<Role> selectedRoles
+    ) {
+        boolean hasStaffRole = selectedRoles.stream()
+                .anyMatch(role ->
+                        Set.of("ADMIN", "SUPERADMIN")
+                                .contains(role.getCode())
+                );
+
+        if (!hasStaffRole) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    private Account createAccount(
+            StaffCreateRequest request
+    ) {
+        Account account = new Account();
+        account.setPhone(request.phone());
+        account.setEmail(request.email());
+        account.setPasswordHash(
+                authentication.hashPassword(request.password())
+        );
+
+        return accounts.save(account);
+    }
+
+    private void applyAccountPatch(
+            Account account,
+            StaffPatchRequest request
+    ) {
+        if (request.phone() != null) {
+            requireUpdatePhoneAvailable(
+                    request.phone(),
+                    account.getAccountId()
+            );
+            account.setPhone(request.phone());
+        }
+
+        if (request.email() != null) {
+            account.setEmail(request.email());
+        }
+    }
+
+    private void requireUpdatePhoneAvailable(
+            String phone,
+            Long accountId
+    ) {
+        if (accounts.existsByPhoneAndAccountIdNot(
+                phone,
+                accountId
+        )) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT);
+        }
+    }
+
+    private void applyRolePatch(
+            Long accountId,
+            StaffPatchRequest request,
+            Role superadminRole
+    ) {
+        if (request.role_ids() == null) {
+            return;
+        }
+
+        List<Role> selectedRoles = resolve(
+                request.role_ids()
+        );
+
+        protectLastSuperadmin(
+                accountId,
+                selectedRoles,
+                superadminRole
+        );
+
+        replace(
+                accountId,
+                selectedRoles
+        );
+    }
+
+    private void protectLastSuperadmin(
+            Long accountId,
+            List<Role> selectedRoles,
+            Role superadminRole
+    ) {
+        boolean removingSuperadmin = access.isSuperadmin(accountId)
+                && selectedRoles.stream()
+                        .noneMatch(role ->
+                                "SUPERADMIN".equals(role.getCode())
+                        );
+
+        if (removingSuperadmin
+                && assignments.countByRoleId(
+                        superadminRole.getRoleId()
+                ) <= 1) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT);
+        }
     }
 
     private void requireStaff(Long accountId) {
