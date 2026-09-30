@@ -15,9 +15,15 @@ import com.fido.modules.account.repository.AccountRoleRepository;
 import com.fido.modules.account.repository.RoleRepository;
 import com.fido.modules.audit.service.AuditService;
 import jakarta.persistence.EntityManager;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -70,11 +76,23 @@ public class StaffService {
                 pagination.toPageable()
         );
 
+        Map<Long, List<Role>> rolesByAccount =
+                assignedRolesByAccount(
+                        result.getContent()
+                                .stream()
+                                .map(Account::getAccountId)
+                                .toList()
+                );
+
         var staffAccounts = result.getContent()
                 .stream()
                 .map(account -> new StaffAccountSummaryDto(
                         AccountMapper.account(account),
-                        roles.findAssignedToAccount(account.getAccountId())
+                        rolesByAccount
+                                .getOrDefault(
+                                        account.getAccountId(),
+                                        List.of()
+                                )
                                 .stream()
                                 .map(AccountMapper::role)
                                 .toList()
@@ -85,6 +103,61 @@ public class StaffService {
                 staffAccounts,
                 pagination.meta(result.getTotalElements())
         );
+    }
+
+    private Map<Long, List<Role>> assignedRolesByAccount(
+            List<Long> accountIds
+    ) {
+        if (accountIds.isEmpty()) {
+            return Map.of();
+        }
+
+        var assignedRows =
+                assignments.findAllByAccountIdIn(accountIds);
+
+        if (assignedRows.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, Role> rolesById = roles
+                .findAllByRoleIdIn(
+                        assignedRows.stream()
+                                .map(AccountRole::getRoleId)
+                                .distinct()
+                                .toList()
+                )
+                .stream()
+                .collect(Collectors.toMap(
+                        Role::getRoleId,
+                        Function.identity()
+                ));
+
+        var result = new HashMap<Long, List<Role>>();
+
+        for (AccountRole assignment : assignedRows) {
+            Role role = rolesById.get(
+                    assignment.getRoleId()
+            );
+
+            if (role == null) {
+                throw new IllegalStateException(
+                        "Account role references missing role"
+                );
+            }
+
+            result.computeIfAbsent(
+                    assignment.getAccountId(),
+                    ignored -> new ArrayList<>()
+            ).add(role);
+        }
+
+        result.values().forEach(list ->
+                list.sort(
+                        Comparator.comparing(Role::getRoleId)
+                )
+        );
+
+        return result;
     }
 
     @Transactional(readOnly = true)
