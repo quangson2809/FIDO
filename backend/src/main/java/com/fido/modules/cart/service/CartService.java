@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -171,91 +172,82 @@ public class CartService {
     }
 
     private CartDto toDto(Cart cart) {
-        var itemDtos = items
-                .findAllByCartIdOrderByCartItemIdAsc(
-                        cart.getCartId()
-                )
-                .stream()
-                .map(this::toItemDto)
-                .toList();
+        ResolvedCart resolved = resolveCart(cart);
 
-        BigDecimal subtotal = itemDtos.stream()
-                .map(CartItemDto::line_total)
-                .reduce(
-                        BigDecimal.ZERO,
-                        BigDecimal::add
-                );
+        var itemDtos = resolved.items()
+                .stream()
+                .map(this::toCartItemDto)
+                .toList();
 
         return new CartDto(
                 cart.getCartId(),
                 cart.getAccountId(),
                 itemDtos,
-                subtotal,
+                resolved.subtotal(),
                 cart.getCreatedAt(),
                 cart.getUpdatedAt()
         );
     }
 
-    private CartItemDto toItemDto(CartItem item) {
-        ResolvedCartItem resolved = resolve(item);
+    private CheckoutCartView toCheckoutView(Cart cart) {
+        ResolvedCart resolved = resolveCart(cart);
 
-        return new CartItemDto(
-                item.getCartItemId(),
-                item.getVariantId(),
-                item.getQuantity(),
-                resolved.variant().productName(),
-                resolved.variant().size(),
-                resolved.variant().color(),
-                resolved.variant().unitPrice(),
-                resolved.lineTotal(),
-                resolved.variant().availableQuantity()
+        var checkoutItems = resolved.items()
+                .stream()
+                .map(this::toCheckoutItem)
+                .toList();
+
+        return new CheckoutCartView(
+                cart.getCartId(),
+                checkoutItems,
+                resolved.subtotal()
         );
     }
 
-    private CheckoutCartView toCheckoutView(Cart cart) {
-        var checkoutItems = items
-                .findAllByCartIdOrderByCartItemIdAsc(
+    private ResolvedCart resolveCart(Cart cart) {
+        List<CartItem> cartItems =
+                items.findAllByCartIdOrderByCartItemIdAsc(
                         cart.getCartId()
-                )
-                .stream()
-                .map(this::resolve)
-                .map(resolved -> {
-                    CartItem item = resolved.item();
-                    var variant = resolved.variant();
+                );
 
-                    return new CheckoutCartView.Item(
-                            item.getVariantId(),
-                            item.getQuantity(),
-                            variant.productName(),
-                            variant.sku(),
-                            variant.size(),
-                            variant.color(),
-                            variant.unitPrice(),
-                            resolved.lineTotal(),
-                            variant.availableQuantity(),
-                            variant.purchasable()
-                    );
-                })
+        Map<Long, CatalogVariantReadService.VariantView> variantsById =
+                catalog.getAll(
+                        cartItems.stream()
+                                .map(CartItem::getVariantId)
+                                .toList()
+                );
+
+        var resolvedItems = cartItems.stream()
+                .map(item ->
+                        resolve(
+                                item,
+                                variantsById.get(item.getVariantId())
+                        )
+                )
                 .toList();
 
-        BigDecimal subtotal = checkoutItems.stream()
-                .map(CheckoutCartView.Item::lineTotal)
+        BigDecimal subtotal = resolvedItems.stream()
+                .map(ResolvedCartItem::lineTotal)
                 .reduce(
                         BigDecimal.ZERO,
                         BigDecimal::add
                 );
 
-        return new CheckoutCartView(
-                cart.getCartId(),
-                checkoutItems,
+        return new ResolvedCart(
+                resolvedItems,
                 subtotal
         );
     }
 
-    private ResolvedCartItem resolve(CartItem item) {
-        var variant = catalog.get(
-                item.getVariantId()
-        );
+    private ResolvedCartItem resolve(
+            CartItem item,
+            CatalogVariantReadService.VariantView variant
+    ) {
+        if (variant == null) {
+            throw new IllegalStateException(
+                    "Cart item references missing catalog variant"
+            );
+        }
 
         BigDecimal lineTotal = variant.unitPrice()
                 .multiply(
@@ -269,6 +261,45 @@ public class CartService {
         );
     }
 
+    private CartItemDto toCartItemDto(
+            ResolvedCartItem resolved
+    ) {
+        CartItem item = resolved.item();
+        var variant = resolved.variant();
+
+        return new CartItemDto(
+                item.getCartItemId(),
+                item.getVariantId(),
+                item.getQuantity(),
+                variant.productName(),
+                variant.size(),
+                variant.color(),
+                variant.unitPrice(),
+                resolved.lineTotal(),
+                variant.availableQuantity()
+        );
+    }
+
+    private CheckoutCartView.Item toCheckoutItem(
+            ResolvedCartItem resolved
+    ) {
+        CartItem item = resolved.item();
+        var variant = resolved.variant();
+
+        return new CheckoutCartView.Item(
+                item.getVariantId(),
+                item.getQuantity(),
+                variant.productName(),
+                variant.sku(),
+                variant.size(),
+                variant.color(),
+                variant.unitPrice(),
+                resolved.lineTotal(),
+                variant.availableQuantity(),
+                variant.purchasable()
+        );
+    }
+
     private void touch(Cart cart) {
         cart.setUpdatedAt(
                 LocalDateTime.now(ZoneOffset.UTC)
@@ -276,11 +307,20 @@ public class CartService {
 
         carts.save(cart);
     }
+
+    private record ResolvedCart(
+            List<ResolvedCartItem> items,
+            BigDecimal subtotal
+    ) {
+        private ResolvedCart {
+            items = List.copyOf(items);
+        }
+    }
+
     private record ResolvedCartItem(
             CartItem item,
             CatalogVariantReadService.VariantView variant,
             BigDecimal lineTotal
     ) {
     }
-
 }
