@@ -5,6 +5,7 @@ import com.fido.common.response.ApiResponse;
 import com.fido.modules.product.dto.response.CatalogMetaDto;
 import com.fido.modules.product.dto.response.ProductDetailDto;
 import com.fido.modules.product.dto.response.ProductSummaryDto;
+import com.fido.modules.product.service.CatalogProductFilter;
 import com.fido.modules.product.service.PublicCatalogQueryService;
 import java.math.BigDecimal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,18 +40,20 @@ public class PublicCatalogController {
             @RequestParam(name = "page_size", required = false) Integer pageSize
     ) {
         return service.publicProducts(
-                q,
-                categoryId,
-                brandId,
-                minPrice,
-                maxPrice,
-                sizeValueId,
-                colorId,
-                gender,
-                season,
-                style,
-                page,
-                pageSize
+                new CatalogProductFilter(
+                        q,
+                        categoryId,
+                        brandId,
+                        minPrice,
+                        maxPrice,
+                        sizeValueId,
+                        colorId,
+                        gender,
+                        season,
+                        style,
+                        page,
+                        pageSize
+                )
         );
     }
 

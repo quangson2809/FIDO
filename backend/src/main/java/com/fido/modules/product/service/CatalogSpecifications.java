@@ -18,16 +18,7 @@ public final class CatalogSpecifications {
     }
 
     public static Specification<Product> publicProducts(
-            String q,
-            Long categoryId,
-            Long brandId,
-            BigDecimal minPrice,
-            BigDecimal maxPrice,
-            Long sizeValueId,
-            Long colorId,
-            String gender,
-            String season,
-            String style
+            CatalogProductFilter filter
     ) {
         return (root, query, cb) -> {
             var predicates = new ArrayList<Predicate>();
@@ -39,42 +30,65 @@ public final class CatalogSpecifications {
                     )
             );
 
-            if (q != null && !q.isBlank()) {
+            if (filter.query() != null
+                    && !filter.query().isBlank()) {
                 predicates.add(
                         cb.like(
                                 cb.lower(root.get("name")),
-                                "%" + q.trim().toLowerCase(Locale.ROOT) + "%"
+                                "%"
+                                        + filter.query()
+                                                .trim()
+                                                .toLowerCase(Locale.ROOT)
+                                        + "%"
                         )
                 );
             }
 
-            if (categoryId != null) {
+            if (filter.categoryId() != null) {
                 predicates.add(
-                        cb.equal(root.get("categoryId"), categoryId)
+                        cb.equal(
+                                root.get("categoryId"),
+                                filter.categoryId()
+                        )
                 );
             }
 
-            if (brandId != null) {
+            if (filter.brandId() != null) {
                 predicates.add(
-                        cb.equal(root.get("brandId"), brandId)
+                        cb.equal(
+                                root.get("brandId"),
+                                filter.brandId()
+                        )
                 );
             }
 
-            if (gender != null && !gender.isBlank()) {
+            if (filter.gender() != null
+                    && !filter.gender().isBlank()) {
                 predicates.add(
-                        cb.equal(root.get("gender"), gender)
+                        cb.equal(
+                                root.get("gender"),
+                                filter.gender()
+                        )
                 );
             }
 
-            if (season != null && !season.isBlank()) {
+            if (filter.season() != null
+                    && !filter.season().isBlank()) {
                 predicates.add(
-                        cb.equal(root.get("season"), season)
+                        cb.equal(
+                                root.get("season"),
+                                filter.season()
+                        )
                 );
             }
 
-            if (style != null && !style.isBlank()) {
+            if (filter.style() != null
+                    && !filter.style().isBlank()) {
                 predicates.add(
-                        cb.equal(root.get("style"), style)
+                        cb.equal(
+                                root.get("style"),
+                                filter.style()
+                        )
                 );
             }
 
@@ -98,25 +112,25 @@ public final class CatalogSpecifications {
                     )
             );
 
-            if (sizeValueId != null) {
+            if (filter.sizeValueId() != null) {
                 variantPredicates.add(
                         cb.equal(
                                 variant.get("sizeValueId"),
-                                sizeValueId
+                                filter.sizeValueId()
                         )
                 );
             }
 
-            if (colorId != null) {
+            if (filter.colorId() != null) {
                 variantPredicates.add(
                         cb.equal(
                                 variant.get("colorId"),
-                                colorId
+                                filter.colorId()
                         )
                 );
             }
 
-            if (minPrice != null) {
+            if (filter.minPrice() != null) {
                 variantPredicates.add(
                         cb.or(
                                 cb.and(
@@ -127,7 +141,7 @@ public final class CatalogSpecifications {
                                                 variant.<BigDecimal>get(
                                                         "overridePrice"
                                                 ),
-                                                minPrice
+                                                filter.minPrice()
                                         )
                                 ),
                                 cb.and(
@@ -138,14 +152,14 @@ public final class CatalogSpecifications {
                                                 root.<BigDecimal>get(
                                                         "basePrice"
                                                 ),
-                                                minPrice
+                                                filter.minPrice()
                                         )
                                 )
                         )
                 );
             }
 
-            if (maxPrice != null) {
+            if (filter.maxPrice() != null) {
                 variantPredicates.add(
                         cb.or(
                                 cb.and(
@@ -156,7 +170,7 @@ public final class CatalogSpecifications {
                                                 variant.<BigDecimal>get(
                                                         "overridePrice"
                                                 ),
-                                                maxPrice
+                                                filter.maxPrice()
                                         )
                                 ),
                                 cb.and(
@@ -167,7 +181,7 @@ public final class CatalogSpecifications {
                                                 root.<BigDecimal>get(
                                                         "basePrice"
                                                 ),
-                                                maxPrice
+                                                filter.maxPrice()
                                         )
                                 )
                         )

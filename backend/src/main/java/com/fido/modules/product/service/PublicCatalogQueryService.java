@@ -63,41 +63,17 @@ public class PublicCatalogQueryService {
     }
 
     public ApiListResponse<ProductSummaryDto> publicProducts(
-            String q,
-            Long categoryId,
-            Long brandId,
-            BigDecimal minPrice,
-            BigDecimal maxPrice,
-            Long sizeValueId,
-            Long colorId,
-            String gender,
-            String season,
-            String style,
-            Integer page,
-            Integer pageSize
+            CatalogProductFilter filter
     ) {
-        validatePriceRange(
-                minPrice,
-                maxPrice
-        );
+        validatePriceRange(filter);
 
         Pagination pagination = Pagination.of(
-                page,
-                pageSize
+                filter.page(),
+                filter.pageSize()
         );
 
-        Specification<Product> specification = CatalogSpecifications.publicProducts(
-                q,
-                categoryId,
-                brandId,
-                minPrice,
-                maxPrice,
-                sizeValueId,
-                colorId,
-                gender,
-                season,
-                style
-        );
+        Specification<Product> specification =
+                CatalogSpecifications.publicProducts(filter);
 
         var result = products.findAll(
                 specification,
@@ -228,9 +204,11 @@ public class PublicCatalogQueryService {
     }
 
     private void validatePriceRange(
-            BigDecimal minPrice,
-            BigDecimal maxPrice
+            CatalogProductFilter filter
     ) {
+        BigDecimal minPrice = filter.minPrice();
+        BigDecimal maxPrice = filter.maxPrice();
+
         boolean invalidMin =
                 minPrice != null && minPrice.signum() < 0;
 
@@ -301,4 +279,3 @@ public class PublicCatalogQueryService {
         return brand;
     }
 }
-
