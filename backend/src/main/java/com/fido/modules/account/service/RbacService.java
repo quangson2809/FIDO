@@ -22,8 +22,10 @@ import com.fido.modules.audit.service.AuditEvent;
 import com.fido.modules.audit.service.AuditService;
 import com.fido.modules.audit.service.AuditTargetType;
 import jakarta.persistence.EntityManager;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -61,15 +63,24 @@ public class RbacService {
 
     @Transactional(readOnly = true)
     public AccessControlDto accessControl() {
-        var roleDtos = roles
-                .findAllByOrderByRoleIdAsc()
-                .stream()
-                .map(this::detail)
+        List<Role> allRoles = roles.findAllByOrderByRoleIdAsc();
+        List<Permission> allPermissions =
+                permissions.findAllByOrderByPermissionIdAsc();
+
+        Map<Long, Set<Long>> permissionIdsByRole =
+                permissionIdsByRole(allRoles);
+
+        var roleDtos = allRoles.stream()
+                .map(role ->
+                        detail(
+                                role,
+                                allPermissions,
+                                permissionIdsByRole
+                        )
+                )
                 .toList();
 
-        var permissionDtos = permissions
-                .findAllByOrderByPermissionIdAsc()
-                .stream()
+        var permissionDtos = allPermissions.stream()
                 .map(AccountMapper::permission)
                 .toList();
 
@@ -311,6 +322,58 @@ public class RbacService {
                 .orElseThrow(() ->
                         new ResponseStatusException(HttpStatus.NOT_FOUND)
                 );
+    }
+
+    private Map<Long, Set<Long>> permissionIdsByRole(
+            List<Role> allRoles
+    ) {
+        if (allRoles.isEmpty()) {
+            return Map.of();
+        }
+
+        var result = new HashMap<Long, Set<Long>>();
+
+        mappings.findAllByRoleIdIn(
+                allRoles.stream()
+                        .map(Role::getRoleId)
+                        .toList()
+        ).forEach(mapping ->
+                result.computeIfAbsent(
+                        mapping.getRoleId(),
+                        ignored -> new LinkedHashSet<>()
+                ).add(mapping.getPermissionId())
+        );
+
+        return result;
+    }
+
+    private RoleDetailDto detail(
+            Role role,
+            List<Permission> allPermissions,
+            Map<Long, Set<Long>> permissionIdsByRole
+    ) {
+        Set<Long> permissionIds = permissionIdsByRole
+                .getOrDefault(
+                        role.getRoleId(),
+                        Set.of()
+                );
+
+        var permissionDtos = allPermissions.stream()
+                .filter(permission ->
+                        permissionIds.contains(
+                                permission.getPermissionId()
+                        )
+                )
+                .map(AccountMapper::permission)
+                .toList();
+
+        return new RoleDetailDto(
+                role.getRoleId(),
+                role.getCode(),
+                role.getName(),
+                role.getDescription(),
+                permissionDtos
+        );
     }
 
     private RoleDetailDto detail(Role role) {
