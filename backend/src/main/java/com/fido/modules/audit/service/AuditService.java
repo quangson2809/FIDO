@@ -26,42 +26,4 @@ public class AuditService {
 
         logs.save(log);
     }
-
-    @Deprecated(forRemoval = true)
-    @Transactional(propagation = Propagation.MANDATORY)
-    public void record(
-            Long actor,
-            String action,
-            String targetType,
-            Long targetId
-    ) {
-        record(
-                AuditEvent.of(
-                        actor,
-                        AuditAction.valueOf(action),
-                        AuditTargetType.valueOf(targetType),
-                        targetId
-                )
-        );
-    }
-
-    @Deprecated(forRemoval = true)
-    @Transactional(propagation = Propagation.MANDATORY)
-    public void record(
-            Long actor,
-            String action,
-            String targetType,
-            Long targetId,
-            String description
-    ) {
-        record(
-                AuditEvent.described(
-                        actor,
-                        AuditAction.valueOf(action),
-                        AuditTargetType.valueOf(targetType),
-                        targetId,
-                        description
-                )
-        );
-    }
 }
