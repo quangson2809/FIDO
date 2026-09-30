@@ -62,16 +62,14 @@ public class AccountAccessService {
     }
 
     public boolean isSuperadmin(Long accountId) {
-        if (accountId == null
-                || accounts.findById(accountId).isEmpty()) {
+        if (accountId == null) {
             return false;
         }
 
-        return roles.findAssignedToAccount(accountId)
-                .stream()
-                .anyMatch(role ->
-                        "SUPERADMIN".equals(role.getCode())
-                );
+        return roles.existsAssignedToAccountByCode(
+                accountId,
+                "SUPERADMIN"
+        );
     }
 
 }
