@@ -16,6 +16,19 @@ public class AuditService {
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
+    public void record(AuditEvent event) {
+        AuditLog log = new AuditLog();
+        log.setActorAccountId(event.actorAccountId());
+        log.setAction(event.action().name());
+        log.setTargetType(event.targetType().name());
+        log.setTargetId(event.targetId().toString());
+        log.setDescription(event.description());
+
+        logs.save(log);
+    }
+
+    @Deprecated(forRemoval = true)
+    @Transactional(propagation = Propagation.MANDATORY)
     public void record(
             Long actor,
             String action,
@@ -23,14 +36,16 @@ public class AuditService {
             Long targetId
     ) {
         record(
-                actor,
-                action,
-                targetType,
-                targetId,
-                null
+                AuditEvent.of(
+                        actor,
+                        AuditAction.valueOf(action),
+                        AuditTargetType.valueOf(targetType),
+                        targetId
+                )
         );
     }
 
+    @Deprecated(forRemoval = true)
     @Transactional(propagation = Propagation.MANDATORY)
     public void record(
             Long actor,
@@ -39,13 +54,14 @@ public class AuditService {
             Long targetId,
             String description
     ) {
-        AuditLog log = new AuditLog();
-        log.setActorAccountId(actor);
-        log.setAction(action);
-        log.setTargetType(targetType);
-        log.setTargetId(targetId.toString());
-        log.setDescription(description);
-
-        logs.save(log);
+        record(
+                AuditEvent.described(
+                        actor,
+                        AuditAction.valueOf(action),
+                        AuditTargetType.valueOf(targetType),
+                        targetId,
+                        description
+                )
+        );
     }
 }
