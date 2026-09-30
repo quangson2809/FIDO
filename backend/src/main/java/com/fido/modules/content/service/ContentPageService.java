@@ -1,5 +1,8 @@
 package com.fido.modules.content.service;
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEvent;
 import com.fido.modules.audit.service.AuditService;
+import com.fido.modules.audit.service.AuditTargetType;
 import com.fido.modules.content.dto.request.ContentPageCreateRequest;
 import com.fido.modules.content.dto.request.ContentPagePatchRequest;
 import com.fido.modules.content.dto.response.ContentPageDto;
@@ -41,7 +44,14 @@ public class ContentPageService {
         page.setUpdatedByAccountId(actor);
         pages.save(page);
         pages.flush();
-        audit.record(actor, "CONTENT_CREATE", "CONTENT_PAGE", page.getPageId());
+        audit.record(
+                AuditEvent.of(
+                        actor,
+                        AuditAction.CONTENT_CREATE,
+                        AuditTargetType.CONTENT_PAGE,
+                        page.getPageId()
+                )
+        );
         return ContentMapper.admin(page);
     }
     @Transactional
@@ -53,7 +63,14 @@ public class ContentPageService {
         if (request.getContent() != null) page.setContent(request.getContent());
         page.setUpdatedByAccountId(actor);
         pages.flush();
-        audit.record(actor, "CONTENT_UPDATE", "CONTENT_PAGE", id);
+        audit.record(
+                AuditEvent.of(
+                        actor,
+                        AuditAction.CONTENT_UPDATE,
+                        AuditTargetType.CONTENT_PAGE,
+                        id
+                )
+        );
         return ContentMapper.admin(page);
     }
 }

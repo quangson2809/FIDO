@@ -1,6 +1,9 @@
 package com.fido.modules.order.service;
 
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEvent;
 import com.fido.modules.audit.service.AuditService;
+import com.fido.modules.audit.service.AuditTargetType;
 import com.fido.modules.inventory.service.InventoryCommandService;
 import com.fido.modules.order.dto.request.OrderActionRequest;
 import com.fido.modules.order.dto.response.OrderAdminDetailDto;
@@ -76,7 +79,7 @@ public class OrderActionService {
                             order,
                             OrderPolicy.CONFIRMED,
                             OrderPolicy.PREPARING,
-                            "ORDER_PREPARE"
+                            AuditAction.ORDER_PREPARE
                     );
             case "SHIP" ->
                     simpleTransition(
@@ -84,7 +87,7 @@ public class OrderActionService {
                             order,
                             OrderPolicy.PREPARING,
                             OrderPolicy.SHIPPING,
-                            "ORDER_SHIP"
+                            AuditAction.ORDER_SHIP
                     );
             case "DELIVERY_FAILED" ->
                     deliveryFailed(actor, order, request.reason());
@@ -135,14 +138,16 @@ public class OrderActionService {
         orders.save(order);
 
         audit.record(
-                actor,
-                "ORDER_CONFIRM",
-                "ORDER",
-                order.getOrderId(),
-                transitionDescription(
+                AuditEvent.described(
+                        actor,
+                        AuditAction.ORDER_CONFIRM,
+                        AuditTargetType.ORDER,
+                        order.getOrderId(),
+                        transitionDescription(
                         OrderPolicy.PENDING,
                         OrderPolicy.CONFIRMED,
                         reason
+                )
                 )
         );
 
@@ -180,14 +185,16 @@ public class OrderActionService {
         orders.save(order);
 
         audit.record(
-                actor,
-                "ORDER_DELIVERY_FAILED",
-                "ORDER",
-                order.getOrderId(),
-                transitionDescription(
+                AuditEvent.described(
+                        actor,
+                        AuditAction.ORDER_DELIVERY_FAILED,
+                        AuditTargetType.ORDER,
+                        order.getOrderId(),
+                        transitionDescription(
                         OrderPolicy.SHIPPING,
                         OrderPolicy.DELIVERY_FAILED,
                         reason
+                )
                 )
         );
 
@@ -223,14 +230,16 @@ public class OrderActionService {
         orders.save(order);
 
         audit.record(
-                actor,
-                "ORDER_RETRY_DELIVERY",
-                "ORDER",
-                order.getOrderId(),
-                transitionDescription(
+                AuditEvent.described(
+                        actor,
+                        AuditAction.ORDER_RETRY_DELIVERY,
+                        AuditTargetType.ORDER,
+                        order.getOrderId(),
+                        transitionDescription(
                         OrderPolicy.DELIVERY_FAILED,
                         OrderPolicy.SHIPPING,
                         null
+                )
                 )
         );
 
@@ -275,14 +284,16 @@ public class OrderActionService {
         orders.save(order);
 
         audit.record(
-                actor,
-                "ORDER_COMPLETE",
-                "ORDER",
-                order.getOrderId(),
-                transitionDescription(
+                AuditEvent.described(
+                        actor,
+                        AuditAction.ORDER_COMPLETE,
+                        AuditTargetType.ORDER,
+                        order.getOrderId(),
+                        transitionDescription(
                         OrderPolicy.SHIPPING,
                         OrderPolicy.COMPLETED,
                         null
+                )
                 )
         );
 
@@ -337,14 +348,16 @@ public class OrderActionService {
         orders.save(order);
 
         audit.record(
-                actor,
-                "ORDER_CANCEL",
-                "ORDER",
-                order.getOrderId(),
-                transitionDescription(
+                AuditEvent.described(
+                        actor,
+                        AuditAction.ORDER_CANCEL,
+                        AuditTargetType.ORDER,
+                        order.getOrderId(),
+                        transitionDescription(
                         sourceStatus,
                         OrderPolicy.CANCELLED,
                         reason
+                )
                 )
         );
 
@@ -379,14 +392,16 @@ public class OrderActionService {
         );
 
         audit.record(
-                actor,
-                "ORDER_DELIVERY_RETURN_IN",
-                "ORDER",
-                order.getOrderId(),
-                reason == null || reason.isBlank()
+                AuditEvent.described(
+                        actor,
+                        AuditAction.ORDER_DELIVERY_RETURN_IN,
+                        AuditTargetType.ORDER,
+                        order.getOrderId(),
+                        reason == null || reason.isBlank()
                         ? "physical delivery return"
                         : "physical delivery return; reason="
                                 + reason.trim()
+                )
         );
 
         return order;
@@ -397,7 +412,7 @@ public class OrderActionService {
             Order order,
             String expected,
             String target,
-            String auditAction
+            AuditAction auditAction
     ) {
         if (target.equals(order.getOrderStatus())) {
             return order;
@@ -415,14 +430,16 @@ public class OrderActionService {
         orders.save(order);
 
         audit.record(
-                actor,
-                auditAction,
-                "ORDER",
-                order.getOrderId(),
-                transitionDescription(
+                AuditEvent.described(
+                        actor,
+                        auditAction,
+                        AuditTargetType.ORDER,
+                        order.getOrderId(),
+                        transitionDescription(
                         expected,
                         target,
                         null
+                )
                 )
         );
 

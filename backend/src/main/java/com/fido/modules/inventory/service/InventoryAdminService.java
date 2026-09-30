@@ -2,7 +2,10 @@ package com.fido.modules.inventory.service;
 
 import com.fido.common.response.ApiListResponse;
 import com.fido.common.response.Pagination;
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEvent;
 import com.fido.modules.audit.service.AuditService;
+import com.fido.modules.audit.service.AuditTargetType;
 import com.fido.modules.inventory.dto.request.InventoryAdjustmentRequest;
 import com.fido.modules.inventory.dto.response.InventoryRowDto;
 import com.fido.modules.inventory.dto.response.InventoryTransactionDto;
@@ -97,10 +100,12 @@ public class InventoryAdminService {
                 );
 
         audit.record(
-                actor,
-                "INVENTORY_ADJUST",
-                "INVENTORY",
-                request.variant_id()
+                AuditEvent.of(
+                        actor,
+                        AuditAction.INVENTORY_ADJUST,
+                        AuditTargetType.INVENTORY,
+                        request.variant_id()
+                )
         );
 
         return InventoryMapper.transaction(transaction);

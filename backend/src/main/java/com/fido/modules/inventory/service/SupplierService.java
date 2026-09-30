@@ -2,7 +2,10 @@ package com.fido.modules.inventory.service;
 
 import com.fido.common.response.ApiListResponse;
 import com.fido.common.response.Pagination;
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEvent;
 import com.fido.modules.audit.service.AuditService;
+import com.fido.modules.audit.service.AuditTargetType;
 import com.fido.modules.inventory.dto.request.SupplierCreateRequest;
 import com.fido.modules.inventory.dto.request.SupplierPatchRequest;
 import com.fido.modules.inventory.dto.response.SupplierDto;
@@ -101,10 +104,12 @@ public class SupplierService {
         suppliers.save(supplier);
 
         audit.record(
-                actor,
-                "SUPPLIER_CREATE",
-                "SUPPLIER",
-                supplier.getSupplierId()
+                AuditEvent.of(
+                        actor,
+                        AuditAction.SUPPLIER_CREATE,
+                        AuditTargetType.SUPPLIER,
+                        supplier.getSupplierId()
+                )
         );
 
         return InventoryMapper.supplier(supplier);
@@ -151,10 +156,12 @@ public class SupplierService {
         suppliers.save(supplier);
 
         audit.record(
-                actor,
-                "SUPPLIER_UPDATE",
-                "SUPPLIER",
-                supplierId
+                AuditEvent.of(
+                        actor,
+                        AuditAction.SUPPLIER_UPDATE,
+                        AuditTargetType.SUPPLIER,
+                        supplierId
+                )
         );
 
         return InventoryMapper.supplier(supplier);

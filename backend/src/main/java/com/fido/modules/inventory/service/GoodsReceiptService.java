@@ -1,6 +1,9 @@
 package com.fido.modules.inventory.service;
 
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEvent;
 import com.fido.modules.audit.service.AuditService;
+import com.fido.modules.audit.service.AuditTargetType;
 import com.fido.modules.inventory.dto.request.GoodsReceiptActionRequest;
 import com.fido.modules.inventory.dto.request.GoodsReceiptCreateRequest;
 import com.fido.modules.inventory.dto.request.GoodsReceiptPatchRequest;
@@ -78,10 +81,12 @@ public class GoodsReceiptService {
         );
 
         audit.record(
-                actor,
-                "GOODS_RECEIPT_CREATE",
-                "GOODS_RECEIPT",
-                receipt.getReceiptId()
+                AuditEvent.of(
+                        actor,
+                        AuditAction.GOODS_RECEIPT_CREATE,
+                        AuditTargetType.GOODS_RECEIPT,
+                        receipt.getReceiptId()
+                )
         );
 
         return query.detailInternal(receipt);
@@ -125,10 +130,12 @@ public class GoodsReceiptService {
         }
 
         audit.record(
-                actor,
-                "GOODS_RECEIPT_UPDATE",
-                "GOODS_RECEIPT",
-                receiptId
+                AuditEvent.of(
+                        actor,
+                        AuditAction.GOODS_RECEIPT_UPDATE,
+                        AuditTargetType.GOODS_RECEIPT,
+                        receiptId
+                )
         );
 
         return query.detailInternal(receipt);
@@ -208,10 +215,12 @@ public class GoodsReceiptService {
         );
 
         audit.record(
-                actor,
-                "GOODS_RECEIPT_CONFIRM",
-                "GOODS_RECEIPT",
-                receiptId
+                AuditEvent.of(
+                        actor,
+                        AuditAction.GOODS_RECEIPT_CONFIRM,
+                        AuditTargetType.GOODS_RECEIPT,
+                        receiptId
+                )
         );
 
         return query.detailInternal(
@@ -247,10 +256,12 @@ public class GoodsReceiptService {
         }
 
         audit.record(
-                actor,
-                "GOODS_RECEIPT_CANCEL",
-                "GOODS_RECEIPT",
-                receiptId
+                AuditEvent.of(
+                        actor,
+                        AuditAction.GOODS_RECEIPT_CANCEL,
+                        AuditTargetType.GOODS_RECEIPT,
+                        receiptId
+                )
         );
 
         return query.detailInternal(

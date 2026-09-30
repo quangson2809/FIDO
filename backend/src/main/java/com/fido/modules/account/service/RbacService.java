@@ -17,7 +17,10 @@ import com.fido.modules.account.repository.AccountRoleRepository;
 import com.fido.modules.account.repository.PermissionRepository;
 import com.fido.modules.account.repository.RolePermissionRepository;
 import com.fido.modules.account.repository.RoleRepository;
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEvent;
 import com.fido.modules.audit.service.AuditService;
+import com.fido.modules.audit.service.AuditTargetType;
 import jakarta.persistence.EntityManager;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -113,10 +116,12 @@ public class RbacService {
         entityManager.flush();
 
         audit.record(
-                actor,
-                "ROLE_CREATE",
-                "ROLE",
-                role.getRoleId()
+                AuditEvent.of(
+                        actor,
+                        AuditAction.ROLE_CREATE,
+                        AuditTargetType.ROLE,
+                        role.getRoleId()
+                )
         );
 
         return detail(role);
@@ -147,10 +152,12 @@ public class RbacService {
         entityManager.flush();
 
         audit.record(
-                actor,
-                "ROLE_UPDATE",
-                "ROLE",
-                roleId
+                AuditEvent.of(
+                        actor,
+                        AuditAction.ROLE_UPDATE,
+                        AuditTargetType.ROLE,
+                        roleId
+                )
         );
 
         return detail(role);
@@ -177,10 +184,12 @@ public class RbacService {
         roles.delete(role);
 
         audit.record(
-                actor,
-                "ROLE_DELETE",
-                "ROLE",
-                roleId
+                AuditEvent.of(
+                        actor,
+                        AuditAction.ROLE_DELETE,
+                        AuditTargetType.ROLE,
+                        roleId
+                )
         );
     }
 
@@ -198,10 +207,12 @@ public class RbacService {
         entityManager.flush();
 
         audit.record(
-                actor,
-                "PERMISSION_CREATE",
-                "PERMISSION",
-                permission.getPermissionId()
+                AuditEvent.of(
+                        actor,
+                        AuditAction.PERMISSION_CREATE,
+                        AuditTargetType.PERMISSION,
+                        permission.getPermissionId()
+                )
         );
 
         return AccountMapper.permission(permission);
@@ -227,10 +238,12 @@ public class RbacService {
         entityManager.flush();
 
         audit.record(
-                actor,
-                "PERMISSION_UPDATE",
-                "PERMISSION",
-                permissionId
+                AuditEvent.of(
+                        actor,
+                        AuditAction.PERMISSION_UPDATE,
+                        AuditTargetType.PERMISSION,
+                        permissionId
+                )
         );
 
         return AccountMapper.permission(permission);
@@ -251,10 +264,12 @@ public class RbacService {
         permissions.delete(permission);
 
         audit.record(
-                actor,
-                "PERMISSION_DELETE",
-                "PERMISSION",
-                permissionId
+                AuditEvent.of(
+                        actor,
+                        AuditAction.PERMISSION_DELETE,
+                        AuditTargetType.PERMISSION,
+                        permissionId
+                )
         );
     }
 

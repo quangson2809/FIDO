@@ -13,7 +13,10 @@ import com.fido.modules.account.mapper.AccountMapper;
 import com.fido.modules.account.repository.AccountRepository;
 import com.fido.modules.account.repository.AccountRoleRepository;
 import com.fido.modules.account.repository.RoleRepository;
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEvent;
 import com.fido.modules.audit.service.AuditService;
+import com.fido.modules.audit.service.AuditTargetType;
 import jakarta.persistence.EntityManager;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -188,10 +191,12 @@ public class StaffService {
         em.flush();
 
         audit.record(
-                actor,
-                "STAFF_CREATE",
-                "ACCOUNT",
-                account.getAccountId()
+                AuditEvent.of(
+                        actor,
+                        AuditAction.STAFF_CREATE,
+                        AuditTargetType.ACCOUNT,
+                        account.getAccountId()
+                )
         );
 
         return access.findAccess(account.getAccountId())
@@ -224,10 +229,12 @@ public class StaffService {
         em.flush();
 
         audit.record(
-                actor,
-                "STAFF_UPDATE",
-                "ACCOUNT",
-                accountId
+                AuditEvent.of(
+                        actor,
+                        AuditAction.STAFF_UPDATE,
+                        AuditTargetType.ACCOUNT,
+                        accountId
+                )
         );
 
         return access.findAccess(accountId)
