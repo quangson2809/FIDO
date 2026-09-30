@@ -51,9 +51,8 @@ public class InventoryCommandService {
             record(
                     InventoryMovement.receipt(
                             actor,
-                            line.variantId(),
-                            line.quantity(),
-                            receiptId
+                            receiptId,
+                            line
                     )
             );
         }
@@ -109,12 +108,10 @@ public class InventoryCommandService {
             }
 
             record(
-                    InventoryMovement.order(
+                    InventoryMovement.confirmedOrder(
                             actor,
-                            line.variantId(),
-                            -line.quantity(),
-                            InventoryPolicy.ORDER_CONFIRM_OUT,
                             orderId,
+                            line,
                             reason
                     )
             );
@@ -177,12 +174,11 @@ public class InventoryCommandService {
             );
 
             record(
-                    InventoryMovement.order(
+                    InventoryMovement.orderRestoration(
                             actor,
-                            line.variantId(),
-                            line.quantity(),
-                            transactionType,
                             orderId,
+                            line,
+                            transactionType,
                             reason
                     )
             );
@@ -270,14 +266,13 @@ public class InventoryCommandService {
 
         private static InventoryMovement receipt(
                 Long actor,
-                Long variantId,
-                int quantity,
-                Long receiptId
+                Long receiptId,
+                StockLine line
         ) {
             return new InventoryMovement(
                     actor,
-                    variantId,
-                    quantity,
+                    line.variantId(),
+                    line.quantity(),
                     InventoryPolicy.RECEIPT_IN,
                     null,
                     receiptId,
@@ -304,18 +299,34 @@ public class InventoryCommandService {
             );
         }
 
-        private static InventoryMovement order(
+        private static InventoryMovement confirmedOrder(
                 Long actor,
-                Long variantId,
-                int quantityDelta,
-                String transactionType,
                 Long orderId,
+                StockLine line,
                 String reason
         ) {
             return new InventoryMovement(
                     actor,
-                    variantId,
-                    quantityDelta,
+                    line.variantId(),
+                    -line.quantity(),
+                    InventoryPolicy.ORDER_CONFIRM_OUT,
+                    orderId,
+                    null,
+                    reason
+            );
+        }
+
+        private static InventoryMovement orderRestoration(
+                Long actor,
+                Long orderId,
+                StockLine line,
+                String transactionType,
+                String reason
+        ) {
+            return new InventoryMovement(
+                    actor,
+                    line.variantId(),
+                    line.quantity(),
                     transactionType,
                     orderId,
                     null,
