@@ -95,14 +95,47 @@ public class OrderEditService {
     ) {
         Order order = locked(orderId);
 
+        applyAdminRecipientPatch(
+                order,
+                request
+        );
+
+        applyCustomerServicePatch(
+                order,
+                request
+        );
+
+        orders.save(order);
+
+        applyShippingPatch(
+                orderId,
+                request
+        );
+
+        audit.record(
+                actor,
+                "ORDER_ADMIN_UPDATE",
+                "ORDER",
+                orderId
+        );
+
+        return query.adminDetailInternal(order, authentication);
+    }
+
+    private void applyAdminRecipientPatch(
+            Order order,
+            AdminOrderPatchRequest request
+    ) {
         boolean recipientChange =
                 request.isPhonePresent()
                 || request.isEmailPresent()
                 || request.isAddressPresent();
 
-        if (recipientChange) {
-            requireRecipientEditable(order);
+        if (!recipientChange) {
+            return;
         }
+
+        requireRecipientEditable(order);
 
         if (request.isPhonePresent()) {
             order.setRecipientPhone(
@@ -121,45 +154,47 @@ public class OrderEditService {
                     request.getRecipientAddress()
             );
         }
+    }
 
-        if (request.isNotePresent()) {
-            order.setCustomerServiceNote(
-                    request.getCustomerServiceNote()
-            );
+    private void applyCustomerServicePatch(
+            Order order,
+            AdminOrderPatchRequest request
+    ) {
+        if (!request.isNotePresent()) {
+            return;
         }
 
-        orders.save(order);
+        order.setCustomerServiceNote(
+                request.getCustomerServiceNote()
+        );
+    }
 
-        if (request.isShippingInfoPresent()) {
-            var input = request.getShippingInfo();
-
-            ShippingInfo info = shipping
-                    .findById(orderId)
-                    .orElseGet(() -> {
-                        ShippingInfo created =
-                                new ShippingInfo();
-                        created.setOrderId(orderId);
-                        return created;
-                    });
-
-            info.setDeliveryMode(
-                    input.delivery_mode()
-            );
-            info.setCarrierName(
-                    input.carrier_name()
-            );
-
-            shipping.save(info);
+    private void applyShippingPatch(
+            Long orderId,
+            AdminOrderPatchRequest request
+    ) {
+        if (!request.isShippingInfoPresent()) {
+            return;
         }
 
-        audit.record(
-                actor,
-                "ORDER_ADMIN_UPDATE",
-                "ORDER",
-                orderId
+        var input = request.getShippingInfo();
+
+        ShippingInfo info = shipping
+                .findById(orderId)
+                .orElseGet(() -> {
+                    ShippingInfo created = new ShippingInfo();
+                    created.setOrderId(orderId);
+                    return created;
+                });
+
+        info.setDeliveryMode(
+                input.delivery_mode()
+        );
+        info.setCarrierName(
+                input.carrier_name()
         );
 
-        return query.adminDetailInternal(order, authentication);
+        shipping.save(info);
     }
 
     private void requireRecipientEditable(Order order) {
