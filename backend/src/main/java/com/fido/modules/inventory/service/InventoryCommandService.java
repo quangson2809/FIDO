@@ -49,13 +49,12 @@ public class InventoryCommandService {
             );
 
             record(
-                    actor,
-                    line.variantId(),
-                    line.quantity(),
-                    InventoryPolicy.RECEIPT_IN,
-                    null,
-                    receiptId,
-                    null
+                    InventoryMovement.receipt(
+                            actor,
+                            line.variantId(),
+                            line.quantity(),
+                            receiptId
+                    )
             );
         }
     }
@@ -81,15 +80,12 @@ public class InventoryCommandService {
         }
 
         return record(
-                actor,
-                variantId,
-                quantityDelta,
-                quantityDelta > 0
-                        ? InventoryPolicy.ADJUSTMENT_IN
-                        : InventoryPolicy.ADJUSTMENT_OUT,
-                null,
-                null,
-                reason
+                InventoryMovement.manualAdjustment(
+                        actor,
+                        variantId,
+                        quantityDelta,
+                        reason
+                )
         );
     }
 
@@ -113,13 +109,14 @@ public class InventoryCommandService {
             }
 
             record(
-                    actor,
-                    line.variantId(),
-                    -line.quantity(),
-                    InventoryPolicy.ORDER_CONFIRM_OUT,
-                    orderId,
-                    null,
-                    reason
+                    InventoryMovement.order(
+                            actor,
+                            line.variantId(),
+                            -line.quantity(),
+                            InventoryPolicy.ORDER_CONFIRM_OUT,
+                            orderId,
+                            reason
+                    )
             );
         }
     }
@@ -180,13 +177,14 @@ public class InventoryCommandService {
             );
 
             record(
-                    actor,
-                    line.variantId(),
-                    line.quantity(),
-                    transactionType,
-                    orderId,
-                    null,
-                    reason
+                    InventoryMovement.order(
+                            actor,
+                            line.variantId(),
+                            line.quantity(),
+                            transactionType,
+                            orderId,
+                            reason
+                    )
             );
         }
     }
@@ -210,22 +208,16 @@ public class InventoryCommandService {
     }
 
     private InventoryTransaction record(
-            Long actor,
-            Long variantId,
-            int quantityDelta,
-            String transactionType,
-            Long orderId,
-            Long receiptId,
-            String reason
+            InventoryMovement movement
     ) {
         InventoryTransaction transaction = new InventoryTransaction();
-        transaction.setVariantId(variantId);
-        transaction.setQuantityDelta(quantityDelta);
-        transaction.setTransactionType(transactionType);
-        transaction.setOrderId(orderId);
-        transaction.setGoodsReceiptId(receiptId);
-        transaction.setActorAccountId(actor);
-        transaction.setReason(normalize(reason));
+        transaction.setVariantId(movement.variantId());
+        transaction.setQuantityDelta(movement.quantityDelta());
+        transaction.setTransactionType(movement.transactionType());
+        transaction.setOrderId(movement.orderId());
+        transaction.setGoodsReceiptId(movement.receiptId());
+        transaction.setActorAccountId(movement.actor());
+        transaction.setReason(normalize(movement.reason()));
 
         return transactions.save(transaction);
     }
@@ -266,6 +258,72 @@ public class InventoryCommandService {
         return reason.trim();
     }
 
+    private record InventoryMovement(
+            Long actor,
+            Long variantId,
+            int quantityDelta,
+            String transactionType,
+            Long orderId,
+            Long receiptId,
+            String reason
+    ) {
+
+        private static InventoryMovement receipt(
+                Long actor,
+                Long variantId,
+                int quantity,
+                Long receiptId
+        ) {
+            return new InventoryMovement(
+                    actor,
+                    variantId,
+                    quantity,
+                    InventoryPolicy.RECEIPT_IN,
+                    null,
+                    receiptId,
+                    null
+            );
+        }
+
+        private static InventoryMovement manualAdjustment(
+                Long actor,
+                Long variantId,
+                int quantityDelta,
+                String reason
+        ) {
+            return new InventoryMovement(
+                    actor,
+                    variantId,
+                    quantityDelta,
+                    quantityDelta > 0
+                            ? InventoryPolicy.ADJUSTMENT_IN
+                            : InventoryPolicy.ADJUSTMENT_OUT,
+                    null,
+                    null,
+                    reason
+            );
+        }
+
+        private static InventoryMovement order(
+                Long actor,
+                Long variantId,
+                int quantityDelta,
+                String transactionType,
+                Long orderId,
+                String reason
+        ) {
+            return new InventoryMovement(
+                    actor,
+                    variantId,
+                    quantityDelta,
+                    transactionType,
+                    orderId,
+                    null,
+                    reason
+            );
+        }
+    }
+
     public record StockLine(
             Long variantId,
             int quantity
@@ -289,4 +347,3 @@ public class InventoryCommandService {
         }
     }
 }
-
