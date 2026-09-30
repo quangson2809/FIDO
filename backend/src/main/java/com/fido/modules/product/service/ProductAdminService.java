@@ -140,43 +140,118 @@ public class ProductAdminService {
     ) {
         Product product = references.product(productId);
 
-        if (request.getCategoryId() != null) {
-            product.setCategoryId(
-                    references.leafCategory(request.getCategoryId())
-                            .getCategoryId()
-            );
+        applyReferenceChanges(
+                product,
+                request
+        );
+
+        applyProductAttributes(
+                product,
+                request
+        );
+
+        replaceImagesIfPresent(
+                productId,
+                request
+        );
+
+        products.save(product);
+        em.flush();
+
+        audit.record(
+                actor,
+                "PRODUCT_UPDATE",
+                "PRODUCT",
+                productId
+        );
+
+        return query.detailInternal(productId);
+    }
+
+    private void applyReferenceChanges(
+            Product product,
+            ProductPatchRequest request
+    ) {
+        applyCategoryChange(product, request);
+        applyBrandChange(product, request);
+        applySizeSystemChange(product, request);
+    }
+
+    private void applyCategoryChange(
+            Product product,
+            ProductPatchRequest request
+    ) {
+        if (request.getCategoryId() == null) {
+            return;
         }
 
-        if (request.isBrandIdPresent()) {
-            if (request.getBrandId() != null) {
-                references.brand(request.getBrandId());
-            }
+        product.setCategoryId(
+                references.leafCategory(request.getCategoryId())
+                        .getCategoryId()
+        );
+    }
 
-            product.setBrandId(request.getBrandId());
+    private void applyBrandChange(
+            Product product,
+            ProductPatchRequest request
+    ) {
+        if (!request.isBrandIdPresent()) {
+            return;
         }
 
-        if (request.getSizeSystemId() != null
-                && !Objects.equals(
-                        request.getSizeSystemId(),
+        if (request.getBrandId() != null) {
+            references.brand(request.getBrandId());
+        }
+
+        product.setBrandId(request.getBrandId());
+    }
+
+    private void applySizeSystemChange(
+            Product product,
+            ProductPatchRequest request
+    ) {
+        Long requestedSizeSystemId = request.getSizeSystemId();
+
+        if (requestedSizeSystemId == null
+                || Objects.equals(
+                        requestedSizeSystemId,
                         product.getSizeSystemId()
                 )) {
-            references.sizeSystem(request.getSizeSystemId());
-
-            for (ProductVariant variant :
-                    variants.findAllByProductIdOrderByVariantIdAsc(productId)) {
-                SizeValue value = references.sizeValue(variant.getSizeValueId());
-
-                if (!Objects.equals(
-                        value.getSizeSystemId(),
-                        request.getSizeSystemId()
-                )) {
-                    conflict();
-                }
-            }
-
-            product.setSizeSystemId(request.getSizeSystemId());
+            return;
         }
 
+        references.sizeSystem(requestedSizeSystemId);
+        requireVariantsCompatibleWithSizeSystem(
+                product.getProductId(),
+                requestedSizeSystemId
+        );
+
+        product.setSizeSystemId(requestedSizeSystemId);
+    }
+
+    private void requireVariantsCompatibleWithSizeSystem(
+            Long productId,
+            Long sizeSystemId
+    ) {
+        for (ProductVariant variant :
+                variants.findAllByProductIdOrderByVariantIdAsc(productId)) {
+            SizeValue value = references.sizeValue(
+                    variant.getSizeValueId()
+            );
+
+            if (!Objects.equals(
+                    value.getSizeSystemId(),
+                    sizeSystemId
+            )) {
+                conflict();
+            }
+        }
+    }
+
+    private void applyProductAttributes(
+            Product product,
+            ProductPatchRequest request
+    ) {
         if (request.getName() != null) {
             product.setName(request.getName());
         }
@@ -209,27 +284,22 @@ public class ProductAdminService {
             CatalogPolicy.requireSaleStatus(request.getSaleStatus());
             product.setSaleStatus(request.getSaleStatus());
         }
+    }
 
-        if (request.isImagesPresent()) {
-            images.deleteAllByProductId(productId);
-
-            saveImages(
-                    productId,
-                    request.getImages()
-            );
+    private void replaceImagesIfPresent(
+            Long productId,
+            ProductPatchRequest request
+    ) {
+        if (!request.isImagesPresent()) {
+            return;
         }
 
-        products.save(product);
-        em.flush();
+        images.deleteAllByProductId(productId);
 
-        audit.record(
-                actor,
-                "PRODUCT_UPDATE",
-                "PRODUCT",
-                productId
+        saveImages(
+                productId,
+                request.getImages()
         );
-
-        return query.detailInternal(productId);
     }
 
     @PreAuthorize(WRITE)
