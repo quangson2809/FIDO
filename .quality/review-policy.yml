@@ -1,0 +1,51 @@
+version: 1
+
+review:
+  source_of_truth:
+    - backend/AGENTS.md
+    - docs/00-source-of-truth.md
+    - docs/01-architecture-package-structure.md
+    - docs/02-module-ownership.md
+    - docs/11-implementation-phases.md
+    - docs/15-technical-decisions.md
+
+  philosophy:
+    context_over_pattern: true
+    evidence_required: true
+    smallest_coherent_change: true
+    scale_only_on_observed_pressure: true
+
+  blocking:
+    severities:
+      - BLOCKER
+      - MAJOR
+    blocking_findings_must_match_blocking_severities: true
+    require_evidence: true
+    require_impact: true
+    require_recommendation: true
+
+  principles:
+    - KISS
+    - YAGNI
+    - SeparationOfConcerns
+    - LowCoupling
+    - HighCohesion
+    - LawOfDemeter
+    - CurlysLaw
+    - POLA
+    - PoLP
+
+  prohibited_reasoning:
+    - "class is large therefore split"
+    - "many methods therefore SRP violation"
+    - "enterprise system therefore microservices"
+    - "SOLID requires one interface per class"
+    - "scalability requires CQRS"
+    - "a pattern is mandatory without repository evidence"
+
+contract:
+  marker: "<!-- FIDO_WORK_REVIEW_V1 -->"
+  transport: github_pull_request_review_comment
+  require_current_head_sha: true
+  github_review_state: COMMENTED
+  ci_is_final_decider: true
