@@ -174,4 +174,4 @@ A phase must never be reported BLOCKED solely because of a naming choice or anot
 
 - Apply KISS, YAGNI, Boy Scout Rule, Separation of Concerns, Low Coupling, High Cohesion, Law of Demeter, Curly's Law, Principle of Least Astonishment and Least Privilege in context. Flag tangled ownership, hidden side effects, unnecessary dependencies, repeated business rules, accidental privilege or gratuitous abstractions when their impact is demonstrable.
 - Do not require one interface per service, a fixed number of classes/methods, or Query/Command splitting in every module. Commands may read for validation or response; queries must remain free of persistence mutations. Judge a proposed split by whether it improves a real responsibility, dependency or transaction boundary without disproportionate complexity.
-- Use `docs/13-codex-prompts.md` for the independent review report and the separate PR quality-gate payload. Review is read-only; implementation and reviewer roles remain separate.
+- Use `docs/13-codex-prompts.md` for optional review prompts. Review output is evidence for engineering decisions, not a CI/Work gate.
