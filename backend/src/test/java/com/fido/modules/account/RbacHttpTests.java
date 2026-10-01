@@ -101,7 +101,7 @@ class RbacHttpTests extends AccountHttpSupport {
                 ).status()
         );
 
-        var permissionPage = call(
+        var permissionList = call(
                 "GET",
                 "/api/v1/admin/permissions",
                 token,
@@ -110,26 +110,20 @@ class RbacHttpTests extends AccountHttpSupport {
 
         assertEquals(
                 200,
-                permissionPage.status()
+                permissionList.status()
         );
 
-        assertEquals(
-                20,
-                permissionPage.data()
-                        .get("meta")
-                        .get("page_size")
-                        .asInt()
+        assertTrue(permissionList.data().get("data").isArray());
+        assertTrue(
+                permissionList.data()
+                        .get("data")
+                        .valueStream()
+                        .anyMatch(permission ->
+                                permission.get("permission_id").asLong()
+                                        == permissionId
+                        )
         );
-
-        assertEquals(
-                400,
-                call(
-                        "GET",
-                        "/api/v1/admin/permissions?page_size=101",
-                        token,
-                        null
-                ).status()
-        );
+        assertEquals(null, permissionList.data().get("meta"));
 
         var roleResponse = call(
                 "POST",
