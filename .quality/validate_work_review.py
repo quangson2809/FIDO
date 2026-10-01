@@ -1,13 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the latest FIDO Work structural review for the current PR head.
-
-No third-party dependencies. The script is intentionally narrow:
-- reads PR reviews from GitHub REST API;
-- accepts only reviews carrying the FIDO marker;
-- requires the review to be for the current head SHA;
-- validates the JSON contract and PASS/FAIL consistency;
-- exits non-zero when the structural gate is not satisfied.
-"""
+"""Fail CI unless the current PR head has a valid FIDO Work structural PASS."""
 
 from __future__ import annotations
 
@@ -15,6 +7,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
 from typing import Any
@@ -22,46 +15,54 @@ from typing import Any
 MARKER = "<!-- FIDO_WORK_REVIEW_V1 -->"
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 ID_RE = re.compile(r"^[A-Z][A-Z0-9_-]*-[0-9]{3}$")
-BLOCKING_SEVERITIES = {"BLOCKER", "MAJOR"}
-ALLOWED_SEVERITIES = BLOCKING_SEVERITIES | {"MINOR", "INFO"}
+BLOCKING = {"BLOCKER", "MAJOR"}
+SEVERITIES = BLOCKING | {"MINOR", "INFO"}
 
 
 class GateError(RuntimeError):
     pass
 
 
-def required_env(name: str) -> str:
-    value = os.getenv(name, "").strip()
-    if not value:
-        raise GateError(f"Missing required environment variable: {name}")
+def env(name: str, default: str = "") -> str:
+    value = os.getenv(name, default).strip()
+    if not value and not default:
+        raise GateError(f"Missing environment variable: {name}")
     return value
 
 
-def github_get(url: str, token: str) -> Any:
-    request = urllib.request.Request(
-        url,
-        headers={
-            "Accept": "application/vnd.github+json",
-            "Authorization": f"Bearer {token}",
-            "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "fido-quality-gate",
-        },
-    )
+def github_reviews(repo: str, pr: str, token: str) -> list[dict[str, Any]]:
+    url = f"https://api.github.com/repos/{repo}/pulls/{pr}/reviews?per_page=100"
+    req = urllib.request.Request(url, headers={
+        "Accept": "application/vnd.github+json",
+        "Authorization": f"Bearer {token}",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "fido-quality-gate",
+    })
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:
-            return json.load(response)
+        with urllib.request.urlopen(req, timeout=30) as response:
+            data = json.load(response)
     except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")
-        raise GateError(f"GitHub API error {exc.code}: {body}") from exc
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise GateError(f"GitHub API {exc.code}: {detail}") from exc
+    if not isinstance(data, list):
+        raise GateError("Unexpected GitHub reviews response")
+    return data
 
 
-def extract_payload(body: str) -> dict[str, Any]:
-    marker_pos = body.find(MARKER)
-    if marker_pos < 0:
-        raise GateError("Review marker missing")
-    tail = body[marker_pos + len(MARKER):].strip()
-    fenced = re.search(r"```(?:json)?\s*(\{.*\})\s*```", tail, re.DOTALL)
-    raw = fenced.group(1) if fenced else tail
+def current_review(reviews: list[dict[str, Any]], head: str) -> tuple[dict[str, Any] | None, bool]:
+    marked = [r for r in reviews if MARKER in str(r.get("body") or "")]
+    stale = False
+    for review in reversed(marked):
+        if str(review.get("commit_id") or "").lower() == head:
+            return review, stale
+        stale = True
+    return None, stale
+
+
+def payload_from(body: str) -> dict[str, Any]:
+    tail = body.split(MARKER, 1)[1].strip()
+    match = re.search(r"```(?:json)?\s*(\{.*\})\s*```", tail, re.DOTALL)
+    raw = match.group(1) if match else tail
     try:
         payload = json.loads(raw)
     except json.JSONDecodeError as exc:
@@ -71,207 +72,97 @@ def extract_payload(body: str) -> dict[str, Any]:
     return payload
 
 
-def require_string(payload: dict[str, Any], key: str) -> str:
-    value = payload.get(key)
+def nonempty(value: Any, label: str) -> str:
     if not isinstance(value, str) or not value.strip():
-        raise GateError(f"{key} must be a non-empty string")
+        raise GateError(f"{label} must be a non-empty string")
     return value
 
 
-def validate_payload(payload: dict[str, Any], expected_sha: str, review_state: str) -> None:
-    allowed_top = {
-        "version", "head_sha", "result", "summary", "blocking_findings", "findings"
-    }
-    unknown = set(payload) - allowed_top
-    if unknown:
-        raise GateError(f"Unknown top-level fields: {sorted(unknown)}")
-
-    if payload.get("version") != "1":
+def validate(payload: dict[str, Any], head: str, state: str) -> None:
+    required = {"version", "head_sha", "result", "summary", "blocking_findings", "findings"}
+    if set(payload) != required:
+        raise GateError(f"Review fields must be exactly {sorted(required)}")
+    if payload["version"] != "1":
         raise GateError("version must be '1'")
-
-    head_sha = require_string(payload, "head_sha")
-    if not SHA_RE.fullmatch(head_sha):
-        raise GateError("head_sha must be a lowercase 40-character Git SHA")
-    if head_sha != expected_sha:
-        raise GateError(f"Stale review payload: {head_sha} != current head {expected_sha}")
-
-    result = payload.get("result")
-    if result not in {"PASS", "FAIL"}:
+    if payload["head_sha"] != head or not SHA_RE.fullmatch(str(payload["head_sha"])):
+        raise GateError("Review head_sha is invalid or stale")
+    if payload["result"] not in {"PASS", "FAIL"}:
         raise GateError("result must be PASS or FAIL")
+    nonempty(payload["summary"], "summary")
+    if state.upper() != "COMMENTED":
+        raise GateError(f"Work review must be COMMENTED, got {state}")
 
-    require_string(payload, "summary")
-
-    blocking = payload.get("blocking_findings")
-    findings = payload.get("findings")
-    if not isinstance(blocking, list) or not all(isinstance(x, str) for x in blocking):
-        raise GateError("blocking_findings must be an array of finding IDs")
-    if len(blocking) != len(set(blocking)):
-        raise GateError("blocking_findings contains duplicate IDs")
+    ids = payload["blocking_findings"]
+    findings = payload["findings"]
+    if not isinstance(ids, list) or len(ids) != len(set(ids)):
+        raise GateError("blocking_findings must be a unique array")
     if not isinstance(findings, list):
         raise GateError("findings must be an array")
 
     finding_map: dict[str, dict[str, Any]] = {}
-    allowed_finding = {
-        "id", "severity", "principles", "evidence", "impact", "recommendation", "files"
-    }
-    for index, finding in enumerate(findings):
-        if not isinstance(finding, dict):
-            raise GateError(f"findings[{index}] must be an object")
-        unknown_finding = set(finding) - allowed_finding
-        if unknown_finding:
-            raise GateError(
-                f"findings[{index}] has unknown fields: {sorted(unknown_finding)}"
-            )
+    allowed = {"id", "severity", "principles", "evidence", "impact", "recommendation", "files"}
+    for finding in findings:
+        if not isinstance(finding, dict) or not {"id", "severity", "principles", "evidence", "impact", "recommendation"} <= set(finding):
+            raise GateError,"Each finding must contain id, severity, principles, evidence, impact, recommendation")
+        if set(finding) - allowed:
+            raise GateError(f"Unknown finding fields: {sorted(set(finding) - allowed)}")
+        fid = nonempty(finding["id"], "finding.id")
+        if not ID_RE.fullmatch(fid) or fid in finding_map:
+            raise GateError(f"Invalid or duplicate finding id: {fid}")
+        if finding["severity"] not in SEVERITIES:
+            raise GateError(f"Invalid severity for {fid}")
+        for key in ("principles", "evidence"):
+            values = finding[key]
+            if not isinstance(values, list) or not values or not all(isinstance(v, str) and v.strip() for v in values):
+                raise GateError(f"{fid}.{key} must be a non-empty string array")
+        nonempty(finding["impact"], f"{fid}.impact")
+        nonempty(finding["recommendation"], f"{fid}.recommendation")
+        finding_map[fid] = finding
 
-        finding_id = require_string(finding, "id")
-        if not ID_RE.fullmatch(finding_id):
-            raise GateError(f"Invalid finding id: {finding_id}")
-        if finding_id in finding_map:
-            raise GateError(f"Duplicate finding id: {finding_id}")
-
-        severity = finding.get("severity")
-        if severity not in ALLOWED_SEVERITIES:
-            raise GateError(f"Invalid severity for {finding_id}: {severity}")
-
-        principles = finding.get("principles")
-        evidence = finding.get("evidence")
-        if (
-            not isinstance(principles, list)
-            or not principles
-            or not all(isinstance(x, str) and x.strip() for x in principles)
-        ):
-            raise GateError(f"{finding_id}: principles must be a non-empty string array")
-        if (
-            not isinstance(evidence, list)
-            or not evidence
-            or not all(isinstance(x, str) and x.strip() for x in evidence)
-        ):
-            raise GateError(f"{finding_id}: evidence must be a non-empty string array")
-
-        require_string(finding, "impact")
-        require_string(finding, "recommendation")
-
-        files = finding.get("files")
-        if files is not None and (
-            not isinstance(files, list)
-            or not all(isinstance(x, str) and x.strip() for x in files)
-        ):
-            raise GateError(f"{finding_id}: files must be an array of non-empty strings")
-
-        finding_map[finding_id] = finding
-
-    for finding_id in blocking:
-        if not ID_RE.fullmatch(finding_id):
-            raise GateError(f"Invalid blocking finding id: {finding_id}")
-        finding = finding_map.get(finding_id)
-        if finding is None:
-            raise GateError(f"Blocking finding {finding_id} is absent from findings")
-        if finding["severity"] not in BLOCKING_SEVERITIES:
-            raise GateError(
-                f"Blocking finding {finding_id} must be BLOCKER or MAJOR"
-            )
-
-    expected_blocking = {
-        finding_id
-        for finding_id, finding in finding_map.items()
-        if finding["severity"] in BLOCKING_SEVERITIES
-    }
-    if set(blocking) != expected_blocking:
-        raise GateError(
-            "blocking_findings must contain exactly all BLOCKER/MAJOR finding IDs"
-        )
-
-    # Work supplies evidence and judgment only. CI is the final decider, so the
-    # GitHub review itself is always a neutral COMMENTED review.
-    if review_state.upper() != "COMMENTED":
-        raise GateError(
-            f"Work review must use GitHub state COMMENTED, got {review_state}"
-        )
-
-    if result == "PASS":
-        if blocking:
-            raise GateError("PASS review cannot contain blocking findings")
-    else:
-        if not blocking:
-            raise GateError("FAIL review must contain at least one BLOCKER/MAJOR finding")
+    expected = {fid for fid, f in finding_map.items() if f["severity"] in BLOCKING}
+    if set(ids) != expected:
+        raise GateError("blocking_findings must equal all BLOCKER/MAJOR finding IDs")
+    if payload["result"] == "PASS" and expected:
+        raise GateError("PASS cannot contain BLOCKER/MAJOR findings")
+    if payload["result"] == "FAIL" and not expected:
+        raise GateError("FAIL requires a BLOCKER/MAJOR finding")
 
 
 def main() -> int:
     try:
-        repository = required_env("GITHUB_REPOSITORY")
-        token = required_env("GITHUB_TOKEN")
-        pr_number = required_env("PR_NUMBER")
-        head_sha = required_env("PR_HEAD_SHA").lower()
-
-        if not SHA_RE.fullmatch(head_sha):
-            raise GateError("PR_HEAD_SHA is not a valid lowercase 40-character Git SHA")
-
-        reviews_url = (
-            f"https://api.github.com/repos/{repository}/pulls/{pr_number}/reviews"
-            "?per_page=100"
-        )
-        reviews = github_get(reviews_url, token)
-        if not isinstance(reviews, list):
-            raise GateError("Unexpected GitHub reviews response")
-
-        candidates = [
-            review
-            for review in reviews
-            if isinstance(review, dict)
-            and isinstance(review.get("body"), str)
-            and MARKER in review["body"]
-        ]
-        if not candidates:
-            raise GateError(
-                "No FIDO Work structural review found for this pull request"
-            )
-
-        # GitHub returns reviews oldest-first. The newest marker review anchored to
-        # the current head is authoritative. Never fall back to an older current-head
-        # review when the newest one is malformed or dismissed.
-        stale_seen = False
-        current_review: dict[str, Any] | None = None
-        for review in reversed(candidates):
-            commit_id = str(review.get("commit_id") or "").lower()
-            if commit_id == head_sha:
-                current_review = review
+        repo, token, pr = env("GITHUB_REPOSITORY"), env("GITHUB_TOKEN"), env("PR_NUMBER")
+        head = env("PR_HEAD_SHA").lower()
+        if not SHA_RE.fullmatch(head):
+            raise GateError("PR_HEAD_SHA must be a lowercase 40-character SHA")
+        wait = max(0, int(env("WORK_REVIEW_WAIT_SECONDS", "0")))
+        poll = max(5, int(env("WORK_REVIEW_POLL_SECONDS", "15")))
+        deadline = time.monotonic() + wait
+        review: dict[str, Any] | None = None
+        stale = False
+        while review is None:
+            review, stale = current_review(github_reviews(repo, pr, token), head)
+            if review is not None:
                 break
-            stale_seen = True
+            if time.monotonic() >= deadline:
+                reason = "Only stale Work reviews exist" if stale else "No Work review found"
+                raise GateError(f"{reason} for current head {head}")
+            print(f"Waiting for Work review for {head}; retry in {poll}s", flush=True)
+            time.sleep(poll)
 
-        if current_review is None:
-            if stale_seen:
-                raise GateError(
-                    "Only stale Work reviews exist; a new review is required for current head "
-                    + head_sha
-                )
-            raise GateError("No Work review is anchored to the current PR head")
-
-        payload = extract_payload(current_review["body"])
-        validate_payload(
-            payload, head_sha, str(current_review.get("state") or "")
-        )
-
-        print(
-            json.dumps(
-                {
-                    "status": "PASS" if payload["result"] == "PASS" else "FAIL",
-                    "review_id": current_review.get("id"),
-                    "reviewer": (current_review.get("user") or {}).get("login"),
-                    "head_sha": head_sha,
-                    "summary": payload["summary"],
-                    "blocking_findings": payload["blocking_findings"],
-                },
-                ensure_ascii=False,
-            )
-        )
-
+        payload = payload_from(str(review.get("body") or ""))
+        validate(payload, head, str(review.get("state") or ""))
+        print(json.dumps({
+            "result": payload["result"],
+            "review_id": review.get("id"),
+            "reviewer": (review.get("user") or {}).get("login"),
+            "head_sha": head,
+            "summary": payload["summary"],
+            "blocking_findings": payload["blocking_findings"],
+        }, ensure_ascii=False))
         if payload["result"] == "FAIL":
-            raise GateError(
-                "Structural review failed: "
-                + ", ".join(payload["blocking_findings"])
-            )
+            raise GateError("Structural review failed: " + ", ".join(payload["blocking_findings"]))
         return 0
-    except GateError as exc:
+    except (GateError, ValueError) as exc:
         print(f"QUALITY GATE FAIL: {exc}", file=sys.stderr)
         return 1
 
