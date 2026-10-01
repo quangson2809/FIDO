@@ -72,6 +72,9 @@ class CartAccessHttpTests extends CartHttpSupport {
                         .asLong()
         );
 
+        assertTrue(initial.data().get("data").has("cart_id"));
+        assertTrue(initial.data().get("data").get("cart_id").isNull());
+
         assertEquals(
                 0,
                 initial.data()

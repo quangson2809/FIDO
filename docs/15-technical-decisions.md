@@ -282,3 +282,9 @@ Implementation of the existing ReportOverviewDto:
 - ReportRepository performs two aggregate read queries across Order/Payment tables without foreign repositories/entities, per docs/01's explicit report-read allowance. The read-only REPEATABLE_READ service transaction keeps both aggregates in one snapshot. No aggregate table, migration, cached report or order mutation.
 
 The earlier monetary/time HARD BLOCK is resolved. Phase 7's gate now depends on successful API/adjustment tests, recorded in docs/16; earlier-phase deferred slices are unchanged.
+
+## Service read/write boundary — 2026-10-01
+
+- Query services perform no persistence mutations; command services may read data to validate invariants or build the mutation response. Existing JPA repositories, database, endpoints, DTOs, and domain transaction boundaries remain in use. No command bus, separate read store, or service interface is introduced.
+- Account profile, staff, RBAC, cart, inventory admin/supplier, and content page entry points are divided by responsibility. Goods receipt, product, order, audit, report, and deferred promotion code retain their current boundaries.
+- An authenticated GET of a cart with no persisted cart returns the existing CartDto shape with the account ID, empty items, zero subtotal, and null cart ID/timestamps. The GET no longer creates a row; the first mutation creates a cart. The checkout quote already used an empty read view for this case.

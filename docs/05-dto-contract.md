@@ -100,7 +100,7 @@ Never trust/accept these from clients unless a source explicitly makes them conf
 
 `CartItemDto(cart_item_id,variant_id,quantity,product_name,size,color,unit_price,line_total,available_quantity)`
 
-`CartDto(cart_id,account_id?,items[],subtotal,created_at,updated_at)`
+`CartDto(cart_id?,account_id?,items[],subtotal,created_at?,updated_at?)` — for an authenticated account without a persisted cart, return the same fields with null cart ID/timestamps, an empty item list and zero subtotal; GET does not create a cart.
 
 `VoucherDto(voucher_id,code)` — do not add rule fields.
 

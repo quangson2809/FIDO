@@ -6,7 +6,6 @@ import com.fido.modules.account.dto.response.StaffAccountDetailDto;
 import com.fido.modules.account.entity.Account;
 import com.fido.modules.account.entity.AccountRole;
 import com.fido.modules.account.entity.Role;
-import com.fido.modules.account.mapper.AccountMapper;
 import com.fido.modules.account.repository.AccountRepository;
 import com.fido.modules.account.repository.AccountRoleRepository;
 import com.fido.modules.account.repository.RoleRepository;
@@ -298,4 +297,3 @@ public class StaffCommandService {
                 .orElseThrow();
     }
 }
-
