@@ -5,7 +5,8 @@ import com.fido.common.response.ApiResponse;
 import com.fido.modules.inventory.dto.request.InventoryAdjustmentRequest;
 import com.fido.modules.inventory.dto.response.InventoryRowDto;
 import com.fido.modules.inventory.dto.response.InventoryTransactionDto;
-import com.fido.modules.inventory.service.InventoryAdminService;
+import com.fido.modules.inventory.service.InventoryAdjustmentService;
+import com.fido.modules.inventory.service.InventoryQueryService;
 import com.fido.modules.inventory.service.InventoryTransactionFilter;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
@@ -25,12 +26,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/admin/inventory")
 public class InventoryController {
 
-    private final InventoryAdminService service;
+    private final InventoryAdjustmentService service;
+    private final InventoryQueryService query;
 
     public InventoryController(
-            InventoryAdminService service
+            InventoryAdjustmentService service,
+            InventoryQueryService query
     ) {
         this.service = service;
+        this.query = query;
     }
 
     @GetMapping
@@ -48,7 +52,7 @@ public class InventoryController {
             @RequestParam(name = "page_size", required = false)
                     Integer pageSize
     ) {
-        return service.inventory(
+        return query.inventory(
                 variantId,
                 sku,
                 productId,
@@ -95,7 +99,7 @@ public class InventoryController {
             @RequestParam(name = "page_size", required = false)
                     Integer pageSize
     ) {
-        return service.transactions(
+        return query.transactions(
                 new InventoryTransactionFilter(
                         variantId,
                         transactionType,

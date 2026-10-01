@@ -1,11 +1,8 @@
 package com.fido.modules.account.service;
 
-import com.fido.common.response.ApiListResponse;
-import com.fido.common.response.Pagination;
 import com.fido.modules.account.dto.request.StaffCreateRequest;
 import com.fido.modules.account.dto.request.StaffPatchRequest;
 import com.fido.modules.account.dto.response.StaffAccountDetailDto;
-import com.fido.modules.account.dto.response.StaffAccountSummaryDto;
 import com.fido.modules.account.entity.Account;
 import com.fido.modules.account.entity.AccountRole;
 import com.fido.modules.account.entity.Role;
@@ -18,15 +15,9 @@ import com.fido.modules.audit.service.AuditEvent;
 import com.fido.modules.audit.service.AuditService;
 import com.fido.modules.audit.service.AuditTargetType;
 import jakarta.persistence.EntityManager;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -36,7 +27,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @Transactional
 @PreAuthorize("hasAuthority('ROLE_SUPERADMIN')")
-public class StaffService {
+public class StaffCommandService {
 
     private final AccountRepository accounts;
     private final RoleRepository roles;
@@ -46,7 +37,7 @@ public class StaffService {
     private final AuditService audit;
     private final EntityManager em;
 
-    public StaffService(
+    public StaffCommandService(
             AccountRepository accounts,
             RoleRepository roles,
             AccountRoleRepository assignments,
@@ -62,113 +53,6 @@ public class StaffService {
         this.authentication = authentication;
         this.audit = audit;
         this.em = em;
-    }
-
-    @Transactional(readOnly = true)
-    public ApiListResponse<StaffAccountSummaryDto> list(
-            String q,
-            Long roleId,
-            Integer page,
-            Integer pageSize
-    ) {
-        Pagination pagination = Pagination.of(page, pageSize);
-
-        var result = accounts.findStaff(
-                q,
-                roleId,
-                pagination.toPageable()
-        );
-
-        Map<Long, List<Role>> rolesByAccount =
-                assignedRolesByAccount(
-                        result.getContent()
-                                .stream()
-                                .map(Account::getAccountId)
-                                .toList()
-                );
-
-        var staffAccounts = result.getContent()
-                .stream()
-                .map(account -> new StaffAccountSummaryDto(
-                        AccountMapper.account(account),
-                        rolesByAccount
-                                .getOrDefault(
-                                        account.getAccountId(),
-                                        List.of()
-                                )
-                                .stream()
-                                .map(AccountMapper::role)
-                                .toList()
-                ))
-                .toList();
-
-        return ApiListResponse.of(
-                staffAccounts,
-                pagination.meta(result.getTotalElements())
-        );
-    }
-
-    private Map<Long, List<Role>> assignedRolesByAccount(
-            List<Long> accountIds
-    ) {
-        if (accountIds.isEmpty()) {
-            return Map.of();
-        }
-
-        var assignedRows =
-                assignments.findAllByAccountIdIn(accountIds);
-
-        if (assignedRows.isEmpty()) {
-            return Map.of();
-        }
-
-        Map<Long, Role> rolesById = roles
-                .findAllByRoleIdIn(
-                        assignedRows.stream()
-                                .map(AccountRole::getRoleId)
-                                .distinct()
-                                .toList()
-                )
-                .stream()
-                .collect(Collectors.toMap(
-                        Role::getRoleId,
-                        Function.identity()
-                ));
-
-        var result = new HashMap<Long, List<Role>>();
-
-        for (AccountRole assignment : assignedRows) {
-            Role role = rolesById.get(
-                    assignment.getRoleId()
-            );
-
-            if (role == null) {
-                throw new IllegalStateException(
-                        "Account role references missing role"
-                );
-            }
-
-            result.computeIfAbsent(
-                    assignment.getAccountId(),
-                    ignored -> new ArrayList<>()
-            ).add(role);
-        }
-
-        result.values().forEach(list ->
-                list.sort(
-                        Comparator.comparing(Role::getRoleId)
-                )
-        );
-
-        return result;
-    }
-
-    @Transactional(readOnly = true)
-    public StaffAccountDetailDto detail(Long accountId) {
-        requireStaff(accountId);
-
-        return access.findAccess(accountId)
-                .orElseThrow();
     }
 
     public StaffAccountDetailDto create(

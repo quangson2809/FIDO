@@ -1,6 +1,6 @@
 package com.fido.modules.order.service;
 
-import com.fido.modules.inventory.service.InventoryCommandService;
+import com.fido.modules.inventory.service.InventoryMovementQueryService;
 import com.fido.modules.order.entity.Order;
 import com.fido.modules.order.entity.Payment;
 import java.util.ArrayList;
@@ -14,12 +14,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class OrderActionPolicy {
 
-    private final InventoryCommandService inventoryCommands;
+    private final InventoryMovementQueryService movements;
 
     public OrderActionPolicy(
-            InventoryCommandService inventoryCommands
+            InventoryMovementQueryService movements
     ) {
-        this.inventoryCommands = inventoryCommands;
+        this.movements = movements;
     }
 
     public List<String> allowedActions(
@@ -50,7 +50,7 @@ public class OrderActionPolicy {
             }
             case OrderPolicy.DELIVERY_FAILED -> {
                 boolean deliveryReturned =
-                        inventoryCommands
+                        movements
                                 .orderStockState(order.getOrderId())
                                 .deliveryReturned();
 

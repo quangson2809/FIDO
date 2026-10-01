@@ -2,11 +2,6 @@ package com.fido.modules.inventory.service;
 
 import com.fido.common.response.ApiListResponse;
 import com.fido.common.response.Pagination;
-import com.fido.modules.audit.service.AuditAction;
-import com.fido.modules.audit.service.AuditEvent;
-import com.fido.modules.audit.service.AuditService;
-import com.fido.modules.audit.service.AuditTargetType;
-import com.fido.modules.inventory.dto.request.InventoryAdjustmentRequest;
 import com.fido.modules.inventory.dto.response.InventoryRowDto;
 import com.fido.modules.inventory.dto.response.InventoryTransactionDto;
 import com.fido.modules.inventory.entity.InventoryTransaction;
@@ -23,34 +18,20 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
-@Transactional
-public class InventoryAdminService {
-
+@Transactional(readOnly = true)
+public class InventoryQueryService {
     private static final String READ =
             "hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_INVENTORY_READ')";
-
-    private static final String WRITE =
-            "hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_INVENTORY_WRITE')";
-
     private final InventoryRepository inventories;
     private final InventoryTransactionRepository transactions;
-    private final InventoryCommandService inventoryCommands;
-    private final AuditService audit;
 
-    public InventoryAdminService(
-            InventoryRepository inventories,
-            InventoryTransactionRepository transactions,
-            InventoryCommandService inventoryCommands,
-            AuditService audit
-    ) {
+    public InventoryQueryService(InventoryRepository inventories,
+                                 InventoryTransactionRepository transactions) {
         this.inventories = inventories;
         this.transactions = transactions;
-        this.inventoryCommands = inventoryCommands;
-        this.audit = audit;
     }
 
     @PreAuthorize(READ)
-    @Transactional(readOnly = true)
     public ApiListResponse<InventoryRowDto> inventory(
             Long variantId,
             String sku,
@@ -82,37 +63,7 @@ public class InventoryAdminService {
         );
     }
 
-    @PreAuthorize(WRITE)
-    public InventoryTransactionDto adjust(
-            Long actor,
-            InventoryAdjustmentRequest request
-    ) {
-        if (request.quantity_delta() == 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-        }
-
-        InventoryTransaction transaction =
-                inventoryCommands.adjustManually(
-                        actor,
-                        request.variant_id(),
-                        request.quantity_delta(),
-                        request.reason()
-                );
-
-        audit.record(
-                AuditEvent.of(
-                        actor,
-                        AuditAction.INVENTORY_ADJUST,
-                        AuditTargetType.INVENTORY,
-                        request.variant_id()
-                )
-        );
-
-        return InventoryMapper.transaction(transaction);
-    }
-
     @PreAuthorize(READ)
-    @Transactional(readOnly = true)
     public ApiListResponse<InventoryTransactionDto> transactions(
             InventoryTransactionFilter filter
     ) {

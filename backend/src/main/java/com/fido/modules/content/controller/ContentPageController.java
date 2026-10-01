@@ -4,7 +4,8 @@ import com.fido.modules.content.dto.request.ContentPageCreateRequest;
 import com.fido.modules.content.dto.request.ContentPagePatchRequest;
 import com.fido.modules.content.dto.response.ContentPageDto;
 import com.fido.modules.content.dto.response.PublicContentPageDto;
-import com.fido.modules.content.service.ContentPageService;
+import com.fido.modules.content.service.ContentPageCommandService;
+import com.fido.modules.content.service.ContentPageQueryService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -22,14 +23,18 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1")
 public class ContentPageController {
-    private final ContentPageService service;
-    public ContentPageController(ContentPageService service) { this.service = service; }
+    private final ContentPageCommandService service;
+    private final ContentPageQueryService query;
+    public ContentPageController(ContentPageCommandService service, ContentPageQueryService query) {
+        this.service = service;
+        this.query = query;
+    }
     @GetMapping("/content-pages/{pageCode}")
     public ApiResponse<PublicContentPageDto> publicPage(@PathVariable String pageCode) {
-        return ApiResponse.of(service.publicPage(pageCode));
+        return ApiResponse.of(query.publicPage(pageCode));
     }
     @GetMapping("/admin/content-pages")
-    public ApiResponse<List<ContentPageDto>> list() { return ApiResponse.of(service.list()); }
+    public ApiResponse<List<ContentPageDto>> list() { return ApiResponse.of(query.list()); }
     @PostMapping("/admin/content-pages")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ContentPageDto> create(@AuthenticationPrincipal Jwt jwt,

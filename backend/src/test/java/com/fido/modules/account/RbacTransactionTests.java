@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fido.modules.account.dto.request.PermissionCreateRequest;
-import com.fido.modules.account.service.RbacService;
+import com.fido.modules.account.service.RbacCommandService;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +20,7 @@ import org.springframework.test.context.ActiveProfiles;
 class RbacTransactionTests {
 
     @Autowired
-    RbacService service;
+    RbacCommandService service;
 
     @Autowired
     JdbcTemplate jdbc;

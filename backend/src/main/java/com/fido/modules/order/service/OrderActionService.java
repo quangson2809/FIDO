@@ -5,6 +5,7 @@ import com.fido.modules.audit.service.AuditEvent;
 import com.fido.modules.audit.service.AuditService;
 import com.fido.modules.audit.service.AuditTargetType;
 import com.fido.modules.inventory.service.InventoryCommandService;
+import com.fido.modules.inventory.service.InventoryMovementQueryService;
 import com.fido.modules.order.dto.request.OrderActionRequest;
 import com.fido.modules.order.dto.response.OrderAdminDetailDto;
 import com.fido.modules.order.entity.Order;
@@ -31,6 +32,7 @@ public class OrderActionService {
     private final OrderItemRepository items;
     private final PaymentRepository payments;
     private final InventoryCommandService inventoryCommands;
+    private final InventoryMovementQueryService movements;
     private final OrderQueryService query;
     private final AuditService audit;
 
@@ -39,6 +41,7 @@ public class OrderActionService {
             OrderItemRepository items,
             PaymentRepository payments,
             InventoryCommandService inventoryCommands,
+            InventoryMovementQueryService movements,
             OrderQueryService query,
             AuditService audit
     ) {
@@ -46,6 +49,7 @@ public class OrderActionService {
         this.items = items;
         this.payments = payments;
         this.inventoryCommands = inventoryCommands;
+        this.movements = movements;
         this.query = query;
         this.audit = audit;
     }
@@ -218,7 +222,7 @@ public class OrderActionService {
         }
 
         var stockState =
-                inventoryCommands.orderStockState(
+                movements.orderStockState(
                         order.getOrderId()
                 );
 
@@ -323,7 +327,7 @@ public class OrderActionService {
         }
 
         var stockState =
-                inventoryCommands.orderStockState(
+                movements.orderStockState(
                         order.getOrderId()
                 );
 
@@ -376,7 +380,7 @@ public class OrderActionService {
         }
 
         var stockState =
-                inventoryCommands.orderStockState(
+                movements.orderStockState(
                         order.getOrderId()
                 );
 

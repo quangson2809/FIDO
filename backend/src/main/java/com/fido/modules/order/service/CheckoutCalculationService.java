@@ -1,6 +1,6 @@
 package com.fido.modules.order.service;
 
-import com.fido.modules.cart.service.CartService;
+import com.fido.modules.cart.service.CartQueryService;
 import com.fido.modules.cart.service.CheckoutCartView;
 import java.math.BigDecimal;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,11 +11,11 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class CheckoutCalculationService {
 
-    private final CartService cart;
+    private final CartQueryService cart;
     private final BigDecimal shippingFee;
 
     public CheckoutCalculationService(
-            CartService cart,
+            CartQueryService cart,
             @Value("${app.checkout.shipping-fee:30000.00}")
                     BigDecimal shippingFee
     ) {

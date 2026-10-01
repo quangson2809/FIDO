@@ -5,7 +5,8 @@ import com.fido.common.response.ApiResponse;
 import com.fido.modules.inventory.dto.request.SupplierCreateRequest;
 import com.fido.modules.inventory.dto.request.SupplierPatchRequest;
 import com.fido.modules.inventory.dto.response.SupplierDto;
-import com.fido.modules.inventory.service.SupplierService;
+import com.fido.modules.inventory.service.SupplierCommandService;
+import com.fido.modules.inventory.service.SupplierQueryService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,10 +25,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/admin/suppliers")
 public class SupplierController {
 
-    private final SupplierService service;
+    private final SupplierCommandService service;
+    private final SupplierQueryService query;
 
-    public SupplierController(SupplierService service) {
+    public SupplierController(SupplierCommandService service, SupplierQueryService query) {
         this.service = service;
+        this.query = query;
     }
 
     @GetMapping
@@ -39,7 +42,7 @@ public class SupplierController {
             @RequestParam(name = "page_size", required = false)
                     Integer pageSize
     ) {
-        return service.list(
+        return query.list(
                 q,
                 usageStatus,
                 page,
@@ -52,7 +55,7 @@ public class SupplierController {
             @PathVariable Long supplierId
     ) {
         return ApiResponse.of(
-                service.detail(supplierId)
+                query.detail(supplierId)
         );
     }
 

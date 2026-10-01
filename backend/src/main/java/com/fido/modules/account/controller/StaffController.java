@@ -6,7 +6,8 @@ import com.fido.modules.account.dto.request.StaffCreateRequest;
 import com.fido.modules.account.dto.request.StaffPatchRequest;
 import com.fido.modules.account.dto.response.StaffAccountDetailDto;
 import com.fido.modules.account.dto.response.StaffAccountSummaryDto;
-import com.fido.modules.account.service.StaffService;
+import com.fido.modules.account.service.StaffCommandService;
+import com.fido.modules.account.service.StaffQueryService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -25,10 +26,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/admin/staff-accounts")
 public class StaffController {
 
-    private final StaffService service;
+    private final StaffCommandService service;
+    private final StaffQueryService query;
 
-    public StaffController(StaffService service) {
+    public StaffController(StaffCommandService service, StaffQueryService query) {
         this.service = service;
+        this.query = query;
     }
 
     @GetMapping
@@ -38,14 +41,14 @@ public class StaffController {
             @RequestParam(required = false) Integer page,
             @RequestParam(name = "page_size", required = false) Integer pageSize
     ) {
-        return service.list(q, roleId, page, pageSize);
+        return query.list(q, roleId, page, pageSize);
     }
 
     @GetMapping("/{accountId}")
     public ApiResponse<StaffAccountDetailDto> detail(
             @PathVariable Long accountId
     ) {
-        return ApiResponse.of(service.detail(accountId));
+        return ApiResponse.of(query.detail(accountId));
     }
 
     @PostMapping

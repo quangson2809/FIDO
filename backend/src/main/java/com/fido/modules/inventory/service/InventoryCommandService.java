@@ -148,15 +148,6 @@ public class InventoryCommandService {
         );
     }
 
-    @Transactional(readOnly = true)
-    public OrderStockState orderStockState(Long orderId) {
-        return new OrderStockState(
-                hasMovement(orderId, InventoryPolicy.ORDER_CONFIRM_OUT),
-                hasMovement(orderId, InventoryPolicy.ORDER_CANCEL_IN),
-                hasMovement(orderId, InventoryPolicy.DELIVERY_RETURN_IN)
-        );
-    }
-
     private void restoreOrderStock(
             Long actor,
             Long orderId,
@@ -216,16 +207,6 @@ public class InventoryCommandService {
         transaction.setReason(normalize(movement.reason()));
 
         return transactions.save(transaction);
-    }
-
-    private boolean hasMovement(
-            Long orderId,
-            String transactionType
-    ) {
-        return transactions.existsByOrderIdAndTransactionType(
-                orderId,
-                transactionType
-        );
     }
 
     public void requireTrackedVariant(Long variantId) {
@@ -348,13 +329,4 @@ public class InventoryCommandService {
         }
     }
 
-    public record OrderStockState(
-            boolean deducted,
-            boolean cancellationRestored,
-            boolean deliveryReturned
-    ) {
-        public boolean restored() {
-            return cancellationRestored || deliveryReturned;
-        }
-    }
 }

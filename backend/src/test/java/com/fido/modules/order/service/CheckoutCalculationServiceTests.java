@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
-import com.fido.modules.cart.service.CartService;
+import com.fido.modules.cart.service.CartQueryService;
 import com.fido.modules.cart.service.CheckoutCartView;
 import java.math.BigDecimal;
 import java.util.List;
@@ -20,7 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 class CheckoutCalculationServiceTests {
 
     @Mock
-    private CartService cart;
+    private CartQueryService cart;
 
     private CheckoutCalculationService service;
 

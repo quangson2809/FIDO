@@ -4,7 +4,6 @@ import com.fido.modules.account.dto.request.AddressRequest;
 import com.fido.modules.account.dto.request.ProfilePatch;
 import com.fido.modules.account.dto.response.AccountDto;
 import com.fido.modules.account.dto.response.AddressDto;
-import com.fido.modules.account.dto.response.MeDto;
 import com.fido.modules.account.entity.Account;
 import com.fido.modules.account.entity.Address;
 import com.fido.modules.account.mapper.AccountMapper;
@@ -18,45 +17,20 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @Transactional
-public class ProfileService {
+public class ProfileCommandService {
 
     private final AccountRepository accounts;
     private final AddressRepository addresses;
-    private final AccountAccessService access;
     private final EntityManager entityManager;
 
-    public ProfileService(
+    public ProfileCommandService(
             AccountRepository accounts,
             AddressRepository addresses,
-            AccountAccessService access,
             EntityManager entityManager
     ) {
         this.accounts = accounts;
         this.addresses = addresses;
-        this.access = access;
         this.entityManager = entityManager;
-    }
-
-    @Transactional(readOnly = true)
-    public MeDto me(Long actor) {
-        var detail = access
-                .findAccess(actor)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.UNAUTHORIZED)
-                );
-
-        var addressDtos = addresses
-                .findByAccountIdOrderByAddressIdAsc(actor)
-                .stream()
-                .map(ProfileService::addressDto)
-                .toList();
-
-        return new MeDto(
-                detail.account(),
-                addressDtos,
-                detail.roles(),
-                detail.permissions()
-        );
     }
 
     public AccountDto update(Long actor, ProfilePatch request) {

@@ -87,5 +87,14 @@ class CartAccessHttpTests extends CartHttpSupport {
                         .get("subtotal")
                         .asInt()
         );
+
+        assertEquals(
+                0,
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM carts WHERE account_id=?",
+                        Integer.class,
+                        owner.accountId()
+                )
+        );
     }
 }

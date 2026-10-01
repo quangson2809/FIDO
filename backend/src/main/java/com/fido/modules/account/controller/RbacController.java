@@ -9,7 +9,8 @@ import com.fido.modules.account.dto.request.RolePatchRequest;
 import com.fido.modules.account.dto.response.AccessControlDto;
 import com.fido.modules.account.dto.response.PermissionDto;
 import com.fido.modules.account.dto.response.RoleDetailDto;
-import com.fido.modules.account.service.RbacService;
+import com.fido.modules.account.service.RbacCommandService;
+import com.fido.modules.account.service.RbacQueryService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -29,15 +30,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/admin")
 public class RbacController {
 
-    private final RbacService service;
+    private final RbacCommandService service;
+    private final RbacQueryService query;
 
-    public RbacController(RbacService service) {
+    public RbacController(RbacCommandService service, RbacQueryService query) {
         this.service = service;
+        this.query = query;
     }
 
     @GetMapping("/access-control")
     public ApiResponse<AccessControlDto> accessControl() {
-        return ApiResponse.of(service.accessControl());
+        return ApiResponse.of(query.accessControl());
     }
 
     @GetMapping("/permissions")
@@ -45,7 +48,7 @@ public class RbacController {
             @RequestParam(required = false) Integer page,
             @RequestParam(name = "page_size", required = false) Integer pageSize
     ) {
-        return service.permissions(page, pageSize);
+        return query.permissions(page, pageSize);
     }
 
     @PostMapping("/roles")

@@ -6,7 +6,8 @@ import com.fido.modules.account.dto.request.ProfilePatch;
 import com.fido.modules.account.dto.response.AccountDto;
 import com.fido.modules.account.dto.response.AddressDto;
 import com.fido.modules.account.dto.response.MeDto;
-import com.fido.modules.account.service.ProfileService;
+import com.fido.modules.account.service.ProfileCommandService;
+import com.fido.modules.account.service.ProfileQueryService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -25,16 +26,18 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/me")
 public class ProfileController {
 
-    private final ProfileService service;
+    private final ProfileCommandService service;
+    private final ProfileQueryService query;
 
-    public ProfileController(ProfileService service) {
+    public ProfileController(ProfileCommandService service, ProfileQueryService query) {
         this.service = service;
+        this.query = query;
     }
 
     @GetMapping
     public ApiResponse<MeDto> me(@AuthenticationPrincipal Jwt jwt) {
         return ApiResponse.of(
-                service.me(Long.valueOf(jwt.getSubject()))
+                query.me(Long.valueOf(jwt.getSubject()))
         );
     }
 

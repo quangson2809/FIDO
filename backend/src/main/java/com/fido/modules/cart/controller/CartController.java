@@ -4,7 +4,8 @@ import com.fido.common.response.ApiResponse;
 import com.fido.modules.cart.dto.request.CartItemCreateRequest;
 import com.fido.modules.cart.dto.request.CartItemQuantityRequest;
 import com.fido.modules.cart.dto.response.CartDto;
-import com.fido.modules.cart.service.CartService;
+import com.fido.modules.cart.service.CartCommandService;
+import com.fido.modules.cart.service.CartQueryService;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -21,10 +22,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/cart")
 public class CartController {
 
-    private final CartService service;
+    private final CartCommandService service;
+    private final CartQueryService query;
 
-    public CartController(CartService service) {
+    public CartController(CartCommandService service, CartQueryService query) {
         this.service = service;
+        this.query = query;
     }
 
     @GetMapping
@@ -32,7 +35,7 @@ public class CartController {
             @AuthenticationPrincipal Jwt jwt
     ) {
         return ApiResponse.of(
-                service.current(actor(jwt))
+                query.current(actor(jwt))
         );
     }
 
