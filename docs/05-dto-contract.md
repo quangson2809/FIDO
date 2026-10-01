@@ -14,7 +14,7 @@
 { "data": {} }
 ```
 
-List:
+Paginated list:
 
 ```json
 {
@@ -29,6 +29,8 @@ List:
 ```
 
 Pagination defaults: page 1, page_size 20, maximum 100.
+
+Specific non-paginated collection contracts override the generic paginated-list convention. In the current baseline, API #66 returns `{data: PermissionDto[]}` and API #73 returns `{data: ContentPageDto[]}` with no `meta` object.
 
 Type convention: ID `int64`; quantity integer; money decimal; date `YYYY-MM-DD`; timestamp ISO-8601.
 
@@ -137,6 +139,10 @@ Never trust/accept these from clients unless a source explicitly makes them conf
 ### Login
 
 `identifier`, `password` -> access token + AccountDto. `identifier` carries the Account phone number according to the approved physical-design decision; do not silently broaden login to email or mixed phone/email lookup.
+
+### Staff account creation
+
+`phone`, `password` are required by the resolved phone-login design; `email?` and `role_ids?` remain optional. Omitting `role_ids` uses the approved ADMIN default; explicit role assignments must still satisfy the staff-role rules in `docs/15-technical-decisions.md`.
 
 ### Add/update cart item
 
