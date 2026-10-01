@@ -15,7 +15,7 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: fido-backend-quality-${{ github.event.pull_request.number || github.ref }}
+  group: fido-backend-verification-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -46,7 +46,7 @@ jobs:
             "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files?per_page=100" \
             --jq '.[].filename')"
 
-          if printf '%s\n' "$files" | grep -Eq '^(backend/|\.quality/|\.github/workflows/backend-verification\.yml$)'; then
+          if printf '%s\n' "$files" | grep -Eq '^(backend/|\.github/workflows/backend-verification\.yml$)'; then
             echo "backend_changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "backend_changed=false" >> "$GITHUB_OUTPUT"
