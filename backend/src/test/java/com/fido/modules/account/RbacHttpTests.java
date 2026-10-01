@@ -114,16 +114,17 @@ class RbacHttpTests extends AccountHttpSupport {
         );
 
         assertTrue(permissionList.data().get("data").isArray());
-        assertTrue(
-                permissionList.data()
-                        .get("data")
-                        .valueStream()
-                        .anyMatch(permission ->
-                                permission.get("permission_id").asLong()
-                                        == permissionId
-                        )
-        );
-        assertEquals(null, permissionList.data().get("meta"));
+
+        boolean permissionFound = false;
+        for (var permissionNode : permissionList.data().get("data")) {
+            if (permissionNode.get("permission_id").asLong() == permissionId) {
+                permissionFound = true;
+                break;
+            }
+        }
+
+        assertTrue(permissionFound);
+        assertFalse(permissionList.data().has("meta"));
 
         var roleResponse = call(
                 "POST",
