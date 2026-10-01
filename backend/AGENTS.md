@@ -115,8 +115,9 @@ If the source explicitly defers a feature (for example guest verification detail
 - Implement only the current 77 green baseline endpoints in `docs/04-api-contract.md`, subject to yellow/TBD exclusions.
 - JSON field naming: `snake_case`.
 - Object response: `{ "data": <Dto> }`.
-- List response: `{ "data": [<Dto>], "meta": <PaginationMeta> }`.
-- Default page = 1, page_size = 20, max page_size = 100.
+- Paginated list response: `{ "data": [<Dto>], "meta": <PaginationMeta> }`.
+- Specific endpoint contracts override the generic list convention; API #66 permissions and API #73 content-page list are unpaginated `{ "data": [...] }` responses.
+- Default page = 1, page_size = 20, max page_size = 100 where pagination applies.
 - `/api/v1/me/**` and `/api/v1/admin/**` require Bearer JWT.
 - JWT minimum claims: `sub=account_id`, `iat`, `exp`.
 - Never accept client-controlled totals, actor IDs, generated IDs, timestamps or workflow states where server-derived.
@@ -173,4 +174,4 @@ A phase must never be reported BLOCKED solely because of a naming choice or anot
 
 - Apply KISS, YAGNI, Boy Scout Rule, Separation of Concerns, Low Coupling, High Cohesion, Law of Demeter, Curly's Law, Principle of Least Astonishment and Least Privilege in context. Flag tangled ownership, hidden side effects, unnecessary dependencies, repeated business rules, accidental privilege or gratuitous abstractions when their impact is demonstrable.
 - Do not require one interface per service, a fixed number of classes/methods, or Query/Command splitting in every module. Commands may read for validation or response; queries must remain free of persistence mutations. Judge a proposed split by whether it improves a real responsibility, dependency or transaction boundary without disproportionate complexity.
-- Use `docs/13-codex-prompts.md` for a read-only review when requested. Review feedback is separate from implementation and from CI test results.
+- Use `docs/13-codex-prompts.md` for the independent review report and the separate PR quality-gate payload. Review is read-only; implementation and reviewer roles remain separate.
