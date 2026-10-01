@@ -148,10 +148,9 @@ public class OrderActionService {
                         AuditTargetType.ORDER,
                         order.getOrderId(),
                         transitionDescription(
-                        OrderPolicy.PENDING,
-                        OrderPolicy.CONFIRMED,
-                        reason
-                )
+                                OrderPolicy.PENDING,
+                                OrderPolicy.CONFIRMED
+                        )
                 )
         );
 
@@ -195,10 +194,9 @@ public class OrderActionService {
                         AuditTargetType.ORDER,
                         order.getOrderId(),
                         transitionDescription(
-                        OrderPolicy.SHIPPING,
-                        OrderPolicy.DELIVERY_FAILED,
-                        reason
-                )
+                                OrderPolicy.SHIPPING,
+                                OrderPolicy.DELIVERY_FAILED
+                        )
                 )
         );
 
@@ -240,10 +238,9 @@ public class OrderActionService {
                         AuditTargetType.ORDER,
                         order.getOrderId(),
                         transitionDescription(
-                        OrderPolicy.DELIVERY_FAILED,
-                        OrderPolicy.SHIPPING,
-                        null
-                )
+                                OrderPolicy.DELIVERY_FAILED,
+                                OrderPolicy.SHIPPING
+                        )
                 )
         );
 
@@ -294,10 +291,9 @@ public class OrderActionService {
                         AuditTargetType.ORDER,
                         order.getOrderId(),
                         transitionDescription(
-                        OrderPolicy.SHIPPING,
-                        OrderPolicy.COMPLETED,
-                        null
-                )
+                                OrderPolicy.SHIPPING,
+                                OrderPolicy.COMPLETED
+                        )
                 )
         );
 
@@ -358,10 +354,9 @@ public class OrderActionService {
                         AuditTargetType.ORDER,
                         order.getOrderId(),
                         transitionDescription(
-                        sourceStatus,
-                        OrderPolicy.CANCELLED,
-                        reason
-                )
+                                sourceStatus,
+                                OrderPolicy.CANCELLED
+                        )
                 )
         );
 
@@ -401,10 +396,7 @@ public class OrderActionService {
                         AuditAction.ORDER_DELIVERY_RETURN_IN,
                         AuditTargetType.ORDER,
                         order.getOrderId(),
-                        reason == null || reason.isBlank()
-                        ? "physical delivery return"
-                        : "physical delivery return; reason="
-                                + reason.trim()
+                        "physical delivery return"
                 )
         );
 
@@ -440,10 +432,9 @@ public class OrderActionService {
                         AuditTargetType.ORDER,
                         order.getOrderId(),
                         transitionDescription(
-                        expected,
-                        target,
-                        null
-                )
+                                expected,
+                                target
+                        )
                 )
         );
 
@@ -484,16 +475,9 @@ public class OrderActionService {
 
     private String transitionDescription(
             String from,
-            String to,
-            String reason
+            String to
     ) {
-        String description = from + " -> " + to;
-
-        if (reason == null || reason.isBlank()) {
-            return description;
-        }
-
-        return description + "; reason=" + reason.trim();
+        return from + " -> " + to;
     }
 
     private String appendNote(
