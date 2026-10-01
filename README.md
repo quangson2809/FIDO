@@ -8,7 +8,7 @@ FIDO is a Spring Boot backend and React/TypeScript frontend in one repository. T
 - `frontend/`: React, TypeScript and Vite.
 - `docs/`: source precedence, architecture, API/data contracts, phase plan and implementation decisions.
 - `reference/`: machine-readable API, transitions and table ownership.
-- `.github/workflows/backend-verification.yml`: backend H2/MySQL verification.
+- `.github/workflows/backend-verification.yml`: backend H2/MySQL verification and PR review gate.
 
 The nine backend business modules are `account`, `product`, `cart`, `promotion`, `order`, `inventory`, `audit`, `report` and `content`. Read `backend/AGENTS.md` and `docs/00-source-of-truth.md` before changing backend behavior. The original Phase 0 snapshot in `backend/ARCHITECTURE.md` is historical, not a description of the present implementation.
 
@@ -36,6 +36,6 @@ npm run build
 
 ## Review and delivery
 
-For changed code, use Codex `/review` against the intended base branch and the evidence-based design rules in `backend/AGENTS.md`. A whole-backend architecture assessment needs its own stated coverage. `docs/13-codex-prompts.md` contains an optional independent review prompt. A passing build alone does not establish architectural or behavioral correctness.
+For changed code, use Codex `/review` against the intended base branch and the evidence-based design rules in `backend/AGENTS.md`. A whole-backend architecture assessment needs its own stated coverage. `docs/13-codex-prompts.md` describes the independent PR review and quality-gate handoff. A passing build alone does not establish architectural or behavioral correctness.
 
 The backend API has documented partial slices: guest identity, voucher behavior, create-order retry guarantees and size-exchange automation remain unresolved/deferred as described in `docs/12-tbd-out-of-scope.md`. Do not assume the green phase gate means production readiness.
