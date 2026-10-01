@@ -13,10 +13,12 @@ A backend task/phase is DONE only when all applicable items pass.
 - [ ] Business code remains under `com.fido.modules.<module>`.
 - [ ] Controller contains no business logic.
 - [ ] Service owns orchestration/transactions.
-- [ ] Repository contains persistence only.
+- [ ] Repository contains persistence and queries, without business state transitions.
 - [ ] No Entity returned directly to API.
 - [ ] No direct cross-module repository access.
 - [ ] No gratuitous abstraction/dependency/version change.
+- [ ] Responsibilities, coupling and cohesion have been reviewed with concrete evidence; no mechanical requirement to split every read/write service.
+- [ ] Shared rules have one owner, dependencies follow module contracts, and read paths have no persistence side effects.
 
 ## Data
 
@@ -47,5 +49,7 @@ A backend task/phase is DONE only when all applicable items pass.
 - [ ] Unit tests pass.
 - [ ] Relevant integration/API tests pass.
 - [ ] Relevant concurrency/idempotency tests pass.
-- [ ] Diff reviewed for accidental changes.
+- [ ] Diff reviewed for accidental changes and applicable KISS, YAGNI, Boy Scout Rule, SoC, Low Coupling, High Cohesion, LoD, Curly's Law, POLA and PoLP consequences.
+- [ ] Findings identify code location, scenario/impact and minimal remediation; no finding is based only on a named principle or class count.
+- [ ] For backend PRs, current-head independent Work review and H2/MySQL quality gate results are recorded separately.
 - [ ] Remaining blockers/TBD explicitly reported.
