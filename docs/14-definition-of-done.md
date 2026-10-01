@@ -51,5 +51,5 @@ A backend task/phase is DONE only when all applicable items pass.
 - [ ] Relevant concurrency/idempotency tests pass.
 - [ ] Diff reviewed for accidental changes and applicable KISS, YAGNI, Boy Scout Rule, SoC, Low Coupling, High Cohesion, LoD, Curly's Law, POLA and PoLP consequences.
 - [ ] Findings identify code location, scenario/impact and minimal remediation; a named principle or class count alone is not evidence.
-- [ ] Backend PRs have separate H2/MySQL test results and independent Work review for the current head.
+- [ ] Backend CI H2/MySQL results are recorded; any requested architecture review reports its actual scope and evidence.
 - [ ] Remaining blockers/TBD explicitly reported.
