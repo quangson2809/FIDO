@@ -165,23 +165,3 @@ Separate defects introduced by the diff from pre-existing risks. State reviewed
 HEAD/base, coverage, verification performed/not performed, findings and residual
 uncertainty. Do not label unverified work PASS.
 ```
-
-### PR quality-gate handoff
-
-The repository's `.github/workflows/backend-verification.yml` runs H2/MySQL tests and independently checks for a PR review on the **current PR head** using `.quality/validate_work_review.py`. A local `/review` report alone does not satisfy that GitHub review requirement. After an independent Work review, post a PR review with state **COMMENTED** and the exact marker/payload below; replace the placeholder SHA and findings with reviewed evidence. Never manufacture a PASS payload to unblock CI.
-
-```text
-<!-- FIDO_WORK_REVIEW_V1 -->
-```
-```json
-{
-  "version": "1",
-  "head_sha": "<current 40-character lowercase PR head SHA>",
-  "result": "PASS",
-  "summary": "<reviewed scope and evidence>",
-  "blocking_findings": [],
-  "findings": []
-}
-```
-
-For every finding include `id` (for example `ARC-001`), `severity`, nonempty `principles` and `evidence` arrays, `impact`, `recommendation`, and optionally `files`. `blocking_findings` must contain exactly the IDs of all BLOCKER/MAJOR findings; set `result` to FAIL when that list is nonempty. The validator checks payload shape, current SHA and consistency; it cannot prove that the human or AI review was thorough. CI tests and structural review are separate inputs to the final gate.
