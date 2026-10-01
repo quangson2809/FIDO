@@ -6,7 +6,7 @@
 - Technical PK: `BIGINT`.
 - Business codes such as `order_code`, `receipt_code`: unique.
 - Money: `DECIMAL(18,2)`, never floating point.
-- Timestamps: consistent system timezone policy.
+- Timestamps: store UTC using the repository's TIMESTAMP(6) convention. API #71 interprets requested report dates in Asia/Ho_Chi_Minh, converts bounds to UTC for querying; see docs/15.
 - Tables/columns use `snake_case`.
 - Important historical/transactional data is not hard-deleted.
 - Persist snapshots where history must remain stable; derive values where duplication would create inconsistency.
