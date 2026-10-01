@@ -57,7 +57,7 @@ Create only packages that have real code. Empty placeholders should use `package
 
 - No module may call another module's repository directly.
 - Cross-module command: call a public Service/contract in the owning module.
-- Cross-module read: use a query service/projection and return a DTO/read model, not foreign Entities.
+- Cross-module read: use an explicit read contract or purpose-built projection returning a DTO/read model, not foreign Entities. A separate query service is useful when it clarifies ownership, but is not mandatory for every read.
 - Avoid circular dependencies. When one API needs data from several modules, orchestration belongs to the API-owning module.
 - Shared `common` code must remain technical/generic. Do not move domain rules into `common` to bypass module boundaries.
 
@@ -82,8 +82,14 @@ The Analyst sources do **not** lock these choices. Codex must inspect the curren
 - JWT library;
 - test stack and container strategy.
 
-If a missing choice is architecture-affecting, stop and surface it instead of selecting one silently.
+Use `docs/15-technical-decisions.md` to record the smallest conventional choice when approved semantics are fixed. Stop only the affected slice if the choice would invent or change business behavior, API/security guarantees, persistent meaning, stock/money semantics or an external contract.
 
 ## 6. SOLID without ceremony
 
 Apply SOLID through clear module ownership, focused services, explicit contracts and dependency direction. Do not create one-interface-per-class, generic base CRUD services, excessive factories, or abstraction layers without a concrete change/testability reason.
+
+## 7. Design review in context
+
+Use KISS, YAGNI, Boy Scout Rule, Separation of Concerns, Low Coupling, High Cohesion, Law of Demeter, Curly's Law, Principle of Least Astonishment and Least Privilege to explain observable design consequences. Prefer a focused service and direct collaboration through owned contracts. Split responsibilities only when there is a concrete reason such as unrelated changes forcing the same service to change, a confusing transaction boundary, excessive dependencies, or a demonstrated testing problem. A command may read to validate and respond; a query must not persist mutations. Separate Query/Command services are a local organizational choice, not full CQRS and not a universal target.
+
+A review finding needs a code location, reproducible scenario or credible change-cost/security impact, and a smaller corrective step. A principle name or class count alone is not evidence. Preserve the nine module boundaries and public contracts when refactoring.
