@@ -1,0 +1,12 @@
+﻿from_status,to_status,condition_or_side_effect
+PENDING,CONFIRMED,stock check + atomic deduction
+PENDING,CANCELLED,no stock restore
+CONFIRMED,PREPARING,
+CONFIRMED,CANCELLED,restore deducted stock once
+PREPARING,SHIPPING,
+PREPARING,CANCELLED,restore deducted stock once
+SHIPPING,COMPLETED,requires payment PAID
+SHIPPING,DELIVERY_FAILED,no automatic restock
+DELIVERY_FAILED,SHIPPING,retry delivery
+DELIVERY_FAILED,CANCELLED,restore only according to actual return/stock rules
+COMPLETED,RETURNED,accepted after-sales return; no automatic restock

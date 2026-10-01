@@ -1,0 +1,49 @@
+package com.fido.modules.content.controller;
+import com.fido.common.response.ApiResponse;
+import com.fido.modules.content.dto.request.ContentPageCreateRequest;
+import com.fido.modules.content.dto.request.ContentPagePatchRequest;
+import com.fido.modules.content.dto.response.ContentPageDto;
+import com.fido.modules.content.dto.response.PublicContentPageDto;
+import com.fido.modules.content.service.ContentPageCommandService;
+import com.fido.modules.content.service.ContentPageQueryService;
+import jakarta.validation.Valid;
+import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1")
+public class ContentPageController {
+    private final ContentPageCommandService service;
+    private final ContentPageQueryService query;
+    public ContentPageController(ContentPageCommandService service, ContentPageQueryService query) {
+        this.service = service;
+        this.query = query;
+    }
+    @GetMapping("/content-pages/{pageCode}")
+    public ApiResponse<PublicContentPageDto> publicPage(@PathVariable String pageCode) {
+        return ApiResponse.of(query.publicPage(pageCode));
+    }
+    @GetMapping("/admin/content-pages")
+    public ApiResponse<List<ContentPageDto>> list() { return ApiResponse.of(query.list()); }
+    @PostMapping("/admin/content-pages")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<ContentPageDto> create(@AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody ContentPageCreateRequest request) {
+        return ApiResponse.of(service.create(Long.valueOf(jwt.getSubject()), request));
+    }
+    @PatchMapping("/admin/content-pages/{pageId}")
+    public ApiResponse<ContentPageDto> update(@AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long pageId, @Valid @RequestBody ContentPagePatchRequest request) {
+        return ApiResponse.of(service.update(Long.valueOf(jwt.getSubject()), pageId, request));
+    }
+}

@@ -1,0 +1,70 @@
+name: Backend verification
+
+on:
+  push:
+    branches:
+      - feature/backend-phase-0-discovery
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-verification.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Build and test backend
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: fido_test
+          MYSQL_ROOT_PASSWORD: ci-only-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci-only-password"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Build and test with H2
+        working-directory: backend
+        run: ./gradlew --no-daemon clean build
+
+      - name: Keep H2 test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-h2-test-reports
+          path: backend/build/test-results/test
+
+      - name: Test migration and mapping with MySQL
+        id: mysql-tests
+        working-directory: backend
+        env:
+          TEST_DB_URL: jdbc:mysql://127.0.0.1:3306/fido_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+          TEST_DB_DRIVER: com.mysql.cj.jdbc.Driver
+          TEST_DB_USERNAME: root
+          TEST_DB_PASSWORD: ci-only-password
+        run: ./gradlew --no-daemon test --rerun-tasks
+
+      - name: Keep MySQL test reports
+        if: always() && steps.mysql-tests.outcome != 'skipped'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-mysql-test-reports
+          path: backend/build/test-results/test
