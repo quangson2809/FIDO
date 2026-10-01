@@ -1,7 +1,5 @@
 package com.fido.modules.account.service;
 
-import com.fido.common.response.ApiListResponse;
-import com.fido.common.response.Pagination;
 import com.fido.modules.account.dto.response.AccessControlDto;
 import com.fido.modules.account.dto.response.PermissionDto;
 import com.fido.modules.account.dto.response.RoleDetailDto;
@@ -63,23 +61,11 @@ public class RbacQueryService {
         );
     }
 
-    public ApiListResponse<PermissionDto> permissions(
-            Integer page,
-            Integer pageSize
-    ) {
-        Pagination pagination = Pagination.of(page, pageSize);
-
-        var result = permissions.findAllByOrderByPermissionIdAsc(
-                pagination.toPageable()
-        );
-
-        return ApiListResponse.of(
-                result.getContent()
-                        .stream()
-                        .map(AccountMapper::permission)
-                        .toList(),
-                pagination.meta(result.getTotalElements())
-        );
+    public List<PermissionDto> permissions() {
+        return permissions.findAllByOrderByPermissionIdAsc()
+                .stream()
+                .map(AccountMapper::permission)
+                .toList();
     }
 
     private Map<Long, Set<Long>> permissionIdsByRole(
