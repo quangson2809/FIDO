@@ -115,7 +115,6 @@ jobs:
   structure-review:
     name: Review / structure
     needs: scope
-    timeout-minutes: 20
     if: >-
       needs.scope.outputs.backend_changed == 'true' &&
       (github.event_name == 'pull_request' || github.event_name == 'pull_request_review')
@@ -132,8 +131,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          WORK_REVIEW_WAIT_SECONDS: "900"
-          WORK_REVIEW_POLL_SECONDS: "15"
         run: python3 .quality/validate_work_review.py
 
   quality-gate:
