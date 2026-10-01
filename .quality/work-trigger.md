@@ -2,15 +2,15 @@
 
 ## Trigger
 
-Run this task for GitHub pull request activity in `quangson2809/FIDO` when all of the following are true:
-
-- the pull request targets `main`;
-- the pull request is opened, marked ready for review, reopened, or receives new commits;
-- the pull request changes at least one path under `backend/`, `.quality/`, or `.github/workflows/backend-verification.yml`.
-
-Do not run for closed pull requests or for pull requests that do not affect the backend quality-gate scope.
+Run this task for supported GitHub pull request activity in `quangson2809/FIDO` when the pull request is opened, marked ready for review, or receives new commits.
 
 ## Condition
+
+Continue only when all of the following are true:
+
+- the pull request targets `main`;
+- the pull request changes at least one path under `backend/`, `.quality/`, or `.github/workflows/backend-verification.yml`;
+- the pull request is not closed.
 
 Review only the current pull request head SHA. If a newer commit appears while reviewing, discard the stale result and restart against the latest head.
 
