@@ -101,9 +101,12 @@ def validate(payload: dict[str, Any], head: str, state: str) -> None:
 
     finding_map: dict[str, dict[str, Any]] = {}
     allowed = {"id", "severity", "principles", "evidence", "impact", "recommendation", "files"}
+    required_finding = {"id", "severity", "principles", "evidence", "impact", "recommendation"}
     for finding in findings:
-        if not isinstance(finding, dict) or not {"id", "severity", "principles", "evidence", "impact", "recommendation"} <= set(finding):
-            raise GateError,"Each finding must contain id, severity, principles, evidence, impact, recommendation")
+        if not isinstance(finding, dict) or not required_finding <= set(finding):
+            raise GateError(
+                "Each finding must contain id, severity, principles, evidence, impact, recommendation"
+            )
         if set(finding) - allowed:
             raise GateError(f"Unknown finding fields: {sorted(set(finding) - allowed)}")
         fid = nonempty(finding["id"], "finding.id")
@@ -113,8 +116,16 @@ def validate(payload: dict[str, Any], head: str, state: str) -> None:
             raise GateError(f"Invalid severity for {fid}")
         for key in ("principles", "evidence"):
             values = finding[key]
-            if not isinstance(values, list) or not values or not all(isinstance(v, str) and v.strip() for v in values):
+            if not isinstance(values, list) or not values or not all(
+                isinstance(v, str) and v.strip() for v in values
+            ):
                 raise GateError(f"{fid}.{key} must be a non-empty string array")
+        if "files" in finding:
+            files = finding["files"]
+            if not isinstance(files, list) or not all(
+                isinstance(v, str) and v.strip() for v in files
+            ):
+                raise GateError(f"{fid}.files must be a string array")
         nonempty(finding["impact"], f"{fid}.impact")
         nonempty(finding["recommendation"], f"{fid}.recommendation")
         finding_map[fid] = finding
