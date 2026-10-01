@@ -132,11 +132,11 @@ Never trust/accept these from clients unless a source explicitly makes them conf
 
 ### Register
 
-`phone?`, `email?`, `password` required. Login identifier/uniqueness/verification policy is still physical-design TBD. Never accept `role` or `account_id` from public registration.
+`phone`, `password` required; `email?` optional. The project-owner physical-design decision in `docs/15-technical-decisions.md` resolves the earlier Analyst TBD: phone is the login identifier, phone is unique per Account, and login does not require phone verification. Never accept `role` or `account_id` from public registration.
 
 ### Login
 
-`identifier`, `password` -> access token + AccountDto. Do not infer whether identifier is phone/email/both until physical design/repo configuration locks it.
+`identifier`, `password` -> access token + AccountDto. `identifier` carries the Account phone number according to the approved physical-design decision; do not silently broaden login to email or mixed phone/email lookup.
 
 ### Add/update cart item
 
