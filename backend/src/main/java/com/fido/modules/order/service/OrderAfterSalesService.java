@@ -101,8 +101,7 @@ public class OrderAfterSalesService {
                         AuditAction.ORDER_RETURN_ACCEPT,
                         AuditTargetType.ORDER,
                         orderId,
-                        "COMPLETED -> RETURNED; reason="
-                        + reason.trim()
+                        "COMPLETED -> RETURNED"
                 )
         );
 
