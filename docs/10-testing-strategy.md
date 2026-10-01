@@ -78,4 +78,4 @@ For every stock-changing command, assert both current inventory and exactly one 
 
 A phase is not complete merely because compilation passes. It must pass its relevant rule/contract/integration tests and leave no known speculative business behavior hidden behind defaults.
 
-For backend PRs, the workflow runs H2 build and MySQL tests, then requires a separate independent Work review on the current PR head. The review assesses applicable architecture/design principles with code evidence and reports blocking findings; `.quality/validate_work_review.py` checks the review payload and SHA, not the truth of its findings. Passing tests does not imply a structural PASS. See `docs/13-codex-prompts.md` for the report contract.
+For backend PRs, CI runs the H2 build and MySQL migration/mapping/test suite. Passing tests establish technical execution evidence only; architecture and behavioral quality must still be reviewed against the repository rules and source contracts during the task/review process.
