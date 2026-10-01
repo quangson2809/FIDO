@@ -20,10 +20,10 @@ Each module uses only the packages and classes it needs. Controllers handle HTTP
 
 The old Phase 0 discovery snapshot was taken from `main` at `416e6f64e3b1ddf71a82fd34cb43f962bd03a130` on 2026-09-26. Its claims that migrations, JWT and business implementations were absent described that historic checkout. They are **not current branch status**.
 
-This branch now includes Flyway migrations for the approved relational baseline, Spring Security JWT/RBAC, services/controllers/repositories for the implemented backend phases, H2 and MySQL CI tests, and an independent structural review gate on backend PRs. The Phase 7 gate is recorded in `docs/16-phase-7-gate.md`; Phase 8 hardening and unresolved/deferred slices are in `docs/11-implementation-phases.md` and `docs/12-tbd-out-of-scope.md`. Technical decisions belong in `docs/15-technical-decisions.md`.
+This branch now includes Flyway migrations for the approved relational baseline, Spring Security JWT/RBAC, services/controllers/repositories for the implemented backend phases, and H2/MySQL CI verification. The Phase 7 gate is recorded in `docs/16-phase-7-gate.md`; Phase 8 hardening and unresolved/deferred slices are in `docs/11-implementation-phases.md` and `docs/12-tbd-out-of-scope.md`. Technical decisions belong in `docs/15-technical-decisions.md`.
 
 Some services have distinct query and command entry points to isolate real responsibilities. This is an in-process service organization, not a requirement to split every service or adopt separate read/write data stores. Commands may read for validation; queries have no persistence side effects. Use KISS/YAGNI and evidence about cohesion, coupling, transaction boundaries and change cost before adding abstractions.
 
 ## Verification boundary
 
-`.github/workflows/backend-verification.yml` runs H2 build and MySQL tests. On backend PRs, a separate current-head Work review is required by `.quality/validate_work_review.py`. The validator checks report structure and blocking-findings consistency; a reviewer must still verify design and behavior against the code. CI does not automatically repair findings or prove that every module has been audited.
+`.github/workflows/backend-verification.yml` runs H2 build and MySQL migration/mapping/tests. CI provides technical execution evidence only. Architecture, contract, security and behavioral correctness remain part of the task/review process defined by `backend/AGENTS.md` and the source documents; a green build by itself is not sufficient evidence that the whole backend has been audited.
