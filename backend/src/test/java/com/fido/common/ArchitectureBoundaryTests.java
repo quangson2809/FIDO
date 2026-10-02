@@ -2,10 +2,12 @@ package com.fido.common;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fido.FidoApplication;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
@@ -43,6 +45,10 @@ class ArchitectureBoundaryTests {
         var resolver = new PathMatchingResourcePatternResolver();
         var metadata = new CachingMetadataReaderFactory(resolver);
         var loader = Thread.currentThread().getContextClassLoader();
+        URL productionLocation = FidoApplication.class
+                .getProtectionDomain()
+                .getCodeSource()
+                .getLocation();
         var classes = new ArrayList<Class<?>>();
 
         for (var resource : resolver.getResources("classpath*:com/fido/**/*.class")) {
@@ -55,7 +61,18 @@ class ArchitectureBoundaryTests {
                 continue;
             }
 
-            classes.add(Class.forName(className, false, loader));
+            Class<?> candidate = Class.forName(className, false, loader);
+
+            if (candidate.getProtectionDomain().getCodeSource() == null
+                    || !productionLocation.equals(
+                            candidate.getProtectionDomain()
+                                    .getCodeSource()
+                                    .getLocation()
+                    )) {
+                continue;
+            }
+
+            classes.add(candidate);
         }
 
         return classes;
