@@ -171,6 +171,7 @@ class PublicCatalogQueryServiceTests {
         Product product = mock(Product.class);
         when(product.getProductId()).thenReturn(id);
         when(product.getCategoryId()).thenReturn(categoryId);
+        when(product.getBrandId()).thenReturn(null);
         when(product.getName()).thenReturn(name);
         when(product.getBasePrice()).thenReturn(new BigDecimal("100000.00"));
         when(product.getSaleStatus()).thenReturn(CatalogPolicy.ON_SALE);
