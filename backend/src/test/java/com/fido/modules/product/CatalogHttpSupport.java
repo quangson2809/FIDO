@@ -2,10 +2,13 @@ package com.fido.modules.product;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.fido.modules.product.service.ProductImageStorage;
+import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -14,10 +17,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import tools.jackson.databind.JsonNode;
@@ -27,6 +33,7 @@ import tools.jackson.databind.ObjectMapper;
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
 )
 @ActiveProfiles("test")
+@Import(CatalogHttpSupport.ImageStorageTestConfiguration.class)
 abstract class CatalogHttpSupport {
 
     static final String PASSWORD = "Test-password-123";
@@ -65,6 +72,23 @@ abstract class CatalogHttpSupport {
     ) {
     }
 
+    record Upload(
+            String filename,
+            String contentType,
+            byte[] content
+    ) {
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class ImageStorageTestConfiguration {
+
+        @Bean
+        @Primary
+        ProductImageStorage productImageStorage() {
+            return image -> "https://example.test/" + image.getOriginalFilename();
+        }
+    }
+
     Result call(
             String method,
             String path,
@@ -98,6 +122,61 @@ abstract class CatalogHttpSupport {
                 HttpResponse.BodyHandlers.ofString()
         );
 
+        return result(response);
+    }
+
+    Result callProductCreate(
+            String token,
+            Object product,
+            List<Upload> images
+    ) throws Exception {
+        String boundary = "----FidoTest" + UUID.randomUUID();
+        ByteArrayOutputStream body = new ByteArrayOutputStream();
+
+        write(body, "--" + boundary + "\r\n");
+        write(body, "Content-Disposition: form-data; name=\"product\"\r\n");
+        write(body, "Content-Type: application/json\r\n\r\n");
+        write(body, json.writeValueAsString(product));
+        write(body, "\r\n");
+
+        for (Upload image : images) {
+            write(body, "--" + boundary + "\r\n");
+            write(
+                    body,
+                    "Content-Disposition: form-data; name=\"images\"; filename=\""
+                            + image.filename()
+                            + "\"\r\n"
+            );
+            write(body, "Content-Type: " + image.contentType() + "\r\n\r\n");
+            body.write(image.content());
+            write(body, "\r\n");
+        }
+
+        write(body, "--" + boundary + "--\r\n");
+
+        var request = HttpRequest.newBuilder(
+                        URI.create("http://localhost:" + port + "/api/v1/admin/products")
+                )
+                .header("Accept", "application/json")
+                .header("Content-Type", "multipart/form-data; boundary=" + boundary);
+
+        if (token != null) {
+            request.header(
+                    "Authorization",
+                    "Bearer " + token
+            );
+        }
+
+        var response = client.send(
+                request.POST(HttpRequest.BodyPublishers.ofByteArray(body.toByteArray()))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString()
+        );
+
+        return result(response);
+    }
+
+    private Result result(HttpResponse<String> response) throws Exception {
         return new Result(
                 response.statusCode(),
                 response.body().isBlank()
@@ -105,6 +184,13 @@ abstract class CatalogHttpSupport {
                         : json.readTree(response.body()),
                 response.body()
         );
+    }
+
+    private void write(
+            ByteArrayOutputStream output,
+            String value
+    ) {
+        output.writeBytes(value.getBytes(StandardCharsets.UTF_8));
     }
 
     String phone() {
@@ -382,10 +468,21 @@ abstract class CatalogHttpSupport {
         }
     }
 
-    record CatalogFixture(long categoryId, long brandId, long systemId, long sizeM,
-            long colorId, long productId, long variantId, Result categoryResponse,
-            Result brandResponse, Result systemResponse, Result colorResponse,
-            Result createProductResponse) {}
+    record CatalogFixture(
+            long categoryId,
+            long brandId,
+            long systemId,
+            long sizeM,
+            long colorId,
+            long productId,
+            long variantId,
+            Result categoryResponse,
+            Result brandResponse,
+            Result systemResponse,
+            Result colorResponse,
+            Result createProductResponse
+    ) {
+    }
 
     CatalogFixture createCatalog(Employee writer) throws Exception {
         var categoryResponse = call(
@@ -397,7 +494,6 @@ abstract class CatalogHttpSupport {
                         "Root " + UUID.randomUUID()
                 )
         );
-
 
         long categoryId = categoryResponse.data()
                 .get("data")
@@ -415,7 +511,6 @@ abstract class CatalogHttpSupport {
                         "Brand " + UUID.randomUUID()
                 )
         );
-
 
         long brandId = brandResponse.data()
                 .get("data")
@@ -446,7 +541,6 @@ abstract class CatalogHttpSupport {
                 )
         );
 
-
         long systemId = systemResponse.data()
                 .get("data")
                 .get("size_system_id")
@@ -471,7 +565,6 @@ abstract class CatalogHttpSupport {
                 )
         );
 
-
         long colorId = colorResponse.data()
                 .get("data")
                 .get("color_id")
@@ -479,38 +572,47 @@ abstract class CatalogHttpSupport {
 
         colors.add(colorId);
 
-        var createProductResponse = call(
-                "POST",
-                "/api/v1/admin/products",
-                writer.token(),
-                Map.of(
-                        "category_id", categoryId,
-                        "brand_id", brandId,
-                        "size_system_id", systemId,
-                        "name", "FIDO Shirt",
-                        "base_price", 100000,
-                        "sale_status", "ON_SALE",
-                        "gender", "unisex",
-                        "images", List.of(
-                                Map.of(
-                                        "image_url",
-                                        "https://example.test/shirt.png",
-                                        "alt_text",
-                                        "shirt"
-                                )
-                        ),
-                        "variants", List.of(
-                                Map.of(
-                                        "size_value_id", sizeM,
-                                        "color_id", colorId,
-                                        "sku", "SKU-" + UUID.randomUUID(),
-                                        "override_price", 90000,
-                                        "sale_status", "ON_SALE"
-                                )
+        var productMetadata = Map.of(
+                "category_id", categoryId,
+                "brand_id", brandId,
+                "size_system_id", systemId,
+                "name", "FIDO Shirt",
+                "base_price", 100000,
+                "sale_status", "ON_SALE",
+                "gender", "unisex",
+                "variants", List.of(
+                        Map.of(
+                                "size_value_id", sizeM,
+                                "color_id", colorId,
+                                "sku", "SKU-" + UUID.randomUUID(),
+                                "override_price", 90000,
+                                "sale_status", "ON_SALE"
                         )
                 )
         );
 
+        var createProductResponse = callProductCreate(
+                writer.token(),
+                productMetadata,
+                List.of(
+                        new Upload(
+                                "front.png",
+                                "image/png",
+                                "front".getBytes(StandardCharsets.UTF_8)
+                        ),
+                        new Upload(
+                                "back.png",
+                                "image/png",
+                                "back".getBytes(StandardCharsets.UTF_8)
+                        )
+                )
+        );
+
+        assertEquals(
+                201,
+                createProductResponse.status(),
+                createProductResponse.body()
+        );
 
         long productId = createProductResponse.data()
                 .get("data")
@@ -519,6 +621,27 @@ abstract class CatalogHttpSupport {
 
         products.add(productId);
 
+        assertEquals(
+                List.of(0, 1),
+                db.query(
+                        "SELECT sort_order FROM product_images WHERE product_id=? ORDER BY sort_order",
+                        (resultSet, rowNumber) -> resultSet.getInt(1),
+                        productId
+                )
+        );
+
+        assertEquals(
+                List.of(
+                        "https://example.test/front.png",
+                        "https://example.test/back.png"
+                ),
+                db.query(
+                        "SELECT image_url FROM product_images WHERE product_id=? ORDER BY sort_order",
+                        (resultSet, rowNumber) -> resultSet.getString(1),
+                        productId
+                )
+        );
+
         long variantId = createProductResponse.data()
                 .get("data")
                 .get("variants")
@@ -526,8 +649,19 @@ abstract class CatalogHttpSupport {
                 .get("variant_id")
                 .asLong();
 
-        return new CatalogFixture(categoryId, brandId, systemId, sizeM, colorId,
-                productId, variantId, categoryResponse, brandResponse, systemResponse,
-                colorResponse, createProductResponse);
+        return new CatalogFixture(
+                categoryId,
+                brandId,
+                systemId,
+                sizeM,
+                colorId,
+                productId,
+                variantId,
+                categoryResponse,
+                brandResponse,
+                systemResponse,
+                colorResponse,
+                createProductResponse
+        );
     }
 }
