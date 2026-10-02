@@ -1,6 +1,7 @@
 package com.fido.modules.order.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -9,13 +10,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fido.modules.order.entity.Order;
+import com.fido.modules.order.entity.OrderItem;
 import com.fido.modules.order.entity.Payment;
 import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
 import com.fido.modules.order.repository.ShippingInfoRepository;
+import com.fido.modules.product.service.CatalogVariantReadService;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +47,9 @@ class OrderQueryServiceTests {
     private ShippingInfoRepository shipping;
 
     @Mock
+    private CatalogVariantReadService catalog;
+
+    @Mock
     private OrderActionPolicy actionPolicy;
 
     @Mock
@@ -56,6 +64,7 @@ class OrderQueryServiceTests {
                 items,
                 payments,
                 shipping,
+                catalog,
                 actionPolicy,
                 authorization
         );
@@ -140,6 +149,48 @@ class OrderQueryServiceTests {
         );
     }
 
+    @Test
+    void customerDetailUsesCurrentCatalogPrimaryImage() {
+        Order order = order(1L, "ORD-1", new BigDecimal("100000.00"));
+        OrderItem item = item(1L, 100L);
+
+        when(orders.findById(1L)).thenReturn(Optional.of(order));
+        when(items.findAllByOrderIdOrderByOrderItemIdAsc(1L))
+                .thenReturn(List.of(item));
+        when(catalog.primaryImagesByVariantIds(List.of(100L)))
+                .thenReturn(Map.of(100L, "https://example.test/current.png"));
+        when(payments.findById(1L))
+                .thenReturn(Optional.of(payment(1L, OrderPolicy.UNPAID)));
+        when(shipping.findById(1L)).thenReturn(Optional.empty());
+
+        var detail = service.customerDetail(10L, 1L);
+
+        assertEquals(
+                "https://example.test/current.png",
+                detail.items().get(0).image()
+        );
+    }
+
+    @Test
+    void customerDetailKeepsHistoryReadableWhenCatalogImageIsMissing() {
+        Order order = order(1L, "ORD-1", new BigDecimal("100000.00"));
+        OrderItem item = item(1L, 100L);
+
+        when(orders.findById(1L)).thenReturn(Optional.of(order));
+        when(items.findAllByOrderIdOrderByOrderItemIdAsc(1L))
+                .thenReturn(List.of(item));
+        when(catalog.primaryImagesByVariantIds(List.of(100L)))
+                .thenReturn(Map.of());
+        when(payments.findById(1L))
+                .thenReturn(Optional.of(payment(1L, OrderPolicy.UNPAID)));
+        when(shipping.findById(1L)).thenReturn(Optional.empty());
+
+        var detail = service.customerDetail(10L, 1L);
+
+        assertNull(detail.items().get(0).image());
+        assertEquals("Snapshot product", detail.items().get(0).product_name());
+    }
+
     private Order order(
             Long orderId,
             String orderCode,
@@ -152,6 +203,24 @@ class OrderQueryServiceTests {
         order.setOrderStatus(OrderPolicy.PENDING);
         order.setTotalSnapshot(total);
         return order;
+    }
+
+    private OrderItem item(
+            Long orderId,
+            Long variantId
+    ) {
+        OrderItem item = new OrderItem();
+        item.setOrderItemId(11L);
+        item.setOrderId(orderId);
+        item.setVariantId(variantId);
+        item.setProductNameSnapshot("Snapshot product");
+        item.setSkuSnapshot("SKU-1");
+        item.setSizeSnapshot("M");
+        item.setColorSnapshot("Black");
+        item.setUnitPriceSnapshot(new BigDecimal("100000.00"));
+        item.setQuantity(1);
+        item.setLineTotalSnapshot(new BigDecimal("100000.00"));
+        return item;
     }
 
     private Payment payment(
