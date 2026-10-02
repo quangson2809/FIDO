@@ -98,10 +98,14 @@ public final class CatalogMapper {
         );
     }
 
-    public static AdminProductSummaryDto adminSummary(Product product) {
+    public static AdminProductSummaryDto adminSummary(
+            Product product,
+            String primaryImage
+    ) {
         return new AdminProductSummaryDto(
                 product.getProductId(),
                 product.getName(),
+                primaryImage,
                 product.getCategoryId(),
                 product.getBrandId(),
                 product.getSizeSystemId(),
