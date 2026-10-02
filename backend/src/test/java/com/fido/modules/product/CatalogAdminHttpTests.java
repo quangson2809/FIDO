@@ -3,6 +3,7 @@ package com.fido.modules.product;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -17,44 +18,22 @@ class CatalogAdminHttpTests extends CatalogHttpSupport {
         long readPermission = ensurePermission("CATALOG_READ");
         long writePermission = ensurePermission("CATALOG_WRITE");
 
-        Employee reader = employee(
-                customRole(readPermission)
-        );
-
-        Employee writer = employee(
-                customRole(writePermission)
-        );
+        Employee reader = employee(customRole(readPermission));
+        Employee writer = employee(customRole(writePermission));
 
         String plainPhone = phone();
         long plainAccountId = register(plainPhone);
-
-        grantRole(
-                plainAccountId,
-                "ADMIN"
-        );
-
+        grantRole(plainAccountId, "ADMIN");
         String plainToken = login(plainPhone);
 
         assertEquals(
                 403,
-                call(
-                        "GET",
-                        "/api/v1/admin/products",
-                        plainToken,
-                        null
-                ).status()
+                call("GET", "/api/v1/admin/products", plainToken, null).status()
         );
-
         assertEquals(
                 200,
-                call(
-                        "GET",
-                        "/api/v1/admin/products",
-                        reader.token(),
-                        null
-                ).status()
+                call("GET", "/api/v1/admin/products", reader.token(), null).status()
         );
-
         assertEquals(
                 403,
                 call(
@@ -64,21 +43,35 @@ class CatalogAdminHttpTests extends CatalogHttpSupport {
                         Map.of("name", "Denied")
                 ).status()
         );
-
         assertEquals(
                 200,
-                call(
-                        "GET",
-                        "/api/v1/admin/catalog/meta",
-                        rootToken,
-                        null
-                ).status()
+                call("GET", "/api/v1/admin/catalog/meta", rootToken, null).status()
         );
 
         var fixture = createCatalog(writer);
         long sizeM = fixture.sizeM();
         long colorId = fixture.colorId();
         long productId = fixture.productId();
+
+        var deniedCreate = callProductCreate(
+                reader.token(),
+                Map.of(
+                        "category_id", fixture.categoryId(),
+                        "brand_id", fixture.brandId(),
+                        "size_system_id", fixture.systemId(),
+                        "name", "Denied product",
+                        "base_price", 100000,
+                        "sale_status", "ON_SALE",
+                        "variants", List.of()
+                ),
+                List.of(new Upload(
+                        "denied.png",
+                        "image/png",
+                        "denied".getBytes(StandardCharsets.UTF_8)
+                ))
+        );
+        assertEquals(403, deniedCreate.status(), deniedCreate.body());
+
         assertEquals(
                 200,
                 call(
@@ -99,34 +92,37 @@ class CatalogAdminHttpTests extends CatalogHttpSupport {
                 ).status()
         );
 
+        var adminDetail = call(
+                "GET",
+                "/api/v1/admin/products/" + productId,
+                reader.token(),
+                null
+        );
+        assertEquals(200, adminDetail.status(), adminDetail.body());
         assertEquals(
-                200,
-                call(
-                        "GET",
-                        "/api/v1/admin/products/" + productId,
-                        reader.token(),
-                        null
-                ).status()
+                "https://example.test/front.png",
+                adminDetail.data().get("data").get("images").get(0).get("image_url").asText()
+        );
+        assertEquals(
+                "https://example.test/back.png",
+                adminDetail.data().get("data").get("images").get(1).get("image_url").asText()
         );
 
         assertEquals(
                 200,
-                call(
-                        "GET",
-                        "/api/v1/admin/catalog/meta",
-                        reader.token(),
-                        null
-                ).status()
+                call("GET", "/api/v1/admin/catalog/meta", reader.token(), null).status()
         );
 
+        var adminList = call(
+                "GET",
+                "/api/v1/admin/products?sale_status=ON_SALE&page_size=20",
+                reader.token(),
+                null
+        );
+        assertEquals(200, adminList.status(), adminList.body());
         assertEquals(
-                200,
-                call(
-                        "GET",
-                        "/api/v1/admin/products?sale_status=ON_SALE&page_size=20",
-                        reader.token(),
-                        null
-                ).status()
+                "https://example.test/front.png",
+                adminList.data().get("data").get(0).get("primary_image").asText()
         );
 
         assertEquals(
@@ -139,7 +135,6 @@ class CatalogAdminHttpTests extends CatalogHttpSupport {
                 ).status()
         );
 
-        // Variant must use the Product SizeSystem and a unique size/color combination.
         var otherSystemResponse = call(
                 "POST",
                 "/api/v1/admin/size-systems",
@@ -157,17 +152,12 @@ class CatalogAdminHttpTests extends CatalogHttpSupport {
                 )
         );
 
-        assertEquals(
-                201,
-                otherSystemResponse.status(),
-                otherSystemResponse.body()
-        );
+        assertEquals(201, otherSystemResponse.status(), otherSystemResponse.body());
 
         long otherSystemId = otherSystemResponse.data()
                 .get("data")
                 .get("size_system_id")
                 .asLong();
-
         systems.add(otherSystemId);
 
         long wrongSizeId = otherSystemResponse.data()
@@ -185,13 +175,11 @@ class CatalogAdminHttpTests extends CatalogHttpSupport {
                         writer.token(),
                         Map.of(
                                 "variants",
-                                List.of(
-                                        Map.of(
-                                                "size_value_id", wrongSizeId,
-                                                "color_id", colorId,
-                                                "sale_status", "ON_SALE"
-                                        )
-                                )
+                                List.of(Map.of(
+                                        "size_value_id", wrongSizeId,
+                                        "color_id", colorId,
+                                        "sale_status", "ON_SALE"
+                                ))
                         )
                 ).status()
         );
@@ -204,13 +192,11 @@ class CatalogAdminHttpTests extends CatalogHttpSupport {
                         writer.token(),
                         Map.of(
                                 "variants",
-                                List.of(
-                                        Map.of(
-                                                "size_value_id", sizeM,
-                                                "color_id", colorId,
-                                                "sale_status", "ON_SALE"
-                                        )
-                                )
+                                List.of(Map.of(
+                                        "size_value_id", sizeM,
+                                        "color_id", colorId,
+                                        "sale_status", "ON_SALE"
+                                ))
                         )
                 ).status()
         );
@@ -230,6 +216,5 @@ class CatalogAdminHttpTests extends CatalogHttpSupport {
                         writer.id()
                 ) > 0
         );
-
     }
 }
