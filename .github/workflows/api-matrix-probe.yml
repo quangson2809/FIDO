@@ -1,0 +1,49 @@
+name: API matrix probe
+
+on:
+  push:
+    branches:
+      - tmp/api-matrix-probe-20261002
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Execute 77 API cases
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Execute API matrix probe
+        working-directory: backend
+        env:
+          API_MATRIX_PROBE: "true"
+          API_MATRIX_CASES_DIR: ${{ github.workspace }}/.github/api-probe/cases
+          API_MATRIX_RESULT_FILE: ${{ github.workspace }}/api-matrix-results.json
+        run: ./gradlew --no-daemon test --tests com.fido.ApiMatrixExecutionProbeTest --rerun-tasks
+
+      - name: Upload actual API results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-matrix-results
+          path: api-matrix-results.json
+          if-no-files-found: warn
+
+      - name: Upload probe test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-matrix-test-report
+          path: backend/build/test-results/test
+          if-no-files-found: warn
