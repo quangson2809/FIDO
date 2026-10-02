@@ -63,15 +63,6 @@ public class OrderActionService {
             OrderActionRequest request,
             Authentication authentication
     ) {
-        if (List.of(
-                "CANCEL",
-                "DELIVERY_FAILED"
-        ).contains(request.action())
-                && (request.reason() == null
-                || request.reason().isBlank())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-        }
-
         Order order = locked(orderId);
 
         Order result = switch (request.action()) {
