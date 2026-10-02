@@ -69,7 +69,8 @@ public class ProductAdminService {
     @PreAuthorize(WRITE)
     public AdminProductDetailDto createProduct(
             Long actor,
-            ProductCreateRequest request
+            ProductCreateRequest request,
+            List<String> uploadedImageUrls
     ) {
         Category category = references.leafCategory(request.category_id());
 
@@ -95,11 +96,9 @@ public class ProductAdminService {
 
         products.save(product);
 
-        saveImages(
+        saveUploadedImages(
                 product.getProductId(),
-                request.images() == null
-                        ? List.of()
-                        : request.images()
+                uploadedImageUrls
         );
 
         if (request.variants() != null
@@ -454,6 +453,21 @@ public class ProductAdminService {
 
             variants.save(variant);
             inventory.initializeVariant(variant.getVariantId());
+        }
+    }
+
+    private void saveUploadedImages(
+            Long productId,
+            List<String> imageUrls
+    ) {
+        for (int sortOrder = 0; sortOrder < imageUrls.size(); sortOrder++) {
+            ProductImage image = new ProductImage();
+            image.setProductId(productId);
+            image.setImageUrl(imageUrls.get(sortOrder));
+            image.setAltText(null);
+            image.setSortOrder(sortOrder);
+
+            images.save(image);
         }
     }
 
