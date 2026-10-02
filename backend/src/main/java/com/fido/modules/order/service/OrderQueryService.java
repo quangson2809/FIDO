@@ -4,14 +4,17 @@ import com.fido.common.response.ApiListResponse;
 import com.fido.common.response.Pagination;
 import com.fido.modules.order.dto.response.OrderAdminDetailDto;
 import com.fido.modules.order.dto.response.OrderCustomerDetailDto;
+import com.fido.modules.order.dto.response.OrderItemDto;
 import com.fido.modules.order.dto.response.OrderSummaryDto;
 import com.fido.modules.order.entity.Order;
+import com.fido.modules.order.entity.OrderItem;
 import com.fido.modules.order.entity.Payment;
 import com.fido.modules.order.mapper.OrderMapper;
 import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
 import com.fido.modules.order.repository.ShippingInfoRepository;
+import com.fido.modules.product.service.CatalogVariantReadService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +40,7 @@ public class OrderQueryService {
     private final OrderItemRepository items;
     private final PaymentRepository payments;
     private final ShippingInfoRepository shipping;
+    private final CatalogVariantReadService catalog;
     private final OrderActionPolicy actionPolicy;
     private final OrderAuthorization authorization;
 
@@ -45,6 +49,7 @@ public class OrderQueryService {
             OrderItemRepository items,
             PaymentRepository payments,
             ShippingInfoRepository shipping,
+            CatalogVariantReadService catalog,
             OrderActionPolicy actionPolicy,
             OrderAuthorization authorization
     ) {
@@ -52,6 +57,7 @@ public class OrderQueryService {
         this.items = items;
         this.payments = payments;
         this.shipping = shipping;
+        this.catalog = catalog;
         this.actionPolicy = actionPolicy;
         this.authorization = authorization;
     }
@@ -150,14 +156,7 @@ public class OrderQueryService {
     }
 
     OrderCustomerDetailDto customerDetailInternal(Order order) {
-        var orderItems = items
-                .findAllByOrderIdOrderByOrderItemIdAsc(
-                        order.getOrderId()
-                )
-                .stream()
-                .map(OrderMapper::item)
-                .toList();
-
+        var orderItems = orderItems(order.getOrderId());
         Payment payment = payment(order.getOrderId());
 
         var shippingInfo = shipping
@@ -187,14 +186,7 @@ public class OrderQueryService {
             Order order,
             Authentication authentication
     ) {
-        var orderItems = items
-                .findAllByOrderIdOrderByOrderItemIdAsc(
-                        order.getOrderId()
-                )
-                .stream()
-                .map(OrderMapper::item)
-                .toList();
-
+        var orderItems = orderItems(order.getOrderId());
         Payment payment = payment(order.getOrderId());
 
         var shippingInfo = shipping
@@ -226,6 +218,26 @@ public class OrderQueryService {
                         actionPolicy.allowedActions(order, payment)
                 )
         );
+    }
+
+    private List<OrderItemDto> orderItems(Long orderId) {
+        List<OrderItem> orderItems = items
+                .findAllByOrderIdOrderByOrderItemIdAsc(orderId);
+
+        Map<Long, String> imagesByVariantId =
+                catalog.primaryImagesByVariantIds(
+                        orderItems.stream()
+                                .map(OrderItem::getVariantId)
+                                .filter(Objects::nonNull)
+                                .toList()
+                );
+
+        return orderItems.stream()
+                .map(item -> OrderMapper.item(
+                        item,
+                        imagesByVariantId.get(item.getVariantId())
+                ))
+                .toList();
     }
 
     private List<OrderSummaryDto> summaries(List<Order> pageOrders) {
