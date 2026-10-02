@@ -21,8 +21,10 @@ class ApiContractMatrixTests {
     private static final String MATRIX_RESOURCE = "api-contract-matrix.csv";
     private static final Set<String> ALLOWED_CONTRACT_STATUSES = Set.of(
             "PASS",
-            "PENDING",
             "DEFERRED_PARTIAL"
+    );
+    private static final Set<Integer> EXPECTED_DEFERRED_API_NUMBERS = Set.of(
+            14, 15, 16, 17, 18, 19, 20, 26
     );
 
     @Test
@@ -45,12 +47,17 @@ class ApiContractMatrixTests {
             assertEquals("PASS", reviewed.routeStatus(), "Registered route is not locked for API #" + entry.getKey());
             assertTrue(
                     ALLOWED_CONTRACT_STATUSES.contains(reviewed.contractStatus()),
-                    "Unknown contract review status for API #" + entry.getKey()
+                    "Contract review is incomplete for API #" + entry.getKey()
             );
 
             if ("PASS".equals(reviewed.contractStatus())) {
+                assertEquals(
+                        "none",
+                        reviewed.deferredSlice(),
+                        "Fully executable API must not carry a deferred slice: #" + entry.getKey()
+                );
                 assertFalse(
-                        reviewed.evidence().contains("pending_deep_contract_review"),
+                        reviewed.evidence().isBlank(),
                         "PASS API must cite concrete review evidence: #" + entry.getKey()
                 );
             }
@@ -60,8 +67,29 @@ class ApiContractMatrixTests {
                         "none".equals(reviewed.deferredSlice()),
                         "Deferred API must name the unresolved slice: #" + entry.getKey()
                 );
+                assertTrue(
+                        reviewed.evidence().contains("docs/12"),
+                        "Deferred API must trace the blocker to docs/12: #" + entry.getKey()
+                );
             }
         }
+
+        Set<Integer> deferredApiNumbers = matrix.values().stream()
+                .filter(row -> "DEFERRED_PARTIAL".equals(row.contractStatus()))
+                .map(MatrixRow::number)
+                .collect(Collectors.toUnmodifiableSet());
+
+        assertEquals(
+                EXPECTED_DEFERRED_API_NUMBERS,
+                deferredApiNumbers,
+                "Deferred API set changed; update the canonical TBD decision before changing executable scope"
+        );
+
+        long fullyExecutable = matrix.values().stream()
+                .filter(row -> "PASS".equals(row.contractStatus()))
+                .count();
+
+        assertEquals(69L, fullyExecutable, "Executable contract coverage must remain 69/77 until a TBD is resolved");
     }
 
     private Map<Integer, BaselineRow> baselineRows() throws Exception {
