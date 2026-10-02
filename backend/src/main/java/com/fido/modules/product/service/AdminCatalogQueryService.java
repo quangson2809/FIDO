@@ -111,7 +111,7 @@ public class AdminCatalogQueryService {
         var adminVariants = readVariants(productId);
 
         var productImages = images
-                .findAllByProductIdOrderByImageIdAsc(productId)
+                .findAllByProductIdOrderBySortOrderAsc(productId)
                 .stream()
                 .map(CatalogMapper::image)
                 .toList();
@@ -197,4 +197,3 @@ public class AdminCatalogQueryService {
         );
     }
 }
-

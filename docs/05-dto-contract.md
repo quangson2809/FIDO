@@ -90,9 +90,9 @@ Never trust/accept these from clients unless a source explicitly makes them conf
 
 `ProductVariantDto(variant_id,size,color,sku?,effective_price,sale_status,available_quantity)`
 
-`ProductSummaryDto(product_id,name,category,brand?,base_price,sale_status)`
+`ProductSummaryDto(product_id,name,primary_image?,category,brand?,base_price,sale_status)`; `primary_image` is the URL at `product_images.sort_order = 0`, or null when the Product has no image.
 
-`ProductDetailDto(product_id,name,description?,category,brand?,size_system,gender?,season?,style?,material_care?,base_price,sale_status,images[],variants[])`
+`ProductDetailDto(product_id,name,description?,category,brand?,size_system,gender?,season?,style?,material_care?,base_price,sale_status,images[],variants[])`; `images` is ordered by `product_images.sort_order`. `sort_order` remains persistence-only and is not added to `ProductImageDto`.
 
 `AdminVariantDto(variant_id,product_id,size_value_id,color_id,sku?,override_price?,sale_status,available_quantity,created_at,updated_at)`
 
@@ -154,7 +154,7 @@ Receiver phone/address required, email optional, voucher code optional. Server o
 
 ### Product create
 
-Required: category, SizeSystem, name, base price, sale status. Optional fields follow schema. Nested image/variant collections are allowed by API contract. Validate leaf Category, SizeSystem/SizeValue match and variant uniqueness.
+Required: category, SizeSystem, name, base price, sale status. Optional fields follow schema. Nested image/variant collections are allowed by API contract. Validate leaf Category, SizeSystem/SizeValue match and variant uniqueness. Product image array order is authoritative for gallery ordering: index `0` is the representative image and is stored as `sort_order = 0`; later indexes are stored in ascending order.
 
 ### Inventory adjustment
 
@@ -179,6 +179,6 @@ Transcribed field contracts from the current consolidated API (checked 2026-09-2
 
 #70 filters: actor_account_id, action, target_type, target_id, from, to, page, page_size. #76 filters: q, page, page_size. Both return data plus PaginationMeta.
 
-#73 specifically returns the full small content-page list as `{data: ContentPageDto[]}` without paging parameters. #74 requires page_code/title/content. #75 accepts only optional title/content, neither nullable; page_code stays stable. Public content never includes the internal page ID or actor ID.
+#73 specifically returns the full small content-page list as `{data: ContentPageDto[]}` without paging parameters or separate detail endpoint. This specific source contract takes precedence over the generic list convention (docs/00).
 
 #71 requires from/to dates and returns ReportOverviewDto: from, to, completed_sales, returned_adjustment, net_sales and orders_by_status. The user-approved formulas, Vietnam timezone and completion/creation date bases are documented in docs/15 (2026-09-28). orders_by_status maps all eight baseline status codes to integer counts.

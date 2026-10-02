@@ -41,7 +41,7 @@
 
 `products(product_id, category_id, brand_id?, size_system_id, name, description?, gender?, season?, style?, material_care?, base_price, sale_status, created_at, updated_at)`.
 
-`product_images(image_id, product_id, image_url, alt_text?)`.
+`product_images(image_id, product_id, image_url, alt_text?, sort_order)`; UQ `(product_id,sort_order)`. `sort_order = 0` is the representative image for product-list reads; higher values define gallery order.
 
 `product_variants(variant_id, product_id, size_value_id, color_id, sku?, override_price?, sale_status, created_at, updated_at)`; UQ `(product_id,size_value_id,color_id)` and SKU when non-null.
 
@@ -115,6 +115,7 @@
 
 - Category root may have `parent_category_id = NULL`; self-parent and cycles are forbidden.
 - Product may reference only a leaf Category.
+- Product image order is zero-based, non-null and unique within a Product; request array order is persisted as `sort_order`.
 - Variant `SizeValue` must belong to Product's `SizeSystem`.
 - Variant `(product,size,color)` combination is unique.
 - Existing transactional Variant identity must not be repurposed to a different size/color meaning; create a new Variant instead and stop selling the old one.

@@ -10,7 +10,7 @@ INSERT INTO size_systems VALUES (1,'fixture-size-system','Fixture system');
 INSERT INTO size_values VALUES (1,1,'M','Medium',1);
 INSERT INTO colors VALUES (1,'fixture-color','Fixture color');
 INSERT INTO products VALUES (1,1,1,1,'Fixture product',NULL,NULL,NULL,NULL,NULL,100.00,'fixture-status',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
-INSERT INTO product_images VALUES (1,1,'https://example.invalid/test.png',NULL);
+INSERT INTO product_images VALUES (1,1,'https://example.invalid/test.png',NULL,0);
 INSERT INTO product_variants VALUES (1,1,1,1,NULL,NULL,'fixture-status',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
 INSERT INTO carts VALUES (1,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
 INSERT INTO cart_items VALUES (1,1,1,1);

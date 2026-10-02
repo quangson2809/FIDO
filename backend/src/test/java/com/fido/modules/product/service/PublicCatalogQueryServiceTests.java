@@ -1,10 +1,12 @@
 package com.fido.modules.product.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.fido.modules.inventory.service.InventoryAvailabilityService;
@@ -16,6 +18,7 @@ import com.fido.modules.product.entity.SizeValue;
 import com.fido.modules.product.repository.BrandRepository;
 import com.fido.modules.product.repository.CategoryRepository;
 import com.fido.modules.product.repository.ProductImageRepository;
+import com.fido.modules.product.repository.ProductPrimaryImageView;
 import com.fido.modules.product.repository.ProductRepository;
 import com.fido.modules.product.repository.ProductVariantRepository;
 import java.math.BigDecimal;
@@ -26,6 +29,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 @ExtendWith(MockitoExtension.class)
 class PublicCatalogQueryServiceTests {
@@ -71,6 +77,53 @@ class PublicCatalogQueryServiceTests {
     }
 
     @Test
+    void publicProductsLoadsPrimaryImagesInOneBatchForThePage() {
+        Product first = product(1L, 10L, "First");
+        Product second = product(2L, 20L, "Second");
+
+        when(products.findAll(
+                any(Specification.class),
+                any(Pageable.class)
+        )).thenReturn(new PageImpl<>(List.of(first, second)));
+
+        Category firstCategory = category(10L, "First category");
+        Category secondCategory = category(20L, "Second category");
+        when(categories.findAllByCategoryIdIn(List.of(10L, 20L)))
+                .thenReturn(List.of(firstCategory, secondCategory));
+
+        ProductPrimaryImageView firstImage = mock(ProductPrimaryImageView.class);
+        ProductPrimaryImageView secondImage = mock(ProductPrimaryImageView.class);
+        when(firstImage.getProductId()).thenReturn(1L);
+        when(firstImage.getImageUrl()).thenReturn("https://example.test/first.png");
+        when(secondImage.getProductId()).thenReturn(2L);
+        when(secondImage.getImageUrl()).thenReturn("https://example.test/second.png");
+        when(images.findPrimaryImagesByProductIdIn(List.of(1L, 2L)))
+                .thenReturn(List.of(firstImage, secondImage));
+
+        var result = service.publicProducts(
+                new CatalogProductFilter(
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                )
+        );
+
+        assertEquals("https://example.test/first.png", result.data().get(0).primary_image());
+        assertEquals("https://example.test/second.png", result.data().get(1).primary_image());
+        verify(images).findPrimaryImagesByProductIdIn(List.of(1L, 2L));
+        verifyNoMoreInteractions(images);
+    }
+
+    @Test
     void publicDetailBatchesVariantSizeAndColorReferences() {
         Product product = mock(Product.class);
         when(product.getProductId()).thenReturn(100L);
@@ -98,7 +151,7 @@ class PublicCatalogQueryServiceTests {
         when(references.colorsById(List.of(21L, 22L)))
                 .thenReturn(Map.of(21L, firstColor, 22L, secondColor));
 
-        when(images.findAllByProductIdOrderByImageIdAsc(100L))
+        when(images.findAllByProductIdOrderBySortOrderAsc(100L))
                 .thenReturn(List.of());
 
         var detail = service.publicDetail(100L);
@@ -108,6 +161,27 @@ class PublicCatalogQueryServiceTests {
         verify(references).colorsById(List.of(21L, 22L));
         verify(references, never()).sizeValue(anyLong());
         verify(references, never()).color(anyLong());
+    }
+
+    private Product product(
+            Long id,
+            Long categoryId,
+            String name
+    ) {
+        Product product = mock(Product.class);
+        when(product.getProductId()).thenReturn(id);
+        when(product.getCategoryId()).thenReturn(categoryId);
+        when(product.getName()).thenReturn(name);
+        when(product.getBasePrice()).thenReturn(new BigDecimal("100000.00"));
+        when(product.getSaleStatus()).thenReturn(CatalogPolicy.ON_SALE);
+        return product;
+    }
+
+    private Category category(Long id, String name) {
+        Category category = mock(Category.class);
+        when(category.getCategoryId()).thenReturn(id);
+        when(category.getName()).thenReturn(name);
+        return category;
     }
 
     private ProductVariant variant(

@@ -67,6 +67,12 @@ class DatabaseConstraintsTests {
     }
 
     @Test
+    void productImageSortOrderIsRequiredAndUniquePerProduct() {
+        rejects("INSERT INTO product_images VALUES (2,1,'https://example.invalid/duplicate.png',NULL,0)");
+        rejects("INSERT INTO product_images VALUES (3,1,'https://example.invalid/null-sort.png',NULL,NULL)");
+    }
+
+    @Test
     void foreignKeysStatesAndVoucherAccountConstraintAreEnforced() {
         rejects("UPDATE addresses SET account_id=999");
         rejects("UPDATE product_variants SET size_value_id=999");

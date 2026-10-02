@@ -18,6 +18,7 @@ import com.fido.modules.product.mapper.CatalogMapper;
 import com.fido.modules.product.repository.BrandRepository;
 import com.fido.modules.product.repository.CategoryRepository;
 import com.fido.modules.product.repository.ProductImageRepository;
+import com.fido.modules.product.repository.ProductPrimaryImageView;
 import com.fido.modules.product.repository.ProductRepository;
 import com.fido.modules.product.repository.ProductVariantRepository;
 import java.math.BigDecimal;
@@ -90,11 +91,15 @@ public class PublicCatalogQueryService {
         Map<Long, Brand> brandsById =
                 brandMap(productsOnPage);
 
+        Map<Long, String> primaryImagesByProductId =
+                primaryImageMap(productsOnPage);
+
         var data = productsOnPage
                 .stream()
                 .map(product -> new ProductSummaryDto(
                         product.getProductId(),
                         product.getName(),
+                        primaryImagesByProductId.get(product.getProductId()),
                         CatalogMapper.category(
                                 required(
                                         categoriesById,
@@ -191,7 +196,7 @@ public class PublicCatalogQueryService {
                 .toList();
 
         var productImages = images
-                .findAllByProductIdOrderByImageIdAsc(
+                .findAllByProductIdOrderBySortOrderAsc(
                         product.getProductId()
                 )
                 .stream()
@@ -288,6 +293,25 @@ public class PublicCatalogQueryService {
                 .collect(Collectors.toMap(
                         Brand::getBrandId,
                         Function.identity()
+                ));
+    }
+
+    private Map<Long, String> primaryImageMap(
+            List<Product> productsOnPage
+    ) {
+        var productIds = productsOnPage.stream()
+                .map(Product::getProductId)
+                .toList();
+
+        if (productIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return images.findPrimaryImagesByProductIdIn(productIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        ProductPrimaryImageView::getProductId,
+                        ProductPrimaryImageView::getImageUrl
                 ));
     }
 
