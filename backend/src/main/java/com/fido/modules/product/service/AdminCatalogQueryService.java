@@ -12,9 +12,12 @@ import com.fido.modules.product.entity.Product;
 import com.fido.modules.product.entity.ProductVariant;
 import com.fido.modules.product.mapper.CatalogMapper;
 import com.fido.modules.product.repository.ProductImageRepository;
+import com.fido.modules.product.repository.ProductPrimaryImageView;
 import com.fido.modules.product.repository.ProductRepository;
 import com.fido.modules.product.repository.ProductVariantRepository;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -84,9 +87,16 @@ public class AdminCatalogQueryService {
                 pagination.toPageable()
         );
 
-        var data = result.getContent()
+        List<Product> productsOnPage = result.getContent();
+        Map<Long, String> primaryImagesByProductId =
+                primaryImageMap(productsOnPage);
+
+        var data = productsOnPage
                 .stream()
-                .map(CatalogMapper::adminSummary)
+                .map(product -> CatalogMapper.adminSummary(
+                        product,
+                        primaryImagesByProductId.get(product.getProductId())
+                ))
                 .toList();
 
         return ApiListResponse.of(
@@ -185,6 +195,25 @@ public class AdminCatalogQueryService {
                 variant,
                 inventory.availableQuantity(variant.getVariantId())
         );
+    }
+
+    private Map<Long, String> primaryImageMap(
+            List<Product> productsOnPage
+    ) {
+        var productIds = productsOnPage.stream()
+                .map(Product::getProductId)
+                .toList();
+
+        if (productIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return images.findPrimaryImagesByProductIdIn(productIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        ProductPrimaryImageView::getProductId,
+                        ProductPrimaryImageView::getImageUrl
+                ));
     }
 
     private BrandDto brandDto(Long brandId) {
