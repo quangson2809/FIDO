@@ -96,17 +96,19 @@ public class PublicCatalogQueryService {
                         product.getProductId(),
                         product.getName(),
                         CatalogMapper.category(
-                                requiredCategory(
+                                required(
                                         categoriesById,
-                                        product.getCategoryId()
+                                        product.getCategoryId(),
+                                        "Missing category"
                                 )
                         ),
                         product.getBrandId() == null
                                 ? null
                                 : CatalogMapper.brand(
-                                        requiredBrand(
+                                        required(
                                                 brandsById,
-                                                product.getBrandId()
+                                                product.getBrandId(),
+                                                "Missing brand"
                                         )
                                 ),
                         product.getBasePrice(),
@@ -142,14 +144,30 @@ public class PublicCatalogQueryService {
                         .toList()
         );
 
+        Map<Long, SizeValue> sizesById = references.sizeValuesById(
+                productVariants.stream()
+                        .map(ProductVariant::getSizeValueId)
+                        .toList()
+        );
+
+        Map<Long, Color> colorsById = references.colorsById(
+                productVariants.stream()
+                        .map(ProductVariant::getColorId)
+                        .toList()
+        );
+
         var publicVariants = productVariants.stream()
                 .map(variant -> {
-                    SizeValue size = references.sizeValue(
-                            variant.getSizeValueId()
+                    SizeValue size = required(
+                            sizesById,
+                            variant.getSizeValueId(),
+                            "Variant references missing size"
                     );
 
-                    Color color = references.color(
-                            variant.getColorId()
+                    Color color = required(
+                            colorsById,
+                            variant.getColorId(),
+                            "Variant references missing color"
                     );
 
                     BigDecimal effectivePrice =
@@ -273,29 +291,17 @@ public class PublicCatalogQueryService {
                 ));
     }
 
-    private Category requiredCategory(
-            Map<Long, Category> map,
-            Long categoryId
+    private <T> T required(
+            Map<Long, T> values,
+            Long id,
+            String message
     ) {
-        Category category = map.get(categoryId);
+        T value = values.get(id);
 
-        if (category == null) {
-            throw new IllegalStateException("Missing category");
+        if (value == null) {
+            throw new IllegalStateException(message);
         }
 
-        return category;
-    }
-
-    private Brand requiredBrand(
-            Map<Long, Brand> map,
-            Long brandId
-    ) {
-        Brand brand = map.get(brandId);
-
-        if (brand == null) {
-            throw new IllegalStateException("Missing brand");
-        }
-
-        return brand;
+        return value;
     }
 }
