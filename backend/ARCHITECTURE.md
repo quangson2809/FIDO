@@ -26,4 +26,6 @@ Some services have distinct query and command entry points to isolate real respo
 
 ## Verification boundary
 
-`.github/workflows/backend-verification.yml` runs H2 build and MySQL migration/mapping/tests. CI provides technical execution evidence only. Architecture, contract, security and behavioral correctness remain part of the task/review process defined by `backend/AGENTS.md` and the source documents; a green build by itself is not sufficient evidence that the whole backend has been audited.
+`.github/workflows/backend-verification.yml` runs H2 build and MySQL migration/mapping/tests. `ArchitectureBoundaryTests` also enforces a small set of non-negotiable structural rules against production classes: no field injection, no controller-to-persistence dependency, no cross-module repository dependency, and no entity dependency on API/service/repository/DTO layers.
+
+This executable guard protects clear dependency boundaries; it does **not** score design quality or replace contextual review of cohesion, responsibilities, transaction ownership, security, business behavior or appropriate abstractions. CI remains technical evidence only, and a green build by itself is not sufficient evidence that the whole backend has been audited.
