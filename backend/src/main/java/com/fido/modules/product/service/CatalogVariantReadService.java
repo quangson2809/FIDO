@@ -6,12 +6,15 @@ import com.fido.modules.product.entity.Product;
 import com.fido.modules.product.entity.ProductVariant;
 import com.fido.modules.product.entity.SizeValue;
 import com.fido.modules.product.repository.ColorRepository;
+import com.fido.modules.product.repository.ProductImageRepository;
+import com.fido.modules.product.repository.ProductPrimaryImageView;
 import com.fido.modules.product.repository.ProductRepository;
 import com.fido.modules.product.repository.ProductVariantRepository;
 import com.fido.modules.product.repository.SizeValueRepository;
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -30,6 +33,7 @@ public class CatalogVariantReadService {
 
     private final ProductVariantRepository variants;
     private final ProductRepository products;
+    private final ProductImageRepository images;
     private final SizeValueRepository sizes;
     private final ColorRepository colors;
     private final InventoryAvailabilityService inventory;
@@ -37,19 +41,21 @@ public class CatalogVariantReadService {
     public CatalogVariantReadService(
             ProductVariantRepository variants,
             ProductRepository products,
+            ProductImageRepository images,
             SizeValueRepository sizes,
             ColorRepository colors,
             InventoryAvailabilityService inventory
     ) {
         this.variants = variants;
         this.products = products;
+        this.images = images;
         this.sizes = sizes;
         this.colors = colors;
         this.inventory = inventory;
     }
 
     public VariantView get(Long variantId) {
-        return getAll(java.util.List.of(variantId))
+        return getAll(List.of(variantId))
                 .get(variantId);
     }
 
@@ -78,19 +84,22 @@ public class CatalogVariantReadService {
             }
         }
 
+        var productIds = variantsById.values()
+                .stream()
+                .map(ProductVariant::getProductId)
+                .distinct()
+                .toList();
+
         Map<Long, Product> productsById = products
-                .findAllByProductIdIn(
-                        variantsById.values()
-                                .stream()
-                                .map(ProductVariant::getProductId)
-                                .distinct()
-                                .toList()
-                )
+                .findAllByProductIdIn(productIds)
                 .stream()
                 .collect(Collectors.toMap(
                         Product::getProductId,
                         Function.identity()
                 ));
+
+        Map<Long, String> primaryImagesByProductId =
+                primaryImagesByProductId(productIds);
 
         Map<Long, SizeValue> sizesById = sizes
                 .findAllBySizeValueIdIn(
@@ -156,6 +165,7 @@ public class CatalogVariantReadService {
                             variant.getVariantId(),
                             product.getProductId(),
                             product.getName(),
+                            primaryImagesByProductId.get(product.getProductId()),
                             variant.getSku(),
                             size.getDisplayName(),
                             color.getName(),
@@ -171,6 +181,55 @@ public class CatalogVariantReadService {
         }
 
         return Map.copyOf(result);
+    }
+
+    /**
+     * Resolves only images that still exist in the current catalog. Missing variants or images
+     * intentionally produce no entry so historical order reads can fall back to null.
+     */
+    public Map<Long, String> primaryImagesByVariantIds(
+            Collection<Long> variantIds
+    ) {
+        if (variantIds == null || variantIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<ProductVariant> existingVariants = variants.findAllByVariantIdIn(
+                variantIds.stream().distinct().toList()
+        );
+
+        Map<Long, String> primaryImagesByProductId = primaryImagesByProductId(
+                existingVariants.stream()
+                        .map(ProductVariant::getProductId)
+                        .distinct()
+                        .toList()
+        );
+
+        return existingVariants.stream()
+                .filter(variant -> primaryImagesByProductId.containsKey(
+                        variant.getProductId()
+                ))
+                .collect(Collectors.toUnmodifiableMap(
+                        ProductVariant::getVariantId,
+                        variant -> primaryImagesByProductId.get(
+                                variant.getProductId()
+                        )
+                ));
+    }
+
+    private Map<Long, String> primaryImagesByProductId(
+            Collection<Long> productIds
+    ) {
+        if (productIds == null || productIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return images.findPrimaryImagesByProductIdIn(productIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        ProductPrimaryImageView::getProductId,
+                        ProductPrimaryImageView::getImageUrl
+                ));
     }
 
     private <T> T required(
@@ -191,6 +250,7 @@ public class CatalogVariantReadService {
             Long variantId,
             Long productId,
             String productName,
+            String primaryImage,
             String sku,
             String size,
             String color,
