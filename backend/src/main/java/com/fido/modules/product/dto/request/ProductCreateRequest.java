@@ -25,6 +25,15 @@ public record ProductCreateRequest(
         @Valid List<VariantInput> variants
 ) {
 
+    /**
+     * Retained for the existing PATCH product image contract. Product creation receives files as multipart parts.
+     */
+    public record ImageInput(
+            @NotBlank @Size(max = 1000) String image_url,
+            @Size(max = 255) String alt_text
+    ) {
+    }
+
     public record VariantInput(
             @NotNull @Positive Long size_value_id,
             @NotNull @Positive Long color_id,
