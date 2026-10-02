@@ -25,11 +25,15 @@ public final class OrderMapper {
         );
     }
 
-    public static OrderItemDto item(OrderItem item) {
+    public static OrderItemDto item(
+            OrderItem item,
+            String image
+    ) {
         return new OrderItemDto(
                 item.getOrderItemId(),
                 item.getVariantId(),
                 item.getProductNameSnapshot(),
+                image,
                 item.getSkuSnapshot(),
                 item.getSizeSnapshot(),
                 item.getColorSnapshot(),
@@ -37,6 +41,10 @@ public final class OrderMapper {
                 item.getQuantity(),
                 item.getLineTotalSnapshot()
         );
+    }
+
+    public static OrderItemDto item(OrderItem item) {
+        return item(item, null);
     }
 
     public static PaymentPublicDto paymentPublic(Payment payment) {
