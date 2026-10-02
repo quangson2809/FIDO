@@ -14,7 +14,10 @@ import com.fido.modules.order.repository.PaymentRepository;
 import com.fido.modules.order.repository.ShippingInfoRepository;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -73,13 +76,8 @@ public class OrderQueryService {
                 pagination.toPageable()
         );
 
-        var data = result.getContent()
-                .stream()
-                .map(this::summary)
-                .toList();
-
         return ApiListResponse.of(
-                data,
+                summaries(result.getContent()),
                 pagination.meta(result.getTotalElements())
         );
     }
@@ -134,13 +132,8 @@ public class OrderQueryService {
                 pagination.toPageable()
         );
 
-        var data = result.getContent()
-                .stream()
-                .map(this::summary)
-                .toList();
-
         return ApiListResponse.of(
-                data,
+                summaries(result.getContent()),
                 pagination.meta(result.getTotalElements())
         );
     }
@@ -235,11 +228,47 @@ public class OrderQueryService {
         );
     }
 
-    private OrderSummaryDto summary(Order order) {
-        return OrderMapper.summary(
-                order,
-                payment(order.getOrderId())
-        );
+    private List<OrderSummaryDto> summaries(List<Order> pageOrders) {
+        if (pageOrders.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, Payment> paymentsByOrderId = payments
+                .findAllByOrderIdIn(
+                        pageOrders.stream()
+                                .map(Order::getOrderId)
+                                .toList()
+                )
+                .stream()
+                .collect(Collectors.toMap(
+                        Payment::getOrderId,
+                        Function.identity()
+                ));
+
+        return pageOrders.stream()
+                .map(order ->
+                        OrderMapper.summary(
+                                order,
+                                payment(
+                                        paymentsByOrderId,
+                                        order.getOrderId()
+                                )
+                        )
+                )
+                .toList();
+    }
+
+    private Payment payment(
+            Map<Long, Payment> paymentsByOrderId,
+            Long orderId
+    ) {
+        Payment payment = paymentsByOrderId.get(orderId);
+
+        if (payment == null) {
+            throw missingPayment();
+        }
+
+        return payment;
     }
 
     private Order customerOrder(
@@ -267,11 +296,12 @@ public class OrderQueryService {
 
     private Payment payment(Long orderId) {
         return payments.findById(orderId)
-                .orElseThrow(() ->
-                        new IllegalStateException(
-                                "Order payment is missing"
-                        )
-                );
+                .orElseThrow(this::missingPayment);
+    }
+
+    private IllegalStateException missingPayment() {
+        return new IllegalStateException(
+                "Order payment is missing"
+        );
     }
 }
-
