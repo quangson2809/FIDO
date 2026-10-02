@@ -22,15 +22,8 @@ public record ProductCreateRequest(
         String material_care,
         @NotNull @DecimalMin("0.0") BigDecimal base_price,
         @NotBlank @Pattern(regexp = "ON_SALE|STOPPED") String sale_status,
-        @Valid List<ImageInput> images,
         @Valid List<VariantInput> variants
 ) {
-
-    public record ImageInput(
-            @NotBlank @Size(max = 1000) String image_url,
-            @Size(max = 255) String alt_text
-    ) {
-    }
 
     public record VariantInput(
             @NotNull @Positive Long size_value_id,
