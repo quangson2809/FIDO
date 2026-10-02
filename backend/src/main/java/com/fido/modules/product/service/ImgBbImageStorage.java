@@ -6,8 +6,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -22,12 +23,13 @@ public class ImgBbImageStorage implements ProductImageStorage {
 
     @Autowired
     public ImgBbImageStorage(
-            RestClient.Builder restClientBuilder,
             @Value("${app.image-storage.imgbb.base-url:https://api.imgbb.com}") String baseUrl,
             @Value("${app.image-storage.imgbb.api-key:}") String apiKey
     ) {
         this(
-                restClientBuilder.baseUrl(baseUrl).build(),
+                RestClient.builder()
+                        .baseUrl(baseUrl)
+                        .build(),
                 apiKey
         );
     }
@@ -44,8 +46,8 @@ public class ImgBbImageStorage implements ProductImageStorage {
     public String upload(MultipartFile image) {
         requireConfigured();
 
-        MultipartBodyBuilder body = new MultipartBodyBuilder();
-        body.part("image", image.getResource());
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("image", image.getResource());
 
         try {
             ImgBbUploadResponse response = restClient.post()
@@ -54,7 +56,7 @@ public class ImgBbImageStorage implements ProductImageStorage {
                             .queryParam("key", apiKey)
                             .build())
                     .contentType(MediaType.MULTIPART_FORM_DATA)
-                    .body(body.build())
+                    .body(body)
                     .retrieve()
                     .body(ImgBbUploadResponse.class);
 
