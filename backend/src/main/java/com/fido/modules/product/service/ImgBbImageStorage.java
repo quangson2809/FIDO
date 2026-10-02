@@ -2,6 +2,7 @@ package com.fido.modules.product.service;
 
 import java.net.SocketTimeoutException;
 import java.net.http.HttpTimeoutException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -19,6 +20,7 @@ public class ImgBbImageStorage implements ProductImageStorage {
     private final RestClient restClient;
     private final String apiKey;
 
+    @Autowired
     public ImgBbImageStorage(
             RestClient.Builder restClientBuilder,
             @Value("${app.image-storage.imgbb.base-url:https://api.imgbb.com}") String baseUrl,
