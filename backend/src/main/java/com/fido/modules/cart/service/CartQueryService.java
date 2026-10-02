@@ -149,6 +149,7 @@ public class CartQueryService {
                 item.getVariantId(),
                 item.getQuantity(),
                 variant.productName(),
+                variant.primaryImage(),
                 variant.size(),
                 variant.color(),
                 variant.unitPrice(),
