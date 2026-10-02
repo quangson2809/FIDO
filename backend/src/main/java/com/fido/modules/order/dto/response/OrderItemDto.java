@@ -6,6 +6,7 @@ public record OrderItemDto(
         Long order_item_id,
         Long variant_id,
         String product_name,
+        String image,
         String sku,
         String size,
         String color,
