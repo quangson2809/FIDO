@@ -48,7 +48,32 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
   const [form, setForm] = useState<CreateFormState>(initialForm);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
 
-  const loadProducts = async () => {
+  useEffect(() => {
+    let active = true;
+
+    void adminProductService.getProducts()
+      .then((response) => {
+        if (!active) return;
+        setProducts(response.data);
+        setError(null);
+      })
+      .catch(() => {
+        if (active) {
+          setError('Không thể tải danh sách sản phẩm quản trị.');
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const refreshProducts = async () => {
     setLoading(true);
     try {
       const response = await adminProductService.getProducts();
@@ -60,10 +85,6 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    void loadProducts();
-  }, []);
 
   const filteredProducts = useMemo(() => {
     const query = searchTerm.trim().toLocaleLowerCase('vi-VN');
@@ -129,7 +150,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
       setForm(initialForm);
       setImageFiles([]);
       setShowCreateForm(false);
-      await loadProducts();
+      await refreshProducts();
       onSelectProduct?.(String(created.product_id));
     } catch {
       showToast('Không thể tạo sản phẩm. Kiểm tra quyền truy cập và cấu hình ImgBB.');
