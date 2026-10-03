@@ -4,7 +4,7 @@ export const AdminCatalogMetaView: React.FC<{
   initialTab?: 'categories' | 'brands' | 'sizes' | 'colors';
   onNavigateTab: (tab: string, breadcrumb: string) => void;
   showToast: (msg: string) => void;
-}> = ({ initialTab = 'categories', onNavigateTab, showToast }) => {
+}> = ({ initialTab = 'categories', showToast }) => {
   const [activeTab, setActiveTab] = useState<'categories' | 'brands' | 'sizes' | 'colors'>(initialTab);
 
   // Category form state
