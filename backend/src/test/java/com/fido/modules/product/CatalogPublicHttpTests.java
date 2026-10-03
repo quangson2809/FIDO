@@ -1,6 +1,7 @@
 package com.fido.modules.product;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -151,5 +152,69 @@ class CatalogPublicHttpTests extends CatalogHttpSupport {
                         .asInt()
         );
 
+    }
+
+    @Test
+    void productImagesFollowApprovedUrlBasedContract() throws Exception {
+        Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
+        var fixture = createCatalog(writer);
+
+        var createdProduct = fixture.createProductResponse()
+                .data()
+                .get("data");
+        var createdImage = createdProduct
+                .get("images")
+                .get(0);
+
+        assertEquals(
+                "https://example.test/shirt.png",
+                createdImage.get("image_url").asText()
+        );
+        assertEquals(
+                "shirt",
+                createdImage.get("alt_text").asText()
+        );
+
+        var detail = call(
+                "GET",
+                "/api/v1/catalog/products/" + fixture.productId(),
+                null,
+                null
+        );
+
+        assertEquals(200, detail.status(), detail.body());
+        assertEquals(
+                "https://example.test/shirt.png",
+                detail.data()
+                        .get("data")
+                        .get("images")
+                        .get(0)
+                        .get("image_url")
+                        .asText()
+        );
+        assertEquals(
+                "shirt",
+                detail.data()
+                        .get("data")
+                        .get("images")
+                        .get(0)
+                        .get("alt_text")
+                        .asText()
+        );
+
+        var list = call(
+                "GET",
+                "/api/v1/catalog/products?q=FIDO",
+                null,
+                null
+        );
+
+        assertEquals(200, list.status(), list.body());
+        assertFalse(
+                list.data()
+                        .get("data")
+                        .get(0)
+                        .has("primary_image")
+        );
     }
 }
