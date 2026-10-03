@@ -1,31 +1,33 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { showroomService } from '../features/content/api/service';
+import type { ShowroomDto } from '../features/content/types';
 
 export const ShowroomsScreen: React.FC = () => {
   const { setCurrentScreen, showToast } = useApp();
-  const [showrooms, setShowrooms] = useState<any[]>([]);
-  const [selectedShowroom, setSelectedShowroom] = useState<any>(null);
-
-  React.useEffect(() => {
-    showroomService.getShowrooms().then(list => {
-      setShowrooms(list);
-      setSelectedShowroom(list[0]);
-    });
-  }, []);
-
-  if (!selectedShowroom) return <div>Loading...</div>;
-  // ... rest of the component
+  const [showrooms, setShowrooms] = useState<ShowroomDto[]>([]);
+  const [selectedShowroom, setSelectedShowroom] = useState<ShowroomDto | null>(null);
   const [bookingDate, setBookingDate] = useState('2026-09-28');
   const [bookingTime, setBookingTime] = useState('15:00');
   const [guestCount, setGuestCount] = useState('1');
   const [serviceType, setServiceType] = useState('fitting-ready-to-wear');
   const [notes, setNotes] = useState('');
 
+  React.useEffect(() => {
+    showroomService.getShowrooms().then((list) => {
+      setShowrooms(list);
+      setSelectedShowroom(list[0] ?? null);
+    });
+  }, []);
+
+  if (!selectedShowroom) {
+    return <div>Loading...</div>;
+  }
+
   const handleBookingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     showToast(
-      `Đã xác nhận đặt lịch hẹn Fitting tại ${selectedShowroom.name} vào ${bookingTime} ngày ${bookingDate}. Concierge sẽ gọi xác nhận trong 15 phút!`
+      `Đã xác nhận đặt lịch hẹn Fitting tại ${selectedShowroom.name} vào ${bookingTime} ngày ${bookingDate}. Concierge sẽ gọi xác nhận trong 15 phút!`,
     );
   };
 
@@ -63,62 +65,57 @@ export const ShowroomsScreen: React.FC = () => {
               Danh Sách Không Gian Trải Nghiệm ({showrooms.length})
             </h2>
 
-            {showrooms.map((showroom) => {
-              const showroomImg = showroom.imageUrl || showroom.image || '';
-              const showroomHours = showroom.openingHours || showroom.openHours || '09:00 - 21:30';
-
-              return (
-                <div
-                  key={showroom.id}
-                  onClick={() => setSelectedShowroom(showroom)}
-                  className={`cursor-pointer transition-all border p-5 sm:p-6 bg-white ${
-                    selectedShowroom.id === showroom.id
-                      ? 'border-[#0B2419] shadow-md ring-1 ring-[#0B2419]'
-                      : 'border-[#0B2419]/10 hover:border-[#0B2419]/40'
-                  }`}
-                >
-                  <div className="flex flex-col sm:flex-row gap-5">
-                    <img
-                      src={showroomImg}
-                      alt={showroom.name}
-                      className="w-full sm:w-44 h-36 object-cover object-center shrink-0 border border-[#0B2419]/10"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[10px] uppercase font-bold tracking-widest text-[#123A29] bg-[#123A29]/10 px-2 py-0.5">
-                          {showroom.city.toUpperCase()}
+            {showrooms.map((showroom) => (
+              <div
+                key={showroom.id}
+                onClick={() => setSelectedShowroom(showroom)}
+                className={`cursor-pointer transition-all border p-5 sm:p-6 bg-white ${
+                  selectedShowroom.id === showroom.id
+                    ? 'border-[#0B2419] shadow-md ring-1 ring-[#0B2419]'
+                    : 'border-[#0B2419]/10 hover:border-[#0B2419]/40'
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row gap-5">
+                  <img
+                    src={showroom.imageUrl}
+                    alt={showroom.name}
+                    className="w-full sm:w-44 h-36 object-cover object-center shrink-0 border border-[#0B2419]/10"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] uppercase font-bold tracking-widest text-[#123A29] bg-[#123A29]/10 px-2 py-0.5">
+                        {showroom.city.toUpperCase()}
+                      </span>
+                      {selectedShowroom.id === showroom.id && (
+                        <span className="text-xs text-[#0B2419] font-bold flex items-center gap-1">
+                          <span className="material-symbols-outlined text-sm text-[#0B2419]">check_circle</span>
+                          Đang chọn
                         </span>
-                        {selectedShowroom.id === showroom.id && (
-                          <span className="text-xs text-[#0B2419] font-bold flex items-center gap-1">
-                            <span className="material-symbols-outlined text-sm text-[#0B2419]">check_circle</span>
-                            Đang chọn
-                          </span>
-                        )}
+                      )}
+                    </div>
+                    <h3 className="font-['Playfair_Display',serif] text-base font-bold text-[#0B2419] mt-2 mb-1">
+                      {showroom.name}
+                    </h3>
+                    <p className="text-xs text-[#0B2419]/70 leading-relaxed mb-3 flex items-start gap-1.5">
+                      <span className="material-symbols-outlined text-sm text-[#0B2419]/60 shrink-0 mt-0.5">
+                        location_on
+                      </span>
+                      {showroom.address}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-[#0B2419]/70 pt-2 border-t border-[#0B2419]/5">
+                      <div className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm text-[#0B2419]/50">schedule</span>
+                        {showroom.openingHours}
                       </div>
-                      <h3 className="font-['Playfair_Display',serif] text-base font-bold text-[#0B2419] mt-2 mb-1">
-                        {showroom.name}
-                      </h3>
-                      <p className="text-xs text-[#0B2419]/70 leading-relaxed mb-3 flex items-start gap-1.5">
-                        <span className="material-symbols-outlined text-sm text-[#0B2419]/60 shrink-0 mt-0.5">
-                          location_on
-                        </span>
-                        {showroom.address}
-                      </p>
-                      <div className="grid grid-cols-2 gap-2 text-[11px] text-[#0B2419]/70 pt-2 border-t border-[#0B2419]/5">
-                        <div className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-sm text-[#0B2419]/50">schedule</span>
-                          {showroomHours}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-sm text-[#0B2419]/50">call</span>
-                          {showroom.phone}
-                        </div>
+                      <div className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm text-[#0B2419]/50">call</span>
+                        {showroom.phone}
                       </div>
                     </div>
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
 
           {/* Booking Fitting Lounge Form */}

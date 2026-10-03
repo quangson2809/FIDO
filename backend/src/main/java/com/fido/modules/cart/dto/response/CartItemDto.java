@@ -7,6 +7,7 @@ public record CartItemDto(
         Long variant_id,
         Integer quantity,
         String product_name,
+        String image_url,
         String size,
         String color,
         BigDecimal unit_price,

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 
+type SupplierStatus = 'ACTIVE' | 'PAUSED' | 'INACTIVE';
+
 interface SupplierItem {
   id: string;
   name: string;
@@ -7,9 +9,12 @@ interface SupplierItem {
   phone: string;
   email: string;
   address: string;
-  status: 'ACTIVE' | 'PAUSED' | 'INACTIVE';
+  status: SupplierStatus;
   note: string;
 }
+
+const isSupplierStatus = (value: string): value is SupplierStatus =>
+  value === 'ACTIVE' || value === 'PAUSED' || value === 'INACTIVE';
 
 export const AdminSuppliersView: React.FC<{
   showToast: (msg: string) => void;
@@ -83,7 +88,7 @@ export const AdminSuppliersView: React.FC<{
   const [formPhone, setFormPhone] = useState('+81 86 472 2011');
   const [formEmail, setFormEmail] = useState('international-sales@kurabo.co.jp');
   const [formAddress, setFormAddress] = useState('Kojima, Kurashiki, Okayama Prefecture 711-8588, Japan');
-  const [formStatus, setFormStatus] = useState<'ACTIVE' | 'PAUSED' | 'INACTIVE'>('ACTIVE');
+  const [formStatus, setFormStatus] = useState<SupplierStatus>('ACTIVE');
   const [formNote, setFormNote] = useState(
     'Cung ứng độc quyền vải Selvedge Denim 13.5oz & 14oz dệt con thoi cổ điển. Tiêu chuẩn sợi 100% Zimbabwe Cotton. Thời hạn đặt hàng trước 20 ngày.'
   );
@@ -356,7 +361,12 @@ export const AdminSuppliersView: React.FC<{
               </label>
               <select
                 value={formStatus}
-                onChange={(e) => setFormStatus(e.target.value as any)}
+                onChange={(e) => {
+                  const nextStatus = e.target.value;
+                  if (isSupplierStatus(nextStatus)) {
+                    setFormStatus(nextStatus);
+                  }
+                }}
                 className="w-full px-3 py-2 bg-[#f3f4ef] border border-[#E8E9E3] rounded focus:bg-white focus:outline-none font-bold text-[#0B2419]"
               >
                 <option value="ACTIVE">● Đang hợp tác (ACTIVE)</option>

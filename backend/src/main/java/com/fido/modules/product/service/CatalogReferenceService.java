@@ -12,6 +12,10 @@ import com.fido.modules.product.repository.ColorRepository;
 import com.fido.modules.product.repository.ProductRepository;
 import com.fido.modules.product.repository.SizeSystemRepository;
 import com.fido.modules.product.repository.SizeValueRepository;
+import java.util.Collection;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -83,11 +87,43 @@ public class CatalogReferenceService {
                 );
     }
 
+    public Map<Long, SizeValue> sizeValuesById(
+            Collection<Long> sizeValueIds
+    ) {
+        var requestedIds = distinctIds(sizeValueIds);
+
+        if (requestedIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return requireAll(
+                requestedIds,
+                sizeValues.findAllBySizeValueIdIn(requestedIds),
+                SizeValue::getSizeValueId
+        );
+    }
+
     public Color color(Long colorId) {
         return colors.findById(colorId)
                 .orElseThrow(() ->
                         new ResponseStatusException(HttpStatus.NOT_FOUND)
                 );
+    }
+
+    public Map<Long, Color> colorsById(
+            Collection<Long> colorIds
+    ) {
+        var requestedIds = distinctIds(colorIds);
+
+        if (requestedIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return requireAll(
+                requestedIds,
+                colors.findAllByColorIdIn(requestedIds),
+                Color::getColorId
+        );
     }
 
     public Category leafCategory(Long categoryId) {
@@ -98,5 +134,37 @@ public class CatalogReferenceService {
         }
 
         return category;
+    }
+
+    private java.util.List<Long> distinctIds(
+            Collection<Long> ids
+    ) {
+        if (ids == null || ids.isEmpty()) {
+            return java.util.List.of();
+        }
+
+        return ids.stream()
+                .distinct()
+                .toList();
+    }
+
+    private <T> Map<Long, T> requireAll(
+            Collection<Long> requestedIds,
+            Collection<T> values,
+            Function<T, Long> id
+    ) {
+        Map<Long, T> valuesById = values.stream()
+                .collect(Collectors.toMap(
+                        id,
+                        Function.identity()
+                ));
+
+        for (Long requestedId : requestedIds) {
+            if (!valuesById.containsKey(requestedId)) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+            }
+        }
+
+        return Map.copyOf(valuesById);
     }
 }

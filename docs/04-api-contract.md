@@ -125,6 +125,24 @@ All actions must validate current state, permissions, side effects and idempoten
 
 Operations: `RETURN | EXCHANGE_SIZE`. This is a command over Order/Payment/Inventory/Audit; do not create an `after_sales_cases` resource/table in baseline.
 
+### API #29 — Product creation with images
+
+The project owner approved a backward-compatible physical transport refinement on 2026-10-03:
+
+- `application/json` remains supported exactly as the consolidated contract defines, including optional `images[{image_url,alt_text?}]`.
+- The same URL may also consume `multipart/form-data` for the admin UI. The `product` part carries the JSON metadata/variants and the optional repeated `images` part carries local image files.
+- Multipart image files are uploaded by the backend to the configured image-storage provider; provider credentials never leave the backend. The resulting **full direct URL** is persisted in the existing `product_images.image_url` column.
+- No image filename-only persistence, provider-specific database column, image table lifecycle, or `sort_order` column is introduced.
+- File upload occurs outside the database transaction; the database product/image/variant write starts only after all requested uploads succeed.
+- Provider-side delete/compensation is not claimed unless a supported provider delete contract is available. A failed database write after successful remote upload can therefore leave a remote orphan and must remain an explicit integration limitation rather than a hidden transaction guarantee.
+
+### Product image read semantics — project-owner refinement 2026-10-03
+
+- `ProductDetailDto`/`AdminProductDetailDto` continue returning the full `images[]` collection.
+- Public/admin product summaries, cart items and order items expose nullable `image_url` for presentation.
+- The representative presentation image is the existing ProductImage with the smallest `image_id`. This convention does **not** define gallery ordering and does not add persistent image-order semantics.
+- Cart and order `image_url` are current catalog presentation data, not OrderItem history snapshots. Missing current variant/product/image resolves to `null`; historical OrderItem snapshot fields remain authoritative.
+
 ### API #54 — GoodsReceipt actions
 
 `CONFIRM | CANCEL`; CONFIRM increments stock and creates InventoryTransaction exactly once.

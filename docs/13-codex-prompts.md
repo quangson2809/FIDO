@@ -143,35 +143,25 @@ Guest Orders do not become Accounts.
 Run permission/query/API tests and stop after Phase 7.
 ```
 
-## G. Independent review prompt
+## G. Independent review of a branch or phase
+
+Use Codex `/review` against the actual base branch for changed-code review. A whole-backend architecture audit is a separate task: inspect every claimed area and report coverage. Do not infer whole-system quality from a diff. Record the exact head SHA. The reviewer does not modify code.
 
 ```text
-ROLE
-You are an independent backend reviewer for the completed phase.
+ROLE: Independent FIDO backend reviewer, read-only.
+SCOPE: Review the selected branch diff against its actual base, or the specified phase/commit.
+Read backend/AGENTS.md and the relevant docs/00..15, then inspect surrounding code and tests.
 
-Do not modify code and do not open the next phase.
+Evaluate applicable contracts and design consequences: KISS, YAGNI, Boy Scout Rule,
+Separation of Concerns, Low Coupling, High Cohesion, Law of Demeter, Curly's Law,
+Principle of Least Astonishment and Least Privilege. Check module ownership,
+authorization, API behavior, persistence, transaction boundaries, stock/payment
+idempotency, tests and CI evidence. Assess the concrete change; do not require
+Query/Command splitting, one interface per class, or any fixed package pattern.
 
-Review against backend/AGENTS.md and docs/00..15.
-Check:
-- source deviations;
-- invented business fields/rules/endpoints;
-- module-boundary violations;
-- cross-module Repository calls;
-- transaction/state/stock/idempotency defects;
-- Entity leakage;
-- missing authorization/audit;
-- missing tests;
-- false blockers where a technical decision should have been made and documented.
-
-For each finding:
-ID
-SEVERITY
-FILE/LOCATION
-SOURCE/CONTRACT
-PROBLEM
-IMPACT
-MINIMAL FIX
-
-Verdict:
-PHASE X: PASS | REJECT
+For each actionable finding give severity BLOCKER/MAJOR/MINOR/INFO, file:line,
+source rule or principle, a concrete scenario, impact and minimal remediation.
+Separate defects introduced by the diff from pre-existing risks. State reviewed
+HEAD/base, coverage, verification performed/not performed, findings and residual
+uncertainty. Do not label unverified work PASS.
 ```

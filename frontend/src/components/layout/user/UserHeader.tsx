@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 
 export const UserHeader: React.FC = () => {
-  const { currentScreen, setCurrentScreen, setIsCartOpen, cartItems } = useApp();
+  const { setCurrentScreen } = useApp();
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
-  const totalCartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
     <>
@@ -35,7 +34,7 @@ export const UserHeader: React.FC = () => {
             {isCategoryOpen && (
               <div onMouseLeave={() => setIsCategoryOpen(false)} className="absolute left-0 top-full w-60 bg-white border border-[#E2E5DE] shadow-xl py-2 rounded-md z-50 animate-in fade-in slide-in-from-top-1 duration-150">
                 <button type="button" onClick={() => { setCurrentScreen('catalog'); setIsCategoryOpen(false); }} className="w-full text-left px-4 py-2.5 text-[13px] text-[#0B2419] hover:bg-[#F5F6F2] hover:text-[#1B5038] font-semibold flex items-center justify-between transition-colors border-b border-[#E2E5DE]/60">
-                    <span>Tất cả sản phẩm (124)</span>
+                  <span>Tất cả sản phẩm (124)</span>
                 </button>
                 {/* ... other items ... */}
               </div>
@@ -43,7 +42,7 @@ export const UserHeader: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-4 sm:gap-6">
-            {/* ... actions ... */}
+          {/* ... actions ... */}
         </div>
       </header>
     </>

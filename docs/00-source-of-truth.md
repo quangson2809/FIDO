@@ -26,7 +26,7 @@ Codex must distinguish **locked business requirements** from **implementation ch
 2. **Endpoint conflict:** latest consolidated API document wins for URL, method, DTO and JWT rules.
 3. **Business-state conflict:** use the locked SRS state model and DB invariants. The canonical successful delivery terminal state is `COMPLETED`; `DELIVERED` from older wording must not be introduced as an extra OrderStatus.
 4. **Technology conflict:** Analyst Docs deliberately do not lock DBMS/framework version. Preserve the repository's existing technology; do not upgrade or replace it without an explicit task.
-5. **Missing rule:** mark `BLOCKED/TBD`; do not infer from generic e-commerce practice.
+5. **Missing rule:** classify as HARD BLOCK only for the affected business/API/security/schema/state/money/stock/external-contract slice; defer explicitly phase-later work; choose and record ordinary technical decisions in `docs/15-technical-decisions.md`. Do not infer business policy from generic e-commerce practice.
 
 ## 4. Baseline identity
 

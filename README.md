@@ -1,132 +1,41 @@
 # FIDO
 
-FIDO is currently bootstrapped as a single Git repository containing a Spring Boot Web API and a React + TypeScript frontend.
+FIDO is a Spring Boot backend and React/TypeScript frontend in one repository. The backend uses a modular monolith organized by feature. This branch has implemented the documented backend phases through Phase 7; Phase 8 hardening and delivery readiness have not been completed. Phase gates and remaining deferred slices are tracked in `docs/11-implementation-phases.md`, `docs/12-tbd-out-of-scope.md` and `docs/16-phase-7-gate.md`.
 
-## Current scope
+## Repository
 
-This repository is intentionally at the **setup/bootstrap** stage only. It contains framework dependencies, database configuration, development environment configuration, CORS/security bootstrap, and a frontend-to-backend health check.
+- `backend/`: Java 17, Spring Boot 4.0.3, Gradle Kotlin DSL, Spring Data JPA, Spring Security and Flyway.
+- `frontend/`: React, TypeScript and Vite.
+- `docs/`: source precedence, architecture, API/data contracts, phase plan and implementation decisions.
+- `reference/`: machine-readable API, transitions and table ownership.
+- `.github/workflows/backend-verification.yml`: backend H2/MySQL verification.
 
-It does **not** define business architecture yet: no domain modules, entities, repositories, services, use cases, business controllers, feature folders, or authentication flow have been introduced.
+The nine backend business modules are `account`, `product`, `cart`, `promotion`, `order`, `inventory`, `audit`, `report` and `content`. Read `backend/AGENTS.md` and `docs/00-source-of-truth.md` before changing backend behavior. The original Phase 0 snapshot in `backend/ARCHITECTURE.md` is historical, not a description of the present implementation.
 
-## Stack
+## Local backend
 
-### Backend
-
-- Java 17
-- Spring Boot 4.0.3
-- Gradle Kotlin DSL
-- Spring Web MVC
-- Spring Data JPA
-- Spring Security
-- Spring Validation
-- Spring Boot Actuator
-- Springdoc OpenAPI
-- MySQL Connector/J
-- Lombok
-
-### Frontend
-
-- React 19
-- TypeScript 6
-- Vite 8
-- Axios
-- React Router
-- Tailwind CSS 4
-- DaisyUI 5
-
-## Repository layout
-
-```text
-FIDO/
-├── backend/   # Spring Boot application bootstrap
-├── frontend/  # React + TypeScript application bootstrap
-├── .gitignore
-├── .editorconfig
-└── README.md
-```
-
-The folders under `backend/src` and `frontend/src` are only the minimum framework-required scaffold. Application architecture has not been designed yet.
-
-## Prerequisites
-
-- JDK 17
-- Gradle 9.3.1 or a compatible Gradle 9.x installation
-- Node.js 22+
-- npm
-- MySQL 8+
-
-## 1. Prepare MySQL
-
-Create an empty database:
-
-```sql
-CREATE DATABASE fido CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
-Copy the backend environment template:
+Use JDK 17 and MySQL 8+. Supply database settings through the environment using `backend/.env.example` as a template; do not commit secrets. From `backend/`:
 
 ```powershell
-cd backend
-Copy-Item .env.example .env
+./gradlew.bat bootRun
+./gradlew.bat clean build
 ```
 
-Update `.env` when your local MySQL credentials differ from the defaults.
+On Unix-like shells use `./gradlew`. Flyway owns schema changes. The default H2 test suite runs with `clean build`; CI additionally tests migration/mapping against MySQL 8.4. For the MySQL test setup, see `.github/workflows/backend-verification.yml`.
 
-## 2. Run the backend
+## Local frontend
 
-From `backend/`:
+From `frontend/`, configure its `.env.example`, then:
 
 ```powershell
-gradle bootRun
-```
-
-The backend runs at `http://localhost:8080` by default.
-
-Technical smoke-test endpoint:
-
-```text
-GET http://localhost:8080/actuator/health
-```
-
-Swagger UI is available at:
-
-```text
-http://localhost:8080/swagger-ui.html
-```
-
-## 3. Run the frontend
-
-Copy the frontend environment template and install dependencies:
-
-```powershell
-cd frontend
-Copy-Item .env.example .env
 npm install
 npm run dev
-```
-
-The frontend runs at `http://localhost:5173` by default and checks the backend health endpoint through Axios.
-
-## 4. Verification
-
-Backend compile/test:
-
-```powershell
-cd backend
-gradle test
-gradle build
-```
-
-Frontend verification:
-
-```powershell
-cd frontend
 npm run lint
 npm run build
 ```
 
-## Setup completion boundary
+## Review and delivery
 
-Once both applications build, MySQL connectivity succeeds, and the frontend reports backend status `UP`, the bootstrap phase is complete.
+For changed code, use Codex `/review` against the intended base branch and the evidence-based design rules in `backend/AGENTS.md`. A whole-backend architecture assessment needs its own stated coverage. `docs/13-codex-prompts.md` contains implementation and review prompts. A passing build alone does not establish architectural or behavioral correctness.
 
-Do not introduce business packages or feature structure until the architecture/design phase starts.
+The backend API has documented partial slices: guest identity, voucher behavior, create-order retry guarantees and size-exchange automation remain unresolved/deferred as described in `docs/12-tbd-out-of-scope.md`. Do not assume the green phase gate means production readiness.

@@ -14,7 +14,7 @@
 { "data": {} }
 ```
 
-List:
+Paginated list:
 
 ```json
 {
@@ -29,6 +29,8 @@ List:
 ```
 
 Pagination defaults: page 1, page_size 20, maximum 100.
+
+Specific non-paginated collection contracts override the generic paginated-list convention. In the current baseline, API #66 returns `{data: PermissionDto[]}` and API #73 returns `{data: ContentPageDto[]}` with no `meta` object.
 
 Type convention: ID `int64`; quantity integer; money decimal; date `YYYY-MM-DD`; timestamp ISO-8601.
 
@@ -88,17 +90,21 @@ Never trust/accept these from clients unless a source explicitly makes them conf
 
 `ProductVariantDto(variant_id,size,color,sku?,effective_price,sale_status,available_quantity)`
 
-`ProductSummaryDto(product_id,name,category,brand?,base_price,sale_status)`
+`ProductSummaryDto(product_id,name,image_url?,category,brand?,base_price,sale_status)`
 
 `ProductDetailDto(product_id,name,description?,category,brand?,size_system,gender?,season?,style?,material_care?,base_price,sale_status,images[],variants[])`
+
+`AdminProductSummaryDto(product_id,name,image_url?,category_id,brand_id?,size_system_id,base_price,sale_status,created_at,updated_at)`
 
 `AdminVariantDto(variant_id,product_id,size_value_id,color_id,sku?,override_price?,sale_status,available_quantity,created_at,updated_at)`
 
 `CatalogMetaDto(categories[],brands[],size_systems[],colors[],genders[],seasons[],styles[])`; last three are derived from managed catalog values.
 
+The nullable summary `image_url` is presentation data resolved from the ProductImage with the smallest `image_id`. It is not a persisted primary-image flag and does not define gallery ordering. Detail `images[]` remains the complete image collection.
+
 ### cart/checkout/order
 
-`CartItemDto(cart_item_id,variant_id,quantity,product_name,size,color,unit_price,line_total,available_quantity)`
+`CartItemDto(cart_item_id,variant_id,quantity,product_name,image_url?,size,color,unit_price,line_total,available_quantity)`
 
 `CartDto(cart_id?,account_id?,items[],subtotal,created_at?,updated_at?)` — for an authenticated account without a persisted cart, return the same fields with null cart ID/timestamps, an empty item list and zero subtotal; GET does not create a cart.
 
@@ -108,7 +114,7 @@ Never trust/accept these from clients unless a source explicitly makes them conf
 
 `RecipientDto(phone,email?,address)`
 
-`OrderItemDto(order_item_id,variant_id,product_name,sku?,size,color,unit_price,quantity,line_total)`
+`OrderItemDto(order_item_id,variant_id,product_name,image_url?,sku?,size,color,unit_price,quantity,line_total)`
 
 `PaymentPublicDto(payment_status,amount_due,amount_received,amount_refunded)`
 
@@ -124,6 +130,8 @@ Never trust/accept these from clients unless a source explicitly makes them conf
 
 `OrderAdminDetailDto`: customer/voucher references, service note, cancel reason, admin payment and `allowed_actions` derived from state + permission.
 
+Cart and order `image_url` are current catalog presentation data, not historical snapshots. If the current catalog variant/product/image cannot be resolved, the field is `null`; OrderItem snapshot fields remain unchanged.
+
 ### inventory/audit/report/content
 
 `SupplierDto`, `GoodsReceiptItemDto`, `GoodsReceiptSummaryDto`, `GoodsReceiptDetailDto`, `InventoryRowDto`, `InventoryTransactionDto`, `AuditLogDto`, `ReportOverviewDto`, `PublicContentPageDto`, `ContentPageDto`, `CustomerSummaryDto`, `CustomerDetailDto` follow the fields in Analyst API Appendix A; do not expose persistence-only secrets.
@@ -132,11 +140,15 @@ Never trust/accept these from clients unless a source explicitly makes them conf
 
 ### Register
 
-`phone?`, `email?`, `password` required. Login identifier/uniqueness/verification policy is still physical-design TBD. Never accept `role` or `account_id` from public registration.
+`phone`, `password` required; `email?` optional. The project-owner physical-design decision in `docs/15-technical-decisions.md` resolves the earlier Analyst TBD: phone is the login identifier, phone is unique per Account, and login does not require phone verification. Never accept `role` or `account_id` from public registration.
 
 ### Login
 
-`identifier`, `password` -> access token + AccountDto. Do not infer whether identifier is phone/email/both until physical design/repo configuration locks it.
+`identifier`, `password` -> access token + AccountDto. `identifier` carries the Account phone number according to the approved physical-design decision; do not silently broaden login to email or mixed phone/email lookup.
+
+### Staff account creation
+
+`phone`, `password` are required by the resolved phone-login design; `email?` and `role_ids?` remain optional. Omitting `role_ids` uses the approved ADMIN default; explicit role assignments must still satisfy the staff-role rules in `docs/15-technical-decisions.md`.
 
 ### Add/update cart item
 
@@ -148,7 +160,11 @@ Receiver phone/address required, email optional, voucher code optional. Server o
 
 ### Product create
 
-Required: category, SizeSystem, name, base price, sale status. Optional fields follow schema. Nested image/variant collections are allowed by API contract. Validate leaf Category, SizeSystem/SizeValue match and variant uniqueness.
+Required: category, SizeSystem, name, base price, sale status. Optional fields follow schema. Nested image/variant collections are allowed by the JSON API contract. Validate leaf Category, SizeSystem/SizeValue match and variant uniqueness.
+
+API #29 also accepts a project-owner-approved multipart representation for the admin UI: JSON metadata in part `product` and optional repeated binary part `images`. Multipart requests must not also provide the JSON `images` collection. The backend uploads files to the configured provider and persists each returned **full direct URL** in the existing `product_images.image_url`; provider credentials are backend-only. The JSON representation remains backward compatible.
+
+No `product_images.sort_order`, provider ID, delete token or other image column is added. Provider-side remote deletion/compensation remains unsupported unless the provider exposes a verified machine-to-machine delete contract.
 
 ### Inventory adjustment
 

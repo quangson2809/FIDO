@@ -1,42 +1,14 @@
 package com.fido.modules.account;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fido.modules.account.service.SuperadminBootstrapService;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
-import org.springframework.security.oauth2.jwt.JwsHeader;
-import org.springframework.security.oauth2.jwt.JwtClaimsSet;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
-import org.springframework.test.context.ActiveProfiles;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 class RbacHttpTests extends AccountHttpSupport {
 
@@ -101,7 +73,7 @@ class RbacHttpTests extends AccountHttpSupport {
                 ).status()
         );
 
-        var permissionPage = call(
+        var permissionList = call(
                 "GET",
                 "/api/v1/admin/permissions",
                 token,
@@ -110,26 +82,21 @@ class RbacHttpTests extends AccountHttpSupport {
 
         assertEquals(
                 200,
-                permissionPage.status()
+                permissionList.status()
         );
 
-        assertEquals(
-                20,
-                permissionPage.data()
-                        .get("meta")
-                        .get("page_size")
-                        .asInt()
-        );
+        assertTrue(permissionList.data().get("data").isArray());
 
-        assertEquals(
-                400,
-                call(
-                        "GET",
-                        "/api/v1/admin/permissions?page_size=101",
-                        token,
-                        null
-                ).status()
-        );
+        boolean permissionFound = false;
+        for (var permissionNode : permissionList.data().get("data")) {
+            if (permissionNode.get("permission_id").asLong() == permissionId) {
+                permissionFound = true;
+                break;
+            }
+        }
+
+        assertTrue(permissionFound);
+        assertFalse(permissionList.data().has("meta"));
 
         var roleResponse = call(
                 "POST",

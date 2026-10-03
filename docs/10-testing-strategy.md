@@ -46,7 +46,7 @@ Use real transactional integration testing appropriate to the configured DB stac
 | AC-07 | Cancellation after deduction restores exact quantity with ledger; PENDING cancellation leaves stock unchanged |
 | AC-08 | GoodsReceipt CONFIRMED increments stock once; repeated confirm has no second increment |
 | AC-09 | Return policy behavior/recorded outcome follows 2-day + tags baseline; accepted full return -> RETURNED |
-| AC-10 | Revenue counts COMPLETED; RETURNED adjusts retained sales |
+| AC-10 | Received sales include shipping; RETURNED subtracts the full order value in the original completion period. Status counts use order creation date; report date bounds use Asia/Ho_Chi_Minh (resolved in docs/15). |
 
 AC-02's guest identity/session plumbing may remain blocked by the explicit guest-session security TBD; keep the business service tests separate from the unresolved authentication/session mechanism.
 
@@ -77,3 +77,5 @@ For every stock-changing command, assert both current inventory and exactly one 
 ## 6. Phase gate
 
 A phase is not complete merely because compilation passes. It must pass its relevant rule/contract/integration tests and leave no known speculative business behavior hidden behind defaults.
+
+For backend PRs, CI runs the H2 build and MySQL migration/mapping/test suite. Passing tests establish technical execution evidence only; architecture and behavioral quality must still be reviewed against the repository rules and source contracts during the task/review process.

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 export const AdminInwardView: React.FC<{
   showToast: (msg: string) => void;
   onNavigateTab: (tab: string, breadcrumb: string) => void;
-}> = ({ showToast, onNavigateTab }) => {
+}> = ({ showToast }) => {
   const [receipts] = useState([
     {
       id: 'GR-0042',
