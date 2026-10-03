@@ -48,6 +48,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
   const [toast, setToast] = useState({ message: '', visible: false });
 
+  const refreshCart = async (): Promise<void> => {
+    const cart = await cartService.getCart();
+    setCartItems(toCartItems(cart));
+  };
+
   useEffect(() => {
     let active = true;
 
@@ -281,6 +286,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         isCartOpen,
         setIsCartOpen,
         cartItems,
+        refreshCart,
         addToCart,
         removeFromCart,
         updateCartQuantity,
