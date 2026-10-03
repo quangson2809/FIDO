@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
@@ -33,37 +34,34 @@ public class CatalogVariantReadService {
     private final SizeValueRepository sizes;
     private final ColorRepository colors;
     private final InventoryAvailabilityService inventory;
+    private final ProductImageReadService imageRead;
 
     public CatalogVariantReadService(
             ProductVariantRepository variants,
             ProductRepository products,
             SizeValueRepository sizes,
             ColorRepository colors,
-            InventoryAvailabilityService inventory
+            InventoryAvailabilityService inventory,
+            ProductImageReadService imageRead
     ) {
         this.variants = variants;
         this.products = products;
         this.sizes = sizes;
         this.colors = colors;
         this.inventory = inventory;
+        this.imageRead = imageRead;
     }
 
     public VariantView get(Long variantId) {
-        return getAll(java.util.List.of(variantId))
-                .get(variantId);
+        return getAll(java.util.List.of(variantId)).get(variantId);
     }
 
-    public Map<Long, VariantView> getAll(
-            Collection<Long> variantIds
-    ) {
+    public Map<Long, VariantView> getAll(Collection<Long> variantIds) {
         if (variantIds == null || variantIds.isEmpty()) {
             return Map.of();
         }
 
-        var requestedIds = variantIds.stream()
-                .distinct()
-                .toList();
-
+        var requestedIds = variantIds.stream().distinct().toList();
         Map<Long, ProductVariant> variantsById = variants
                 .findAllByVariantIdIn(requestedIds)
                 .stream()
@@ -78,74 +76,59 @@ public class CatalogVariantReadService {
             }
         }
 
-        Map<Long, Product> productsById = products
-                .findAllByProductIdIn(
-                        variantsById.values()
-                                .stream()
-                                .map(ProductVariant::getProductId)
-                                .distinct()
-                                .toList()
-                )
+        var productIds = variantsById.values()
                 .stream()
-                .collect(Collectors.toMap(
-                        Product::getProductId,
-                        Function.identity()
-                ));
+                .map(ProductVariant::getProductId)
+                .distinct()
+                .toList();
+
+        Map<Long, Product> productsById = products
+                .findAllByProductIdIn(productIds)
+                .stream()
+                .collect(Collectors.toMap(Product::getProductId, Function.identity()));
+
+        Map<Long, String> imagesByProductId = imageRead.representativeByProductIds(productIds);
 
         Map<Long, SizeValue> sizesById = sizes
                 .findAllBySizeValueIdIn(
-                        variantsById.values()
-                                .stream()
+                        variantsById.values().stream()
                                 .map(ProductVariant::getSizeValueId)
                                 .distinct()
                                 .toList()
                 )
                 .stream()
-                .collect(Collectors.toMap(
-                        SizeValue::getSizeValueId,
-                        Function.identity()
-                ));
+                .collect(Collectors.toMap(SizeValue::getSizeValueId, Function.identity()));
 
         Map<Long, Color> colorsById = colors
                 .findAllByColorIdIn(
-                        variantsById.values()
-                                .stream()
+                        variantsById.values().stream()
                                 .map(ProductVariant::getColorId)
                                 .distinct()
                                 .toList()
                 )
                 .stream()
-                .collect(Collectors.toMap(
-                        Color::getColorId,
-                        Function.identity()
-                ));
+                .collect(Collectors.toMap(Color::getColorId, Function.identity()));
 
-        Map<Long, Integer> availabilityByVariantId =
-                inventory.availableQuantities(requestedIds);
-
+        Map<Long, Integer> availabilityByVariantId = inventory.availableQuantities(requestedIds);
         var result = new LinkedHashMap<Long, VariantView>();
 
         for (Long variantId : requestedIds) {
             ProductVariant variant = variantsById.get(variantId);
-
             Product product = required(
                     productsById,
                     variant.getProductId(),
                     "Variant references missing product"
             );
-
             SizeValue size = required(
                     sizesById,
                     variant.getSizeValueId(),
                     "Variant references missing size"
             );
-
             Color color = required(
                     colorsById,
                     variant.getColorId(),
                     "Variant references missing color"
             );
-
             BigDecimal unitPrice = variant.getOverridePrice() == null
                     ? product.getBasePrice()
                     : variant.getOverridePrice();
@@ -156,16 +139,14 @@ public class CatalogVariantReadService {
                             variant.getVariantId(),
                             product.getProductId(),
                             product.getName(),
+                            imagesByProductId.get(product.getProductId()),
                             variant.getSku(),
                             size.getDisplayName(),
                             color.getName(),
                             unitPrice,
                             product.getSaleStatus(),
                             variant.getSaleStatus(),
-                            availabilityByVariantId.getOrDefault(
-                                    variantId,
-                                    0
-                            )
+                            availabilityByVariantId.getOrDefault(variantId, 0)
                     )
             );
         }
@@ -173,17 +154,40 @@ public class CatalogVariantReadService {
         return Map.copyOf(result);
     }
 
-    private <T> T required(
-            Map<Long, T> values,
-            Long id,
-            String message
+    public Map<Long, String> representativeImageUrlsByVariantIds(
+            Collection<Long> variantIds
     ) {
-        T value = values.get(id);
+        if (variantIds == null || variantIds.isEmpty()) {
+            return Map.of();
+        }
 
+        var foundVariants = variants.findAllByVariantIdIn(
+                variantIds.stream()
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList()
+        );
+        var imageUrlsByProductId = imageRead.representativeByProductIds(
+                foundVariants.stream()
+                        .map(ProductVariant::getProductId)
+                        .distinct()
+                        .toList()
+        );
+        var result = new LinkedHashMap<Long, String>();
+        for (ProductVariant variant : foundVariants) {
+            String imageUrl = imageUrlsByProductId.get(variant.getProductId());
+            if (imageUrl != null) {
+                result.put(variant.getVariantId(), imageUrl);
+            }
+        }
+        return Map.copyOf(result);
+    }
+
+    private <T> T required(Map<Long, T> values, Long id, String message) {
+        T value = values.get(id);
         if (value == null) {
             throw new IllegalStateException(message);
         }
-
         return value;
     }
 
@@ -191,6 +195,7 @@ public class CatalogVariantReadService {
             Long variantId,
             Long productId,
             String productName,
+            String imageUrl,
             String sku,
             String size,
             String color,
@@ -199,7 +204,6 @@ public class CatalogVariantReadService {
             String variantSaleStatus,
             Integer availableQuantity
     ) {
-
         public boolean purchasable() {
             return CatalogPolicy.ON_SALE.equals(productSaleStatus)
                     && CatalogPolicy.ON_SALE.equals(variantSaleStatus)

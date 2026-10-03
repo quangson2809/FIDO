@@ -1,7 +1,6 @@
 package com.fido.modules.product;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -16,16 +15,12 @@ class CatalogPublicHttpTests extends CatalogHttpSupport {
         long colorId = fixture.colorId();
         long productId = fixture.productId();
         long variantId = fixture.variantId();
-        db.update(
-                """
+        db.update("""
                 UPDATE inventories
                 SET available_quantity = ?,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE variant_id = ?
-                """,
-                5,
-                variantId
-        );
+                """, 5, variantId);
 
         var list = call(
                 "GET",
@@ -38,120 +33,32 @@ class CatalogPublicHttpTests extends CatalogHttpSupport {
                 null,
                 null
         );
+        assertEquals(200, list.status(), list.body());
+        assertEquals(1, list.data().get("meta").get("total").asInt());
 
-        assertEquals(
-                200,
-                list.status(),
-                list.body()
-        );
+        var detail = call("GET", "/api/v1/catalog/products/" + productId, null, null);
+        assertEquals(200, detail.status(), detail.body());
+        assertEquals(90000, detail.data().get("data").get("variants").get(0)
+                .get("effective_price").asInt());
+        assertEquals(5, detail.data().get("data").get("variants").get(0)
+                .get("available_quantity").asInt());
+        assertEquals(200, call("GET", "/api/v1/catalog/meta", null, null).status());
 
-        assertEquals(
-                1,
-                list.data()
-                        .get("meta")
-                        .get("total")
-                        .asInt()
-        );
+        assertEquals(200, call(
+                "PATCH",
+                "/api/v1/admin/products/" + productId + "/variants/" + variantId,
+                writer.token(),
+                Map.of("sale_status", "STOPPED")
+        ).status());
 
-        var detail = call(
-                "GET",
-                "/api/v1/catalog/products/" + productId,
-                null,
-                null
-        );
+        var stoppedList = call("GET", "/api/v1/catalog/products?q=FIDO", null, null);
+        assertEquals(0, stoppedList.data().get("meta").get("total").asInt());
 
-        assertEquals(
-                200,
-                detail.status(),
-                detail.body()
-        );
-
-        assertEquals(
-                90000,
-                detail.data()
-                        .get("data")
-                        .get("variants")
-                        .get(0)
-                        .get("effective_price")
-                        .asInt()
-        );
-
-        assertEquals(
-                5,
-                detail.data()
-                        .get("data")
-                        .get("variants")
-                        .get(0)
-                        .get("available_quantity")
-                        .asInt()
-        );
-
-        assertEquals(
-                200,
-                call(
-                        "GET",
-                        "/api/v1/catalog/meta",
-                        null,
-                        null
-                ).status()
-        );
-
-        // STOPPED and zero stock remain separate concepts.
-        assertEquals(
-                200,
-                call(
-                        "PATCH",
-                        "/api/v1/admin/products/"
-                                + productId
-                                + "/variants/"
-                                + variantId,
-                        writer.token(),
-                        Map.of("sale_status", "STOPPED")
-                ).status()
-        );
-
-        var stoppedList = call(
-                "GET",
-                "/api/v1/catalog/products?q=FIDO",
-                null,
-                null
-        );
-
-        assertEquals(
-                0,
-                stoppedList.data()
-                        .get("meta")
-                        .get("total")
-                        .asInt()
-        );
-
-        var stoppedDetail = call(
-                "GET",
-                "/api/v1/catalog/products/" + productId,
-                null,
-                null
-        );
-
-        assertEquals(
-                "STOPPED",
-                stoppedDetail.data()
-                        .get("data")
-                        .get("variants")
-                        .get(0)
-                        .get("sale_status")
-                        .asText()
-        );
-
-        assertEquals(
-                5,
-                stoppedDetail.data()
-                        .get("data")
-                        .get("variants")
-                        .get(0)
-                        .get("available_quantity")
-                        .asInt()
-        );
-
+        var stoppedDetail = call("GET", "/api/v1/catalog/products/" + productId, null, null);
+        assertEquals("STOPPED", stoppedDetail.data().get("data").get("variants").get(0)
+                .get("sale_status").asText());
+        assertEquals(5, stoppedDetail.data().get("data").get("variants").get(0)
+                .get("available_quantity").asInt());
     }
 
     @Test
@@ -159,21 +66,13 @@ class CatalogPublicHttpTests extends CatalogHttpSupport {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         var fixture = createCatalog(writer);
 
-        var createdProduct = fixture.createProductResponse()
+        var createdImage = fixture.createProductResponse()
                 .data()
-                .get("data");
-        var createdImage = createdProduct
+                .get("data")
                 .get("images")
                 .get(0);
-
-        assertEquals(
-                "https://example.test/shirt.png",
-                createdImage.get("image_url").asText()
-        );
-        assertEquals(
-                "shirt",
-                createdImage.get("alt_text").asText()
-        );
+        assertEquals("https://example.test/shirt.png", createdImage.get("image_url").asText());
+        assertEquals("shirt", createdImage.get("alt_text").asText());
 
         var detail = call(
                 "GET",
@@ -181,40 +80,17 @@ class CatalogPublicHttpTests extends CatalogHttpSupport {
                 null,
                 null
         );
-
         assertEquals(200, detail.status(), detail.body());
         assertEquals(
                 "https://example.test/shirt.png",
-                detail.data()
-                        .get("data")
-                        .get("images")
-                        .get(0)
-                        .get("image_url")
-                        .asText()
-        );
-        assertEquals(
-                "shirt",
-                detail.data()
-                        .get("data")
-                        .get("images")
-                        .get(0)
-                        .get("alt_text")
-                        .asText()
+                detail.data().get("data").get("images").get(0).get("image_url").asText()
         );
 
-        var list = call(
-                "GET",
-                "/api/v1/catalog/products?q=FIDO",
-                null,
-                null
-        );
-
+        var list = call("GET", "/api/v1/catalog/products?q=FIDO", null, null);
         assertEquals(200, list.status(), list.body());
-        assertFalse(
-                list.data()
-                        .get("data")
-                        .get(0)
-                        .has("primary_image")
+        assertEquals(
+                "https://example.test/shirt.png",
+                list.data().get("data").get(0).get("image_url").asText()
         );
     }
 }

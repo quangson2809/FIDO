@@ -6,12 +6,14 @@ import com.fido.modules.order.dto.response.OrderAdminDetailDto;
 import com.fido.modules.order.dto.response.OrderCustomerDetailDto;
 import com.fido.modules.order.dto.response.OrderSummaryDto;
 import com.fido.modules.order.entity.Order;
+import com.fido.modules.order.entity.OrderItem;
 import com.fido.modules.order.entity.Payment;
 import com.fido.modules.order.mapper.OrderMapper;
 import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
 import com.fido.modules.order.repository.ShippingInfoRepository;
+import com.fido.modules.product.service.CatalogVariantReadService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +41,7 @@ public class OrderQueryService {
     private final ShippingInfoRepository shipping;
     private final OrderActionPolicy actionPolicy;
     private final OrderAuthorization authorization;
+    private final CatalogVariantReadService catalog;
 
     public OrderQueryService(
             OrderRepository orders,
@@ -46,7 +49,8 @@ public class OrderQueryService {
             PaymentRepository payments,
             ShippingInfoRepository shipping,
             OrderActionPolicy actionPolicy,
-            OrderAuthorization authorization
+            OrderAuthorization authorization,
+            CatalogVariantReadService catalog
     ) {
         this.orders = orders;
         this.items = items;
@@ -54,6 +58,7 @@ public class OrderQueryService {
         this.shipping = shipping;
         this.actionPolicy = actionPolicy;
         this.authorization = authorization;
+        this.catalog = catalog;
     }
 
     public ApiListResponse<OrderSummaryDto> customerOrders(
@@ -65,29 +70,17 @@ public class OrderQueryService {
         if (orderStatus != null) {
             OrderPolicy.requireOrderStatus(orderStatus);
         }
-
         Pagination pagination = Pagination.of(page, pageSize);
-
-        Specification<Order> specification =
-                OrderSpecifications.customerOrders(accountId, orderStatus);
-
-        var result = orders.findAll(
-                specification,
-                pagination.toPageable()
-        );
-
+        Specification<Order> specification = OrderSpecifications.customerOrders(accountId, orderStatus);
+        var result = orders.findAll(specification, pagination.toPageable());
         return ApiListResponse.of(
                 summaries(result.getContent()),
                 pagination.meta(result.getTotalElements())
         );
     }
 
-    public OrderCustomerDetailDto customerDetail(
-            Long accountId,
-            Long orderId
-    ) {
-        Order order = customerOrder(accountId, orderId);
-        return customerDetailInternal(order);
+    public OrderCustomerDetailDto customerDetail(Long accountId, Long orderId) {
+        return customerDetailInternal(customerOrder(accountId, orderId));
     }
 
     @PreAuthorize(READ)
@@ -103,24 +96,15 @@ public class OrderQueryService {
         if (orderStatus != null) {
             OrderPolicy.requireOrderStatus(orderStatus);
         }
-
         if (paymentStatus != null
-                && !List.of(
-                        OrderPolicy.UNPAID,
-                        OrderPolicy.PAID,
-                        OrderPolicy.REFUNDED
-                ).contains(paymentStatus)) {
+                && !List.of(OrderPolicy.UNPAID, OrderPolicy.PAID, OrderPolicy.REFUNDED)
+                        .contains(paymentStatus)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         }
-
-        if (createdFrom != null
-                && createdTo != null
-                && createdFrom.isAfter(createdTo)) {
+        if (createdFrom != null && createdTo != null && createdFrom.isAfter(createdTo)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         }
-
         Pagination pagination = Pagination.of(page, pageSize);
-
         var result = orders.findAll(
                 OrderSpecifications.adminOrders(
                         orderCode,
@@ -131,7 +115,6 @@ public class OrderQueryService {
                 ),
                 pagination.toPageable()
         );
-
         return ApiListResponse.of(
                 summaries(result.getContent()),
                 pagination.meta(result.getTotalElements())
@@ -143,26 +126,13 @@ public class OrderQueryService {
             Long orderId,
             Authentication authentication
     ) {
-        return adminDetailInternal(
-                order(orderId),
-                authentication
-        );
+        return adminDetailInternal(order(orderId), authentication);
     }
 
     OrderCustomerDetailDto customerDetailInternal(Order order) {
-        var orderItems = items
-                .findAllByOrderIdOrderByOrderItemIdAsc(
-                        order.getOrderId()
-                )
-                .stream()
-                .map(OrderMapper::item)
-                .toList();
-
+        var orderItems = orderItems(order.getOrderId());
         Payment payment = payment(order.getOrderId());
-
-        var shippingInfo = shipping
-                .findById(order.getOrderId())
-                .orElse(null);
+        var shippingInfo = shipping.findById(order.getOrderId()).orElse(null);
 
         return new OrderCustomerDetailDto(
                 order.getOrderId(),
@@ -187,19 +157,9 @@ public class OrderQueryService {
             Order order,
             Authentication authentication
     ) {
-        var orderItems = items
-                .findAllByOrderIdOrderByOrderItemIdAsc(
-                        order.getOrderId()
-                )
-                .stream()
-                .map(OrderMapper::item)
-                .toList();
-
+        var orderItems = orderItems(order.getOrderId());
         Payment payment = payment(order.getOrderId());
-
-        var shippingInfo = shipping
-                .findById(order.getOrderId())
-                .orElse(null);
+        var shippingInfo = shipping.findById(order.getOrderId()).orElse(null);
 
         return new OrderAdminDetailDto(
                 order.getOrderId(),
@@ -228,80 +188,64 @@ public class OrderQueryService {
         );
     }
 
+    private List<com.fido.modules.order.dto.response.OrderItemDto> orderItems(Long orderId) {
+        List<OrderItem> orderItems = items.findAllByOrderIdOrderByOrderItemIdAsc(orderId);
+        Map<Long, String> imageUrlsByVariantId = catalog.representativeImageUrlsByVariantIds(
+                orderItems.stream()
+                        .map(OrderItem::getVariantId)
+                        .filter(Objects::nonNull)
+                        .toList()
+        );
+        return orderItems.stream()
+                .map(item -> OrderMapper.item(
+                        item,
+                        imageUrlsByVariantId.get(item.getVariantId())
+                ))
+                .toList();
+    }
+
     private List<OrderSummaryDto> summaries(List<Order> pageOrders) {
         if (pageOrders.isEmpty()) {
             return List.of();
         }
-
         Map<Long, Payment> paymentsByOrderId = payments
-                .findAllByOrderIdIn(
-                        pageOrders.stream()
-                                .map(Order::getOrderId)
-                                .toList()
-                )
+                .findAllByOrderIdIn(pageOrders.stream().map(Order::getOrderId).toList())
                 .stream()
-                .collect(Collectors.toMap(
-                        Payment::getOrderId,
-                        Function.identity()
-                ));
-
+                .collect(Collectors.toMap(Payment::getOrderId, Function.identity()));
         return pageOrders.stream()
-                .map(order ->
-                        OrderMapper.summary(
-                                order,
-                                payment(
-                                        paymentsByOrderId,
-                                        order.getOrderId()
-                                )
-                        )
-                )
+                .map(order -> OrderMapper.summary(
+                        order,
+                        payment(paymentsByOrderId, order.getOrderId())
+                ))
                 .toList();
     }
 
-    private Payment payment(
-            Map<Long, Payment> paymentsByOrderId,
-            Long orderId
-    ) {
+    private Payment payment(Map<Long, Payment> paymentsByOrderId, Long orderId) {
         Payment payment = paymentsByOrderId.get(orderId);
-
         if (payment == null) {
             throw missingPayment();
         }
-
         return payment;
     }
 
-    private Order customerOrder(
-            Long accountId,
-            Long orderId
-    ) {
+    private Order customerOrder(Long accountId, Long orderId) {
         Order order = order(orderId);
-
-        if (!Objects.equals(
-                order.getCustomerAccountId(),
-                accountId
-        )) {
+        if (!Objects.equals(order.getCustomerAccountId(), accountId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
-
         return order;
     }
 
     private Order order(Long orderId) {
         return orders.findById(orderId)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND)
-                );
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
     private Payment payment(Long orderId) {
-        return payments.findById(orderId)
-                .orElseThrow(this::missingPayment);
+        return payments.findById(orderId).orElseThrow(this::missingPayment);
     }
 
     private IllegalStateException missingPayment() {
-        return new IllegalStateException(
-                "Order payment is missing"
-        );
+        return new IllegalStateException("Order payment is missing");
     }
 }

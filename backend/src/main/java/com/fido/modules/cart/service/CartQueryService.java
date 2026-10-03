@@ -20,8 +20,11 @@ public class CartQueryService {
     private final CartItemRepository items;
     private final CatalogVariantReadService catalog;
 
-    public CartQueryService(CartRepository carts, CartItemRepository items,
-                            CatalogVariantReadService catalog) {
+    public CartQueryService(
+            CartRepository carts,
+            CartItemRepository items,
+            CatalogVariantReadService catalog
+    ) {
         this.carts = carts;
         this.items = items;
         this.catalog = catalog;
@@ -39,23 +42,18 @@ public class CartQueryService {
         return carts
                 .findFirstByAccountIdOrderByUpdatedAtDescCartIdDesc(accountId)
                 .map(this::toCheckoutView)
-                .orElseGet(() ->
-                        new CheckoutCartView(
-                                null,
-                                List.of(),
-                                BigDecimal.ZERO
-                        )
-                );
+                .orElseGet(() -> new CheckoutCartView(
+                        null,
+                        List.of(),
+                        BigDecimal.ZERO
+                ));
     }
 
     CartDto toDto(Cart cart) {
         ResolvedCart resolved = resolveCart(cart);
-
-        var itemDtos = resolved.items()
-                .stream()
+        var itemDtos = resolved.items().stream()
                 .map(this::toCartItemDto)
                 .toList();
-
         return new CartDto(
                 cart.getCartId(),
                 cart.getAccountId(),
@@ -68,12 +66,9 @@ public class CartQueryService {
 
     private CheckoutCartView toCheckoutView(Cart cart) {
         ResolvedCart resolved = resolveCart(cart);
-
-        var checkoutItems = resolved.items()
-                .stream()
+        var checkoutItems = resolved.items().stream()
                 .map(this::toCheckoutItem)
                 .toList();
-
         return new CheckoutCartView(
                 cart.getCartId(),
                 checkoutItems,
@@ -82,38 +77,17 @@ public class CartQueryService {
     }
 
     private ResolvedCart resolveCart(Cart cart) {
-        List<CartItem> cartItems =
-                items.findAllByCartIdOrderByCartItemIdAsc(
-                        cart.getCartId()
-                );
-
-        Map<Long, CatalogVariantReadService.VariantView> variantsById =
-                catalog.getAll(
-                        cartItems.stream()
-                                .map(CartItem::getVariantId)
-                                .toList()
-                );
-
+        List<CartItem> cartItems = items.findAllByCartIdOrderByCartItemIdAsc(cart.getCartId());
+        Map<Long, CatalogVariantReadService.VariantView> variantsById = catalog.getAll(
+                cartItems.stream().map(CartItem::getVariantId).toList()
+        );
         var resolvedItems = cartItems.stream()
-                .map(item ->
-                        resolve(
-                                item,
-                                variantsById.get(item.getVariantId())
-                        )
-                )
+                .map(item -> resolve(item, variantsById.get(item.getVariantId())))
                 .toList();
-
         BigDecimal subtotal = resolvedItems.stream()
                 .map(ResolvedCartItem::lineTotal)
-                .reduce(
-                        BigDecimal.ZERO,
-                        BigDecimal::add
-                );
-
-        return new ResolvedCart(
-                resolvedItems,
-                subtotal
-        );
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return new ResolvedCart(resolvedItems, subtotal);
     }
 
     private ResolvedCartItem resolve(
@@ -121,34 +95,22 @@ public class CartQueryService {
             CatalogVariantReadService.VariantView variant
     ) {
         if (variant == null) {
-            throw new IllegalStateException(
-                    "Cart item references missing catalog variant"
-            );
+            throw new IllegalStateException("Cart item references missing catalog variant");
         }
-
         BigDecimal lineTotal = variant.unitPrice()
-                .multiply(
-                        BigDecimal.valueOf(item.getQuantity())
-                );
-
-        return new ResolvedCartItem(
-                item,
-                variant,
-                lineTotal
-        );
+                .multiply(BigDecimal.valueOf(item.getQuantity()));
+        return new ResolvedCartItem(item, variant, lineTotal);
     }
 
-    private CartItemDto toCartItemDto(
-            ResolvedCartItem resolved
-    ) {
+    private CartItemDto toCartItemDto(ResolvedCartItem resolved) {
         CartItem item = resolved.item();
         var variant = resolved.variant();
-
         return new CartItemDto(
                 item.getCartItemId(),
                 item.getVariantId(),
                 item.getQuantity(),
                 variant.productName(),
+                variant.imageUrl(),
                 variant.size(),
                 variant.color(),
                 variant.unitPrice(),
@@ -157,12 +119,9 @@ public class CartQueryService {
         );
     }
 
-    private CheckoutCartView.Item toCheckoutItem(
-            ResolvedCartItem resolved
-    ) {
+    private CheckoutCartView.Item toCheckoutItem(ResolvedCartItem resolved) {
         CartItem item = resolved.item();
         var variant = resolved.variant();
-
         return new CheckoutCartView.Item(
                 item.getVariantId(),
                 item.getQuantity(),
@@ -177,10 +136,7 @@ public class CartQueryService {
         );
     }
 
-    private record ResolvedCart(
-            List<ResolvedCartItem> items,
-            BigDecimal subtotal
-    ) {
+    private record ResolvedCart(List<ResolvedCartItem> items, BigDecimal subtotal) {
         private ResolvedCart {
             items = List.copyOf(items);
         }

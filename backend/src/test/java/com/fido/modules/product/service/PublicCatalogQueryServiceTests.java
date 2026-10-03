@@ -30,29 +30,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class PublicCatalogQueryServiceTests {
 
-    @Mock
-    private ProductRepository products;
-
-    @Mock
-    private ProductVariantRepository variants;
-
-    @Mock
-    private ProductImageRepository images;
-
-    @Mock
-    private CategoryRepository categories;
-
-    @Mock
-    private BrandRepository brands;
-
-    @Mock
-    private InventoryAvailabilityService inventory;
-
-    @Mock
-    private CatalogReferenceService references;
-
-    @Mock
-    private CatalogMetaService metaService;
+    @Mock private ProductRepository products;
+    @Mock private ProductVariantRepository variants;
+    @Mock private ProductImageRepository images;
+    @Mock private ProductImageReadService imageRead;
+    @Mock private CategoryRepository categories;
+    @Mock private BrandRepository brands;
+    @Mock private InventoryAvailabilityService inventory;
+    @Mock private CatalogReferenceService references;
+    @Mock private CatalogMetaService metaService;
 
     private PublicCatalogQueryService service;
 
@@ -62,6 +48,7 @@ class PublicCatalogQueryServiceTests {
                 products,
                 variants,
                 images,
+                imageRead,
                 categories,
                 brands,
                 inventory,
@@ -84,7 +71,6 @@ class PublicCatalogQueryServiceTests {
         ProductVariant second = variant(2L, 12L, 22L);
         when(variants.findAllByProductIdOrderByVariantIdAsc(100L))
                 .thenReturn(List.of(first, second));
-
         when(inventory.availableQuantities(List.of(1L, 2L)))
                 .thenReturn(Map.of(1L, 3, 2L, 4));
 
@@ -92,14 +78,11 @@ class PublicCatalogQueryServiceTests {
         SizeValue secondSize = size(12L);
         when(references.sizeValuesById(List.of(11L, 12L)))
                 .thenReturn(Map.of(11L, firstSize, 12L, secondSize));
-
         Color firstColor = color(21L);
         Color secondColor = color(22L);
         when(references.colorsById(List.of(21L, 22L)))
                 .thenReturn(Map.of(21L, firstColor, 22L, secondColor));
-
-        when(images.findAllByProductIdOrderByImageIdAsc(100L))
-                .thenReturn(List.of());
+        when(images.findAllByProductIdOrderByImageIdAsc(100L)).thenReturn(List.of());
 
         var detail = service.publicDetail(100L);
 
@@ -110,11 +93,7 @@ class PublicCatalogQueryServiceTests {
         verify(references, never()).color(anyLong());
     }
 
-    private ProductVariant variant(
-            Long variantId,
-            Long sizeValueId,
-            Long colorId
-    ) {
+    private ProductVariant variant(Long variantId, Long sizeValueId, Long colorId) {
         ProductVariant variant = mock(ProductVariant.class);
         when(variant.getVariantId()).thenReturn(variantId);
         when(variant.getSizeValueId()).thenReturn(sizeValueId);
