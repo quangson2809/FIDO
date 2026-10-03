@@ -5,7 +5,12 @@ import { authService } from '../features/auth/api/service';
 type AuthMode = 'login' | 'register';
 
 export const AuthScreen: React.FC = () => {
-  const { setCurrentScreen, showToast, updateUserProfile } = useApp();
+  const {
+    setCurrentScreen,
+    showToast,
+    updateUserProfile,
+    refreshCart,
+  } = useApp();
   const [mode, setMode] = useState<AuthMode>('login');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -41,6 +46,12 @@ export const AuthScreen: React.FC = () => {
         phone: login.account.phone,
         email: login.account.email ?? '',
       });
+
+      try {
+        await refreshCart();
+      } catch {
+        // Authentication succeeded. Cart loading has its own recoverable UI path.
+      }
 
       const isInternalUser = me.roles.some(
         (role) => role.code === 'ADMIN' || role.code === 'SUPERADMIN',
