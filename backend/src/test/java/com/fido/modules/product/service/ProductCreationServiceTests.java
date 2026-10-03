@@ -46,7 +46,10 @@ class ProductCreationServiceTests {
 
         ArgumentCaptor<ProductCreateRequest> savedRequest =
                 ArgumentCaptor.forClass(ProductCreateRequest.class);
-        order.verify(products).createProduct(org.mockito.ArgumentMatchers.eq(7L), savedRequest.capture());
+        order.verify(products).createProduct(
+                org.mockito.ArgumentMatchers.eq(7L),
+                savedRequest.capture()
+        );
 
         assertEquals(
                 List.of(
@@ -89,26 +92,33 @@ class ProductCreationServiceTests {
         ProductAdminService products = mock(ProductAdminService.class);
         ProductCreationService service = new ProductCreationService(storage, products);
 
-        ProductCreateRequest request = request();
-        request = new ProductCreateRequest(
-                request.category_id(),
-                request.brand_id(),
-                request.size_system_id(),
-                request.name(),
-                request.description(),
-                request.gender(),
-                request.season(),
-                request.style(),
-                request.material_care(),
-                request.base_price(),
-                request.sale_status(),
-                List.of(new ProductCreateRequest.ImageInput("https://example.test/image.png", null)),
-                request.variants()
+        ProductCreateRequest baseRequest = request();
+        ProductCreateRequest multipartRequest = new ProductCreateRequest(
+                baseRequest.category_id(),
+                baseRequest.brand_id(),
+                baseRequest.size_system_id(),
+                baseRequest.name(),
+                baseRequest.description(),
+                baseRequest.gender(),
+                baseRequest.season(),
+                baseRequest.style(),
+                baseRequest.material_care(),
+                baseRequest.base_price(),
+                baseRequest.sale_status(),
+                List.of(new ProductCreateRequest.ImageInput(
+                        "https://example.test/image.png",
+                        null
+                )),
+                baseRequest.variants()
         );
 
         var error = assertThrows(
                 org.springframework.web.server.ResponseStatusException.class,
-                () -> service.createProduct(7L, request, new MultipartFile[]{image("front.png")})
+                () -> service.createProduct(
+                        7L,
+                        multipartRequest,
+                        new MultipartFile[]{image("front.png")}
+                )
         );
 
         assertEquals(HttpStatus.BAD_REQUEST, error.getStatusCode());
