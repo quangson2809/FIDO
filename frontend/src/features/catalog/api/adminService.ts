@@ -7,7 +7,8 @@ import type {
 } from '../types';
 
 const withoutJsonImages = (product: ProductCreateInput): ProductCreateInput => {
-  const { images: _images, ...metadata } = product;
+  const metadata = { ...product };
+  delete metadata.images;
   return metadata;
 };
 
