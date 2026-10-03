@@ -1,7 +1,25 @@
 export interface CartItemDto {
-  product_id: number;
+  cart_item_id: number;
+  variant_id: number;
   quantity: number;
+  product_name: string;
+  image_url: string | null;
+  size: string;
+  color: string;
+  unit_price: number;
+  line_total: number;
+  available_quantity: number;
 }
+
+export interface CartDto {
+  cart_id: number | null;
+  account_id: number | null;
+  items: CartItemDto[];
+  subtotal: number;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 export interface CartService {
-  getCart(): Promise<CartItemDto[]>;
+  getCart(): Promise<CartDto>;
 }
