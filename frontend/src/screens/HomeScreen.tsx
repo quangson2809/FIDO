@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { catalogService } from '../features/catalog/api/service';
+import type { CatalogProductView } from '../features/catalog/types';
 
 export const HomeScreen: React.FC = () => {
   const { setCurrentScreen, setSelectedProductId, addToCart, wishlist, toggleWishlist } = useApp();
   const [selectedParentCategory, setSelectedParentCategory] = useState<'ALL' | 'ÁO' | 'QUẦN' | 'PHỤ KIỆN'>('ALL');
   const [selectedBrand, setSelectedBrand] = useState<string>('ALL');
 
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<CatalogProductView[]>([]);
   
   React.useEffect(() => {
     catalogService.getProducts().then(setProducts);
@@ -483,12 +484,7 @@ export const HomeScreen: React.FC = () => {
                         <span className="bg-[#0B2419] text-white px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
                           ĐANG BÁN
                         </span>
-                        {product.discountPercent && (
-                          <span className="bg-[#E8C75B] text-[#101310] px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
-                            -{product.discountPercent}%
-                          </span>
-                        )}
-                        {product.statusBadge && !product.discountPercent && (
+                        {product.statusBadge && (
                           <span className="bg-[#1B5038] text-white px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
                             {product.statusBadge}
                           </span>
@@ -545,11 +541,11 @@ export const HomeScreen: React.FC = () => {
                       <div className="pt-2 border-t border-[#E8E9E3]/80 flex items-center justify-between">
                         <div className="flex items-baseline gap-2">
                           <span className="text-[17px] text-[#0B2419] font-bold font-mono">
-                            {((product.price as number) || 0).toLocaleString('vi-VN')} ₫
+                            {(product.price || 0).toLocaleString('vi-VN')} ₫
                           </span>
                           {product.originalPrice && (
                             <span className="text-[13px] text-[#687069] line-through font-mono">
-                              {(product.originalPrice as number || 0).toLocaleString('vi-VN')} ₫
+                              {(product.originalPrice || 0).toLocaleString('vi-VN')} ₫
                             </span>
                           )}
                         </div>
