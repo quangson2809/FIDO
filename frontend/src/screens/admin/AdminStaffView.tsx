@@ -19,7 +19,7 @@ export const AdminStaffView: React.FC<{
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
 
-  const [staff, setStaff] = useState<StaffMember[]>([
+  const [staff] = useState<StaffMember[]>([
     {
       id: 'STF-01',
       name: 'Nguyễn Văn Nam',
