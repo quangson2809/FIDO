@@ -17,19 +17,13 @@ export const AdminProductDetailView: React.FC<AdminProductDetailViewProps> = ({
   const [product, setProduct] = useState<AdminProductDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const productId = Number(selectedProductId);
+  const validProductId = Number.isInteger(productId) && productId > 0;
 
   useEffect(() => {
+    if (!validProductId) return undefined;
+
     let active = true;
-    const productId = Number(selectedProductId);
-
-    if (!Number.isInteger(productId) || productId <= 0) {
-      setError('Product ID không hợp lệ.');
-      setLoading(false);
-      return () => {
-        active = false;
-      };
-    }
-
     void adminProductService.getProduct(productId)
       .then((detail) => {
         if (!active) return;
@@ -50,13 +44,28 @@ export const AdminProductDetailView: React.FC<AdminProductDetailViewProps> = ({
     return () => {
       active = false;
     };
-  }, [selectedProductId]);
+  }, [productId, validProductId]);
 
   const copyProductId = () => {
     if (!product) return;
     void navigator.clipboard?.writeText(String(product.product_id));
     showToast(`Đã sao chép Product ID #${product.product_id}.`);
   };
+
+  if (!validProductId) {
+    return (
+      <div className="space-y-4 border border-red-200 bg-white p-6">
+        <p className="text-sm text-red-700">Product ID không hợp lệ.</p>
+        <button
+          type="button"
+          onClick={() => onNavigateTab('products', 'Quản lý sản phẩm')}
+          className="border border-[#0B2419] px-4 py-2 text-sm font-semibold"
+        >
+          Quay lại danh sách
+        </button>
+      </div>
+    );
+  }
 
   if (loading) {
     return <div className="py-16 text-center text-sm text-[#687069]">Đang tải chi tiết sản phẩm...</div>;
