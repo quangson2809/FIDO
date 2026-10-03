@@ -48,7 +48,10 @@ Never trust/accept these from clients unless a source explicitly makes them conf
 - cart subtotal;
 - checkout/order subtotal, discount, shipping fee and total;
 - effective price;
-- availability.
+- availability;
+- Product image storage URL returned by the configured provider;
+- Product image `sort_order` assigned on append unless explicitly changed through the reorder contract;
+- OrderItem `image_url_snapshot`.
 
 ## 4. Core DTO inventory
 
@@ -86,7 +89,7 @@ Never trust/accept these from clients unless a source explicitly makes them conf
 
 `ColorDto(color_id,code,name)`
 
-`ProductImageDto(image_id,image_url,alt_text?)`
+`ProductImageDto(image_id,image_url,alt_text?,sort_order)`
 
 `ProductVariantDto(variant_id,size,color,sku?,effective_price,sale_status,available_quantity)`
 
@@ -96,11 +99,18 @@ Never trust/accept these from clients unless a source explicitly makes them conf
 
 `AdminProductSummaryDto(product_id,name,image_url?,category_id,brand_id?,size_system_id,base_price,sale_status,created_at,updated_at)`
 
+`AdminProductDetailDto` follows Product detail metadata and returns the ordered `images[]` collection plus admin Variant fields.
+
 `AdminVariantDto(variant_id,product_id,size_value_id,color_id,sku?,override_price?,sale_status,available_quantity,created_at,updated_at)`
 
 `CatalogMetaDto(categories[],brands[],size_systems[],colors[],genders[],seasons[],styles[])`; last three are derived from managed catalog values.
 
-The nullable summary `image_url` is presentation data resolved from the ProductImage with the smallest `image_id`. It is not a persisted primary-image flag and does not define gallery ordering. Detail `images[]` remains the complete image collection.
+Product image read rules:
+
+- nullable summary `image_url` is the current cover: the ProductImage at `sort_order = 0`;
+- detail/admin-detail `images[]` is the complete active gallery ordered by `sort_order ASC`;
+- there is no persisted `is_cover` flag; moving an image to position `0` changes the cover;
+- Product with no images returns `image_url = null` and `images = []`.
 
 ### cart/checkout/order
 
@@ -110,11 +120,13 @@ The nullable summary `image_url` is presentation data resolved from the ProductI
 
 `VoucherDto(voucher_id,code)` — do not add rule fields.
 
+`CheckoutItemDto(variant_id,quantity,product_name,size,color,unit_price,line_total,available_quantity)` — public quote shape does not need to persist or expose an image merely to support snapshotting; the internal checkout/cart view must still make the current cover available to Order creation.
+
 `CheckoutQuoteDto(items[],subtotal,discount,shipping_fee,total,voucher?)`
 
 `RecipientDto(phone,email?,address)`
 
-`OrderItemDto(order_item_id,variant_id,product_name,image_url?,sku?,size,color,unit_price,quantity,line_total)`
+`OrderItemDto(order_item_id,variant_id,product_name,image_url_snapshot?,sku?,size,color,unit_price,quantity,line_total)`
 
 `PaymentPublicDto(payment_status,amount_due,amount_received,amount_refunded)`
 
@@ -130,7 +142,12 @@ The nullable summary `image_url` is presentation data resolved from the ProductI
 
 `OrderAdminDetailDto`: customer/voucher references, service note, cancel reason, admin payment and `allowed_actions` derived from state + permission.
 
-Cart and order `image_url` are current catalog presentation data, not historical snapshots. If the current catalog variant/product/image cannot be resolved, the field is `null`; OrderItem snapshot fields remain unchanged.
+Cart/order image semantics:
+
+- `CartItemDto.image_url` is current catalog presentation data: the current Product cover at read time.
+- `OrderItemDto.image_url_snapshot` is immutable historical data captured from the current cover when the Order is created.
+- Later add/remove/reorder/cover changes in Product must not change an existing OrderItem snapshot.
+- An Order created when the Product has no cover stores `null`. Existing pre-migration Orders may also have `null`; do not synthesize historical values from the current catalog.
 
 ### inventory/audit/report/content
 
@@ -156,15 +173,37 @@ Cart and order `image_url` are current catalog presentation data, not historical
 
 ### Checkout quote/create Order
 
-Receiver phone/address required, email optional, voucher code optional. Server owns all totals/state/snapshots.
+Receiver phone/address required, email optional, voucher code optional. Server owns all totals/state/snapshots. Order creation also snapshots the current Product cover URL for each OrderItem.
 
-### Product create
+### Product create / update
 
-Required: category, SizeSystem, name, base price, sale status. Optional fields follow schema. Nested image/variant collections are allowed by the JSON API contract. Validate leaf Category, SizeSystem/SizeValue match and variant uniqueness.
+Required create fields: category, SizeSystem, name, base price, sale status. Optional fields follow schema. Nested Variant collection remains allowed where the API contract already allows it. Validate leaf Category, SizeSystem/SizeValue match and Variant uniqueness.
 
-API #29 also accepts a project-owner-approved multipart representation for the admin UI: JSON metadata in part `product` and optional repeated binary part `images`. Multipart requests must not also provide the JSON `images` collection. The backend uploads files to the configured provider and persists each returned **full direct URL** in the existing `product_images.image_url`; provider credentials are backend-only. The JSON representation remains backward compatible.
+**Images are not part of Product create/update payloads.** Client-provided `image_url` is no longer accepted on `POST /api/v1/admin/products` or `PATCH /api/v1/admin/products/{productId}`. Product images use the dedicated child-resource commands below.
 
-No `product_images.sort_order`, provider ID, delete token or other image column is added. Provider-side remote deletion/compensation remains unsupported unless the provider exposes a verified machine-to-machine delete contract.
+### Add Product image(s)
+
+`POST /api/v1/admin/products/{productId}/images` consumes `multipart/form-data`.
+
+Semantic input:
+- one or more image files;
+- optional alt text corresponding to uploaded images.
+
+The backend validates the file, uploads through `ProductImageStorage`, persists only the returned full direct URL and Product-owned metadata, then assigns append `sort_order` values. Provider credentials are backend-only. No provider-specific field is added to ProductImage DTO or persistence solely for this contract.
+
+### Reorder / update Product image metadata
+
+`PATCH /api/v1/admin/products/{productId}/images` is a collection command. Each changed entry identifies `image_id` and target `sort_order`; supported metadata such as nullable `alt_text` may be included where supplied.
+
+Validation:
+- every image belongs to `productId`;
+- final positions are non-negative, unique and normalized from `0`;
+- cover is exactly the image at position `0`;
+- reorder is atomic from the API caller's perspective.
+
+### Remove Product image
+
+`DELETE /api/v1/admin/products/{productId}/images/{imageId}` removes the image from the active Product gallery after ownership and authorization checks, then normalizes remaining positions. It does not automatically delete the provider asset because historical OrderItem snapshots may still reference the URL.
 
 ### Inventory adjustment
 
@@ -173,7 +212,6 @@ No `product_images.sort_order`, provider ID, delete token or other image column 
 ## 6. Error contract warning
 
 Analyst Docs require understandable business errors with no technical leakage, but do not lock a specific JSON error envelope/status-code matrix. Implement centralized exception handling according to the existing repository contract; do not invent a public error schema and declare it baseline without an explicit decision.
-
 
 ## 7. Phase 7 Appendix A details
 
