@@ -2,10 +2,12 @@ package com.fido.modules.product.service;
 
 import java.net.SocketTimeoutException;
 import java.net.http.HttpTimeoutException;
+import java.time.Duration;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -18,6 +20,9 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class ImgBbImageStorage implements ProductImageStorage {
 
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(20);
+
     private final RestClient restClient;
     private final String apiKey;
 
@@ -26,7 +31,7 @@ public class ImgBbImageStorage implements ProductImageStorage {
             @Value("${app.image-storage.imgbb.base-url:https://api.imgbb.com}") String baseUrl,
             @Value("${app.image-storage.imgbb.api-key:}") String apiKey
     ) {
-        this(RestClient.builder().baseUrl(baseUrl).build(), apiKey);
+        this(createClient(baseUrl), apiKey);
     }
 
     ImgBbImageStorage(RestClient restClient, String apiKey) {
@@ -83,6 +88,7 @@ public class ImgBbImageStorage implements ProductImageStorage {
                         "Image storage request timed out"
                 );
             }
+
             throw integrationFailure(
                     HttpStatus.BAD_GATEWAY,
                     "Image storage is unavailable"
@@ -93,6 +99,17 @@ public class ImgBbImageStorage implements ProductImageStorage {
                     "Image storage request failed"
             );
         }
+    }
+
+    private static RestClient createClient(String baseUrl) {
+        var requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(CONNECT_TIMEOUT);
+        requestFactory.setReadTimeout(READ_TIMEOUT);
+
+        return RestClient.builder()
+                .baseUrl(baseUrl)
+                .requestFactory(requestFactory)
+                .build();
     }
 
     private void requireConfigured() {

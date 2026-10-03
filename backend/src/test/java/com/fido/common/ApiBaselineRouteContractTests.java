@@ -13,9 +13,10 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 @SpringBootTest
@@ -23,6 +24,8 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 class ApiBaselineRouteContractTests {
 
     private static final String BASELINE_RESOURCE = "api-baseline-77.csv";
+    private static final Route PRODUCT_CREATE =
+            new Route("POST", "/api/v1/admin/products");
 
     @Autowired
     @Qualifier("requestMappingHandlerMapping")
@@ -42,12 +45,26 @@ class ApiBaselineRouteContractTests {
                         + "; unexpected="
                         + difference(registered.keySet(), expected)
         );
+
         assertTrue(
-                registered.values().stream().allMatch(count -> count == 1L),
-                () -> "A baseline method/path is registered more than once: "
+                registered.entrySet().stream().allMatch(entry ->
+                        entry.getValue() == 1L
+                                || (entry.getKey().equals(PRODUCT_CREATE)
+                                && entry.getValue() == 2L)
+                ),
+                () -> "A baseline method/path has an unapproved duplicate mapping: "
                         + registered.entrySet().stream()
                                 .filter(entry -> entry.getValue() > 1L)
                                 .toList()
+        );
+
+        assertEquals(
+                Set.of(
+                        Set.of(MediaType.APPLICATION_JSON),
+                        Set.of(MediaType.MULTIPART_FORM_DATA)
+                ),
+                productCreateRepresentations(),
+                "API #29 must expose exactly the approved JSON and multipart representations"
         );
     }
 
@@ -104,6 +121,21 @@ class ApiBaselineRouteContractTests {
                         Function.identity(),
                         Collectors.counting()
                 ));
+    }
+
+    private Set<Set<MediaType>> productCreateRepresentations() {
+        return mappings.getHandlerMethods()
+                .keySet()
+                .stream()
+                .filter(info ->
+                        info.getMethodsCondition().getMethods().stream()
+                                .anyMatch(method -> method.name().equals(PRODUCT_CREATE.method()))
+                                && info.getPatternValues().contains(PRODUCT_CREATE.path())
+                )
+                .map(info -> Set.copyOf(
+                        info.getConsumesCondition().getConsumableMediaTypes()
+                ))
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     private Set<Route> difference(
