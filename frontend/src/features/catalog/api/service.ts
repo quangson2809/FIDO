@@ -28,6 +28,7 @@ const summaryToView = (product: ProductSummaryDto): CatalogProductView => ({
   fabric: '',
   colors: [],
   sizes: [],
+  variants: [],
   rating: 0,
   reviewsCount: 0,
   inStockCount: 0,
@@ -63,6 +64,7 @@ const detailToView = (product: ProductDetailDto): CatalogProductView => {
     fabric: product.material_care ?? '',
     colors,
     sizes,
+    variants: product.variants,
     rating: 0,
     reviewsCount: 0,
     inStockCount: product.variants.reduce(
