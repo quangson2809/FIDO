@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useApp } from '../../context/AppContext';
 import { adminProductService } from '../../features/catalog/api/adminService';
 import type {
   AdminProductSummaryDto,
@@ -39,6 +40,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
   onNavigateTab,
   showToast,
 }) => {
+  const { setSelectedProductId } = useApp();
   const [products, setProducts] = useState<AdminProductSummaryDto[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -151,12 +153,23 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
       setImageFiles([]);
       setShowCreateForm(false);
       await refreshProducts();
-      onSelectProduct?.(String(created.product_id));
+      const productId = String(created.product_id);
+      setSelectedProductId(productId);
+      onSelectProduct?.(productId);
     } catch {
       showToast('Không thể tạo sản phẩm. Kiểm tra quyền truy cập và cấu hình ImgBB.');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const openProduct = (
+    productId: number,
+    callback: ((id: string) => void) | undefined,
+  ) => {
+    const id = String(productId);
+    setSelectedProductId(id);
+    callback?.(id);
   };
 
   return (
@@ -364,14 +377,14 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
                       <div className="flex justify-end gap-2">
                         <button
                           type="button"
-                          onClick={() => onSelectProduct?.(String(product.product_id))}
+                          onClick={() => openProduct(product.product_id, onSelectProduct)}
                           className="border border-[#D9DDD6] px-3 py-1.5 text-xs font-semibold"
                         >
                           Xem
                         </button>
                         <button
                           type="button"
-                          onClick={() => onEditProduct?.(String(product.product_id))}
+                          onClick={() => openProduct(product.product_id, onEditProduct)}
                           className="bg-[#0B2419] px-3 py-1.5 text-xs font-semibold text-white"
                         >
                           Sửa
