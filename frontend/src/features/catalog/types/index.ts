@@ -91,6 +91,7 @@ export interface CatalogProductView {
   fabric: string;
   colors: Array<{ name: string; hex: string }>;
   sizes: Array<string | number>;
+  variants: ProductVariantDto[];
   rating: number;
   reviewsCount: number;
   inStockCount: number;
