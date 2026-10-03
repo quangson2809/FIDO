@@ -1,8 +1,8 @@
-# 04 — API Contract Baseline (77 Endpoints)
+# 04 — API Contract Baseline (80 Endpoints)
 
 ## 1. Global contract
 
-- Current consolidated Analyst API baseline: **77 endpoints**.
+- The consolidated baseline contains the previous **77 endpoints plus 3 approved Product image-management endpoints**, for a target contract of **80 endpoints**.
 - URL version prefix: `/api/v1`.
 - JSON field naming: `snake_case`.
 - Public: auth register/login, catalog public, content public.
@@ -10,6 +10,7 @@
 - Cart/checkout/order support guest intent, but guest session identity/security is still TBD; do not invent it.
 - List/search/filter are deliberately consolidated through query parameters; do not split them into extra endpoints.
 - State-changing commands are deliberately separate from ordinary PATCH where transaction/state-machine semantics matter.
+- Product image write operations are a resource-child contract under Product. Product create/update no longer accepts client-provided image URLs.
 
 ## 2. Baseline endpoint map
 
@@ -92,6 +93,11 @@
 | 75 | `PATCH` | `/api/v1/admin/content-pages/{pageId}` | `content` | JWT + permission |
 | 76 | `GET` | `/api/v1/admin/customers` | `account` | JWT + permission |
 | 77 | `GET` | `/api/v1/admin/customers/{customerId}` | `account` | JWT + permission |
+| 78 | `POST` | `/api/v1/admin/products/{productId}/images` | `product` | JWT + `CATALOG_WRITE` |
+| 79 | `PATCH` | `/api/v1/admin/products/{productId}/images` | `product` | JWT + `CATALOG_WRITE` |
+| 80 | `DELETE` | `/api/v1/admin/products/{productId}/images/{imageId}` | `product` | JWT + `CATALOG_WRITE` |
+
+No `GET /images` or `GET /images/{id}` endpoint is introduced. Public/admin Product detail remains the aggregate read boundary for the gallery.
 
 ## 3. Important command semantics
 
@@ -106,6 +112,7 @@
 
 - Client does not provide totals or workflow state.
 - Server creates exactly one logical `PENDING` Order with OrderItem/receiver/money snapshots and Payment `UNPAID`.
+- For each OrderItem, the server snapshots the Product cover URL that is current at Order creation into `image_url_snapshot`; no cover produces `null`.
 - PENDING does not deduct stock.
 - Retry/double-click dedupe implementation remains a physical/application design blocker; do not pretend it is solved without a locked mechanism.
 
@@ -125,23 +132,50 @@ All actions must validate current state, permissions, side effects and idempoten
 
 Operations: `RETURN | EXCHANGE_SIZE`. This is a command over Order/Payment/Inventory/Audit; do not create an `after_sales_cases` resource/table in baseline.
 
-### API #29 — Product creation with images
+### API #29 — Product creation
 
-The project owner approved a backward-compatible physical transport refinement on 2026-10-03:
+`POST /api/v1/admin/products` creates Product + Variant + Product metadata only.
 
-- `application/json` remains supported exactly as the consolidated contract defines, including optional `images[{image_url,alt_text?}]`.
-- The same URL may also consume `multipart/form-data` for the admin UI. The `product` part carries the JSON metadata/variants and the optional repeated `images` part carries local image files.
-- Multipart image files are uploaded by the backend to the configured image-storage provider; provider credentials never leave the backend. The resulting **full direct URL** is persisted in the existing `product_images.image_url` column.
-- No image filename-only persistence, provider-specific database column, image table lifecycle, or `sort_order` column is introduced.
-- File upload occurs outside the database transaction; the database product/image/variant write starts only after all requested uploads succeed.
-- Provider-side delete/compensation is not claimed unless a supported provider delete contract is available. A failed database write after successful remote upload can therefore leave a remote orphan and must remain an explicit integration limitation rather than a hidden transaction guarantee.
+- Consumes `application/json`.
+- `images`, `image_url` and local image-file parts are not accepted by the Product-create contract.
+- Product images are added after Product creation through API #78.
+- This replaces the 2026-10-03 transport refinement that allowed image URLs or multipart image files on the Product-create endpoint.
 
-### Product image read semantics — project-owner refinement 2026-10-03
+### API #78 — Add Product images
 
-- `ProductDetailDto`/`AdminProductDetailDto` continue returning the full `images[]` collection.
-- Public/admin product summaries, cart items and order items expose nullable `image_url` for presentation.
-- The representative presentation image is the existing ProductImage with the smallest `image_id`. This convention does **not** define gallery ordering and does not add persistent image-order semantics.
-- Cart and order `image_url` are current catalog presentation data, not OrderItem history snapshots. Missing current variant/product/image resolves to `null`; historical OrderItem snapshot fields remain authoritative.
+`POST /api/v1/admin/products/{productId}/images`
+
+- Consumes `multipart/form-data`.
+- Input semantics: `productId`, one or more image files, optional alt text for uploaded images.
+- Backend verifies authorization and Product existence, validates files, uploads through the configured `ProductImageStorage` boundary, persists returned direct URL(s), and appends positions after the current last `sort_order`.
+- Response: created `ProductImageDto` item(s), including `sort_order`.
+- Storage-provider credentials and provider-specific identifiers are backend-only concerns and are not part of the public business/API contract.
+
+### API #79 — Reorder / image metadata
+
+`PATCH /api/v1/admin/products/{productId}/images`
+
+- Input identifies the ProductImage records in the Product collection and their target `sort_order`; optional supported image metadata such as `alt_text` may be updated in the same collection command.
+- Every referenced image must belong to `productId`.
+- Final positions must be unique, non-negative and normalized from `0`.
+- The image at `sort_order = 0` is the cover; changing the first position changes the cover.
+- The operation is atomic at the database boundary. Implementation must avoid transient violation of UQ `(product_id, sort_order)` while reordering.
+
+### API #80 — Remove Product image
+
+`DELETE /api/v1/admin/products/{productId}/images/{imageId}`
+
+- Verifies that `imageId` belongs to `productId` and the actor has catalog-write permission.
+- Removes the ProductImage from the active catalog collection and normalizes remaining `sort_order` values.
+- Does **not** automatically delete the remote asset. Existing OrderItem `image_url_snapshot` values remain valid historical references.
+
+### Product image read semantics — refinement 2026-10-04
+
+- Product list/admin list expose nullable `image_url` from the current cover (`sort_order = 0`).
+- `ProductDetailDto`/`AdminProductDetailDto` return the full `images[]` gallery ordered by `sort_order ASC`; each image includes `sort_order`.
+- Cart item `image_url` is the current cover at cart read time.
+- Order item image is historical: it comes from `OrderItem.image_url_snapshot`, captured during Order creation. It must not be recomputed from the current Product gallery.
+- Product without images has `null` cover and an empty detail gallery.
 
 ### API #54 — GoodsReceipt actions
 
@@ -156,4 +190,4 @@ The latest API document includes #66–69:
 - PATCH `/api/v1/admin/permissions/{permissionId}`: optional `code`, `name`; omitted fields unchanged
 - DELETE `/api/v1/admin/permissions/{permissionId}`: only when no Role references the Permission
 
-Do not use the older 73-endpoint numbering as current baseline.
+The older 77-endpoint artifact remains historical input. The synchronized target contract is 80 endpoints because image add/reorder/remove are now explicit side-effect boundaries under Product.
