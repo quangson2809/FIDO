@@ -22,6 +22,7 @@ export interface AppContextType {
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
   cartItems: CartItem[];
+  refreshCart: () => Promise<void>;
   addToCart: (
     product: CartProductInput,
     size?: string | number,
