@@ -1,309 +1,160 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { authService } from '../features/auth/api/service';
+
+type AuthMode = 'login' | 'register';
 
 export const AuthScreen: React.FC = () => {
-  const { setCurrentScreen, showToast, userProfile, updateUserProfile } = useApp();
-  const [mode, setMode] = useState<'login' | 'register' | 'otp'>('login');
-  const [authMethod, setAuthMethod] = useState<'phone' | 'email'>('phone');
-  const [identifier, setIdentifier] = useState('0987654321');
-  const [password, setPassword] = useState('••••••••');
-  const [fullName, setFullName] = useState('Trần Hoàng Long');
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const { setCurrentScreen, showToast, updateUserProfile } = useApp();
+  const [mode, setMode] = useState<AuthMode>('login');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleOtpChange = (index: number, value: string) => {
-    if (value.length > 1) value = value[0];
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const identifier = phone.trim();
 
-    // auto-focus next
-    if (value && index < 5) {
-      const nextInput = document.getElementById(`otp-${index + 1}`);
-      nextInput?.focus();
+    if (!identifier || !password) {
+      showToast('Vui lòng nhập số điện thoại và mật khẩu.');
+      return;
     }
-  };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (mode === 'login') {
-      showToast('Đăng nhập thành công! Chào mừng quý khách trở lại.');
-      setCurrentScreen('profile');
-    } else if (mode === 'register') {
-      setMode('otp');
-      showToast('Mã OTP 6 số đã được gửi qua SMS/Email của quý khách.');
-    } else if (mode === 'otp') {
+    setSubmitting(true);
+    try {
+      if (mode === 'register') {
+        await authService.register(
+          identifier,
+          email.trim() || null,
+          password,
+        );
+        setMode('login');
+        setPassword('');
+        showToast('Đăng ký thành công. Vui lòng đăng nhập.');
+        return;
+      }
+
+      const login = await authService.login(identifier, password);
+      const me = await authService.getMe();
       updateUserProfile({
-        name: fullName || userProfile.name,
-        phone: authMethod === 'phone' ? identifier : userProfile.phone,
-        email: authMethod === 'email' ? identifier : userProfile.email,
+        phone: login.account.phone,
+        email: login.account.email ?? '',
       });
-      showToast('Xác thực tài khoản thành công! Hồ sơ thành viên đã được kích hoạt.');
-      setCurrentScreen('profile');
+
+      const isInternalUser = me.roles.some(
+        (role) => role.code === 'ADMIN' || role.code === 'SUPERADMIN',
+      );
+      showToast('Đăng nhập thành công.');
+      setCurrentScreen(isInternalUser ? 'admin' : 'profile');
+    } catch {
+      showToast(
+        mode === 'login'
+          ? 'Đăng nhập thất bại. Kiểm tra số điện thoại hoặc mật khẩu.'
+          : 'Đăng ký thất bại. Kiểm tra dữ liệu tài khoản.',
+      );
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <div className="bg-[#FAF9F5] min-h-screen text-[#0B2419] font-['Plus_Jakarta_Sans',sans-serif] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        {/* Brand Header */}
-        <div className="text-center">
-          <div className="inline-flex items-center gap-1.5 mb-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#E8C75B]"></span>
-            <span className="text-[11px] uppercase tracking-[0.25em] text-[#0B2419]/70 font-semibold">
-              ATELIER VERT • PRIVILEGE CLUB
-            </span>
-          </div>
-          <h2 className="text-3xl font-['Playfair_Display',serif] font-bold text-[#0B2419] tracking-tight">
-            FIDO FASHION
-          </h2>
-          <p className="mt-2 text-xs text-[#0B2419]/70">
-            Trải nghiệm đặc quyền may đo cao cấp và lưu trữ số đo chuẩn hóa
+    <div className="flex min-h-screen items-center justify-center bg-[#FAF9F5] px-4 py-12 text-[#0B2419]">
+      <div className="w-full max-w-md">
+        <div className="mb-8 text-center">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#0B2419]/60">
+            FIDO Fashion
+          </p>
+          <h1 className="mt-2 font-['Playfair_Display',serif] text-3xl font-bold">
+            {mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
+          </h1>
+          <p className="mt-2 text-xs text-[#0B2419]/60">
+            Đăng nhập dùng số điện thoại theo contract backend hiện tại.
           </p>
         </div>
-      </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 sm:px-10 border border-[#0B2419]/10 shadow-sm">
-          {/* Mode Switcher Tabs */}
-          {mode !== 'otp' && (
-            <div className="flex border-b border-[#0B2419]/10 mb-6 text-xs uppercase tracking-wider font-semibold">
-              <button
-                type="button"
-                onClick={() => setMode('login')}
-                className={`flex-1 py-3 text-center border-b-2 transition-all ${
-                  mode === 'login'
-                    ? 'border-[#0B2419] text-[#0B2419]'
-                    : 'border-transparent text-[#0B2419]/40 hover:text-[#0B2419]'
-                }`}
-              >
-                Đăng Nhập
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode('register')}
-                className={`flex-1 py-3 text-center border-b-2 transition-all ${
-                  mode === 'register'
-                    ? 'border-[#0B2419] text-[#0B2419]'
-                    : 'border-transparent text-[#0B2419]/40 hover:text-[#0B2419]'
-                }`}
-              >
-                Tạo Tài Khoản
-              </button>
-            </div>
-          )}
+        <div className="border border-[#0B2419]/10 bg-white px-6 py-8 shadow-sm sm:px-10">
+          <div className="mb-6 flex border-b border-[#0B2419]/10 text-xs font-semibold uppercase tracking-wider">
+            <button
+              type="button"
+              onClick={() => setMode('login')}
+              className={`flex-1 border-b-2 py-3 ${
+                mode === 'login'
+                  ? 'border-[#0B2419] text-[#0B2419]'
+                  : 'border-transparent text-[#0B2419]/40'
+              }`}
+            >
+              Đăng nhập
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('register')}
+              className={`flex-1 border-b-2 py-3 ${
+                mode === 'register'
+                  ? 'border-[#0B2419] text-[#0B2419]'
+                  : 'border-transparent text-[#0B2419]/40'
+              }`}
+            >
+              Đăng ký
+            </button>
+          </div>
 
-          {/* Form */}
-          <form onSubmit={handleLoginSubmit} className="space-y-5">
-            {mode === 'otp' ? (
-              <div>
-                <div className="text-center mb-6">
-                  <span className="material-symbols-outlined text-4xl text-[#0B2419] mb-2">mark_email_read</span>
-                  <h3 className="text-base font-bold text-[#0B2419]">Xác Thực Mã OTP 6 Số</h3>
-                  <p className="text-xs text-[#0B2419]/60 mt-1">
-                    Mã bảo mật đã được gửi tới{' '}
-                    <span className="font-semibold text-[#0B2419]">{identifier}</span>
-                  </p>
-                </div>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <label className="block space-y-1">
+              <span className="text-xs font-medium">Số điện thoại *</span>
+              <input
+                type="tel"
+                required
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                autoComplete="tel"
+                placeholder="0987654321"
+                className="w-full border border-[#0B2419]/20 bg-[#FAF9F5] px-3.5 py-2.5 text-sm outline-none focus:border-[#0B2419]"
+              />
+            </label>
 
-                <div className="flex justify-center gap-2 mb-6">
-                  {otp.map((digit, idx) => (
-                    <input
-                      key={idx}
-                      id={`otp-${idx}`}
-                      type="text"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleOtpChange(idx, e.target.value)}
-                      className="w-11 h-12 text-center text-lg font-bold border border-[#0B2419]/20 focus:outline-none focus:border-[#0B2419] bg-[#FAF9F5]"
-                    />
-                  ))}
-                </div>
-
-                <p className="text-center text-xs text-[#0B2419]/60 mb-6">
-                  Không nhận được mã?{' '}
-                  <button
-                    type="button"
-                    onClick={() => showToast('Mã OTP mới đã được phát hành lại.')}
-                    className="font-semibold text-[#0B2419] underline"
-                  >
-                    Gửi lại mã (59s)
-                  </button>
-                </p>
-
-                <button
-                  type="submit"
-                  className="w-full py-3 bg-[#0B2419] text-white text-xs font-semibold uppercase tracking-wider hover:bg-[#123A29] transition-colors"
-                >
-                  Xác Nhận & Hoàn Tất
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setMode('register')}
-                  className="w-full mt-3 text-xs text-[#0B2419]/60 hover:text-[#0B2419] text-center block"
-                >
-                  Quay lại đăng ký
-                </button>
-              </div>
-            ) : (
-              <>
-                {/* Auth Method toggle */}
-                <div className="flex items-center justify-between text-xs text-[#0B2419]/60 pb-1">
-                  <span>Phương thức đăng nhập:</span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setAuthMethod('phone')}
-                      className={`px-2 py-0.5 ${
-                        authMethod === 'phone'
-                          ? 'bg-[#0B2419] text-white font-medium'
-                          : 'bg-[#0B2419]/5 hover:bg-[#0B2419]/10'
-                      }`}
-                    >
-                      Số điện thoại
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAuthMethod('email')}
-                      className={`px-2 py-0.5 ${
-                        authMethod === 'email'
-                          ? 'bg-[#0B2419] text-white font-medium'
-                          : 'bg-[#0B2419]/5 hover:bg-[#0B2419]/10'
-                      }`}
-                    >
-                      Email
-                    </button>
-                  </div>
-                </div>
-
-                {mode === 'register' && (
-                  <div>
-                    <label className="block text-xs font-medium text-[#0B2419] mb-1">
-                      Họ và tên quý khách *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Nguyễn Văn A"
-                      className="w-full text-xs px-3.5 py-2.5 border border-[#0B2419]/20 focus:outline-none focus:border-[#0B2419] bg-[#FAF9F5]"
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-xs font-medium text-[#0B2419] mb-1">
-                    {authMethod === 'phone' ? 'Số điện thoại *' : 'Địa chỉ Email *'}
-                  </label>
-                  <input
-                    type={authMethod === 'phone' ? 'tel' : 'email'}
-                    required
-                    value={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder={authMethod === 'phone' ? '0987 654 321' : 'quykhach@domain.com'}
-                    className="w-full text-xs px-3.5 py-2.5 border border-[#0B2419]/20 focus:outline-none focus:border-[#0B2419] bg-[#FAF9F5]"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-medium text-[#0B2419]">Mật khẩu bảo mật *</label>
-                    {mode === 'login' && (
-                      <button
-                        type="button"
-                        onClick={() => showToast('Liên kết đặt lại mật khẩu đã gửi qua tin nhắn SMS')}
-                        className="text-[11px] text-[#0B2419]/60 hover:text-[#0B2419] underline"
-                      >
-                        Quên mật khẩu?
-                      </button>
-                    )}
-                  </div>
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Tối thiểu 8 ký tự"
-                    className="w-full text-xs px-3.5 py-2.5 border border-[#0B2419]/20 focus:outline-none focus:border-[#0B2419] bg-[#FAF9F5]"
-                  />
-                </div>
-
-                {mode === 'login' && (
-                  <div className="flex items-center">
-                    <input
-                      id="remember-me"
-                      name="remember-me"
-                      type="checkbox"
-                      defaultChecked
-                      className="h-4 w-4 accent-[#0B2419] rounded-none border-[#0B2419]/20"
-                    />
-                    <label htmlFor="remember-me" className="ml-2 block text-xs text-[#0B2419]/70">
-                      Ghi nhớ phiên đăng nhập trên thiết bị này trong 30 ngày
-                    </label>
-                  </div>
-                )}
-
-                <div>
-                  <button
-                    type="submit"
-                    className="w-full py-3 bg-[#0B2419] text-white text-xs font-semibold uppercase tracking-wider hover:bg-[#123A29] transition-colors"
-                  >
-                    {mode === 'login' ? 'Đăng Nhập Ngay' : 'Tiếp Tục Xác Nhận OTP'}
-                  </button>
-                </div>
-              </>
+            {mode === 'register' && (
+              <label className="block space-y-1">
+                <span className="text-xs font-medium">Email</span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  autoComplete="email"
+                  placeholder="user@example.com"
+                  className="w-full border border-[#0B2419]/20 bg-[#FAF9F5] px-3.5 py-2.5 text-sm outline-none focus:border-[#0B2419]"
+                />
+              </label>
             )}
+
+            <label className="block space-y-1">
+              <span className="text-xs font-medium">Mật khẩu *</span>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                className="w-full border border-[#0B2419]/20 bg-[#FAF9F5] px-3.5 py-2.5 text-sm outline-none focus:border-[#0B2419]"
+              />
+            </label>
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full bg-[#0B2419] py-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-[#123A29] disabled:opacity-50"
+            >
+              {submitting
+                ? 'Đang xử lý...'
+                : mode === 'login'
+                  ? 'Đăng nhập'
+                  : 'Tạo tài khoản'}
+            </button>
           </form>
 
-          {/* Social or Fast auth */}
-          {mode !== 'otp' && (
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-[#0B2419]/10" />
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-white px-2 text-[#0B2419]/50">Hoặc tiếp tục nhanh với</span>
-                </div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    showToast('Đã đăng nhập bằng Google Authentication');
-                    setCurrentScreen('profile');
-                  }}
-                  className="w-full inline-flex justify-center py-2 px-4 border border-[#0B2419]/20 text-xs font-medium text-[#0B2419] bg-white hover:bg-[#FAF9F5]"
-                >
-                  <span className="font-bold text-blue-600 mr-2">G</span> Google
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    showToast('Đã đăng nhập bằng Apple ID');
-                    setCurrentScreen('profile');
-                  }}
-                  className="w-full inline-flex justify-center py-2 px-4 border border-[#0B2419]/20 text-xs font-medium text-[#0B2419] bg-white hover:bg-[#FAF9F5]"
-                >
-                  <span className="material-symbols-outlined text-sm mr-1">apple</span> Apple ID
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Guest checkout prompt */}
-        <div className="mt-4 text-center">
-          <p className="text-xs text-[#0B2419]/60">
-            Bạn muốn mua hàng ngay không cần tài khoản?{' '}
-            <button
-              onClick={() => setCurrentScreen('checkout')}
-              className="font-semibold text-[#0B2419] hover:underline"
-            >
-              Thanh toán COD trực tiếp
-            </button>
+          <p className="mt-5 text-center text-[11px] leading-5 text-[#0B2419]/55">
+            Access token chỉ được giữ trong bộ nhớ runtime của frontend. Reload trang sẽ yêu cầu đăng nhập lại;
+            chưa có refresh-token API và chưa tự chọn cơ chế lưu token bền vững.
           </p>
         </div>
       </div>
