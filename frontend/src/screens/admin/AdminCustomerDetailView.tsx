@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 
 export const AdminCustomerDetailView: React.FC<{
   onNavigateTab: (tab: string, breadcrumb: string) => void;
+  showToast: (msg: string) => void;
 }> = ({ onNavigateTab }) => {
   const [activeCustomer] = useState({
     id: 'CUST-0428',
