@@ -4,6 +4,7 @@ import { apiClient } from '../../../services/http/apiClient';
 import { resolveImageUrl } from '../../../services/media/imageUrl';
 import { mockProducts } from '../mocks/mockService';
 import type {
+  CatalogMetaDto,
   CatalogProductView,
   CatalogService,
   ProductDetailDto,
@@ -11,6 +12,16 @@ import type {
 } from '../types';
 
 const imageOrEmpty = (value?: string | null): string => resolveImageUrl(value) ?? '';
+
+const emptyMeta: CatalogMetaDto = {
+  categories: [],
+  brands: [],
+  size_systems: [],
+  colors: [],
+  genders: [],
+  seasons: [],
+  styles: [],
+};
 
 const summaryToView = (product: ProductSummaryDto): CatalogProductView => ({
   id: String(product.product_id),
@@ -86,6 +97,9 @@ const mockCatalogService: CatalogService = {
     }
     return product;
   },
+  async getMeta() {
+    return emptyMeta;
+  },
 };
 
 const realCatalogService: CatalogService = {
@@ -102,6 +116,13 @@ const realCatalogService: CatalogService = {
       ApiResponse<ProductDetailDto>
     >(`/catalog/products/${productId}`);
     return detailToView(response.data);
+  },
+  async getMeta() {
+    const response = await apiClient.get<
+      ApiResponse<CatalogMetaDto>,
+      ApiResponse<CatalogMetaDto>
+    >('/catalog/meta');
+    return response.data;
   },
 };
 
