@@ -30,6 +30,16 @@ export interface ColorDto {
   name: string;
 }
 
+export interface CatalogMetaDto {
+  categories: CategoryDto[];
+  brands: BrandDto[];
+  size_systems: SizeSystemDto[];
+  colors: ColorDto[];
+  genders: string[];
+  seasons: string[];
+  styles: string[];
+}
+
 export interface ProductImageDto {
   image_id: number;
   image_url: string;
@@ -101,6 +111,7 @@ export interface CatalogProductView {
 export interface CatalogService {
   getProducts(): Promise<CatalogProductView[]>;
   getProductDetail(productId: number | string): Promise<CatalogProductView>;
+  getMeta(): Promise<CatalogMetaDto>;
 }
 
 export interface ProductCreateVariantInput {
