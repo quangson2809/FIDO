@@ -302,6 +302,7 @@ public class ProductAdminService {
         }
 
         images.deleteAllByProductId(productId);
+        em.flush();
 
         saveImages(
                 productId,
@@ -460,11 +461,13 @@ public class ProductAdminService {
             Long productId,
             List<ProductCreateRequest.ImageInput> requested
     ) {
-        for (var item : requested) {
+        for (int index = 0; index < requested.size(); index++) {
+            var item = requested.get(index);
             ProductImage image = new ProductImage();
             image.setProductId(productId);
             image.setImageUrl(item.image_url());
             image.setAltText(item.alt_text());
+            image.setSortOrder(index);
 
             images.save(image);
         }
@@ -483,4 +486,3 @@ public class ProductAdminService {
     ) {
     }
 }
-
