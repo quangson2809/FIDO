@@ -1,5 +1,6 @@
 package com.fido.modules.product.service;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.net.SocketTimeoutException;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
@@ -139,13 +140,14 @@ public class ImgBbImageStorageClient implements ImageStorageGateway {
         return new ProductImageStorageException(status, reason);
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private record ImgBbUploadResponse(
             ImgBbUploadData data,
-            Boolean success,
-            Integer status
+            Boolean success
     ) {
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private record ImgBbUploadData(
             String url
     ) {
