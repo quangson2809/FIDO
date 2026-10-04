@@ -76,7 +76,8 @@ public final class CatalogMapper {
         return new ProductImageDto(
                 image.getImageId(),
                 image.getImageUrl(),
-                image.getAltText()
+                image.getAltText(),
+                image.getSortOrder()
         );
     }
 
@@ -100,12 +101,12 @@ public final class CatalogMapper {
 
     public static AdminProductSummaryDto adminSummary(
             Product product,
-            String imageUrl
+            String thumbnail
     ) {
         return new AdminProductSummaryDto(
                 product.getProductId(),
                 product.getName(),
-                imageUrl,
+                thumbnail,
                 product.getCategoryId(),
                 product.getBrandId(),
                 product.getSizeSystemId(),
