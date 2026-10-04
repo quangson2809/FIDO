@@ -80,7 +80,7 @@ public class AdminCatalogQueryService {
         );
         var result = products.findAll(specification, pagination.toPageable());
         var productsOnPage = result.getContent();
-        Map<Long, String> imagesByProductId = imageRead.representativeByProductIds(
+        Map<Long, String> thumbnailsByProductId = imageRead.representativeByProductIds(
                 productsOnPage.stream()
                         .map(Product::getProductId)
                         .toList()
@@ -89,7 +89,7 @@ public class AdminCatalogQueryService {
         var data = productsOnPage.stream()
                 .map(product -> CatalogMapper.adminSummary(
                         product,
-                        imagesByProductId.get(product.getProductId())
+                        thumbnailsByProductId.get(product.getProductId())
                 ))
                 .toList();
 
