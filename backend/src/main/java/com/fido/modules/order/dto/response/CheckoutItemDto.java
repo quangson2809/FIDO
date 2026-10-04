@@ -6,6 +6,7 @@ public record CheckoutItemDto(
         Long variant_id,
         Integer quantity,
         String product_name,
+        String thumbnail,
         String size,
         String color,
         BigDecimal unit_price,

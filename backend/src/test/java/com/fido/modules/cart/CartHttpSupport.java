@@ -361,6 +361,11 @@ abstract class CartHttpSupport {
             );
 
             db.update(
+                    "DELETE FROM product_images WHERE product_id=?",
+                    fixture.productId()
+            );
+
+            db.update(
                     "DELETE FROM products WHERE product_id=?",
                     fixture.productId()
             );

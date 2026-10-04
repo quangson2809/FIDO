@@ -8,6 +8,7 @@ public record CartItemDto(
         Integer quantity,
         String product_name,
         String image_url,
+        String thumbnail,
         String size,
         String color,
         BigDecimal unit_price,

@@ -34,11 +34,7 @@ public interface ProductImageRepository extends Repository<ProductImage, Long> {
                    image.imageUrl as imageUrl
             from ProductImage image
             where image.productId in :productIds
-              and image.sortOrder = (
-                  select min(candidate.sortOrder)
-                  from ProductImage candidate
-                  where candidate.productId = image.productId
-              )
+              and image.sortOrder = 0
             """)
     List<ProductRepresentativeImageView> findRepresentativeImagesByProductIdIn(
             @Param("productIds") Collection<Long> productIds
