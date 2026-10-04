@@ -172,8 +172,8 @@ Request:
 ```
 
 - Requires catalog write authorization.
-- The request represents the complete final ordering of the Product's current image set: every current image appears exactly once and final `sort_order` values are exactly `0..n-1`.
-- An image that does not belong to the Product is not found; duplicate/missing image entries, duplicate positions or gaps are conflicts.
+- The request may include all or a subset of the Product's current images. Unspecified images retain their current `sort_order`; after requested changes are applied, the complete resulting order must still be unique and contiguous `0..n-1`.
+- An image that does not belong to the Product is not found; duplicate image entries, duplicate resulting positions or gaps are conflicts.
 - Reorder is one database transaction. The implementation must preserve `UNIQUE(product_id, sort_order)` while changing positions and must not expose an intermediate duplicate ordering such as `0,0,2`.
 - The response uses the existing object envelope with the updated `AdminProductDetailDto`; its `images[]` sequence reflects the persisted order.
 
