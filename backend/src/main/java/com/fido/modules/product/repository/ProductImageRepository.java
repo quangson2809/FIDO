@@ -11,7 +11,7 @@ import org.springframework.data.repository.query.Param;
 public interface ProductImageRepository extends Repository<ProductImage, Long> {
     Optional<ProductImage> findById(Long id);
     ProductImage save(ProductImage entity);
-    List<ProductImage> findAllByProductIdOrderByImageIdAsc(Long productId);
+    List<ProductImage> findAllByProductIdOrderBySortOrderAsc(Long productId);
     void deleteAllByProductId(Long productId);
 
     @Query("""
@@ -19,8 +19,8 @@ public interface ProductImageRepository extends Repository<ProductImage, Long> {
                    image.imageUrl as imageUrl
             from ProductImage image
             where image.productId in :productIds
-              and image.imageId = (
-                  select min(candidate.imageId)
+              and image.sortOrder = (
+                  select min(candidate.sortOrder)
                   from ProductImage candidate
                   where candidate.productId = image.productId
               )
