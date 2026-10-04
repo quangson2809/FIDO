@@ -1,6 +1,7 @@
 package com.fido.modules.product;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -62,7 +63,7 @@ class CatalogPublicHttpTests extends CatalogHttpSupport {
     }
 
     @Test
-    void productImagesFollowApprovedUrlBasedContract() throws Exception {
+    void productImagesFollowApprovedReadModelContract() throws Exception {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         var fixture = createCatalog(writer);
 
@@ -73,6 +74,7 @@ class CatalogPublicHttpTests extends CatalogHttpSupport {
                 .get(0);
         assertEquals("https://example.test/shirt.png", createdImage.get("image_url").asText());
         assertEquals("shirt", createdImage.get("alt_text").asText());
+        assertEquals(0, createdImage.get("sort_order").asInt());
 
         var detail = call(
                 "GET",
@@ -85,12 +87,19 @@ class CatalogPublicHttpTests extends CatalogHttpSupport {
                 "https://example.test/shirt.png",
                 detail.data().get("data").get("images").get(0).get("image_url").asText()
         );
+        assertEquals(
+                0,
+                detail.data().get("data").get("images").get(0).get("sort_order").asInt()
+        );
 
         var list = call("GET", "/api/v1/catalog/products?q=FIDO", null, null);
         assertEquals(200, list.status(), list.body());
+        var summary = list.data().get("data").get(0);
         assertEquals(
                 "https://example.test/shirt.png",
-                list.data().get("data").get(0).get("image_url").asText()
+                summary.get("thumbnail").asText()
         );
+        assertFalse(summary.has("images"));
+        assertFalse(summary.has("image_url"));
     }
 }
