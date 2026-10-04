@@ -87,37 +87,37 @@ public class ProductImageAdminService {
         List<ProductImage> current =
                 images.findAllByProductIdForUpdate(productId);
 
-        Map<Long, Integer> requestedOrders = requestedOrders(
+        Map<Long, Integer> requestedOrders = requireCompleteOrder(
                 current,
                 request.images()
         );
 
         List<ProductImage> finalOrder = current.stream()
                 .sorted(Comparator.comparingInt(image ->
-                        requestedOrders.getOrDefault(
-                                image.getImageId(),
-                                image.getSortOrder()
-                        )
+                        requestedOrders.get(image.getImageId())
                 ))
                 .toList();
 
-        requireNormalizedFinalOrder(finalOrder, requestedOrders);
         normalizeSortOrder(finalOrder);
         recordProductUpdate(actor, productId);
 
         return query.detailInternal(productId);
     }
 
-    private Map<Long, Integer> requestedOrders(
+    private Map<Long, Integer> requireCompleteOrder(
             List<ProductImage> current,
             List<ProductImageReorderRequest.ImageOrder> requested
     ) {
+        if (requested.size() != current.size()) {
+            conflict();
+        }
+
         Set<Long> currentIds = current.stream()
                 .map(ProductImage::getImageId)
                 .collect(java.util.stream.Collectors.toSet());
 
         Map<Long, Integer> orders = new HashMap<>();
-        Set<Integer> explicitOrders = new HashSet<>();
+        Set<Integer> sortOrders = new HashSet<>();
 
         for (ProductImageReorderRequest.ImageOrder item : requested) {
             if (!currentIds.contains(item.image_id())) {
@@ -125,36 +125,18 @@ public class ProductImageAdminService {
             }
 
             if (orders.putIfAbsent(item.image_id(), item.sort_order()) != null
-                    || !explicitOrders.add(item.sort_order())) {
+                    || !sortOrders.add(item.sort_order())) {
+                conflict();
+            }
+        }
+
+        for (int expected = 0; expected < current.size(); expected++) {
+            if (!sortOrders.contains(expected)) {
                 conflict();
             }
         }
 
         return orders;
-    }
-
-    private void requireNormalizedFinalOrder(
-            List<ProductImage> finalOrder,
-            Map<Long, Integer> requestedOrders
-    ) {
-        Set<Integer> finalSortOrders = new HashSet<>();
-
-        for (ProductImage image : finalOrder) {
-            int sortOrder = requestedOrders.getOrDefault(
-                    image.getImageId(),
-                    image.getSortOrder()
-            );
-
-            if (!finalSortOrders.add(sortOrder)) {
-                conflict();
-            }
-        }
-
-        for (int expected = 0; expected < finalOrder.size(); expected++) {
-            if (!finalSortOrders.contains(expected)) {
-                conflict();
-            }
-        }
     }
 
     private void normalizeSortOrder(List<ProductImage> orderedImages) {
