@@ -82,7 +82,7 @@ class PublicCatalogQueryServiceTests {
         Color secondColor = color(22L);
         when(references.colorsById(List.of(21L, 22L)))
                 .thenReturn(Map.of(21L, firstColor, 22L, secondColor));
-        when(images.findAllByProductIdOrderByImageIdAsc(100L)).thenReturn(List.of());
+        when(images.findAllByProductIdOrderBySortOrderAsc(100L)).thenReturn(List.of());
 
         var detail = service.publicDetail(100L);
 
