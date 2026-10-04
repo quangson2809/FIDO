@@ -2,6 +2,7 @@ package com.fido.modules.product;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -312,12 +313,11 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
     }
 
     private List<Long> imageIds(Result response) {
-        return response.data()
-                .get("data")
-                .get("images")
-                .valueStream()
-                .map(image -> image.get("image_id").asLong())
-                .toList();
+        var ids = new ArrayList<Long>();
+        for (var image : response.data().get("data").get("images")) {
+            ids.add(image.get("image_id").asLong());
+        }
+        return List.copyOf(ids);
     }
 
     private List<Long> storedImageIds(long productId) {
