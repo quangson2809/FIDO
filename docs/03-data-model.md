@@ -19,9 +19,9 @@
 
 `addresses(address_id, account_id, address_text, created_at)`
 
-`roles(role_id, code UQ, name, description?)`
+`roles(role_id, code UQ, name, description?)`.
 
-`permissions(permission_id, code UQ, name)`
+`permissions(permission_id, code UQ, name)`.
 
 `account_roles(account_id, role_id)` composite PK.
 
@@ -69,7 +69,8 @@
 
 `order_items`:
 - identity: `order_item_id`, `order_id`, `variant_id`;
-- snapshots: product name, SKU?, size, color, unit price, quantity, line total.
+- snapshots: product name, image URL?, SKU?, size, color, unit price, quantity, line total;
+- physical image snapshot column: `image_url_snapshot`.
 
 `payments`:
 - `order_id` PK/FK for 1:1;
@@ -107,6 +108,9 @@
 
 - Effective variant price = `COALESCE(product_variants.override_price, products.base_price)`.
 - Purchasable availability = Product sale state + Variant sale state + `inventories.available_quantity`.
+- Current Product cover = ProductImage at `sort_order = 0`.
+- Cart item image = current Product cover at read time; Cart does not persist an image snapshot.
+- OrderItem image = `order_items.image_url_snapshot`, captured from the current Product cover when the Order is created; later catalog edits must not change it.
 - Order payment status comes from `payments`; do not add `payment_status` to `orders`.
 - Cart subtotal is calculated from cart items and current effective prices.
 - Sales report is calculated from completed/returned orders; no baseline aggregate table.
@@ -124,7 +128,8 @@
 - `available_quantity` cannot be negative.
 - Purchase/receipt quantities must be positive.
 - Prices and money snapshots must be non-negative.
-- OrderItem snapshot values must not be rewritten by catalog edits.
+- OrderItem snapshot values, including `image_url_snapshot`, must not be rewritten by catalog edits.
+- Existing historical OrderItems with a null image snapshot remain null; do not backfill from current catalog state.
 - Confirmed GoodsReceipt stock-affecting items are immutable.
 - Historical Order/Payment/InventoryTransaction/Audit data is not hard-deleted.
 
