@@ -108,10 +108,6 @@ public class ProductImageAdminService {
             List<ProductImage> current,
             List<ProductImageReorderRequest.ImageOrder> requested
     ) {
-        if (requested.size() != current.size()) {
-            conflict();
-        }
-
         Set<Long> currentIds = current.stream()
                 .map(ProductImage::getImageId)
                 .collect(java.util.stream.Collectors.toSet());
@@ -128,6 +124,10 @@ public class ProductImageAdminService {
                     || !sortOrders.add(item.sort_order())) {
                 conflict();
             }
+        }
+
+        if (orders.size() != current.size()) {
+            conflict();
         }
 
         for (int expected = 0; expected < current.size(); expected++) {
