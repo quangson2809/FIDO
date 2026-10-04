@@ -14,6 +14,7 @@ public interface ProductImageRepository extends Repository<ProductImage, Long> {
     Optional<ProductImage> findById(Long id);
     ProductImage save(ProductImage entity);
     void delete(ProductImage entity);
+    void flush();
     List<ProductImage> findAllByProductIdOrderBySortOrderAsc(Long productId);
     void deleteAllByProductId(Long productId);
 
