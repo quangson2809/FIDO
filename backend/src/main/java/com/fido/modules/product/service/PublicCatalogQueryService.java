@@ -188,7 +188,7 @@ public class PublicCatalogQueryService {
                 .toList();
 
         var productImages = images
-                .findAllByProductIdOrderByImageIdAsc(product.getProductId())
+                .findAllByProductIdOrderBySortOrderAsc(product.getProductId())
                 .stream()
                 .map(CatalogMapper::image)
                 .toList();
