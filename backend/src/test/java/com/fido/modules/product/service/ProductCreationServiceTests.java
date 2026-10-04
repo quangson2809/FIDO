@@ -17,26 +17,27 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.util.unit.DataSize;
 import org.springframework.web.multipart.MultipartFile;
 
 class ProductCreationServiceTests {
 
     @Test
     void uploadsFilesInRequestOrderBeforeProductWrite() {
-        ProductImageStorage storage = mock(ProductImageStorage.class);
+        ImageStorageGateway storage = mock(ImageStorageGateway.class);
         ProductAdminService products = mock(ProductAdminService.class);
-        ProductCreationService service = new ProductCreationService(storage, products);
+        ProductCreationService service = service(storage, products);
 
         MultipartFile front = image("front.png");
         MultipartFile back = image("back.png");
         ProductCreateRequest request = request();
 
-        when(storage.upload(front)).thenReturn(new ProductImageStorage.StoredImage(
-                "https://i.ibb.co/front.png", "front-id", "front-delete"
-        ));
-        when(storage.upload(back)).thenReturn(new ProductImageStorage.StoredImage(
-                "https://i.ibb.co/back.png", "back-id", "back-delete"
-        ));
+        when(storage.upload(front)).thenReturn(
+                new ImageStorageGateway.UploadedImage("https://i.ibb.co/front.png")
+        );
+        when(storage.upload(back)).thenReturn(
+                new ImageStorageGateway.UploadedImage("https://i.ibb.co/back.png")
+        );
 
         service.createProduct(7L, request, new MultipartFile[]{front, back});
 
@@ -62,9 +63,9 @@ class ProductCreationServiceTests {
 
     @Test
     void uploadFailurePreventsProductWrite() {
-        ProductImageStorage storage = mock(ProductImageStorage.class);
+        ImageStorageGateway storage = mock(ImageStorageGateway.class);
         ProductAdminService products = mock(ProductAdminService.class);
-        ProductCreationService service = new ProductCreationService(storage, products);
+        ProductCreationService service = service(storage, products);
 
         MultipartFile image = image("front.png");
         when(storage.upload(image)).thenThrow(
@@ -88,9 +89,9 @@ class ProductCreationServiceTests {
 
     @Test
     void rejectsJsonImageUrlsInsideMultipartMetadataBeforeUploading() {
-        ProductImageStorage storage = mock(ProductImageStorage.class);
+        ImageStorageGateway storage = mock(ImageStorageGateway.class);
         ProductAdminService products = mock(ProductAdminService.class);
-        ProductCreationService service = new ProductCreationService(storage, products);
+        ProductCreationService service = service(storage, products);
 
         ProductCreateRequest baseRequest = request();
         ProductCreateRequest multipartRequest = new ProductCreateRequest(
@@ -124,6 +125,41 @@ class ProductCreationServiceTests {
         assertEquals(HttpStatus.BAD_REQUEST, error.getStatusCode());
         verify(storage, never()).upload(any());
         verify(products, never()).createProduct(any(), any());
+    }
+
+    @Test
+    void rejectsFilesAboveConfiguredUploadLimitBeforeCallingStorage() {
+        ImageStorageGateway storage = mock(ImageStorageGateway.class);
+        ProductAdminService products = mock(ProductAdminService.class);
+        ProductCreationService service = new ProductCreationService(
+                storage,
+                products,
+                DataSize.ofBytes(2)
+        );
+
+        var error = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> service.createProduct(
+                        7L,
+                        request(),
+                        new MultipartFile[]{image("front.png")}
+                )
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, error.getStatusCode());
+        verify(storage, never()).upload(any());
+        verify(products, never()).createProduct(any(), any());
+    }
+
+    private ProductCreationService service(
+            ImageStorageGateway storage,
+            ProductAdminService products
+    ) {
+        return new ProductCreationService(
+                storage,
+                products,
+                DataSize.ofMegabytes(32)
+        );
     }
 
     private ProductCreateRequest request() {
