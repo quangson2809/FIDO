@@ -93,6 +93,8 @@
 | 76 | `GET` | `/api/v1/admin/customers` | `account` | JWT + permission |
 | 77 | `GET` | `/api/v1/admin/customers/{customerId}` | `account` | JWT + permission |
 
+The two Product-image commands below are project-owner refinements added after the consolidated 77-endpoint Analyst baseline. They preserve the global `/api/v1/admin` prefix and `CATALOG_WRITE` authorization convention; they are not renumbered into the historical 77-endpoint table.
+
 ## 3. Important command semantics
 
 ### API #19 — Checkout quote
@@ -131,17 +133,49 @@ The project owner approved a backward-compatible physical transport refinement o
 
 - `application/json` remains supported exactly as the consolidated contract defines, including optional `images[{image_url,alt_text?}]`.
 - The same URL may also consume `multipart/form-data` for the admin UI. The `product` part carries the JSON metadata/variants and the optional repeated `images` part carries local image files.
-- Multipart image files are uploaded by the backend to the configured image-storage provider; provider credentials never leave the backend. The resulting **full direct URL** is persisted in the existing `product_images.image_url` column.
-- No image filename-only persistence, provider-specific database column, image table lifecycle, or `sort_order` column is introduced.
+- Multipart image files are uploaded by the backend to the configured image-storage provider; provider credentials never leave the backend. The resulting **full direct URL** is persisted in `product_images.image_url`.
+- `product_images.sort_order` is a technical gallery-order field. Product creation assigns `0..n-1` from the request/upload sequence; the create payload does not accept client-supplied sort positions.
 - File upload occurs outside the database transaction; the database product/image/variant write starts only after all requested uploads succeed.
 - Provider-side delete/compensation is not claimed unless a supported provider delete contract is available. A failed database write after successful remote upload can therefore leave a remote orphan and must remain an explicit integration limitation rather than a hidden transaction guarantee.
 
-### Product image read semantics — project-owner refinement 2026-10-03
+### Product image read semantics — project-owner refinement 2026-10-04
 
-- `ProductDetailDto`/`AdminProductDetailDto` continue returning the full `images[]` collection.
+- `ProductDetailDto`/`AdminProductDetailDto` return the full `images[]` collection in ascending `sort_order`.
 - Public/admin product summaries, cart items and order items expose nullable `image_url` for presentation.
-- The representative presentation image is the existing ProductImage with the smallest `image_id`. This convention does **not** define gallery ordering and does not add persistent image-order semantics.
-- Cart and order `image_url` are current catalog presentation data, not OrderItem history snapshots. Missing current variant/product/image resolves to `null`; historical OrderItem snapshot fields remain authoritative.
+- The representative/cover presentation image is the ProductImage at `sort_order = 0`. A Product with no images has no representative image and resolves presentation `image_url` to `null` where nullable.
+- Product image ordering is catalog presentation state; historical OrderItem snapshots remain authoritative and are not rewritten by later catalog edits.
+
+### Product image remove command — project-owner refinement 2026-10-04
+
+`DELETE /api/v1/admin/products/{productId}/images/{imageId}`
+
+- Requires catalog write authorization.
+- `imageId` must belong to `productId`; missing or foreign image identity is treated as not found for that Product.
+- Remove the `product_images` row from the catalog only. Do **not** invoke provider-side remote delete in this command.
+- Remaining image positions are compacted to contiguous `0..n-1` in the same transaction. Removing the cover therefore promotes the next image to `sort_order = 0`.
+- The current requirement does not define a minimum image count; removing the last image is valid and leaves the Product with zero images.
+- Success returns HTTP `204 No Content`.
+
+### Product image reorder command — project-owner refinement 2026-10-04
+
+`PATCH /api/v1/admin/products/{productId}/images`
+
+Request:
+
+```json
+{
+  "images": [
+    {"image_id": 13, "sort_order": 0},
+    {"image_id": 11, "sort_order": 1}
+  ]
+}
+```
+
+- Requires catalog write authorization.
+- The request represents the complete final ordering of the Product's current image set: every current image appears exactly once and final `sort_order` values are exactly `0..n-1`.
+- An image that does not belong to the Product is not found; duplicate/missing image entries, duplicate positions or gaps are conflicts.
+- Reorder is one database transaction. The implementation must preserve `UNIQUE(product_id, sort_order)` while changing positions and must not expose an intermediate duplicate ordering such as `0,0,2`.
+- The response uses the existing object envelope with the updated `AdminProductDetailDto`; its `images[]` sequence reflects the persisted order.
 
 ### API #54 — GoodsReceipt actions
 
