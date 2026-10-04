@@ -8,7 +8,6 @@ import com.fido.modules.product.dto.request.ProductImageReorderRequest;
 import com.fido.modules.product.dto.response.AdminProductDetailDto;
 import com.fido.modules.product.entity.ProductImage;
 import com.fido.modules.product.repository.ProductImageRepository;
-import jakarta.persistence.EntityManager;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,20 +32,17 @@ public class ProductImageAdminService {
     private final CatalogReferenceService references;
     private final AdminCatalogQueryService query;
     private final AuditService audit;
-    private final EntityManager em;
 
     public ProductImageAdminService(
             ProductImageRepository images,
             CatalogReferenceService references,
             AdminCatalogQueryService query,
-            AuditService audit,
-            EntityManager em
+            AuditService audit
     ) {
         this.images = images;
         this.references = references;
         this.query = query;
         this.audit = audit;
-        this.em = em;
     }
 
     @PreAuthorize(WRITE)
@@ -66,7 +62,7 @@ public class ProductImageAdminService {
                 .orElseThrow(ProductImageAdminService::notFound);
 
         images.delete(removed);
-        em.flush();
+        images.flush();
 
         List<ProductImage> remaining = current.stream()
                 .filter(image -> !Objects.equals(image.getImageId(), imageId))
@@ -165,12 +161,12 @@ public class ProductImageAdminService {
         for (int index = 0; index < orderedImages.size(); index++) {
             orderedImages.get(index).setSortOrder(temporaryBase + index);
         }
-        em.flush();
+        images.flush();
 
         for (int index = 0; index < orderedImages.size(); index++) {
             orderedImages.get(index).setSortOrder(index);
         }
-        em.flush();
+        images.flush();
     }
 
     private void recordProductUpdate(Long actor, Long productId) {
