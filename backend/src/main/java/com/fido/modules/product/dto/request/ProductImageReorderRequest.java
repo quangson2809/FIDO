@@ -8,8 +8,7 @@ import java.util.List;
 
 public record ProductImageReorderRequest(
         @NotNull
-        @Valid
-        List<ImageOrder> images
+        List<@NotNull @Valid ImageOrder> images
 ) {
 
     public record ImageOrder(
