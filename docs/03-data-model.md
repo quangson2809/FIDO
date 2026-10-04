@@ -25,7 +25,7 @@
 
 `account_roles(account_id, role_id)` composite PK.
 
-`role_permissions(account_id, permission_id)` composite PK.
+`role_permissions(role_id, permission_id)` composite PK.
 
 ### product
 
