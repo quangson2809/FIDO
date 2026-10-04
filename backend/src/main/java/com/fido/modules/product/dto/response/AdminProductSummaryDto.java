@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 public record AdminProductSummaryDto(
         Long product_id,
         String name,
-        String image_url,
+        String thumbnail,
         Long category_id,
         Long brand_id,
         Long size_system_id,
