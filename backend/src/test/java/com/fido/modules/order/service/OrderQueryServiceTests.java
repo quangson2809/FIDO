@@ -9,12 +9,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fido.modules.order.entity.Order;
-import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.entity.Payment;
+import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
 import com.fido.modules.order.repository.ShippingInfoRepository;
-import com.fido.modules.product.service.CatalogVariantReadService;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,7 +35,6 @@ class OrderQueryServiceTests {
     @Mock private ShippingInfoRepository shipping;
     @Mock private OrderActionPolicy actionPolicy;
     @Mock private OrderAuthorization authorization;
-    @Mock private CatalogVariantReadService catalog;
 
     private OrderQueryService service;
 
@@ -48,8 +46,7 @@ class OrderQueryServiceTests {
                 payments,
                 shipping,
                 actionPolicy,
-                authorization,
-                catalog
+                authorization
         );
     }
 

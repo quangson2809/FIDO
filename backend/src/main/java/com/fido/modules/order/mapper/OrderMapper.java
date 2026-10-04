@@ -26,15 +26,11 @@ public final class OrderMapper {
     }
 
     public static OrderItemDto item(OrderItem item) {
-        return item(item, null);
-    }
-
-    public static OrderItemDto item(OrderItem item, String imageUrl) {
         return new OrderItemDto(
                 item.getOrderItemId(),
                 item.getVariantId(),
                 item.getProductNameSnapshot(),
-                imageUrl,
+                item.getImageUrlSnapshot(),
                 item.getSkuSnapshot(),
                 item.getSizeSnapshot(),
                 item.getColorSnapshot(),

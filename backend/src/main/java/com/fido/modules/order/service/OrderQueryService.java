@@ -13,7 +13,6 @@ import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
 import com.fido.modules.order.repository.ShippingInfoRepository;
-import com.fido.modules.product.service.CatalogVariantReadService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +40,6 @@ public class OrderQueryService {
     private final ShippingInfoRepository shipping;
     private final OrderActionPolicy actionPolicy;
     private final OrderAuthorization authorization;
-    private final CatalogVariantReadService catalog;
 
     public OrderQueryService(
             OrderRepository orders,
@@ -49,8 +47,7 @@ public class OrderQueryService {
             PaymentRepository payments,
             ShippingInfoRepository shipping,
             OrderActionPolicy actionPolicy,
-            OrderAuthorization authorization,
-            CatalogVariantReadService catalog
+            OrderAuthorization authorization
     ) {
         this.orders = orders;
         this.items = items;
@@ -58,7 +55,6 @@ public class OrderQueryService {
         this.shipping = shipping;
         this.actionPolicy = actionPolicy;
         this.authorization = authorization;
-        this.catalog = catalog;
     }
 
     public ApiListResponse<OrderSummaryDto> customerOrders(
@@ -190,17 +186,8 @@ public class OrderQueryService {
 
     private List<com.fido.modules.order.dto.response.OrderItemDto> orderItems(Long orderId) {
         List<OrderItem> orderItems = items.findAllByOrderIdOrderByOrderItemIdAsc(orderId);
-        Map<Long, String> imageUrlsByVariantId = catalog.representativeImageUrlsByVariantIds(
-                orderItems.stream()
-                        .map(OrderItem::getVariantId)
-                        .filter(Objects::nonNull)
-                        .toList()
-        );
         return orderItems.stream()
-                .map(item -> OrderMapper.item(
-                        item,
-                        imageUrlsByVariantId.get(item.getVariantId())
-                ))
+                .map(OrderMapper::item)
                 .toList();
     }
 
