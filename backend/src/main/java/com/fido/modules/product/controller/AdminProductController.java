@@ -3,6 +3,7 @@ package com.fido.modules.product.controller;
 import com.fido.common.response.ApiListResponse;
 import com.fido.common.response.ApiResponse;
 import com.fido.modules.product.dto.request.ProductCreateRequest;
+import com.fido.modules.product.dto.request.ProductImageReorderRequest;
 import com.fido.modules.product.dto.request.ProductPatchRequest;
 import com.fido.modules.product.dto.request.VariantBatchCreateRequest;
 import com.fido.modules.product.dto.request.VariantPatchRequest;
@@ -12,12 +13,14 @@ import com.fido.modules.product.dto.response.AdminVariantDto;
 import com.fido.modules.product.service.AdminCatalogQueryService;
 import com.fido.modules.product.service.ProductAdminService;
 import com.fido.modules.product.service.ProductCreationService;
+import com.fido.modules.product.service.ProductImageAdminService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -37,15 +40,18 @@ public class AdminProductController {
     private final AdminCatalogQueryService query;
     private final ProductAdminService products;
     private final ProductCreationService creation;
+    private final ProductImageAdminService productImages;
 
     public AdminProductController(
             AdminCatalogQueryService query,
             ProductAdminService products,
-            ProductCreationService creation
+            ProductCreationService creation,
+            ProductImageAdminService productImages
     ) {
         this.query = query;
         this.products = products;
         this.creation = creation;
+        this.productImages = productImages;
     }
 
     @GetMapping("/products")
@@ -92,6 +98,31 @@ public class AdminProductController {
             @Valid @RequestBody ProductPatchRequest request
     ) {
         return ApiResponse.of(products.updateProduct(actor(jwt), productId, request));
+    }
+
+    @DeleteMapping("/products/{productId}/images/{imageId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void removeImage(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long productId,
+            @PathVariable Long imageId
+    ) {
+        productImages.removeImage(actor(jwt), productId, imageId);
+    }
+
+    @PatchMapping("/products/{productId}/images")
+    public ApiResponse<AdminProductDetailDto> reorderImages(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long productId,
+            @Valid @RequestBody ProductImageReorderRequest request
+    ) {
+        return ApiResponse.of(
+                productImages.reorderImages(
+                        actor(jwt),
+                        productId,
+                        request
+                )
+        );
     }
 
     @PostMapping("/products/{productId}/variants")
