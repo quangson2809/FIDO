@@ -3,6 +3,7 @@ export interface OrderSummaryDto {
   order_code: string;
   order_status: string;
   payment_status: string;
+  image_url: string | null;
   total: number;
   created_at: string;
   completed_at: string | null;

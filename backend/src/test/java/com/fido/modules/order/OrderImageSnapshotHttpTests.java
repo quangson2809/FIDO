@@ -1,11 +1,13 @@
 package com.fido.modules.order;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
 
 class OrderImageSnapshotHttpTests extends OrderHttpSupport {
 
@@ -59,6 +61,8 @@ class OrderImageSnapshotHttpTests extends OrderHttpSupport {
         assertEquals(coverB, currentCover(fixture.productId()));
         assertOrderImage(customer, orderId, coverA);
         assertAdminOrderImage(root, orderId, coverA);
+        assertOrderListImage(customer, "/api/v1/me/orders", orderId, coverA);
+        assertOrderListImage(root, "/api/v1/admin/orders", orderId, coverA);
 
         var deletedPreviousCover = call(
                 "DELETE",
@@ -76,6 +80,8 @@ class OrderImageSnapshotHttpTests extends OrderHttpSupport {
         assertEquals(coverB, currentCover(fixture.productId()));
         assertOrderImage(customer, orderId, coverA);
         assertAdminOrderImage(root, orderId, coverA);
+        assertOrderListImage(customer, "/api/v1/me/orders", orderId, coverA);
+        assertOrderListImage(root, "/api/v1/admin/orders", orderId, coverA);
     }
 
     private long insertImage(
@@ -168,6 +174,32 @@ class OrderImageSnapshotHttpTests extends OrderHttpSupport {
                         .get("image_url")
                         .asText()
         );
+    }
+
+    private void assertOrderListImage(
+            User viewer,
+            String path,
+            long orderId,
+            String expectedImageUrl
+    ) throws Exception {
+        Result list = call(
+                "GET",
+                path,
+                viewer.token(),
+                null
+        );
+
+        assertEquals(200, list.status(), list.body());
+        JsonNode summary = null;
+        for (JsonNode candidate : list.data().get("data")) {
+            if (candidate.get("order_id").asLong() == orderId) {
+                summary = candidate;
+                break;
+            }
+        }
+
+        assertNotNull(summary, "Order summary is missing from list response");
+        assertEquals(expectedImageUrl, summary.get("image_url").asText());
     }
 
     @AfterEach

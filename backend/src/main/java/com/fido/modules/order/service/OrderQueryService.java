@@ -195,16 +195,30 @@ public class OrderQueryService {
         if (pageOrders.isEmpty()) {
             return List.of();
         }
+
+        List<Long> orderIds = pageOrders.stream()
+                .map(Order::getOrderId)
+                .toList();
         Map<Long, Payment> paymentsByOrderId = payments
-                .findAllByOrderIdIn(pageOrders.stream().map(Order::getOrderId).toList())
+                .findAllByOrderIdIn(orderIds)
                 .stream()
                 .collect(Collectors.toMap(Payment::getOrderId, Function.identity()));
+        Map<Long, OrderItem> firstItemsByOrderId = items
+                .findFirstItemsByOrderIdIn(orderIds)
+                .stream()
+                .collect(Collectors.toMap(OrderItem::getOrderId, Function.identity()));
+
         return pageOrders.stream()
                 .map(order -> OrderMapper.summary(
                         order,
-                        payment(paymentsByOrderId, order.getOrderId())
+                        payment(paymentsByOrderId, order.getOrderId()),
+                        previewImage(firstItemsByOrderId.get(order.getOrderId()))
                 ))
                 .toList();
+    }
+
+    private String previewImage(OrderItem firstItem) {
+        return firstItem == null ? null : firstItem.getImageUrlSnapshot();
     }
 
     private Payment payment(Map<Long, Payment> paymentsByOrderId, Long orderId) {

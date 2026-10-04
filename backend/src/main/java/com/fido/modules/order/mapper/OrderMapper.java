@@ -72,12 +72,17 @@ public final class OrderMapper {
         );
     }
 
-    public static OrderSummaryDto summary(Order order, Payment payment) {
+    public static OrderSummaryDto summary(
+            Order order,
+            Payment payment,
+            String imageUrl
+    ) {
         return new OrderSummaryDto(
                 order.getOrderId(),
                 order.getOrderCode(),
                 order.getOrderStatus(),
                 payment.getPaymentStatus(),
+                imageUrl,
                 order.getTotalSnapshot(),
                 order.getCreatedAt(),
                 order.getCompletedAt(),

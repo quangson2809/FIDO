@@ -1,6 +1,7 @@
 package com.fido.modules.order.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -9,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fido.modules.order.entity.Order;
+import com.fido.modules.order.entity.OrderItem;
 import com.fido.modules.order.entity.Payment;
 import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
@@ -52,7 +54,7 @@ class OrderQueryServiceTests {
 
     @Test
     @SuppressWarnings("unchecked")
-    void customerOrderListLoadsPaymentsInOneBatch() {
+    void customerOrderListLoadsPaymentsAndPreviewImagesInBatches() {
         Order first = order(1L, "ORD-1", new BigDecimal("100000.00"));
         Order second = order(2L, "ORD-2", new BigDecimal("200000.00"));
         when(orders.findAll(any(Specification.class), any(Pageable.class)))
@@ -66,14 +68,26 @@ class OrderQueryServiceTests {
                         payment(1L, OrderPolicy.UNPAID),
                         payment(2L, OrderPolicy.PAID)
                 ));
+        when(items.findFirstItemsByOrderIdIn(List.of(1L, 2L)))
+                .thenReturn(List.of(
+                        orderItem(11L, 1L, "https://cdn.example.test/order-1.jpg"),
+                        orderItem(21L, 2L, null)
+                ));
 
         var response = service.customerOrders(10L, null, 1, 20);
 
         assertEquals(2, response.data().size());
         assertEquals(OrderPolicy.UNPAID, response.data().get(0).payment_status());
         assertEquals(OrderPolicy.PAID, response.data().get(1).payment_status());
+        assertEquals(
+                "https://cdn.example.test/order-1.jpg",
+                response.data().get(0).image_url()
+        );
+        assertNull(response.data().get(1).image_url());
         verify(payments).findAllByOrderIdIn(List.of(1L, 2L));
+        verify(items).findFirstItemsByOrderIdIn(List.of(1L, 2L));
         verify(payments, never()).findById(anyLong());
+        verify(items, never()).findAllByOrderIdOrderByOrderItemIdAsc(anyLong());
     }
 
     @Test
@@ -87,6 +101,7 @@ class OrderQueryServiceTests {
                         1
                 ));
         when(payments.findAllByOrderIdIn(List.of(1L))).thenReturn(List.of());
+        when(items.findFirstItemsByOrderIdIn(List.of(1L))).thenReturn(List.of());
 
         IllegalStateException error = assertThrows(
                 IllegalStateException.class,
@@ -104,6 +119,14 @@ class OrderQueryServiceTests {
         order.setOrderStatus(OrderPolicy.PENDING);
         order.setTotalSnapshot(total);
         return order;
+    }
+
+    private OrderItem orderItem(Long orderItemId, Long orderId, String imageUrl) {
+        OrderItem item = new OrderItem();
+        item.setOrderItemId(orderItemId);
+        item.setOrderId(orderId);
+        item.setImageUrlSnapshot(imageUrl);
+        return item;
     }
 
     private Payment payment(Long orderId, String status) {
