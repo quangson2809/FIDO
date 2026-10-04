@@ -5,9 +5,11 @@ import com.fido.modules.product.dto.response.AdminProductDetailDto;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.util.unit.DataSize;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -16,17 +18,19 @@ public class ProductCreationService {
 
     private static final String WRITE =
             "hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_CATALOG_WRITE')";
-    private static final long MAX_IMAGE_BYTES = 32L * 1024 * 1024;
 
-    private final ProductImageStorage storage;
+    private final ImageStorageGateway storage;
     private final ProductAdminService products;
+    private final long maxImageBytes;
 
     public ProductCreationService(
-            ProductImageStorage storage,
-            ProductAdminService products
+            ImageStorageGateway storage,
+            ProductAdminService products,
+            @Value("${app.image-storage.max-upload-size:32MB}") DataSize maxUploadSize
     ) {
         this.storage = storage;
         this.products = products;
+        this.maxImageBytes = maxUploadSize.toBytes();
     }
 
     @PreAuthorize(WRITE)
@@ -49,7 +53,7 @@ public class ProductCreationService {
 
         var uploadedImages = new ArrayList<ProductCreateRequest.ImageInput>();
         for (MultipartFile file : files) {
-            ProductImageStorage.StoredImage stored = storage.upload(file);
+            ImageStorageGateway.UploadedImage stored = storage.upload(file);
             uploadedImages.add(new ProductCreateRequest.ImageInput(stored.url(), null));
         }
 
@@ -88,8 +92,8 @@ public class ProductCreationService {
         if (contentType == null || !contentType.startsWith("image/")) {
             throw badRequest("Uploaded file must be an image");
         }
-        if (file.getSize() > MAX_IMAGE_BYTES) {
-            throw badRequest("Image file exceeds provider limit");
+        if (file.getSize() > maxImageBytes) {
+            throw badRequest("Image file exceeds configured upload limit");
         }
     }
 
