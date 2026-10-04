@@ -15,10 +15,7 @@ import com.fido.modules.order.repository.PaymentRepository;
 import com.fido.modules.order.repository.ShippingInfoRepository;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -38,6 +35,7 @@ public class OrderQueryService {
     private final OrderItemRepository items;
     private final PaymentRepository payments;
     private final ShippingInfoRepository shipping;
+    private final OrderSummaryReadService summaryReader;
     private final OrderActionPolicy actionPolicy;
     private final OrderAuthorization authorization;
 
@@ -46,6 +44,7 @@ public class OrderQueryService {
             OrderItemRepository items,
             PaymentRepository payments,
             ShippingInfoRepository shipping,
+            OrderSummaryReadService summaryReader,
             OrderActionPolicy actionPolicy,
             OrderAuthorization authorization
     ) {
@@ -53,6 +52,7 @@ public class OrderQueryService {
         this.items = items;
         this.payments = payments;
         this.shipping = shipping;
+        this.summaryReader = summaryReader;
         this.actionPolicy = actionPolicy;
         this.authorization = authorization;
     }
@@ -70,7 +70,7 @@ public class OrderQueryService {
         Specification<Order> specification = OrderSpecifications.customerOrders(accountId, orderStatus);
         var result = orders.findAll(specification, pagination.toPageable());
         return ApiListResponse.of(
-                summaries(result.getContent()),
+                summaryReader.summaries(result.getContent()),
                 pagination.meta(result.getTotalElements())
         );
     }
@@ -112,7 +112,7 @@ public class OrderQueryService {
                 pagination.toPageable()
         );
         return ApiListResponse.of(
-                summaries(result.getContent()),
+                summaryReader.summaries(result.getContent()),
                 pagination.meta(result.getTotalElements())
         );
     }
@@ -189,44 +189,6 @@ public class OrderQueryService {
         return orderItems.stream()
                 .map(OrderMapper::item)
                 .toList();
-    }
-
-    private List<OrderSummaryDto> summaries(List<Order> pageOrders) {
-        if (pageOrders.isEmpty()) {
-            return List.of();
-        }
-
-        List<Long> orderIds = pageOrders.stream()
-                .map(Order::getOrderId)
-                .toList();
-        Map<Long, Payment> paymentsByOrderId = payments
-                .findAllByOrderIdIn(orderIds)
-                .stream()
-                .collect(Collectors.toMap(Payment::getOrderId, Function.identity()));
-        Map<Long, OrderItem> firstItemsByOrderId = items
-                .findFirstItemsByOrderIdIn(orderIds)
-                .stream()
-                .collect(Collectors.toMap(OrderItem::getOrderId, Function.identity()));
-
-        return pageOrders.stream()
-                .map(order -> OrderMapper.summary(
-                        order,
-                        payment(paymentsByOrderId, order.getOrderId()),
-                        previewImage(firstItemsByOrderId.get(order.getOrderId()))
-                ))
-                .toList();
-    }
-
-    private String previewImage(OrderItem firstItem) {
-        return firstItem == null ? null : firstItem.getImageUrlSnapshot();
-    }
-
-    private Payment payment(Map<Long, Payment> paymentsByOrderId, Long orderId) {
-        Payment payment = paymentsByOrderId.get(orderId);
-        if (payment == null) {
-            throw missingPayment();
-        }
-        return payment;
     }
 
     private Order customerOrder(Long accountId, Long orderId) {

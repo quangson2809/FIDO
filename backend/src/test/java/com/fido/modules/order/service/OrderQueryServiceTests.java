@@ -47,6 +47,7 @@ class OrderQueryServiceTests {
                 items,
                 payments,
                 shipping,
+                new OrderSummaryReadService(items, payments),
                 actionPolicy,
                 authorization
         );
