@@ -113,7 +113,7 @@ public class AdminCatalogQueryService {
         Product product = references.product(productId);
         var adminVariants = readVariants(productId);
         var productImages = images
-                .findAllByProductIdOrderByImageIdAsc(productId)
+                .findAllByProductIdOrderBySortOrderAsc(productId)
                 .stream()
                 .map(CatalogMapper::image)
                 .toList();
