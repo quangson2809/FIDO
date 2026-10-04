@@ -10,13 +10,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 @SpringBootTest
@@ -26,17 +27,42 @@ class ApiBaselineRouteContractTests {
     private static final String BASELINE_RESOURCE = "api-baseline-77.csv";
     private static final Route PRODUCT_CREATE =
             new Route("POST", "/api/v1/admin/products");
+    private static final Set<Route> APPROVED_REFINEMENT_ROUTES = Set.of(
+            new Route(
+                    "DELETE",
+                    "/api/v1/admin/products/{productId}/images/{imageId}"
+            ),
+            new Route(
+                    "PATCH",
+                    "/api/v1/admin/products/{productId}/images"
+            )
+    );
 
     @Autowired
     @Qualifier("requestMappingHandlerMapping")
     RequestMappingHandlerMapping mappings;
 
     @Test
-    void registeredApiRoutesMatchThe77EndpointBaseline() throws Exception {
-        Set<Route> expected = baselineRoutes();
+    void registeredApiRoutesMatchBaselineAndApprovedRefinements()
+            throws Exception {
+        Set<Route> baseline = baselineRoutes();
+        Set<Route> expected = Stream.concat(
+                        baseline.stream(),
+                        APPROVED_REFINEMENT_ROUTES.stream()
+                )
+                .collect(Collectors.toUnmodifiableSet());
         Map<Route, Long> registered = registeredApiRoutes();
 
-        assertEquals(77, expected.size(), "Baseline must contain exactly 77 routes");
+        assertEquals(
+                77,
+                baseline.size(),
+                "Analyst baseline must contain exactly 77 routes"
+        );
+        assertEquals(
+                baseline.size() + APPROVED_REFINEMENT_ROUTES.size(),
+                expected.size(),
+                "Approved refinements must not duplicate baseline routes"
+        );
         assertEquals(
                 expected,
                 registered.keySet(),
@@ -52,7 +78,7 @@ class ApiBaselineRouteContractTests {
                                 || (entry.getKey().equals(PRODUCT_CREATE)
                                 && entry.getValue() == 2L)
                 ),
-                () -> "A baseline method/path has an unapproved duplicate mapping: "
+                () -> "An approved method/path has an unapproved duplicate mapping: "
                         + registered.entrySet().stream()
                                 .filter(entry -> entry.getValue() > 1L)
                                 .toList()
