@@ -24,6 +24,8 @@ ALTER TABLE product_images
 
 ALTER TABLE product_images
     ADD CONSTRAINT ck_product_images_sort_order
-        CHECK (sort_order >= 0),
+        CHECK (sort_order >= 0);
+
+ALTER TABLE product_images
     ADD CONSTRAINT uq_product_images_product_sort_order
         UNIQUE (product_id, sort_order);
