@@ -140,9 +140,11 @@ The project owner approved a backward-compatible physical transport refinement o
 
 ### Product image read semantics — project-owner refinement 2026-10-04
 
-- `ProductDetailDto`/`AdminProductDetailDto` return the full `images[]` collection in ascending `sort_order`.
-- Public/admin product summaries, cart items and order items expose nullable `image_url` for presentation.
-- The representative/cover presentation image is the ProductImage at `sort_order = 0`. A Product with no images has no representative image and resolves presentation `image_url` to `null` where nullable.
+- Public `ProductSummaryDto` and `AdminProductSummaryDto` expose nullable `thumbnail` only; Product list responses do **not** return `images[]`.
+- `thumbnail` is the `image_url` of the ProductImage at `sort_order = 0`; a Product with no images returns `thumbnail = null`.
+- `ProductDetailDto` and `AdminProductDetailDto` return the full `images[]` collection, always ordered by the server in ascending `sort_order`.
+- Each detail image exposes `image_id`, `image_url`, `alt_text`, and `sort_order`. JSON keeps the global `snake_case` convention.
+- Cart and Order presentation/snapshot contracts keep their existing nullable `image_url`; this read-model refinement does not rename those fields.
 - Product image ordering is catalog presentation state; historical OrderItem snapshots remain authoritative and are not rewritten by later catalog edits.
 
 ### Product image remove command — project-owner refinement 2026-10-04
