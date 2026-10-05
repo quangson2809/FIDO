@@ -1,3 +1,5 @@
+import type { PaginationMeta } from '../../../types/api';
+
 export interface CategoryDto {
   category_id: number;
   parent_category_id: number | null;
@@ -108,7 +110,29 @@ export interface CatalogProductView {
   sale_status: string;
 }
 
+export interface CatalogProductQuery {
+  q?: string;
+  category_id?: number;
+  brand_id?: number;
+  min_price?: number;
+  max_price?: number;
+  size_value_id?: number;
+  color_id?: number;
+  gender?: string;
+  season?: string;
+  style?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface CatalogProductPage {
+  items: CatalogProductView[];
+  meta: PaginationMeta;
+}
+
 export interface CatalogService {
+  listProducts(query?: CatalogProductQuery): Promise<CatalogProductPage>;
+  /** Transitional compatibility for ProductDetailScreen; remove after that slice migrates. */
   getProducts(): Promise<CatalogProductView[]>;
   getProductDetail(productId: number | string): Promise<CatalogProductView>;
   getMeta(): Promise<CatalogMetaDto>;

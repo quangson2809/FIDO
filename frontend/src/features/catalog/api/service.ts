@@ -1,10 +1,10 @@
 import type { ApiListResponse, ApiResponse } from '../../../types/api';
-import { API_MODE } from '../../../constants/app';
 import { apiClient } from '../../../services/http/apiClient';
 import { resolveImageUrl } from '../../../services/media/imageUrl';
-import { mockProducts } from '../mocks/mockService';
 import type {
   CatalogMetaDto,
+  CatalogProductPage,
+  CatalogProductQuery,
   CatalogProductView,
   CatalogService,
   ProductDetailDto,
@@ -12,16 +12,6 @@ import type {
 } from '../types';
 
 const imageOrEmpty = (value?: string | null): string => resolveImageUrl(value) ?? '';
-
-const emptyMeta: CatalogMetaDto = {
-  categories: [],
-  brands: [],
-  size_systems: [],
-  colors: [],
-  genders: [],
-  seasons: [],
-  styles: [],
-};
 
 const summaryToView = (product: ProductSummaryDto): CatalogProductView => ({
   id: String(product.product_id),
@@ -86,29 +76,22 @@ const detailToView = (product: ProductDetailDto): CatalogProductView => {
   };
 };
 
-const mockCatalogService: CatalogService = {
-  async getProducts() {
-    return mockProducts;
-  },
-  async getProductDetail(productId) {
-    const product = mockProducts.find((item) => item.product_id === Number(productId));
-    if (!product) {
-      throw new Error('Mock product not found');
-    }
-    return product;
-  },
-  async getMeta() {
-    return emptyMeta;
-  },
+const loadProductPage = async (query: CatalogProductQuery = {}): Promise<CatalogProductPage> => {
+  const response = await apiClient.get<
+    ApiListResponse<ProductSummaryDto>,
+    ApiListResponse<ProductSummaryDto>
+  >('/catalog/products', { params: query });
+
+  return {
+    items: response.data.map(summaryToView),
+    meta: response.meta,
+  };
 };
 
-const realCatalogService: CatalogService = {
+export const catalogService: CatalogService = {
+  listProducts: loadProductPage,
   async getProducts() {
-    const response = await apiClient.get<
-      ApiListResponse<ProductSummaryDto>,
-      ApiListResponse<ProductSummaryDto>
-    >('/catalog/products');
-    return response.data.map(summaryToView);
+    return (await loadProductPage()).items;
   },
   async getProductDetail(productId) {
     const response = await apiClient.get<
@@ -125,7 +108,3 @@ const realCatalogService: CatalogService = {
     return response.data;
   },
 };
-
-export const catalogService = API_MODE === 'mock'
-  ? mockCatalogService
-  : realCatalogService;
