@@ -1,596 +1,324 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { profileService } from '../features/auth/api/profileService';
+import { checkoutService } from '../features/orders/api/checkoutService';
+import type {
+  CheckoutQuoteDto,
+  CheckoutRequest,
+  OrderConfirmationDto,
+} from '../features/orders/types';
+import { hasApiAccessToken } from '../services/http/apiClient';
+
+const money = (value: number): string => `${value.toLocaleString('vi-VN')}₫`;
 
 export const CheckoutScreen: React.FC = () => {
   const {
     cartItems,
-    appliedVoucher,
-    voucherDiscount,
-    applyVoucher,
-    removeVoucher,
-    createOrder,
+    cartSubtotal,
     setCurrentScreen,
-    setSelectedOrderId
+    setSelectedOrderId,
+    showToast,
   } = useApp();
 
-  const [phone, setPhone] = useState('0912 345 678');
-  const [email, setEmail] = useState('customer.vip@ateliervert.vn');
-  const [address, setAddress] = useState('Số 128 Nguyễn Trãi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh');
-  const [notes, setNotes] = useState('Giao giờ hành chính, gọi trước 15 phút, lên gấu quần selvedge giữ viền nguyên bản.');
-  const [voucherInput, setVoucherInput] = useState('ABC123');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [placedOrderId, setPlacedOrderId] = useState('ORD-20260924-001');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [address, setAddress] = useState('');
+  const [voucherCode, setVoucherCode] = useState('');
+  const [quote, setQuote] = useState<CheckoutQuoteDto | null>(null);
+  const [confirmation, setConfirmation] = useState<OrderConfirmationDto | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [orderSubmitting, setOrderSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const subtotal = cartItems.length > 0
-    ? cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
-    : 900000;
-  const discount = voucherDiscount || 50000;
-  const shippingFee = 30000;
-  const grandTotal = Math.max(0, subtotal - discount + shippingFee);
+  useEffect(() => {
+    let active = true;
 
-  const handleSubmitOrder = () => {
-    setIsSubmitting(true);
-    setTimeout(() => {
-      const order = createOrder({
-        customerName: 'Nguyễn Văn An',
-        customerPhone: phone,
-        customerEmail: email,
-        recipientAddress: address,
-        deliveryNote: notes,
-        subtotal,
-        voucherCode: appliedVoucher || 'ABC123',
-        voucherDiscount: discount,
-        shippingFee,
-        total: grandTotal
-      });
-      setPlacedOrderId(order.id);
-      setSelectedOrderId(order.id);
-      setIsSubmitting(false);
-      setShowSuccessModal(true);
-    }, 800);
+    if (!hasApiAccessToken()) {
+      showToast('Vui lòng đăng nhập trước khi đặt hàng.');
+      setCurrentScreen('auth');
+      return () => {
+        active = false;
+      };
+    }
+
+    const loadProfile = async () => {
+      try {
+        const me = await profileService.getMe();
+        if (!active) return;
+        setPhone(me.account.phone);
+        setEmail(me.account.email ?? '');
+        setAddress(me.addresses[0]?.address_text ?? '');
+      } catch {
+        if (active) {
+          setError('Không thể tải thông tin tài khoản.');
+        }
+      } finally {
+        if (active) setProfileLoading(false);
+      }
+    };
+
+    void loadProfile();
+    return () => {
+      active = false;
+    };
+  }, [setCurrentScreen, showToast]);
+
+  const invalidateQuote = () => {
+    setQuote(null);
+    setError(null);
   };
 
+  const request = useMemo<CheckoutRequest>(() => ({
+    recipient_phone: phone.trim(),
+    recipient_email: email.trim() || null,
+    recipient_address: address.trim(),
+    voucher_code: voucherCode.trim() || null,
+  }), [address, email, phone, voucherCode]);
+
+  const canRequestQuote = request.recipient_phone.length > 0
+    && request.recipient_address.length > 0
+    && cartItems.length > 0;
+
+  const loadQuote = async () => {
+    if (!canRequestQuote) {
+      setError('Cần có sản phẩm trong giỏ, số điện thoại và địa chỉ nhận hàng.');
+      return;
+    }
+
+    setQuoteLoading(true);
+    setError(null);
+    try {
+      setQuote(await checkoutService.quote(request));
+    } catch {
+      setQuote(null);
+      setError('Không thể tạo báo giá. Kiểm tra thông tin nhận hàng, voucher và tồn kho.');
+    } finally {
+      setQuoteLoading(false);
+    }
+  };
+
+  const placeOrder = async () => {
+    if (!quote || orderSubmitting) return;
+
+    setOrderSubmitting(true);
+    setError(null);
+    try {
+      const result = await checkoutService.createOrder(request);
+      setConfirmation(result);
+      setSelectedOrderId(String(result.order_id));
+    } catch {
+      setError('Không thể tạo đơn hàng. Dữ liệu giỏ hàng có thể đã thay đổi; hãy cập nhật báo giá và thử lại.');
+      setQuote(null);
+    } finally {
+      setOrderSubmitting(false);
+    }
+  };
+
+  if (confirmation) {
+    return (
+      <section className="mx-auto min-h-[60vh] max-w-3xl px-4 py-14 sm:px-8">
+        <div className="border border-[#D9DDD6] bg-white p-7 shadow-sm sm:p-10">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">Đặt hàng thành công</p>
+          <h1 className="mt-2 font-serif text-3xl text-[#0B2419]">{confirmation.order_code}</h1>
+          <p className="mt-2 text-sm text-[#606863]">
+            Đơn hàng đã được tạo với trạng thái {confirmation.order_status}. Thanh toán hiện tại: {confirmation.payment.payment_status}.
+          </p>
+
+          <dl className="mt-7 space-y-3 border-y border-[#E8E9E3] py-5 text-sm">
+            <div className="flex justify-between gap-4"><dt>Tạm tính</dt><dd className="font-semibold">{money(confirmation.subtotal)}</dd></div>
+            <div className="flex justify-between gap-4"><dt>Giảm giá</dt><dd className="font-semibold">-{money(confirmation.discount)}</dd></div>
+            <div className="flex justify-between gap-4"><dt>Phí giao hàng</dt><dd className="font-semibold">{money(confirmation.shipping_fee)}</dd></div>
+            <div className="flex justify-between gap-4 text-base"><dt className="font-bold">Tổng COD</dt><dd className="font-bold">{money(confirmation.total)}</dd></div>
+          </dl>
+
+          <p className="mt-5 text-xs leading-5 text-[#687069]">
+            Giỏ hàng không được xóa cục bộ sau khi đặt hàng; giao diện giữ nguyên dữ liệu backend cho đến khi backend định nghĩa lifecycle giỏ hàng sau tạo đơn.
+          </p>
+
+          <div className="mt-7 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => setCurrentScreen('order-detail')}
+              className="bg-[#0B2419] px-5 py-3 text-xs font-bold uppercase tracking-wider text-white"
+            >
+              Xem đơn hàng
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentScreen('my-orders')}
+              className="border border-[#0B2419] px-5 py-3 text-xs font-bold uppercase tracking-wider"
+            >
+              Danh sách đơn hàng
+            </button>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <div className="w-full bg-[#f8faf4] min-h-screen">
-      {/* Top Breadcrumb */}
-      <div className="w-full h-[44px] bg-[#F5F6F2] border-b border-[#E2E5DE] px-4 sm:px-8 flex items-center text-[13px] text-[#606863] font-medium">
-        <nav className="flex items-center gap-2">
-          <button onClick={() => setCurrentScreen('home')} className="hover:text-[#0B2419] transition-colors">
-            Trang chủ
-          </button>
-          <span className="text-[#C2C8C2]">/</span>
-          <button onClick={() => setCurrentScreen('catalog')} className="hover:text-[#0B2419] transition-colors">
-            Giỏ hàng
-          </button>
-          <span className="text-[#C2C8C2]">/</span>
-          <span className="text-[#0B2419] font-semibold">Thanh toán COD</span>
+    <div className="min-h-screen bg-[#FAF9F5] text-[#0B2419]">
+      <div className="border-b border-[#E2E5DE] bg-[#F5F6F2] px-4 py-3 sm:px-8">
+        <nav className="mx-auto flex max-w-6xl items-center gap-2 text-sm text-[#606863]">
+          <button type="button" onClick={() => setCurrentScreen('catalog')} className="hover:text-[#0B2419]">Sản phẩm</button>
+          <span>/</span>
+          <span className="font-semibold text-[#0B2419]">Checkout</span>
         </nav>
       </div>
 
-      <div className="w-full px-4 sm:px-8 lg:px-14 py-10 max-w-7xl mx-auto">
-        <div className="flex flex-col lg:flex-row gap-10 items-start">
-          {/* LEFT COLUMN: 60% Width */}
-          <div className="w-full lg:w-[60%] flex flex-col gap-6">
-            {/* Header Lead */}
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#E8C75B]"></span>
-                <span className="text-[10px] tracking-widest uppercase font-bold text-[#1B5038]">
-                  Quy trình đặt hàng may sẵn
-                </span>
-              </div>
-              <h1 className="font-serif text-3xl sm:text-4xl text-[#071A12] tracking-tight">
-                Thanh Toán Khi Nhận Hàng (COD)
-              </h1>
-              <p className="text-[14px] text-[#687069]">
-                Quý khách vui lòng cung cấp thông tin liên hệ chính xác để bộ phận may đo Atelier Vert chuẩn bị kiện hàng kèm chứng thư vải nguyên bản.
-              </p>
-            </div>
+      <section className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-8 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="space-y-6">
+          <header>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">FIDO Checkout</p>
+            <h1 className="mt-1 font-serif text-3xl">Thông tin nhận hàng</h1>
+            <p className="mt-2 text-sm leading-6 text-[#606863]">
+              Đơn hàng yêu cầu đăng nhập. Backend xác nhận lại giỏ hàng, giá, tồn kho, voucher và toàn bộ số tiền trước khi tạo đơn.
+            </p>
+          </header>
 
-            {/* Block A: Customer Information & Delivery Address */}
-            <div className="bg-white p-6 sm:p-8 rounded-lg shadow-sm border border-[#E8E9E3] flex flex-col gap-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#E8E9E3]">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-7 h-7 rounded-full bg-[#0B2419] text-white flex items-center justify-center text-xs font-bold">
-                    1
-                  </span>
-                  <h2 className="text-[15px] font-bold uppercase tracking-wider text-[#0B2419]">
-                    THÔNG TIN NHẬN HÀNG &amp; LIÊN HỆ
-                  </h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setCurrentScreen('profile')}
-                  className="inline-flex items-center gap-1 text-[#123A29] hover:text-[#0B2419] text-xs uppercase tracking-wider font-bold transition-colors cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[18px]">bookmark</span>
-                  <span>Sổ địa chỉ lưu sẵn (2)</span>
-                </button>
-              </div>
+          <div className="space-y-5 border border-[#E8E9E3] bg-white p-6">
+            <label className="block space-y-1.5">
+              <span className="text-xs font-semibold">Số điện thoại người nhận *</span>
+              <input
+                type="tel"
+                maxLength={20}
+                disabled={profileLoading}
+                value={phone}
+                onChange={(event) => {
+                  setPhone(event.target.value);
+                  invalidateQuote();
+                }}
+                className="w-full border border-[#D9DDD6] px-3 py-2.5 text-sm outline-none focus:border-[#0B2419]"
+              />
+            </label>
 
-              <form className="flex flex-col gap-4" onSubmit={(e) => e.preventDefault()}>
-                {/* Row 1: Phone & Email */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label
-                      className="text-[11px] uppercase tracking-widest text-[#0B2419] font-bold flex items-center justify-between"
-                      htmlFor="recipient_phone"
-                    >
-                      <span>
-                        Số điện thoại người nhận <span className="text-[#ba1a1a]">*</span>
-                      </span>
-                      <span className="text-[#687069] text-[10px] lowercase font-normal">recipient_phone</span>
-                    </label>
-                    <div className="relative flex items-center bg-[#f3f4ef] rounded border border-[#E8E9E3] focus-within:border-[#0B2419] transition-all">
-                      <span className="pl-3 text-[#687069] text-xs font-bold select-none border-r border-[#E8E9E3] pr-2">
-                        +84
-                      </span>
-                      <input
-                        className="w-full bg-transparent px-3 py-2 text-sm text-[#071A12] font-semibold outline-none"
-                        id="recipient_phone"
-                        name="recipient_phone"
-                        placeholder="Nhập 10 chữ số"
-                        required
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                      />
-                      <span className="material-symbols-outlined text-[#687069] text-[20px] pr-3">call</span>
-                    </div>
-                    <span className="text-[11px] text-[#687069]">
-                      Shipper sẽ gọi trước 15-20 phút trước khi phát kiện.
-                    </span>
-                  </div>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-semibold">Email người nhận</span>
+              <input
+                type="email"
+                maxLength={254}
+                disabled={profileLoading}
+                value={email}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  invalidateQuote();
+                }}
+                className="w-full border border-[#D9DDD6] px-3 py-2.5 text-sm outline-none focus:border-[#0B2419]"
+              />
+            </label>
 
-                  <div className="flex flex-col gap-1">
-                    <label
-                      className="text-[11px] uppercase tracking-widest text-[#0B2419] font-bold flex items-center justify-between"
-                      htmlFor="recipient_email"
-                    >
-                      <span>Địa chỉ email nhận e-Invoice</span>
-                      <span className="text-[#687069] text-[10px] lowercase font-normal">recipient_email</span>
-                    </label>
-                    <div className="relative flex items-center bg-[#f3f4ef] rounded border border-[#E8E9E3] focus-within:border-[#0B2419] transition-all">
-                      <input
-                        className="w-full bg-transparent px-3 py-2 text-sm text-[#071A12] font-medium outline-none"
-                        id="recipient_email"
-                        name="recipient_email"
-                        placeholder="dia-chi-email@vi-du.vn"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                      />
-                      <span className="material-symbols-outlined text-[#687069] text-[20px] pr-3">mail</span>
-                    </div>
-                    <span className="text-[11px] text-[#687069]">
-                      Nhận hóa đơn điện tử VAT và mã theo dõi hành trình đơn hàng.
-                    </span>
-                  </div>
-                </div>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-semibold">Địa chỉ nhận hàng *</span>
+              <textarea
+                rows={3}
+                maxLength={500}
+                disabled={profileLoading}
+                value={address}
+                onChange={(event) => {
+                  setAddress(event.target.value);
+                  invalidateQuote();
+                }}
+                className="w-full resize-y border border-[#D9DDD6] px-3 py-2.5 text-sm outline-none focus:border-[#0B2419]"
+                placeholder="Nhập địa chỉ nhận hàng"
+              />
+            </label>
 
-                {/* Row 2: Saved Address Shortcut Chip */}
-                <div className="bg-[#FAF4DF]/60 p-3 rounded border border-[#E8C75B]/40 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs text-[#071A12]">
-                    <span className="material-symbols-outlined text-[#725c00] text-[20px]">star</span>
-                    <span>
-                      <strong className="font-bold">Địa chỉ mặc định VIP:</strong> 128 Nguyễn Trãi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh
-                    </span>
-                  </div>
-                  <span className="text-[#725c00] text-[11px] font-bold uppercase tracking-wider bg-white/70 px-2 py-0.5 rounded border border-[#E8C75B]/50">
-                    ĐANG DÙNG
-                  </span>
-                </div>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-semibold">Voucher</span>
+              <input
+                type="text"
+                maxLength={80}
+                value={voucherCode}
+                onChange={(event) => {
+                  setVoucherCode(event.target.value);
+                  invalidateQuote();
+                }}
+                className="w-full border border-[#D9DDD6] px-3 py-2.5 text-sm uppercase outline-none focus:border-[#0B2419]"
+                placeholder="Không bắt buộc"
+              />
+            </label>
 
-                {/* Row 3: Full Address Input */}
-                <div className="flex flex-col gap-1">
-                  <label
-                    className="text-[11px] uppercase tracking-widest text-[#0B2419] font-bold flex items-center justify-between"
-                    htmlFor="recipient_address"
-                  >
-                    <span>
-                      Địa chỉ nhận hàng chi tiết <span className="text-[#ba1a1a]">*</span>
-                    </span>
-                    <span className="text-[#687069] text-[10px] lowercase font-normal">recipient_address</span>
-                  </label>
-                  <div className="relative flex items-start bg-[#f3f4ef] rounded border border-[#E8E9E3] focus-within:border-[#0B2419] transition-all">
-                    <textarea
-                      className="w-full bg-transparent p-3 text-sm text-[#071A12] font-semibold outline-none resize-none leading-relaxed"
-                      id="recipient_address"
-                      name="recipient_address"
-                      required
-                      rows={2}
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                    />
-                    <span className="material-symbols-outlined text-[#687069] text-[20px] p-3">pin_drop</span>
-                  </div>
-                </div>
-
-                {/* Row 4: Atelier Delivery Instruction & Tailor Notes */}
-                <div className="flex flex-col gap-1">
-                  <label
-                    className="text-[11px] uppercase tracking-widest text-[#0B2419] font-bold flex items-center justify-between"
-                    htmlFor="delivery_notes"
-                  >
-                    <span>Ghi chú giao hàng &amp; May đo bổ sung (Tùy chọn)</span>
-                    <span className="text-[#687069] text-[10px] font-normal font-mono">order_notes</span>
-                  </label>
-                  <div className="relative flex items-center bg-[#f3f4ef] rounded border border-[#E8E9E3] focus-within:border-[#0B2419] transition-all">
-                    <input
-                      type="text"
-                      className="w-full bg-transparent px-3 py-2 text-xs text-[#071A12] outline-none"
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                    />
-                    <span className="material-symbols-outlined text-[#687069] text-[20px] pr-3">edit_note</span>
-                  </div>
-                </div>
-              </form>
-
-              {/* COD Payment Method Specification Card */}
-              <div className="pt-4 border-t border-[#E8E9E3] flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[#0B2419] text-[22px]">payments</span>
-                    <h3 className="text-sm uppercase tracking-wider text-[#0B2419] font-bold">
-                      Phương thức thanh toán chỉ định
-                    </h3>
-                  </div>
-                  <span className="text-[10px] uppercase tracking-widest bg-[#123A29] text-white px-2 py-0.5 rounded font-bold">
-                    MẶC ĐỊNH ĐÃ CHỌN
-                  </span>
-                </div>
-                <div className="bg-[#071A12] text-white p-5 rounded-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full bg-[#1B5038] text-[#E8C75B] flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-[24px]">local_shipping</span>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base font-bold text-white">Thanh toán khi nhận hàng (COD)</span>
-                        <span className="text-[#E8C75B] material-symbols-outlined text-[18px]">verified</span>
-                      </div>
-                      <p className="text-xs text-[#e1e3de] max-w-xl leading-relaxed">
-                        Đặc quyền thượng khách Atelier Vert: Quý khách được{' '}
-                        <strong className="text-white underline decoration-[#E8C75B]">mở hộp đồng kiểm</strong> kỹ lưỡng đường may, chất liệu len đay &amp; thử kích thước phom dáng trước khi tiến hành thanh toán tiền mặt cho nhân viên chuyển phát.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Voucher & Promotion Input Component */}
-              <div className="pt-4 border-t border-[#E8E9E3] flex flex-col gap-2">
-                <label className="text-[11px] uppercase tracking-widest text-[#0B2419] font-bold">
-                  Mã voucher
-                </label>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 flex items-center bg-[#f3f4ef] rounded border border-[#E8E9E3] px-3 py-1.5">
-                    <span className="material-symbols-outlined text-[#687069] text-[20px] mr-2">confirmation_number</span>
-                    <input
-                      className="bg-transparent text-sm uppercase tracking-wider text-[#0B2419] font-bold outline-none w-full"
-                      placeholder="Nhập mã voucher"
-                      type="text"
-                      value={voucherInput}
-                      onChange={(e) => setVoucherInput(e.target.value)}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => applyVoucher(voucherInput)}
-                    className="bg-[#0B2419] hover:bg-[#1B5038] text-white text-[11px] uppercase tracking-widest px-6 py-2.5 rounded transition-colors font-bold cursor-pointer"
-                  >
-                    Áp dụng
-                  </button>
-                </div>
-                {appliedVoucher && (
-                  <div className="bg-[#123A29]/10 border border-[#123A29]/20 rounded p-2.5 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-[#0B2419]">
-                      <span className="material-symbols-outlined text-[18px] text-[#1B5038]">check_circle</span>
-                      <span className="text-xs">
-                        Voucher đã áp dụng: <strong className="font-bold text-[#0B2419]">{appliedVoucher}</strong> (-50.000₫)
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={removeVoucher}
-                      className="text-[#687069] hover:text-[#ba1a1a] text-[11px] uppercase tracking-wider font-bold transition-colors cursor-pointer"
-                    >
-                      Gỡ mã
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Atelier Craft Assurance Banner */}
-            <div className="bg-[#f3f4ef] p-5 rounded-lg border border-[#E8E9E3] flex flex-col sm:flex-row items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-[#0B2419] text-[#E8C75B] flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[26px]">precision_manufacturing</span>
-              </div>
-              <div className="flex flex-col">
-                <h4 className="text-sm font-bold text-[#071A12]">Chính sách xử lý đơn COD tại xưởng may</h4>
-                <p className="text-xs text-[#687069] leading-relaxed mt-0.5">
-                  Mỗi sản phẩm Jean và Sơ mi trước khi gửi đi đều trải qua bước hấp khử khuẩn bằng hơi nước công nghiệp, kiểm tra lại từng khuy đồng tán nhiệt và gấp nếp tiêu chuẩn hộp quà cứng Atelier Vert.
-                </p>
-              </div>
-            </div>
+            <button
+              type="button"
+              disabled={!canRequestQuote || quoteLoading || profileLoading}
+              onClick={() => void loadQuote()}
+              className="bg-[#0B2419] px-5 py-3 text-xs font-bold uppercase tracking-wider text-white disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {quoteLoading ? 'Đang kiểm tra...' : quote ? 'Cập nhật báo giá' : 'Kiểm tra và báo giá'}
+            </button>
           </div>
 
-          {/* RIGHT COLUMN: 40% Width (Sticky Order Summary, Item details, Breakdown & Final COD CTA) */}
-          <div className="w-full lg:w-[40%] flex flex-col gap-6 lg:sticky lg:top-24">
-            <div className="bg-white rounded-lg border border-[#E8E9E3] shadow-sm p-6 flex flex-col gap-6">
-              {/* Block B: Cart Items in Order */}
-              <div className="flex flex-col gap-4 pb-4 border-b border-[#E8E9E3]">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-7 h-7 rounded-full bg-[#0B2419] text-white flex items-center justify-center text-xs font-bold">
-                      2
-                    </span>
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-[#0B2419]">
-                      KIỂM TRA SẢN PHẨM ({cartItems.length > 0 ? cartItems.length : 2})
-                    </h3>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentScreen('catalog')}
-                    className="text-xs uppercase tracking-wider text-[#687069] hover:text-[#0B2419] underline transition-colors"
-                  >
-                    Sửa giỏ hàng
-                  </button>
-                </div>
+          {error && (
+            <div className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+          )}
+        </div>
 
-                {/* Items */}
-                {(cartItems.length > 0
-                  ? cartItems
-                  : [
-                      {
-                        id: 'c1',
-                        name: 'Quần Jean Straight Fit Dark Indigo Selvedge 13.5oz',
-                        size: 31,
-                        color: 'Chàm Indigo Đậm',
-                        price: 689000,
-                        imageUrl:
-                          'https://lh3.googleusercontent.com/aida-public/AB6AXuAud5X3Fe_GBDKsFleLHxmvcDVkMW3Mu_P65bCTXSpHsqiLA8eLh0dFH6xW5sUezsivmo2eXh9B5bWXydJ6KjLkYqOFRjo4qaFJXREjkNqFh2BlyDIaOWRvBZ1EsLOV1UyXcGpWUAIuKse3b0nQditaYpZpeFkjmeYAr2rvXX9HerprbSyXsDg56hn4fW7Zxw7pNPZzlob4Zkgm6ZYK0Kxpm5_68-VRmH1IVU-iOqSI9S6snTDc3yJ_Ww',
-                        quantity: 1
-                      },
-                      {
-                        id: 'c2',
-                        name: 'Áo Sơ Mi Cổ Cuban Dark Smoke Linen Cao Cấp',
-                        size: 'L',
-                        color: 'Xám Khói Dark Smoke',
-                        price: 489000,
-                        originalPrice: 620000,
-                        imageUrl:
-                          'https://lh3.googleusercontent.com/aida-public/AB6AXuCdErmgCgt2MpTxcfpFJsRHZuDy1JIZa_vRUfS2e44KpZsH3iMEweGcfN6zqKkzbl7ZtWkTy5mR5K71vgrAXWe0noMrw15MvL7YknlLr1eIX_LL7AeDrRYk7S0ezXMpjkjyanwZ7dq1aSo_dsmfzuyTLaFmFnzesaphKTKZ8kQkuZjS2tbN2PPtukACBfAPi3md47fVTF7PUJqVqtuYTggC1F10GxqjNkD-ggLDgO-1l-3jH90uiU3pXg',
-                        quantity: 1
-                      }
-                    ]
-                ).map((item) => (
-                  <div key={item.id} className="flex items-start gap-3 pt-2">
-                    <div className="relative w-16 h-20 bg-[#f3f4ef] shrink-0 overflow-hidden rounded border border-[#E8E9E3]">
-                      <img alt={item.name} className="w-full h-full object-cover" src={item.imageUrl} />
-                      <span className="absolute bottom-1 right-1 bg-[#071A12]/80 text-white text-[9px] px-1 font-mono rounded">
-                        x{item.quantity}
-                      </span>
-                    </div>
-                    <div className="flex flex-col flex-1 min-w-0">
-                      <h4 className="text-xs font-bold text-[#071A12] truncate">{item.name}</h4>
-                      <div className="flex items-center gap-2 text-[11px] text-[#687069] mt-0.5">
-                        <span>
-                          Size: <strong className="text-[#0B2419] font-bold">{item.size}</strong>
-                        </span>
-                        <span>|</span>
-                        <span>
-                          Màu: <strong className="text-[#0B2419] font-bold">{item.color}</strong>
-                        </span>
+        <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
+          <div className="border border-[#E8E9E3] bg-white p-5">
+            <div className="flex items-center justify-between border-b border-[#E8E9E3] pb-3">
+              <h2 className="font-serif text-xl">Giỏ hàng</h2>
+              <span className="text-xs text-[#687069]">{cartItems.length} dòng</span>
+            </div>
+
+            {cartItems.length === 0 ? (
+              <div className="py-8 text-sm text-[#687069]">
+                Giỏ hàng trống. Hãy quay lại catalog trước khi checkout.
+              </div>
+            ) : (
+              <div className="divide-y divide-[#E8E9E3]">
+                {cartItems.map((item) => (
+                  <div key={item.id} className="py-3 text-sm">
+                    <div className="flex justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{item.name}</p>
+                        <p className="mt-1 text-xs text-[#687069]">{item.size} · {item.color} · x{item.quantity}</p>
                       </div>
-                      <div className="flex items-center gap-1 mt-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#1B5038]"></span>
-                        <span className="text-[10px] text-[#1B5038] font-medium">Tồn khả dụng: Có sẵn</span>
-                      </div>
-                      <div className="flex items-baseline justify-between mt-1">
-                        <span className="text-xs font-bold text-[#0B2419] font-mono">
-                          {item.price.toLocaleString('vi-VN')} ₫
-                        </span>
-                      </div>
+                      <span className="shrink-0 font-semibold">{money(item.price * item.quantity)}</span>
                     </div>
                   </div>
                 ))}
               </div>
+            )}
 
-              {/* Block C: Cost Breakdown */}
-              <div className="flex flex-col gap-2.5">
-                <h4 className="text-[11px] uppercase tracking-widest text-[#687069] font-bold">
-                  TỔNG KẾT CHI PHÍ CHI TIẾT
-                </h4>
-                <div className="flex flex-col gap-1.5 text-xs text-[#191c19]">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[#687069]">Tạm tính (Subtotal):</span>
-                    <span className="font-bold text-[#0B2419] font-mono">{((subtotal as number) || 0).toLocaleString('vi-VN')} ₫</span>
-                  </div>
-                  <div className="flex items-center justify-between text-[#1B5038]">
-                    <span className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[15px]">loyalty</span>
-                      <span>Giảm giá (Voucher đã áp dụng: {appliedVoucher || 'ABC123'}):</span>
-                    </span>
-                    <span className="font-bold font-mono">-{((discount as number) || 0).toLocaleString('vi-VN')} ₫</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col">
-                      <span className="text-[#687069]">Phí giao hàng:</span>
-                      <span className="text-[10px] text-[#687069]">Chuyển phát tiêu chuẩn kèm đồng kiểm tận tay</span>
-                    </div>
-                    <span className="font-bold text-[#0B2419] font-mono">{((shippingFee as number) || 0).toLocaleString('vi-VN')} ₫</span>
-                  </div>
-                </div>
+            <div className="flex justify-between border-t border-[#E8E9E3] pt-4 text-sm">
+              <span>Tạm tính giỏ hàng</span>
+              <span className="font-bold">{money(cartSubtotal)}</span>
+            </div>
+          </div>
 
-                <div className="w-full h-px bg-[#E8E9E3] my-1"></div>
+          <div className="border border-[#E8E9E3] bg-white p-5">
+            <h2 className="font-serif text-xl">Báo giá checkout</h2>
+            {!quote ? (
+              <p className="mt-3 text-sm leading-6 text-[#687069]">
+                Nhập thông tin nhận hàng rồi yêu cầu báo giá. Frontend không tự tính discount, phí giao hàng hoặc tổng thanh toán.
+              </p>
+            ) : (
+              <>
+                <dl className="mt-4 space-y-2 text-sm">
+                  <div className="flex justify-between gap-4"><dt>Tạm tính</dt><dd>{money(quote.subtotal)}</dd></div>
+                  <div className="flex justify-between gap-4"><dt>Giảm giá</dt><dd>-{money(quote.discount)}</dd></div>
+                  <div className="flex justify-between gap-4"><dt>Phí giao hàng</dt><dd>{money(quote.shipping_fee)}</dd></div>
+                  <div className="flex justify-between gap-4 border-t border-[#E8E9E3] pt-3 text-base"><dt className="font-bold">Tổng COD</dt><dd className="font-bold">{money(quote.total)}</dd></div>
+                </dl>
 
-                {/* Final Grand Total */}
-                <div className="flex items-baseline justify-between pt-1">
-                  <div className="flex flex-col">
-                    <span className="text-base font-bold text-[#071A12]">Tổng thanh toán COD:</span>
-                    <span className="text-[10px] text-[#687069]">Đã bao gồm VAT &amp; Dịch vụ kiểm tra khi nhận</span>
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <span className="text-2xl font-bold text-[#0B2419] text-right font-mono">
-                      {((grandTotal as number) || 0).toLocaleString('vi-VN')} ₫
-                    </span>
-                  </div>
-                </div>
+                <p className="mt-3 text-xs text-[#687069]">
+                  {quote.items.length} dòng hàng đã được backend kiểm tra. {voucherCode.trim() ? `Voucher gửi kiểm tra: ${voucherCode.trim()}.` : 'Không dùng voucher.'}
+                </p>
 
-                {/* Applied Voucher Highlight Chip */}
-                <div className="mt-1 bg-[#E8C75B]/20 border border-[#E8C75B]/40 rounded px-3 py-1.5 flex items-center justify-between text-[#071A12]">
-                  <div className="flex items-center gap-1 text-[11px] uppercase tracking-wider font-bold">
-                    <span className="material-symbols-outlined text-[15px] text-[#725c00]">check</span>
-                    <span>Voucher đã áp dụng: {appliedVoucher || 'ABC123'}</span>
-                  </div>
-                  <span className="text-xs font-bold text-[#0B2419] font-mono">-{((discount as number) || 0).toLocaleString('vi-VN')} ₫</span>
-                </div>
-              </div>
-
-              {/* Block D: Action CTA Button & Atelier Commitments */}
-              <div className="flex flex-col gap-3 pt-1">
                 <button
                   type="button"
-                  disabled={isSubmitting}
-                  onClick={handleSubmitOrder}
-                  className="w-full py-4 bg-[#0B2419] hover:bg-[#1B5038] text-white text-sm font-bold uppercase tracking-widest rounded transition-all duration-300 shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                  disabled={orderSubmitting}
+                  onClick={() => void placeOrder()}
+                  className="mt-5 w-full bg-[#0B2419] px-5 py-3 text-xs font-bold uppercase tracking-wider text-white disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {isSubmitting ? (
-                    <>
-                      <span className="material-symbols-outlined text-[20px] animate-spin text-[#E8C75B]">
-                        refresh
-                      </span>
-                      <span>ĐANG XỬ LÝ ĐƠN HÀNG...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="material-symbols-outlined text-[20px] text-[#E8C75B]">lock</span>
-                      <span>ĐẶT HÀNG COD — {((grandTotal as number) || 0).toLocaleString('vi-VN')} ₫</span>
-                    </>
-                  )}
+                  {orderSubmitting ? 'Đang tạo đơn...' : `Đặt hàng COD — ${money(quote.total)}`}
                 </button>
-
-                {/* Brand Service Trust Badges */}
-                <div className="flex flex-col gap-1.5 bg-[#f3f4ef] p-3.5 rounded text-xs text-[#191c19]">
-                  <div className="flex items-start gap-2">
-                    <span className="material-symbols-outlined text-[16px] text-[#1B5038] shrink-0 mt-0.5">
-                      check_circle
-                    </span>
-                    <span className="text-[11px] text-[#071A12]">
-                      Khách hàng được mở bọc đồng kiểm số đo &amp; chất liệu trước khi thanh toán tiền mặt
-                    </span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="material-symbols-outlined text-[16px] text-[#1B5038] shrink-0 mt-0.5">
-                      change_circle
-                    </span>
-                    <span className="text-[11px] text-[#071A12]">
-                      Đổi size tận nơi miễn phí trong vòng 15 ngày nếu chưa vừa vặn
-                    </span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="material-symbols-outlined text-[16px] text-[#1B5038] shrink-0 mt-0.5">
-                      content_cut
-                    </span>
-                    <span className="text-[11px] text-[#071A12]">
-                      Hỗ trợ cắt may lên gấu quần miễn phí tại tất cả Boutique Atelier Vert toàn quốc
-                    </span>
-                  </div>
-                </div>
-
-                {/* Customer Service Hotline Note */}
-                <div className="flex items-center justify-between text-[#687069] text-xs pt-1">
-                  <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[16px]">support_agent</span>
-                    <span>Hỗ trợ may đo trực tiếp:</span>
-                  </span>
-                  <a className="font-bold text-[#0B2419] hover:underline" href="tel:19008899">
-                    1900 8899 (8:30 - 21:30)
-                  </a>
-                </div>
-              </div>
-            </div>
-
-            {/* Security & Return Guarantee Badge */}
-            <div className="flex items-center justify-center gap-4 py-1 text-[#687069] text-xs">
-              <div className="flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px]">lock</span>
-                <span>Mã hóa thanh toán</span>
-              </div>
-              <span>•</span>
-              <div className="flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px]">shield</span>
-                <span>Bảo vệ quyền lợi COD</span>
-              </div>
-              <span>•</span>
-              <div className="flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px]">inventory_2</span>
-                <span>Đóng gói 2 lớp hộp</span>
-              </div>
-            </div>
+              </>
+            )}
           </div>
-        </div>
-      </div>
-
-      {/* Checkout Success Modal */}
-      {showSuccessModal && (
-        <div className="fixed inset-0 z-50 bg-[#071A12]/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-lg w-full p-8 shadow-2xl flex flex-col gap-4 border border-[#E8E9E3] animate-in zoom-in-95 duration-200">
-            <div className="w-14 h-14 rounded-full bg-[#1B5038]/10 text-[#0B2419] flex items-center justify-center mx-auto">
-              <span className="material-symbols-outlined text-[32px] text-[#1B5038]">check_circle</span>
-            </div>
-            <div className="text-center flex flex-col gap-1">
-              <span className="text-[11px] uppercase tracking-widest text-[#E8C75B] font-bold">
-                Thành Công • POST /api/v1/orders
-              </span>
-              <h3 className="font-serif text-2xl text-[#071A12]">Đơn Hàng COD Đã Được Tiếp Nhận!</h3>
-              <p className="text-xs text-[#687069] leading-relaxed">
-                Mã đơn hàng: <strong className="text-[#0B2419] font-mono font-bold">#{placedOrderId}</strong>. Bộ phận chăm sóc khách hàng của Atelier Vert sẽ liên hệ xác nhận size áo L &amp; quần 31 trước khi chuyển giao bộ phận đóng gói.
-              </p>
-            </div>
-            <div className="bg-[#f3f4ef] p-4 rounded text-xs text-[#0B2419] space-y-1.5">
-              <div className="flex justify-between">
-                <span className="text-[#687069]">Hình thức:</span>
-                <span className="font-semibold">COD (Thu tiền khi giao hàng)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#687069]">Số tiền shipper thu:</span>
-                <span className="font-bold font-mono text-sm">{((grandTotal as number) || 0).toLocaleString('vi-VN')} ₫</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#687069]">Đặc quyền bưu phẩm:</span>
-                <span className="font-semibold text-[#1B5038]">Được mở xem &amp; thử đồ</span>
-              </div>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowSuccessModal(false);
-                  setCurrentScreen('order-success');
-                }}
-                className="flex-1 py-3 bg-[#0B2419] hover:bg-[#1B5038] text-white text-xs font-bold uppercase tracking-wider rounded transition-colors text-center"
-              >
-                Xem Xác Nhận Đơn Hàng
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowSuccessModal(false);
-                  setCurrentScreen('home');
-                }}
-                className="py-3 px-4 bg-[#f3f4ef] hover:bg-[#e7e9e3] text-[#0B2419] text-xs font-bold uppercase tracking-wider rounded transition-colors"
-              >
-                Về Trang Chủ
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        </aside>
+      </section>
     </div>
   );
 };

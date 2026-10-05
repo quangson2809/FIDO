@@ -70,7 +70,57 @@ export interface OrderCustomerDetailDto {
   updated_at: string;
 }
 
+export interface CheckoutRequest {
+  recipient_phone: string;
+  recipient_email: string | null;
+  recipient_address: string;
+  voucher_code: string | null;
+}
+
+export interface CheckoutItemDto {
+  variant_id: number;
+  quantity: number;
+  product_name: string;
+  size: string;
+  color: string;
+  unit_price: number;
+  line_total: number;
+  available_quantity: number;
+}
+
+export interface VoucherDto {
+  voucher_id: number;
+  code: string;
+}
+
+export interface CheckoutQuoteDto {
+  items: CheckoutItemDto[];
+  subtotal: number;
+  discount: number;
+  shipping_fee: number;
+  total: number;
+  voucher: VoucherDto | null;
+}
+
+export interface OrderConfirmationDto {
+  order_id: number;
+  order_code: string;
+  order_status: OrderStatus;
+  payment: PaymentPublicDto;
+  subtotal: number;
+  discount: number;
+  shipping_fee: number;
+  total: number;
+  recipient: RecipientDto;
+  created_at: string;
+}
+
 export interface OrderService {
   getOrders(): Promise<OrderSummaryDto[]>;
   getOrder(orderId: number | string): Promise<OrderCustomerDetailDto>;
+}
+
+export interface CheckoutService {
+  quote(request: CheckoutRequest): Promise<CheckoutQuoteDto>;
+  createOrder(request: CheckoutRequest): Promise<OrderConfirmationDto>;
 }
