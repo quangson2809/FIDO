@@ -10,14 +10,11 @@ import type {
   StaffAccountSummaryDto,
 } from '../types';
 
-const compactParams = (input: Record<string, string | number | undefined>) =>
-  Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined && value !== ''));
-
 export const adminAccessService = {
   async getCustomers(query?: { q?: string; page?: number; page_size?: number }): Promise<ApiListResponse<CustomerSummaryDto>> {
     return apiClient.get<ApiListResponse<CustomerSummaryDto>, ApiListResponse<CustomerSummaryDto>>(
       '/admin/customers',
-      { params: compactParams(query ?? {}) },
+      { params: query },
     );
   },
 
@@ -31,7 +28,7 @@ export const adminAccessService = {
   async getStaff(query?: { q?: string; role_id?: number; page?: number; page_size?: number }): Promise<ApiListResponse<StaffAccountSummaryDto>> {
     return apiClient.get<ApiListResponse<StaffAccountSummaryDto>, ApiListResponse<StaffAccountSummaryDto>>(
       '/admin/staff-accounts',
-      { params: compactParams(query ?? {}) },
+      { params: query },
     );
   },
 
@@ -52,7 +49,7 @@ export const adminAccessService = {
   async getAuditLogs(query?: AuditQuery): Promise<ApiListResponse<AuditLogDto>> {
     return apiClient.get<ApiListResponse<AuditLogDto>, ApiListResponse<AuditLogDto>>(
       '/admin/audit-logs',
-      { params: compactParams(query ?? {}) },
+      { params: query },
     );
   },
 };
