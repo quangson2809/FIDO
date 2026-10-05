@@ -1,399 +1,166 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { inventoryAdminService } from '../../features/inventory/api/adminService';
+import type {
+  InventoryRowDto,
+  InventoryTransactionDto,
+  InventoryTransactionType,
+} from '../../features/inventory/types';
+import type { PaginationMeta } from '../../types/api';
 
-interface InventoryItem {
-  id: string;
-  sku: string;
-  name: string;
-  category: string;
-  color: string;
-  size: string;
-  inStock: number;
-  reserved: number; // Đang giữ cho khách may lên gấu
-  available: number;
-  reorderPoint: number;
-  warehouse: string;
-  status: 'OPTIMAL' | 'LOW' | 'CRITICAL';
-}
+const transactionTypes: InventoryTransactionType[] = [
+  'RECEIPT_IN',
+  'ADJUSTMENT_IN',
+  'ADJUSTMENT_OUT',
+  'ORDER_CONFIRM_OUT',
+  'ORDER_CANCEL_IN',
+  'DELIVERY_RETURN_IN',
+];
 
-export const AdminInventoryView: React.FC<{
-  showToast: (msg: string) => void;
-}> = ({ showToast }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [warehouseFilter, setWarehouseFilter] = useState('all');
-  const [items, setItems] = useState<InventoryItem[]>([
-    {
-      id: 'INV-01',
-      sku: 'FID-JNS-SEL-30',
-      name: 'Quần Jeans Selvedge 14oz Cổ Điển',
-      category: 'Quần Jeans',
-      color: 'Indigo Đậm',
-      size: '30',
-      inStock: 45,
-      reserved: 6,
-      available: 39,
-      reorderPoint: 15,
-      warehouse: 'Kho Chính Hà Nội',
-      status: 'OPTIMAL',
-    },
-    {
-      id: 'INV-02',
-      sku: 'FID-JNS-SEL-32',
-      name: 'Quần Jeans Selvedge 14oz Cổ Điển',
-      category: 'Quần Jeans',
-      color: 'Indigo Đậm',
-      size: '32',
-      inStock: 12,
-      reserved: 5,
-      available: 7,
-      reorderPoint: 15,
-      warehouse: 'Kho Chính Hà Nội',
-      status: 'LOW',
-    },
-    {
-      id: 'INV-03',
-      sku: 'FID-SHR-CUB-M',
-      name: 'Áo Sơ Mi Lụa Cổ Cuban',
-      category: 'Áo Sơ Mi',
-      color: 'Xanh Rêu Atelier',
-      size: 'M',
-      inStock: 38,
-      reserved: 2,
-      available: 36,
-      reorderPoint: 10,
-      warehouse: 'Showroom Lý Tự Trọng (HCM)',
-      status: 'OPTIMAL',
-    },
-    {
-      id: 'INV-04',
-      sku: 'FID-POL-KNT-L',
-      name: 'Áo Polo Dệt Kim Cotton Mercerized',
-      category: 'Áo Polo',
-      color: 'Kem Vani',
-      size: 'L',
-      inStock: 4,
-      reserved: 2,
-      available: 2,
-      reorderPoint: 12,
-      warehouse: 'Showroom Lý Tự Trọng (HCM)',
-      status: 'CRITICAL',
-    },
-    {
-      id: 'INV-05',
-      sku: 'FID-PNT-GUR-31',
-      name: 'Quần Âu Gurkha Cạp Cao Xếp Ly',
-      category: 'Quần Âu',
-      color: 'Khaki Cát',
-      size: '31',
-      inStock: 28,
-      reserved: 8,
-      available: 20,
-      reorderPoint: 10,
-      warehouse: 'Xưởng May Atelier Vert',
-      status: 'OPTIMAL',
-    },
-    {
-      id: 'INV-06',
-      sku: 'FID-BLZ-LIN-48',
-      name: 'Áo Blazer Linen Ý Cấu Trúc Nhẹ',
-      category: 'Áo Khoác',
-      color: 'Xanh Navy Sẫm',
-      size: '48',
-      inStock: 8,
-      reserved: 1,
-      available: 7,
-      reorderPoint: 8,
-      warehouse: 'Kho Chính Hà Nội',
-      status: 'LOW',
-    },
-  ]);
+export const AdminInventoryView: React.FC<{ showToast: (msg: string) => void }> = ({ showToast }) => {
+  const [skuInput, setSkuInput] = useState('');
+  const [sku, setSku] = useState('');
+  const [page, setPage] = useState(1);
+  const [rows, setRows] = useState<InventoryRowDto[]>([]);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<InventoryRowDto | null>(null);
+  const [delta, setDelta] = useState('');
+  const [reason, setReason] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [transactionType, setTransactionType] = useState<InventoryTransactionType | ''>('');
+  const [transactions, setTransactions] = useState<InventoryTransactionDto[]>([]);
+  const [transactionMeta, setTransactionMeta] = useState<PaginationMeta | null>(null);
+  const [transactionPage, setTransactionPage] = useState(1);
 
-  const [adjustingItem, setAdjustingItem] = useState<InventoryItem | null>(null);
-  const [adjustQty, setAdjustQty] = useState<number>(0);
-  const [adjustReason, setAdjustReason] = useState('Nhập bổ sung lô may xưởng');
+  const refreshInventory = async () => {
+    const response = await inventoryAdminService.listInventory({
+      ...(sku ? { sku } : {}),
+      page,
+      page_size: 20,
+    });
+    setRows(response.data);
+    setMeta(response.meta);
+  };
 
-  const filteredItems = items.filter((item) => {
-    const matchesSearch =
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.sku.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesWh = warehouseFilter === 'all' || item.warehouse === warehouseFilter;
-    return matchesSearch && matchesWh;
-  });
+  useEffect(() => {
+    let active = true;
+    void inventoryAdminService.listInventory({
+      ...(sku ? { sku } : {}),
+      page,
+      page_size: 20,
+    }).then((response) => {
+      if (!active) return;
+      setRows(response.data);
+      setMeta(response.meta);
+      setError(null);
+    }).catch(() => {
+      if (active) setError('Không thể tải tồn kho hoặc tài khoản thiếu INVENTORY_READ.');
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
+  }, [page, sku]);
 
-  const handleSaveAdjustment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!adjustingItem) return;
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === adjustingItem.id
-          ? {
-              ...item,
-              inStock: item.inStock + adjustQty,
-              available: item.available + adjustQty,
-              status:
-                item.inStock + adjustQty <= item.reorderPoint / 2
-                  ? 'CRITICAL'
-                  : item.inStock + adjustQty <= item.reorderPoint
-                  ? 'LOW'
-                  : 'OPTIMAL',
-            }
-          : item
-      )
-    );
-    showToast(
-      `Đã cập nhật tồn kho cho SKU ${adjustingItem.sku}: ${adjustQty > 0 ? '+' : ''}${adjustQty} sp (${adjustReason})`
-    );
-    setAdjustingItem(null);
+  useEffect(() => {
+    let active = true;
+    void inventoryAdminService.listTransactions({
+      ...(transactionType ? { transaction_type: transactionType } : {}),
+      page: transactionPage,
+      page_size: 20,
+    }).then((response) => {
+      if (!active) return;
+      setTransactions(response.data);
+      setTransactionMeta(response.meta);
+    }).catch(() => {
+      if (active) setError('Không thể tải lịch sử giao dịch kho.');
+    });
+    return () => { active = false; };
+  }, [transactionPage, transactionType]);
+
+  const applySearch = (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setPage(1);
+    setSku(skuInput.trim());
+  };
+
+  const changePage = (nextPage: number) => {
+    setLoading(true);
+    setPage(nextPage);
+  };
+
+  const adjust = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selected || saving) return;
+    const parsedDelta = Number(delta);
+    if (!Number.isInteger(parsedDelta) || parsedDelta === 0 || !reason.trim()) {
+      setError('Điều chỉnh kho cần quantity_delta là số nguyên khác 0 và lý do không rỗng.');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await inventoryAdminService.adjustInventory({
+        variant_id: selected.variant_id,
+        quantity_delta: parsedDelta,
+        reason: reason.trim(),
+      });
+      await refreshInventory();
+      setSelected(null);
+      setDelta('');
+      setReason('');
+      setTransactionPage(1);
+      const tx = await inventoryAdminService.listTransactions({
+        ...(transactionType ? { transaction_type: transactionType } : {}),
+        page: 1,
+        page_size: 20,
+      });
+      setTransactions(tx.data);
+      setTransactionMeta(tx.meta);
+      showToast('Đã điều chỉnh tồn kho qua backend.');
+    } catch {
+      setError('Không thể điều chỉnh tồn kho. Backend có thể từ chối do quyền, variant hoặc số lượng khả dụng.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <div className="flex flex-col w-full space-y-6">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-1">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-xs text-[#687069]">
-            <span className="w-2 h-2 rounded-full bg-[#1B5038]"></span>
-            <span>Kho vận toàn quốc &bull; 3 địa điểm luân chuyển</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-['Playfair_Display',serif] text-[#0B2419] tracking-tight font-bold">
-            Quản Lý Tồn Kho &amp; Luân Chuyển Xưởng May
-          </h1>
-          <p className="text-sm text-[#424844] max-w-3xl">
-            Theo dõi tồn kho thực tế, số lượng đang được thợ may giữ lại để lên gấu cho khách và kiểm soát cảnh báo hết hàng tự động.
-          </p>
-        </div>
+    <div className="space-y-7">
+      <header>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">Inventory</p>
+        <h1 className="mt-1 font-serif text-3xl font-bold text-[#0B2419]">Tồn kho theo biến thể</h1>
+        <p className="mt-2 text-sm text-[#606863]">Số lượng khả dụng và transaction lấy trực tiếp từ backend; không suy diễn kho, reserved stock hay ngưỡng low-stock.</p>
+      </header>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => showToast('Đang kết nối hệ thống kiểm kê barcode kho...')}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white text-[#0B2419] hover:bg-[#FAF9F5] transition-colors text-xs font-semibold uppercase tracking-wider rounded border border-[#E8E9E3] shadow-xs"
-          >
-            <span className="material-symbols-outlined text-[18px]">barcode_scanner</span>
-            <span>Quét Mã Vạch</span>
-          </button>
-          <button
-            onClick={() => showToast('Mở phiếu tạo đợt nhập xưởng may đo mới')}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#0B2419] text-white hover:bg-[#1B5038] transition-colors text-xs font-semibold uppercase tracking-wider rounded shadow-xs"
-          >
-            <span className="material-symbols-outlined text-[18px]">add_box</span>
-            <span>Tạo Phiếu Nhập Kho</span>
-          </button>
-        </div>
-      </div>
+      {error && <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-lg border border-[#E8E9E3] shadow-xs">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[#687069]">
-            Tổng Sản Phẩm Trong Kho
-          </span>
-          <div className="mt-2 text-3xl font-bold text-[#0B2419] font-['Playfair_Display',serif]">
-            1,248 <span className="text-xs font-sans font-normal text-[#687069]">sản phẩm</span>
-          </div>
-          <div className="mt-2 text-xs text-[#1B5038] font-medium">Sẵn sàng xuất giao COD ngay</div>
-        </div>
+      <form onSubmit={applySearch} className="flex flex-wrap gap-3 rounded-lg border border-[#E2E5DE] bg-white p-4">
+        <input value={skuInput} onChange={(event) => setSkuInput(event.target.value)} placeholder="Lọc theo SKU" className="min-w-64 flex-1 border border-[#D9DDD6] px-3 py-2 text-sm" />
+        <button className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white">Tìm</button>
+      </form>
 
-        <div className="bg-white p-5 rounded-lg border border-[#E8E9E3] shadow-xs">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[#725C00]">
-            Đang Giữ Lại Để May Lên Gấu
-          </span>
-          <div className="mt-2 text-3xl font-bold text-[#725C00] font-['Playfair_Display',serif]">
-            24 <span className="text-xs font-sans font-normal text-[#687069]">chiếc tại xưởng</span>
-          </div>
-          <div className="mt-2 text-xs text-[#687069]">Đang trong chu trình cắt may miễn phí</div>
-        </div>
-
-        <div className="bg-white p-5 rounded-lg border border-[#E8E9E3] shadow-xs">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[#BA1A1A]">
-            Cảnh Báo Sắp Hết Hàng (Low Stock)
-          </span>
-          <div className="mt-2 text-3xl font-bold text-[#BA1A1A] font-['Playfair_Display',serif]">
-            5 <span className="text-xs font-sans font-normal text-[#687069]">SKU dưới định mức</span>
-          </div>
-          <div className="mt-2 text-xs text-[#BA1A1A] font-medium">Cần đặt thêm vải và phụ liệu</div>
-        </div>
-      </div>
-
-      {/* Filters & Table */}
-      <div className="bg-white rounded-lg border border-[#E8E9E3] shadow-xs overflow-hidden">
-        <div className="p-4 border-b border-[#F0F2ED] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative min-w-[260px]">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-[#687069]">
-                search
-              </span>
-              <input
-                type="text"
-                placeholder="Tìm mã SKU, tên sản phẩm..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-xs bg-[#FAF9F5] border border-[#E8E9E3] rounded focus:outline-none focus:border-[#0B2419]"
-              />
-            </div>
-
-            <select
-              value={warehouseFilter}
-              onChange={(e) => setWarehouseFilter(e.target.value)}
-              className="py-1.5 px-3 text-xs bg-[#FAF9F5] border border-[#E8E9E3] rounded focus:outline-none focus:border-[#0B2419]"
-            >
-              <option value="all">Tất cả kho hàng (3 kho)</option>
-              <option value="Kho Chính Hà Nội">Kho Chính Hà Nội</option>
-              <option value="Showroom Lý Tự Trọng (HCM)">Showroom Lý Tự Trọng (HCM)</option>
-              <option value="Xưởng May Atelier Vert">Xưởng May Atelier Vert</option>
-            </select>
-          </div>
-
-          <div className="text-xs text-[#687069]">
-            Hiển thị <strong>{filteredItems.length}</strong> mặt hàng
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-[#424844]">
-            <thead className="bg-[#FAF9F5] text-[#687069] uppercase font-bold text-[10px] tracking-wider border-b border-[#E8E9E3]">
-              <tr>
-                <th className="py-3 px-4">Mã SKU &amp; Sản Phẩm</th>
-                <th className="py-3 px-4">Quy Cách</th>
-                <th className="py-3 px-4">Kho Lưu Trữ</th>
-                <th className="py-3 px-4 text-center">Tồn Thực</th>
-                <th className="py-3 px-4 text-center">Đang Cắt May</th>
-                <th className="py-3 px-4 text-center">Có Thể Bán</th>
-                <th className="py-3 px-4">Trạng Thái</th>
-                <th className="py-3 px-4 text-right">Điều Chỉnh</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#F0F2ED]">
-              {filteredItems.map((item) => (
-                <tr key={item.id} className="hover:bg-[#FAF9F5]/70 transition-colors">
-                  <td className="py-3 px-4">
-                    <div className="font-mono font-bold text-[#0B2419]">{item.sku}</div>
-                    <div className="font-medium text-[#191C19]">{item.name}</div>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="text-[#687069]">{item.color}</span> &bull;{' '}
-                    <span className="font-bold text-[#0B2419]">Size {item.size}</span>
-                  </td>
-                  <td className="py-3 px-4 text-[#687069]">{item.warehouse}</td>
-                  <td className="py-3 px-4 text-center font-bold text-[#0B2419]">{item.inStock}</td>
-                  <td className="py-3 px-4 text-center font-semibold text-[#725C00]">
-                    {item.reserved > 0 ? (
-                      <span className="inline-flex items-center gap-1 bg-[#E5C358]/20 px-2 py-0.5 rounded text-[11px]">
-                        <span className="material-symbols-outlined text-[12px]">content_cut</span>
-                        {item.reserved}
-                      </span>
-                    ) : (
-                      '0'
-                    )}
-                  </td>
-                  <td className="py-3 px-4 text-center font-bold text-[#1B5038] text-sm">
-                    {item.available}
-                  </td>
-                  <td className="py-3 px-4">
-                    {item.status === 'OPTIMAL' && (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#1B5038]/10 text-[#1B5038]">
-                        ĐỦ HÀNG
-                      </span>
-                    )}
-                    {item.status === 'LOW' && (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#E5C358]/30 text-[#725C00]">
-                        SẮP HẾT
-                      </span>
-                    )}
-                    {item.status === 'CRITICAL' && (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#BA1A1A]/10 text-[#BA1A1A]">
-                        BÁO ĐỘNG ĐỎ
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <button
-                      onClick={() => {
-                        setAdjustingItem(item);
-                        setAdjustQty(0);
-                      }}
-                      className="px-2.5 py-1 text-xs font-semibold text-[#0B2419] hover:bg-[#0B2419]/5 rounded border border-[#E8E9E3]"
-                    >
-                      Kiểm kê
-                    </button>
-                  </td>
-                </tr>
-              ))}
+      <section className="overflow-x-auto rounded-lg border border-[#E2E5DE] bg-white">
+        {loading ? <div className="p-10 text-center text-sm text-[#606863]">Đang tải tồn kho...</div> : rows.length === 0 ? <div className="p-10 text-center text-sm">Không có biến thể phù hợp.</div> : (
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-[#F5F6F2] text-xs uppercase text-[#606863]"><tr><th className="px-4 py-3">Variant / SKU</th><th className="px-4 py-3">Sản phẩm</th><th className="px-4 py-3">Quy cách</th><th className="px-4 py-3">Sale status</th><th className="px-4 py-3 text-right">Khả dụng</th><th className="px-4 py-3" /></tr></thead>
+            <tbody className="divide-y divide-[#E2E5DE]">
+              {rows.map((row) => <tr key={row.variant_id}><td className="px-4 py-3"><strong className="font-mono">#{row.variant_id}</strong><p className="text-xs text-[#606863]">{row.sku ?? 'Không có SKU'}</p></td><td className="px-4 py-3"><strong>{row.product_name}</strong><p className="text-xs text-[#606863]">Product #{row.product_id}</p></td><td className="px-4 py-3">{row.size} · {row.color}</td><td className="px-4 py-3">{row.sale_status}</td><td className="px-4 py-3 text-right text-lg font-bold">{row.available_quantity}</td><td className="px-4 py-3 text-right"><button type="button" onClick={() => { setSelected(row); setDelta(''); setReason(''); }} className="border border-[#0B2419] px-3 py-2 text-xs font-bold uppercase">Điều chỉnh</button></td></tr>)}
             </tbody>
           </table>
-        </div>
-      </div>
+        )}
+      </section>
 
-      {/* Quick Adjust Modal */}
-      {adjustingItem && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg border border-[#E8E9E3] max-w-md w-full p-6 shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-[#F0F2ED] pb-3">
-              <h3 className="font-bold text-base text-[#0B2419]">Kiểm Kê &amp; Điều Chỉnh Tồn Kho</h3>
-              <button
-                onClick={() => setAdjustingItem(null)}
-                className="text-[#687069] hover:text-[#0B2419]"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            </div>
+      {meta && meta.total_pages > 1 && <div className="flex justify-center gap-3 text-sm"><button type="button" disabled={page <= 1 || loading} onClick={() => changePage(page - 1)} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang trước</button><span className="py-2">{meta.page} / {meta.total_pages}</span><button type="button" disabled={page >= meta.total_pages || loading} onClick={() => changePage(page + 1)} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang sau</button></div>}
 
-            <div className="text-xs space-y-1 bg-[#FAF9F5] p-3 rounded border border-[#E8E9E3]">
-              <div className="font-bold text-[#0B2419]">{adjustingItem.name}</div>
-              <div className="text-[#687069]">
-                SKU: <span className="font-mono">{adjustingItem.sku}</span> &bull; {adjustingItem.color} - Size {adjustingItem.size}
-              </div>
-              <div className="text-[#687069]">Hiện tại: <strong>{adjustingItem.inStock}</strong> chiếc trong kho</div>
-            </div>
+      {selected && <form onSubmit={adjust} className="rounded-lg border border-[#E2E5DE] bg-white p-5"><h2 className="font-serif text-xl font-bold">Điều chỉnh Variant #{selected.variant_id}</h2><p className="mt-1 text-xs text-[#606863]">Hiện khả dụng: {selected.available_quantity}. Delta dương tăng kho, delta âm giảm kho; backend kiểm tra invariant.</p><div className="mt-4 grid gap-3 md:grid-cols-[180px_1fr_auto]"><input type="number" step="1" required value={delta} onChange={(event) => setDelta(event.target.value)} placeholder="quantity_delta" className="border border-[#D9DDD6] px-3 py-2 text-sm" /><input required maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Lý do điều chỉnh" className="border border-[#D9DDD6] px-3 py-2 text-sm" /><button disabled={saving} className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white disabled:opacity-40">{saving ? 'Đang lưu...' : 'Xác nhận'}</button></div></form>}
 
-            <form onSubmit={handleSaveAdjustment} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-semibold text-[#0B2419] mb-1">
-                  Số lượng thay đổi (dương là nhập thêm, âm là xuất bớt)
-                </label>
-                <input
-                  type="number"
-                  value={adjustQty}
-                  onChange={(e) => setAdjustQty(parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2 border border-[#E8E9E3] rounded focus:outline-none focus:border-[#0B2419] font-bold text-base"
-                />
-                <p className="text-[11px] text-[#687069] mt-1">
-                  Tồn kho mới sau điều chỉnh: <strong>{adjustingItem.inStock + adjustQty}</strong> chiếc
-                </p>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-[#0B2419] mb-1">Lý do điều chỉnh</label>
-                <select
-                  value={adjustReason}
-                  onChange={(e) => setAdjustReason(e.target.value)}
-                  className="w-full px-3 py-2 border border-[#E8E9E3] rounded focus:outline-none focus:border-[#0B2419]"
-                >
-                  <option value="Nhập bổ sung lô may xưởng">Nhập bổ sung lô may xưởng</option>
-                  <option value="Điều chuyển sang Showroom HCM">Điều chuyển sang Showroom HCM</option>
-                  <option value="Khách trả hàng đổi size COD">Khách trả hàng đổi size COD</option>
-                  <option value="Hàng mẫu trưng bày &amp; chụp ảnh">Hàng mẫu trưng bày &amp; chụp ảnh</option>
-                  <option value="Hư hỏng / Lỗi vải cần thanh lý">Hư hỏng / Lỗi vải cần thanh lý</option>
-                </select>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setAdjustingItem(null)}
-                  className="px-4 py-2 border border-[#E8E9E3] rounded text-[#687069] hover:bg-[#FAF9F5]"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-[#0B2419] text-[#E5C358] font-bold rounded hover:bg-[#123A29]"
-                >
-                  Cập Nhật Ngay
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="font-serif text-2xl font-bold">Inventory transactions</h2><p className="text-xs text-[#606863]">Lịch sử bất biến do backend tạo từ nhập kho, order và điều chỉnh tay.</p></div><select value={transactionType} onChange={(event) => { setTransactionPage(1); setTransactionType(event.target.value as InventoryTransactionType | ''); }} className="border border-[#D9DDD6] bg-white px-3 py-2 text-sm"><option value="">Tất cả loại</option>{transactionTypes.map((item) => <option key={item}>{item}</option>)}</select></div>
+        <div className="overflow-x-auto rounded-lg border border-[#E2E5DE] bg-white"><table className="min-w-full text-left text-sm"><thead className="bg-[#F5F6F2] text-xs uppercase text-[#606863]"><tr><th className="px-4 py-3">Txn</th><th className="px-4 py-3">Variant</th><th className="px-4 py-3">Loại</th><th className="px-4 py-3 text-right">Delta</th><th className="px-4 py-3">Nguồn</th><th className="px-4 py-3">Lý do</th></tr></thead><tbody className="divide-y divide-[#E2E5DE]">{transactions.map((tx) => <tr key={tx.txn_id}><td className="px-4 py-3 font-mono">#{tx.txn_id}</td><td className="px-4 py-3">#{tx.variant_id}</td><td className="px-4 py-3">{tx.transaction_type}</td><td className="px-4 py-3 text-right font-bold">{tx.quantity_delta > 0 ? '+' : ''}{tx.quantity_delta}</td><td className="px-4 py-3 text-xs">{tx.order_id ? `Order #${tx.order_id}` : tx.goods_receipt_id ? `Receipt #${tx.goods_receipt_id}` : 'Manual'}</td><td className="max-w-sm px-4 py-3 text-xs">{tx.reason ?? '—'}</td></tr>)}</tbody></table></div>
+        {transactionMeta && transactionMeta.total_pages > 1 && <div className="flex justify-center gap-3 text-sm"><button type="button" disabled={transactionPage <= 1} onClick={() => setTransactionPage((value) => value - 1)} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang trước</button><span className="py-2">{transactionMeta.page} / {transactionMeta.total_pages}</span><button type="button" disabled={transactionPage >= transactionMeta.total_pages} onClick={() => setTransactionPage((value) => value + 1)} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang sau</button></div>}
+      </section>
     </div>
   );
 };
