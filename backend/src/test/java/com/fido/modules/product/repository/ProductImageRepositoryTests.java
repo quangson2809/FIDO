@@ -36,7 +36,7 @@ class ProductImageRepositoryTests {
         );
         assertEquals(
                 List.of(
-                        "https://example.invalid/image.png",
+                        "https://example.invalid/test.png",
                         "https://cdn.test/second.jpg",
                         "https://cdn.test/third.jpg"
                 ),
