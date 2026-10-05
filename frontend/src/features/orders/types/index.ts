@@ -1,3 +1,5 @@
+import type { PaginationMeta } from '../../../types/api';
+
 export type OrderStatus =
   | 'PENDING'
   | 'CONFIRMED'
@@ -70,6 +72,22 @@ export interface OrderCustomerDetailDto {
   updated_at: string;
 }
 
+export interface OrderListQuery {
+  order_status?: OrderStatus;
+  page?: number;
+  page_size?: number;
+}
+
+export interface OrderPage {
+  items: OrderSummaryDto[];
+  meta: PaginationMeta;
+}
+
+export interface RecipientPatchInput {
+  recipient_phone?: string;
+  recipient_address?: string;
+}
+
 export interface CheckoutRequest {
   recipient_phone: string;
   recipient_email: string | null;
@@ -116,8 +134,9 @@ export interface OrderConfirmationDto {
 }
 
 export interface OrderService {
-  getOrders(): Promise<OrderSummaryDto[]>;
+  getOrders(query?: OrderListQuery): Promise<OrderPage>;
   getOrder(orderId: number | string): Promise<OrderCustomerDetailDto>;
+  updateRecipient(orderId: number | string, input: RecipientPatchInput): Promise<OrderCustomerDetailDto>;
 }
 
 export interface CheckoutService {
