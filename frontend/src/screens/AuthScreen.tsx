@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { authService } from '../features/auth/api/service';
+import { profileService } from '../features/auth/api/profileService';
 
 type AuthMode = 'login' | 'register';
 
@@ -41,7 +42,7 @@ export const AuthScreen: React.FC = () => {
       }
 
       const login = await authService.login(identifier, password);
-      const me = await authService.getMe();
+      const me = await profileService.getMe();
       updateUserProfile({
         phone: login.account.phone,
         email: login.account.email ?? '',
@@ -80,7 +81,7 @@ export const AuthScreen: React.FC = () => {
             {mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
           </h1>
           <p className="mt-2 text-xs text-[#0B2419]/60">
-            Đăng nhập dùng số điện thoại theo contract backend hiện tại.
+            Đăng nhập bằng số điện thoại theo tài khoản FIDO.
           </p>
         </div>
 
@@ -116,10 +117,10 @@ export const AuthScreen: React.FC = () => {
               <input
                 type="tel"
                 required
+                maxLength={20}
                 value={phone}
                 onChange={(event) => setPhone(event.target.value)}
                 autoComplete="tel"
-                placeholder="0987654321"
                 className="w-full border border-[#0B2419]/20 bg-[#FAF9F5] px-3.5 py-2.5 text-sm outline-none focus:border-[#0B2419]"
               />
             </label>
@@ -129,10 +130,10 @@ export const AuthScreen: React.FC = () => {
                 <span className="text-xs font-medium">Email</span>
                 <input
                   type="email"
+                  maxLength={254}
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   autoComplete="email"
-                  placeholder="user@example.com"
                   className="w-full border border-[#0B2419]/20 bg-[#FAF9F5] px-3.5 py-2.5 text-sm outline-none focus:border-[#0B2419]"
                 />
               </label>
@@ -164,8 +165,7 @@ export const AuthScreen: React.FC = () => {
           </form>
 
           <p className="mt-5 text-center text-[11px] leading-5 text-[#0B2419]/55">
-            Access token chỉ được giữ trong bộ nhớ runtime của frontend. Reload trang sẽ yêu cầu đăng nhập lại;
-            chưa có refresh-token API và chưa tự chọn cơ chế lưu token bền vững.
+            Phiên đăng nhập hiện được giữ trong bộ nhớ của ứng dụng. Hệ thống chưa có refresh-token contract.
           </p>
         </div>
       </div>

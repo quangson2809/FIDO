@@ -39,9 +39,25 @@ export interface LoginResponseDto {
   account: AccountDto;
 }
 
+export interface ProfilePatchInput {
+  phone?: string;
+  email?: string;
+}
+
+export interface AddressInput {
+  address_text: string;
+}
+
 export interface AuthService {
   login(identifier: string, password: string): Promise<LoginResponseDto>;
   register(phone: string, email: string | null, password: string): Promise<AccountDto>;
-  getMe(): Promise<MeDto>;
   logout(): void;
+}
+
+export interface ProfileService {
+  getMe(): Promise<MeDto>;
+  updateProfile(input: ProfilePatchInput): Promise<AccountDto>;
+  addAddress(input: AddressInput): Promise<AddressDto>;
+  updateAddress(addressId: number, input: AddressInput): Promise<AddressDto>;
+  deleteAddress(addressId: number): Promise<void>;
 }
