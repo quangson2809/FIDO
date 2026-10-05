@@ -36,45 +36,13 @@ const summaryToView = (product: ProductSummaryDto): CatalogProductView => ({
   sale_status: product.sale_status,
 });
 
-const detailToView = (product: ProductDetailDto): CatalogProductView => {
-  const imageUrls = product.images
-    .map((image) => resolveImageUrl(image.image_url))
-    .filter((value): value is string => Boolean(value));
-  const sizes = [...new Set(product.variants.map((variant) => variant.size.display_name))];
-  const colors = [...new Map(
-    product.variants.map((variant) => [
-      variant.color.color_id,
-      { name: variant.color.name, hex: 'transparent' },
-    ]),
-  ).values()];
-  const firstVariant = product.variants[0];
-
-  return {
-    id: String(product.product_id),
-    product_id: product.product_id,
-    sku: firstVariant?.sku ?? '',
-    name: product.name,
-    category: product.category.name,
-    parentCategory: product.category.name,
-    brand: product.brand?.name ?? '',
-    price: product.base_price,
-    base_price: product.base_price,
-    imageUrl: imageUrls[0] ?? '',
-    galleryImages: imageUrls,
-    description: product.description ?? '',
-    fabric: product.material_care ?? '',
-    colors,
-    sizes,
-    variants: product.variants,
-    rating: 0,
-    reviewsCount: 0,
-    inStockCount: product.variants.reduce(
-      (sum, variant) => sum + variant.available_quantity,
-      0,
-    ),
-    sale_status: product.sale_status,
-  };
-};
+const normalizeDetailImages = (product: ProductDetailDto): ProductDetailDto => ({
+  ...product,
+  images: product.images.map((image) => ({
+    ...image,
+    image_url: resolveImageUrl(image.image_url) ?? image.image_url,
+  })),
+});
 
 const loadProductPage = async (query: CatalogProductQuery = {}): Promise<CatalogProductPage> => {
   const response = await apiClient.get<
@@ -90,15 +58,12 @@ const loadProductPage = async (query: CatalogProductQuery = {}): Promise<Catalog
 
 export const catalogService: CatalogService = {
   listProducts: loadProductPage,
-  async getProducts() {
-    return (await loadProductPage()).items;
-  },
   async getProductDetail(productId) {
     const response = await apiClient.get<
       ApiResponse<ProductDetailDto>,
       ApiResponse<ProductDetailDto>
     >(`/catalog/products/${productId}`);
-    return detailToView(response.data);
+    return normalizeDetailImages(response.data);
   },
   async getMeta() {
     const response = await apiClient.get<

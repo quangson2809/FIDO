@@ -1,5 +1,7 @@
 import type { PaginationMeta } from '../../../types/api';
 
+export type SaleStatus = 'ON_SALE' | 'STOPPED';
+
 export interface CategoryDto {
   category_id: number;
   parent_category_id: number | null;
@@ -54,7 +56,7 @@ export interface ProductVariantDto {
   color: ColorDto;
   sku: string | null;
   effective_price: number;
-  sale_status: string;
+  sale_status: SaleStatus;
   available_quantity: number;
 }
 
@@ -65,7 +67,7 @@ export interface ProductSummaryDto {
   category: CategoryDto;
   brand: BrandDto | null;
   base_price: number;
-  sale_status: string;
+  sale_status: SaleStatus;
 }
 
 export interface ProductDetailDto {
@@ -80,7 +82,7 @@ export interface ProductDetailDto {
   style: string | null;
   material_care: string | null;
   base_price: number;
-  sale_status: string;
+  sale_status: SaleStatus;
   images: ProductImageDto[];
   variants: ProductVariantDto[];
 }
@@ -107,7 +109,7 @@ export interface CatalogProductView {
   rating: number;
   reviewsCount: number;
   inStockCount: number;
-  sale_status: string;
+  sale_status: SaleStatus;
 }
 
 export interface CatalogProductQuery {
@@ -132,9 +134,7 @@ export interface CatalogProductPage {
 
 export interface CatalogService {
   listProducts(query?: CatalogProductQuery): Promise<CatalogProductPage>;
-  /** Transitional compatibility for ProductDetailScreen; remove after that slice migrates. */
-  getProducts(): Promise<CatalogProductView[]>;
-  getProductDetail(productId: number | string): Promise<CatalogProductView>;
+  getProductDetail(productId: number | string): Promise<ProductDetailDto>;
   getMeta(): Promise<CatalogMetaDto>;
 }
 
@@ -143,7 +143,7 @@ export interface ProductCreateVariantInput {
   color_id: number;
   sku?: string | null;
   override_price?: number | null;
-  sale_status: string;
+  sale_status: SaleStatus;
 }
 
 export interface ProductCreateImageInput {
@@ -162,7 +162,7 @@ export interface ProductCreateInput {
   style?: string | null;
   material_care?: string | null;
   base_price: number;
-  sale_status: string;
+  sale_status: SaleStatus;
   images?: ProductCreateImageInput[];
   variants?: ProductCreateVariantInput[];
 }
@@ -175,7 +175,7 @@ export interface AdminProductSummaryDto {
   brand_id: number | null;
   size_system_id: number;
   base_price: number;
-  sale_status: string;
+  sale_status: SaleStatus;
   created_at: string;
   updated_at: string;
 }
