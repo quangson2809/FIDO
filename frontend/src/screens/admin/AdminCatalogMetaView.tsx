@@ -26,8 +26,6 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
   const [sizeCode, setSizeCode] = useState('');
   const [sizeSortOrder, setSizeSortOrder] = useState('0');
 
-  useEffect(() => setActiveTab(initialTab), [initialTab]);
-
   const load = async () => {
     setLoading(true);
     try {
@@ -42,7 +40,24 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
   };
 
   useEffect(() => {
-    void load();
+    let active = true;
+    void adminCatalogMetaService.getMeta()
+      .then((result) => {
+        if (!active) return;
+        setMeta(result);
+        setError(null);
+      })
+      .catch(() => {
+        if (!active) return;
+        setMeta(null);
+        setError('Không thể tải catalog metadata hoặc tài khoản không có quyền CATALOG_READ.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const clearForm = () => {
