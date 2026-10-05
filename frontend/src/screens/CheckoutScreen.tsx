@@ -11,13 +11,14 @@ import { hasApiAccessToken } from '../services/http/apiClient';
 
 const money = (value: number): string => `${value.toLocaleString('vi-VN')}₫`;
 
+const requestKey = (request: CheckoutRequest): string => JSON.stringify(request);
+
 export const CheckoutScreen: React.FC = () => {
   const {
     cartItems,
     cartSubtotal,
     setCurrentScreen,
     setSelectedOrderId,
-    showToast,
   } = useApp();
 
   const [phone, setPhone] = useState('');
@@ -25,6 +26,7 @@ export const CheckoutScreen: React.FC = () => {
   const [address, setAddress] = useState('');
   const [voucherCode, setVoucherCode] = useState('');
   const [quote, setQuote] = useState<CheckoutQuoteDto | null>(null);
+  const [quotedRequestKey, setQuotedRequestKey] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<OrderConfirmationDto | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [quoteLoading, setQuoteLoading] = useState(false);
@@ -35,7 +37,6 @@ export const CheckoutScreen: React.FC = () => {
     let active = true;
 
     if (!hasApiAccessToken()) {
-      showToast('Vui lòng đăng nhập trước khi đặt hàng.');
       setCurrentScreen('auth');
       return () => {
         active = false;
@@ -62,10 +63,11 @@ export const CheckoutScreen: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [setCurrentScreen, showToast]);
+  }, [setCurrentScreen]);
 
   const invalidateQuote = () => {
     setQuote(null);
+    setQuotedRequestKey(null);
     setError(null);
   };
 
@@ -75,6 +77,9 @@ export const CheckoutScreen: React.FC = () => {
     recipient_address: address.trim(),
     voucher_code: voucherCode.trim() || null,
   }), [address, email, phone, voucherCode]);
+
+  const currentRequestKey = requestKey(request);
+  const quoteIsCurrent = quote !== null && quotedRequestKey === currentRequestKey;
 
   const canRequestQuote = request.recipient_phone.length > 0
     && request.recipient_address.length > 0
@@ -86,12 +91,17 @@ export const CheckoutScreen: React.FC = () => {
       return;
     }
 
+    const submittedRequest = request;
+    const submittedRequestKey = currentRequestKey;
     setQuoteLoading(true);
     setError(null);
     try {
-      setQuote(await checkoutService.quote(request));
+      const result = await checkoutService.quote(submittedRequest);
+      setQuote(result);
+      setQuotedRequestKey(submittedRequestKey);
     } catch {
       setQuote(null);
+      setQuotedRequestKey(null);
       setError('Không thể tạo báo giá. Kiểm tra thông tin nhận hàng, voucher và tồn kho.');
     } finally {
       setQuoteLoading(false);
@@ -99,17 +109,19 @@ export const CheckoutScreen: React.FC = () => {
   };
 
   const placeOrder = async () => {
-    if (!quote || orderSubmitting) return;
+    if (!quoteIsCurrent || orderSubmitting) return;
 
+    const submittedRequest = request;
     setOrderSubmitting(true);
     setError(null);
     try {
-      const result = await checkoutService.createOrder(request);
+      const result = await checkoutService.createOrder(submittedRequest);
       setConfirmation(result);
       setSelectedOrderId(String(result.order_id));
     } catch {
       setError('Không thể tạo đơn hàng. Dữ liệu giỏ hàng có thể đã thay đổi; hãy cập nhật báo giá và thử lại.');
       setQuote(null);
+      setQuotedRequestKey(null);
     } finally {
       setOrderSubmitting(false);
     }
@@ -183,13 +195,13 @@ export const CheckoutScreen: React.FC = () => {
               <input
                 type="tel"
                 maxLength={20}
-                disabled={profileLoading}
+                disabled={profileLoading || orderSubmitting}
                 value={phone}
                 onChange={(event) => {
                   setPhone(event.target.value);
                   invalidateQuote();
                 }}
-                className="w-full border border-[#D9DDD6] px-3 py-2.5 text-sm outline-none focus:border-[#0B2419]"
+                className="w-full border border-[#D9DDD6] px-3 py-2.5 text-sm outline-none focus:border-[#0B2419] disabled:bg-[#F5F6F2]"
               />
             </label>
 
@@ -198,13 +210,13 @@ export const CheckoutScreen: React.FC = () => {
               <input
                 type="email"
                 maxLength={254}
-                disabled={profileLoading}
+                disabled={profileLoading || orderSubmitting}
                 value={email}
                 onChange={(event) => {
                   setEmail(event.target.value);
                   invalidateQuote();
                 }}
-                className="w-full border border-[#D9DDD6] px-3 py-2.5 text-sm outline-none focus:border-[#0B2419]"
+                className="w-full border border-[#D9DDD6] px-3 py-2.5 text-sm outline-none focus:border-[#0B2419] disabled:bg-[#F5F6F2]"
               />
             </label>
 
@@ -213,13 +225,13 @@ export const CheckoutScreen: React.FC = () => {
               <textarea
                 rows={3}
                 maxLength={500}
-                disabled={profileLoading}
+                disabled={profileLoading || orderSubmitting}
                 value={address}
                 onChange={(event) => {
                   setAddress(event.target.value);
                   invalidateQuote();
                 }}
-                className="w-full resize-y border border-[#D9DDD6] px-3 py-2.5 text-sm outline-none focus:border-[#0B2419]"
+                className="w-full resize-y border border-[#D9DDD6] px-3 py-2.5 text-sm outline-none focus:border-[#0B2419] disabled:bg-[#F5F6F2]"
                 placeholder="Nhập địa chỉ nhận hàng"
               />
             </label>
@@ -229,23 +241,24 @@ export const CheckoutScreen: React.FC = () => {
               <input
                 type="text"
                 maxLength={80}
+                disabled={orderSubmitting}
                 value={voucherCode}
                 onChange={(event) => {
                   setVoucherCode(event.target.value);
                   invalidateQuote();
                 }}
-                className="w-full border border-[#D9DDD6] px-3 py-2.5 text-sm uppercase outline-none focus:border-[#0B2419]"
+                className="w-full border border-[#D9DDD6] px-3 py-2.5 text-sm uppercase outline-none focus:border-[#0B2419] disabled:bg-[#F5F6F2]"
                 placeholder="Không bắt buộc"
               />
             </label>
 
             <button
               type="button"
-              disabled={!canRequestQuote || quoteLoading || profileLoading}
+              disabled={!canRequestQuote || quoteLoading || profileLoading || orderSubmitting}
               onClick={() => void loadQuote()}
               className="bg-[#0B2419] px-5 py-3 text-xs font-bold uppercase tracking-wider text-white disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {quoteLoading ? 'Đang kiểm tra...' : quote ? 'Cập nhật báo giá' : 'Kiểm tra và báo giá'}
+              {quoteLoading ? 'Đang kiểm tra...' : quoteIsCurrent ? 'Cập nhật báo giá' : 'Kiểm tra và báo giá'}
             </button>
           </div>
 
@@ -289,7 +302,7 @@ export const CheckoutScreen: React.FC = () => {
 
           <div className="border border-[#E8E9E3] bg-white p-5">
             <h2 className="font-serif text-xl">Báo giá checkout</h2>
-            {!quote ? (
+            {!quoteIsCurrent ? (
               <p className="mt-3 text-sm leading-6 text-[#687069]">
                 Nhập thông tin nhận hàng rồi yêu cầu báo giá. Frontend không tự tính discount, phí giao hàng hoặc tổng thanh toán.
               </p>
