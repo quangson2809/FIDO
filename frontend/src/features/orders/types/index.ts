@@ -1,8 +1,20 @@
+export type OrderStatus =
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'PREPARING'
+  | 'SHIPPING'
+  | 'COMPLETED'
+  | 'DELIVERY_FAILED'
+  | 'CANCELLED'
+  | 'RETURNED';
+
+export type PaymentStatus = 'UNPAID' | 'PAID' | 'REFUNDED';
+
 export interface OrderSummaryDto {
   order_id: number;
   order_code: string;
-  order_status: string;
-  payment_status: string;
+  order_status: OrderStatus;
+  payment_status: PaymentStatus;
   total: number;
   created_at: string;
   completed_at: string | null;
@@ -29,7 +41,7 @@ export interface RecipientDto {
 }
 
 export interface PaymentPublicDto {
-  payment_status: string;
+  payment_status: PaymentStatus;
   amount_due: number;
   amount_received: number;
   amount_refunded: number;
@@ -43,7 +55,7 @@ export interface ShippingInfoDto {
 export interface OrderCustomerDetailDto {
   order_id: number;
   order_code: string;
-  order_status: string;
+  order_status: OrderStatus;
   recipient: RecipientDto;
   items: OrderItemDto[];
   subtotal: number;
