@@ -1,0 +1,330 @@
+package com.fido.modules.product;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import com.fido.modules.product.service.ImageStorageGateway;
+import com.fido.modules.product.service.ProductImageStorageException;
+import java.io.ByteArrayOutputStream;
+import java.net.URI;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Deque;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.multipart.MultipartFile;
+
+@Import(ProductImageUploadHttpTests.StorageTestConfig.class)
+class ProductImageUploadHttpTests extends CatalogHttpSupport {
+
+    @Autowired
+    StubImageStorageGateway storage;
+
+    @BeforeEach
+    void resetStorage() {
+        storage.reset();
+    }
+
+    @Test
+    void multipartUploadPersistsImagesInRequestOrderAndEstablishesCover()
+            throws Exception {
+        Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
+        var fixture = createCatalog(writer);
+        clearImages(fixture.productId());
+
+        storage.succeed(
+                "https://storage.test/front.png",
+                "https://storage.test/back.png"
+        );
+
+        var response = uploadImages(
+                fixture.productId(),
+                writer.token(),
+                List.of(
+                        imagePart("front.png"),
+                        imagePart("back.png")
+                )
+        );
+
+        assertEquals(201, response.status(), response.body());
+        assertEquals(
+                List.of(
+                        "https://storage.test/front.png",
+                        "https://storage.test/back.png"
+                ),
+                responseImageUrls(response)
+        );
+        assertEquals(List.of(0, 1), responseSortOrders(response));
+        assertEquals(List.of("front.png", "back.png"), storage.uploadedFilenames());
+        assertEquals(
+                List.of(
+                        "https://storage.test/front.png",
+                        "https://storage.test/back.png"
+                ),
+                storedImageUrls(fixture.productId())
+        );
+
+        var publicList = call(
+                "GET",
+                "/api/v1/catalog/products?q=FIDO",
+                null,
+                null
+        );
+        assertEquals(200, publicList.status(), publicList.body());
+        assertEquals(
+                "https://storage.test/front.png",
+                publicList.data().get("data").get(0).get("thumbnail").asText()
+        );
+
+        var publicDetail = call(
+                "GET",
+                "/api/v1/catalog/products/" + fixture.productId(),
+                null,
+                null
+        );
+        assertEquals(200, publicDetail.status(), publicDetail.body());
+        assertEquals(
+                "https://storage.test/front.png",
+                publicDetail.data().get("data").get("images").get(0)
+                        .get("image_url").asText()
+        );
+        assertEquals(
+                0,
+                publicDetail.data().get("data").get("images").get(0)
+                        .get("sort_order").asInt()
+        );
+    }
+
+    @Test
+    void multipartUploadRequiresCatalogWriteBeforeCallingStorage()
+            throws Exception {
+        Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
+        Employee reader = employee(customRole(ensurePermission("CATALOG_READ")));
+        var fixture = createCatalog(writer);
+        int imagesBefore = imageCount(fixture.productId());
+
+        storage.succeed("https://storage.test/forbidden.png");
+
+        var response = uploadImages(
+                fixture.productId(),
+                reader.token(),
+                List.of(imagePart("forbidden.png"))
+        );
+
+        assertEquals(403, response.status(), response.body());
+        assertEquals(List.of(), storage.uploadedFilenames());
+        assertEquals(imagesBefore, imageCount(fixture.productId()));
+    }
+
+    @Test
+    void storageFailureReturnsGatewayErrorWithoutPersistingProductImage()
+            throws Exception {
+        Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
+        var fixture = createCatalog(writer);
+        clearImages(fixture.productId());
+
+        storage.fail(
+                HttpStatus.BAD_GATEWAY,
+                "Image storage request failed"
+        );
+
+        var response = uploadImages(
+                fixture.productId(),
+                writer.token(),
+                List.of(imagePart("failed.png"))
+        );
+
+        assertEquals(502, response.status(), response.body());
+        assertEquals(List.of("failed.png"), storage.uploadedFilenames());
+        assertEquals(0, imageCount(fixture.productId()));
+    }
+
+    private Result uploadImages(
+            long productId,
+            String token,
+            List<UploadPart> parts
+    ) throws Exception {
+        String boundary = "----FidoBoundary" + UUID.randomUUID();
+        byte[] body = multipartBody(boundary, parts);
+
+        var request = HttpRequest.newBuilder(
+                        URI.create(
+                                "http://localhost:" + port
+                                        + "/api/v1/admin/products/"
+                                        + productId
+                                        + "/images"
+                        )
+                )
+                .header("Accept", "application/json")
+                .header("Authorization", "Bearer " + token)
+                .header(
+                        "Content-Type",
+                        "multipart/form-data; boundary=" + boundary
+                )
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body))
+                .build();
+
+        var response = client.send(
+                request,
+                HttpResponse.BodyHandlers.ofString()
+        );
+
+        return new Result(
+                response.statusCode(),
+                response.body().isBlank()
+                        ? null
+                        : json.readTree(response.body()),
+                response.body()
+        );
+    }
+
+    private byte[] multipartBody(
+            String boundary,
+            List<UploadPart> parts
+    ) {
+        var output = new ByteArrayOutputStream();
+
+        for (UploadPart part : parts) {
+            write(output, "--" + boundary + "\r\n");
+            write(
+                    output,
+                    "Content-Disposition: form-data; name=\"images\"; filename=\""
+                            + part.filename()
+                            + "\"\r\n"
+            );
+            write(output, "Content-Type: " + part.contentType() + "\r\n\r\n");
+            output.writeBytes(part.content());
+            write(output, "\r\n");
+        }
+
+        write(output, "--" + boundary + "--\r\n");
+        return output.toByteArray();
+    }
+
+    private void write(ByteArrayOutputStream output, String value) {
+        output.writeBytes(value.getBytes(UTF_8));
+    }
+
+    private UploadPart imagePart(String filename) {
+        return new UploadPart(
+                filename,
+                "image/png",
+                new byte[]{1, 2, 3}
+        );
+    }
+
+    private void clearImages(long productId) {
+        db.update(
+                "DELETE FROM product_images WHERE product_id=?",
+                productId
+        );
+    }
+
+    private int imageCount(long productId) {
+        return db.queryForObject(
+                "SELECT COUNT(*) FROM product_images WHERE product_id=?",
+                Integer.class,
+                productId
+        );
+    }
+
+    private List<String> storedImageUrls(long productId) {
+        return db.query(
+                """
+                SELECT image_url
+                FROM product_images
+                WHERE product_id=?
+                ORDER BY sort_order
+                """,
+                (resultSet, rowNumber) -> resultSet.getString(1),
+                productId
+        );
+    }
+
+    private List<String> responseImageUrls(Result response) {
+        var urls = new ArrayList<String>();
+        for (var image : response.data().get("data").get("images")) {
+            urls.add(image.get("image_url").asText());
+        }
+        return List.copyOf(urls);
+    }
+
+    private List<Integer> responseSortOrders(Result response) {
+        var orders = new ArrayList<Integer>();
+        for (var image : response.data().get("data").get("images")) {
+            orders.add(image.get("sort_order").asInt());
+        }
+        return List.copyOf(orders);
+    }
+
+    private record UploadPart(
+            String filename,
+            String contentType,
+            byte[] content
+    ) {
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class StorageTestConfig {
+
+        @Bean
+        @Primary
+        StubImageStorageGateway imageStorageGateway() {
+            return new StubImageStorageGateway();
+        }
+    }
+
+    static final class StubImageStorageGateway implements ImageStorageGateway {
+
+        private final Deque<String> urls = new ArrayDeque<>();
+        private final List<String> uploadedFilenames = new ArrayList<>();
+        private ProductImageStorageException failure;
+
+        synchronized void reset() {
+            urls.clear();
+            uploadedFilenames.clear();
+            failure = null;
+        }
+
+        synchronized void succeed(String... uploadedUrls) {
+            reset();
+            urls.addAll(Arrays.asList(uploadedUrls));
+        }
+
+        synchronized void fail(HttpStatus status, String reason) {
+            reset();
+            failure = new ProductImageStorageException(status, reason);
+        }
+
+        synchronized List<String> uploadedFilenames() {
+            return List.copyOf(uploadedFilenames);
+        }
+
+        @Override
+        public synchronized UploadedImage upload(MultipartFile image) {
+            uploadedFilenames.add(image.getOriginalFilename());
+
+            if (failure != null) {
+                throw failure;
+            }
+            if (urls.isEmpty()) {
+                throw new IllegalStateException(
+                        "No test image URL configured for upload"
+                );
+            }
+
+            return new UploadedImage(urls.removeFirst());
+        }
+    }
+}
