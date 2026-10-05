@@ -3,7 +3,6 @@ import { useApp } from './context/AppContext';
 import { AppProvider } from './context/AppProvider';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
-import { ScreenSwitcherBar } from './components/ScreenSwitcherBar';
 import { CartDrawer } from './screens/CartDrawer';
 import { HomeScreen } from './screens/HomeScreen';
 import { CatalogScreen } from './screens/CatalogScreen';
@@ -15,7 +14,6 @@ import { MyOrdersScreen } from './screens/MyOrdersScreen';
 import { PolicyScreen } from './screens/PolicyScreen';
 import { AuthScreen } from './screens/AuthScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
-import { ShowroomsScreen } from './screens/ShowroomsScreen';
 import { AdminScreen } from './screens/AdminScreen';
 
 const MainContent: React.FC = () => {
@@ -23,78 +21,48 @@ const MainContent: React.FC = () => {
 
   const renderScreen = () => {
     switch (currentScreen) {
-      case 'home':
-        return <HomeScreen />;
-      case 'catalog':
-        return <CatalogScreen />;
-      case 'product-detail':
-        return <ProductDetailScreen />;
-      case 'cart':
-        return <HomeScreen />;
-      case 'checkout':
-        return <CheckoutScreen />;
-      case 'order-success':
-        return <OrderSuccessScreen />;
-      case 'order-detail':
-        return <OrderDetailScreen />;
-      case 'my-orders':
-        return <MyOrdersScreen />;
-      case 'policy':
-        return <PolicyScreen />;
-      case 'auth':
-        return <AuthScreen />;
-      case 'profile':
-        return <ProfileScreen />;
-      case 'showrooms':
-        return <ShowroomsScreen />;
-      case 'admin':
-        return <AdminScreen />;
-      default:
-        return <HomeScreen />;
+      case 'home': return <HomeScreen />;
+      case 'catalog': return <CatalogScreen />;
+      case 'product-detail': return <ProductDetailScreen />;
+      case 'cart': return <HomeScreen />;
+      case 'checkout': return <CheckoutScreen />;
+      case 'order-success': return <OrderSuccessScreen />;
+      case 'order-detail': return <OrderDetailScreen />;
+      case 'my-orders': return <MyOrdersScreen />;
+      case 'policy': return <PolicyScreen />;
+      case 'auth': return <AuthScreen />;
+      case 'profile': return <ProfileScreen />;
+      case 'admin': return <AdminScreen />;
+      default: return <HomeScreen />;
     }
   };
 
   if (currentScreen === 'admin') {
     return (
-      <div className="min-h-screen bg-[#071911] text-[#0B2419] font-['Plus_Jakarta_Sans',sans-serif] selection:bg-[#0B2419] selection:text-[#E8C75B]">
+      <div className="min-h-screen bg-[#071911] text-[#0B2419] font-['Plus_Jakarta_Sans',sans-serif]">
         <AdminScreen />
-        <ScreenSwitcherBar />
-        {toastMessage && (
-          <div className="fixed bottom-20 right-4 sm:right-8 z-50 animate-bounce duration-300">
-            <div className="bg-[#0B2419] text-white px-5 py-3 shadow-2xl border border-[#E8C75B]/30 flex items-center gap-3">
-              <span className="material-symbols-outlined text-[#E8C75B] text-xl">info</span>
-              <span className="text-xs sm:text-sm font-medium">{toastMessage}</span>
-            </div>
-          </div>
-        )}
+        {toastMessage && <Toast message={toastMessage} />}
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#FAF9F5] text-[#0B2419] font-['Plus_Jakarta_Sans',sans-serif] selection:bg-[#0B2419] selection:text-[#E8C75B]">
+    <div className="flex min-h-screen flex-col bg-[#FAF9F5] text-[#0B2419] font-['Plus_Jakarta_Sans',sans-serif]">
       <Header />
-      <main className="flex-1 pb-16">{renderScreen()}</main>
+      <main className="flex-1 pb-8">{renderScreen()}</main>
       <CartDrawer />
       <Footer />
-      <ScreenSwitcherBar />
-
-      {toastMessage && (
-        <div className="fixed bottom-20 right-4 sm:right-8 z-50 animate-bounce duration-300">
-          <div className="bg-[#0B2419] text-white px-5 py-3 shadow-2xl border border-[#E8C75B]/30 flex items-center gap-3">
-            <span className="material-symbols-outlined text-[#E8C75B] text-xl">info</span>
-            <span className="text-xs sm:text-sm font-medium">{toastMessage}</span>
-          </div>
-        </div>
-      )}
+      {toastMessage && <Toast message={toastMessage} />}
     </div>
   );
 };
 
+const Toast: React.FC<{ message: string }> = ({ message }) => (
+  <div className="fixed bottom-6 right-4 z-50 bg-[#0B2419] px-5 py-3 text-sm text-white shadow-2xl sm:right-8">
+    {message}
+  </div>
+);
+
 export default function App() {
-  return (
-    <AppProvider>
-      <MainContent />
-    </AppProvider>
-  );
+  return <AppProvider><MainContent /></AppProvider>;
 }
