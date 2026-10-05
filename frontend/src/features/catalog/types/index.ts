@@ -167,6 +167,31 @@ export interface ProductCreateInput {
   variants?: ProductCreateVariantInput[];
 }
 
+export interface ProductPatchInput {
+  category_id?: number;
+  brand_id?: number | null;
+  size_system_id?: number;
+  name?: string;
+  description?: string | null;
+  gender?: string | null;
+  season?: string | null;
+  style?: string | null;
+  material_care?: string | null;
+  base_price?: number;
+  sale_status?: SaleStatus;
+  images?: ProductCreateImageInput[];
+}
+
+export interface AdminProductQuery {
+  q?: string;
+  category_id?: number;
+  brand_id?: number;
+  size_system_id?: number;
+  sale_status?: SaleStatus;
+  page?: number;
+  page_size?: number;
+}
+
 export interface AdminProductSummaryDto {
   product_id: number;
   name: string;
@@ -180,10 +205,84 @@ export interface AdminProductSummaryDto {
   updated_at: string;
 }
 
-export interface AdminProductDetailDto extends ProductDetailDto {
+export interface AdminVariantDto {
+  variant_id: number;
+  product_id: number;
+  size_value_id: number;
+  color_id: number;
+  sku: string | null;
+  override_price: number | null;
+  sale_status: SaleStatus;
+  available_quantity: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminProductDetailDto {
+  product_id: number;
+  name: string;
+  description: string | null;
+  category: CategoryDto;
+  brand: BrandDto | null;
+  size_system: SizeSystemDto;
+  gender: string | null;
+  season: string | null;
+  style: string | null;
+  material_care: string | null;
+  base_price: number;
+  sale_status: SaleStatus;
+  images: ProductImageDto[];
+  variants: AdminVariantDto[];
   category_id: number;
   brand_id: number | null;
   size_system_id: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface VariantPatchInput {
+  override_price?: number | null;
+  sale_status?: SaleStatus;
+}
+
+export interface CategoryCreateInput {
+  parent_category_id: number | null;
+  name: string;
+}
+
+export interface CategoryPatchInput {
+  parent_category_id?: number | null;
+  name?: string;
+}
+
+export interface BrandInput {
+  name: string;
+}
+
+export interface ColorCreateInput {
+  code: string;
+  name: string;
+}
+
+export interface ColorPatchInput {
+  code?: string;
+  name?: string;
+}
+
+export interface SizeValueCreateInput {
+  code: string;
+  display_name: string;
+  sort_order: number;
+}
+
+export interface SizeSystemCreateInput {
+  code: string;
+  name: string;
+  size_values: SizeValueCreateInput[];
+}
+
+export interface SizeSystemPatchInput {
+  code?: string;
+  name?: string;
+  size_values?: Array<SizeValueCreateInput & { size_value_id?: number }>;
 }
