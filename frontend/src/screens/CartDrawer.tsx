@@ -6,17 +6,13 @@ export const CartDrawer: React.FC = () => {
     isCartOpen,
     setIsCartOpen,
     cartItems,
+    cartSubtotal,
     removeFromCart,
     updateCartQuantity,
     setCurrentScreen,
   } = useApp();
 
   if (!isCartOpen) return null;
-
-  const subtotal = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0,
-  );
 
   const handleCheckout = () => {
     if (cartItems.length === 0) return;
@@ -155,15 +151,15 @@ export const CartDrawer: React.FC = () => {
           </div>
 
           <div className="shrink-0 space-y-4 border-t border-[#E8E9E3] bg-white p-6 shadow-lg">
-            <div className="flex items-baseline justify-between">
+            <div className="flex items-baseline justify-between gap-4">
               <div>
                 <p className="text-[13px] text-[#424844]">Tạm tính giỏ hàng</p>
                 <p className="mt-1 text-[10px] text-[#687069]">
                   Voucher, phí giao hàng và tổng thanh toán được backend xác nhận ở bước checkout.
                 </p>
               </div>
-              <span className="text-[21px] font-bold text-[#0B2419]">
-                {subtotal.toLocaleString('vi-VN')}₫
+              <span className="shrink-0 text-[21px] font-bold text-[#0B2419]">
+                {cartSubtotal.toLocaleString('vi-VN')}₫
               </span>
             </div>
 

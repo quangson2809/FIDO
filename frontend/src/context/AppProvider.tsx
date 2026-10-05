@@ -26,6 +26,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [selectedOrderId, setSelectedOrderId] = useState('1');
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartSubtotal, setCartSubtotal] = useState(0);
   const [freeHemming, setFreeHemming] = useState(true);
   const [hemmingNote, setHemmingNote] = useState('');
   const [appliedVoucher, setAppliedVoucher] = useState('');
@@ -55,9 +56,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
   };
 
+  const applyCart = (cart: CartDto): void => {
+    setCartItems(toCartItems(cart));
+    setCartSubtotal(cart.subtotal);
+  };
+
+  const clearCartState = (): void => {
+    setCartItems([]);
+    setCartSubtotal(0);
+  };
+
   const requireCartAuthentication = (): boolean => {
     if (hasApiAccessToken()) return true;
-    setCartItems([]);
+    clearCartState();
     setIsCartOpen(false);
     showToast('Vui lòng đăng nhập để sử dụng giỏ hàng và đặt hàng.');
     setCurrentScreen('auth');
@@ -66,11 +77,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const refreshCart = async (): Promise<void> => {
     if (!hasApiAccessToken()) {
-      setCartItems([]);
+      clearCartState();
       return;
     }
-    const cart = await cartService.getCart();
-    setCartItems(toCartItems(cart));
+    applyCart(await cartService.getCart());
   };
 
   useEffect(() => {
@@ -80,13 +90,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (!hasApiAccessToken()) return;
       try {
         const cart = await cartService.getCart();
-        if (active) {
-          setCartItems(toCartItems(cart));
-        }
+        if (active) applyCart(cart);
       } catch {
-        if (active) {
-          setCartItems([]);
-        }
+        if (active) clearCartState();
       }
     };
 
@@ -103,7 +109,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     void cartService
       .addItem(variantId, normalizedQuantity)
       .then((cart) => {
-        setCartItems(toCartItems(cart));
+        applyCart(cart);
         setIsCartOpen(true);
         showToast(`Đã thêm ${productName} vào giỏ hàng`);
       })
@@ -117,7 +123,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     void cartService
       .removeItem(Number(itemId))
-      .then((cart) => setCartItems(toCartItems(cart)))
+      .then(applyCart)
       .catch(() => showToast('Không thể xóa sản phẩm khỏi giỏ hàng.'));
   };
 
@@ -131,7 +137,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     void cartService
       .updateItem(Number(itemId), quantity)
-      .then((cart) => setCartItems(toCartItems(cart)))
+      .then(applyCart)
       .catch(() => showToast('Không thể cập nhật số lượng giỏ hàng.'));
   };
 
@@ -232,6 +238,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         isCartOpen,
         setIsCartOpen,
         cartItems,
+        cartSubtotal,
         refreshCart,
         addToCart,
         removeFromCart,
