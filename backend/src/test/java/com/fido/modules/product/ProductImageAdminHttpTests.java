@@ -11,6 +11,19 @@ import org.junit.jupiter.api.Test;
 class ProductImageAdminHttpTests extends CatalogHttpSupport {
 
     @Test
+    void patchRejectsNullImageEntryBeforeChangingGallery() throws Exception {
+        Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
+        long productId = createCatalog(writer).productId();
+        List<Long> before = storedImageIds(productId);
+
+        var response = call("PATCH", "/api/v1/admin/products/" + productId, writer.token(),
+                Map.of("images", java.util.Collections.singletonList(null)));
+
+        assertEquals(400, response.status(), response.body());
+        assertEquals(before, storedImageIds(productId));
+    }
+
+    @Test
     void productCreateRejectsLegacyJsonImages() throws Exception {
         long writePermission = ensurePermission("CATALOG_WRITE");
         Employee writer = employee(customRole(writePermission));

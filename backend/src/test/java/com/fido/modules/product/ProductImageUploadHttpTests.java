@@ -239,6 +239,52 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
         assertEquals(0, imageCount(fixture.productId()));
     }
 
+    @Test
+    void laterProviderFailureKeepsExistingGalleryAndDoesNotPersistSuccessfulPrefix()
+            throws Exception {
+        Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
+        long productId = createCatalog(writer).productId();
+        List<String> before = storedImageUrls(productId);
+        storage.succeedThenFail("https://storage.test/orphan.png", HttpStatus.BAD_GATEWAY);
+
+        Result response = uploadImages(productId, writer.token(), List.of(
+                imagePart("success.png"), imagePart("failure.png"), imagePart("not-attempted.png")));
+
+        assertEquals(502, response.status(), response.body());
+        assertEquals(List.of("success.png", "failure.png"), storage.uploadedFilenames());
+        assertEquals(before, storedImageUrls(productId));
+    }
+
+    @Test
+    void providerTimeoutReturns504AndKeepsExistingGallery() throws Exception {
+        Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
+        long productId = createCatalog(writer).productId();
+        List<String> before = storedImageUrls(productId);
+        storage.fail(HttpStatus.GATEWAY_TIMEOUT, "Image storage request timed out");
+
+        Result response = uploadImages(productId, writer.token(), List.of(imagePart("timeout.png")));
+
+        assertEquals(504, response.status(), response.body());
+        assertEquals(List.of("timeout.png"), storage.uploadedFilenames());
+        assertEquals(before, storedImageUrls(productId));
+    }
+
+    @Test
+    void databaseFailureOnSecondInsertRollsBackAlreadyInsertedPrefix() throws Exception {
+        Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
+        long productId = createCatalog(writer).productId();
+        List<String> before = storedImageUrls(productId);
+        // The provider succeeded twice; the second URL exceeds the actual VARCHAR(1000) constraint.
+        storage.succeed("https://storage.test/valid.png", "https://storage.test/" + "x".repeat(1001));
+
+        Result response = uploadImages(productId, writer.token(),
+                List.of(imagePart("first.png"), imagePart("second.png")));
+
+        assertEquals(409, response.status(), response.body());
+        assertEquals(List.of("first.png", "second.png"), storage.uploadedFilenames());
+        assertEquals(before, storedImageUrls(productId));
+    }
+
     private Result uploadImages(
             long productId,
             String token,
@@ -413,6 +459,11 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
             failure = new ProductImageStorageException(status, reason);
         }
 
+        synchronized void succeedThenFail(String uploadedUrl, HttpStatus status) {
+            succeed(uploadedUrl);
+            failure = new ProductImageStorageException(status, "Image storage request failed");
+        }
+
         synchronized List<String> uploadedFilenames() {
             return List.copyOf(uploadedFilenames);
         }
@@ -421,7 +472,7 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
         public synchronized UploadedImage upload(MultipartFile image) {
             uploadedFilenames.add(image.getOriginalFilename());
 
-            if (failure != null) {
+            if (failure != null && urls.isEmpty()) {
                 throw failure;
             }
             if (urls.isEmpty()) {
