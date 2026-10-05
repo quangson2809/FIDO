@@ -1,5 +1,6 @@
 package com.fido.modules.product.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -22,14 +23,16 @@ public record ProductCreateRequest(
         String material_care,
         @NotNull @DecimalMin("0.0") BigDecimal base_price,
         @NotBlank @Pattern(regexp = "ON_SALE|STOPPED") String sale_status,
-        @Valid List<ImageInput> images,
         @Valid List<VariantInput> variants
 ) {
 
-    public record ImageInput(
-            @NotBlank @Size(max = 1000) String image_url,
-            @Size(max = 255) String alt_text
-    ) {
+    @JsonAnySetter
+    public void rejectLegacyImages(String field, Object ignored) {
+        if ("images".equals(field)) {
+            throw new IllegalArgumentException(
+                    "Product creation does not accept images; use the product image upload endpoint"
+            );
+        }
     }
 
     public record VariantInput(

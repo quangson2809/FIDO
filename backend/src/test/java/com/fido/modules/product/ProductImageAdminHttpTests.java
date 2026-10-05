@@ -11,6 +11,108 @@ import org.junit.jupiter.api.Test;
 class ProductImageAdminHttpTests extends CatalogHttpSupport {
 
     @Test
+    void productCreateRejectsLegacyJsonImages() throws Exception {
+        long writePermission = ensurePermission("CATALOG_WRITE");
+        Employee writer = employee(customRole(writePermission));
+        var fixture = createCatalog(writer);
+
+        var response = call(
+                "POST",
+                "/api/v1/admin/products",
+                writer.token(),
+                Map.of(
+                        "category_id", fixture.categoryId(),
+                        "brand_id", fixture.brandId(),
+                        "size_system_id", fixture.systemId(),
+                        "name", "Legacy " + UUID.randomUUID(),
+                        "base_price", 100000,
+                        "sale_status", "ON_SALE",
+                        "images", List.of(
+                                Map.of(
+                                        "image_url", "https://example.test/legacy.png",
+                                        "alt_text", "legacy",
+                                        "sort_order", 0
+                                )
+                        )
+                )
+        );
+
+        assertEquals(400, response.status(), response.body());
+    }
+
+    @Test
+    void patchImagesUsesExplicitNormalizedOrderAndCanClearCollection()
+            throws Exception {
+        long writePermission = ensurePermission("CATALOG_WRITE");
+        Employee writer = employee(customRole(writePermission));
+        var fixture = createCatalog(writer);
+
+        var replaced = replaceImages(writer, fixture.productId());
+        assertEquals(List.of(0, 1, 2), sortOrders(fixture.productId()));
+        List<Long> beforeInvalid = imageIds(replaced);
+
+        var duplicateOrder = call(
+                "PATCH",
+                "/api/v1/admin/products/" + fixture.productId(),
+                writer.token(),
+                Map.of(
+                        "images",
+                        List.of(
+                                image("https://example.test/a.png", "a", 0),
+                                image("https://example.test/b.png", "b", 0)
+                        )
+                )
+        );
+        assertEquals(409, duplicateOrder.status(), duplicateOrder.body());
+        assertEquals(beforeInvalid, storedImageIds(fixture.productId()));
+
+        var gapOrder = call(
+                "PATCH",
+                "/api/v1/admin/products/" + fixture.productId(),
+                writer.token(),
+                Map.of(
+                        "images",
+                        List.of(
+                                image("https://example.test/a.png", "a", 0),
+                                image("https://example.test/b.png", "b", 2)
+                        )
+                )
+        );
+        assertEquals(409, gapOrder.status(), gapOrder.body());
+        assertEquals(beforeInvalid, storedImageIds(fixture.productId()));
+
+        var cleared = call(
+                "PATCH",
+                "/api/v1/admin/products/" + fixture.productId(),
+                writer.token(),
+                Map.of("images", List.of())
+        );
+        assertEquals(200, cleared.status(), cleared.body());
+        assertEquals(0, cleared.data().get("data").get("images").size());
+        assertEquals(0, storedImageIds(fixture.productId()).size());
+    }
+
+    @Test
+    void patchWithoutImagesKeepsCurrentCollection() throws Exception {
+        long writePermission = ensurePermission("CATALOG_WRITE");
+        Employee writer = employee(customRole(writePermission));
+        var fixture = createCatalog(writer);
+        var replaced = replaceImages(writer, fixture.productId());
+        List<Long> before = imageIds(replaced);
+
+        var response = call(
+                "PATCH",
+                "/api/v1/admin/products/" + fixture.productId(),
+                writer.token(),
+                Map.of("name", "Renamed " + UUID.randomUUID())
+        );
+
+        assertEquals(200, response.status(), response.body());
+        assertEquals(before, imageIds(response));
+        assertEquals(before, storedImageIds(fixture.productId()));
+    }
+
+    @Test
     void reorderImagesKeepsNormalizedUniqueSortOrderAndRequiresWriteCapability()
             throws Exception {
         long readPermission = ensurePermission("CATALOG_READ");
@@ -253,18 +355,9 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                 Map.of(
                         "images",
                         List.of(
-                                Map.of(
-                                        "image_url", "https://example.test/one.png",
-                                        "alt_text", "one"
-                                ),
-                                Map.of(
-                                        "image_url", "https://example.test/two.png",
-                                        "alt_text", "two"
-                                ),
-                                Map.of(
-                                        "image_url", "https://example.test/three.png",
-                                        "alt_text", "three"
-                                )
+                                image("https://example.test/one.png", "one", 0),
+                                image("https://example.test/two.png", "two", 1),
+                                image("https://example.test/three.png", "three", 2)
                         )
                 )
         );
@@ -273,11 +366,23 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
         return response;
     }
 
+    private Map<String, Object> image(
+            String imageUrl,
+            String altText,
+            int sortOrder
+    ) {
+        return Map.of(
+                "image_url", imageUrl,
+                "alt_text", altText,
+                "sort_order", sortOrder
+        );
+    }
+
     private long createSecondProductImage(
             Employee writer,
             CatalogFixture fixture
     ) throws Exception {
-        var response = call(
+        var created = call(
                 "POST",
                 "/api/v1/admin/products",
                 writer.token(),
@@ -287,24 +392,35 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                         "size_system_id", fixture.systemId(),
                         "name", "Other " + UUID.randomUUID(),
                         "base_price", 100000,
-                        "sale_status", "ON_SALE",
-                        "images", List.of(
-                                Map.of(
-                                        "image_url", "https://example.test/foreign.png",
-                                        "alt_text", "foreign"
-                                )
-                        )
+                        "sale_status", "ON_SALE"
                 )
         );
 
-        assertEquals(201, response.status(), response.body());
-        long productId = response.data()
+        assertEquals(201, created.status(), created.body());
+        long productId = created.data()
                 .get("data")
                 .get("product_id")
                 .asLong();
         products.add(productId);
 
-        return response.data()
+        var withImage = call(
+                "PATCH",
+                "/api/v1/admin/products/" + productId,
+                writer.token(),
+                Map.of(
+                        "images",
+                        List.of(
+                                image(
+                                        "https://example.test/foreign.png",
+                                        "foreign",
+                                        0
+                                )
+                        )
+                )
+        );
+        assertEquals(200, withImage.status(), withImage.body());
+
+        return withImage.data()
                 .get("data")
                 .get("images")
                 .get(0)

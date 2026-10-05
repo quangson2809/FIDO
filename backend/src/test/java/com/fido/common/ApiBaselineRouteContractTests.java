@@ -1,7 +1,6 @@
 package com.fido.common;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -27,7 +26,10 @@ class ApiBaselineRouteContractTests {
     private static final String BASELINE_RESOURCE = "api-baseline-77.csv";
     private static final Route PRODUCT_CREATE =
             new Route("POST", "/api/v1/admin/products");
+    private static final Route PRODUCT_IMAGE_UPLOAD =
+            new Route("POST", "/api/v1/admin/products/{productId}/images");
     private static final Set<Route> APPROVED_REFINEMENT_ROUTES = Set.of(
+            PRODUCT_IMAGE_UPLOAD,
             new Route(
                     "DELETE",
                     "/api/v1/admin/products/{productId}/images/{imageId}"
@@ -71,26 +73,26 @@ class ApiBaselineRouteContractTests {
                         + "; unexpected="
                         + difference(registered.keySet(), expected)
         );
-
-        assertTrue(
-                registered.entrySet().stream().allMatch(entry ->
-                        entry.getValue() == 1L
-                                || (entry.getKey().equals(PRODUCT_CREATE)
-                                && entry.getValue() == 2L)
-                ),
-                () -> "An approved method/path has an unapproved duplicate mapping: "
-                        + registered.entrySet().stream()
-                                .filter(entry -> entry.getValue() > 1L)
-                                .toList()
+        assertEquals(
+                Map.of(),
+                registered.entrySet().stream()
+                        .filter(entry -> entry.getValue() != 1L)
+                        .collect(Collectors.toMap(
+                                Map.Entry::getKey,
+                                Map.Entry::getValue
+                        )),
+                "Every approved method/path must have exactly one handler"
         );
 
         assertEquals(
-                Set.of(
-                        Set.of(MediaType.APPLICATION_JSON),
-                        Set.of(MediaType.MULTIPART_FORM_DATA)
-                ),
-                productCreateRepresentations(),
-                "API #29 must expose exactly the approved JSON and multipart representations"
+                Set.of(Set.of(MediaType.APPLICATION_JSON)),
+                representations(PRODUCT_CREATE),
+                "API #29 must expose only the JSON representation"
+        );
+        assertEquals(
+                Set.of(Set.of(MediaType.MULTIPART_FORM_DATA)),
+                representations(PRODUCT_IMAGE_UPLOAD),
+                "Product image upload must expose only multipart/form-data"
         );
     }
 
@@ -149,14 +151,14 @@ class ApiBaselineRouteContractTests {
                 ));
     }
 
-    private Set<Set<MediaType>> productCreateRepresentations() {
+    private Set<Set<MediaType>> representations(Route route) {
         return mappings.getHandlerMethods()
                 .keySet()
                 .stream()
                 .filter(info ->
                         info.getMethodsCondition().getMethods().stream()
-                                .anyMatch(method -> method.name().equals(PRODUCT_CREATE.method()))
-                                && info.getPatternValues().contains(PRODUCT_CREATE.path())
+                                .anyMatch(method -> method.name().equals(route.method()))
+                                && info.getPatternValues().contains(route.path())
                 )
                 .map(info -> Set.copyOf(
                         info.getConsumesCondition().getConsumableMediaTypes()

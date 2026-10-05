@@ -12,8 +12,8 @@ import com.fido.modules.product.dto.response.AdminProductSummaryDto;
 import com.fido.modules.product.dto.response.AdminVariantDto;
 import com.fido.modules.product.service.AdminCatalogQueryService;
 import com.fido.modules.product.service.ProductAdminService;
-import com.fido.modules.product.service.ProductCreationService;
 import com.fido.modules.product.service.ProductImageAdminService;
+import com.fido.modules.product.service.ProductImageUploadService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -39,19 +39,19 @@ public class AdminProductController {
 
     private final AdminCatalogQueryService query;
     private final ProductAdminService products;
-    private final ProductCreationService creation;
     private final ProductImageAdminService productImages;
+    private final ProductImageUploadService imageUploads;
 
     public AdminProductController(
             AdminCatalogQueryService query,
             ProductAdminService products,
-            ProductCreationService creation,
-            ProductImageAdminService productImages
+            ProductImageAdminService productImages,
+            ProductImageUploadService imageUploads
     ) {
         this.query = query;
         this.products = products;
-        this.creation = creation;
         this.productImages = productImages;
+        this.imageUploads = imageUploads;
     }
 
     @GetMapping("/products")
@@ -81,14 +81,23 @@ public class AdminProductController {
         return ApiResponse.of(products.createProduct(actor(jwt), request));
     }
 
-    @PostMapping(value = "/products", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(
+            value = "/products/{productId}/images",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<AdminProductDetailDto> createProductWithUploads(
+    public ApiResponse<AdminProductDetailDto> uploadImages(
             @AuthenticationPrincipal Jwt jwt,
-            @Valid @RequestPart("product") ProductCreateRequest request,
-            @RequestPart(value = "images", required = false) MultipartFile[] images
+            @PathVariable Long productId,
+            @RequestPart("images") MultipartFile[] images
     ) {
-        return ApiResponse.of(creation.createProduct(actor(jwt), request, images));
+        return ApiResponse.of(
+                imageUploads.upload(
+                        actor(jwt),
+                        productId,
+                        images
+                )
+        );
     }
 
     @PatchMapping("/products/{productId}")

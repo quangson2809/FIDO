@@ -93,7 +93,7 @@
 | 76 | `GET` | `/api/v1/admin/customers` | `account` | JWT + permission |
 | 77 | `GET` | `/api/v1/admin/customers/{customerId}` | `account` | JWT + permission |
 
-The two Product-image commands below are project-owner refinements added after the consolidated 77-endpoint Analyst baseline. They preserve the global `/api/v1/admin` prefix and `CATALOG_WRITE` authorization convention; they are not renumbered into the historical 77-endpoint table.
+The Product-image commands below are project-owner refinements added after the consolidated 77-endpoint Analyst baseline. They preserve the global `/api/v1/admin` prefix and `CATALOG_WRITE` authorization convention; they are not renumbered into the historical 77-endpoint table.
 
 ## 3. Important command semantics
 
@@ -127,16 +127,54 @@ All actions must validate current state, permissions, side effects and idempoten
 
 Operations: `RETURN | EXCHANGE_SIZE`. This is a command over Order/Payment/Inventory/Audit; do not create an `after_sales_cases` resource/table in baseline.
 
-### API #29 — Product creation with images
+### API #29 — Product creation — Phase 10 BREAKING CHANGE
 
-The project owner approved a backward-compatible physical transport refinement on 2026-10-03:
+Effective from Phase 10, Product creation and binary image upload are separate commands:
 
-- `application/json` remains supported exactly as the consolidated contract defines, including optional `images[{image_url,alt_text?}]`.
-- The same URL may also consume `multipart/form-data` for the admin UI. The `product` part carries the JSON metadata/variants and the optional repeated `images` part carries local image files.
-- Multipart image files are uploaded by the backend to the configured image-storage provider; provider credentials never leave the backend. The resulting **full direct URL** is persisted in `product_images.image_url`.
-- `product_images.sort_order` is a technical gallery-order field. Product creation assigns `0..n-1` from the request/upload sequence; the create payload does not accept client-supplied sort positions.
-- File upload occurs outside the database transaction; the database product/image/variant write starts only after all requested uploads succeed.
-- Provider-side delete/compensation is not claimed unless a supported provider delete contract is available. A failed database write after successful remote upload can therefore leave a remote orphan and must remain an explicit integration limitation rather than a hidden transaction guarantee.
+- `POST /api/v1/admin/products` consumes **`application/json` only**.
+- The create request contains Product metadata and optional variants; it does **not** contain `images`, `image_url[]` or binary files.
+- `multipart/form-data` on `POST /api/v1/admin/products` is no longer supported.
+- Consumers that previously sent `images[]` URLs or multipart files to API #29 must migrate to the two-step flow: create Product first, then upload files through the dedicated Product-image endpoint below.
+- This is an intentional breaking API change. Do not preserve the old JSON-image or multipart-create representations as parallel compatibility write paths.
+
+### Product image upload command — project-owner refinement Phase 10
+
+`POST /api/v1/admin/products/{productId}/images`
+
+- Requires catalog write authorization and consumes `multipart/form-data`.
+- The request uses one or more repeated `images` file parts. Empty uploads are invalid.
+- The backend validates all files before beginning provider uploads, uploads them in request order, and persists only the provider-returned full direct URLs.
+- Uploaded images are appended after the Product's existing image collection. Their `sort_order` values continue from the current contiguous sequence; the first image uploaded to an image-less Product becomes `sort_order = 0` and therefore the cover.
+- Success returns HTTP `201 Created` with the existing object envelope containing the updated `AdminProductDetailDto`.
+- Provider calls are outside the database transaction. If a remote upload succeeds and a later provider/database step fails, a provider-side orphan can remain because provider deletion/compensation is not part of the current storage gateway contract.
+
+### API #30 — Product PATCH image replacement semantics — Phase 10
+
+`PATCH /api/v1/admin/products/{productId}` keeps Product metadata updates and may optionally carry an authoritative image collection:
+
+```json
+{
+  "images": [
+    {
+      "image_url": "https://example.test/front.png",
+      "alt_text": "front",
+      "sort_order": 0
+    },
+    {
+      "image_url": "https://example.test/back.png",
+      "alt_text": null,
+      "sort_order": 1
+    }
+  ]
+}
+```
+
+- If `images` is omitted, the current Product image collection is unchanged.
+- If `images` is present, it replaces the complete collection.
+- `images: []` deletes all Product images.
+- Every item requires `image_url` and `sort_order`; `alt_text` is nullable/optional.
+- `sort_order` must be non-negative, unique within the Product and contiguous `0..n-1`; `sort_order = 0` is the cover.
+- Replacement validates the complete requested order before deleting the existing collection.
 
 ### Product image read semantics — project-owner refinement 2026-10-04
 

@@ -6,6 +6,7 @@ import com.fido.modules.audit.service.AuditService;
 import com.fido.modules.audit.service.AuditTargetType;
 import com.fido.modules.inventory.service.InventoryCommandService;
 import com.fido.modules.product.dto.request.ProductCreateRequest;
+import com.fido.modules.product.dto.request.ProductImageInput;
 import com.fido.modules.product.dto.request.ProductPatchRequest;
 import com.fido.modules.product.dto.request.VariantBatchCreateRequest;
 import com.fido.modules.product.dto.request.VariantPatchRequest;
@@ -95,13 +96,6 @@ public class ProductAdminService {
 
         products.save(product);
 
-        saveImages(
-                product.getProductId(),
-                request.images() == null
-                        ? List.of()
-                        : request.images()
-        );
-
         if (request.variants() != null
                 && !request.variants().isEmpty()) {
             var variantInputs = request.variants()
@@ -143,7 +137,7 @@ public class ProductAdminService {
             Long productId,
             ProductPatchRequest request
     ) {
-        Product product = references.product(productId);
+        Product product = references.productForUpdate(productId);
 
         applyReferenceChanges(
                 product,
@@ -301,13 +295,34 @@ public class ProductAdminService {
             return;
         }
 
+        List<ProductImageInput> requested = request.getImages();
+        requireNormalizedImageOrder(requested);
+
         images.deleteAllByProductId(productId);
         em.flush();
 
-        saveImages(
-                productId,
-                request.getImages()
-        );
+        saveImages(productId, requested);
+    }
+
+    private void requireNormalizedImageOrder(
+            List<ProductImageInput> requested
+    ) {
+        var sortOrders = new HashSet<Integer>();
+
+        for (ProductImageInput item : requested) {
+            Integer sortOrder = item.sort_order();
+            if (sortOrder == null
+                    || sortOrder < 0
+                    || !sortOrders.add(sortOrder)) {
+                conflict();
+            }
+        }
+
+        for (int expected = 0; expected < requested.size(); expected++) {
+            if (!sortOrders.contains(expected)) {
+                conflict();
+            }
+        }
     }
 
     @PreAuthorize(WRITE)
@@ -459,15 +474,14 @@ public class ProductAdminService {
 
     private void saveImages(
             Long productId,
-            List<ProductCreateRequest.ImageInput> requested
+            List<ProductImageInput> requested
     ) {
-        for (int index = 0; index < requested.size(); index++) {
-            var item = requested.get(index);
+        for (ProductImageInput item : requested) {
             ProductImage image = new ProductImage();
             image.setProductId(productId);
             image.setImageUrl(item.image_url());
             image.setAltText(item.alt_text());
-            image.setSortOrder(index);
+            image.setSortOrder(item.sort_order());
 
             images.save(image);
         }

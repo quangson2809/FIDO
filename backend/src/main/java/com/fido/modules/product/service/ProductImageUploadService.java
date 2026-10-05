@@ -1,6 +1,5 @@
 package com.fido.modules.product.service;
 
-import com.fido.modules.product.dto.request.ProductCreateRequest;
 import com.fido.modules.product.dto.response.AdminProductDetailDto;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -14,73 +13,57 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
-public class ProductCreationService {
+public class ProductImageUploadService {
 
     private static final String WRITE =
             "hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_CATALOG_WRITE')";
 
     private final ImageStorageGateway storage;
-    private final ProductAdminService products;
+    private final CatalogReferenceService references;
+    private final ProductImageAdminService productImages;
     private final long maxImageBytes;
 
-    public ProductCreationService(
+    public ProductImageUploadService(
             ImageStorageGateway storage,
-            ProductAdminService products,
+            CatalogReferenceService references,
+            ProductImageAdminService productImages,
             @Value("${app.image-storage.max-upload-size:32MB}") DataSize maxUploadSize
     ) {
         this.storage = storage;
-        this.products = products;
+        this.references = references;
+        this.productImages = productImages;
         this.maxImageBytes = maxUploadSize.toBytes();
     }
 
     @PreAuthorize(WRITE)
-    public AdminProductDetailDto createProduct(
+    public AdminProductDetailDto upload(
             Long actor,
-            ProductCreateRequest request,
+            Long productId,
             MultipartFile[] imageFiles
     ) {
-        if (request.images() != null && !request.images().isEmpty()) {
-            throw badRequest("Multipart product metadata must not contain image URLs");
-        }
+        references.product(productId);
 
         List<MultipartFile> files = imageFiles == null
                 ? List.of()
                 : Arrays.asList(imageFiles);
 
+        if (files.isEmpty()) {
+            throw badRequest("At least one image file is required");
+        }
+
         for (MultipartFile file : files) {
             validate(file);
         }
 
-        var uploadedImages = new ArrayList<ProductCreateRequest.ImageInput>();
+        var uploaded = new ArrayList<ImageStorageGateway.UploadedImage>(files.size());
         for (MultipartFile file : files) {
-            ImageStorageGateway.UploadedImage stored = storage.upload(file);
-            uploadedImages.add(new ProductCreateRequest.ImageInput(stored.url(), null));
+            uploaded.add(storage.upload(file));
         }
 
-        return products.createProduct(
+        return productImages.appendUploadedImages(
                 actor,
-                withImages(request, uploadedImages)
-        );
-    }
-
-    private ProductCreateRequest withImages(
-            ProductCreateRequest request,
-            List<ProductCreateRequest.ImageInput> images
-    ) {
-        return new ProductCreateRequest(
-                request.category_id(),
-                request.brand_id(),
-                request.size_system_id(),
-                request.name(),
-                request.description(),
-                request.gender(),
-                request.season(),
-                request.style(),
-                request.material_care(),
-                request.base_price(),
-                request.sale_status(),
-                List.copyOf(images),
-                request.variants()
+                productId,
+                List.copyOf(uploaded)
         );
     }
 
@@ -88,10 +71,12 @@ public class ProductCreationService {
         if (file == null || file.isEmpty()) {
             throw badRequest("Image file must not be empty");
         }
+
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
             throw badRequest("Uploaded file must be an image");
         }
+
         if (file.getSize() > maxImageBytes) {
             throw badRequest("Image file exceeds configured upload limit");
         }

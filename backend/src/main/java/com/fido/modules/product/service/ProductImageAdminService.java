@@ -46,12 +46,38 @@ public class ProductImageAdminService {
     }
 
     @PreAuthorize(WRITE)
+    public AdminProductDetailDto appendUploadedImages(
+            Long actor,
+            Long productId,
+            List<ImageStorageGateway.UploadedImage> uploaded
+    ) {
+        references.productForUpdate(productId);
+
+        List<ProductImage> current =
+                images.findAllByProductIdOrderBySortOrderAscImageIdAsc(productId);
+        int nextSortOrder = current.size();
+
+        for (ImageStorageGateway.UploadedImage stored : uploaded) {
+            ProductImage image = new ProductImage();
+            image.setProductId(productId);
+            image.setImageUrl(stored.url());
+            image.setAltText(null);
+            image.setSortOrder(nextSortOrder++);
+            images.save(image);
+        }
+
+        images.flush();
+        recordProductUpdate(actor, productId);
+        return query.detailInternal(productId);
+    }
+
+    @PreAuthorize(WRITE)
     public void removeImage(
             Long actor,
             Long productId,
             Long imageId
     ) {
-        references.product(productId);
+        references.productForUpdate(productId);
 
         List<ProductImage> current =
                 images.findAllByProductIdForUpdate(productId);
@@ -78,7 +104,7 @@ public class ProductImageAdminService {
             Long productId,
             ProductImageReorderRequest request
     ) {
-        references.product(productId);
+        references.productForUpdate(productId);
 
         List<ProductImage> current =
                 images.findAllByProductIdForUpdate(productId);
