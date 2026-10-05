@@ -1,16 +1,37 @@
 # 23 — Phase 14: verification and architecture review
 
 Date: 2026-10-05. Branch: `feature/phase-2-3-image-persistence`.
-Reviewed implementation HEAD: `cabe4eaa0cb97922fdb14d8d59b5fc3657239aba`.
-Review scope: existing Product image implementation through Phase 13, including its Cart/Checkout/Order consumers, V4 migration, contracts and tests. This is not a whole-backend audit. The Phase 14 diff adds verification only, plus the branch CI trigger.
+Initial reviewed implementation: `cabe4eaa0cb97922fdb14d8d59b5fc3657239aba`. Verified code revision: **`629c37c639c25b678ed5a346300621dcfdd1e314`**.
+Review scope: existing Product image implementation through Phase 13, including its Cart/Checkout/Order consumers, V4 migration, contracts and tests. This is not a whole-backend audit. The Phase 14 diff adds verification, the branch CI trigger and one malformed-input validation fix. Subsequent report/evidence publication changes documentation only.
 
 ## Status
 
-**STATUS: PARTIAL — runtime verification blocked. DONE: NO.**
+**STATUS: PASS for the scoped Phase 14 verification and architecture review at `629c37c639c25b678ed5a346300621dcfdd1e314`. DONE: YES.**
 
-Local Java is 17.0.20. The wrapper initially failed downloading Gradle 9.3.1 with `java.net.SocketException: Network is unreachable`, before compilation/test execution. No MySQL server or Docker executable was available locally. A standard curl download obtained the configured Gradle 9.3.1 distribution. Running that distribution with `--no-daemon compileJava test check` failed during build configuration: Gradle could not resolve `org.springframework.boot:org.springframework.boot.gradle.plugin:4.0.3` from the Gradle Plugin Repository. No compile task or test ran; this is not evidence of a source compilation failure. Production dependency versions were not changed.
+The revision is published on the requested branch. Push via Git CLI lacked a credential helper; the authorized GitHub connector published the exact local tree (`936608dea28163dbd0f748c326e6cc8c6b0ff078`) without force-updating history. Actual backend push run: https://github.com/quangson2809/FIDO/actions/runs/37298988932 . Job `111726929276` completed successfully. Checkout logs show the exact revision above, not a pull-request merge revision. Both commands executed compileJava, test and check; H2 also built the application.
 
-The Phase 14 work was committed locally as `bc5f8ec`. Automatic approval review rejected the subsequent push to the GitHub remote because explicit authorization to export the changed repository contents to that destination was required. The branch CI trigger is prepared locally, but no CI success for these changes is claimed. `git diff --check` passed. The new tests have not been compiled or executed.
+| Suite | Discovered | Passed | Skipped | Failures/errors |
+|---|---:|---:|---:|---:|
+| H2 | 139 | 138 | 1 | 0/0 |
+| MySQL profile | 139 | 139 | 0 | 0/0 |
+
+The one H2 skip is the explicitly MySQL-only clean/migrate case; that case executed successfully in the MySQL step. Pure unit tests and explicitly H2-backed tests remain such even in the MySQL-profile run.
+
+JUnit XML artifacts: H2 `11340960037`, MySQL `11340739442`. Parsed suite/case evidence and archive SHA-256 values are committed in [evidence/phase14-629c37c.json](evidence/phase14-629c37c.json). H2 logged BUILD SUCCESSFUL at `2026-10-05T10:51:44Z`; MySQL at `2026-10-05T10:53:04Z`.
+
+## Resolve-plugin root cause and correction
+
+The detailed Gradle log identifies the failed request as:
+
+```text
+Could not GET https://plugins.gradle.org/m2/org/springframework/boot/org.springframework.boot.gradle.plugin/4.0.3/org.springframework.boot.gradle.plugin-4.0.3.pom
+request to {tls}->http://browser-proxy:8889->https://plugins.gradle.org:443
+Caused by: java.net.SocketException: Network is unreachable
+```
+
+The environment had `GRADLE_OPTS` pointing HTTP/HTTPS proxy properties at `browser-proxy:8889`. The earlier JAVA_TOOL_OPTIONS attempt did not override these Gradle command-line proxy properties. The correction was run-local: derive the host/port from the environment's working HTTPS_PROXY and set GRADLE_OPTS to that proxy, preserving localhost in nonProxyHosts. Subsequent Gradle output records successful plugin/dependency downloads; no repository, plugin version or application dependency change was needed.
+
+The next independent local blocker was a **JRE-only installation**: `java -version` reported 17.0.20, but `javac` was absent, and Gradle could not find a Java 17 compiler toolchain. CI uses setup-java with Temurin **JDK 17**. No code change can repair a missing compiler installation; verification therefore uses the explicitly pinned CI revision.
 
 ## Scope and source mapping
 
@@ -20,7 +41,7 @@ The Phase 14 work was committed locally as `bc5f8ec`. Automatic approval review 
 - V4 defines non-negative order, unique `(product_id,sort_order)` and nullable historical image snapshots.
 - docs/19–21 govern snapshot immutability, remote retention, authorization and upload validation.
 - The attached original engineering kit predates the current image refinements. Its 77-API baseline does not remove the explicitly approved image routes in current docs/04.
-- No production API, schema, dependency, domain rule or security setting changes in this phase.
+- No API shape, schema, dependency, domain rule or security setting changes. One production input-validation fix rejects null elements in Product PATCH images as HTTP 400 instead of letting a null entry reach service dereferencing.
 
 ## Structural review
 
@@ -57,13 +78,13 @@ A successful prefix of provider uploads can remain remote after a later upload/D
 | Historical read models | `OrderCreationService` copies checkout thumbnail; `OrderMapper` and `OrderSummaryReadService` read stored snapshots, including null. |
 | Authorization/errors | CATALOG_WRITE or SUPERADMIN for mutations; adapter maps provider failure to 502, timeout 504, missing configuration 503. Secrets/provider response bodies are not returned. |
 
-Existing `ApiBaselineRouteContractTests`, `ApiContractMatrixTests` and image HTTP tests are execution checks; static matching here is not a claim they ran successfully.
+`ApiBaselineRouteContractTests`, `ApiContractMatrixTests`, `ApiResponseJsonContractTests` and the image HTTP suites all passed in both runs. `ArchitectureBoundaryTests` also passed; the manual structural findings above remain independently assessed rather than inferred from that test alone.
 
 ## Behavioral verification matrix
 
-All runtime rows below require successful execution on the reviewed revision.
+Every row below passed in the H2 and MySQL-profile artifacts of the pinned push run. Transaction/concurrency HTTP/service tests use MySQL 8.4 in the latter; provider errors remain fault-injected as described.
 
-| Scenario | Evidence prepared |
+| Scenario (PASS) | Executed evidence |
 |---|---|
 | Cover deletion | `ProductImageAdminHttpTests`, `CartCheckoutImageHttpTests`: next cover promoted, dense positions, foreign/missing IDs rejected. |
 | Reordering | Admin HTTP/unit tests: identity preserved, unique dense order, 409 rollback on invalid requests. Temporary positive positions avoid transient unique collisions. |
@@ -79,20 +100,47 @@ The concurrency spy only synchronizes arrival before `productForUpdate` and call
 
 ## Flyway and execution commands
 
-New `CleanMigrationTests` uses a unique **in-memory H2** database, never TEST_DB_URL, enables clean only on its own Flyway instance, migrates V1–V4, writes a sentinel, cleans, migrates again, validates and asserts restart applies zero migrations. Production `spring.flyway.clean-disabled=true` remains intact. This does not establish MySQL clean/backfill compatibility.
+`CleanMigrationTests` runs the clean/migrate cycle on a unique in-memory H2 database and, in the MySQL CI profile, a newly created `phase14_clean_<UUID>` MySQL database. The MySQL test requires a loopback test server, creates a unique database without IF NOT EXISTS, runs cleanup only after CREATE succeeds, then drops that owned database. It never cleans the shared `fido_test` schema or an externally configured production schema. Production `spring.flyway.clean-disabled=true` stays intact.
 
-From `backend`:
+Both cases passed. The MySQL XML identifies the isolated database as `phase14_clean_a0899a72599a48dea5eaee1cdb9f44a4`, logs successful clean and two successful V1–V4 migrations, and the testcase has no failure/skip. MySQL concurrency and rollback XML separately identify `jdbc:mysql://127.0.0.1:3306/fido_test` and MySQL 8.4.
+
+Both cases migrate V1–V4, write a sentinel, clean, migrate V1–V4 again, validate, check the sentinel was erased and check restarting applies zero migrations. Existing V3→V4 legacy ordering backfill test is H2-only; do not confuse that with the new MySQL full clean/migrate test.
+
+Actual CI commands from `backend`:
 
 ```bash
-./gradlew --no-daemon compileJava test check
+# H2
+./gradlew --no-daemon clean compileJava test check build
+# MySQL 8.4, TEST_DB_URL points at fido_test on the job service
+./gradlew --no-daemon compileJava test check --rerun-tasks
 ```
 
-The existing CI performs H2 `clean build` and MySQL 8.4 `test --rerun-tasks` with test-only database credentials, retaining each suite's XML reports. Phase 14 adds this working branch to the push trigger so evidence can be produced without merging. Existing `ProductImageOrderingMigrationTests` is H2-only even when the rest of the suite uses TEST_DB_URL; MySQL empty-schema migration and JPA mapping are covered separately by CI.
+Tests for HTTP rollback and service concurrency inherit the existing test profile and therefore run against the real MySQL service in the second step. Provider failures are intentionally injected at the gateway/HTTP-client boundaries; no live ImgBB credentials are required. Each suite retains separate JUnit XML artifacts.
 
-## Remaining work before PASS
+## Write-path convergence and invariant analysis
 
-- Obtain authorization for the blocked push to `quangson2809/FIDO`, branch `feature/phase-2-3-image-persistence`, then run the prepared branch CI.
-- Record successful compile/test/check and H2/MySQL results for the final code revision; fix any related failures.
-- Record Flyway clean/migrate execution result, distinguish H2 clean from MySQL migration verification.
-- Do not equate static architecture review or a test's existence with runtime evidence.
-- If a single public image write path is required, explicitly revise API #30 before implementation.
+| Concern | Multipart upload | Product PATCH replacement | Shared point / consequence |
+|---|---|---|---|
+| Entry | `AdminProductController.uploadImages` → `ProductImageUploadService.upload` | `AdminProductController.updateProduct` → `ProductAdminService.updateProduct` | HTTP validation and existing CATALOG_WRITE/SUPERADMIN rule; no repository access in Controller. |
+| Transaction | `ProductImageAdminService.appendUploadedImages:49` after remote uploads | `ProductAdminService.updateProduct:135` covers metadata + replacement | Both transactional commands; provider calls do not hold DB locks. |
+| Serialization | `references.productForUpdate:54` before reading current gallery | `references.productForUpdate:140` before replacement | Both reach `CatalogReferenceService.productForUpdate` → `ProductRepository.findByIdForUpdate`, locking the **same Product row**, including when gallery is empty. |
+| Persistence | Appends via ProductImageRepository.save | Deletes old associations and saves requested collection | Same ProductImageRepository, table, FK, non-negative constraint and unique `(product_id,sort_order)`. **They do not converge in one image application service.** |
+| Dense order | Server appends starting at current count; relies on valid pre-existing dense gallery | `requireNormalizedImageOrder:307` checks dense supplied positions | Dense ordering is a service invariant; DB uniqueness/non-negativity alone cannot enforce no gaps. Reorder validates final positions and then normalizes; delete compacts. |
+| Mapping | Uploaded URL → ProductImage, alt text null | Supplied URL/alt text/order → ProductImage | Two small entity-construction loops remain. Public/admin response mapping is shared in CatalogMapper.image. |
+| Audit/history | PRODUCT_UPDATE in same transaction, no Order write | PRODUCT_UPDATE in same transaction, no Order write | OrderItem stored snapshots remain authoritative; provider assets are retained. |
+
+**Duplication:** there is repeated entity assignment and a repeated conceptual dense-order check in replacement versus reorder; neither is secretly centralized. Reorder checks the merged current/requested permutation while replacement validates a complete new collection. They currently agree, and existing invalid-order tests exercise both. A generic mapper would not centralize the differing write policies. No new abstraction or broad refactor is required to explain these two approved operations.
+
+**Bypass:** PATCH deliberately accepts caller-provided URL strings and therefore does not execute binary MIME/signature/size/provider validation. That is allowed by docs/04 and docs/05, not a universal provider-only guarantee. Both HTTP mutation routes still enforce authorization and their gallery-order constraints. No evidence in these reviewed paths shows bypass of Product locking, local transaction atomicity or Order snapshot ownership. Direct SQL can create gaps (the old rollback fixture deliberately does), so this report does not claim the DB enforces dense order by itself.
+
+**Discovered defect fixed:** `ProductPatchRequest.images` previously permitted null list elements; `ProductAdminService.requireNormalizedImageOrder` dereferenced each element, yielding 500 for `images:[null]`. `List<@NotNull ProductImageInput>` now rejects that malformed entry at the HTTP boundary. `patchRejectsNullImageEntryBeforeChangingGallery` verifies 400 and unchanged IDs.
+
+## Final review and limits
+
+- No remaining BLOCKER/MAJOR defect identified in the reviewed image scope. The null-element defect is fixed and its HTTP regression passed on both databases.
+- No new architecture layer, broad image abstraction, schema, dependency or weakened security setting was introduced.
+- Two approved write contracts and small repeated entity-assignment/dense-order logic remain, with the convergence and constraints explicitly documented above. This is not a single image-command-service architecture.
+- Remote orphan cleanup, live provider availability, stale-editor versioning and V3 legacy-data backfill on MySQL are not proven by these tests. Full clean/migrate V1–V4 on MySQL is proven. The existing V3 backfill test runs on H2.
+- Flyway emits a compatibility advisory that MySQL 8.4 is newer than its latest verified 8.1 version; the observed migration/rollback/concurrency tests nevertheless passed. No unrequested version upgrade was made.
+- Image N+1 assessment combines source inspection and batched-query unit/repository tests; it is not a production load test or SQL profiler trace.
+- Any requirement to eliminate URL-based PATCH or require a single application-level write entry point needs an explicit contract change. Current docs/04–05 approve the two operations.
