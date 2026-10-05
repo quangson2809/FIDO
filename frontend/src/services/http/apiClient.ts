@@ -8,6 +8,8 @@ export const setApiAccessToken = (token: string | null): void => {
   accessToken = token && token.trim() ? token : null;
 };
 
+export const hasApiAccessToken = (): boolean => accessToken !== null;
+
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,

@@ -1,16 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { CatalogProductView } from '../features/catalog/types';
 import type { CartItem, Order, OrderStatus, ScreenId, UserProfile } from '../types';
-
-export interface CartProductInput {
-  id: string;
-  name: string;
-  price: number;
-  imageUrl: string;
-  sku?: string;
-  fabric?: string;
-  variants?: CatalogProductView['variants'];
-}
 
 export interface AppContextType {
   currentScreen: ScreenId;
@@ -23,12 +12,7 @@ export interface AppContextType {
   setIsCartOpen: (open: boolean) => void;
   cartItems: CartItem[];
   refreshCart: () => Promise<void>;
-  addToCart: (
-    product: CartProductInput,
-    size?: string | number,
-    color?: string,
-    quantity?: number,
-  ) => void;
+  addToCart: (variantId: number, productName: string, quantity?: number) => void;
   removeFromCart: (itemId: string) => void;
   updateCartQuantity: (itemId: string, quantity: number) => void;
   freeHemming: boolean;

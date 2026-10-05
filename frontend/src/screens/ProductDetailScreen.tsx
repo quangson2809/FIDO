@@ -13,7 +13,6 @@ export const ProductDetailScreen: React.FC = () => {
     setSelectedProductId,
     addToCart,
     setCurrentScreen,
-    setIsCartOpen,
   } = useApp();
 
   const [product, setProduct] = useState<ProductDetailDto | null>(null);
@@ -140,22 +139,7 @@ export const ProductDetailScreen: React.FC = () => {
 
   const addCurrentVariantToCart = () => {
     if (!product || !selectedVariant || !variantCanBePurchased) return;
-
-    addToCart(
-      {
-        id: String(product.product_id),
-        name: product.name,
-        price: selectedVariant.effective_price,
-        imageUrl: gallery[0] ?? '',
-        sku: selectedVariant.sku ?? '',
-        fabric: product.material_care ?? '',
-        variants: product.variants,
-      },
-      selectedVariant.size.display_name,
-      selectedVariant.color.name,
-      quantity,
-    );
-    setIsCartOpen(true);
+    addToCart(selectedVariant.variant_id, product.name, quantity);
   };
 
   const openRecommendation = (productId: string) => {
