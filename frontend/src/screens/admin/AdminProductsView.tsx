@@ -32,7 +32,10 @@ type FormState = {
   saleStatus: SaleStatus;
 };
 
-const initialForm: FormState = { name: '', categoryId: '', brandId: '', sizeSystemId: '', basePrice: '', description: '', gender: '', season: '', style: '', materialCare: '', saleStatus: 'ON_SALE' };
+const initialForm: FormState = {
+  name: '', categoryId: '', brandId: '', sizeSystemId: '', basePrice: '',
+  description: '', gender: '', season: '', style: '', materialCare: '', saleStatus: 'ON_SALE',
+};
 
 export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
   onSelectProduct,
@@ -65,7 +68,6 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
     void adminProductService.getProducts({
       ...(query ? { q: query } : {}),
       ...(saleStatus ? { sale_status: saleStatus } : {}),
@@ -84,7 +86,11 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
 
   const leafCategories = useMemo(() => {
     if (!meta) return [];
-    const parents = new Set(meta.categories.map((item) => item.parent_category_id).filter((id): id is number => id !== null));
+    const parents = new Set(
+      meta.categories
+        .map((item) => item.parent_category_id)
+        .filter((id): id is number => id !== null),
+    );
     return meta.categories.filter((item) => !parents.has(item.category_id));
   }, [meta]);
 
@@ -94,14 +100,23 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
     callback?.(value);
   };
 
-  const updateForm = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((current) => ({ ...current, [key]: value }));
+  const updateForm = <K extends keyof FormState>(key: K, value: FormState[K]) =>
+    setForm((current) => ({ ...current, [key]: value }));
 
   const createPayload = (): ProductCreateInput | null => {
     const categoryId = Number(form.categoryId);
     const sizeSystemId = Number(form.sizeSystemId);
     const basePrice = Number(form.basePrice);
     const brandId = form.brandId ? Number(form.brandId) : null;
-    if (!meta || !form.name.trim() || !leafCategories.some((item) => item.category_id === categoryId) || !meta.size_systems.some((item) => item.size_system_id === sizeSystemId) || !Number.isFinite(basePrice) || basePrice < 0 || (brandId !== null && !meta.brands.some((item) => item.brand_id === brandId))) return null;
+    if (
+      !meta
+      || !form.name.trim()
+      || !leafCategories.some((item) => item.category_id === categoryId)
+      || !meta.size_systems.some((item) => item.size_system_id === sizeSystemId)
+      || !Number.isFinite(basePrice)
+      || basePrice < 0
+      || (brandId !== null && !meta.brands.some((item) => item.brand_id === brandId))
+    ) return null;
     return {
       category_id: categoryId,
       brand_id: brandId,
@@ -121,10 +136,15 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
   const create = async (event: React.FormEvent) => {
     event.preventDefault();
     const payload = createPayload();
-    if (!payload) { showToast('Dữ liệu sản phẩm chưa hợp lệ.'); return; }
+    if (!payload) {
+      showToast('Dữ liệu sản phẩm chưa hợp lệ.');
+      return;
+    }
     setSubmitting(true);
     try {
-      const created = images.length > 0 ? await adminProductService.createProductWithImages(payload, images) : await adminProductService.createProductJson(payload);
+      const created = images.length > 0
+        ? await adminProductService.createProductWithImages(payload, images)
+        : await adminProductService.createProductJson(payload);
       setForm(initialForm);
       setImages([]);
       setShowCreate(false);
@@ -133,41 +153,81 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
       openProduct(created.product_id, onSelectProduct);
     } catch {
       showToast('Không thể tạo sản phẩm. Kiểm tra quyền và dữ liệu catalog.');
-    } finally { setSubmitting(false); }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const requestSearch = (nextQuery: string, nextStatus: SaleStatus | '') => {
+    setLoading(true);
+    setPage(1);
+    setQuery(nextQuery);
+    setSaleStatus(nextStatus);
+  };
+
+  const changePage = (nextPage: number) => {
+    setLoading(true);
+    setPage(nextPage);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">Catalog admin</p><h1 className="mt-1 font-serif text-3xl font-bold text-[#0B2419]">Sản phẩm</h1><p className="mt-2 text-sm text-[#606863]">Danh sách tìm kiếm/lọc/phân trang trên backend; ảnh upload đi qua backend.</p></div>
-        <div className="flex gap-2">{onNavigateTab && <button type="button" onClick={() => onNavigateTab('categories', 'Danh mục')} className="border border-[#D9DDD6] bg-white px-4 py-2 text-sm font-semibold">Metadata</button>}<button type="button" onClick={() => setShowCreate((value) => !value)} className="bg-[#0B2419] px-4 py-2 text-sm font-bold uppercase text-white">{showCreate ? 'Đóng' : 'Thêm sản phẩm'}</button></div>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">Catalog admin</p>
+          <h1 className="mt-1 font-serif text-3xl font-bold text-[#0B2419]">Sản phẩm</h1>
+          <p className="mt-2 text-sm text-[#606863]">Danh sách tìm kiếm/lọc/phân trang trên backend; ảnh upload đi qua backend.</p>
+        </div>
+        <div className="flex gap-2">
+          {onNavigateTab && <button type="button" onClick={() => onNavigateTab('categories', 'Danh mục')} className="border border-[#D9DDD6] bg-white px-4 py-2 text-sm font-semibold">Metadata</button>}
+          <button type="button" onClick={() => setShowCreate((value) => !value)} className="bg-[#0B2419] px-4 py-2 text-sm font-bold uppercase text-white">{showCreate ? 'Đóng' : 'Thêm sản phẩm'}</button>
+        </div>
       </div>
 
-      <form onSubmit={(event) => { event.preventDefault(); setPage(1); setQuery(queryInput.trim()); }} className="flex flex-wrap gap-3 rounded-lg border border-[#E2E5DE] bg-white p-4">
+      <form onSubmit={(event) => { event.preventDefault(); requestSearch(queryInput.trim(), saleStatus); }} className="flex flex-wrap gap-3 rounded-lg border border-[#E2E5DE] bg-white p-4">
         <input value={queryInput} onChange={(event) => setQueryInput(event.target.value)} placeholder="Tên sản phẩm" className="min-w-64 flex-1 border border-[#D9DDD6] px-3 py-2 text-sm" />
-        <select value={saleStatus} onChange={(event) => { setSaleStatus(event.target.value as SaleStatus | ''); setPage(1); }} className="border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">Mọi trạng thái</option><option value="ON_SALE">ON_SALE</option><option value="STOPPED">STOPPED</option></select>
+        <select value={saleStatus} onChange={(event) => requestSearch(query, event.target.value as SaleStatus | '')} className="border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">Mọi trạng thái</option><option value="ON_SALE">ON_SALE</option><option value="STOPPED">STOPPED</option></select>
         <button className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white">Tìm</button>
       </form>
 
-      {showCreate && <form onSubmit={create} className="space-y-4 rounded-lg border border-[#E2E5DE] bg-white p-5">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <label className="space-y-1"><span className="text-xs font-semibold">Tên *</span><input required maxLength={255} value={form.name} onChange={(event) => updateForm('name', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>
-          <label className="space-y-1"><span className="text-xs font-semibold">Danh mục lá *</span><select required value={form.categoryId} onChange={(event) => updateForm('categoryId', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">Chọn</option>{leafCategories.map((item) => <option key={item.category_id} value={item.category_id}>{item.name}</option>)}</select></label>
-          <label className="space-y-1"><span className="text-xs font-semibold">Hệ size *</span><select required value={form.sizeSystemId} onChange={(event) => updateForm('sizeSystemId', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">Chọn</option>{meta?.size_systems.map((item) => <option key={item.size_system_id} value={item.size_system_id}>{item.name}</option>)}</select></label>
-          <label className="space-y-1"><span className="text-xs font-semibold">Brand</span><select value={form.brandId} onChange={(event) => updateForm('brandId', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">Không gán</option>{meta?.brands.map((item) => <option key={item.brand_id} value={item.brand_id}>{item.name}</option>)}</select></label>
-          <label className="space-y-1"><span className="text-xs font-semibold">Giá *</span><input required type="number" min="0" step="0.01" value={form.basePrice} onChange={(event) => updateForm('basePrice', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>
-          <label className="space-y-1"><span className="text-xs font-semibold">Trạng thái</span><select value={form.saleStatus} onChange={(event) => updateForm('saleStatus', event.target.value as SaleStatus)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="ON_SALE">ON_SALE</option><option value="STOPPED">STOPPED</option></select></label>
-          <label className="space-y-1"><span className="text-xs font-semibold">Gender</span><select value={form.gender} onChange={(event) => updateForm('gender', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">—</option>{meta?.genders.map((item) => <option key={item}>{item}</option>)}</select></label>
-          <label className="space-y-1"><span className="text-xs font-semibold">Ảnh local</span><input type="file" multiple accept="image/*" onChange={(event) => setImages(Array.from(event.target.files ?? []))} className="w-full text-xs" /></label>
-        </div>
-        <label className="block space-y-1"><span className="text-xs font-semibold">Mô tả</span><textarea rows={3} value={form.description} onChange={(event) => updateForm('description', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>
-        <button disabled={submitting || !meta} className="bg-[#0B2419] px-5 py-2.5 text-xs font-bold uppercase text-white disabled:opacity-40">{submitting ? 'Đang tạo...' : 'Tạo sản phẩm'}</button>
-      </form>}
+      {showCreate && (
+        <form onSubmit={create} className="space-y-4 rounded-lg border border-[#E2E5DE] bg-white p-5">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <label className="space-y-1"><span className="text-xs font-semibold">Tên *</span><input required maxLength={255} value={form.name} onChange={(event) => updateForm('name', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>
+            <label className="space-y-1"><span className="text-xs font-semibold">Danh mục lá *</span><select required value={form.categoryId} onChange={(event) => updateForm('categoryId', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">Chọn</option>{leafCategories.map((item) => <option key={item.category_id} value={item.category_id}>{item.name}</option>)}</select></label>
+            <label className="space-y-1"><span className="text-xs font-semibold">Hệ size *</span><select required value={form.sizeSystemId} onChange={(event) => updateForm('sizeSystemId', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">Chọn</option>{meta?.size_systems.map((item) => <option key={item.size_system_id} value={item.size_system_id}>{item.name}</option>)}</select></label>
+            <label className="space-y-1"><span className="text-xs font-semibold">Brand</span><select value={form.brandId} onChange={(event) => updateForm('brandId', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">Không gán</option>{meta?.brands.map((item) => <option key={item.brand_id} value={item.brand_id}>{item.name}</option>)}</select></label>
+            <label className="space-y-1"><span className="text-xs font-semibold">Giá *</span><input required type="number" min="0" step="0.01" value={form.basePrice} onChange={(event) => updateForm('basePrice', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>
+            <label className="space-y-1"><span className="text-xs font-semibold">Trạng thái</span><select value={form.saleStatus} onChange={(event) => updateForm('saleStatus', event.target.value as SaleStatus)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="ON_SALE">ON_SALE</option><option value="STOPPED">STOPPED</option></select></label>
+            <label className="space-y-1"><span className="text-xs font-semibold">Gender</span><select value={form.gender} onChange={(event) => updateForm('gender', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">—</option>{meta?.genders.map((item) => <option key={item}>{item}</option>)}</select></label>
+            <label className="space-y-1"><span className="text-xs font-semibold">Ảnh local</span><input type="file" multiple accept="image/*" onChange={(event) => setImages(Array.from(event.target.files ?? []))} className="w-full text-xs" /></label>
+          </div>
+          <label className="block space-y-1"><span className="text-xs font-semibold">Mô tả</span><textarea rows={3} value={form.description} onChange={(event) => updateForm('description', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>
+          <button disabled={submitting || !meta} className="bg-[#0B2419] px-5 py-2.5 text-xs font-bold uppercase text-white disabled:opacity-40">{submitting ? 'Đang tạo...' : 'Tạo sản phẩm'}</button>
+        </form>
+      )}
 
       {error && <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
-      {loading ? <div className="rounded-lg border border-[#E2E5DE] bg-white p-10 text-center text-sm">Đang tải...</div> : products.length === 0 ? <div className="rounded-lg border border-[#E2E5DE] bg-white p-10 text-center text-sm">Không có sản phẩm phù hợp.</div> : <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{products.map((product) => { const image = resolveImageUrl(product.image_url); return <article key={product.product_id} className="overflow-hidden rounded-lg border border-[#E2E5DE] bg-white"><div className="aspect-[3/2] bg-[#F5F6F2]">{image ? <img src={image} alt={product.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-xs text-[#606863]">Chưa có ảnh</div>}</div><div className="p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{product.name}</p><p className="mt-1 text-xs text-[#606863]">Product #{product.product_id} · Category #{product.category_id}</p></div><span className="text-[10px] font-bold">{product.sale_status}</span></div><p className="mt-3 font-bold">{product.base_price.toLocaleString('vi-VN')}₫</p><div className="mt-4 flex gap-2"><button type="button" onClick={() => openProduct(product.product_id, onSelectProduct)} className="border border-[#0B2419] px-3 py-2 text-xs font-bold uppercase">Chi tiết</button>{onEditProduct && <button type="button" onClick={() => openProduct(product.product_id, onEditProduct)} className="bg-[#0B2419] px-3 py-2 text-xs font-bold uppercase text-white">Chỉnh sửa</button>}</div></div></article>; })}</div>}
+      {loading ? (
+        <div className="rounded-lg border border-[#E2E5DE] bg-white p-10 text-center text-sm">Đang tải...</div>
+      ) : products.length === 0 ? (
+        <div className="rounded-lg border border-[#E2E5DE] bg-white p-10 text-center text-sm">Không có sản phẩm phù hợp.</div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {products.map((product) => {
+            const image = resolveImageUrl(product.image_url);
+            return <article key={product.product_id} className="overflow-hidden rounded-lg border border-[#E2E5DE] bg-white"><div className="aspect-[3/2] bg-[#F5F6F2]">{image ? <img src={image} alt={product.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-xs text-[#606863]">Chưa có ảnh</div>}</div><div className="p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{product.name}</p><p className="mt-1 text-xs text-[#606863]">Product #{product.product_id} · Category #{product.category_id}</p></div><span className="text-[10px] font-bold">{product.sale_status}</span></div><p className="mt-3 font-bold">{product.base_price.toLocaleString('vi-VN')}₫</p><div className="mt-4 flex gap-2"><button type="button" onClick={() => openProduct(product.product_id, onSelectProduct)} className="border border-[#0B2419] px-3 py-2 text-xs font-bold uppercase">Chi tiết</button>{onEditProduct && <button type="button" onClick={() => openProduct(product.product_id, onEditProduct)} className="bg-[#0B2419] px-3 py-2 text-xs font-bold uppercase text-white">Chỉnh sửa</button>}</div></div></article>;
+          })}
+        </div>
+      )}
 
-      {pagination && pagination.total_pages > 1 && <div className="flex items-center justify-center gap-3 text-sm"><button type="button" disabled={page <= 1 || loading} onClick={() => setPage((value) => Math.max(1, value - 1))} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang trước</button><span>Trang {pagination.page} / {pagination.total_pages}</span><button type="button" disabled={page >= pagination.total_pages || loading} onClick={() => setPage((value) => value + 1)} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang sau</button></div>}
+      {pagination && pagination.total_pages > 1 && (
+        <div className="flex items-center justify-center gap-3 text-sm">
+          <button type="button" disabled={page <= 1 || loading} onClick={() => changePage(Math.max(1, page - 1))} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang trước</button>
+          <span>Trang {pagination.page} / {pagination.total_pages}</span>
+          <button type="button" disabled={page >= pagination.total_pages || loading} onClick={() => changePage(page + 1)} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang sau</button>
+        </div>
+      )}
     </div>
   );
 };
