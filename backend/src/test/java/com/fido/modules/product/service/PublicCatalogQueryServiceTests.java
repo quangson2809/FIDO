@@ -1,10 +1,13 @@
 package com.fido.modules.product.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.fido.modules.inventory.service.InventoryAvailabilityService;
@@ -26,6 +29,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 @ExtendWith(MockitoExtension.class)
 class PublicCatalogQueryServiceTests {
@@ -91,6 +97,61 @@ class PublicCatalogQueryServiceTests {
         verify(references).colorsById(List.of(21L, 22L));
         verify(references, never()).sizeValue(anyLong());
         verify(references, never()).color(anyLong());
+    }
+
+    @Test
+    void publicProductPageLoadsCoversWithOneBatchLookup() {
+        Product first = product(101L, 5L, "First");
+        Product second = product(102L, 5L, "Second");
+        Category category = mock(Category.class);
+        when(category.getCategoryId()).thenReturn(5L);
+        when(category.getName()).thenReturn("Shirts");
+
+        when(products.findAll(
+                any(Specification.class),
+                any(Pageable.class)
+        )).thenReturn(new PageImpl<>(List.of(first, second)));
+        when(categories.findAllByCategoryIdIn(List.of(5L)))
+                .thenReturn(List.of(category));
+        when(imageRead.representativeByProductIds(List.of(101L, 102L)))
+                .thenReturn(Map.of(
+                        101L, "https://cdn.test/first.jpg",
+                        102L, "https://cdn.test/second.jpg"
+                ));
+
+        var result = service.publicProducts(
+                new CatalogProductFilter(
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        1,
+                        2
+                )
+        );
+
+        assertEquals(2, result.data().size());
+        assertEquals("https://cdn.test/first.jpg", result.data().get(0).thumbnail());
+        assertEquals("https://cdn.test/second.jpg", result.data().get(1).thumbnail());
+        verify(imageRead, times(1)).representativeByProductIds(List.of(101L, 102L));
+        verifyNoInteractions(images);
+    }
+
+    private Product product(Long id, Long categoryId, String name) {
+        Product product = mock(Product.class);
+        when(product.getProductId()).thenReturn(id);
+        when(product.getCategoryId()).thenReturn(categoryId);
+        when(product.getBrandId()).thenReturn(null);
+        when(product.getName()).thenReturn(name);
+        when(product.getBasePrice()).thenReturn(new BigDecimal("100000.00"));
+        when(product.getSaleStatus()).thenReturn(CatalogPolicy.ON_SALE);
+        return product;
     }
 
     private ProductVariant variant(Long variantId, Long sizeValueId, Long colorId) {
