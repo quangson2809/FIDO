@@ -67,10 +67,10 @@ export const AdminScreen: React.FC = () => {
     if (activeMenu === 'dashboard') return <AdminDashboardView onNavigateTab={navigate} showToast={showToast} />;
     if (activeMenu === 'products') return <AdminProductsView onSelectProduct={() => navigate('product-detail', 'Chi tiết sản phẩm')} onEditProduct={() => navigate('product-detail', 'Chi tiết sản phẩm')} onNavigateTab={navigate} showToast={showToast} />;
     if (activeMenu === 'product-detail' || activeMenu === 'san-pham-detail') return <AdminProductDetailView onNavigateTab={navigate} showToast={showToast} />;
-    if (activeMenu === 'categories') return <AdminCatalogMetaView initialTab="categories" onNavigateTab={navigate} showToast={showToast} />;
-    if (activeMenu === 'brands') return <AdminCatalogMetaView initialTab="brands" onNavigateTab={navigate} showToast={showToast} />;
-    if (activeMenu === 'sizes') return <AdminCatalogMetaView initialTab="sizes" onNavigateTab={navigate} showToast={showToast} />;
-    if (activeMenu === 'colors') return <AdminCatalogMetaView initialTab="colors" onNavigateTab={navigate} showToast={showToast} />;
+    if (activeMenu === 'categories') return <AdminCatalogMetaView key="categories" initialTab="categories" onNavigateTab={navigate} showToast={showToast} />;
+    if (activeMenu === 'brands') return <AdminCatalogMetaView key="brands" initialTab="brands" onNavigateTab={navigate} showToast={showToast} />;
+    if (activeMenu === 'sizes') return <AdminCatalogMetaView key="sizes" initialTab="sizes" onNavigateTab={navigate} showToast={showToast} />;
+    if (activeMenu === 'colors') return <AdminCatalogMetaView key="colors" initialTab="colors" onNavigateTab={navigate} showToast={showToast} />;
     if (activeMenu === 'inward') return <AdminInwardView showToast={showToast} onNavigateTab={navigate} />;
     if (activeMenu === 'inventory' || activeMenu === 'history') return <AdminInventoryView showToast={showToast} />;
     if (activeMenu === 'suppliers') return <AdminSuppliersView showToast={showToast} onNavigateTab={navigate} />;
