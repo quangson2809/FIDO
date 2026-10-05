@@ -54,7 +54,7 @@ public class ProductImageAdminService {
         references.productForUpdate(productId);
 
         List<ProductImage> current =
-                images.findAllByProductIdOrderBySortOrderAscImageIdAsc(productId);
+                images.findAllByProductIdOrderBySortOrderAsc(productId);
         int nextSortOrder = current.size();
 
         for (ImageStorageGateway.UploadedImage stored : uploaded) {
