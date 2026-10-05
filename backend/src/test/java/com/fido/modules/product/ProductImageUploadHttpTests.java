@@ -194,7 +194,7 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
     }
 
     @Test
-    void multipartUploadRejectsMoreThanConfiguredFileCount()
+    void multipartLayerRejectsExcessiveFileCountBeforeCallingStorage()
             throws Exception {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         var fixture = createCatalog(writer);
@@ -211,7 +211,7 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
                 List.copyOf(parts)
         );
 
-        assertEquals(400, response.status(), response.body());
+        assertEquals(413, response.status(), response.body());
         assertEquals(List.of(), storage.uploadedFilenames());
         assertEquals(imagesBefore, imageCount(fixture.productId()));
     }
