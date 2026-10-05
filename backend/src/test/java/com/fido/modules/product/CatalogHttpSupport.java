@@ -537,6 +537,6 @@ abstract class CatalogHttpSupport {
 
         return new CatalogFixture(categoryId, brandId, systemId, sizeM, colorId,
                 productId, variantId, categoryResponse, brandResponse, systemResponse,
-                colorResponse, productWithImage);
+                colorResponse, createdProduct);
     }
 }
