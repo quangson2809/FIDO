@@ -12,19 +12,11 @@ class ProductImageAuthorizationHttpTests extends CatalogHttpSupport {
         Employee reader = employee(customRole(ensurePermission("CATALOG_READ")));
         var fixture = createCatalog(writer);
 
-        db.update(
-                """
-                INSERT INTO product_images(product_id, image_url, alt_text, sort_order)
-                VALUES (?, ?, NULL, 0)
-                """,
-                fixture.productId(),
-                "https://storage.test/protected.png"
-        );
         long imageId = db.queryForObject(
                 """
-                SELECT image_id
+                SELECT MIN(image_id)
                 FROM product_images
-                WHERE product_id=? AND sort_order=0
+                WHERE product_id=?
                 """,
                 Long.class,
                 fixture.productId()
