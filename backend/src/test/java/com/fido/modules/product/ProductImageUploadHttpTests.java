@@ -128,6 +128,95 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
     }
 
     @Test
+    void multipartUploadRejectsForgedMimeBeforeCallingStorage()
+            throws Exception {
+        Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
+        var fixture = createCatalog(writer);
+        int imagesBefore = imageCount(fixture.productId());
+
+        var response = uploadImages(
+                fixture.productId(),
+                writer.token(),
+                List.of(
+                        new UploadPart(
+                                "forged.png",
+                                "image/png",
+                                "not-an-image".getBytes(UTF_8)
+                        )
+                )
+        );
+
+        assertEquals(400, response.status(), response.body());
+        assertEquals(List.of(), storage.uploadedFilenames());
+        assertEquals(imagesBefore, imageCount(fixture.productId()));
+    }
+
+    @Test
+    void multipartUploadRejectsUnsupportedFormatBeforeCallingStorage()
+            throws Exception {
+        Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
+        var fixture = createCatalog(writer);
+        int imagesBefore = imageCount(fixture.productId());
+
+        var response = uploadImages(
+                fixture.productId(),
+                writer.token(),
+                List.of(
+                        new UploadPart(
+                                "animation.gif",
+                                "image/gif",
+                                "GIF89a".getBytes(UTF_8)
+                        )
+                )
+        );
+
+        assertEquals(400, response.status(), response.body());
+        assertEquals(List.of(), storage.uploadedFilenames());
+        assertEquals(imagesBefore, imageCount(fixture.productId()));
+    }
+
+    @Test
+    void multipartUploadRejectsEmptyFileBeforeCallingStorage()
+            throws Exception {
+        Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
+        var fixture = createCatalog(writer);
+        int imagesBefore = imageCount(fixture.productId());
+
+        var response = uploadImages(
+                fixture.productId(),
+                writer.token(),
+                List.of(new UploadPart("empty.png", "image/png", new byte[0]))
+        );
+
+        assertEquals(400, response.status(), response.body());
+        assertEquals(List.of(), storage.uploadedFilenames());
+        assertEquals(imagesBefore, imageCount(fixture.productId()));
+    }
+
+    @Test
+    void multipartUploadRejectsMoreThanConfiguredFileCount()
+            throws Exception {
+        Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
+        var fixture = createCatalog(writer);
+        int imagesBefore = imageCount(fixture.productId());
+
+        var parts = new ArrayList<UploadPart>();
+        for (int index = 0; index < 11; index++) {
+            parts.add(imagePart("image-" + index + ".png"));
+        }
+
+        var response = uploadImages(
+                fixture.productId(),
+                writer.token(),
+                List.copyOf(parts)
+        );
+
+        assertEquals(400, response.status(), response.body());
+        assertEquals(List.of(), storage.uploadedFilenames());
+        assertEquals(imagesBefore, imageCount(fixture.productId()));
+    }
+
+    @Test
     void storageFailureReturnsGatewayErrorWithoutPersistingProductImage()
             throws Exception {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
@@ -220,8 +309,25 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
         return new UploadPart(
                 filename,
                 "image/png",
-                new byte[]{1, 2, 3}
+                pngBytes()
         );
+    }
+
+    private byte[] pngBytes() {
+        return new byte[]{
+                (byte) 0x89,
+                0x50,
+                0x4E,
+                0x47,
+                0x0D,
+                0x0A,
+                0x1A,
+                0x0A,
+                0,
+                0,
+                0,
+                0
+        };
     }
 
     private void clearImages(long productId) {
