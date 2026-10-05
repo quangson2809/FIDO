@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { CartItem, Order, OrderStatus, ScreenId, UserProfile } from '../types';
+import type { CartItem, ScreenId } from '../types';
 
 export interface AppContextType {
   currentScreen: ScreenId;
@@ -16,23 +16,6 @@ export interface AppContextType {
   addToCart: (variantId: number, productName: string, quantity?: number) => void;
   removeFromCart: (itemId: string) => void;
   updateCartQuantity: (itemId: string, quantity: number) => void;
-  freeHemming: boolean;
-  setFreeHemming: (enabled: boolean) => void;
-  hemmingNote: string;
-  setHemmingNote: (note: string) => void;
-  appliedVoucher: string;
-  voucherDiscount: number;
-  applyVoucher: (code: string) => boolean;
-  removeVoucher: () => void;
-  orders: Order[];
-  updateOrderRecipient: (orderId: string, phone: string, address: string, note?: string) => void;
-  updateOrderStatus: (orderId: string, status: OrderStatus) => void;
-  createOrder: (orderData: Partial<Order>) => Order;
-  wishlist: string[];
-  toggleWishlist: (productId: string) => void;
-  userProfile: UserProfile;
-  updateUserProfile: (dataOrPhone: Partial<UserProfile> | string, email?: string) => void;
-  toast: { message: string; visible: boolean };
   toastMessage: string | null;
   showToast: (message: string) => void;
 }
@@ -41,8 +24,6 @@ export const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const useApp = () => {
   const context = useContext(AppContext);
-  if (!context) {
-    throw new Error('useApp must be used within an AppProvider');
-  }
+  if (!context) throw new Error('useApp must be used within an AppProvider');
   return context;
 };
