@@ -298,3 +298,8 @@ The earlier monetary/time HARD BLOCK is resolved. Phase 7's gate now depends on 
 - `IMGBB_API_KEY` is backend runtime secret configuration only. Real values are not logged, returned in API responses, persisted, exposed as frontend variables or committed to Git. `.env.example` contains only an empty placeholder and real `.env` files remain ignored.
 - Operational logs use safe identifiers/results only: Product upload may log `productId` and duration; the provider adapter logs result category/status and duration. It does not log provider request URI, API key, payload, response body or raw exception message.
 - Detailed implementation/verification notes live in `docs/21-image-security-operational-hardening.md`. Antivirus scanning, transcoding, quarantine, WAF/rate-limiter infrastructure and remote-asset garbage collection remain outside this phase.
+
+## Operational exception logging — 2026-10-06
+
+- The global exception handler retains the existing HTTP status mapping and Boot `/error` response. Its operational log uses a server-authored, non-blank summary plus method, matched route pattern, status and exception type; server failures also include a stack-frame origin.
+- Raw exception messages, request bodies, query strings and provider response bodies are excluded from these logs. The Product image storage adapter supplies fixed diagnostic summaries and records only provider result category or HTTP status with duration.
