@@ -27,28 +27,52 @@ The goal is therefore **keep the designed experience, replace fake business data
 
 ## Current architecture
 
-- HTTP is centralized at `src/services/http/apiClient.ts`.
+- HTTP is centralized at `src/services/http/apiClient.ts`; feature code does not own Axios configuration.
+- HTTP failures are normalized at `src/services/http/apiError.ts`; screens may choose presentation text but do not parse Axios response shapes directly.
 - Feature API modules own auth/profile, catalog, cart, checkout/orders, inventory, admin access, reports and content calls.
 - API DTOs are feature-scoped under `src/features/*/types`.
-- `src/types/index.ts` now contains only app navigation and the cart presentation model; legacy Product/Order/UserProfile template models were removed.
-- `AppProvider` owns only navigation, selected IDs, authenticated cart presentation state and toast state. Local order/profile/voucher/wishlist business state was removed.
+- `src/types/index.ts` contains app navigation and presentation models, not duplicate backend contracts.
+- `AppProvider` owns navigation, selected IDs, authenticated cart presentation state and toast state. It does not become a generic server-state store.
 - Real API mode is the default. Mock mode must be explicitly requested where a remaining development mock is intentionally supported.
-- Unsupported showroom, voucher-admin, membership/loyalty, tailoring and development screen-switcher flows were removed from the active frontend.
+- Unsupported showroom, voucher-admin, membership/loyalty, tailoring and development screen-switcher flows are not invented to satisfy UI templates.
+
+## Environment boundary
+
+Frontend code must not be edited when moving between local development and deployment.
+
+- `VITE_API_BASE_URL=http://localhost:8080/api/v1` is the local default.
+- A deployed frontend can set `VITE_API_BASE_URL=https://api.example.com/api/v1`.
+- A reverse proxy can instead expose the backend under the same origin and use `VITE_API_BASE_URL=/api/v1`.
+- `VITE_IMAGE_BASE_URL` stays empty when the backend returns absolute CDN/ImgBB URLs. It is only configured for relative image paths served from a separate static host.
+- Bearer token attachment and 401 invalidation remain inside the shared HTTP client.
 
 ## Contract matrix
 
 | Slice | Frontend service | Backend/API contract | Alignment |
 |---|---|---|---|
 | Auth/Profile | `features/auth/api/*` | `/auth/register`, `/auth/login`, `/me`, `/me/addresses*` | Uses backend DTOs; phone is login identifier. |
-| Catalog | `features/catalog/api/*` | `/catalog/products`, `/catalog/products/{id}`, `/catalog/meta`, admin catalog APIs | Uses ProductVariant IDs, server effective price/availability and catalog metadata. |
+| Catalog | `features/catalog/api/*` | public catalog + admin product/master-data + product image APIs | Uses ProductVariant IDs, server effective price/availability, `image_id` and `sort_order`; product metadata creation and image upload are separate backend operations. |
 | Cart | `features/cart/api/service.ts` | `/cart`, `/cart/items*` | Authenticated backend cart only; no local guest-cart fallback. |
 | Checkout | `features/orders/api/checkoutService.ts` | `/checkout/quote`, `/orders` | Quote/order totals and workflow state are server-authoritative. |
 | Customer orders | `features/orders/api/service.ts` | `/me/orders`, `/me/orders/{id}`, recipient update | Uses locked backend status/payment values. |
 | Admin orders | `features/orders/api/adminService.ts` | `/admin/orders*` | State-changing commands go through backend actions/payment-actions/after-sales. |
 | Inventory | `features/inventory/api/adminService.ts` | supplier, goods receipt and inventory APIs | Backend is authoritative for stock and receipt state. |
-| Admin access | `features/adminAccess/api/service.ts` | customers, staff, access-control, audit logs | No synthetic CRM/staff/audit fields. |
+| Admin access | `features/adminAccess/api/service.ts` | customers, staff, roles, permissions, access-control, audit logs | Read and command APIs use backend DTOs; frontend permission checks remain UX only. |
 | Reports | `features/report/api/service.ts` | `/admin/reports/overview` | Displays backend `completed_sales`, `returned_adjustment`, `net_sales`, `orders_by_status`. |
 | Content | `features/content/api/service.ts` | `/content-pages/{pageCode}`, `/admin/content-pages*` | No generic settings or showroom API is invented. |
+
+The current service boundary maps the 80 endpoints in `FIDO_API_Postman_Test_Matrix_updated.xlsx`, including the three product-image endpoints added after the 77-endpoint baseline. A route being represented in a service does not imply every screen must expose every operation; UI exposure follows actual feature scope and permissions.
+
+## Product image transaction boundary
+
+Product metadata creation and provider-backed image upload are intentionally separate requests in the backend contract. The frontend therefore:
+
+1. Creates the product as JSON.
+2. Uploads selected image files to `/admin/products/{productId}/images`.
+3. If upload fails after product creation, it preserves and surfaces the created product instead of pretending the whole operation rolled back.
+4. Uses the dedicated image reorder/delete APIs for gallery maintenance.
+
+This avoids a false client-side transaction across database and external image storage boundaries.
 
 ## Locked frontend business boundary
 
