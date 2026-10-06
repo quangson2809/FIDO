@@ -12,6 +12,28 @@ import type {
   VariantPatchInput,
 } from '../types';
 
+const createProduct = async (product: ProductCreateInput): Promise<AdminProductDetailDto> => {
+  const response = await apiClient.post<
+    ApiResponse<AdminProductDetailDto>,
+    ApiResponse<AdminProductDetailDto>
+  >('/admin/products', product);
+  return response.data;
+};
+
+const uploadImages = async (
+  productId: number,
+  imageFiles: readonly File[],
+): Promise<AdminProductDetailDto> => {
+  const form = new FormData();
+  imageFiles.forEach((image) => form.append('images', image));
+
+  const response = await apiClient.post<
+    ApiResponse<AdminProductDetailDto>,
+    ApiResponse<AdminProductDetailDto>
+  >(`/admin/products/${productId}/images`, form);
+  return response.data;
+};
+
 export const adminProductService = {
   async getProducts(query: AdminProductQuery = {}): Promise<ApiListResponse<AdminProductSummaryDto>> {
     return apiClient.get<
@@ -28,12 +50,16 @@ export const adminProductService = {
     return response.data;
   },
 
-  async createProduct(product: ProductCreateInput): Promise<AdminProductDetailDto> {
-    const response = await apiClient.post<
-      ApiResponse<AdminProductDetailDto>,
-      ApiResponse<AdminProductDetailDto>
-    >('/admin/products', product);
-    return response.data;
+  createProduct,
+
+  createProductJson: createProduct,
+
+  async createProductWithImages(
+    product: ProductCreateInput,
+    imageFiles: readonly File[],
+  ): Promise<AdminProductDetailDto> {
+    const created = await createProduct(product);
+    return imageFiles.length > 0 ? uploadImages(created.product_id, imageFiles) : created;
   },
 
   async updateProduct(productId: number, input: ProductPatchInput): Promise<AdminProductDetailDto> {
@@ -44,16 +70,7 @@ export const adminProductService = {
     return response.data;
   },
 
-  async uploadImages(productId: number, imageFiles: readonly File[]): Promise<AdminProductDetailDto> {
-    const form = new FormData();
-    imageFiles.forEach((image) => form.append('images', image));
-
-    const response = await apiClient.post<
-      ApiResponse<AdminProductDetailDto>,
-      ApiResponse<AdminProductDetailDto>
-    >(`/admin/products/${productId}/images`, form);
-    return response.data;
-  },
+  uploadImages,
 
   async reorderImages(productId: number, images: ProductImageOrderInput[]): Promise<AdminProductDetailDto> {
     const response = await apiClient.patch<
