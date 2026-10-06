@@ -219,8 +219,7 @@ class DevDataSeedServiceTests {
     @Test
     void seedRejectsPermissionCodeOwnedByDifferentRow() {
         jdbc.update(
-                "INSERT INTO permissions(permission_id,code,name) VALUES (899201,?,?,?)"
-                        .replace(",?,?,?)", ",?,?)"),
+                "INSERT INTO permissions(permission_id,code,name) VALUES (899201,?,?)",
                 CatalogPolicy.CATALOG_WRITE,
                 "Conflicting catalog permission"
         );
