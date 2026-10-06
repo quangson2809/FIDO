@@ -30,10 +30,7 @@ public final class OrderMapper {
                 item.getOrderItemId(),
                 item.getVariantId(),
                 item.getProductNameSnapshot(),
-<<<<<<< HEAD
-=======
                 item.getImageUrlSnapshot(),
->>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
                 item.getSkuSnapshot(),
                 item.getSizeSnapshot(),
                 item.getColorSnapshot(),
@@ -69,7 +66,6 @@ public final class OrderMapper {
         if (shipping == null) {
             return null;
         }
-
         return new ShippingInfoDto(
                 shipping.getDeliveryMode(),
                 shipping.getCarrierName()
@@ -78,12 +74,8 @@ public final class OrderMapper {
 
     public static OrderSummaryDto summary(
             Order order,
-<<<<<<< HEAD
-            Payment payment
-=======
             Payment payment,
             String imageUrl
->>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
     ) {
         return new OrderSummaryDto(
                 order.getOrderId(),
@@ -98,10 +90,7 @@ public final class OrderMapper {
         );
     }
 
-    public static OrderConfirmationDto confirmation(
-            Order order,
-            Payment payment
-    ) {
+    public static OrderConfirmationDto confirmation(Order order, Payment payment) {
         return new OrderConfirmationDto(
                 order.getOrderId(),
                 order.getOrderCode(),

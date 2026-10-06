@@ -12,6 +12,10 @@ import com.fido.modules.product.repository.ColorRepository;
 import com.fido.modules.product.repository.ProductRepository;
 import com.fido.modules.product.repository.SizeSystemRepository;
 import com.fido.modules.product.repository.SizeValueRepository;
+import java.util.Collection;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -79,9 +83,41 @@ public class CatalogReferenceService {
                 .orElseThrow(CatalogReferenceService::notFound);
     }
 
+    public Map<Long, SizeValue> sizeValuesById(
+            Collection<Long> sizeValueIds
+    ) {
+        var requestedIds = distinctIds(sizeValueIds);
+
+        if (requestedIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return requireAll(
+                requestedIds,
+                sizeValues.findAllBySizeValueIdIn(requestedIds),
+                SizeValue::getSizeValueId
+        );
+    }
+
     public Color color(Long colorId) {
         return colors.findById(colorId)
                 .orElseThrow(CatalogReferenceService::notFound);
+    }
+
+    public Map<Long, Color> colorsById(
+            Collection<Long> colorIds
+    ) {
+        var requestedIds = distinctIds(colorIds);
+
+        if (requestedIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return requireAll(
+                requestedIds,
+                colors.findAllByColorIdIn(requestedIds),
+                Color::getColorId
+        );
     }
 
     public Category leafCategory(Long categoryId) {
@@ -93,8 +129,6 @@ public class CatalogReferenceService {
 
         return category;
     }
-<<<<<<< HEAD
-=======
 
     private java.util.List<Long> distinctIds(
             Collection<Long> ids
@@ -131,5 +165,4 @@ public class CatalogReferenceService {
     private static ResponseStatusException notFound() {
         return new ResponseStatusException(HttpStatus.NOT_FOUND);
     }
->>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
 }

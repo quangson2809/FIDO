@@ -20,6 +20,12 @@ configurations {
     }
 }
 
+sourceSets {
+    test {
+        resources.srcDir("../reference")
+    }
+}
+
 repositories {
     mavenCentral()
 }

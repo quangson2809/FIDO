@@ -339,7 +339,7 @@ class OrderStockHttpTests extends OrderHttpSupport {
         );
 
         assertEquals(
-                400,
+                200,
                 call(
                         "POST",
                         "/api/v1/admin/orders/"
@@ -351,8 +351,16 @@ class OrderStockHttpTests extends OrderHttpSupport {
         );
 
         assertEquals(
-                4,
+                5,
                 stock(first.variantId())
+        );
+
+        assertEquals(
+                1,
+                movementCount(
+                        failedCancelOrderId,
+                        "ORDER_CANCEL_IN"
+                )
         );
 
         assertEquals(
@@ -391,7 +399,7 @@ class OrderStockHttpTests extends OrderHttpSupport {
                 stock(first.variantId())
         );
 
-                long pendingCancelOrderId = createOrder(
+        long pendingCancelOrderId = createOrder(
                 customer,
                 first,
                 1

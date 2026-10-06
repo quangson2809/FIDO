@@ -99,12 +99,6 @@ public final class CatalogMapper {
         );
     }
 
-<<<<<<< HEAD
-    public static AdminProductSummaryDto adminSummary(Product product) {
-        return new AdminProductSummaryDto(
-                product.getProductId(),
-                product.getName(),
-=======
     public static AdminProductSummaryDto adminSummary(
             Product product,
             String thumbnail
@@ -113,7 +107,6 @@ public final class CatalogMapper {
                 product.getProductId(),
                 product.getName(),
                 thumbnail,
->>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
                 product.getCategoryId(),
                 product.getBrandId(),
                 product.getSizeSystemId(),

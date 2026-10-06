@@ -38,6 +38,7 @@ public class PublicCatalogQueryService {
     private final ProductRepository products;
     private final ProductVariantRepository variants;
     private final ProductImageRepository images;
+    private final ProductImageReadService imageRead;
     private final CategoryRepository categories;
     private final BrandRepository brands;
     private final InventoryAvailabilityService inventory;
@@ -48,6 +49,7 @@ public class PublicCatalogQueryService {
             ProductRepository products,
             ProductVariantRepository variants,
             ProductImageRepository images,
+            ProductImageReadService imageRead,
             CategoryRepository categories,
             BrandRepository brands,
             InventoryAvailabilityService inventory,
@@ -57,6 +59,7 @@ public class PublicCatalogQueryService {
         this.products = products;
         this.variants = variants;
         this.images = images;
+        this.imageRead = imageRead;
         this.categories = categories;
         this.brands = brands;
         this.inventory = inventory;
@@ -84,13 +87,6 @@ public class PublicCatalogQueryService {
 
         List<Product> productsOnPage = result.getContent();
 
-<<<<<<< HEAD
-        Map<Long, Category> categoriesById =
-                categoryMap(productsOnPage);
-
-        Map<Long, Brand> brandsById =
-                brandMap(productsOnPage);
-=======
         Map<Long, Category> categoriesById = categoryMap(productsOnPage);
         Map<Long, Brand> brandsById = brandMap(productsOnPage);
         Map<Long, String> thumbnailsByProductId = imageRead.representativeByProductIds(
@@ -98,29 +94,27 @@ public class PublicCatalogQueryService {
                         .map(Product::getProductId)
                         .toList()
         );
->>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
 
         var data = productsOnPage
                 .stream()
                 .map(product -> new ProductSummaryDto(
                         product.getProductId(),
                         product.getName(),
-<<<<<<< HEAD
-=======
                         thumbnailsByProductId.get(product.getProductId()),
->>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
                         CatalogMapper.category(
-                                requiredCategory(
+                                required(
                                         categoriesById,
-                                        product.getCategoryId()
+                                        product.getCategoryId(),
+                                        "Missing category"
                                 )
                         ),
                         product.getBrandId() == null
                                 ? null
                                 : CatalogMapper.brand(
-                                        requiredBrand(
+                                        required(
                                                 brandsById,
-                                                product.getBrandId()
+                                                product.getBrandId(),
+                                                "Missing brand"
                                         )
                                 ),
                         product.getBasePrice(),
@@ -135,9 +129,7 @@ public class PublicCatalogQueryService {
     }
 
     public ProductDetailDto publicDetail(Long productId) {
-        return detailInternal(
-                references.product(productId)
-        );
+        return detailInternal(references.product(productId));
     }
 
     public CatalogMetaDto publicMeta() {
@@ -145,10 +137,9 @@ public class PublicCatalogQueryService {
     }
 
     private ProductDetailDto detailInternal(Product product) {
-        var productVariants =
-                variants.findAllByProductIdOrderByVariantIdAsc(
-                        product.getProductId()
-                );
+        var productVariants = variants.findAllByProductIdOrderByVariantIdAsc(
+                product.getProductId()
+        );
 
         var availabilityByVariantId = inventory.availableQuantities(
                 productVariants.stream()
@@ -156,20 +147,33 @@ public class PublicCatalogQueryService {
                         .toList()
         );
 
+        Map<Long, SizeValue> sizesById = references.sizeValuesById(
+                productVariants.stream()
+                        .map(ProductVariant::getSizeValueId)
+                        .toList()
+        );
+
+        Map<Long, Color> colorsById = references.colorsById(
+                productVariants.stream()
+                        .map(ProductVariant::getColorId)
+                        .toList()
+        );
+
         var publicVariants = productVariants.stream()
                 .map(variant -> {
-                    SizeValue size = references.sizeValue(
-                            variant.getSizeValueId()
+                    SizeValue size = required(
+                            sizesById,
+                            variant.getSizeValueId(),
+                            "Variant references missing size"
                     );
-
-                    Color color = references.color(
-                            variant.getColorId()
+                    Color color = required(
+                            colorsById,
+                            variant.getColorId(),
+                            "Variant references missing color"
                     );
-
-                    BigDecimal effectivePrice =
-                            variant.getOverridePrice() == null
-                                    ? product.getBasePrice()
-                                    : variant.getOverridePrice();
+                    BigDecimal effectivePrice = variant.getOverridePrice() == null
+                            ? product.getBasePrice()
+                            : variant.getOverridePrice();
 
                     return new ProductVariantDto(
                             variant.getVariantId(),
@@ -178,22 +182,13 @@ public class PublicCatalogQueryService {
                             variant.getSku(),
                             effectivePrice,
                             variant.getSaleStatus(),
-                            availabilityByVariantId.getOrDefault(
-                                    variant.getVariantId(),
-                                    0
-                            )
+                            availabilityByVariantId.getOrDefault(variant.getVariantId(), 0)
                     );
                 })
                 .toList();
 
         var productImages = images
-<<<<<<< HEAD
-                .findAllByProductIdOrderByImageIdAsc(
-                        product.getProductId()
-                )
-=======
                 .findAllByProductIdOrderBySortOrderAsc(product.getProductId())
->>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
                 .stream()
                 .map(CatalogMapper::image)
                 .toList();
@@ -202,9 +197,7 @@ public class PublicCatalogQueryService {
                 product.getProductId(),
                 product.getName(),
                 product.getDescription(),
-                CatalogMapper.category(
-                        references.category(product.getCategoryId())
-                ),
+                CatalogMapper.category(references.category(product.getCategoryId())),
                 brandDto(product.getBrandId()),
                 metaService.sizeSystemDto(product.getSizeSystemId()),
                 product.getGender(),
@@ -219,29 +212,15 @@ public class PublicCatalogQueryService {
     }
 
     private BrandDto brandDto(Long brandId) {
-        if (brandId == null) {
-            return null;
-        }
-
-        return CatalogMapper.brand(
-                references.brand(brandId)
-        );
+        return brandId == null ? null : CatalogMapper.brand(references.brand(brandId));
     }
 
-    private void validatePriceRange(
-            CatalogProductFilter filter
-    ) {
+    private void validatePriceRange(CatalogProductFilter filter) {
         BigDecimal minPrice = filter.minPrice();
         BigDecimal maxPrice = filter.maxPrice();
-
-        boolean invalidMin =
-                minPrice != null && minPrice.signum() < 0;
-
-        boolean invalidMax =
-                maxPrice != null && maxPrice.signum() < 0;
-
-        boolean invalidRange =
-                minPrice != null
+        boolean invalidMin = minPrice != null && minPrice.signum() < 0;
+        boolean invalidMax = maxPrice != null && maxPrice.signum() < 0;
+        boolean invalidRange = minPrice != null
                 && maxPrice != null
                 && minPrice.compareTo(maxPrice) > 0;
 
@@ -250,70 +229,38 @@ public class PublicCatalogQueryService {
         }
     }
 
-    private Map<Long, Category> categoryMap(
-            List<Product> productsOnPage
-    ) {
+    private Map<Long, Category> categoryMap(List<Product> productsOnPage) {
         var categoryIds = productsOnPage.stream()
                 .map(Product::getCategoryId)
                 .distinct()
                 .toList();
-
         if (categoryIds.isEmpty()) {
             return Map.of();
         }
-
         return categories.findAllByCategoryIdIn(categoryIds)
                 .stream()
-                .collect(Collectors.toMap(
-                        Category::getCategoryId,
-                        Function.identity()
-                ));
+                .collect(Collectors.toMap(Category::getCategoryId, Function.identity()));
     }
 
-    private Map<Long, Brand> brandMap(
-            List<Product> productsOnPage
-    ) {
+    private Map<Long, Brand> brandMap(List<Product> productsOnPage) {
         var brandIds = productsOnPage.stream()
                 .map(Product::getBrandId)
                 .filter(java.util.Objects::nonNull)
                 .distinct()
                 .toList();
-
         if (brandIds.isEmpty()) {
             return Map.of();
         }
-
         return brands.findAllByBrandIdIn(brandIds)
                 .stream()
-                .collect(Collectors.toMap(
-                        Brand::getBrandId,
-                        Function.identity()
-                ));
+                .collect(Collectors.toMap(Brand::getBrandId, Function.identity()));
     }
 
-    private Category requiredCategory(
-            Map<Long, Category> map,
-            Long categoryId
-    ) {
-        Category category = map.get(categoryId);
-
-        if (category == null) {
-            throw new IllegalStateException("Missing category");
+    private <T> T required(Map<Long, T> values, Long id, String message) {
+        T value = values.get(id);
+        if (value == null) {
+            throw new IllegalStateException(message);
         }
-
-        return category;
-    }
-
-    private Brand requiredBrand(
-            Map<Long, Brand> map,
-            Long brandId
-    ) {
-        Brand brand = map.get(brandId);
-
-        if (brand == null) {
-            throw new IllegalStateException("Missing brand");
-        }
-
-        return brand;
+        return value;
     }
 }
