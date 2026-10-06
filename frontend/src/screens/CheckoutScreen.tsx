@@ -2,25 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { profileService } from '../features/auth/api/profileService';
 import { checkoutService } from '../features/orders/api/checkoutService';
-import type {
-  CheckoutQuoteDto,
-  CheckoutRequest,
-  OrderConfirmationDto,
-} from '../features/orders/types';
+import type { CheckoutQuoteDto, CheckoutRequest, OrderConfirmationDto } from '../features/orders/types';
 import { hasApiAccessToken } from '../services/http/apiClient';
 
 const money = (value: number): string => `${value.toLocaleString('vi-VN')}₫`;
-
 const requestKey = (request: CheckoutRequest): string => JSON.stringify(request);
 
 export const CheckoutScreen: React.FC = () => {
-  const {
-    cartItems,
-    cartSubtotal,
-    setCurrentScreen,
-    setSelectedOrderId,
-  } = useApp();
-
+  const { cartItems, cartSubtotal, setCurrentScreen, setSelectedOrderId } = useApp();
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
@@ -35,12 +24,9 @@ export const CheckoutScreen: React.FC = () => {
 
   useEffect(() => {
     let active = true;
-
     if (!hasApiAccessToken()) {
       setCurrentScreen('auth');
-      return () => {
-        active = false;
-      };
+      return () => { active = false; };
     }
 
     const loadProfile = async () => {
@@ -51,18 +37,14 @@ export const CheckoutScreen: React.FC = () => {
         setEmail(me.account.email ?? '');
         setAddress(me.addresses[0]?.address_text ?? '');
       } catch {
-        if (active) {
-          setError('Không thể tải thông tin tài khoản.');
-        }
+        if (active) setError('Không thể tải thông tin tài khoản.');
       } finally {
         if (active) setProfileLoading(false);
       }
     };
 
     void loadProfile();
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [setCurrentScreen]);
 
   const invalidateQuote = () => {
@@ -80,17 +62,13 @@ export const CheckoutScreen: React.FC = () => {
 
   const currentRequestKey = requestKey(request);
   const quoteIsCurrent = quote !== null && quotedRequestKey === currentRequestKey;
-
-  const canRequestQuote = request.recipient_phone.length > 0
-    && request.recipient_address.length > 0
-    && cartItems.length > 0;
+  const canRequestQuote = request.recipient_phone.length > 0 && request.recipient_address.length > 0 && cartItems.length > 0;
 
   const loadQuote = async () => {
     if (!canRequestQuote) {
       setError('Cần có sản phẩm trong giỏ, số điện thoại và địa chỉ nhận hàng.');
       return;
     }
-
     const submittedRequest = request;
     const submittedRequestKey = currentRequestKey;
     setQuoteLoading(true);
@@ -110,12 +88,10 @@ export const CheckoutScreen: React.FC = () => {
 
   const placeOrder = async () => {
     if (!quoteIsCurrent || orderSubmitting) return;
-
-    const submittedRequest = request;
     setOrderSubmitting(true);
     setError(null);
     try {
-      const result = await checkoutService.createOrder(submittedRequest);
+      const result = await checkoutService.createOrder(request);
       setConfirmation(result);
       setSelectedOrderId(String(result.order_id));
     } catch {
@@ -129,209 +105,113 @@ export const CheckoutScreen: React.FC = () => {
 
   if (confirmation) {
     return (
-      <section className="mx-auto min-h-[60vh] max-w-3xl px-4 py-14 sm:px-8">
-        <div className="border border-[#D9DDD6] bg-white p-7 shadow-sm sm:p-10">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">Đặt hàng thành công</p>
-          <h1 className="mt-2 font-serif text-3xl text-[#0B2419]">{confirmation.order_code}</h1>
-          <p className="mt-2 text-sm text-[#606863]">
-            Đơn hàng đã được tạo với trạng thái {confirmation.order_status}. Thanh toán hiện tại: {confirmation.payment.payment_status}.
-          </p>
-
-          <dl className="mt-7 space-y-3 border-y border-[#E8E9E3] py-5 text-sm">
-            <div className="flex justify-between gap-4"><dt>Tạm tính</dt><dd className="font-semibold">{money(confirmation.subtotal)}</dd></div>
-            <div className="flex justify-between gap-4"><dt>Giảm giá</dt><dd className="font-semibold">-{money(confirmation.discount)}</dd></div>
-            <div className="flex justify-between gap-4"><dt>Phí giao hàng</dt><dd className="font-semibold">{money(confirmation.shipping_fee)}</dd></div>
-            <div className="flex justify-between gap-4 text-base"><dt className="font-bold">Tổng COD</dt><dd className="font-bold">{money(confirmation.total)}</dd></div>
-          </dl>
-
-          <p className="mt-5 text-xs leading-5 text-[#687069]">
-            Giỏ hàng không được xóa cục bộ sau khi đặt hàng; giao diện giữ nguyên dữ liệu backend cho đến khi backend định nghĩa lifecycle giỏ hàng sau tạo đơn.
-          </p>
-
-          <div className="mt-7 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => setCurrentScreen('order-detail')}
-              className="bg-[#0B2419] px-5 py-3 text-xs font-bold uppercase tracking-wider text-white"
-            >
-              Xem đơn hàng
-            </button>
-            <button
-              type="button"
-              onClick={() => setCurrentScreen('my-orders')}
-              className="border border-[#0B2419] px-5 py-3 text-xs font-bold uppercase tracking-wider"
-            >
-              Danh sách đơn hàng
-            </button>
+      <div className="min-h-[70vh] bg-[#FFFDF5] px-4 py-12 sm:px-8">
+        <section className="mx-auto max-w-4xl overflow-hidden border border-[#E8E9E3] bg-white shadow-sm">
+          <div className="bg-[#071A12] px-7 py-8 text-white sm:px-10">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#E8C75B] text-[#071A12]"><span className="material-symbols-outlined text-[26px]">check</span></div>
+              <div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#E8C75B]">Order confirmed</p><h1 className="mt-1 font-serif text-3xl sm:text-4xl">{confirmation.order_code}</h1><p className="mt-2 text-sm text-white/65">Đơn hàng đã được backend tạo thành công.</p></div>
+            </div>
           </div>
-        </div>
-      </section>
+
+          <div className="grid gap-8 p-7 sm:p-10 lg:grid-cols-[1fr_320px]">
+            <div>
+              <h2 className="font-serif text-2xl">Trạng thái đơn hàng</h2>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <div className="border border-[#E8E9E3] bg-[#FFFDF5] p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">Đơn hàng</p><p className="mt-1 font-semibold">{confirmation.order_status}</p></div>
+                <div className="border border-[#E8E9E3] bg-[#FFFDF5] p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">Thanh toán</p><p className="mt-1 font-semibold">{confirmation.payment.payment_status}</p></div>
+              </div>
+              <p className="mt-5 text-xs leading-6 text-[#687069]">Giỏ hàng phía frontend không tự suy đoán lifecycle sau khi tạo đơn; trạng thái tiếp theo tiếp tục do backend quyết định.</p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <button type="button" onClick={() => setCurrentScreen('order-detail')} className="bg-[#0B2419] px-5 py-3 text-xs font-bold uppercase tracking-wider text-white">Xem đơn hàng</button>
+                <button type="button" onClick={() => setCurrentScreen('my-orders')} className="border border-[#0B2419] px-5 py-3 text-xs font-bold uppercase tracking-wider">Danh sách đơn hàng</button>
+              </div>
+            </div>
+
+            <aside className="border border-[#E8E9E3] bg-[#FFFDF5] p-5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#687069]">Order summary</p>
+              <dl className="mt-4 space-y-3 text-sm">
+                <div className="flex justify-between gap-4"><dt>Tạm tính</dt><dd>{money(confirmation.subtotal)}</dd></div>
+                <div className="flex justify-between gap-4"><dt>Giảm giá</dt><dd>-{money(confirmation.discount)}</dd></div>
+                <div className="flex justify-between gap-4"><dt>Phí giao hàng</dt><dd>{money(confirmation.shipping_fee)}</dd></div>
+                <div className="flex justify-between gap-4 border-t border-[#D9DDD6] pt-4 text-base"><dt className="font-bold">Tổng COD</dt><dd className="font-serif text-xl font-bold">{money(confirmation.total)}</dd></div>
+              </dl>
+            </aside>
+          </div>
+        </section>
+      </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-[#FAF9F5] text-[#0B2419]">
       <div className="border-b border-[#E2E5DE] bg-[#F5F6F2] px-4 py-3 sm:px-8">
-        <nav className="mx-auto flex max-w-6xl items-center gap-2 text-sm text-[#606863]">
-          <button type="button" onClick={() => setCurrentScreen('catalog')} className="hover:text-[#0B2419]">Sản phẩm</button>
-          <span>/</span>
-          <span className="font-semibold text-[#0B2419]">Checkout</span>
-        </nav>
+        <nav className="mx-auto flex max-w-7xl items-center gap-2 text-[13px] text-[#606863]"><button type="button" onClick={() => setCurrentScreen('catalog')} className="hover:text-[#0B2419]">Sản phẩm</button><span>/</span><span className="font-semibold text-[#0B2419]">Checkout</span></nav>
       </div>
 
-      <section className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-8 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="space-y-6">
-          <header>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">FIDO Checkout</p>
-            <h1 className="mt-1 font-serif text-3xl">Thông tin nhận hàng</h1>
-            <p className="mt-2 text-sm leading-6 text-[#606863]">
-              Đơn hàng yêu cầu đăng nhập. Backend xác nhận lại giỏ hàng, giá, tồn kho, voucher và toàn bộ số tiền trước khi tạo đơn.
-            </p>
-          </header>
-
-          <div className="space-y-5 border border-[#E8E9E3] bg-white p-6">
-            <label className="block space-y-1.5">
-              <span className="text-xs font-semibold">Số điện thoại người nhận *</span>
-              <input
-                type="tel"
-                maxLength={20}
-                disabled={profileLoading || orderSubmitting}
-                value={phone}
-                onChange={(event) => {
-                  setPhone(event.target.value);
-                  invalidateQuote();
-                }}
-                className="w-full border border-[#D9DDD6] px-3 py-2.5 text-sm outline-none focus:border-[#0B2419] disabled:bg-[#F5F6F2]"
-              />
-            </label>
-
-            <label className="block space-y-1.5">
-              <span className="text-xs font-semibold">Email người nhận</span>
-              <input
-                type="email"
-                maxLength={254}
-                disabled={profileLoading || orderSubmitting}
-                value={email}
-                onChange={(event) => {
-                  setEmail(event.target.value);
-                  invalidateQuote();
-                }}
-                className="w-full border border-[#D9DDD6] px-3 py-2.5 text-sm outline-none focus:border-[#0B2419] disabled:bg-[#F5F6F2]"
-              />
-            </label>
-
-            <label className="block space-y-1.5">
-              <span className="text-xs font-semibold">Địa chỉ nhận hàng *</span>
-              <textarea
-                rows={3}
-                maxLength={500}
-                disabled={profileLoading || orderSubmitting}
-                value={address}
-                onChange={(event) => {
-                  setAddress(event.target.value);
-                  invalidateQuote();
-                }}
-                className="w-full resize-y border border-[#D9DDD6] px-3 py-2.5 text-sm outline-none focus:border-[#0B2419] disabled:bg-[#F5F6F2]"
-                placeholder="Nhập địa chỉ nhận hàng"
-              />
-            </label>
-
-            <label className="block space-y-1.5">
-              <span className="text-xs font-semibold">Voucher</span>
-              <input
-                type="text"
-                maxLength={80}
-                disabled={orderSubmitting}
-                value={voucherCode}
-                onChange={(event) => {
-                  setVoucherCode(event.target.value);
-                  invalidateQuote();
-                }}
-                className="w-full border border-[#D9DDD6] px-3 py-2.5 text-sm uppercase outline-none focus:border-[#0B2419] disabled:bg-[#F5F6F2]"
-                placeholder="Không bắt buộc"
-              />
-            </label>
-
-            <button
-              type="button"
-              disabled={!canRequestQuote || quoteLoading || profileLoading || orderSubmitting}
-              onClick={() => void loadQuote()}
-              className="bg-[#0B2419] px-5 py-3 text-xs font-bold uppercase tracking-wider text-white disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {quoteLoading ? 'Đang kiểm tra...' : quoteIsCurrent ? 'Cập nhật báo giá' : 'Kiểm tra và báo giá'}
-            </button>
+      <section className="border-b border-[#E8E9E3] bg-[#071A12] text-white">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8 lg:px-14">
+          <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#E8C75B]">FIDO Checkout</p>
+          <div className="mt-2 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div><h1 className="font-serif text-3xl sm:text-4xl">Xác nhận thông tin nhận hàng</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-white/65">Giá, tồn kho, voucher và tổng tiền được xác nhận lại từ backend trước khi tạo đơn.</p></div>
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-white/60"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#E8C75B] text-[#071A12]">1</span><span>Thông tin</span><span className="h-px w-6 bg-white/20"/><span className={`flex h-7 w-7 items-center justify-center rounded-full ${quoteIsCurrent ? 'bg-[#E8C75B] text-[#071A12]' : 'border border-white/30'}`}>2</span><span>Báo giá</span></div>
           </div>
+        </div>
+      </section>
 
-          {error && (
-            <div className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
-          )}
+      <section className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:px-14">
+        <div className="space-y-6">
+          <section className="border border-[#E8E9E3] bg-white p-6 shadow-sm sm:p-7">
+            <div className="mb-5 flex items-center gap-3 border-b border-[#E8E9E3] pb-4"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FFFDF5] text-[#0B2419] ring-1 ring-[#E8E9E3]"><span className="material-symbols-outlined text-[20px]">local_shipping</span></span><div><p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">Recipient</p><h2 className="font-serif text-xl">Thông tin người nhận</h2></div></div>
+
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field label="Số điện thoại người nhận *"><input type="tel" maxLength={20} disabled={profileLoading || orderSubmitting} value={phone} onChange={(event) => { setPhone(event.target.value); invalidateQuote(); }} className="field-input" /></Field>
+              <Field label="Email người nhận"><input type="email" maxLength={254} disabled={profileLoading || orderSubmitting} value={email} onChange={(event) => { setEmail(event.target.value); invalidateQuote(); }} className="field-input" /></Field>
+              <div className="sm:col-span-2"><Field label="Địa chỉ nhận hàng *"><textarea rows={4} maxLength={500} disabled={profileLoading || orderSubmitting} value={address} onChange={(event) => { setAddress(event.target.value); invalidateQuote(); }} className="field-input resize-y" placeholder="Nhập địa chỉ nhận hàng" /></Field></div>
+            </div>
+          </section>
+
+          <section className="border border-[#E8E9E3] bg-white p-6 shadow-sm sm:p-7">
+            <div className="mb-5 flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FFFDF5] text-[#0B2419] ring-1 ring-[#E8E9E3]"><span className="material-symbols-outlined text-[20px]">sell</span></span><div><p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">Optional</p><h2 className="font-serif text-xl">Voucher</h2></div></div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <input type="text" maxLength={80} disabled={orderSubmitting} value={voucherCode} onChange={(event) => { setVoucherCode(event.target.value); invalidateQuote(); }} className="field-input min-w-0 flex-1 uppercase" placeholder="Nhập mã voucher nếu có" />
+              <button type="button" disabled={!canRequestQuote || quoteLoading || profileLoading || orderSubmitting} onClick={() => void loadQuote()} className="bg-[#0B2419] px-6 py-3 text-xs font-bold uppercase tracking-wider text-white disabled:cursor-not-allowed disabled:opacity-40">{quoteLoading ? 'Đang kiểm tra...' : quoteIsCurrent ? 'Cập nhật báo giá' : 'Kiểm tra & báo giá'}</button>
+            </div>
+          </section>
+
+          {error && <div className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
         </div>
 
         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
-          <div className="border border-[#E8E9E3] bg-white p-5">
-            <div className="flex items-center justify-between border-b border-[#E8E9E3] pb-3">
-              <h2 className="font-serif text-xl">Giỏ hàng</h2>
-              <span className="text-xs text-[#687069]">{cartItems.length} dòng</span>
-            </div>
+          <section className="overflow-hidden border border-[#E8E9E3] bg-white shadow-sm">
+            <div className="border-b border-[#E8E9E3] bg-[#FFFDF5] px-5 py-4"><div className="flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#687069]">Cart</p><h2 className="font-serif text-xl">Giỏ hàng</h2></div><span className="rounded-full bg-[#0B2419] px-2.5 py-1 text-[10px] font-bold text-[#E8C75B]">{cartItems.length} dòng</span></div></div>
+            {cartItems.length === 0 ? <div className="p-6 text-sm text-[#687069]">Giỏ hàng trống. Hãy quay lại catalog trước khi checkout.</div> : <div className="divide-y divide-[#E8E9E3] px-5">{cartItems.map((item) => <div key={item.id} className="flex gap-3 py-4"><div className="h-16 w-12 shrink-0 overflow-hidden bg-[#F3F4EF]">{item.imageUrl && <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.name}</p><p className="mt-1 text-[10px] uppercase tracking-wide text-[#687069]">{item.size} · {item.color} · x{item.quantity}</p></div><span className="shrink-0 text-xs font-bold">{money(item.price * item.quantity)}</span></div>)}</div>}
+            <div className="flex justify-between border-t border-[#E8E9E3] px-5 py-4 text-sm"><span>Tạm tính giỏ hàng</span><span className="font-serif text-lg font-bold">{money(cartSubtotal)}</span></div>
+          </section>
 
-            {cartItems.length === 0 ? (
-              <div className="py-8 text-sm text-[#687069]">
-                Giỏ hàng trống. Hãy quay lại catalog trước khi checkout.
-              </div>
-            ) : (
-              <div className="divide-y divide-[#E8E9E3]">
-                {cartItems.map((item) => (
-                  <div key={item.id} className="py-3 text-sm">
-                    <div className="flex justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold">{item.name}</p>
-                        <p className="mt-1 text-xs text-[#687069]">{item.size} · {item.color} · x{item.quantity}</p>
-                      </div>
-                      <span className="shrink-0 font-semibold">{money(item.price * item.quantity)}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="flex justify-between border-t border-[#E8E9E3] pt-4 text-sm">
-              <span>Tạm tính giỏ hàng</span>
-              <span className="font-bold">{money(cartSubtotal)}</span>
-            </div>
-          </div>
-
-          <div className="border border-[#E8E9E3] bg-white p-5">
-            <h2 className="font-serif text-xl">Báo giá checkout</h2>
+          <section className={`border p-5 shadow-sm ${quoteIsCurrent ? 'border-[#0B2419] bg-white' : 'border-[#E8E9E3] bg-[#FFFDF5]'}`}>
+            <div className="flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#687069]">Server quote</p><h2 className="font-serif text-xl">Báo giá checkout</h2></div>{quoteIsCurrent && <span className="material-symbols-outlined text-[#1B5038]">verified</span>}</div>
             {!quoteIsCurrent ? (
-              <p className="mt-3 text-sm leading-6 text-[#687069]">
-                Nhập thông tin nhận hàng rồi yêu cầu báo giá. Frontend không tự tính discount, phí giao hàng hoặc tổng thanh toán.
-              </p>
+              <p className="mt-3 text-sm leading-6 text-[#687069]">Hoàn tất thông tin nhận hàng và yêu cầu báo giá. Frontend không tự tính discount, phí giao hàng hoặc tổng thanh toán.</p>
             ) : (
               <>
-                <dl className="mt-4 space-y-2 text-sm">
+                <dl className="mt-5 space-y-2.5 text-sm">
                   <div className="flex justify-between gap-4"><dt>Tạm tính</dt><dd>{money(quote.subtotal)}</dd></div>
                   <div className="flex justify-between gap-4"><dt>Giảm giá</dt><dd>-{money(quote.discount)}</dd></div>
                   <div className="flex justify-between gap-4"><dt>Phí giao hàng</dt><dd>{money(quote.shipping_fee)}</dd></div>
-                  <div className="flex justify-between gap-4 border-t border-[#E8E9E3] pt-3 text-base"><dt className="font-bold">Tổng COD</dt><dd className="font-bold">{money(quote.total)}</dd></div>
+                  <div className="flex justify-between gap-4 border-t border-[#E8E9E3] pt-4"><dt className="font-bold">Tổng COD</dt><dd className="font-serif text-xl font-bold">{money(quote.total)}</dd></div>
                 </dl>
-
-                <p className="mt-3 text-xs text-[#687069]">
-                  {quote.items.length} dòng hàng đã được backend kiểm tra. {voucherCode.trim() ? `Voucher gửi kiểm tra: ${voucherCode.trim()}.` : 'Không dùng voucher.'}
-                </p>
-
-                <button
-                  type="button"
-                  disabled={orderSubmitting}
-                  onClick={() => void placeOrder()}
-                  className="mt-5 w-full bg-[#0B2419] px-5 py-3 text-xs font-bold uppercase tracking-wider text-white disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {orderSubmitting ? 'Đang tạo đơn...' : `Đặt hàng COD — ${money(quote.total)}`}
-                </button>
+                <p className="mt-3 text-[10px] leading-5 text-[#687069]">{quote.items.length} dòng hàng đã được backend kiểm tra.{voucherCode.trim() ? ` Voucher: ${voucherCode.trim()}.` : ''}</p>
+                <button type="button" disabled={orderSubmitting} onClick={() => void placeOrder()} className="mt-5 flex w-full items-center justify-center gap-2 bg-[#0B2419] px-5 py-3.5 text-xs font-bold uppercase tracking-[0.16em] text-white transition hover:bg-[#1B5038] disabled:opacity-40"><span>{orderSubmitting ? 'Đang tạo đơn...' : `Đặt hàng COD · ${money(quote.total)}`}</span><span className="material-symbols-outlined text-[18px]">arrow_forward</span></button>
               </>
             )}
-          </div>
+          </section>
         </aside>
       </section>
     </div>
   );
 };
+
+const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <label className="block space-y-1.5"><span className="text-xs font-semibold text-[#0B2419]">{label}</span>{children}</label>
+);
