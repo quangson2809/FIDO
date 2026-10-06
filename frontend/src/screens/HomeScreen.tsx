@@ -98,11 +98,11 @@ export const HomeScreen: React.FC = () => {
             <div className="grid grid-cols-3 gap-4 border-t border-[#E8E9E3]/80 pb-2 pt-10 text-[#0B2419]">
               <div>
                 <span className="block font-serif text-xl font-bold sm:text-2xl">CATALOG</span>
-                <span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863] sm:text-[10px]">Dữ liệu từ hệ thống</span>
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863] sm:text-[10px]">Bộ sưu tập FIDO</span>
               </div>
               <div>
                 <span className="block font-serif text-xl font-bold sm:text-2xl">SIZE + MÀU</span>
-                <span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863] sm:text-[10px]">Theo ProductVariant</span>
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863] sm:text-[10px]">Lựa chọn biến thể</span>
               </div>
               <div>
                 <span className="block font-serif text-xl font-bold sm:text-2xl">COD</span>
@@ -129,10 +129,10 @@ export const HomeScreen: React.FC = () => {
       <section className="w-full border-y border-[#E8E9E3]/80 bg-[#FFFDF5] py-8">
         <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 sm:grid-cols-2 sm:px-8 lg:grid-cols-4 lg:px-14">
           {[
-            ['account_tree', 'Danh mục rõ ràng', 'Duyệt cấu trúc danh mục từ metadata hiện tại.'],
-            ['tune', 'Chọn đúng biến thể', 'Size và màu được ánh xạ tới ProductVariant thực tế.'],
-            ['inventory_2', 'Giá & khả dụng', 'Frontend hiển thị dữ liệu giá và tồn kho do hệ thống cung cấp.'],
-            ['payments', 'Thanh toán COD', 'Luồng đặt hàng hiện tại sử dụng COD và yêu cầu đăng nhập.'],
+            ['account_tree', 'Danh mục rõ ràng', 'Khám phá sản phẩm theo từng nhóm danh mục.'],
+            ['tune', 'Chọn đúng biến thể', 'Lựa chọn size và màu phù hợp cho từng sản phẩm.'],
+            ['inventory_2', 'Thông tin minh bạch', 'Giá và khả dụng được hiển thị ngay trong trải nghiệm mua sắm.'],
+            ['payments', 'Thanh toán COD', 'Đặt hàng sau khi đăng nhập và thanh toán khi nhận hàng.'],
           ].map(([icon, title, description]) => (
             <div key={title} className="flex items-start gap-4">
               <span className="material-symbols-outlined mt-0.5 text-[28px] text-[#0B2419]">{icon}</span>
@@ -151,7 +151,7 @@ export const HomeScreen: React.FC = () => {
             <div>
               <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.2em] text-[#1B5038]">Khám phá theo nhóm</span>
               <h2 className="font-serif text-3xl text-[#0B2419] sm:text-4xl">DANH MỤC SẢN PHẨM</h2>
-              <p className="mt-2 text-[13px] text-[#606863]">Danh mục bên dưới lấy trực tiếp từ catalog metadata.</p>
+              <p className="mt-2 text-[13px] text-[#606863]">Chọn nhóm sản phẩm phù hợp với phong cách của bạn.</p>
             </div>
             <button
               type="button"
@@ -197,7 +197,7 @@ export const HomeScreen: React.FC = () => {
             <div>
               <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.2em] text-[#1B5038]">FIDO Selection</span>
               <h2 className="font-serif text-3xl text-[#0B2419] sm:text-4xl">SẢN PHẨM NỔI BẬT</h2>
-              <p className="mt-2 text-[13px] text-[#606863]">Tên, hình ảnh, thương hiệu, danh mục và giá lấy từ catalog API.</p>
+              <p className="mt-2 text-[13px] text-[#606863]">Một số thiết kế đang có trong catalog FIDO.</p>
             </div>
             <button
               type="button"
@@ -258,9 +258,9 @@ export const HomeScreen: React.FC = () => {
         <div className="relative mx-auto flex max-w-7xl flex-col gap-8 px-4 py-16 sm:px-8 lg:flex-row lg:items-end lg:justify-between lg:px-14 lg:py-20">
           <div className="max-w-2xl">
             <span className="text-[10px] font-bold uppercase tracking-[0.28em] text-[#E8C75B]">FIDO Editorial</span>
-            <h2 className="mt-3 font-serif text-4xl leading-tight sm:text-5xl">Thiết kế phần nhìn được giữ lại. Dữ liệu nghiệp vụ vẫn theo API.</h2>
+            <h2 className="mt-3 font-serif text-4xl leading-tight sm:text-5xl">Tối giản trong hình thức. Rõ ràng trong từng lựa chọn.</h2>
             <p className="mt-4 max-w-xl text-sm leading-7 text-white/65">
-              Hình nền, banner, typography và bố cục là lớp trình bày. Chỉ dữ liệu nghiệp vụ như sản phẩm, giá, tồn kho, đơn hàng và trạng thái mới phải bám contract backend.
+              Khám phá những thiết kế FIDO trong một không gian tinh gọn, nơi hình ảnh, phom dáng, màu sắc và trải nghiệm lựa chọn sản phẩm được đặt ở trung tâm.
             </p>
           </div>
           <button
