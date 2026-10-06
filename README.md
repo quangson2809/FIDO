@@ -23,6 +23,8 @@ Use JDK 17 and MySQL 8+. Supply database settings through the environment using 
 
 On Unix-like shells use `./gradlew`. Flyway owns schema changes. The default H2 test suite runs with `clean build`; CI additionally tests migration/mapping against MySQL 8.4. For the MySQL test setup, see `.github/workflows/backend-verification.yml`.
 
+Admin routes remain authenticated. For a local database without an administrator, choose one explicit initialization path in `backend/.env`: enable the deterministic development seed with `DEV_SEED_ENABLED=true`, or enable the idempotent superadmin bootstrap with `SUPERADMIN_BOOTSTRAP_ENABLED=true` and provide `SUPERADMIN_PHONE` plus `SUPERADMIN_PASSWORD`. Do not enable either path automatically against an existing shared database.
+
 ## Local frontend
 
 From `frontend/`, configure its `.env.example`, then:
@@ -33,6 +35,8 @@ npm run dev
 npm run lint
 npm run build
 ```
+
+The frontend stores the current bearer token in browser `sessionStorage`, so authenticated routes survive refreshes in the same browser session. A `401 Unauthorized` response clears the stored token. The backend remains the authorization boundary and still validates roles/permissions for every protected operation.
 
 ## Review and delivery
 
