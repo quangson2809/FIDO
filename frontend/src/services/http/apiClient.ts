@@ -1,7 +1,15 @@
 import axios from 'axios';
+import { normalizeApiError } from './apiError';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
+const DEFAULT_API_BASE_URL = 'http://localhost:8080/api/v1';
 const ACCESS_TOKEN_STORAGE_KEY = 'fido.accessToken';
+
+const normalizeBaseUrl = (value: string | undefined): string => {
+  const normalized = value?.trim().replace(/\/+$/, '');
+  return normalized || DEFAULT_API_BASE_URL;
+};
+
+export const API_BASE_URL = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL);
 
 const readStoredAccessToken = (): string | null => {
   if (typeof window === 'undefined') return null;
@@ -37,7 +45,7 @@ export const hasApiAccessToken = (): boolean => accessToken !== null;
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
+    Accept: 'application/json',
   },
 });
 
@@ -56,6 +64,6 @@ apiClient.interceptors.response.use(
     if (axios.isAxiosError(error) && error.response?.status === 401) {
       setApiAccessToken(null);
     }
-    return Promise.reject(error);
+    return Promise.reject(normalizeApiError(error));
   },
 );
