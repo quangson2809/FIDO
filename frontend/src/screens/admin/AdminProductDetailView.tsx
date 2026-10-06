@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { adminCatalogMetaService } from '../../features/catalog/api/adminCatalogMetaService';
 import { adminProductService } from '../../features/catalog/api/adminService';
 import type { AdminProductDetailDto, CatalogMetaDto, SaleStatus } from '../../features/catalog/types';
+import { getApiErrorMessage } from '../../services/http/apiError';
 import { resolveImageUrl } from '../../services/media/imageUrl';
 
 interface Props {
@@ -28,6 +29,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ onNavigateTab, showToa
   const [variantColor, setVariantColor] = useState('');
   const [variantSku, setVariantSku] = useState('');
   const [variantOverridePrice, setVariantOverridePrice] = useState('');
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
 
   const applyProduct = (detail: AdminProductDetailDto) => {
     setProduct(detail);
@@ -57,16 +59,12 @@ export const AdminProductDetailView: React.FC<Props> = ({ onNavigateTab, showToa
     ])
       .then(([detail, metadata]) => {
         if (!active) return;
-        setProduct(detail);
-        setName(detail.name);
-        setDescription(detail.description ?? '');
-        setBasePrice(String(detail.base_price));
-        setSaleStatus(detail.sale_status);
+        applyProduct(detail);
         setMeta(metadata);
         setError(null);
       })
-      .catch(() => {
-        if (active) setError('Không thể tải chi tiết sản phẩm quản trị.');
+      .catch((requestError: unknown) => {
+        if (active) setError(getApiErrorMessage(requestError, 'Không thể tải chi tiết sản phẩm quản trị.'));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -84,6 +82,10 @@ export const AdminProductDetailView: React.FC<Props> = ({ onNavigateTab, showToa
     () => new Map(product?.size_system.size_values.map((item) => [item.size_value_id, item]) ?? []),
     [product],
   );
+  const orderedImages = useMemo(
+    () => [...(product?.images ?? [])].sort((left, right) => left.sort_order - right.sort_order),
+    [product],
+  );
 
   const saveProduct = async () => {
     if (!product || busy) return;
@@ -99,8 +101,8 @@ export const AdminProductDetailView: React.FC<Props> = ({ onNavigateTab, showToa
       }));
       setEditing(false);
       showToast('Đã cập nhật sản phẩm.');
-    } catch {
-      setError('Không thể cập nhật sản phẩm.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể cập nhật sản phẩm.'));
     } finally {
       setBusy(false);
     }
@@ -131,8 +133,8 @@ export const AdminProductDetailView: React.FC<Props> = ({ onNavigateTab, showToa
       setVariantOverridePrice('');
       await refresh();
       showToast('Đã thêm biến thể.');
-    } catch {
-      setError('Không thể thêm biến thể. Kiểm tra tổ hợp size/màu và SKU.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể thêm biến thể. Kiểm tra tổ hợp size/màu và SKU.'));
     } finally {
       setBusy(false);
     }
@@ -146,8 +148,68 @@ export const AdminProductDetailView: React.FC<Props> = ({ onNavigateTab, showToa
         sale_status: current === 'ON_SALE' ? 'STOPPED' : 'ON_SALE',
       });
       await refresh();
-    } catch {
-      setError('Không thể cập nhật trạng thái biến thể.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể cập nhật trạng thái biến thể.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const uploadProductImages = async () => {
+    if (!product || busy || imageFiles.length === 0) return;
+    if (imageFiles.length > 10) {
+      showToast('Mỗi lần chỉ tải tối đa 10 ảnh.');
+      return;
+    }
+
+    setBusy(true);
+    try {
+      applyProduct(await adminProductService.uploadImages(product.product_id, imageFiles));
+      setImageFiles([]);
+      setError(null);
+      showToast('Đã tải ảnh sản phẩm.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể tải ảnh sản phẩm.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const moveImage = async (imageId: number, direction: -1 | 1) => {
+    if (!product || busy) return;
+    const currentIndex = orderedImages.findIndex((image) => image.image_id === imageId);
+    const targetIndex = currentIndex + direction;
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= orderedImages.length) return;
+
+    const nextImages = [...orderedImages];
+    [nextImages[currentIndex], nextImages[targetIndex]] = [nextImages[targetIndex], nextImages[currentIndex]];
+
+    setBusy(true);
+    try {
+      applyProduct(await adminProductService.reorderImages(
+        product.product_id,
+        nextImages.map((image, index) => ({ image_id: image.image_id, sort_order: index })),
+      ));
+      setError(null);
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể đổi thứ tự ảnh.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deleteProductImage = async (imageId: number) => {
+    if (!product || busy) return;
+    if (!window.confirm('Xóa ảnh này khỏi gallery sản phẩm?')) return;
+
+    setBusy(true);
+    try {
+      await adminProductService.deleteImage(product.product_id, imageId);
+      applyProduct(await adminProductService.getProduct(product.product_id));
+      setError(null);
+      showToast('Đã xóa ảnh sản phẩm.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể xóa ảnh sản phẩm.'));
     } finally {
       setBusy(false);
     }
@@ -208,14 +270,17 @@ export const AdminProductDetailView: React.FC<Props> = ({ onNavigateTab, showToa
           </section>
 
           <section className="rounded-lg border border-[#E2E5DE] bg-white p-5">
-            <div className="flex items-center justify-between"><h2 className="font-serif text-xl font-bold">Ảnh sản phẩm</h2><span className="text-xs text-[#606863]">{product.images.length} ảnh</span></div>
-            <p className="mt-1 text-xs text-[#606863]">PATCH hiện nhận danh sách URL; upload file mới chỉ có trên create multipart, nên màn hình không giả lập upload khi sửa.</p>
-            <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-              {product.images.map((image) => {
-                const url = resolveImageUrl(image.image_url);
-                return <figure key={image.image_id} className="border border-[#E2E5DE] bg-[#F5F6F2]">{url ? <img src={url} alt={image.alt_text ?? product.name} className="aspect-[3/4] w-full object-cover" /> : <div className="aspect-[3/4]" />}<figcaption className="p-2 text-[10px] text-[#606863]">Image #{image.image_id}</figcaption></figure>;
-              })}
+            <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-serif text-xl font-bold">Ảnh sản phẩm</h2><p className="mt-1 text-xs text-[#606863]">Ảnh đầu tiên (sort_order = 0) là cover/thumbnail. Upload, reorder và delete đều đi qua API backend.</p></div><span className="text-xs text-[#606863]">{orderedImages.length} ảnh</span></div>
+            <div className="mt-4 flex flex-wrap items-center gap-3 border border-dashed border-[#D9DDD6] bg-[#F8FAF4] p-3">
+              <input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => setImageFiles(Array.from(event.target.files ?? []))} className="min-w-0 flex-1 text-xs" />
+              <button type="button" disabled={busy || imageFiles.length === 0} onClick={() => void uploadProductImages()} className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white disabled:opacity-40">Tải {imageFiles.length || ''} ảnh</button>
             </div>
+            {orderedImages.length === 0 ? <div className="mt-4 border border-[#E2E5DE] bg-[#F5F6F2] p-8 text-center text-sm text-[#606863]">Gallery đang trống.</div> : <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+              {orderedImages.map((image, index) => {
+                const url = resolveImageUrl(image.image_url);
+                return <figure key={image.image_id} className="border border-[#E2E5DE] bg-[#F5F6F2]">{url ? <img src={url} alt={image.alt_text ?? product.name} className="aspect-[3/4] w-full object-cover" /> : <div className="aspect-[3/4]" />}<figcaption className="space-y-2 p-2 text-[10px] text-[#606863]"><div className="flex items-center justify-between gap-2"><span>#{image.image_id} · order {image.sort_order}</span>{index === 0 && <span className="bg-[#0B2419] px-1.5 py-0.5 font-bold text-white">COVER</span>}</div><div className="grid grid-cols-3 gap-1"><button type="button" disabled={busy || index === 0} onClick={() => void moveImage(image.image_id, -1)} className="border border-[#D9DDD6] px-1 py-1 disabled:opacity-30">←</button><button type="button" disabled={busy || index === orderedImages.length - 1} onClick={() => void moveImage(image.image_id, 1)} className="border border-[#D9DDD6] px-1 py-1 disabled:opacity-30">→</button><button type="button" disabled={busy} onClick={() => void deleteProductImage(image.image_id)} className="border border-red-200 px-1 py-1 text-red-700 disabled:opacity-30">Xóa</button></div></figcaption></figure>;
+              })}
+            </div>}
           </section>
         </div>
 
