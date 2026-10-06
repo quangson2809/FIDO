@@ -1,5 +1,6 @@
 package com.fido.config.devseed;
 
+import java.util.List;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -8,6 +9,36 @@ import org.springframework.stereotype.Component;
 @Profile({"dev", "test"})
 public class DevSeedIdentityData {
 
+    private static final List<ReservedNaturalKey> RESERVED_NATURAL_KEYS = List.of(
+            reserved("accounts", "account_id", 900001L, "phone", "0909000001"),
+            reserved("accounts", "account_id", 900002L, "phone", "0909000002"),
+            reserved("accounts", "account_id", 900003L, "phone", "0909000003"),
+            reserved("accounts", "account_id", 900004L, "phone", "0909000004"),
+            reserved("accounts", "account_id", 900005L, "phone", "0909000005"),
+            reserved("accounts", "account_id", 900006L, "phone", "0909000006"),
+            reserved("accounts", "account_id", 900007L, "phone", "0909000007"),
+            reserved("accounts", "account_id", 900008L, "phone", "0909000008"),
+            reserved("roles", "role_id", 900101L, "code", "FIDO_SEED_CATALOG"),
+            reserved("roles", "role_id", 900102L, "code", "FIDO_SEED_INVENTORY"),
+            reserved("roles", "role_id", 900103L, "code", "FIDO_SEED_ORDER"),
+            reserved("roles", "role_id", 900104L, "code", "FIDO_SEED_OPS"),
+            reserved("permissions", "permission_id", 900201L, "code", "CATALOG_READ"),
+            reserved("permissions", "permission_id", 900202L, "code", "CATALOG_WRITE"),
+            reserved("permissions", "permission_id", 900203L, "code", "INVENTORY_READ"),
+            reserved("permissions", "permission_id", 900204L, "code", "INVENTORY_WRITE"),
+            reserved("permissions", "permission_id", 900205L, "code", "ORDER_READ"),
+            reserved("permissions", "permission_id", 900206L, "code", "ORDER_EDIT"),
+            reserved("permissions", "permission_id", 900207L, "code", "ORDER_PROCESS"),
+            reserved("permissions", "permission_id", 900208L, "code", "ORDER_FULFILLMENT"),
+            reserved("permissions", "permission_id", 900209L, "code", "ORDER_EXCEPTION"),
+            reserved("permissions", "permission_id", 900210L, "code", "ORDER_PAYMENT"),
+            reserved("permissions", "permission_id", 900211L, "code", "ORDER_AFTER_SALES"),
+            reserved("permissions", "permission_id", 900212L, "code", "AUDIT_READ"),
+            reserved("permissions", "permission_id", 900213L, "code", "CONTENT_READ"),
+            reserved("permissions", "permission_id", 900214L, "code", "CONTENT_WRITE"),
+            reserved("permissions", "permission_id", 900215L, "code", "CUSTOMER_READ")
+    );
+
     private final JdbcTemplate jdbc;
 
     public DevSeedIdentityData(JdbcTemplate jdbc) {
@@ -15,12 +46,53 @@ public class DevSeedIdentityData {
     }
 
     public void seed(String passwordHash) {
+        assertReservedNaturalKeysAvailable();
         seedPermissions();
         seedRoles();
         seedRolePermissions();
         seedAccounts(passwordHash);
         seedAddresses();
         seedAccountRoles();
+    }
+
+    private void assertReservedNaturalKeysAvailable() {
+        for (ReservedNaturalKey key : RESERVED_NATURAL_KEYS) {
+            List<Long> existingIds = jdbc.queryForList(
+                    "SELECT "
+                            + key.idColumn()
+                            + " FROM "
+                            + key.table()
+                            + " WHERE "
+                            + key.keyColumn()
+                            + "=?",
+                    Long.class,
+                    key.keyValue()
+            );
+
+            if (existingIds.isEmpty()) {
+                continue;
+            }
+
+            Long actualId = existingIds.get(0);
+            if (!Long.valueOf(key.expectedId()).equals(actualId)) {
+                throw new IllegalStateException(
+                        "Development seed conflict: "
+                                + key.table()
+                                + "."
+                                + key.keyColumn()
+                                + "="
+                                + key.keyValue()
+                                + " belongs to "
+                                + key.idColumn()
+                                + "="
+                                + actualId
+                                + "; expected seed "
+                                + key.idColumn()
+                                + "="
+                                + key.expectedId()
+                );
+            }
+        }
     }
 
     private void seedPermissions() {
@@ -48,13 +120,13 @@ public class DevSeedIdentityData {
         jdbc.update("""
                 INSERT INTO roles(role_id, code, name, description) VALUES
                 (900101,'FIDO_SEED_CATALOG','Seed Catalog Staff',
-                    'Role kỹ thuật phục vụ Postman - Catalog'),
+                    'Dev-only: CATALOG_READ + CATALOG_WRITE'),
                 (900102,'FIDO_SEED_INVENTORY','Seed Inventory Staff',
-                    'Role kỹ thuật phục vụ Postman - Inventory'),
+                    'Dev-only: INVENTORY_READ + INVENTORY_WRITE'),
                 (900103,'FIDO_SEED_ORDER','Seed Order Staff',
-                    'Role kỹ thuật phục vụ Postman - Order/COD/After-sales'),
+                    'Dev-only: current ORDER_* capabilities'),
                 (900104,'FIDO_SEED_OPS','Seed Ops Staff',
-                    'Role kỹ thuật phục vụ Postman - Audit/Content/Customer')
+                    'Dev-only: AUDIT_READ + CONTENT_READ/WRITE + CUSTOMER_READ')
                 """);
     }
 
@@ -158,5 +230,30 @@ public class DevSeedIdentityData {
                 accountId,
                 roleId
         );
+    }
+
+    private static ReservedNaturalKey reserved(
+            String table,
+            String idColumn,
+            long expectedId,
+            String keyColumn,
+            String keyValue
+    ) {
+        return new ReservedNaturalKey(
+                table,
+                idColumn,
+                expectedId,
+                keyColumn,
+                keyValue
+        );
+    }
+
+    private record ReservedNaturalKey(
+            String table,
+            String idColumn,
+            long expectedId,
+            String keyColumn,
+            String keyValue
+    ) {
     }
 }
