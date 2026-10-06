@@ -89,7 +89,7 @@ public class PublicCatalogQueryService {
 
         Map<Long, Category> categoriesById = categoryMap(productsOnPage);
         Map<Long, Brand> brandsById = brandMap(productsOnPage);
-        Map<Long, String> imagesByProductId = imageRead.representativeByProductIds(
+        Map<Long, String> thumbnailsByProductId = imageRead.representativeByProductIds(
                 productsOnPage.stream()
                         .map(Product::getProductId)
                         .toList()
@@ -100,7 +100,7 @@ public class PublicCatalogQueryService {
                 .map(product -> new ProductSummaryDto(
                         product.getProductId(),
                         product.getName(),
-                        imagesByProductId.get(product.getProductId()),
+                        thumbnailsByProductId.get(product.getProductId()),
                         CatalogMapper.category(
                                 required(
                                         categoriesById,
@@ -188,7 +188,7 @@ public class PublicCatalogQueryService {
                 .toList();
 
         var productImages = images
-                .findAllByProductIdOrderByImageIdAsc(product.getProductId())
+                .findAllByProductIdOrderBySortOrderAsc(product.getProductId())
                 .stream()
                 .map(CatalogMapper::image)
                 .toList();

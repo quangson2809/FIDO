@@ -115,6 +115,7 @@ public class OrderCreationService {
             orderItem.setOrderId(orderId);
             orderItem.setVariantId(cartItem.variantId());
             orderItem.setProductNameSnapshot(cartItem.productName());
+            orderItem.setImageUrlSnapshot(cartItem.thumbnail());
             orderItem.setSkuSnapshot(cartItem.sku());
             orderItem.setSizeSnapshot(cartItem.size());
             orderItem.setColorSnapshot(cartItem.color());

@@ -13,13 +13,9 @@ import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
 import com.fido.modules.order.repository.ShippingInfoRepository;
-import com.fido.modules.product.service.CatalogVariantReadService;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -39,26 +35,26 @@ public class OrderQueryService {
     private final OrderItemRepository items;
     private final PaymentRepository payments;
     private final ShippingInfoRepository shipping;
+    private final OrderSummaryReadService summaryReader;
     private final OrderActionPolicy actionPolicy;
     private final OrderAuthorization authorization;
-    private final CatalogVariantReadService catalog;
 
     public OrderQueryService(
             OrderRepository orders,
             OrderItemRepository items,
             PaymentRepository payments,
             ShippingInfoRepository shipping,
+            OrderSummaryReadService summaryReader,
             OrderActionPolicy actionPolicy,
-            OrderAuthorization authorization,
-            CatalogVariantReadService catalog
+            OrderAuthorization authorization
     ) {
         this.orders = orders;
         this.items = items;
         this.payments = payments;
         this.shipping = shipping;
+        this.summaryReader = summaryReader;
         this.actionPolicy = actionPolicy;
         this.authorization = authorization;
-        this.catalog = catalog;
     }
 
     public ApiListResponse<OrderSummaryDto> customerOrders(
@@ -74,7 +70,7 @@ public class OrderQueryService {
         Specification<Order> specification = OrderSpecifications.customerOrders(accountId, orderStatus);
         var result = orders.findAll(specification, pagination.toPageable());
         return ApiListResponse.of(
-                summaries(result.getContent()),
+                summaryReader.summaries(result.getContent()),
                 pagination.meta(result.getTotalElements())
         );
     }
@@ -116,7 +112,7 @@ public class OrderQueryService {
                 pagination.toPageable()
         );
         return ApiListResponse.of(
-                summaries(result.getContent()),
+                summaryReader.summaries(result.getContent()),
                 pagination.meta(result.getTotalElements())
         );
     }
@@ -190,42 +186,9 @@ public class OrderQueryService {
 
     private List<com.fido.modules.order.dto.response.OrderItemDto> orderItems(Long orderId) {
         List<OrderItem> orderItems = items.findAllByOrderIdOrderByOrderItemIdAsc(orderId);
-        Map<Long, String> imageUrlsByVariantId = catalog.representativeImageUrlsByVariantIds(
-                orderItems.stream()
-                        .map(OrderItem::getVariantId)
-                        .filter(Objects::nonNull)
-                        .toList()
-        );
         return orderItems.stream()
-                .map(item -> OrderMapper.item(
-                        item,
-                        imageUrlsByVariantId.get(item.getVariantId())
-                ))
+                .map(OrderMapper::item)
                 .toList();
-    }
-
-    private List<OrderSummaryDto> summaries(List<Order> pageOrders) {
-        if (pageOrders.isEmpty()) {
-            return List.of();
-        }
-        Map<Long, Payment> paymentsByOrderId = payments
-                .findAllByOrderIdIn(pageOrders.stream().map(Order::getOrderId).toList())
-                .stream()
-                .collect(Collectors.toMap(Payment::getOrderId, Function.identity()));
-        return pageOrders.stream()
-                .map(order -> OrderMapper.summary(
-                        order,
-                        payment(paymentsByOrderId, order.getOrderId())
-                ))
-                .toList();
-    }
-
-    private Payment payment(Map<Long, Payment> paymentsByOrderId, Long orderId) {
-        Payment payment = paymentsByOrderId.get(orderId);
-        if (payment == null) {
-            throw missingPayment();
-        }
-        return payment;
     }
 
     private Order customerOrder(Long accountId, Long orderId) {

@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { adminProductService } from '../../features/catalog/api/adminService';
 import { catalogService } from '../../features/catalog/api/service';
 import type {
+  AdminProductDetailDto,
   AdminProductSummaryDto,
   CatalogMetaDto,
   ProductCreateInput,
@@ -185,6 +186,20 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
     };
   };
 
+  const finishCreate = async (
+    created: AdminProductDetailDto,
+    message: string,
+  ) => {
+    showToast(message);
+    setForm(initialForm);
+    setImageFiles([]);
+    setShowCreateForm(false);
+    await refreshProducts();
+    const productId = String(created.product_id);
+    setSelectedProductId(productId);
+    onSelectProduct?.(productId);
+  };
+
   const handleCreate = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const payload = createPayload();
@@ -195,20 +210,27 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
 
     setSubmitting(true);
     try {
-      const created = imageFiles.length > 0
-        ? await adminProductService.createProductWithImages(payload, imageFiles)
-        : await adminProductService.createProductJson(payload);
+      const created = await adminProductService.createProduct(payload);
 
-      showToast(`Đã tạo sản phẩm ${created.name}.`);
-      setForm(initialForm);
-      setImageFiles([]);
-      setShowCreateForm(false);
-      await refreshProducts();
-      const productId = String(created.product_id);
-      setSelectedProductId(productId);
-      onSelectProduct?.(productId);
+      if (imageFiles.length === 0) {
+        await finishCreate(created, `Đã tạo sản phẩm ${created.name}.`);
+        return;
+      }
+
+      try {
+        const withImages = await adminProductService.uploadProductImages(
+          created.product_id,
+          imageFiles,
+        );
+        await finishCreate(withImages, `Đã tạo sản phẩm ${withImages.name}.`);
+      } catch {
+        await finishCreate(
+          created,
+          `Đã tạo sản phẩm ${created.name}, nhưng tải ảnh thất bại. Hãy mở sản phẩm và tải ảnh lại.`,
+        );
+      }
     } catch {
-      showToast('Không thể tạo sản phẩm. Kiểm tra phiên đăng nhập, quyền catalog và cấu hình lưu ảnh.');
+      showToast('Không thể tạo sản phẩm. Kiểm tra phiên đăng nhập và quyền catalog.');
     } finally {
       setSubmitting(false);
     }
@@ -240,7 +262,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
             Quản lý sản phẩm
           </h1>
           <p className="mt-2 max-w-3xl text-sm text-[#424844]">
-            Danh sách dùng ảnh đại diện từ API. File ảnh tạo mới được gửi multipart về backend;
+            Tạo metadata sản phẩm trước, sau đó frontend tải file ảnh qua API multipart riêng;
             frontend không giữ khóa hoặc gọi trực tiếp nhà cung cấp lưu trữ ảnh.
           </p>
         </div>
@@ -439,7 +461,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
             />
             <span className="block text-xs text-[#687069]">
               {imageFiles.length > 0
-                ? `${imageFiles.length} file sẽ được gửi multipart tới backend theo đúng thứ tự chọn.`
+                ? `${imageFiles.length} file sẽ được tải sau khi backend tạo Product thành công.`
                 : 'Không chọn file: sản phẩm được tạo không có ảnh.'}
             </span>
           </label>

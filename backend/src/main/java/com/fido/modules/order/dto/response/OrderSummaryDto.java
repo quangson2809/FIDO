@@ -8,6 +8,7 @@ public record OrderSummaryDto(
         String order_code,
         String order_status,
         String payment_status,
+        String image_url,
         BigDecimal total,
         LocalDateTime created_at,
         LocalDateTime completed_at,

@@ -54,37 +54,33 @@ public class CatalogReferenceService {
 
     public Product product(Long productId) {
         return products.findById(productId)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND)
-                );
+                .orElseThrow(CatalogReferenceService::notFound);
+    }
+
+    @Transactional
+    public Product productForUpdate(Long productId) {
+        return products.findByIdForUpdate(productId)
+                .orElseThrow(CatalogReferenceService::notFound);
     }
 
     public Category category(Long categoryId) {
         return categories.findById(categoryId)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND)
-                );
+                .orElseThrow(CatalogReferenceService::notFound);
     }
 
     public Brand brand(Long brandId) {
         return brands.findById(brandId)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND)
-                );
+                .orElseThrow(CatalogReferenceService::notFound);
     }
 
     public SizeSystem sizeSystem(Long sizeSystemId) {
         return sizeSystems.findById(sizeSystemId)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND)
-                );
+                .orElseThrow(CatalogReferenceService::notFound);
     }
 
     public SizeValue sizeValue(Long sizeValueId) {
         return sizeValues.findById(sizeValueId)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND)
-                );
+                .orElseThrow(CatalogReferenceService::notFound);
     }
 
     public Map<Long, SizeValue> sizeValuesById(
@@ -105,9 +101,7 @@ public class CatalogReferenceService {
 
     public Color color(Long colorId) {
         return colors.findById(colorId)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND)
-                );
+                .orElseThrow(CatalogReferenceService::notFound);
     }
 
     public Map<Long, Color> colorsById(
@@ -161,10 +155,14 @@ public class CatalogReferenceService {
 
         for (Long requestedId : requestedIds) {
             if (!valuesById.containsKey(requestedId)) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+                throw notFound();
             }
         }
 
         return Map.copyOf(valuesById);
+    }
+
+    private static ResponseStatusException notFound() {
+        return new ResponseStatusException(HttpStatus.NOT_FOUND);
     }
 }

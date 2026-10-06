@@ -6,12 +6,6 @@ import type {
   ProductCreateInput,
 } from '../types';
 
-const withoutJsonImages = (product: ProductCreateInput): ProductCreateInput => {
-  const metadata = { ...product };
-  delete metadata.images;
-  return metadata;
-};
-
 export const adminProductService = {
   async getProducts(): Promise<ApiListResponse<AdminProductSummaryDto>> {
     return apiClient.get<
@@ -28,7 +22,7 @@ export const adminProductService = {
     return response.data;
   },
 
-  async createProductJson(product: ProductCreateInput): Promise<AdminProductDetailDto> {
+  async createProduct(product: ProductCreateInput): Promise<AdminProductDetailDto> {
     const response = await apiClient.post<
       ApiResponse<AdminProductDetailDto>,
       ApiResponse<AdminProductDetailDto>
@@ -36,21 +30,17 @@ export const adminProductService = {
     return response.data;
   },
 
-  async createProductWithImages(
-    product: ProductCreateInput,
+  async uploadProductImages(
+    productId: number,
     imageFiles: readonly File[],
   ): Promise<AdminProductDetailDto> {
     const form = new FormData();
-    form.append(
-      'product',
-      new Blob([JSON.stringify(withoutJsonImages(product))], { type: 'application/json' }),
-    );
     imageFiles.forEach((image) => form.append('images', image));
 
     const response = await apiClient.post<
       ApiResponse<AdminProductDetailDto>,
       ApiResponse<AdminProductDetailDto>
-    >('/admin/products', form);
+    >(`/admin/products/${productId}/images`, form);
     return response.data;
   },
 };

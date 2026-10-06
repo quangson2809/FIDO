@@ -46,4 +46,7 @@ public class OrderItem {
 
     @Column(name = "line_total_snapshot", nullable = false, precision = 18, scale = 2, updatable = false)
     private BigDecimal lineTotalSnapshot;
+
+    @Column(name = "image_url_snapshot", nullable = true, length = 1000, updatable = false)
+    private String imageUrlSnapshot;
 }

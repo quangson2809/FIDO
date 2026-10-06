@@ -1,8 +1,12 @@
 package com.fido.modules.product.service;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.net.SocketTimeoutException;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
+import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -18,30 +22,32 @@ import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
-public class ImgBbImageStorage implements ProductImageStorage {
+public class ImgBbImageStorageClient implements ImageStorageGateway {
 
-    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
-    private static final Duration READ_TIMEOUT = Duration.ofSeconds(20);
+    private static final Logger log = LoggerFactory.getLogger(ImgBbImageStorageClient.class);
 
     private final RestClient restClient;
     private final String apiKey;
 
     @Autowired
-    public ImgBbImageStorage(
+    public ImgBbImageStorageClient(
             @Value("${app.image-storage.imgbb.base-url:https://api.imgbb.com}") String baseUrl,
-            @Value("${app.image-storage.imgbb.api-key:}") String apiKey
+            @Value("${app.image-storage.imgbb.api-key:}") String apiKey,
+            @Value("${app.image-storage.imgbb.connect-timeout:5s}") Duration connectTimeout,
+            @Value("${app.image-storage.imgbb.read-timeout:20s}") Duration readTimeout
     ) {
-        this(createClient(baseUrl), apiKey);
+        this(createClient(baseUrl, connectTimeout, readTimeout), apiKey);
     }
 
-    ImgBbImageStorage(RestClient restClient, String apiKey) {
+    ImgBbImageStorageClient(RestClient restClient, String apiKey) {
         this.restClient = restClient;
         this.apiKey = apiKey;
     }
 
     @Override
-    public StoredImage upload(MultipartFile image) {
+    public UploadedImage upload(MultipartFile image) {
         requireConfigured();
+        long startedAt = System.nanoTime();
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("image", image.getResource());
@@ -62,20 +68,23 @@ public class ImgBbImageStorage implements ProductImageStorage {
                     || response.data() == null
                     || response.data().url() == null
                     || response.data().url().isBlank()) {
+                logProviderResult("invalid_response", startedAt);
                 throw integrationFailure(
                         HttpStatus.BAD_GATEWAY,
                         "Image storage returned an invalid upload response"
                 );
             }
 
-            return new StoredImage(
-                    response.data().url(),
-                    response.data().id(),
-                    response.data().delete_url()
-            );
+            logProviderResult("success", startedAt);
+            return new UploadedImage(response.data().url());
         } catch (ProductImageStorageException exception) {
             throw exception;
         } catch (RestClientResponseException exception) {
+            log.warn(
+                    "Image storage request completed result=http_error providerStatus={} durationMs={}",
+                    exception.getStatusCode().value(),
+                    elapsedMillis(startedAt)
+            );
             throw integrationFailure(
                     HttpStatus.BAD_GATEWAY,
                     "Image storage rejected the upload with HTTP "
@@ -83,17 +92,20 @@ public class ImgBbImageStorage implements ProductImageStorage {
             );
         } catch (ResourceAccessException exception) {
             if (causedByTimeout(exception)) {
+                logProviderResult("timeout", startedAt);
                 throw integrationFailure(
                         HttpStatus.GATEWAY_TIMEOUT,
                         "Image storage request timed out"
                 );
             }
 
+            logProviderResult("unavailable", startedAt);
             throw integrationFailure(
                     HttpStatus.BAD_GATEWAY,
                     "Image storage is unavailable"
             );
         } catch (RestClientException exception) {
+            logProviderResult("client_error", startedAt);
             throw integrationFailure(
                     HttpStatus.BAD_GATEWAY,
                     "Image storage request failed"
@@ -101,10 +113,14 @@ public class ImgBbImageStorage implements ProductImageStorage {
         }
     }
 
-    private static RestClient createClient(String baseUrl) {
+    private static RestClient createClient(
+            String baseUrl,
+            Duration connectTimeout,
+            Duration readTimeout
+    ) {
         var requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(CONNECT_TIMEOUT);
-        requestFactory.setReadTimeout(READ_TIMEOUT);
+        requestFactory.setConnectTimeout(connectTimeout);
+        requestFactory.setReadTimeout(readTimeout);
 
         return RestClient.builder()
                 .baseUrl(baseUrl)
@@ -133,6 +149,27 @@ public class ImgBbImageStorage implements ProductImageStorage {
         return false;
     }
 
+    private void logProviderResult(String result, long startedAt) {
+        if ("success".equals(result)) {
+            log.info(
+                    "Image storage request completed result={} durationMs={}",
+                    result,
+                    elapsedMillis(startedAt)
+            );
+            return;
+        }
+
+        log.warn(
+                "Image storage request completed result={} durationMs={}",
+                result,
+                elapsedMillis(startedAt)
+        );
+    }
+
+    private long elapsedMillis(long startedAt) {
+        return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
+    }
+
     private ProductImageStorageException integrationFailure(
             HttpStatus status,
             String reason
@@ -140,17 +177,16 @@ public class ImgBbImageStorage implements ProductImageStorage {
         return new ProductImageStorageException(status, reason);
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private record ImgBbUploadResponse(
             ImgBbUploadData data,
-            Boolean success,
-            Integer status
+            Boolean success
     ) {
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private record ImgBbUploadData(
-            String id,
-            String url,
-            String delete_url
+            String url
     ) {
     }
 }

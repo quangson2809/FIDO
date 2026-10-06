@@ -26,15 +26,11 @@ public final class OrderMapper {
     }
 
     public static OrderItemDto item(OrderItem item) {
-        return item(item, null);
-    }
-
-    public static OrderItemDto item(OrderItem item, String imageUrl) {
         return new OrderItemDto(
                 item.getOrderItemId(),
                 item.getVariantId(),
                 item.getProductNameSnapshot(),
-                imageUrl,
+                item.getImageUrlSnapshot(),
                 item.getSkuSnapshot(),
                 item.getSizeSnapshot(),
                 item.getColorSnapshot(),
@@ -76,12 +72,17 @@ public final class OrderMapper {
         );
     }
 
-    public static OrderSummaryDto summary(Order order, Payment payment) {
+    public static OrderSummaryDto summary(
+            Order order,
+            Payment payment,
+            String imageUrl
+    ) {
         return new OrderSummaryDto(
                 order.getOrderId(),
                 order.getOrderCode(),
                 order.getOrderStatus(),
                 payment.getPaymentStatus(),
+                imageUrl,
                 order.getTotalSnapshot(),
                 order.getCreatedAt(),
                 order.getCompletedAt(),

@@ -398,7 +398,6 @@ abstract class CatalogHttpSupport {
                 )
         );
 
-
         long categoryId = categoryResponse.data()
                 .get("data")
                 .get("category_id")
@@ -415,7 +414,6 @@ abstract class CatalogHttpSupport {
                         "Brand " + UUID.randomUUID()
                 )
         );
-
 
         long brandId = brandResponse.data()
                 .get("data")
@@ -446,7 +444,6 @@ abstract class CatalogHttpSupport {
                 )
         );
 
-
         long systemId = systemResponse.data()
                 .get("data")
                 .get("size_system_id")
@@ -471,7 +468,6 @@ abstract class CatalogHttpSupport {
                 )
         );
 
-
         long colorId = colorResponse.data()
                 .get("data")
                 .get("color_id")
@@ -479,7 +475,7 @@ abstract class CatalogHttpSupport {
 
         colors.add(colorId);
 
-        var createProductResponse = call(
+        var createdProduct = call(
                 "POST",
                 "/api/v1/admin/products",
                 writer.token(),
@@ -491,14 +487,6 @@ abstract class CatalogHttpSupport {
                         "base_price", 100000,
                         "sale_status", "ON_SALE",
                         "gender", "unisex",
-                        "images", List.of(
-                                Map.of(
-                                        "image_url",
-                                        "https://example.test/shirt.png",
-                                        "alt_text",
-                                        "shirt"
-                                )
-                        ),
                         "variants", List.of(
                                 Map.of(
                                         "size_value_id", sizeM,
@@ -511,23 +499,44 @@ abstract class CatalogHttpSupport {
                 )
         );
 
+        assertEquals(201, createdProduct.status(), createdProduct.body());
 
-        long productId = createProductResponse.data()
+        long productId = createdProduct.data()
                 .get("data")
                 .get("product_id")
                 .asLong();
-
         products.add(productId);
 
-        long variantId = createProductResponse.data()
+        long variantId = createdProduct.data()
                 .get("data")
                 .get("variants")
                 .get(0)
                 .get("variant_id")
                 .asLong();
 
+        var productWithImage = call(
+                "PATCH",
+                "/api/v1/admin/products/" + productId,
+                writer.token(),
+                Map.of(
+                        "images",
+                        List.of(
+                                Map.of(
+                                        "image_url",
+                                        "https://example.test/shirt.png",
+                                        "alt_text",
+                                        "shirt",
+                                        "sort_order",
+                                        0
+                                )
+                        )
+                )
+        );
+
+        assertEquals(200, productWithImage.status(), productWithImage.body());
+
         return new CatalogFixture(categoryId, brandId, systemId, sizeM, colorId,
                 productId, variantId, categoryResponse, brandResponse, systemResponse,
-                colorResponse, createProductResponse);
+                colorResponse, createdProduct);
     }
 }

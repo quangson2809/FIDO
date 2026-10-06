@@ -18,13 +18,13 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
 
-class ImgBbImageStorageTests {
+class ImgBbImageStorageClientTests {
 
     @Test
-    void uploadReturnsProviderMetadataWithoutChangingTheDirectUrl() {
+    void validResponseReturnsOnlyCatalogFacingImageData() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        ImgBbImageStorage storage = new ImgBbImageStorage(
+        ImgBbImageStorageClient storage = new ImgBbImageStorageClient(
                 builder.baseUrl("https://api.imgbb.com").build(),
                 "server-secret"
         );
@@ -48,41 +48,24 @@ class ImgBbImageStorageTests {
                         MediaType.APPLICATION_JSON
                 ));
 
-        ProductImageStorage.StoredImage stored = storage.upload(image("front.png"));
+        ImageStorageGateway.UploadedImage uploaded = storage.upload(image("front.png"));
 
-        assertEquals("https://i.ibb.co/example/front.png", stored.url());
-        assertEquals("provider-id", stored.providerId());
-        assertEquals("https://ibb.co/delete/provider-token", stored.deleteUrl());
+        assertEquals("https://i.ibb.co/example/front.png", uploaded.url());
         server.verify();
     }
 
     @Test
-    void upstreamErrorIsMappedWithoutLeakingApiKey() {
-        RestClient.Builder builder = RestClient.builder();
-        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        ImgBbImageStorage storage = new ImgBbImageStorage(
-                builder.baseUrl("https://api.imgbb.com").build(),
-                "server-secret"
-        );
-
-        server.expect(requestTo(
-                        "https://api.imgbb.com/1/upload?key=server-secret"
-                ))
-                .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
-
-        ProductImageStorageException error = assertThrows(
-                ProductImageStorageException.class,
-                () -> storage.upload(image("front.png"))
-        );
-
-        assertEquals(HttpStatus.BAD_GATEWAY, error.getStatusCode());
-        assertFalse(error.getReason().contains("server-secret"));
-        assertFalse(error.getReason().contains("api.imgbb.com"));
-        server.verify();
+    void providerBadRequestMapsToBadGatewayWithoutLeakingSecret() {
+        assertProviderErrorMapped(HttpStatus.BAD_REQUEST);
     }
 
     @Test
-    void timeoutIsMappedToGatewayTimeout() {
+    void invalidProviderKeyMapsToBadGatewayWithoutLeakingSecret() {
+        assertProviderErrorMapped(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void timeoutMapsToGatewayTimeout() {
         RestClient restClient = RestClient.builder()
                 .baseUrl("https://api.imgbb.com")
                 .requestFactory((uri, method) -> {
@@ -90,7 +73,7 @@ class ImgBbImageStorageTests {
                 })
                 .build();
 
-        ImgBbImageStorage storage = new ImgBbImageStorage(
+        ImgBbImageStorageClient storage = new ImgBbImageStorageClient(
                 restClient,
                 "server-secret"
         );
@@ -102,6 +85,57 @@ class ImgBbImageStorageTests {
 
         assertEquals(HttpStatus.GATEWAY_TIMEOUT, error.getStatusCode());
         assertFalse(error.getReason().contains("server-secret"));
+    }
+
+    @Test
+    void malformedProviderResponseMapsToBadGateway() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        ImgBbImageStorageClient storage = new ImgBbImageStorageClient(
+                builder.baseUrl("https://api.imgbb.com").build(),
+                "server-secret"
+        );
+
+        server.expect(requestTo(
+                        "https://api.imgbb.com/1/upload?key=server-secret"
+                ))
+                .andRespond(withSuccess(
+                        "{not-valid-json",
+                        MediaType.APPLICATION_JSON
+                ));
+
+        ProductImageStorageException error = assertThrows(
+                ProductImageStorageException.class,
+                () -> storage.upload(image("front.png"))
+        );
+
+        assertEquals(HttpStatus.BAD_GATEWAY, error.getStatusCode());
+        assertFalse(error.getReason().contains("server-secret"));
+        server.verify();
+    }
+
+    private void assertProviderErrorMapped(HttpStatus providerStatus) {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        ImgBbImageStorageClient storage = new ImgBbImageStorageClient(
+                builder.baseUrl("https://api.imgbb.com").build(),
+                "server-secret"
+        );
+
+        server.expect(requestTo(
+                        "https://api.imgbb.com/1/upload?key=server-secret"
+                ))
+                .andRespond(withStatus(providerStatus));
+
+        ProductImageStorageException error = assertThrows(
+                ProductImageStorageException.class,
+                () -> storage.upload(image("front.png"))
+        );
+
+        assertEquals(HttpStatus.BAD_GATEWAY, error.getStatusCode());
+        assertFalse(error.getReason().contains("server-secret"));
+        assertFalse(error.getReason().contains("api.imgbb.com"));
+        server.verify();
     }
 
     private MultipartFile image(String filename) {

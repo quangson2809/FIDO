@@ -87,4 +87,41 @@ class DatabaseConstraintsTests {
         assertEquals(0, jdbc.queryForObject("SELECT unit_price_snapshot FROM order_items WHERE order_item_id=1",java.math.BigDecimal.class).compareTo(new java.math.BigDecimal("100.00")));
         assertEquals("UNPAID", jdbc.queryForObject("SELECT payment_status FROM payments WHERE order_id=1",String.class));
     }
+
+    @Test
+    void productImageSortOrderIsNonNegativeAndUniquePerProduct() {
+        rejects("UPDATE product_images SET sort_order=-1 WHERE image_id=1");
+        rejects("""
+                INSERT INTO product_images (product_id,image_url,alt_text,sort_order)
+                VALUES (1,'https://example.invalid/duplicate.png',NULL,0)
+                """);
+
+        jdbc.update("""
+                INSERT INTO products (
+                    product_id, category_id, brand_id, size_system_id, name,
+                    description, gender, season, style, material_care,
+                    base_price, sale_status, created_at, updated_at
+                ) VALUES (
+                    2,1,1,1,'Second product',NULL,NULL,NULL,NULL,NULL,
+                    100.00,'fixture-status',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
+                )
+                """);
+        jdbc.update("""
+                INSERT INTO product_images (product_id,image_url,alt_text,sort_order)
+                VALUES (2,'https://example.invalid/second.png',NULL,0)
+                """);
+
+        assertEquals(1, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM product_images WHERE product_id=2 AND sort_order=0",
+                Integer.class
+        ));
+    }
+
+    @Test
+    void legacyOrderItemMayKeepNullImageSnapshot() {
+        assertNull(jdbc.queryForObject(
+                "SELECT image_url_snapshot FROM order_items WHERE order_item_id=1",
+                String.class
+        ));
+    }
 }

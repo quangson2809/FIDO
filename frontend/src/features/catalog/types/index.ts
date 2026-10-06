@@ -44,6 +44,7 @@ export interface ProductImageDto {
   image_id: number;
   image_url: string;
   alt_text: string | null;
+  sort_order: number;
 }
 
 export interface ProductVariantDto {
@@ -122,11 +123,6 @@ export interface ProductCreateVariantInput {
   sale_status: string;
 }
 
-export interface ProductCreateImageInput {
-  image_url: string;
-  alt_text?: string | null;
-}
-
 export interface ProductCreateInput {
   category_id: number;
   brand_id?: number | null;
@@ -139,7 +135,6 @@ export interface ProductCreateInput {
   material_care?: string | null;
   base_price: number;
   sale_status: string;
-  images?: ProductCreateImageInput[];
   variants?: ProductCreateVariantInput[];
 }
 

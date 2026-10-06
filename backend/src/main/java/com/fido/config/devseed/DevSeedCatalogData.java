@@ -98,14 +98,14 @@ public class DevSeedCatalogData {
     private void seedImages() {
         jdbc.update("""
                 INSERT INTO product_images(
-                    image_id,product_id,image_url,alt_text
+                    image_id,product_id,image_url,alt_text,sort_order
                 ) VALUES
                 (961001,960001,'https://example.com/fido/tee-black.jpg',
-                    'FIDO Essential Tee'),
+                    'FIDO Essential Tee',0),
                 (961002,960002,'https://example.com/fido/denim-blue.jpg',
-                    'FIDO Denim Straight'),
+                    'FIDO Denim Straight',0),
                 (961003,960003,'https://example.com/fido/archive.jpg',
-                    'FIDO Archive Tee')
+                    'FIDO Archive Tee',0)
                 """);
     }
 
