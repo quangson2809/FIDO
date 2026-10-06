@@ -6,15 +6,25 @@ const formatDate = (value: string | null): string => value
   ? new Date(value).toLocaleString('vi-VN')
   : 'Chưa có đơn';
 
-export const AdminCustomersView: React.FC<{
-  onNavigateTab?: (tab: string, breadcrumb: string) => void;
+interface AdminCustomersViewProps {
+  initialCustomerId?: number;
+  onSelectCustomer?: (customerId: number) => void;
+  onCloseDetail?: () => void;
   showToast: (msg: string) => void;
-}> = ({ showToast }) => {
+}
+
+export const AdminCustomersView: React.FC<AdminCustomersViewProps> = ({
+  initialCustomerId,
+  onSelectCustomer,
+  onCloseDetail,
+  showToast,
+}) => {
   const [queryDraft, setQueryDraft] = useState('');
   const [query, setQuery] = useState('');
   const [customers, setCustomers] = useState<CustomerSummaryDto[]>([]);
   const [detail, setDetail] = useState<CustomerDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,12 +45,47 @@ export const AdminCustomersView: React.FC<{
     return () => { active = false; };
   }, [query]);
 
+  useEffect(() => {
+    if (!initialCustomerId) {
+      setDetail(null);
+      return undefined;
+    }
+
+    let active = true;
+    setDetailLoading(true);
+    void adminAccessService.getCustomer(initialCustomerId)
+      .then((result) => {
+        if (active) setDetail(result);
+      })
+      .catch(() => {
+        if (active) showToast('Không thể tải hồ sơ khách hàng.');
+      })
+      .finally(() => {
+        if (active) setDetailLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [initialCustomerId, showToast]);
+
   const openDetail = async (customerId: number) => {
+    if (onSelectCustomer) {
+      onSelectCustomer(customerId);
+      return;
+    }
+
+    setDetailLoading(true);
     try {
       setDetail(await adminAccessService.getCustomer(customerId));
     } catch {
       showToast('Không thể tải hồ sơ khách hàng.');
+    } finally {
+      setDetailLoading(false);
     }
+  };
+
+  const closeDetail = () => {
+    setDetail(null);
+    onCloseDetail?.();
   };
 
   return (
@@ -48,7 +93,7 @@ export const AdminCustomersView: React.FC<{
       <header>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">Customer accounts</p>
         <h1 className="mt-1 font-serif text-3xl text-[#0B2419]">Khách hàng</h1>
-        <p className="mt-2 max-w-3xl text-sm text-[#606863]">Dữ liệu lấy từ API tài khoản khách hàng. FIDO hiện không có hạng hội viên, điểm loyalty, hồ sơ số đo hoặc CRM note trong contract.</p>
+        <p className="mt-2 max-w-3xl text-sm text-[#606863]">Dữ liệu lấy từ API tài khoản khách hàng. Không hiển thị loyalty, số đo hay CRM note khi backend không có contract tương ứng.</p>
       </header>
 
       <form onSubmit={(event) => { event.preventDefault(); setLoading(true); setQuery(queryDraft.trim()); }} className="flex max-w-2xl gap-3">
@@ -76,14 +121,20 @@ export const AdminCustomersView: React.FC<{
         </table>
       </div>
 
-      {detail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={() => setDetail(null)}>
+      {(detail || detailLoading) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={closeDetail}>
           <div className="max-h-[85vh] w-full max-w-3xl overflow-y-auto bg-white p-6 shadow-xl" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="flex items-start justify-between gap-4"><div><p className="text-xs uppercase tracking-wider text-[#687069]">Tài khoản #{detail.account.account_id}</p><h2 className="font-serif text-2xl">{detail.account.phone}</h2><p className="text-sm text-[#687069]">{detail.account.email ?? 'Không có email'}</p></div><button type="button" onClick={() => setDetail(null)} className="text-2xl">×</button></div>
-            <h3 className="mt-6 font-bold">Địa chỉ</h3>
-            <div className="mt-2 space-y-2">{detail.addresses.length === 0 ? <p className="text-sm text-[#687069]">Chưa có địa chỉ.</p> : detail.addresses.map((address) => <div key={address.address_id} className="border border-[#E8E9E3] p-3 text-sm">{address.address_text}</div>)}</div>
-            <h3 className="mt-6 font-bold">Đơn hàng gần đây</h3>
-            <div className="mt-2 space-y-2">{detail.orders.length === 0 ? <p className="text-sm text-[#687069]">Chưa có đơn hàng.</p> : detail.orders.map((order) => <div key={order.order_id} className="flex justify-between gap-4 border border-[#E8E9E3] p-3 text-sm"><span>{order.order_code} · {order.order_status}</span><strong>{order.total.toLocaleString('vi-VN')}₫</strong></div>)}</div>
+            {detailLoading || !detail ? (
+              <div className="py-12 text-center text-sm text-[#687069]">Đang tải hồ sơ khách hàng...</div>
+            ) : (
+              <>
+                <div className="flex items-start justify-between gap-4"><div><p className="text-xs uppercase tracking-wider text-[#687069]">Tài khoản #{detail.account.account_id}</p><h2 className="font-serif text-2xl">{detail.account.phone}</h2><p className="text-sm text-[#687069]">{detail.account.email ?? 'Không có email'}</p></div><button type="button" onClick={closeDetail} className="text-2xl">×</button></div>
+                <h3 className="mt-6 font-bold">Địa chỉ</h3>
+                <div className="mt-2 space-y-2">{detail.addresses.length === 0 ? <p className="text-sm text-[#687069]">Chưa có địa chỉ.</p> : detail.addresses.map((address) => <div key={address.address_id} className="border border-[#E8E9E3] p-3 text-sm">{address.address_text}</div>)}</div>
+                <h3 className="mt-6 font-bold">Đơn hàng gần đây</h3>
+                <div className="mt-2 space-y-2">{detail.orders.length === 0 ? <p className="text-sm text-[#687069]">Chưa có đơn hàng.</p> : detail.orders.map((order) => <div key={order.order_id} className="flex justify-between gap-4 border border-[#E8E9E3] p-3 text-sm"><span>{order.order_code} · {order.order_status}</span><strong>{order.total.toLocaleString('vi-VN')}₫</strong></div>)}</div>
+              </>
+            )}
           </div>
         </div>
       )}
