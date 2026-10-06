@@ -51,17 +51,138 @@
   --font-title-md: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-label-lg: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-label-sm: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  /* Shared shape and elevation scale. Existing Tailwind utilities consume these tokens. */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+
+  --shadow-xs: 0 1px 2px rgb(7 26 18 / 0.06), 0 1px 1px rgb(7 26 18 / 0.04);
+  --shadow-sm: 0 2px 5px rgb(7 26 18 / 0.07), 0 1px 2px rgb(7 26 18 / 0.05);
+  --shadow-md: 0 10px 24px -12px rgb(7 26 18 / 0.24), 0 3px 8px rgb(7 26 18 / 0.07);
+  --shadow-lg: 0 18px 42px -20px rgb(7 26 18 / 0.3), 0 8px 18px rgb(7 26 18 / 0.08);
+  --shadow-xl: 0 26px 60px -28px rgb(7 26 18 / 0.38), 0 12px 24px rgb(7 26 18 / 0.1);
+  --shadow-2xl: 0 36px 80px -32px rgb(7 26 18 / 0.46), 0 16px 32px rgb(7 26 18 / 0.12);
+}
+
+:root {
+  --glass-light: rgb(255 255 255 / 0.82);
+  --glass-light-strong: rgb(255 255 255 / 0.92);
+  --glass-dark: rgb(7 26 18 / 0.88);
+  --glass-border-light: rgb(255 255 255 / 0.62);
+  --glass-border-dark: rgb(232 199 91 / 0.34);
+  --surface-highlight: inset 0 1px 0 rgb(255 255 255 / 0.68);
+  --motion-fast: 160ms;
+  --motion-standard: 240ms;
+  --motion-slow: 520ms;
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 @layer base {
+  html {
+    background-color: #faf9f5;
+  }
+
   body {
     font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
     color: #191c19;
-    background-color: #ffffff;
+    background:
+      radial-gradient(circle at 12% 2%, rgb(232 199 91 / 0.09), transparent 26rem),
+      #faf9f5;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
   }
 
   h1, h2, h3, .font-serif, .font-display-lg, .font-headline-lg, .font-headline-md, .font-headline-sm {
     font-family: "Playfair Display", Georgia, serif;
+  }
+
+  :where(button, a, input, select, textarea, summary) {
+    transition-duration: var(--motion-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+
+  :where(button, a, input, select, textarea, summary):focus-visible {
+    outline: 2px solid #e8c75b;
+    outline-offset: 3px;
+  }
+
+  img[class*="object-cover"] {
+    background-color: #edeee9;
+    filter: saturate(0.94) contrast(1.025);
+    transition:
+      transform var(--motion-slow) var(--ease-standard),
+      filter var(--motion-standard) var(--ease-standard);
+  }
+
+  .group:hover img[class*="object-cover"] {
+    filter: saturate(1.03) contrast(1.04);
+  }
+}
+
+@layer components {
+  .app-header-glass {
+    background: var(--glass-light-strong);
+    border-bottom-color: rgb(11 36 25 / 0.11);
+    box-shadow: var(--shadow-sm), var(--surface-highlight);
+    backdrop-filter: blur(18px) saturate(1.15);
+    -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  }
+
+  .surface-popover {
+    background: var(--glass-light-strong);
+    border-color: rgb(11 36 25 / 0.1);
+    box-shadow: var(--shadow-xl), var(--surface-highlight);
+    backdrop-filter: blur(18px) saturate(1.12);
+    -webkit-backdrop-filter: blur(18px) saturate(1.12);
+  }
+
+  .floating-glass {
+    background: var(--glass-dark);
+    border-color: var(--glass-border-dark);
+    box-shadow: var(--shadow-2xl), inset 0 1px 0 rgb(255 255 255 / 0.08);
+    backdrop-filter: blur(20px) saturate(1.18);
+    -webkit-backdrop-filter: blur(20px) saturate(1.18);
+  }
+
+  .drawer-surface {
+    background: rgb(253 253 251 / 0.96);
+    box-shadow: var(--shadow-2xl), inset 1px 0 0 var(--glass-border-light);
+    backdrop-filter: blur(16px) saturate(1.08);
+    -webkit-backdrop-filter: blur(16px) saturate(1.08);
+  }
+
+  .admin-sidebar-depth {
+    box-shadow: 16px 0 42px -28px rgb(0 0 0 / 0.7), inset -1px 0 0 rgb(255 255 255 / 0.05);
+  }
+
+  .admin-header-glass {
+    background: var(--glass-light-strong);
+    box-shadow: var(--shadow-sm), var(--surface-highlight);
+    backdrop-filter: blur(18px) saturate(1.12);
+    -webkit-backdrop-filter: blur(18px) saturate(1.12);
+  }
+
+  :where(.app-shell, .admin-shell) :where(button, a)[class*="shadow-"]:hover {
+    transform: translateY(-1px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  :where(.app-shell, .admin-shell) :where(button, a)[class*="shadow-"]:hover {
+    transform: none;
   }
 }
 

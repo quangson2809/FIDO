@@ -19,7 +19,7 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Main Header */}
-      <header className="sticky top-0 left-0 w-full h-[68px] bg-white border-b border-[#E2E5DE] z-40 px-4 sm:px-8 flex items-center justify-between shadow-sm">
+      <header className="app-header-glass sticky top-0 left-0 w-full h-[68px] border-b border-[#E2E5DE] z-40 px-4 sm:px-8 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-6 sm:gap-8">
           {/* Brand Logo */}
           <button
@@ -59,7 +59,7 @@ export const Header: React.FC = () => {
             {isCategoryOpen && (
               <div
                 onMouseLeave={() => setIsCategoryOpen(false)}
-                className="absolute left-0 top-full w-60 bg-white border border-[#E2E5DE] shadow-xl py-2 rounded-md z-50 animate-in fade-in slide-in-from-top-1 duration-150"
+                className="surface-popover absolute left-0 top-full w-60 border border-[#E2E5DE] shadow-xl py-2 rounded-md z-50 animate-in fade-in slide-in-from-top-1 duration-150"
               >
                 <button
                   type="button"

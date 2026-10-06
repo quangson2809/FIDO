@@ -182,7 +182,7 @@ export const AdminScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8faf4] font-['Plus_Jakarta_Sans',sans-serif] text-[#191c19] antialiased">
+    <div className="admin-shell min-h-screen bg-[#f8faf4] font-['Plus_Jakarta_Sans',sans-serif] text-[#191c19] antialiased">
       {/* Mobile Sidebar Backdrop */}
       {mobileSidebarOpen && (
         <div
@@ -193,7 +193,7 @@ export const AdminScreen: React.FC = () => {
 
       {/* FIXED SIDEBAR */}
       <aside
-        className={`fixed left-0 top-0 h-screen w-[260px] bg-[#0B2419] z-50 flex flex-col justify-between select-none font-['Plus_Jakarta_Sans',sans-serif] transition-transform duration-200 ${
+        className={`admin-sidebar-depth fixed left-0 top-0 h-screen w-[260px] bg-[#0B2419] z-50 flex flex-col justify-between select-none font-['Plus_Jakarta_Sans',sans-serif] transition-transform duration-200 ${
           mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
@@ -612,9 +612,9 @@ export const AdminScreen: React.FC = () => {
       {/* CONTENT WRAPPER WITH PADDING-LEFT [260px] */}
       <div className="pl-0 lg:pl-[260px]">
         {/* FIXED HEADER */}
-        <header className="fixed top-0 left-0 lg:left-[260px] right-0 z-40 bg-white font-['Plus_Jakarta_Sans',sans-serif]">
+        <header className="admin-header-glass fixed top-0 left-0 lg:left-[260px] right-0 z-40 font-['Plus_Jakarta_Sans',sans-serif]">
           {/* Top Header Row (64px) */}
-          <div className="h-[64px] bg-[#FFFFFF] border-b border-[#E2E5DE] flex items-center justify-between px-4 sm:px-6">
+          <div className="h-[64px] bg-white/90 border-b border-[#E2E5DE] flex items-center justify-between px-4 sm:px-6">
             {/* Mobile Menu Button */}
             <div className="flex items-center gap-2 lg:hidden">
               <button
@@ -668,7 +668,7 @@ export const AdminScreen: React.FC = () => {
           </div>
 
           {/* Breadcrumb Row (42px) */}
-          <div className="h-[42px] bg-[#F5F6F2] border-b border-[#E2E5DE] flex items-center px-4 sm:px-6">
+          <div className="h-[42px] bg-[#F5F6F2]/90 border-b border-[#E2E5DE] flex items-center px-4 sm:px-6">
             <div className="flex items-center gap-1.5 text-[12px] font-medium text-[#606863]">
               <span>Hệ thống Quản trị</span>
               <span className="text-[#A3AAA5]">/</span>

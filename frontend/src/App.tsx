@@ -57,7 +57,7 @@ const MainContent: React.FC = () => {
   // Dedicated Admin layout: do NOT wrap in customer Header/Footer/CartDrawer
   if (currentScreen === 'admin') {
     return (
-      <div className="min-h-screen bg-[#071911] text-[#0B2419] font-['Plus_Jakarta_Sans',sans-serif] selection:bg-[#0B2419] selection:text-[#E8C75B]">
+      <div className="admin-shell min-h-screen bg-[#071911] text-[#0B2419] font-['Plus_Jakarta_Sans',sans-serif] selection:bg-[#0B2419] selection:text-[#E8C75B]">
         <AdminScreen />
         <ScreenSwitcherBar />
         {toastMessage && (
@@ -73,7 +73,7 @@ const MainContent: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#FAF9F5] text-[#0B2419] font-['Plus_Jakarta_Sans',sans-serif] selection:bg-[#0B2419] selection:text-[#E8C75B]">
+    <div className="app-shell flex flex-col min-h-screen bg-[#FAF9F5] text-[#0B2419] font-['Plus_Jakarta_Sans',sans-serif] selection:bg-[#0B2419] selection:text-[#E8C75B]">
       {/* Top Header for Storefront */}
       <Header />
 

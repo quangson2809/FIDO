@@ -50,7 +50,7 @@ export const CartDrawer: React.FC = () => {
 
       {/* Slide-in Drawer Container from Right */}
       <div className="fixed inset-y-0 right-0 max-w-full flex pl-4 sm:pl-6">
-        <aside className="w-screen max-w-[480px] bg-[#fdfdfb] shadow-2xl flex flex-col h-full border-l border-[#E8E9E3] relative z-10 transition-transform duration-300 ease-out animate-in slide-in-from-right">
+        <aside className="drawer-surface w-screen max-w-[480px] shadow-2xl flex flex-col h-full border-l border-[#E8E9E3] relative z-10 transition-transform duration-300 ease-out animate-in slide-in-from-right">
           {/* 1. Drawer Header */}
           <div className="px-6 py-5 border-b border-[#E8E9E3] bg-[#FFFFFF] flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5">

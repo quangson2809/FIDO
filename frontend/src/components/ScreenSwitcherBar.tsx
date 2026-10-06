@@ -24,7 +24,7 @@ export const ScreenSwitcherBar: React.FC = () => {
 
   return (
     <aside aria-label="Bộ điều hướng màn hình nhanh" className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 max-w-[95vw]">
-      <div className="bg-[#071A12]/95 backdrop-blur-md text-white border border-[#E8C75B]/40 rounded-full shadow-2xl p-1.5 flex items-center gap-1.5 sm:gap-2">
+      <div className="floating-glass backdrop-blur-md text-white border border-[#E8C75B]/40 rounded-full shadow-2xl p-1.5 flex items-center gap-1.5 sm:gap-2">
         {/* Toggle / Current Screen Indicator */}
         <button
           type="button"
@@ -124,7 +124,7 @@ export const ScreenSwitcherBar: React.FC = () => {
 
       {/* Expanded Modal Grid with all 13 screens */}
       {isExpanded && (
-        <div className="absolute bottom-14 left-1/2 -translate-x-1/2 w-[92vw] max-w-2xl bg-[#071A12]/95 backdrop-blur-xl border border-[#E8C75B]/40 rounded-2xl shadow-2xl p-4 sm:p-5 text-white animate-in fade-in slide-in-from-bottom-2 duration-200">
+        <div className="floating-glass absolute bottom-14 left-1/2 -translate-x-1/2 w-[92vw] max-w-2xl backdrop-blur-xl border border-[#E8C75B]/40 rounded-2xl shadow-2xl p-4 sm:p-5 text-white animate-in fade-in slide-in-from-bottom-2 duration-200">
           <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-[#E8C75B]">auto_stories</span>
