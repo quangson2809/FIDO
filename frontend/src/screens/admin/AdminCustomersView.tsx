@@ -85,6 +85,11 @@ export const AdminCustomersView: React.FC<AdminCustomersViewProps> = ({
     onCloseDetail?.();
   };
 
+  const showDetailModal = Boolean(
+    (initialCustomerId && (detail || detailLoading))
+    || (!onSelectCustomer && (detail || detailLoading)),
+  );
+
   return (
     <section className="space-y-6">
       <header>
@@ -118,7 +123,7 @@ export const AdminCustomersView: React.FC<AdminCustomersViewProps> = ({
         </table>
       </div>
 
-      {(detail || detailLoading) && (
+      {showDetailModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={closeDetail}>
           <div className="max-h-[85vh] w-full max-w-3xl overflow-y-auto bg-white p-6 shadow-xl" onMouseDown={(event) => event.stopPropagation()}>
             {detailLoading || !detail ? (
