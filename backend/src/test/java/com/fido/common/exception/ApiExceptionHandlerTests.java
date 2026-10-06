@@ -86,7 +86,6 @@ class ApiExceptionHandlerTests {
     }
 
     private MockHttpServletRequest request(String method, String uri) {
-        var request = new MockHttpServletRequest(method, uri);
-        return request;
+        return new MockHttpServletRequest(method, uri);
     }
 }
