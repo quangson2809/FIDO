@@ -14,6 +14,7 @@ Thumbs.db
 # Backend / Gradle
 backend/.gradle/
 backend/build/
+backend/bin/
 backend/out/
 *.log
 
