@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 export const AdminCustomerDetailView: React.FC<{
   onNavigateTab: (tab: string, breadcrumb: string) => void;
   showToast: (msg: string) => void;
-}> = ({ onNavigateTab, showToast }) => {
+}> = ({ onNavigateTab }) => {
   const [activeCustomer] = useState({
     id: 'CUST-0428',
     phone: '0912 345 678',

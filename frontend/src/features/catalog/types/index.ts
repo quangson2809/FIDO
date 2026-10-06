@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-export interface ProductDto {
-=======
 export interface CategoryDto {
   category_id: number;
   parent_category_id: number | null;
@@ -61,17 +58,58 @@ export interface ProductVariantDto {
 }
 
 export interface ProductSummaryDto {
->>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
   product_id: number;
   name: string;
+  image_url: string | null;
+  category: CategoryDto;
+  brand: BrandDto | null;
   base_price: number;
   sale_status: string;
 }
 
+export interface ProductDetailDto {
+  product_id: number;
+  name: string;
+  description: string | null;
+  category: CategoryDto;
+  brand: BrandDto | null;
+  size_system: SizeSystemDto;
+  gender: string | null;
+  season: string | null;
+  style: string | null;
+  material_care: string | null;
+  base_price: number;
+  sale_status: string;
+  images: ProductImageDto[];
+  variants: ProductVariantDto[];
+}
+
+export interface CatalogProductView {
+  id: string;
+  product_id: number;
+  sku: string;
+  name: string;
+  category: string;
+  parentCategory: string;
+  brand: string;
+  price: number;
+  base_price: number;
+  originalPrice?: number;
+  imageUrl: string;
+  galleryImages: string[];
+  statusBadge?: string;
+  description: string;
+  fabric: string;
+  colors: Array<{ name: string; hex: string }>;
+  sizes: Array<string | number>;
+  variants: ProductVariantDto[];
+  rating: number;
+  reviewsCount: number;
+  inStockCount: number;
+  sale_status: string;
+}
+
 export interface CatalogService {
-<<<<<<< HEAD
-  getProducts(): Promise<ProductDto[]>;
-=======
   getProducts(): Promise<CatalogProductView[]>;
   getProductDetail(productId: number | string): Promise<CatalogProductView>;
   getMeta(): Promise<CatalogMetaDto>;
@@ -119,5 +157,4 @@ export interface AdminProductDetailDto extends ProductDetailDto {
   size_system_id: number;
   created_at: string;
   updated_at: string;
->>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
 }
