@@ -1,15 +1,23 @@
 package com.fido.modules.product.repository;
 
 import com.fido.modules.product.entity.Product;
+import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
+import org.springframework.data.repository.query.Param;
 
 public interface ProductRepository extends Repository<Product, Long>, JpaSpecificationExecutor<Product> {
     Optional<Product> findById(Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select product from Product product where product.productId = :productId")
+    Optional<Product> findByIdForUpdate(@Param("productId") Long productId);
+
     Product save(Product entity);
     List<Product> findAllByProductIdIn(Collection<Long> productIds);
     boolean existsByCategoryId(Long categoryId);

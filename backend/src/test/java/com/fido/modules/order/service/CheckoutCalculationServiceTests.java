@@ -154,6 +154,7 @@ class CheckoutCalculationServiceTests {
                 variantId,
                 quantity,
                 "Product",
+                null,
                 "SKU",
                 "M",
                 "Black",

@@ -143,12 +143,21 @@ public class CartQueryService {
     ) {
         CartItem item = resolved.item();
         var variant = resolved.variant();
+<<<<<<< HEAD
 
+=======
+        String thumbnail = variant.imageUrl();
+>>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
         return new CartItemDto(
                 item.getCartItemId(),
                 item.getVariantId(),
                 item.getQuantity(),
                 variant.productName(),
+<<<<<<< HEAD
+=======
+                thumbnail,
+                thumbnail,
+>>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
                 variant.size(),
                 variant.color(),
                 variant.unitPrice(),
@@ -167,6 +176,7 @@ public class CartQueryService {
                 item.getVariantId(),
                 item.getQuantity(),
                 variant.productName(),
+                variant.imageUrl(),
                 variant.sku(),
                 variant.size(),
                 variant.color(),

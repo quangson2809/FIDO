@@ -93,6 +93,8 @@
 | 76 | `GET` | `/api/v1/admin/customers` | `account` | JWT + permission |
 | 77 | `GET` | `/api/v1/admin/customers/{customerId}` | `account` | JWT + permission |
 
+The Product-image commands below are project-owner refinements added after the consolidated 77-endpoint Analyst baseline. They preserve the global `/api/v1/admin` prefix and `CATALOG_WRITE` authorization convention; they are not renumbered into the historical 77-endpoint table.
+
 ## 3. Important command semantics
 
 ### API #19 — Checkout quote
@@ -125,6 +127,99 @@ All actions must validate current state, permissions, side effects and idempoten
 
 Operations: `RETURN | EXCHANGE_SIZE`. This is a command over Order/Payment/Inventory/Audit; do not create an `after_sales_cases` resource/table in baseline.
 
+<<<<<<< HEAD
+=======
+### API #29 — Product creation — Phase 10 BREAKING CHANGE
+
+Effective from Phase 10, Product creation and binary image upload are separate commands:
+
+- `POST /api/v1/admin/products` consumes **`application/json` only**.
+- The create request contains Product metadata and optional variants; it does **not** contain `images`, `image_url[]` or binary files.
+- `multipart/form-data` on `POST /api/v1/admin/products` is no longer supported.
+- Consumers that previously sent `images[]` URLs or multipart files to API #29 must migrate to the two-step flow: create Product first, then upload files through the dedicated Product-image endpoint below.
+- This is an intentional breaking API change. Do not preserve the old JSON-image or multipart-create representations as parallel compatibility write paths.
+
+### Product image upload command — project-owner refinement Phase 10
+
+`POST /api/v1/admin/products/{productId}/images`
+
+- Requires catalog write authorization and consumes `multipart/form-data`.
+- The request uses one or more repeated `images` file parts. Empty uploads are invalid.
+- The backend validates all files before beginning provider uploads, uploads them in request order, and persists only the provider-returned full direct URLs.
+- Uploaded images are appended after the Product's existing image collection. Their `sort_order` values continue from the current contiguous sequence; the first image uploaded to an image-less Product becomes `sort_order = 0` and therefore the cover.
+- Success returns HTTP `201 Created` with the existing object envelope containing the updated `AdminProductDetailDto`.
+- Provider calls are outside the database transaction. If a remote upload succeeds and a later provider/database step fails, a provider-side orphan can remain because provider deletion/compensation is not part of the current storage gateway contract.
+
+### API #30 — Product PATCH image replacement semantics — Phase 10
+
+`PATCH /api/v1/admin/products/{productId}` keeps Product metadata updates and may optionally carry an authoritative image collection:
+
+```json
+{
+  "images": [
+    {
+      "image_url": "https://example.test/front.png",
+      "alt_text": "front",
+      "sort_order": 0
+    },
+    {
+      "image_url": "https://example.test/back.png",
+      "alt_text": null,
+      "sort_order": 1
+    }
+  ]
+}
+```
+
+- If `images` is omitted, the current Product image collection is unchanged.
+- If `images` is present, it replaces the complete collection.
+- `images: []` deletes all Product images.
+- Every item requires `image_url` and `sort_order`; `alt_text` is nullable/optional.
+- `sort_order` must be non-negative, unique within the Product and contiguous `0..n-1`; `sort_order = 0` is the cover.
+- Replacement validates the complete requested order before deleting the existing collection.
+
+### Product image read semantics — project-owner refinement 2026-10-04
+
+- Public `ProductSummaryDto` and `AdminProductSummaryDto` expose nullable `thumbnail` only; Product list responses do **not** return `images[]`.
+- `thumbnail` is the `image_url` of the ProductImage at `sort_order = 0`; a Product with no images returns `thumbnail = null`.
+- `ProductDetailDto` and `AdminProductDetailDto` return the full `images[]` collection, always ordered by the server in ascending `sort_order`.
+- Each detail image exposes `image_id`, `image_url`, `alt_text`, and `sort_order`. JSON keeps the global `snake_case` convention.
+- Cart and Order presentation/snapshot contracts keep their existing nullable `image_url`; this read-model refinement does not rename those fields.
+- Product image ordering is catalog presentation state; historical OrderItem snapshots remain authoritative and are not rewritten by later catalog edits.
+
+### Product image remove command — project-owner refinement 2026-10-04
+
+`DELETE /api/v1/admin/products/{productId}/images/{imageId}`
+
+- Requires catalog write authorization.
+- `imageId` must belong to `productId`; missing or foreign image identity is treated as not found for that Product.
+- Remove the `product_images` row from the catalog only. Do **not** invoke provider-side remote delete in this command.
+- Remaining image positions are compacted to contiguous `0..n-1` in the same transaction. Removing the cover therefore promotes the next image to `sort_order = 0`.
+- The current requirement does not define a minimum image count; removing the last image is valid and leaves the Product with zero images.
+- Success returns HTTP `204 No Content`.
+
+### Product image reorder command — project-owner refinement 2026-10-04
+
+`PATCH /api/v1/admin/products/{productId}/images`
+
+Request:
+
+```json
+{
+  "images": [
+    {"image_id": 13, "sort_order": 0},
+    {"image_id": 11, "sort_order": 1}
+  ]
+}
+```
+
+- Requires catalog write authorization.
+- The request may include all or a subset of the Product's current images. Unspecified images retain their current `sort_order`; after requested changes are applied, the complete resulting order must still be unique and contiguous `0..n-1`.
+- An image that does not belong to the Product is not found; duplicate image entries, duplicate resulting positions or gaps are conflicts.
+- Reorder is one database transaction. The implementation must preserve `UNIQUE(product_id, sort_order)` while changing positions and must not expose an intermediate duplicate ordering such as `0,0,2`.
+- The response uses the existing object envelope with the updated `AdminProductDetailDto`; its `images[]` sequence reflects the persisted order.
+
+>>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
 ### API #54 — GoodsReceipt actions
 
 `CONFIRM | CANCEL`; CONFIRM increments stock and creates InventoryTransaction exactly once.

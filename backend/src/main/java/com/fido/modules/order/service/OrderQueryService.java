@@ -34,6 +34,7 @@ public class OrderQueryService {
     private final OrderItemRepository items;
     private final PaymentRepository payments;
     private final ShippingInfoRepository shipping;
+    private final OrderSummaryReadService summaryReader;
     private final OrderActionPolicy actionPolicy;
     private final OrderAuthorization authorization;
 
@@ -42,6 +43,7 @@ public class OrderQueryService {
             OrderItemRepository items,
             PaymentRepository payments,
             ShippingInfoRepository shipping,
+            OrderSummaryReadService summaryReader,
             OrderActionPolicy actionPolicy,
             OrderAuthorization authorization
     ) {
@@ -49,6 +51,7 @@ public class OrderQueryService {
         this.items = items;
         this.payments = payments;
         this.shipping = shipping;
+        this.summaryReader = summaryReader;
         this.actionPolicy = actionPolicy;
         this.authorization = authorization;
     }
@@ -79,7 +82,11 @@ public class OrderQueryService {
                 .toList();
 
         return ApiListResponse.of(
+<<<<<<< HEAD
                 data,
+=======
+                summaryReader.summaries(result.getContent()),
+>>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
                 pagination.meta(result.getTotalElements())
         );
     }
@@ -140,7 +147,11 @@ public class OrderQueryService {
                 .toList();
 
         return ApiListResponse.of(
+<<<<<<< HEAD
                 data,
+=======
+                summaryReader.summaries(result.getContent()),
+>>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
                 pagination.meta(result.getTotalElements())
         );
     }
@@ -235,6 +246,7 @@ public class OrderQueryService {
         );
     }
 
+<<<<<<< HEAD
     private OrderSummaryDto summary(Order order) {
         return OrderMapper.summary(
                 order,
@@ -246,6 +258,16 @@ public class OrderQueryService {
             Long accountId,
             Long orderId
     ) {
+=======
+    private List<com.fido.modules.order.dto.response.OrderItemDto> orderItems(Long orderId) {
+        List<OrderItem> orderItems = items.findAllByOrderIdOrderByOrderItemIdAsc(orderId);
+        return orderItems.stream()
+                .map(OrderMapper::item)
+                .toList();
+    }
+
+    private Order customerOrder(Long accountId, Long orderId) {
+>>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
         Order order = order(orderId);
 
         if (!Objects.equals(

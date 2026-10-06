@@ -1,0 +1,1497 @@
+{
+  "revision": "629c37c639c25b678ed5a346300621dcfdd1e314",
+  "run_id": 37298988932,
+  "job_id": 111726929276,
+  "event": "push",
+  "conclusion": "success",
+  "suites": {
+    "h2": {
+      "artifact_id": 11340960037,
+      "sha256": "ef63037fba87cdd751359b2a749a007b9494d1c6289b741582c0d93c883e00da",
+      "totals": {
+        "tests": 139,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 1
+      },
+      "results": [
+        {
+          "name": "com.fido.FidoApplicationTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.common.ApiContractMatrixTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "contractMatrixCoversExactlyTheCurrentApiBaseline()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.common.ApiBaselineRouteContractTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "registeredApiRoutesMatchBaselineAndApprovedRefinements()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.common.ApiFoundationHttpTests",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.common.ArchitectureBoundaryTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "backendPreservesDocumentedDependencyBoundaries()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.common.response.ApiResponseJsonContractTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "serializesObjectEnvelopeWithDataKey()",
+              "status": "PASS"
+            },
+            {
+              "name": "serializesListEnvelopeWithAnalystPaginationKeys()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.common.response.PaginationTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.config.devseed.DevDataSeedServiceTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.config.documentation.OpenApiConfigTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.account.AccountAccessServiceTests",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.account.AccountAuthorizationHttpTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.account.AddressHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.account.AuthenticationProfileHttpTests",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.account.CustomerQueryApiTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.account.RbacHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.account.RbacTransactionTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.account.StaffHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.account.SuperadminBootstrapHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.audit.AuditQueryApiTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.cart.CartAccessHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.cart.CartCheckoutImageHttpTests",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "currentCoverIsReturnedAsCartAndCheckoutThumbnail()",
+              "status": "PASS"
+            },
+            {
+              "name": "deletingPreviousCoverPromotesCurrentCoverOnNextRead()",
+              "status": "PASS"
+            },
+            {
+              "name": "changedCoverIsVisibleOnNextCartAndCheckoutRead()",
+              "status": "PASS"
+            },
+            {
+              "name": "productWithoutImageReturnsNullThumbnail()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.cart.CartItemHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.cart.CheckoutQuoteHttpTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.content.ContentPageApiTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.inventory.GoodsReceiptHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.inventory.InventoryAdjustmentHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.inventory.InventoryAuthorizationHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.inventory.InventoryConcurrencyTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.inventory.InventoryPhase4TransactionTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.order.CheckoutConsistencyHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.order.OrderActionContractHttpTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "deliveryFailedAcceptsOmittedOptionalReason()",
+              "status": "PASS"
+            },
+            {
+              "name": "cancelAcceptsOmittedOptionalReason()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.order.OrderAuditPrivacyHttpTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.order.OrderAuthorizationHttpTests",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.order.OrderConcurrencyTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.order.OrderLifecycleHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.order.OrderImageSnapshotHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "createdOrderKeepsImageSnapshotAfterCoverChangeAndDeletion()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.order.OrderStockHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.order.service.CheckoutCalculationServiceTests",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.order.service.OrderCreationImageSnapshotTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "createCopiesCheckoutCoverIntoOrderItemSnapshot()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.order.service.OrderQueryServiceTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.product.CatalogAdminHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.product.CatalogMasterDataHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.product.CatalogPublicHttpTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.product.ProductImageAdminHttpTests",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "patchImagesUsesExplicitNormalizedOrderAndCanClearCollection()",
+              "status": "PASS"
+            },
+            {
+              "name": "removeImageRejectsForeignOrMissingImageAndAllowsProductWithZeroImages()",
+              "status": "PASS"
+            },
+            {
+              "name": "reorderRejectsNegativeSortOrderAndImageOutsideProduct()",
+              "status": "PASS"
+            },
+            {
+              "name": "reorderImagesKeepsNormalizedUniqueSortOrderAndRequiresWriteCapability()",
+              "status": "PASS"
+            },
+            {
+              "name": "patchWithoutImagesKeepsCurrentCollection()",
+              "status": "PASS"
+            },
+            {
+              "name": "patchRejectsNullImageEntryBeforeChangingGallery()",
+              "status": "PASS"
+            },
+            {
+              "name": "productCreateRejectsLegacyJsonImages()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.ProductImageAuthorizationHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "deleteImageRequiresCatalogWritePermission()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.ProductImageConcurrencyTests",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "parallelReordersCommitOneCompletePermutationWithoutLosingImages()",
+              "status": "PASS"
+            },
+            {
+              "name": "[1] emptyGallery = true",
+              "status": "PASS"
+            },
+            {
+              "name": "[2] emptyGallery = false",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.ProductImageTransactionHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "databaseConflictRollsBackNewImageRowAfterProviderUpload()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.ProductImageUploadHttpTests",
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "multipartUploadPersistsImagesInRequestOrderAndEstablishesCover()",
+              "status": "PASS"
+            },
+            {
+              "name": "multipartUploadRejectsEmptyFileBeforeCallingStorage()",
+              "status": "PASS"
+            },
+            {
+              "name": "laterProviderFailureKeepsExistingGalleryAndDoesNotPersistSuccessfulPrefix()",
+              "status": "PASS"
+            },
+            {
+              "name": "providerTimeoutReturns504AndKeepsExistingGallery()",
+              "status": "PASS"
+            },
+            {
+              "name": "multipartUploadRejectsUnsupportedFormatBeforeCallingStorage()",
+              "status": "PASS"
+            },
+            {
+              "name": "storageFailureReturnsGatewayErrorWithoutPersistingProductImage()",
+              "status": "PASS"
+            },
+            {
+              "name": "databaseFailureOnSecondInsertRollsBackAlreadyInsertedPrefix()",
+              "status": "PASS"
+            },
+            {
+              "name": "multipartLayerRejectsExcessiveFileCountBeforeCallingStorage()",
+              "status": "PASS"
+            },
+            {
+              "name": "multipartUploadRejectsForgedMimeBeforeCallingStorage()",
+              "status": "PASS"
+            },
+            {
+              "name": "multipartUploadRequiresCatalogWriteBeforeCallingStorage()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.ProductReadModelHttpTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "productListsUseOneThumbnailWhileDetailsReturnServerOrderedImages()",
+              "status": "PASS"
+            },
+            {
+              "name": "productWithoutImagesHasNullThumbnailAndEmptyDetailImages()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.repository.ProductImageRepositoryTests",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "galleryQueryOrdersBySortOrderAscending()",
+              "status": "PASS"
+            },
+            {
+              "name": "duplicateProductAndSortOrderIsRejectedOnFlush()",
+              "status": "PASS"
+            },
+            {
+              "name": "representativeQueryUsesSortOrderZeroInsteadOfLowestImageId()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.service.ImageRetentionPolicyTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "remoteStorageBoundaryRemainsUploadOnlyForMvp()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.service.ImgBbImageStorageClientTests",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "malformedProviderResponseMapsToBadGateway()",
+              "status": "PASS"
+            },
+            {
+              "name": "timeoutMapsToGatewayTimeout()",
+              "status": "PASS"
+            },
+            {
+              "name": "providerBadRequestMapsToBadGatewayWithoutLeakingSecret()",
+              "status": "PASS"
+            },
+            {
+              "name": "validResponseReturnsOnlyCatalogFacingImageData()",
+              "status": "PASS"
+            },
+            {
+              "name": "invalidProviderKeyMapsToBadGatewayWithoutLeakingSecret()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.service.ProductImageAdminServiceTests",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "removeCoverPromotesNextImageAndNormalizesSortOrder()",
+              "status": "PASS"
+            },
+            {
+              "name": "reorderSelectsNewCoverAndProducesDenseSortOrder()",
+              "status": "PASS"
+            },
+            {
+              "name": "reorderRejectsDuplicateFinalPositionBeforeMutation()",
+              "status": "PASS"
+            },
+            {
+              "name": "appendUploadedImagesContinuesDenseSortOrder()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.service.ProductImageReadServiceTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "representativeImagesUseOneDistinctBatchQuery()",
+              "status": "PASS"
+            },
+            {
+              "name": "emptyRepresentativeRequestDoesNotHitRepository()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.service.ProductImageUploadServiceTests",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "storageFailurePreventsImagePersistence()",
+              "status": "PASS"
+            },
+            {
+              "name": "validatesProductThenUploadsInRequestOrderAndPersistsUrls()",
+              "status": "PASS"
+            },
+            {
+              "name": "rejectsEmptyUploadAndFilesAboveConfiguredLimit()",
+              "status": "PASS"
+            },
+            {
+              "name": "rejectsTooManyFilesBeforeUploadingAnyFile()",
+              "status": "PASS"
+            },
+            {
+              "name": "acceptsOnlySupportedImageSignatures()",
+              "status": "PASS"
+            },
+            {
+              "name": "validatesAllFilesBeforeUploadingAnyFile()",
+              "status": "PASS"
+            },
+            {
+              "name": "rejectsForgedOrMismatchedMimeBeforeCallingStorage()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.service.PublicCatalogQueryServiceTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.report.ReportApiTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.persistence.CleanMigrationTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 1,
+          "cases": [
+            {
+              "name": "cleanThenMigrateRebuildsAnIsolatedTestDatabase()",
+              "status": "PASS"
+            },
+            {
+              "name": "cleanThenMigrateRebuildsAnIsolatedMysqlDatabase()",
+              "status": "SKIPPED"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.persistence.DatabaseConstraintsTests",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.persistence.MigrationTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "validatesAndDoesNotReapplyMigrationsOnRestart()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.persistence.ProductImageOrderingMigrationTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "v4BackfillsLegacyImageOrderPerProductByImageId()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.persistence.SchemaMappingTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    "mysql": {
+      "artifact_id": 11340739442,
+      "sha256": "83cb308ce902a4b8b2402c68df51dbb07b23e38b9001c8b910497b3fab0e3e7b",
+      "totals": {
+        "tests": 139,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "results": [
+        {
+          "name": "com.fido.common.ApiBaselineRouteContractTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "registeredApiRoutesMatchBaselineAndApprovedRefinements()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.common.ApiContractMatrixTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "contractMatrixCoversExactlyTheCurrentApiBaseline()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.FidoApplicationTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.common.ApiFoundationHttpTests",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.common.ArchitectureBoundaryTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "backendPreservesDocumentedDependencyBoundaries()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.common.response.ApiResponseJsonContractTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "serializesObjectEnvelopeWithDataKey()",
+              "status": "PASS"
+            },
+            {
+              "name": "serializesListEnvelopeWithAnalystPaginationKeys()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.common.response.PaginationTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.config.devseed.DevDataSeedServiceTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.config.documentation.OpenApiConfigTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.account.AccountAccessServiceTests",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.account.AccountAuthorizationHttpTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.account.AddressHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.account.AuthenticationProfileHttpTests",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.account.CustomerQueryApiTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.account.RbacHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.account.RbacTransactionTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.account.StaffHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.account.SuperadminBootstrapHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.audit.AuditQueryApiTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.cart.CartAccessHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.cart.CartCheckoutImageHttpTests",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "currentCoverIsReturnedAsCartAndCheckoutThumbnail()",
+              "status": "PASS"
+            },
+            {
+              "name": "deletingPreviousCoverPromotesCurrentCoverOnNextRead()",
+              "status": "PASS"
+            },
+            {
+              "name": "changedCoverIsVisibleOnNextCartAndCheckoutRead()",
+              "status": "PASS"
+            },
+            {
+              "name": "productWithoutImageReturnsNullThumbnail()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.cart.CartItemHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.cart.CheckoutQuoteHttpTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.content.ContentPageApiTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.inventory.GoodsReceiptHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.inventory.InventoryAdjustmentHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.inventory.InventoryAuthorizationHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.inventory.InventoryConcurrencyTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.inventory.InventoryPhase4TransactionTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.order.CheckoutConsistencyHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.order.OrderActionContractHttpTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "deliveryFailedAcceptsOmittedOptionalReason()",
+              "status": "PASS"
+            },
+            {
+              "name": "cancelAcceptsOmittedOptionalReason()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.order.OrderAuditPrivacyHttpTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.order.OrderAuthorizationHttpTests",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.order.OrderConcurrencyTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.order.OrderImageSnapshotHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "createdOrderKeepsImageSnapshotAfterCoverChangeAndDeletion()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.order.OrderLifecycleHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.order.OrderStockHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.order.service.CheckoutCalculationServiceTests",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.order.service.OrderCreationImageSnapshotTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "createCopiesCheckoutCoverIntoOrderItemSnapshot()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.order.service.OrderQueryServiceTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.product.CatalogAdminHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.product.CatalogMasterDataHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.product.CatalogPublicHttpTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.product.ProductImageAdminHttpTests",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "patchImagesUsesExplicitNormalizedOrderAndCanClearCollection()",
+              "status": "PASS"
+            },
+            {
+              "name": "removeImageRejectsForeignOrMissingImageAndAllowsProductWithZeroImages()",
+              "status": "PASS"
+            },
+            {
+              "name": "reorderRejectsNegativeSortOrderAndImageOutsideProduct()",
+              "status": "PASS"
+            },
+            {
+              "name": "reorderImagesKeepsNormalizedUniqueSortOrderAndRequiresWriteCapability()",
+              "status": "PASS"
+            },
+            {
+              "name": "patchWithoutImagesKeepsCurrentCollection()",
+              "status": "PASS"
+            },
+            {
+              "name": "patchRejectsNullImageEntryBeforeChangingGallery()",
+              "status": "PASS"
+            },
+            {
+              "name": "productCreateRejectsLegacyJsonImages()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.ProductImageAuthorizationHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "deleteImageRequiresCatalogWritePermission()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.ProductImageConcurrencyTests",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "parallelReordersCommitOneCompletePermutationWithoutLosingImages()",
+              "status": "PASS"
+            },
+            {
+              "name": "[1] emptyGallery = true",
+              "status": "PASS"
+            },
+            {
+              "name": "[2] emptyGallery = false",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.ProductImageTransactionHttpTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "databaseConflictRollsBackNewImageRowAfterProviderUpload()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.ProductImageUploadHttpTests",
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "multipartUploadPersistsImagesInRequestOrderAndEstablishesCover()",
+              "status": "PASS"
+            },
+            {
+              "name": "multipartUploadRejectsEmptyFileBeforeCallingStorage()",
+              "status": "PASS"
+            },
+            {
+              "name": "laterProviderFailureKeepsExistingGalleryAndDoesNotPersistSuccessfulPrefix()",
+              "status": "PASS"
+            },
+            {
+              "name": "providerTimeoutReturns504AndKeepsExistingGallery()",
+              "status": "PASS"
+            },
+            {
+              "name": "multipartUploadRejectsUnsupportedFormatBeforeCallingStorage()",
+              "status": "PASS"
+            },
+            {
+              "name": "storageFailureReturnsGatewayErrorWithoutPersistingProductImage()",
+              "status": "PASS"
+            },
+            {
+              "name": "databaseFailureOnSecondInsertRollsBackAlreadyInsertedPrefix()",
+              "status": "PASS"
+            },
+            {
+              "name": "multipartLayerRejectsExcessiveFileCountBeforeCallingStorage()",
+              "status": "PASS"
+            },
+            {
+              "name": "multipartUploadRejectsForgedMimeBeforeCallingStorage()",
+              "status": "PASS"
+            },
+            {
+              "name": "multipartUploadRequiresCatalogWriteBeforeCallingStorage()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.ProductReadModelHttpTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "productListsUseOneThumbnailWhileDetailsReturnServerOrderedImages()",
+              "status": "PASS"
+            },
+            {
+              "name": "productWithoutImagesHasNullThumbnailAndEmptyDetailImages()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.repository.ProductImageRepositoryTests",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "galleryQueryOrdersBySortOrderAscending()",
+              "status": "PASS"
+            },
+            {
+              "name": "duplicateProductAndSortOrderIsRejectedOnFlush()",
+              "status": "PASS"
+            },
+            {
+              "name": "representativeQueryUsesSortOrderZeroInsteadOfLowestImageId()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.service.ImageRetentionPolicyTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "remoteStorageBoundaryRemainsUploadOnlyForMvp()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.service.ImgBbImageStorageClientTests",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "malformedProviderResponseMapsToBadGateway()",
+              "status": "PASS"
+            },
+            {
+              "name": "timeoutMapsToGatewayTimeout()",
+              "status": "PASS"
+            },
+            {
+              "name": "providerBadRequestMapsToBadGatewayWithoutLeakingSecret()",
+              "status": "PASS"
+            },
+            {
+              "name": "validResponseReturnsOnlyCatalogFacingImageData()",
+              "status": "PASS"
+            },
+            {
+              "name": "invalidProviderKeyMapsToBadGatewayWithoutLeakingSecret()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.service.ProductImageReadServiceTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "representativeImagesUseOneDistinctBatchQuery()",
+              "status": "PASS"
+            },
+            {
+              "name": "emptyRepresentativeRequestDoesNotHitRepository()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.service.ProductImageAdminServiceTests",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "removeCoverPromotesNextImageAndNormalizesSortOrder()",
+              "status": "PASS"
+            },
+            {
+              "name": "reorderSelectsNewCoverAndProducesDenseSortOrder()",
+              "status": "PASS"
+            },
+            {
+              "name": "reorderRejectsDuplicateFinalPositionBeforeMutation()",
+              "status": "PASS"
+            },
+            {
+              "name": "appendUploadedImagesContinuesDenseSortOrder()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.service.ProductImageUploadServiceTests",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "storageFailurePreventsImagePersistence()",
+              "status": "PASS"
+            },
+            {
+              "name": "validatesProductThenUploadsInRequestOrderAndPersistsUrls()",
+              "status": "PASS"
+            },
+            {
+              "name": "rejectsEmptyUploadAndFilesAboveConfiguredLimit()",
+              "status": "PASS"
+            },
+            {
+              "name": "rejectsTooManyFilesBeforeUploadingAnyFile()",
+              "status": "PASS"
+            },
+            {
+              "name": "acceptsOnlySupportedImageSignatures()",
+              "status": "PASS"
+            },
+            {
+              "name": "validatesAllFilesBeforeUploadingAnyFile()",
+              "status": "PASS"
+            },
+            {
+              "name": "rejectsForgedOrMismatchedMimeBeforeCallingStorage()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.modules.product.service.PublicCatalogQueryServiceTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.modules.report.ReportApiTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.persistence.CleanMigrationTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "cleanThenMigrateRebuildsAnIsolatedTestDatabase()",
+              "status": "PASS"
+            },
+            {
+              "name": "cleanThenMigrateRebuildsAnIsolatedMysqlDatabase()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.persistence.DatabaseConstraintsTests",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.persistence.MigrationTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "validatesAndDoesNotReapplyMigrationsOnRestart()",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "name": "com.fido.persistence.SchemaMappingTests",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.fido.persistence.ProductImageOrderingMigrationTests",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "name": "v4BackfillsLegacyImageOrderPerProductByImageId()",
+              "status": "PASS"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

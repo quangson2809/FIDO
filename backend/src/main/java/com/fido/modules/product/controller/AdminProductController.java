@@ -3,6 +3,7 @@ package com.fido.modules.product.controller;
 import com.fido.common.response.ApiListResponse;
 import com.fido.common.response.ApiResponse;
 import com.fido.modules.product.dto.request.ProductCreateRequest;
+import com.fido.modules.product.dto.request.ProductImageReorderRequest;
 import com.fido.modules.product.dto.request.ProductPatchRequest;
 import com.fido.modules.product.dto.request.VariantBatchCreateRequest;
 import com.fido.modules.product.dto.request.VariantPatchRequest;
@@ -11,11 +12,17 @@ import com.fido.modules.product.dto.response.AdminProductSummaryDto;
 import com.fido.modules.product.dto.response.AdminVariantDto;
 import com.fido.modules.product.service.AdminCatalogQueryService;
 import com.fido.modules.product.service.ProductAdminService;
+<<<<<<< HEAD
+=======
+import com.fido.modules.product.service.ProductImageAdminService;
+import com.fido.modules.product.service.ProductImageUploadService;
+>>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,6 +39,7 @@ public class AdminProductController {
 
     private final AdminCatalogQueryService query;
     private final ProductAdminService products;
+<<<<<<< HEAD
 
     public AdminProductController(
             AdminCatalogQueryService query,
@@ -39,6 +47,21 @@ public class AdminProductController {
     ) {
         this.query = query;
         this.products = products;
+=======
+    private final ProductImageAdminService productImages;
+    private final ProductImageUploadService imageUploads;
+
+    public AdminProductController(
+            AdminCatalogQueryService query,
+            ProductAdminService products,
+            ProductImageAdminService productImages,
+            ProductImageUploadService imageUploads
+    ) {
+        this.query = query;
+        this.products = products;
+        this.productImages = productImages;
+        this.imageUploads = imageUploads;
+>>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
     }
 
     @GetMapping("/products")
@@ -77,10 +100,31 @@ public class AdminProductController {
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody ProductCreateRequest request
     ) {
+<<<<<<< HEAD
         return ApiResponse.of(
                 products.createProduct(
                         actor(jwt),
                         request
+=======
+        return ApiResponse.of(products.createProduct(actor(jwt), request));
+    }
+
+    @PostMapping(
+            value = "/products/{productId}/images",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<AdminProductDetailDto> uploadImages(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long productId,
+            @RequestPart("images") MultipartFile[] images
+    ) {
+        return ApiResponse.of(
+                imageUploads.upload(
+                        actor(jwt),
+                        productId,
+                        images
+>>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
                 )
         );
     }
@@ -93,6 +137,31 @@ public class AdminProductController {
     ) {
         return ApiResponse.of(
                 products.updateProduct(
+                        actor(jwt),
+                        productId,
+                        request
+                )
+        );
+    }
+
+    @DeleteMapping("/products/{productId}/images/{imageId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void removeImage(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long productId,
+            @PathVariable Long imageId
+    ) {
+        productImages.removeImage(actor(jwt), productId, imageId);
+    }
+
+    @PatchMapping("/products/{productId}/images")
+    public ApiResponse<AdminProductDetailDto> reorderImages(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long productId,
+            @Valid @RequestBody ProductImageReorderRequest request
+    ) {
+        return ApiResponse.of(
+                productImages.reorderImages(
                         actor(jwt),
                         productId,
                         request

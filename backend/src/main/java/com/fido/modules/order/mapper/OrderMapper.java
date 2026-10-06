@@ -30,6 +30,10 @@ public final class OrderMapper {
                 item.getOrderItemId(),
                 item.getVariantId(),
                 item.getProductNameSnapshot(),
+<<<<<<< HEAD
+=======
+                item.getImageUrlSnapshot(),
+>>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
                 item.getSkuSnapshot(),
                 item.getSizeSnapshot(),
                 item.getColorSnapshot(),
@@ -74,13 +78,19 @@ public final class OrderMapper {
 
     public static OrderSummaryDto summary(
             Order order,
+<<<<<<< HEAD
             Payment payment
+=======
+            Payment payment,
+            String imageUrl
+>>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
     ) {
         return new OrderSummaryDto(
                 order.getOrderId(),
                 order.getOrderCode(),
                 order.getOrderStatus(),
                 payment.getPaymentStatus(),
+                imageUrl,
                 order.getTotalSnapshot(),
                 order.getCreatedAt(),
                 order.getCompletedAt(),

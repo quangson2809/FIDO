@@ -50,44 +50,38 @@ public class CatalogReferenceService {
 
     public Product product(Long productId) {
         return products.findById(productId)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND)
-                );
+                .orElseThrow(CatalogReferenceService::notFound);
+    }
+
+    @Transactional
+    public Product productForUpdate(Long productId) {
+        return products.findByIdForUpdate(productId)
+                .orElseThrow(CatalogReferenceService::notFound);
     }
 
     public Category category(Long categoryId) {
         return categories.findById(categoryId)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND)
-                );
+                .orElseThrow(CatalogReferenceService::notFound);
     }
 
     public Brand brand(Long brandId) {
         return brands.findById(brandId)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND)
-                );
+                .orElseThrow(CatalogReferenceService::notFound);
     }
 
     public SizeSystem sizeSystem(Long sizeSystemId) {
         return sizeSystems.findById(sizeSystemId)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND)
-                );
+                .orElseThrow(CatalogReferenceService::notFound);
     }
 
     public SizeValue sizeValue(Long sizeValueId) {
         return sizeValues.findById(sizeValueId)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND)
-                );
+                .orElseThrow(CatalogReferenceService::notFound);
     }
 
     public Color color(Long colorId) {
         return colors.findById(colorId)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND)
-                );
+                .orElseThrow(CatalogReferenceService::notFound);
     }
 
     public Category leafCategory(Long categoryId) {
@@ -99,4 +93,43 @@ public class CatalogReferenceService {
 
         return category;
     }
+<<<<<<< HEAD
+=======
+
+    private java.util.List<Long> distinctIds(
+            Collection<Long> ids
+    ) {
+        if (ids == null || ids.isEmpty()) {
+            return java.util.List.of();
+        }
+
+        return ids.stream()
+                .distinct()
+                .toList();
+    }
+
+    private <T> Map<Long, T> requireAll(
+            Collection<Long> requestedIds,
+            Collection<T> values,
+            Function<T, Long> id
+    ) {
+        Map<Long, T> valuesById = values.stream()
+                .collect(Collectors.toMap(
+                        id,
+                        Function.identity()
+                ));
+
+        for (Long requestedId : requestedIds) {
+            if (!valuesById.containsKey(requestedId)) {
+                throw notFound();
+            }
+        }
+
+        return Map.copyOf(valuesById);
+    }
+
+    private static ResponseStatusException notFound() {
+        return new ResponseStatusException(HttpStatus.NOT_FOUND);
+    }
+>>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
 }

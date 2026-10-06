@@ -10,13 +10,26 @@ INSERT INTO size_systems VALUES (1,'fixture-size-system','Fixture system');
 INSERT INTO size_values VALUES (1,1,'M','Medium',1);
 INSERT INTO colors VALUES (1,'fixture-color','Fixture color');
 INSERT INTO products VALUES (1,1,1,1,'Fixture product',NULL,NULL,NULL,NULL,NULL,100.00,'fixture-status',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
-INSERT INTO product_images VALUES (1,1,'https://example.invalid/test.png',NULL);
+INSERT INTO product_images (image_id, product_id, image_url, alt_text, sort_order)
+VALUES (1,1,'https://example.invalid/test.png',NULL,0);
 INSERT INTO product_variants VALUES (1,1,1,1,NULL,NULL,'fixture-status',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
 INSERT INTO carts VALUES (1,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
 INSERT INTO cart_items VALUES (1,1,1,1);
 INSERT INTO vouchers VALUES (1,'fixture-voucher');
 INSERT INTO orders VALUES (1,'fixture-order',1,'0900000001',NULL,'Test address',100.00,0.00,30000.00,30100.00,NULL,'PENDING',NULL,NULL,NULL,NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
-INSERT INTO order_items VALUES (1,1,1,'Historical product',NULL,'M','Historical color',100.00,1,100.00);
+INSERT INTO order_items (
+    order_item_id,
+    order_id,
+    variant_id,
+    product_name_snapshot,
+    sku_snapshot,
+    size_snapshot,
+    color_snapshot,
+    unit_price_snapshot,
+    quantity,
+    line_total_snapshot,
+    image_url_snapshot
+) VALUES (1,1,1,'Historical product',NULL,'M','Historical color',100.00,1,100.00,NULL);
 INSERT INTO payments VALUES (1,'UNPAID',30100.00,0.00,0.00,NULL,NULL,NULL,NULL);
 INSERT INTO shipping_infos VALUES (1,'fixture-mode',NULL);
 INSERT INTO suppliers VALUES (1,'Fixture supplier',NULL,NULL,NULL,'fixture-status',NULL);

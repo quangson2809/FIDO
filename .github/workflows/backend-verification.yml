@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/backend-phase-0-discovery
+      - feature/phase-2-3-image-persistence
   pull_request:
     branches:
       - main
@@ -43,7 +44,7 @@ jobs:
 
       - name: Build and test with H2
         working-directory: backend
-        run: ./gradlew --no-daemon clean build
+        run: ./gradlew --no-daemon clean compileJava test check build
 
       - name: Keep H2 test reports
         if: always()
@@ -60,7 +61,7 @@ jobs:
           TEST_DB_DRIVER: com.mysql.cj.jdbc.Driver
           TEST_DB_USERNAME: root
           TEST_DB_PASSWORD: ci-only-password
-        run: ./gradlew --no-daemon test --rerun-tasks
+        run: ./gradlew --no-daemon compileJava test check --rerun-tasks
 
       - name: Keep MySQL test reports
         if: always() && steps.mysql-tests.outcome != 'skipped'

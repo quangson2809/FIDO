@@ -25,4 +25,7 @@ public class ProductImage {
 
     @Column(name = "alt_text", nullable = true, length = 255)
     private String altText;
+
+    @Column(name = "sort_order", nullable = false)
+    private Integer sortOrder;
 }

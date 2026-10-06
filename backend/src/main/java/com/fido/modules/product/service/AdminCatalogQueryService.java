@@ -78,6 +78,7 @@ public class AdminCatalogQueryService {
                 sizeSystemId,
                 saleStatus
         );
+<<<<<<< HEAD
 
         var result = products.findAll(
                 specification,
@@ -87,6 +88,21 @@ public class AdminCatalogQueryService {
         var data = result.getContent()
                 .stream()
                 .map(CatalogMapper::adminSummary)
+=======
+        var result = products.findAll(specification, pagination.toPageable());
+        var productsOnPage = result.getContent();
+        Map<Long, String> thumbnailsByProductId = imageRead.representativeByProductIds(
+                productsOnPage.stream()
+                        .map(Product::getProductId)
+                        .toList()
+        );
+
+        var data = productsOnPage.stream()
+                .map(product -> CatalogMapper.adminSummary(
+                        product,
+                        thumbnailsByProductId.get(product.getProductId())
+                ))
+>>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
                 .toList();
 
         return ApiListResponse.of(
@@ -111,7 +127,7 @@ public class AdminCatalogQueryService {
         var adminVariants = readVariants(productId);
 
         var productImages = images
-                .findAllByProductIdOrderByImageIdAsc(productId)
+                .findAllByProductIdOrderBySortOrderAsc(productId)
                 .stream()
                 .map(CatalogMapper::image)
                 .toList();

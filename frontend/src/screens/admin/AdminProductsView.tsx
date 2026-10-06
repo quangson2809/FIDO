@@ -1,9 +1,24 @@
+<<<<<<< HEAD
 import React, { useState } from 'react';
+=======
+import React, { useEffect, useMemo, useState } from 'react';
+import { useApp } from '../../context/AppContext';
+import { adminProductService } from '../../features/catalog/api/adminService';
+import { catalogService } from '../../features/catalog/api/service';
+import type {
+  AdminProductDetailDto,
+  AdminProductSummaryDto,
+  CatalogMetaDto,
+  ProductCreateInput,
+} from '../../features/catalog/types';
+import { resolveImageUrl } from '../../services/media/imageUrl';
+>>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
 
 export const AdminProductsView: React.FC<{
   onSelectProduct?: (id: string) => void;
   onEditProduct?: (id: string) => void;
   onNavigateTab?: (tab: string, breadcrumb: string) => void;
+<<<<<<< HEAD
   showToast: (msg: string) => void;
 }> = ({ onSelectProduct, onEditProduct, onNavigateTab, showToast }) => {
   const [selectedProductId, setSelectedProductId] = useState<string>('PRD-00102');
@@ -21,6 +36,259 @@ export const AdminProductsView: React.FC<{
           <span className="text-[#687069]">Sản phẩm &amp; Catalog</span>
           <span className="material-symbols-outlined text-[16px] text-[#687069]">chevron_right</span>
           <span className="text-[#0B2419] font-semibold">Quản lý sản phẩm</span>
+=======
+  showToast: (message: string) => void;
+}
+
+interface CreateFormState {
+  name: string;
+  categoryId: string;
+  brandId: string;
+  sizeSystemId: string;
+  basePrice: string;
+  description: string;
+  gender: string;
+  season: string;
+  style: string;
+  materialCare: string;
+  saleStatus: 'ON_SALE' | 'STOPPED';
+}
+
+const initialForm: CreateFormState = {
+  name: '',
+  categoryId: '',
+  brandId: '',
+  sizeSystemId: '',
+  basePrice: '',
+  description: '',
+  gender: '',
+  season: '',
+  style: '',
+  materialCare: '',
+  saleStatus: 'ON_SALE',
+};
+
+export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
+  onSelectProduct,
+  onEditProduct,
+  onNavigateTab,
+  showToast,
+}) => {
+  const { setSelectedProductId } = useApp();
+  const [products, setProducts] = useState<AdminProductSummaryDto[]>([]);
+  const [catalogMeta, setCatalogMeta] = useState<CatalogMetaDto | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [metaError, setMetaError] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState<CreateFormState>(initialForm);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+
+  useEffect(() => {
+    let active = true;
+
+    void adminProductService.getProducts()
+      .then((response) => {
+        if (!active) return;
+        setProducts(response.data);
+        setError(null);
+      })
+      .catch(() => {
+        if (active) {
+          setError('Không thể tải danh sách sản phẩm quản trị.');
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+
+    void catalogService.getMeta()
+      .then((meta) => {
+        if (!active) return;
+        setCatalogMeta(meta);
+        setMetaError(null);
+      })
+      .catch(() => {
+        if (active) {
+          setMetaError('Không thể tải metadata catalog để tạo sản phẩm.');
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const refreshProducts = async () => {
+    setLoading(true);
+    try {
+      const response = await adminProductService.getProducts();
+      setProducts(response.data);
+      setError(null);
+    } catch {
+      setError('Không thể tải danh sách sản phẩm quản trị.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const leafCategories = useMemo(() => {
+    if (!catalogMeta) return [];
+    const parentIds = new Set(
+      catalogMeta.categories
+        .map((category) => category.parent_category_id)
+        .filter((id): id is number => id !== null),
+    );
+    return catalogMeta.categories.filter(
+      (category) => !parentIds.has(category.category_id),
+    );
+  }, [catalogMeta]);
+
+  const filteredProducts = useMemo(() => {
+    const query = searchTerm.trim().toLocaleLowerCase('vi-VN');
+    if (!query) return products;
+    return products.filter((product) =>
+      product.name.toLocaleLowerCase('vi-VN').includes(query),
+    );
+  }, [products, searchTerm]);
+
+  const categoryNames = useMemo(
+    () => new Map(catalogMeta?.categories.map((category) => [category.category_id, category.name]) ?? []),
+    [catalogMeta],
+  );
+  const brandNames = useMemo(
+    () => new Map(catalogMeta?.brands.map((brand) => [brand.brand_id, brand.name]) ?? []),
+    [catalogMeta],
+  );
+
+  const updateForm = <K extends keyof CreateFormState>(
+    key: K,
+    value: CreateFormState[K],
+  ) => {
+    setForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const createPayload = (): ProductCreateInput | null => {
+    const categoryId = Number(form.categoryId);
+    const sizeSystemId = Number(form.sizeSystemId);
+    const basePrice = Number(form.basePrice);
+    const brandId = form.brandId ? Number(form.brandId) : undefined;
+
+    if (
+      !catalogMeta
+      || !form.name.trim()
+      || !Number.isInteger(categoryId)
+      || !leafCategories.some((category) => category.category_id === categoryId)
+      || !Number.isInteger(sizeSystemId)
+      || !catalogMeta.size_systems.some((system) => system.size_system_id === sizeSystemId)
+      || !Number.isFinite(basePrice)
+      || basePrice < 0
+      || (brandId !== undefined
+        && !catalogMeta.brands.some((brand) => brand.brand_id === brandId))
+    ) {
+      return null;
+    }
+
+    return {
+      category_id: categoryId,
+      brand_id: brandId,
+      size_system_id: sizeSystemId,
+      name: form.name.trim(),
+      description: form.description.trim() || null,
+      gender: form.gender || null,
+      season: form.season || null,
+      style: form.style || null,
+      material_care: form.materialCare.trim() || null,
+      base_price: basePrice,
+      sale_status: form.saleStatus,
+      variants: [],
+    };
+  };
+
+  const finishCreate = async (
+    created: AdminProductDetailDto,
+    message: string,
+  ) => {
+    showToast(message);
+    setForm(initialForm);
+    setImageFiles([]);
+    setShowCreateForm(false);
+    await refreshProducts();
+    const productId = String(created.product_id);
+    setSelectedProductId(productId);
+    onSelectProduct?.(productId);
+  };
+
+  const handleCreate = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const payload = createPayload();
+    if (!payload) {
+      showToast('Vui lòng chọn metadata catalog hợp lệ và kiểm tra các trường bắt buộc.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const created = await adminProductService.createProduct(payload);
+
+      if (imageFiles.length === 0) {
+        await finishCreate(created, `Đã tạo sản phẩm ${created.name}.`);
+        return;
+      }
+
+      try {
+        const withImages = await adminProductService.uploadProductImages(
+          created.product_id,
+          imageFiles,
+        );
+        await finishCreate(withImages, `Đã tạo sản phẩm ${withImages.name}.`);
+      } catch {
+        await finishCreate(
+          created,
+          `Đã tạo sản phẩm ${created.name}, nhưng tải ảnh thất bại. Hãy mở sản phẩm và tải ảnh lại.`,
+        );
+      }
+    } catch {
+      showToast('Không thể tạo sản phẩm. Kiểm tra phiên đăng nhập và quyền catalog.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openProduct = (
+    productId: number,
+    callback: ((id: string) => void) | undefined,
+  ) => {
+    const id = String(productId);
+    setSelectedProductId(id);
+    callback?.(id);
+  };
+
+  const creationMetadataReady = Boolean(
+    catalogMeta
+    && leafCategories.length > 0
+    && catalogMeta.size_systems.length > 0,
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#687069]">
+            Sản phẩm &amp; Catalog
+          </p>
+          <h1 className="mt-1 font-['Playfair_Display',serif] text-3xl font-bold text-[#0B2419]">
+            Quản lý sản phẩm
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm text-[#424844]">
+            Tạo metadata sản phẩm trước, sau đó frontend tải file ảnh qua API multipart riêng;
+            frontend không giữ khóa hoặc gọi trực tiếp nhà cung cấp lưu trữ ảnh.
+          </p>
+>>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
         </div>
 
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-2">
@@ -249,12 +517,30 @@ export const AdminProductsView: React.FC<{
             <option value="albini">Albini Group</option>
           </select>
 
+<<<<<<< HEAD
           <select className="h-10 bg-[#f3f4ef] border border-[#E8E9E3] px-3 rounded text-[#191c19] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#0B2419] cursor-pointer">
             <option value="">Hệ Size (All)</option>
             <option value="jeans">Jeans Waist (Inch 28-36)</option>
             <option value="alpha">Tops Alpha (XS - XXL)</option>
             <option value="shoes">Footwear (EU 39-44)</option>
           </select>
+=======
+          <label className="block space-y-1 text-sm">
+            <span className="font-semibold">Ảnh sản phẩm</span>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(event) => setImageFiles(Array.from(event.target.files ?? []))}
+              className="block w-full border border-dashed border-[#B8BEB9] bg-[#F8FAF7] p-4 text-sm"
+            />
+            <span className="block text-xs text-[#687069]">
+              {imageFiles.length > 0
+                ? `${imageFiles.length} file sẽ được tải sau khi backend tạo Product thành công.`
+                : 'Không chọn file: sản phẩm được tạo không có ảnh.'}
+            </span>
+          </label>
+>>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
 
           <select className="h-10 bg-[#f3f4ef] border border-[#E8E9E3] px-3 rounded text-[#191c19] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#0B2419] cursor-pointer">
             <option value="">Trạng thái</option>

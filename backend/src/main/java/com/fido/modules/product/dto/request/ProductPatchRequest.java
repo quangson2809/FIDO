@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
@@ -46,7 +47,7 @@ public class ProductPatchRequest {
     private String saleStatus;
 
     @Valid
-    private List<ProductCreateRequest.ImageInput> images;
+    private List<@NotNull ProductImageInput> images;
 
     private boolean brandIdPresent;
     private boolean descriptionPresent;
@@ -176,7 +177,7 @@ public class ProductPatchRequest {
         saleStatus = value;
     }
 
-    public List<ProductCreateRequest.ImageInput> getImages() {
+    public List<ProductImageInput> getImages() {
         return images;
     }
 
@@ -184,7 +185,7 @@ public class ProductPatchRequest {
             value = "images",
             nulls = Nulls.FAIL
     )
-    public void setImages(List<ProductCreateRequest.ImageInput> value) {
+    public void setImages(List<ProductImageInput> value) {
         images = value;
         imagesPresent = true;
     }

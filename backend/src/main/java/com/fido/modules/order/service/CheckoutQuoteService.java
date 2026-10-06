@@ -34,6 +34,7 @@ public class CheckoutQuoteService {
                                 item.variantId(),
                                 item.quantity(),
                                 item.productName(),
+                                item.thumbnail(),
                                 item.size(),
                                 item.color(),
                                 item.unitPrice(),
