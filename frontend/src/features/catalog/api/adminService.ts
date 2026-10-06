@@ -52,16 +52,6 @@ export const adminProductService = {
 
   createProduct,
 
-  createProductJson: createProduct,
-
-  async createProductWithImages(
-    product: ProductCreateInput,
-    imageFiles: readonly File[],
-  ): Promise<AdminProductDetailDto> {
-    const created = await createProduct(product);
-    return imageFiles.length > 0 ? uploadImages(created.product_id, imageFiles) : created;
-  },
-
   async updateProduct(productId: number, input: ProductPatchInput): Promise<AdminProductDetailDto> {
     const response = await apiClient.patch<
       ApiResponse<AdminProductDetailDto>,
