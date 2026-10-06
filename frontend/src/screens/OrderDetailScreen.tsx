@@ -7,6 +7,17 @@ import { resolveImageUrl } from '../services/media/imageUrl';
 
 const recipientEditableStatuses = new Set(['PENDING', 'CONFIRMED', 'PREPARING']);
 
+const statusLabel: Record<string, string> = {
+  PENDING: 'Chờ xác nhận',
+  CONFIRMED: 'Đã xác nhận',
+  PREPARING: 'Đang chuẩn bị',
+  SHIPPING: 'Đang giao',
+  COMPLETED: 'Hoàn tất',
+  DELIVERY_FAILED: 'Giao thất bại',
+  CANCELLED: 'Đã hủy',
+  RETURNED: 'Đã trả hàng',
+};
+
 export const OrderDetailScreen: React.FC = () => {
   const { selectedOrderId, setCurrentScreen } = useApp();
   const [order, setOrder] = useState<OrderCustomerDetailDto | null>(null);
@@ -19,14 +30,10 @@ export const OrderDetailScreen: React.FC = () => {
 
   useEffect(() => {
     let active = true;
-
     if (!hasApiAccessToken()) {
       setCurrentScreen('auth');
-      return () => {
-        active = false;
-      };
+      return () => { active = false; };
     }
-
     const loadOrder = async () => {
       setLoading(true);
       try {
@@ -46,16 +53,12 @@ export const OrderDetailScreen: React.FC = () => {
         if (active) setLoading(false);
       }
     };
-
     void loadOrder();
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [selectedOrderId, setCurrentScreen]);
 
   const saveRecipient = async () => {
     if (!order || !phone.trim() || !address.trim() || saving) return;
-
     setSaving(true);
     setError(null);
     try {
@@ -74,17 +77,9 @@ export const OrderDetailScreen: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return <div className="min-h-[50vh] p-12 text-center text-[#687069]">Đang tải đơn hàng...</div>;
-  }
-
+  if (loading) return <div className="min-h-[60vh] bg-[#FFFDF5] p-14 text-center text-sm text-[#687069]">Đang tải đơn hàng...</div>;
   if (!order) {
-    return (
-      <div className="min-h-[50vh] p-12 text-center">
-        <p className="text-red-700">{error ?? 'Không tìm thấy đơn hàng.'}</p>
-        <button type="button" onClick={() => setCurrentScreen('my-orders')} className="mt-4 border border-[#0B2419] px-4 py-2 text-sm font-semibold">Quay lại danh sách</button>
-      </div>
-    );
+    return <div className="min-h-[60vh] bg-[#FFFDF5] p-14 text-center"><p className="text-sm text-red-700">{error ?? 'Không tìm thấy đơn hàng.'}</p><button type="button" onClick={() => setCurrentScreen('my-orders')} className="mt-5 border border-[#0B2419] bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wider">Quay lại danh sách</button></div>;
   }
 
   const canEditRecipient = recipientEditableStatuses.has(order.order_status);
@@ -92,87 +87,70 @@ export const OrderDetailScreen: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#FFFDF5] text-[#0B2419]">
       <div className="border-b border-[#E2E5DE] bg-[#F5F6F2] px-4 py-3 sm:px-8">
-        <nav className="mx-auto flex max-w-6xl items-center gap-2 text-sm text-[#606863]">
-          <button type="button" onClick={() => setCurrentScreen('my-orders')} className="hover:text-[#0B2419]">Đơn hàng của tôi</button>
-          <span>/</span>
-          <span className="font-semibold text-[#0B2419]">{order.order_code}</span>
-        </nav>
+        <nav className="mx-auto flex max-w-6xl items-center gap-2 text-[13px] text-[#606863]"><button type="button" onClick={() => setCurrentScreen('my-orders')} className="hover:text-[#0B2419]">Đơn hàng của tôi</button><span>/</span><span className="font-semibold text-[#0B2419]">{order.order_code}</span></nav>
       </div>
 
-      <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-8">
-        <section className="border border-[#E8E9E3] bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#687069]">Đơn hàng</p>
-              <h1 className="mt-1 font-serif text-3xl font-bold">{order.order_code}</h1>
-              <p className="mt-2 text-sm text-[#687069]">Tạo lúc {order.created_at}</p>
-            </div>
-            <span className="inline-flex w-fit bg-[#FAF4DF] px-3 py-2 text-xs font-bold uppercase tracking-wide">{order.order_status}</span>
+      <section className="bg-[#071A12] text-white">
+        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-8">
+          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+            <div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#E8C75B]">Order detail</p><h1 className="mt-1 font-serif text-3xl sm:text-4xl">{order.order_code}</h1><p className="mt-2 text-sm text-white/55">Tạo lúc {order.created_at}</p></div>
+            <div className="flex flex-wrap items-center gap-2"><span className="border border-white/15 bg-white/5 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white/70">{order.payment.payment_status}</span><span className="bg-[#E8C75B] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[#071A12]">{statusLabel[order.order_status] ?? order.order_status}</span></div>
           </div>
-        </section>
+        </div>
+      </section>
 
+      <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-8">
         {error && <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
 
-        <section className="border border-[#E8E9E3] bg-white p-6 shadow-sm">
-          <h2 className="font-serif text-2xl font-bold">Sản phẩm</h2>
-          <div className="mt-5 divide-y divide-[#E8E9E3]">
+        <section className="overflow-hidden border border-[#E8E9E3] bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-[#E8E9E3] bg-[#FAF9F5] px-5 py-4 sm:px-6"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#687069]">Items</p><h2 className="font-serif text-xl">Sản phẩm trong đơn</h2></div><span className="text-xs font-semibold text-[#687069]">{order.items.length} dòng</span></div>
+          <div className="divide-y divide-[#E8E9E3] px-5 sm:px-6">
             {order.items.map((item) => {
               const imageUrl = resolveImageUrl(item.image_url);
               return (
-                <article key={item.order_item_id} className="flex gap-4 py-5 first:pt-0 last:pb-0">
-                  <div className="h-28 w-20 shrink-0 overflow-hidden bg-[#F3F4EF]">
-                    {imageUrl ? <img src={imageUrl} alt={item.product_name} className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center px-2 text-center text-[10px] text-[#8A918B]">Không có ảnh hiện tại</span>}
-                  </div>
+                <article key={item.order_item_id} className="flex gap-4 py-5">
+                  <div className="h-32 w-24 shrink-0 overflow-hidden bg-[#F3F4EF] ring-1 ring-[#E8E9E3]">{imageUrl ? <img src={imageUrl} alt={item.product_name} className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center px-2 text-center text-[10px] text-[#8A918B]">Không có ảnh hiện tại</span>}</div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold">{item.product_name}</h3>
-                    <p className="mt-1 text-xs text-[#687069]">SKU: {item.sku ?? '—'} · Size: {item.size} · Màu: {item.color}</p>
-                    <p className="mt-2 text-sm">{item.quantity} × {item.unit_price.toLocaleString('vi-VN')}₫</p>
+                    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start"><div><h3 className="font-serif text-lg">{item.product_name}</h3><p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-[#687069]">SKU {item.sku ?? '—'} · Size {item.size} · {item.color}</p></div><strong className="whitespace-nowrap font-serif text-lg">{item.line_total.toLocaleString('vi-VN')}₫</strong></div>
+                    <div className="mt-4 flex items-center justify-between border-t border-[#E8E9E3]/70 pt-3 text-sm"><span className="text-[#687069]">Số lượng {item.quantity}</span><span>{item.unit_price.toLocaleString('vi-VN')}₫ / sản phẩm</span></div>
                   </div>
-                  <strong className="whitespace-nowrap font-mono text-sm">{item.line_total.toLocaleString('vi-VN')}₫</strong>
                 </article>
               );
             })}
           </div>
         </section>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <section className="border border-[#E8E9E3] bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="font-serif text-xl font-bold">Người nhận</h2>
-              {canEditRecipient && !editing && (
-                <button type="button" onClick={() => setEditing(true)} className="text-xs font-bold uppercase tracking-wider underline">Chỉnh sửa</button>
-              )}
-            </div>
+            <div className="flex items-center justify-between gap-3 border-b border-[#E8E9E3] pb-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#687069]">Recipient</p><h2 className="font-serif text-xl">Thông tin người nhận</h2></div>{canEditRecipient && !editing && <button type="button" onClick={() => setEditing(true)} className="text-xs font-bold uppercase tracking-wider underline underline-offset-4">Chỉnh sửa</button>}</div>
 
             {editing ? (
-              <div className="mt-4 space-y-4">
-                <label className="block space-y-1"><span className="text-xs font-semibold">Điện thoại</span><input maxLength={20} value={phone} onChange={(event) => setPhone(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>
-                <label className="block space-y-1"><span className="text-xs font-semibold">Địa chỉ</span><textarea rows={3} maxLength={500} value={address} onChange={(event) => setAddress(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>
-                <div className="flex gap-2">
-                  <button type="button" disabled={saving || !phone.trim() || !address.trim()} onClick={() => void saveRecipient()} className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white disabled:opacity-40">{saving ? 'Đang lưu...' : 'Lưu'}</button>
-                  <button type="button" disabled={saving} onClick={() => { setPhone(order.recipient.phone); setAddress(order.recipient.address); setEditing(false); }} className="border border-[#0B2419] px-4 py-2 text-xs font-bold uppercase">Hủy</button>
-                </div>
+              <div className="mt-5 space-y-4">
+                <label className="block space-y-1.5"><span className="text-xs font-semibold">Điện thoại</span><input maxLength={20} value={phone} onChange={(event) => setPhone(event.target.value)} className="w-full border border-[#D9DDD6] bg-[#FAF9F5] px-3 py-2.5 text-sm outline-none focus:border-[#0B2419]" /></label>
+                <label className="block space-y-1.5"><span className="text-xs font-semibold">Địa chỉ</span><textarea rows={4} maxLength={500} value={address} onChange={(event) => setAddress(event.target.value)} className="w-full resize-y border border-[#D9DDD6] bg-[#FAF9F5] px-3 py-2.5 text-sm outline-none focus:border-[#0B2419]" /></label>
+                <div className="flex gap-2"><button type="button" disabled={saving || !phone.trim() || !address.trim()} onClick={() => void saveRecipient()} className="bg-[#0B2419] px-4 py-2.5 text-xs font-bold uppercase text-white disabled:opacity-40">{saving ? 'Đang lưu...' : 'Lưu thay đổi'}</button><button type="button" disabled={saving} onClick={() => { setPhone(order.recipient.phone); setAddress(order.recipient.address); setEditing(false); }} className="border border-[#D9DDD6] bg-white px-4 py-2.5 text-xs font-bold uppercase">Hủy</button></div>
               </div>
             ) : (
-              <dl className="mt-4 space-y-2 text-sm">
-                <div className="flex justify-between gap-4"><dt className="text-[#687069]">Điện thoại</dt><dd className="text-right font-medium">{order.recipient.phone}</dd></div>
-                <div className="flex justify-between gap-4"><dt className="text-[#687069]">Email</dt><dd className="text-right font-medium">{order.recipient.email ?? '—'}</dd></div>
-                <div className="flex justify-between gap-4"><dt className="text-[#687069]">Địa chỉ</dt><dd className="max-w-sm text-right font-medium">{order.recipient.address}</dd></div>
+              <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+                <div className="border border-[#E8E9E3] bg-[#FFFDF5] p-4"><dt className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">Điện thoại</dt><dd className="mt-1 font-semibold">{order.recipient.phone}</dd></div>
+                <div className="border border-[#E8E9E3] bg-[#FFFDF5] p-4"><dt className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">Email</dt><dd className="mt-1 break-all font-semibold">{order.recipient.email ?? '—'}</dd></div>
+                <div className="border border-[#E8E9E3] bg-[#FFFDF5] p-4 sm:col-span-2"><dt className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">Địa chỉ</dt><dd className="mt-1 leading-6 font-semibold">{order.recipient.address}</dd></div>
               </dl>
             )}
-            {!canEditRecipient && <p className="mt-4 text-xs text-[#687069]">Thông tin người nhận chỉ được sửa khi đơn ở PENDING, CONFIRMED hoặc PREPARING.</p>}
+            {!canEditRecipient && <p className="mt-4 text-xs leading-5 text-[#687069]">Thông tin người nhận chỉ được sửa khi đơn ở PENDING, CONFIRMED hoặc PREPARING.</p>}
           </section>
 
-          <section className="border border-[#E8E9E3] bg-white p-6 shadow-sm">
-            <h2 className="font-serif text-xl font-bold">Thanh toán</h2>
-            <dl className="mt-4 space-y-2 text-sm">
-              <div className="flex justify-between"><dt className="text-[#687069]">Tạm tính</dt><dd>{order.subtotal.toLocaleString('vi-VN')}₫</dd></div>
-              <div className="flex justify-between"><dt className="text-[#687069]">Giảm giá</dt><dd>-{order.discount.toLocaleString('vi-VN')}₫</dd></div>
-              <div className="flex justify-between"><dt className="text-[#687069]">Vận chuyển</dt><dd>{order.shipping_fee.toLocaleString('vi-VN')}₫</dd></div>
-              <div className="flex justify-between border-t border-[#E8E9E3] pt-3 text-base font-bold"><dt>Tổng cộng</dt><dd>{order.total.toLocaleString('vi-VN')}₫</dd></div>
-              <div className="flex justify-between pt-2"><dt className="text-[#687069]">Thanh toán</dt><dd className="font-semibold">{order.payment.payment_status}</dd></div>
+          <aside className="border border-[#E8E9E3] bg-[#071A12] p-6 text-white shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#E8C75B]">Payment summary</p>
+            <h2 className="mt-1 font-serif text-xl">Thanh toán</h2>
+            <dl className="mt-5 space-y-3 text-sm text-white/75">
+              <div className="flex justify-between"><dt>Tạm tính</dt><dd className="text-white">{order.subtotal.toLocaleString('vi-VN')}₫</dd></div>
+              <div className="flex justify-between"><dt>Giảm giá</dt><dd className="text-white">-{order.discount.toLocaleString('vi-VN')}₫</dd></div>
+              <div className="flex justify-between"><dt>Vận chuyển</dt><dd className="text-white">{order.shipping_fee.toLocaleString('vi-VN')}₫</dd></div>
+              <div className="flex justify-between border-t border-white/15 pt-4"><dt className="font-bold text-white">Tổng cộng</dt><dd className="font-serif text-xl font-bold text-[#E8C75B]">{order.total.toLocaleString('vi-VN')}₫</dd></div>
+              <div className="flex justify-between border-t border-white/10 pt-3"><dt>Trạng thái thanh toán</dt><dd className="font-semibold text-white">{order.payment.payment_status}</dd></div>
             </dl>
-          </section>
+          </aside>
         </div>
       </main>
     </div>
