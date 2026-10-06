@@ -81,6 +81,7 @@ export const getPathForScreen = (
 };
 
 export const getScreenFromPath = (pathname: string): ScreenId => {
+  if (pathname === APP_PATHS.adminLogin) return 'auth';
   if (pathname.startsWith('/admin')) return 'admin';
   if (/^\/products\/[^/]+\/?$/.test(pathname)) return 'product-detail';
   if (pathname === APP_PATHS.catalog) return 'catalog';
@@ -89,7 +90,7 @@ export const getScreenFromPath = (pathname: string): ScreenId => {
   if (/^\/orders\/[^/]+\/?$/.test(pathname)) return 'order-detail';
   if (pathname === APP_PATHS.myOrders) return 'my-orders';
   if (pathname === APP_PATHS.policy) return 'policy';
-  if (pathname === APP_PATHS.auth || pathname === APP_PATHS.adminLogin) return 'auth';
+  if (pathname === APP_PATHS.auth) return 'auth';
   if (pathname === APP_PATHS.profile) return 'profile';
   return 'home';
 };
