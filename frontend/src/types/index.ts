@@ -4,6 +4,7 @@ export type ScreenId =
   | 'product-detail'
   | 'cart'
   | 'checkout'
+  | 'order-success'
   | 'order-detail'
   | 'my-orders'
   | 'policy'
