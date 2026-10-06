@@ -1,11 +1,16 @@
 package com.fido.config.devseed;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fido.modules.inventory.service.InventoryPolicy;
+import com.fido.modules.order.service.OrderPolicy;
+import com.fido.modules.product.service.CatalogPolicy;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -101,6 +106,8 @@ class DevDataSeedServiceTests {
         delete("DELETE FROM categories WHERE category_id IN (920003,920005)");
         delete("DELETE FROM categories WHERE category_id IN (920002,920004)");
         delete("DELETE FROM categories WHERE category_id = 920001");
+        delete("DELETE FROM accounts WHERE account_id = 899001");
+        delete("DELETE FROM permissions WHERE permission_id = 899201");
     }
 
     @Test
@@ -146,6 +153,129 @@ class DevDataSeedServiceTests {
                         """,
                         Integer.class
                 )
+        );
+    }
+
+    @Test
+    void seededPermissionMatrixMatchesCurrentAuthorizationCapabilities() {
+        seeder.seed();
+
+        Set<String> expectedPermissions = Set.of(
+                CatalogPolicy.CATALOG_READ,
+                CatalogPolicy.CATALOG_WRITE,
+                InventoryPolicy.INVENTORY_READ,
+                InventoryPolicy.INVENTORY_WRITE,
+                OrderPolicy.ORDER_READ,
+                OrderPolicy.ORDER_EDIT,
+                OrderPolicy.ORDER_PROCESS,
+                OrderPolicy.ORDER_FULFILLMENT,
+                OrderPolicy.ORDER_EXCEPTION,
+                OrderPolicy.ORDER_PAYMENT,
+                OrderPolicy.ORDER_AFTER_SALES,
+                "AUDIT_READ",
+                "CONTENT_READ",
+                "CONTENT_WRITE",
+                "CUSTOMER_READ"
+        );
+
+        Set<String> actualPermissions = Set.copyOf(
+                jdbc.queryForList("""
+                        SELECT code
+                        FROM permissions
+                        WHERE permission_id BETWEEN 900201 AND 900215
+                        """, String.class)
+        );
+
+        assertEquals(expectedPermissions, actualPermissions);
+        assertEquals(
+                Set.of(CatalogPolicy.CATALOG_READ, CatalogPolicy.CATALOG_WRITE),
+                permissionCodesForRole("FIDO_SEED_CATALOG")
+        );
+        assertEquals(
+                Set.of(InventoryPolicy.INVENTORY_READ, InventoryPolicy.INVENTORY_WRITE),
+                permissionCodesForRole("FIDO_SEED_INVENTORY")
+        );
+        assertEquals(
+                Set.of(
+                        OrderPolicy.ORDER_READ,
+                        OrderPolicy.ORDER_EDIT,
+                        OrderPolicy.ORDER_PROCESS,
+                        OrderPolicy.ORDER_FULFILLMENT,
+                        OrderPolicy.ORDER_EXCEPTION,
+                        OrderPolicy.ORDER_PAYMENT,
+                        OrderPolicy.ORDER_AFTER_SALES
+                ),
+                permissionCodesForRole("FIDO_SEED_ORDER")
+        );
+        assertEquals(
+                Set.of("AUDIT_READ", "CONTENT_READ", "CONTENT_WRITE", "CUSTOMER_READ"),
+                permissionCodesForRole("FIDO_SEED_OPS")
+        );
+
+        // ADMIN identifies staff but must not implicitly gain business capabilities.
+        assertEquals(Set.of(), permissionCodesForRole("ADMIN"));
+    }
+
+    @Test
+    void seedRejectsPermissionCodeOwnedByDifferentRow() {
+        jdbc.update(
+                "INSERT INTO permissions(permission_id,code,name) VALUES (899201,?,?,?)"
+                        .replace(",?,?,?)", ",?,?)"),
+                CatalogPolicy.CATALOG_WRITE,
+                "Conflicting catalog permission"
+        );
+
+        IllegalStateException failure = assertThrows(
+                IllegalStateException.class,
+                seeder::seed
+        );
+
+        assertTrue(failure.getMessage().contains("permissions.code=CATALOG_WRITE"));
+        assertEquals(
+                0,
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM permissions WHERE permission_id BETWEEN 900201 AND 900215",
+                        Integer.class
+                )
+        );
+    }
+
+    @Test
+    void seedRejectsPhoneOwnedByDifferentAccount() {
+        String passwordHash = passwords.encode("conflict-only");
+        jdbc.update("""
+                INSERT INTO accounts(
+                    account_id,password_hash,phone,email,created_at,updated_at
+                ) VALUES (
+                    899001,?,'0909000002','conflict@fido.local',
+                    CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
+                )
+                """, passwordHash);
+
+        IllegalStateException failure = assertThrows(
+                IllegalStateException.class,
+                seeder::seed
+        );
+
+        assertTrue(failure.getMessage().contains("accounts.phone=0909000002"));
+        assertEquals(
+                0,
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM accounts WHERE account_id BETWEEN 900001 AND 900008",
+                        Integer.class
+                )
+        );
+    }
+
+    private Set<String> permissionCodesForRole(String roleCode) {
+        return Set.copyOf(
+                jdbc.queryForList("""
+                        SELECT p.code
+                        FROM role_permissions rp
+                        JOIN roles r ON r.role_id=rp.role_id
+                        JOIN permissions p ON p.permission_id=rp.permission_id
+                        WHERE r.code=?
+                        """, String.class, roleCode)
         );
     }
 
