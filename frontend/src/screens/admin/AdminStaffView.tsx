@@ -57,7 +57,6 @@ export const AdminStaffView: React.FC<{ showToast: (msg: string) => void }> = ({
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
     void adminAccessService.getStaff({ q: query || undefined, role_id: roleId, page: 0, page_size: 50 })
       .then((response) => {
         if (!active) return;
@@ -117,7 +116,7 @@ export const AdminStaffView: React.FC<{ showToast: (msg: string) => void }> = ({
     try {
       const updated = await adminAccessService.updateStaff(detail.account.account_id, {
         phone: editPhone.trim(),
-        email: editEmail.trim(),
+        ...(editEmail.trim() ? { email: editEmail.trim() } : {}),
         role_ids: editRoleIds,
       });
       setDetail(updated);
@@ -139,9 +138,9 @@ export const AdminStaffView: React.FC<{ showToast: (msg: string) => void }> = ({
 
       {showCreate && <form onSubmit={createStaff} className="space-y-4 border border-[#E8E9E3] bg-white p-5"><div className="grid gap-3 md:grid-cols-3"><input value={createDraft.phone} onChange={(event) => setCreateDraft((current) => ({ ...current, phone: event.target.value }))} placeholder="Số điện thoại *" maxLength={20} className="border border-[#D9DDD6] px-3 py-2 text-sm" /><input value={createDraft.email} onChange={(event) => setCreateDraft((current) => ({ ...current, email: event.target.value }))} placeholder="Email" type="email" maxLength={254} className="border border-[#D9DDD6] px-3 py-2 text-sm" /><input value={createDraft.password} onChange={(event) => setCreateDraft((current) => ({ ...current, password: event.target.value }))} placeholder="Mật khẩu *" type="password" className="border border-[#D9DDD6] px-3 py-2 text-sm" /></div><div className="flex flex-wrap gap-2">{access?.roles.map((role) => <label key={role.role_id} className="flex items-center gap-2 border border-[#D9DDD6] px-2 py-1 text-xs"><input type="checkbox" checked={createDraft.roleIds.includes(role.role_id)} onChange={() => setCreateDraft((current) => ({ ...current, roleIds: toggleRole(current.roleIds, role.role_id) }))} />{role.code}</label>)}</div><button disabled={busy} className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white disabled:opacity-40">Tạo tài khoản</button></form>}
 
-      <form onSubmit={(event) => { event.preventDefault(); setQuery(queryDraft.trim()); }} className="flex flex-wrap gap-3">
+      <form onSubmit={(event) => { event.preventDefault(); setLoading(true); setQuery(queryDraft.trim()); }} className="flex flex-wrap gap-3">
         <input value={queryDraft} onChange={(event) => setQueryDraft(event.target.value)} placeholder="Số điện thoại hoặc email" className="min-w-64 flex-1 border border-[#D9DDD6] bg-white px-3 py-2 text-sm" />
-        <select value={roleId ?? ''} onChange={(event) => setRoleId(event.target.value ? Number(event.target.value) : undefined)} className="border border-[#D9DDD6] bg-white px-3 py-2 text-sm"><option value="">Tất cả vai trò</option>{access?.roles.map((role) => <option key={role.role_id} value={role.role_id}>{role.code}</option>)}</select>
+        <select value={roleId ?? ''} onChange={(event) => { setLoading(true); setRoleId(event.target.value ? Number(event.target.value) : undefined); }} className="border border-[#D9DDD6] bg-white px-3 py-2 text-sm"><option value="">Tất cả vai trò</option>{access?.roles.map((role) => <option key={role.role_id} value={role.role_id}>{role.code}</option>)}</select>
         <button type="submit" className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase tracking-wider text-white">Tìm</button>
       </form>
       {error && <div className="border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
