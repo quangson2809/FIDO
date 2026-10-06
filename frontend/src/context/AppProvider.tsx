@@ -1,6 +1,8 @@
-import React, { useEffect, useState, type ReactNode } from 'react';
+import React, { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { cartService } from '../features/cart/api/service';
 import type { CartDto } from '../features/cart/types';
+import { getPathForScreen, getScreenFromPath } from '../routes/paths';
 import { hasApiAccessToken } from '../services/http/apiClient';
 import { resolveImageUrl } from '../services/media/imageUrl';
 import type { CartItem, ScreenId } from '../types';
@@ -18,13 +20,42 @@ const toCartItems = (cart: CartDto): CartItem[] => cart.items.map((item) => ({
 }));
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [currentScreen, setCurrentScreen] = useState<ScreenId>('home');
-  const [selectedProductId, setSelectedProductId] = useState('');
-  const [selectedOrderId, setSelectedOrderId] = useState('');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const currentScreen = getScreenFromPath(location.pathname);
+
+  const [selectedProductIdState, setSelectedProductIdState] = useState('');
+  const [selectedOrderIdState, setSelectedOrderIdState] = useState('');
+  const selectedProductIdRef = useRef('');
+  const selectedOrderIdRef = useRef('');
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [cartSubtotal, setCartSubtotal] = useState(0);
   const [toast, setToast] = useState({ message: '', visible: false });
+
+  const setSelectedProductId = useCallback((id: string) => {
+    selectedProductIdRef.current = id;
+    setSelectedProductIdState(id);
+  }, []);
+
+  const setSelectedOrderId = useCallback((id: string) => {
+    selectedOrderIdRef.current = id;
+    setSelectedOrderIdState(id);
+  }, []);
+
+  const setCurrentScreen = useCallback((screen: ScreenId) => {
+    if (screen === 'cart') {
+      setIsCartOpen(true);
+      return;
+    }
+
+    setIsCartOpen(false);
+    navigate(getPathForScreen(
+      screen,
+      selectedProductIdRef.current,
+      selectedOrderIdRef.current,
+    ));
+  }, [navigate]);
 
   const showToast = (message: string) => {
     setToast({ message, visible: true });
@@ -106,9 +137,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     <AppContext.Provider value={{
       currentScreen,
       setCurrentScreen,
-      selectedProductId,
+      selectedProductId: selectedProductIdState,
       setSelectedProductId,
-      selectedOrderId,
+      selectedOrderId: selectedOrderIdState,
       setSelectedOrderId,
       isCartOpen,
       setIsCartOpen,
