@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { profileService } from '../features/auth/api/profileService';
 import { checkoutService } from '../features/orders/api/checkoutService';
-import type { CheckoutQuoteDto, CheckoutRequest, OrderConfirmationDto } from '../features/orders/types';
+import type { CheckoutQuoteDto, CheckoutRequest } from '../features/orders/types';
 import { hasApiAccessToken } from '../services/http/apiClient';
 
 const money = (value: number): string => `${value.toLocaleString('vi-VN')}₫`;
@@ -16,7 +16,6 @@ export const CheckoutScreen: React.FC = () => {
   const [voucherCode, setVoucherCode] = useState('');
   const [quote, setQuote] = useState<CheckoutQuoteDto | null>(null);
   const [quotedRequestKey, setQuotedRequestKey] = useState<string | null>(null);
-  const [confirmation, setConfirmation] = useState<OrderConfirmationDto | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [orderSubmitting, setOrderSubmitting] = useState(false);
@@ -92,8 +91,8 @@ export const CheckoutScreen: React.FC = () => {
     setError(null);
     try {
       const result = await checkoutService.createOrder(request);
-      setConfirmation(result);
       setSelectedOrderId(String(result.order_id));
+      setCurrentScreen('order-success');
     } catch {
       setError('Không thể tạo đơn hàng. Dữ liệu giỏ hàng có thể đã thay đổi; hãy cập nhật báo giá và thử lại.');
       setQuote(null);
@@ -102,46 +101,6 @@ export const CheckoutScreen: React.FC = () => {
       setOrderSubmitting(false);
     }
   };
-
-  if (confirmation) {
-    return (
-      <div className="min-h-[70vh] bg-[#FFFDF5] px-4 py-12 sm:px-8">
-        <section className="mx-auto max-w-4xl overflow-hidden border border-[#E8E9E3] bg-white shadow-sm">
-          <div className="bg-[#071A12] px-7 py-8 text-white sm:px-10">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#E8C75B] text-[#071A12]"><span className="material-symbols-outlined text-[26px]">check</span></div>
-              <div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#E8C75B]">Order confirmed</p><h1 className="mt-1 font-serif text-3xl sm:text-4xl">{confirmation.order_code}</h1><p className="mt-2 text-sm text-white/65">Đơn hàng đã được backend tạo thành công.</p></div>
-            </div>
-          </div>
-
-          <div className="grid gap-8 p-7 sm:p-10 lg:grid-cols-[1fr_320px]">
-            <div>
-              <h2 className="font-serif text-2xl">Trạng thái đơn hàng</h2>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <div className="border border-[#E8E9E3] bg-[#FFFDF5] p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">Đơn hàng</p><p className="mt-1 font-semibold">{confirmation.order_status}</p></div>
-                <div className="border border-[#E8E9E3] bg-[#FFFDF5] p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">Thanh toán</p><p className="mt-1 font-semibold">{confirmation.payment.payment_status}</p></div>
-              </div>
-              <p className="mt-5 text-xs leading-6 text-[#687069]">Giỏ hàng phía frontend không tự suy đoán lifecycle sau khi tạo đơn; trạng thái tiếp theo tiếp tục do backend quyết định.</p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <button type="button" onClick={() => setCurrentScreen('order-detail')} className="bg-[#0B2419] px-5 py-3 text-xs font-bold uppercase tracking-wider text-white">Xem đơn hàng</button>
-                <button type="button" onClick={() => setCurrentScreen('my-orders')} className="border border-[#0B2419] px-5 py-3 text-xs font-bold uppercase tracking-wider">Danh sách đơn hàng</button>
-              </div>
-            </div>
-
-            <aside className="border border-[#E8E9E3] bg-[#FFFDF5] p-5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#687069]">Order summary</p>
-              <dl className="mt-4 space-y-3 text-sm">
-                <div className="flex justify-between gap-4"><dt>Tạm tính</dt><dd>{money(confirmation.subtotal)}</dd></div>
-                <div className="flex justify-between gap-4"><dt>Giảm giá</dt><dd>-{money(confirmation.discount)}</dd></div>
-                <div className="flex justify-between gap-4"><dt>Phí giao hàng</dt><dd>{money(confirmation.shipping_fee)}</dd></div>
-                <div className="flex justify-between gap-4 border-t border-[#D9DDD6] pt-4 text-base"><dt className="font-bold">Tổng COD</dt><dd className="font-serif text-xl font-bold">{money(confirmation.total)}</dd></div>
-              </dl>
-            </aside>
-          </div>
-        </section>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#FAF9F5] text-[#0B2419]">
