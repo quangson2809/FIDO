@@ -36,6 +36,42 @@ export interface AccessControlDto {
   permissions: PermissionDto[];
 }
 
+export interface StaffCreateInput {
+  phone: string;
+  email: string | null;
+  password: string;
+  role_ids: number[];
+}
+
+export interface StaffPatchInput {
+  phone?: string;
+  email?: string;
+  role_ids?: number[];
+}
+
+export interface RoleCreateInput {
+  code: string;
+  name: string;
+  description?: string | null;
+  permission_ids: number[];
+}
+
+export interface RolePatchInput {
+  name?: string;
+  description?: string | null;
+  permission_ids?: number[];
+}
+
+export interface PermissionCreateInput {
+  code: string;
+  name: string;
+}
+
+export interface PermissionPatchInput {
+  code?: string;
+  name?: string;
+}
+
 export interface AuditLogDto {
   audit_id: number;
   actor_account_id: number | null;
