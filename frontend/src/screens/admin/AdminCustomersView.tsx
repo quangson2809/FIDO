@@ -46,10 +46,7 @@ export const AdminCustomersView: React.FC<AdminCustomersViewProps> = ({
   }, [query]);
 
   useEffect(() => {
-    if (!initialCustomerId) {
-      setDetail(null);
-      return undefined;
-    }
+    if (!initialCustomerId) return undefined;
 
     let active = true;
     setDetailLoading(true);
