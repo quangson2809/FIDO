@@ -81,7 +81,7 @@ public class ImgBbImageStorageClient implements ImageStorageGateway {
             throw exception;
         } catch (RestClientResponseException exception) {
             log.warn(
-                    "Image storage request completed result=http_error providerStatus={} durationMs={}",
+                    "Image storage upload failed provider=imgbb reason=http_error providerStatus={} durationMs={}",
                     exception.getStatusCode().value(),
                     elapsedMillis(startedAt)
             );
@@ -152,15 +152,14 @@ public class ImgBbImageStorageClient implements ImageStorageGateway {
     private void logProviderResult(String result, long startedAt) {
         if ("success".equals(result)) {
             log.info(
-                    "Image storage request completed result={} durationMs={}",
-                    result,
+                    "Image storage upload completed provider=imgbb result=success durationMs={}",
                     elapsedMillis(startedAt)
             );
             return;
         }
 
         log.warn(
-                "Image storage request completed result={} durationMs={}",
+                "Image storage upload failed provider=imgbb reason={} durationMs={}",
                 result,
                 elapsedMillis(startedAt)
         );

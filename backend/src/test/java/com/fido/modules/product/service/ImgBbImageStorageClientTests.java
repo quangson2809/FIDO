@@ -3,6 +3,7 @@ package com.fido.modules.product.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
@@ -10,6 +11,9 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import java.net.SocketTimeoutException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -18,6 +22,7 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
 
+@ExtendWith(OutputCaptureExtension.class)
 class ImgBbImageStorageClientTests {
 
     @Test
@@ -65,7 +70,7 @@ class ImgBbImageStorageClientTests {
     }
 
     @Test
-    void timeoutMapsToGatewayTimeout() {
+    void timeoutMapsToGatewayTimeoutWithActionableProviderContext(CapturedOutput output) {
         RestClient restClient = RestClient.builder()
                 .baseUrl("https://api.imgbb.com")
                 .requestFactory((uri, method) -> {
@@ -85,6 +90,10 @@ class ImgBbImageStorageClientTests {
 
         assertEquals(HttpStatus.GATEWAY_TIMEOUT, error.getStatusCode());
         assertFalse(error.getReason().contains("server-secret"));
+        assertTrue(output.getOut().contains(
+                "Image storage upload failed provider=imgbb reason=timeout"
+        ));
+        assertFalse(output.getOut().contains("server-secret"));
     }
 
     @Test
