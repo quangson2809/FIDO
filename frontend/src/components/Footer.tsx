@@ -5,179 +5,52 @@ export const Footer: React.FC = () => {
   const { setCurrentScreen } = useApp();
 
   return (
-    <footer className="bg-[#0B2419] text-white/80 font-['Plus_Jakarta_Sans',sans-serif] pt-14 pb-8 border-t border-[#164E35]">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 pb-12 border-b border-white/10">
-          {/* Brand Info */}
+    <footer className="border-t border-[#164E35] bg-[#0B2419] text-white/80">
+      <div className="mx-auto max-w-7xl px-6 pb-10 pt-14 lg:px-8">
+        <div className="grid grid-cols-1 gap-10 border-b border-white/10 pb-12 md:grid-cols-2 lg:grid-cols-4">
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-2xl font-black tracking-widest text-white">FIDO</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-[#E5C358]"></span>
-              <span className="text-[10px] font-semibold tracking-wider text-[#E5C358] uppercase">Fashion</span>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-black tracking-[0.16em] text-white">FIDO</span>
+              <span className="h-1.5 w-1.5 rounded-full bg-[#E5C358]" />
+              <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#E5C358]">Fashion</span>
             </div>
-            <p className="text-xs text-[#E5C358] font-medium tracking-wide mb-3">Fit - Innovate - Devote - Open</p>
-            <p className="text-xs text-white/60 leading-relaxed mb-4">
-              Thương hiệu thời trang nam may sẵn chất lượng cao, định hình phong cách phái mạnh hiện đại và lịch lãm.
+            <p className="mt-3 text-xs font-medium tracking-wide text-[#E5C358]">Fit • Innovate • Devote • Open</p>
+            <p className="mt-4 max-w-xs text-xs leading-6 text-white/55">
+              Không gian thời trang FIDO với ngôn ngữ thị giác tối giản, tập trung vào sản phẩm và trải nghiệm mua sắm rõ ràng.
             </p>
-            <div className="text-xs text-white/80 space-y-1">
-              <p className="font-medium text-white">Hotline CSKH (24/7):</p>
-              <p className="text-sm font-bold text-[#E5C358]">
-                1800 6828 <span className="text-[11px] font-normal text-white/60">(Miễn cước)</span>
-              </p>
+          </div>
+
+          <div>
+            <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-white">Khám phá</h4>
+            <div className="mt-4 flex flex-col items-start gap-2.5 text-xs text-white/60">
+              <button type="button" onClick={() => setCurrentScreen('home')} className="transition-colors hover:text-white">Trang chủ</button>
+              <button type="button" onClick={() => setCurrentScreen('catalog')} className="transition-colors hover:text-white">Sản phẩm</button>
+              <button type="button" onClick={() => setCurrentScreen('policy')} className="transition-colors hover:text-white">Chính sách</button>
             </div>
           </div>
 
-          {/* Categories */}
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-white mb-4">Danh Mục Mua Sắm</h4>
-            <ul className="space-y-2.5 text-xs text-white/60">
-              <li>
-                <button
-                  type="button"
-                  onClick={() => setCurrentScreen('catalog')}
-                  className="hover:text-white transition-colors text-left"
-                >
-                  Quần Jean Nam RTW
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => setCurrentScreen('catalog')}
-                  className="hover:text-white transition-colors text-left"
-                >
-                  Áo Sơ Mi May Sẵn Cao Cấp
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => setCurrentScreen('catalog')}
-                  className="hover:text-white transition-colors text-left"
-                >
-                  Quần Tây & Khaki Công Sở
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => setCurrentScreen('catalog')}
-                  className="hover:text-white transition-colors text-left"
-                >
-                  Áo Blazer & Áo Khoác Nam
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => setCurrentScreen('catalog')}
-                  className="hover:text-white transition-colors text-left"
-                >
-                  Phụ Kiện Da Thảo Mộc
-                </button>
-              </li>
-            </ul>
+            <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-white">Tài khoản</h4>
+            <div className="mt-4 flex flex-col items-start gap-2.5 text-xs text-white/60">
+              <button type="button" onClick={() => setCurrentScreen('profile')} className="transition-colors hover:text-white">Hồ sơ</button>
+              <button type="button" onClick={() => setCurrentScreen('my-orders')} className="transition-colors hover:text-white">Đơn hàng của tôi</button>
+              <button type="button" onClick={() => setCurrentScreen('auth')} className="transition-colors hover:text-white">Đăng nhập / đăng ký</button>
+            </div>
           </div>
 
-          {/* Services & Policies */}
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-white mb-4">Chính Sách & Dịch Vụ</h4>
-            <ul className="space-y-2.5 text-xs text-white/60">
-              <li>
-                <button
-                  type="button"
-                  onClick={() => setCurrentScreen('policy')}
-                  className="hover:text-white transition-colors text-left"
-                >
-                  Chính sách đổi trả 15 ngày
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => setCurrentScreen('checkout')}
-                  className="hover:text-white transition-colors text-left"
-                >
-                  Giao hàng COD toàn quốc
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => setCurrentScreen('showrooms')}
-                  className="hover:text-white transition-colors text-left"
-                >
-                  Hỗ trợ lên gấu quần miễn phí
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => setCurrentScreen('policy')}
-                  className="hover:text-white transition-colors text-left"
-                >
-                  Chính sách bảo mật thông tin
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => setCurrentScreen('policy')}
-                  className="hover:text-white transition-colors text-left"
-                >
-                  Quy định bảo hành đường may
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          {/* Newsletter */}
-          <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-white mb-4">Kết Nối & Đăng Ký Tin</h4>
-            <p className="text-xs text-white/60 mb-3 leading-relaxed">
-              Đăng ký để nhận thông tin bộ sưu tập mới và ưu đãi đặc quyền 10% cho đơn hàng đầu tiên.
-            </p>
-            <form onSubmit={(e) => e.preventDefault()} className="flex gap-2 mb-4">
-              <input
-                type="email"
-                placeholder="Nhập email của bạn..."
-                className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-xs text-white placeholder-white/40 focus:outline-none focus:border-[#E5C358] w-full"
-              />
-              <button
-                type="submit"
-                className="bg-[#E5C358] hover:bg-[#d8b74f] text-[#0B2419] font-bold text-xs px-4 py-2 rounded-lg whitespace-nowrap transition-colors"
-              >
-                ĐĂNG KÝ
-              </button>
-            </form>
-            <div className="flex items-center gap-3 text-white/60 text-xs">
-              <span className="inline-flex items-center gap-1 border border-white/20 rounded px-2 py-1 text-[10px] text-white/80">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> ĐÃ THÔNG BÁO BỘ CÔNG THƯƠNG
-              </span>
-              <span className="border border-white/20 rounded px-2 py-1 text-[10px] text-white/80">
-                COD VERIFIED
-              </span>
+            <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-white">Trải nghiệm FIDO</h4>
+            <div className="mt-4 space-y-3 text-xs leading-6 text-white/60">
+              <p className="flex items-start gap-2"><span className="material-symbols-outlined mt-0.5 text-[16px] text-[#E5C358]">payments</span><span>Thanh toán COD trong luồng đặt hàng hiện tại.</span></p>
+              <p className="flex items-start gap-2"><span className="material-symbols-outlined mt-0.5 text-[16px] text-[#E5C358]">tune</span><span>Chọn size và màu theo biến thể sản phẩm.</span></p>
+              <p className="flex items-start gap-2"><span className="material-symbols-outlined mt-0.5 text-[16px] text-[#E5C358]">inventory_2</span><span>Giá và khả dụng được lấy từ dữ liệu hệ thống.</span></p>
             </div>
           </div>
         </div>
 
-        {/* Copyright */}
-        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-white/50 gap-4">
-          <div className="flex items-center gap-3">
-            <p>© 2026 FIDO Fashion. All rights reserved. Slogan: Fit - Innovate - Devote - Open</p>
-            <span>•</span>
-            <button
-              onClick={() => setCurrentScreen('admin')}
-              className="text-white/60 hover:text-[#E8C75B] transition-colors flex items-center gap-1"
-            >
-              <span className="material-symbols-outlined text-xs">admin_panel_settings</span>
-              Cổng Quản Trị Đơn Hàng
-            </button>
-          </div>
-          <div className="flex items-center gap-4 flex-wrap justify-center">
-            <span>Phương thức thanh toán:</span>
-            <span className="font-semibold text-white/80 tracking-wider">COD • VISA • MASTERCARD • VNPAY</span>
-          </div>
+        <div className="flex flex-col gap-3 pt-6 text-[11px] text-white/45 sm:flex-row sm:items-center sm:justify-between">
+          <p>© 2026 FIDO Fashion. All rights reserved.</p>
+          <p className="uppercase tracking-[0.16em]">Ready-to-Wear • COD</p>
         </div>
       </div>
     </footer>

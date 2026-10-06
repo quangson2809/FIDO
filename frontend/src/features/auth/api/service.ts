@@ -1,17 +1,28 @@
-import { UserProfileDto, AuthService } from '../types';
-import { apiClient } from '../../../services/http/apiClient';
-import { API_MODE } from '../../../constants/app';
+import type { ApiResponse } from '../../../types/api';
+import { apiClient, setApiAccessToken } from '../../../services/http/apiClient';
+import type {
+  AccountDto,
+  AuthService,
+  LoginResponseDto,
+} from '../types';
 
-const mockProfile: UserProfileDto = { account_id: 1, email: 'user@fido.com', full_name: 'Nguyen Van A' };
-
-const mockAuthService: AuthService = {
-  async getProfile() { return mockProfile; }
+export const authService: AuthService = {
+  async login(identifier, password) {
+    const response = await apiClient.post<
+      ApiResponse<LoginResponseDto>,
+      ApiResponse<LoginResponseDto>
+    >('/auth/login', { identifier, password });
+    setApiAccessToken(response.data.access_token);
+    return response.data;
+  },
+  async register(phone, email, password) {
+    const response = await apiClient.post<
+      ApiResponse<AccountDto>,
+      ApiResponse<AccountDto>
+    >('/auth/register', { phone, email, password });
+    return response.data;
+  },
+  logout() {
+    setApiAccessToken(null);
+  },
 };
-
-const realAuthService: AuthService = {
-  async getProfile() { return apiClient.get<UserProfileDto, UserProfileDto>('/profile'); }
-};
-
-export const authService = API_MODE === 'mock' 
-  ? mockAuthService 
-  : realAuthService;

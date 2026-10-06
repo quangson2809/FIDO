@@ -1,688 +1,277 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { catalogService } from '../features/catalog/api/service';
+import type { CatalogMetaDto, CatalogProductView } from '../features/catalog/types';
+
+const HERO_IMAGE =
+  'https://lh3.googleusercontent.com/aida-public/AB6AXuB43j3U0QGfklvPCyrYdm_4uqdh7U1m_789gJgb9dh6wEkBdhY0mzlP7RRDQrhmLsrOknJ0jGRSmcq2PpIVgOXBQ4oZv3lNU8bndQhMe1NvknIqzt4CKSagNfZxwQWAon2oy6ggXrwuqZITn4oBz_g9S47_4eVaQuBi8oxwXP7nih4Pze-AjnEh0sTWqBN0FpTQKswUiZsjLo6Gn8-32F9v9d7VMDcwjWJJ1bBVwriGH43Q4012h51B1A';
+
+const money = (value: number): string => `${value.toLocaleString('vi-VN')}₫`;
 
 export const HomeScreen: React.FC = () => {
-  const { setCurrentScreen, setSelectedProductId, addToCart, wishlist, toggleWishlist } = useApp();
-  const [selectedParentCategory, setSelectedParentCategory] = useState<'ALL' | 'ÁO' | 'QUẦN' | 'PHỤ KIỆN'>('ALL');
-  const [selectedBrand, setSelectedBrand] = useState<string>('ALL');
+  const { setCurrentScreen, setSelectedProductId } = useApp();
+  const [products, setProducts] = useState<CatalogProductView[]>([]);
+  const [meta, setMeta] = useState<CatalogMetaDto | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [products, setProducts] = useState<any[]>([]);
-  
-  React.useEffect(() => {
-    catalogService.getProducts().then(setProducts);
+  useEffect(() => {
+    let active = true;
+
+    const load = async () => {
+      try {
+        const [productPage, catalogMeta] = await Promise.all([
+          catalogService.listProducts({ page: 0, page_size: 8 }),
+          catalogService.getMeta(),
+        ]);
+        if (!active) return;
+        setProducts(productPage.items);
+        setMeta(catalogMeta);
+        setError(null);
+      } catch {
+        if (active) setError('Không thể tải dữ liệu catalog.');
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    void load();
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const filteredFeaturedProducts = products.slice(0, 6).filter((p) => {
-    if (selectedParentCategory === 'ÁO' && p.parentCategory !== 'Áo') return false;
-    if (selectedParentCategory === 'QUẦN' && p.parentCategory !== 'Quần') return false;
-    if (selectedParentCategory === 'PHỤ KIỆN' && p.parentCategory !== 'Phụ kiện') return false;
-    if (selectedBrand !== 'ALL' && !p.brand.toLowerCase().includes(selectedBrand.toLowerCase())) return false;
-    return true;
-  });
-
-  const handleOpenProduct = (productId: string) => {
+  const openProduct = (productId: string) => {
     setSelectedProductId(productId);
     setCurrentScreen('product-detail');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const rootCategories = meta?.categories.filter((category) => category.parent_category_id === null) ?? [];
+
   return (
-    <div className="w-full bg-[#FFFFFF]" id="trang-chu">
-      {/* Sub Breadcrumb Header */}
-      <div className="w-full h-[44px] bg-[#F5F6F2] border-b border-[#E2E5DE] px-4 sm:px-8 flex items-center text-[13px] text-[#606863] font-medium">
+    <div className="w-full bg-white text-[#0B2419]" id="trang-chu">
+      <div className="flex h-[44px] w-full items-center border-b border-[#E2E5DE] bg-[#F5F6F2] px-4 text-[13px] font-medium text-[#606863] sm:px-8">
         <div className="flex items-center gap-2">
-          <button onClick={() => setCurrentScreen('home')} className="hover:text-[#0B2419] transition-colors">
-            Trang chủ
-          </button>
+          <span className="font-semibold text-[#0B2419]">FIDO</span>
           <span className="text-[#9CA3AF]">/</span>
-          <button onClick={() => setCurrentScreen('catalog')} className="hover:text-[#0B2419] transition-colors">
-            Bộ sưu tập
-          </button>
-          <span className="text-[#9CA3AF]">/</span>
-          <span className="text-[#0B2419] font-semibold">Khám phá</span>
+          <span>Ready-to-Wear</span>
         </div>
       </div>
 
-      <div className="flex flex-col w-full">
-        {/* SECTION 1: HERO CAMPAIGN */}
-        <section className="relative w-full overflow-hidden bg-[#FFFDF5]">
-          <div className="w-full grid grid-cols-1 lg:grid-cols-12 min-h-[640px] lg:min-h-[760px]">
-            {/* Text Narrative Column */}
-            <div className="lg:col-span-5 flex flex-col justify-between p-6 sm:p-10 lg:p-14 z-10">
-              <div className="space-y-4 pt-2 lg:pt-8">
-                <div className="inline-flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-[#E8C75B]"></span>
-                  <span className="text-[10px] tracking-[0.2em] text-[#0B2419] font-bold uppercase">
-                    BỘ SƯU TẬP MAY SẴN SẴN SÀNG GIAO NGAY • RTW 2025
-                  </span>
-                </div>
-                <h1 className="font-serif text-4xl sm:text-5xl lg:text-[56px] text-[#0B2419] tracking-tight font-normal leading-[1.08]">
-                  BẢN THỂ<br />
-                  <span className="italic font-normal text-[#123A29]">TỐI GIẢN.</span>
-                </h1>
-                <p className="text-[15px] sm:text-[16px] text-[#424844] max-w-md font-light leading-relaxed pt-2">
-                  Bộ sưu tập thời trang may sẵn cao cấp (Ready-to-Wear) hội tụ phom dáng may sẵn chuẩn mực, chất liệu thượng hạng và hàng có sẵn đủ size tại hệ thống showroom trên toàn quốc.
-                </p>
-                <div className="pt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                  <button
-                    onClick={() => {
-                      setCurrentScreen('catalog');
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    className="inline-flex items-center justify-center gap-2 px-7 py-4 bg-[#0B2419] hover:bg-[#1B5038] text-white text-[12px] font-bold tracking-widest uppercase transition-all duration-300 shadow-md cursor-pointer"
-                  >
-                    <span>KHÁM PHÁ BỘ SƯU TẬP</span>
-                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                  </button>
-                  <a
-                    href="#editorial"
-                    className="inline-flex items-center justify-center px-7 py-4 bg-transparent hover:bg-[#FAF4DF] text-[#0B2419] text-[12px] font-bold tracking-widest uppercase transition-all duration-300 border border-[#0B2419]/30"
-                  >
-                    XEM LOOKBOOK
-                  </a>
-                </div>
-              </div>
-
-              {/* Metric Accent Footer */}
-              <div className="pt-10 pb-2 grid grid-cols-3 gap-4 text-[#0B2419] border-t border-[#E8E9E3]/70">
-                <div>
-                  <span className="font-serif text-2xl font-bold block">ĐỦ SIZE</span>
-                  <span className="text-[10px] text-[#424844] font-semibold uppercase tracking-wider">
-                    S Đến XXL Có Sẵn
-                  </span>
-                </div>
-                <div>
-                  <span className="font-serif text-2xl font-bold block">2 GIỜ</span>
-                  <span className="text-[10px] text-[#424844] font-semibold uppercase tracking-wider">
-                    Giao Hỏa Tốc
-                  </span>
-                </div>
-                <div>
-                  <span className="font-serif text-2xl font-bold block">100%</span>
-                  <span className="text-[10px] text-[#424844] font-semibold uppercase tracking-wider">
-                    Có Sẵn Showroom
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Hero Visual Column */}
-            <div className="lg:col-span-7 relative min-h-[440px] lg:min-h-full">
-              <img
-                alt="Atelier Vert Campaign Collection Editorial"
-                className="w-full h-full object-cover object-center scale-[1.01] transition-transform duration-700 hover:scale-100"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuB43j3U0QGfklvPCyrYdm_4uqdh7U1m_789gJgb9dh6wEkBdhY0mzlP7RRDQrhmLsrOknJ0jGRSmcq2PpIVgOXBQ4oZv3lNU8bndQhMe1NvknIqzt4CKSagNfZxwQWAon2oy6ggXrwuqZITn4oBz_g9S47_4eVaQuBi8oxwXP7nih4Pze-AjnEh0sTWqBN0FpTQKswUiZsjLo6Gn8-32F9v9d7VMDcwjWJJ1bBVwriGH43Q4012h51B1A"
-              />
-              <div className="absolute bottom-6 right-6 lg:bottom-10 lg:right-10 bg-[#071A12]/85 backdrop-blur-md text-[#FFFDF5] px-4 py-2.5 flex items-center gap-3 shadow-lg">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#E8C75B] animate-ping"></span>
-                <span className="text-[10px] uppercase font-bold tracking-widest">
-                  Hàng Có Sẵn Tại Hệ Thống Showroom • Sẵn Sàng Giao Ngay
+      <section className="relative w-full overflow-hidden bg-[#FFFDF5]">
+        <div className="grid min-h-[650px] w-full grid-cols-1 lg:min-h-[760px] lg:grid-cols-12">
+          <div className="relative z-10 flex flex-col justify-between p-6 sm:p-10 lg:col-span-5 lg:p-14">
+            <div className="space-y-4 pt-2 lg:pt-8">
+              <div className="inline-flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-[#E8C75B]" />
+                <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#0B2419]">
+                  FIDO • READY-TO-WEAR
                 </span>
               </div>
-            </div>
-          </div>
-        </section>
-
-        {/* SERVICE ADVANTAGES (Warm Ivory Strip) */}
-        <section className="w-full bg-[#FFFDF5] py-8 border-y border-[#E8E9E3]/80">
-          <div className="w-full px-4 sm:px-8 lg:px-14 max-w-7xl mx-auto">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="flex items-start gap-4">
-                <span className="material-symbols-outlined text-[#0B2419] text-[28px] mt-0.5">bolt</span>
-                <div className="space-y-1">
-                  <h4 className="text-[16px] font-bold text-[#0B2419]">Giao Hỏa Tốc 2H</h4>
-                  <p className="text-[13px] text-[#424844] leading-relaxed">
-                    Nhận hàng ngay trong 2 giờ tại nội thành. Miễn phí từ 599.000đ.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <span className="material-symbols-outlined text-[#0B2419] text-[28px] mt-0.5">published_with_changes</span>
-                <div className="space-y-1">
-                  <h4 className="text-[16px] font-bold text-[#0B2419]">Đổi Size Tận Nơi 15 Ngày Miễn Phí</h4>
-                  <p className="text-[13px] text-[#424844] leading-relaxed">
-                    Shipper mang tận nơi đổi size vừa vặn, hoàn toàn không tốn phí.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <span className="material-symbols-outlined text-[#0B2419] text-[28px] mt-0.5">straighten</span>
-                <div className="space-y-1">
-                  <h4 className="text-[16px] font-bold text-[#0B2419]">Lên Gấu Miễn Phí Lấy Ngay</h4>
-                  <p className="text-[13px] text-[#424844] leading-relaxed">
-                    Hỗ trợ lên gấu quần miễn phí lấy ngay tại cửa hàng chỉ trong 15 phút.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <span className="material-symbols-outlined text-[#0B2419] text-[28px] mt-0.5">storefront</span>
-                <div className="space-y-1">
-                  <h4 className="text-[16px] font-bold text-[#0B2419]">Hàng Có Sẵn Tại Showroom</h4>
-                  <p className="text-[13px] text-[#424844] leading-relaxed">
-                    Đầy đủ size số từ S đến XXL sẵn sàng thử trực tiếp tại showroom.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* KHỐI A: DANH MỤC SẢN PHẨM (Phân cấp Cây Cha/Con, Tabs, Chips & Cards) */}
-        <section className="w-full bg-[#FFFFFF] py-14" id="danh-muc">
-          <div className="w-full px-4 sm:px-8 lg:px-14 max-w-7xl mx-auto space-y-6">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#E8E9E3] pb-6">
-              <div>
-                <span className="text-[10px] tracking-[0.2em] text-[#1B5038] uppercase block mb-1 font-bold">
-                  KHỐI A • PHÂN LOẠI &amp; ĐIỀU HƯỚNG
-                </span>
-                <h2 className="font-serif text-3xl sm:text-4xl text-[#0B2419]">DANH MỤC SẢN PHẨM</h2>
-                <p className="text-[14px] text-[#424844] mt-1">
-                  Cấu trúc danh mục đa tầng theo cây cha/con, dễ dàng chọn nhanh sản phẩm ưng ý
-                </p>
-              </div>
-
-              {/* Tabs Chuyển Đổi Nhanh Theo Danh Mục Cha */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                {(['ALL', 'ÁO', 'QUẦN', 'PHỤ KIỆN'] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setSelectedParentCategory(tab)}
-                    className={`px-4 py-2 text-[12px] font-bold tracking-wider uppercase transition-colors shrink-0 ${
-                      selectedParentCategory === tab
-                        ? 'bg-[#0B2419] text-white'
-                        : 'bg-[#f3f4ef] hover:bg-[#e7e9e3] text-[#0B2419]'
-                    }`}
-                  >
-                    {tab === 'ALL' ? 'TẤT CẢ' : tab}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Cây Danh Mục Chi Tiết Dạng Chips Cha/Con */}
-            <div className="bg-[#FFFDF5] p-4 sm:p-5 border border-[#E8E9E3] space-y-3">
-              {/* Cây Áo */}
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider font-semibold text-[#0B2419] bg-[#edeee9] px-2.5 py-1">
-                  <span className="material-symbols-outlined text-[16px]">checkroom</span> Áo (Cha):
-                </span>
-                {[
-                  { name: 'Áo thun', count: 12 },
-                  { name: 'Áo sơ mi', count: 18 },
-                  { name: 'Áo polo', count: 9 },
-                  { name: 'Áo khoác & Blazer', count: 14 }
-                ].map((cat) => (
-                  <button
-                    key={cat.name}
-                    onClick={() => {
-                      setCurrentScreen('catalog');
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    className="px-3 py-1 bg-white hover:bg-[#0B2419] hover:text-white text-[12px] text-[#424844] transition-colors border border-[#E8E9E3]"
-                  >
-                    {cat.name} <span className="text-[10px] text-[#687069] ml-1">({cat.count})</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="w-full h-px bg-[#E8E9E3]/70"></div>
-
-              {/* Cây Quần */}
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider font-semibold text-[#0B2419] bg-[#edeee9] px-2.5 py-1">
-                  <span className="material-symbols-outlined text-[16px]">dry_cleaning</span> Quần (Cha):
-                </span>
-                {[
-                  { name: 'Quần jeans', count: 24 },
-                  { name: 'Quần tây âu', count: 16 },
-                  { name: 'Quần short', count: 10 },
-                  { name: 'Quần kaki / Chinos', count: 8 }
-                ].map((cat) => (
-                  <button
-                    key={cat.name}
-                    onClick={() => {
-                      setCurrentScreen('catalog');
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    className="px-3 py-1 bg-white hover:bg-[#0B2419] hover:text-white text-[12px] text-[#424844] transition-colors border border-[#E8E9E3]"
-                  >
-                    {cat.name} <span className="text-[10px] text-[#687069] ml-1">({cat.count})</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Cards Danh Mục Trực Quan Sinh Động */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pt-2">
-              {/* Card 1: Quần Jean & Denim */}
-              <div
-                onClick={() => {
-                  setSelectedProductId('prod-1');
-                  setCurrentScreen('product-detail');
-                }}
-                className="group relative aspect-[3/4] overflow-hidden flex flex-col justify-end p-6 bg-[#e7e9e3] cursor-pointer"
-              >
-                <img
-                  alt="Danh mục Quần Jean & Denim"
-                  className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
-                  src="https://lh3.googleusercontent.com/aida/AEtjO1XxKDE0XEbbzc6iGCPUDgORPtMntN4-zQ3Vwvb7KM-AEVXLT5IfZBSjcaxidC42etdq5Edswq9ysfaLF1ZxlM7d0LBeJNBlpZ9ks4cg_cESTl0s9meCo-zMSqqTnGQTusrQMnvJqvGFCyofamUR-XDcyuKkdy1ioaPpoVUwkE6-zfY_H6KVLOIkwTHWeYiAk65GIqERJM1MWL-ZJKw02gKBdtPf1tgomzh4ja6l3v1zMC_VUF7NL7P9woRm"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#071A12]/90 via-[#071A12]/30 to-transparent"></div>
-                <div className="relative z-10 space-y-1 text-white">
-                  <span className="text-[10px] tracking-widest uppercase text-[#E8C75B] block font-bold">
-                    24 MẪU THIẾT KẾ • QUẦN CHA
-                  </span>
-                  <h3 className="font-serif text-xl tracking-wide">QUẦN JEAN &amp; DENIM</h3>
-                  <p className="text-[12px] text-[#e7e9e3] font-light line-clamp-1">
-                    Ống suông, Slim-fit, Dệt Selvedge Kurabo
-                  </p>
-                  <span className="text-[11px] uppercase tracking-widest text-[#FFFDF5]/90 flex items-center gap-1 group-hover:translate-x-1 transition-transform pt-1 font-semibold">
-                    Khám phá danh mục <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                  </span>
-                </div>
-              </div>
-
-              {/* Card 2: Áo Sơ Mi & Polo */}
-              <div
-                onClick={() => {
-                  setSelectedProductId('prod-2');
-                  setCurrentScreen('product-detail');
-                }}
-                className="group relative aspect-[3/4] overflow-hidden flex flex-col justify-end p-6 bg-[#e7e9e3] cursor-pointer"
-              >
-                <img
-                  alt="Danh mục Áo Sơ Mi & Polo"
-                  className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
-                  src="https://lh3.googleusercontent.com/aida/AEtjO1WHRcMrnuUTbkYBPh2OKYQsUSkqjEhPkk93kMFesyYDEsGBHVtevc2JUQ0gGErDYzfuHhGZN8JUAjS3VccWxmduD0Iggn157B9oBLoiRZYEJwa-mG51j57_1AymuRkElenVWeJX0auZY6kfYL2iv175jA9FZYYrldHVC0T1D6-p98V-WHqNjOEiJoBFtGEd2hgntyeH88MPjHS9FPwgtQxWcHloFlSggZJDTMcZfSv4aih9E1UeBkvUDW8"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#071A12]/90 via-[#071A12]/30 to-transparent"></div>
-                <div className="relative z-10 space-y-1 text-white">
-                  <span className="text-[10px] tracking-widest uppercase text-[#E8C75B] block font-bold">
-                    27 MẪU THIẾT KẾ • ÁO CHA
-                  </span>
-                  <h3 className="font-serif text-xl tracking-wide">ÁO SƠ MI &amp; POLO</h3>
-                  <p className="text-[12px] text-[#e7e9e3] font-light line-clamp-1">
-                    Linen tự nhiên, Cotton Albini, Cuban collar
-                  </p>
-                  <span className="text-[11px] uppercase tracking-widest text-[#FFFDF5]/90 flex items-center gap-1 group-hover:translate-x-1 transition-transform pt-1 font-semibold">
-                    Khám phá danh mục <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                  </span>
-                </div>
-              </div>
-
-              {/* Card 3: Áo Khoác & Blazer */}
-              <div
-                onClick={() => {
-                  setSelectedProductId('prod-4');
-                  setCurrentScreen('product-detail');
-                }}
-                className="group relative aspect-[3/4] overflow-hidden flex flex-col justify-end p-6 bg-[#e7e9e3] cursor-pointer"
-              >
-                <img
-                  alt="Danh mục Áo Khoác & Blazer"
-                  className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
-                  src="https://lh3.googleusercontent.com/aida/AEtjO1VmUvdUdLhaiG5KonOOVDvROZ6_5yZdViucCicsHKsh19HuQ08GjQI_AORsxT_aQaCZBXHCWH8sylH29P7XYJZicZdR0_F4xox2lE_gcLVUyAdNvuw0RJez-WsCA-4kAIG6SZzisHjoPxAzqi385xidW1HXyebd2939XxqdoAmDgjQBGuceOHmUYxA7HeZ18UcGL5mrarIcoNTCvJEODdJOoGlQSZE5oyM-rW6E0SvyjM0lZ_SwNPHqORM9"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#071A12]/90 via-[#071A12]/30 to-transparent"></div>
-                <div className="relative z-10 space-y-1 text-white">
-                  <span className="text-[10px] tracking-widest uppercase text-[#E8C75B] block font-bold">
-                    14 MẪU THIẾT KẾ • ÁO CHA
-                  </span>
-                  <h3 className="font-serif text-xl tracking-wide">ÁO KHOÁC &amp; BLAZER</h3>
-                  <p className="text-[12px] text-[#e7e9e3] font-light line-clamp-1">
-                    Tailored Jacket, Len Ý Loro Piana may sẵn
-                  </p>
-                  <span className="text-[11px] uppercase tracking-widest text-[#FFFDF5]/90 flex items-center gap-1 group-hover:translate-x-1 transition-transform pt-1 font-semibold">
-                    Khám phá danh mục <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                  </span>
-                </div>
-              </div>
-
-              {/* Card 4: Quần Short & Kaki */}
-              <div
-                onClick={() => {
-                  setSelectedProductId('prod-6');
-                  setCurrentScreen('product-detail');
-                }}
-                className="group relative aspect-[3/4] overflow-hidden flex flex-col justify-end p-6 bg-[#e7e9e3] cursor-pointer"
-              >
-                <img
-                  alt="Danh mục Quần Short & Kaki"
-                  className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
-                  src="https://lh3.googleusercontent.com/aida/AEtjO1UWUDkTKr0Jz3-sfPwc2ZqWjY7J6n80o6c4GWVBZ0ZkAMxaJccsVAYrRxY5tocmVoE4Sjsq3A9PQK2P3OYh-WQJZMbcKkqlS5XYVXNuTmtdsHisYlSzDsfzGVX-a4lNJIRmuJjWkY2iSk9wZ-YX2bFNDg3jvwZq7D-7y1zYW1SjW7mnY7fXar5Ub801KK1S6lXcdIhaCYAHTfHipOUIgCeyDHzscLYvWq9NmjwFsZE2BQBJkmZciM-hmp1w"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#071A12]/90 via-[#071A12]/30 to-transparent"></div>
-                <div className="relative z-10 space-y-1 text-white">
-                  <span className="text-[10px] tracking-widest uppercase text-[#E8C75B] block font-bold">
-                    18 MẪU THIẾT KẾ • QUẦN CHA
-                  </span>
-                  <h3 className="font-serif text-xl tracking-wide">QUẦN SHORT &amp; TÂY ÂU</h3>
-                  <p className="text-[12px] text-[#e7e9e3] font-light line-clamp-1">
-                    Phom may đo phẳng phiu, co giãn nhẹ
-                  </p>
-                  <span className="text-[11px] uppercase tracking-widest text-[#FFFDF5]/90 flex items-center gap-1 group-hover:translate-x-1 transition-transform pt-1 font-semibold">
-                    Khám phá danh mục <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* KHỐI B: THƯƠNG HIỆU & ĐỐI TÁC DỆT (Thanh chip/filter ngang tinh tế) */}
-        <section className="w-full bg-[#FAF4DF]/70 py-6 border-y border-[#E8E9E3]" id="thuong-hieu">
-          <div className="w-full px-4 sm:px-8 lg:px-14 max-w-7xl mx-auto space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#0B2419] text-[22px]">verified</span>
-                <h3 className="text-[16px] text-[#0B2419] uppercase tracking-wider font-bold">
-                  KHỐI B • THƯƠNG HIỆU &amp; ĐỐI TÁC DỆT CHÍNH HÃNG
-                </h3>
-              </div>
-              <span className="text-[11px] text-[#1B5038] tracking-widest uppercase font-bold">
-                7 ĐỐI TÁC DANH TIẾNG NỔI BẬT
-              </span>
-            </div>
-
-            {/* Thanh Filter Chips Ngang */}
-            <div className="flex items-center gap-2.5 overflow-x-auto pb-1 pt-1 no-scrollbar">
-              <button
-                onClick={() => setSelectedBrand('ALL')}
-                className={`inline-flex items-center gap-2 px-4 py-2 border text-[12px] font-bold uppercase tracking-wider transition-all shadow-sm shrink-0 ${
-                  selectedBrand === 'ALL'
-                    ? 'bg-[#0B2419] text-white border-[#0B2419]'
-                    : 'bg-white text-[#0B2419] border-[#E8E9E3]'
-                }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-[#E8C75B]"></span>
-                TẤT CẢ THƯƠNG HIỆU
-                <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full">58</span>
-              </button>
-
-              {[
-                { name: 'Atelier Vert Heritage', count: 22, icon: 'spa' },
-                { name: 'Urban Wear Studio', count: 12, icon: 'apartment' },
-                { name: 'Kurabo Okayama Denim', count: 9, icon: 'water_drop' },
-                { name: 'Albini Luxury Cotton', count: 7, icon: 'texture' },
-                { name: 'Loro Piana Fabrics', count: 4, icon: 'diamond' },
-                { name: 'Minimalist Man', count: 8, icon: 'tune' },
-                { name: 'Local Atelier Craft', count: 6, icon: 'brush' }
-              ].map((brand) => (
+              <h1 className="font-serif text-5xl font-normal leading-[1.02] tracking-tight text-[#0B2419] sm:text-6xl lg:text-[68px]">
+                BẢN THỂ
+                <br />
+                <span className="italic text-[#123A29]">TỐI GIẢN.</span>
+              </h1>
+              <p className="max-w-md pt-2 text-[15px] font-light leading-7 text-[#424844] sm:text-[16px]">
+                Không gian mua sắm FIDO giữ tinh thần thời trang tối giản, tập trung vào sản phẩm, phom dáng và trải nghiệm chọn biến thể rõ ràng.
+              </p>
+              <div className="flex flex-col items-stretch gap-3 pt-6 sm:flex-row sm:items-center">
                 <button
-                  key={brand.name}
-                  onClick={() => setSelectedBrand(brand.name)}
-                  className={`inline-flex items-center gap-2 px-4 py-2 border text-[12px] font-semibold uppercase tracking-wider transition-all shrink-0 ${
-                    selectedBrand === brand.name
-                      ? 'bg-[#0B2419] text-white border-[#0B2419]'
-                      : 'bg-white hover:bg-[#FFFDF5] text-[#0B2419] border-[#E8E9E3]'
-                  }`}
+                  type="button"
+                  onClick={() => setCurrentScreen('catalog')}
+                  className="inline-flex items-center justify-center gap-2 bg-[#0B2419] px-7 py-4 text-[12px] font-bold uppercase tracking-widest text-white shadow-md transition-all duration-300 hover:bg-[#1B5038]"
                 >
-                  <span className="material-symbols-outlined text-[16px] text-[#687069]">{brand.icon}</span>
-                  {brand.name}
-                  <span className="text-[10px] text-[#687069] bg-[#edeee9] px-1.5 py-0.5 rounded">
-                    {brand.count}
+                  <span>Khám phá bộ sưu tập</span>
+                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                </button>
+                <a
+                  href="#san-pham-noi-bat"
+                  className="inline-flex items-center justify-center border border-[#0B2419]/30 bg-transparent px-7 py-4 text-[12px] font-bold uppercase tracking-widest text-[#0B2419] transition-all duration-300 hover:bg-[#FAF4DF]"
+                >
+                  Xem sản phẩm nổi bật
+                </a>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4 border-t border-[#E8E9E3]/80 pb-2 pt-10 text-[#0B2419]">
+              <div>
+                <span className="block font-serif text-xl font-bold sm:text-2xl">CATALOG</span>
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863] sm:text-[10px]">Bộ sưu tập FIDO</span>
+              </div>
+              <div>
+                <span className="block font-serif text-xl font-bold sm:text-2xl">SIZE + MÀU</span>
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863] sm:text-[10px]">Lựa chọn biến thể</span>
+              </div>
+              <div>
+                <span className="block font-serif text-xl font-bold sm:text-2xl">COD</span>
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863] sm:text-[10px]">Thanh toán khi nhận</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative min-h-[460px] overflow-hidden lg:col-span-7 lg:min-h-full">
+            <img
+              alt="FIDO Ready-to-Wear editorial"
+              className="h-full w-full scale-[1.02] object-cover object-center transition-transform duration-700 hover:scale-100"
+              src={HERO_IMAGE}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#071A12]/45 via-transparent to-transparent" />
+            <div className="absolute bottom-6 right-6 flex items-center gap-3 bg-[#071A12]/85 px-4 py-2.5 text-[#FFFDF5] shadow-lg backdrop-blur-md lg:bottom-10 lg:right-10">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#E8C75B]" />
+              <span className="text-[10px] font-bold uppercase tracking-widest">FIDO Editorial • Minimal Wardrobe</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="w-full border-y border-[#E8E9E3]/80 bg-[#FFFDF5] py-8">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 sm:grid-cols-2 sm:px-8 lg:grid-cols-4 lg:px-14">
+          {[
+            ['account_tree', 'Danh mục rõ ràng', 'Khám phá sản phẩm theo từng nhóm danh mục.'],
+            ['tune', 'Chọn đúng biến thể', 'Lựa chọn size và màu phù hợp cho từng sản phẩm.'],
+            ['inventory_2', 'Thông tin minh bạch', 'Giá và khả dụng được hiển thị ngay trong trải nghiệm mua sắm.'],
+            ['payments', 'Thanh toán COD', 'Đặt hàng sau khi đăng nhập và thanh toán khi nhận hàng.'],
+          ].map(([icon, title, description]) => (
+            <div key={title} className="flex items-start gap-4">
+              <span className="material-symbols-outlined mt-0.5 text-[28px] text-[#0B2419]">{icon}</span>
+              <div className="space-y-1">
+                <h3 className="text-[15px] font-bold text-[#0B2419]">{title}</h3>
+                <p className="text-[12px] leading-5 text-[#606863]">{description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="w-full bg-white py-14" id="danh-muc">
+        <div className="mx-auto max-w-7xl space-y-6 px-4 sm:px-8 lg:px-14">
+          <div className="flex flex-col gap-4 border-b border-[#E8E9E3] pb-6 md:flex-row md:items-end md:justify-between">
+            <div>
+              <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.2em] text-[#1B5038]">Khám phá theo nhóm</span>
+              <h2 className="font-serif text-3xl text-[#0B2419] sm:text-4xl">DANH MỤC SẢN PHẨM</h2>
+              <p className="mt-2 text-[13px] text-[#606863]">Chọn nhóm sản phẩm phù hợp với phong cách của bạn.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCurrentScreen('catalog')}
+              className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#0B2419]"
+            >
+              Xem toàn bộ
+              <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+            </button>
+          </div>
+
+          {loading && <div className="py-8 text-sm text-[#687069]">Đang tải danh mục...</div>}
+          {!loading && error && <div className="py-8 text-sm text-red-700">{error}</div>}
+          {!loading && !error && rootCategories.length === 0 && (
+            <div className="py-8 text-sm text-[#687069]">Chưa có danh mục gốc để hiển thị.</div>
+          )}
+          {!loading && !error && rootCategories.length > 0 && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {rootCategories.slice(0, 8).map((category, index) => (
+                <button
+                  key={category.category_id}
+                  type="button"
+                  onClick={() => setCurrentScreen('catalog')}
+                  className="group relative min-h-36 overflow-hidden border border-[#E8E9E3] bg-[#FAF9F5] p-5 text-left transition-all hover:-translate-y-0.5 hover:border-[#0B2419] hover:shadow-md"
+                >
+                  <span className="absolute right-4 top-3 font-serif text-5xl text-[#0B2419]/5">0{index + 1}</span>
+                  <span className="material-symbols-outlined text-[24px] text-[#1B5038]">category</span>
+                  <h3 className="mt-7 font-serif text-xl font-bold text-[#0B2419]">{category.name}</h3>
+                  <span className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#687069] group-hover:text-[#0B2419]">
+                    Khám phá
+                    <span className="material-symbols-outlined text-[14px]">arrow_outward</span>
                   </span>
                 </button>
               ))}
             </div>
-          </div>
-        </section>
+          )}
+        </div>
+      </section>
 
-        {/* KHỐI C: SẢN PHẨM CHUẨN DTO & THÔNG TIN ĐẦY ĐỦ */}
-        <section className="w-full bg-[#FFFFFF] py-14" id="danh-sach-san-pham">
-          <div className="w-full px-4 sm:px-8 lg:px-14 max-w-7xl mx-auto">
-            {/* Section Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 border-b border-[#E8E9E3] pb-6">
-              <div>
-                <span className="text-[10px] tracking-[0.2em] text-[#1B5038] uppercase block mb-1 font-bold">
-                  KHỐI C • SẢN PHẨM TUYỂN CHỌN (DTO CHUẨN)
-                </span>
-                <h2 className="font-serif text-3xl sm:text-4xl text-[#0B2419]">THIẾT KẾ MAY SẴN NỔI BẬT</h2>
-                <p className="text-[14px] text-[#424844] mt-1">
-                  Đầy đủ thông tin: Ảnh, Tên, Danh mục, Thương hiệu, Giá niêm yết và Trạng thái bán hàng
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  setCurrentScreen('catalog');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className="text-[12px] font-bold tracking-widest text-[#0B2419] uppercase hover:text-[#1B5038] transition-colors flex items-center gap-1 group cursor-pointer"
-              >
-                <span>XEM TẤT CẢ SẢN PHẨM</span>
-                <span className="material-symbols-outlined text-[18px] transition-transform group-hover:translate-x-1">
-                  east
-                </span>
-              </button>
+      <section className="w-full bg-[#FAF9F5] py-14" id="san-pham-noi-bat">
+        <div className="mx-auto max-w-7xl px-4 sm:px-8 lg:px-14">
+          <div className="flex flex-col gap-4 border-b border-[#D9DDD6] pb-6 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.2em] text-[#1B5038]">FIDO Selection</span>
+              <h2 className="font-serif text-3xl text-[#0B2419] sm:text-4xl">SẢN PHẨM NỔI BẬT</h2>
+              <p className="mt-2 text-[13px] text-[#606863]">Một số thiết kế đang có trong catalog FIDO.</p>
             </div>
+            <button
+              type="button"
+              onClick={() => setCurrentScreen('catalog')}
+              className="border border-[#0B2419] px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors hover:bg-[#0B2419] hover:text-white"
+            >
+              Xem catalog
+            </button>
+          </div>
 
-            {/* Products Grid (6 Items) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredFeaturedProducts.map((product) => {
-                const isFavorite = wishlist.includes(product.id);
-                return (
-                  <div
-                    key={product.id}
-                    className="group flex flex-col bg-white border border-[#E8E9E3] hover:border-[#0B2419]/40 transition-all duration-300"
-                  >
-                    <div className="relative w-full aspect-[3/4] bg-[#f3f4ef] overflow-hidden">
-                      <div
-                        onClick={() => handleOpenProduct(product.id)}
-                        className="w-full h-full cursor-pointer"
-                      >
-                        <img
-                          alt={product.name}
-                          className="w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
-                          src={product.imageUrl}
-                        />
-                      </div>
+          {!loading && !error && products.length === 0 && (
+            <div className="py-12 text-center text-sm text-[#687069]">Catalog chưa có sản phẩm để hiển thị.</div>
+          )}
 
-                      {/* Status Badges */}
-                      <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start">
-                        <span className="bg-[#0B2419] text-white px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
-                          ĐANG BÁN
-                        </span>
-                        {product.discountPercent && (
-                          <span className="bg-[#E8C75B] text-[#101310] px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
-                            -{product.discountPercent}%
-                          </span>
-                        )}
-                        {product.statusBadge && !product.discountPercent && (
-                          <span className="bg-[#1B5038] text-white px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
-                            {product.statusBadge}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Wishlist Button */}
-                      <button
-                        type="button"
-                        aria-label="Thêm vào danh sách yêu thích"
-                        onClick={() => toggleWishlist(product.id)}
-                        className="absolute top-3 right-3 w-9 h-9 bg-white/90 hover:bg-white text-[#0B2419] rounded-full flex items-center justify-center transition-colors shadow-sm cursor-pointer z-10"
-                      >
-                        <span
-                          className={`material-symbols-outlined text-[18px] ${
-                            isFavorite ? 'text-[#ba1a1a]' : 'text-[#0B2419]'
-                          }`}
-                        >
-                          favorite
-                        </span>
-                      </button>
-
-                      {/* Quick Add Overlay */}
-                      <div className="absolute inset-x-0 bottom-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out">
-                        <button
-                          type="button"
-                          onClick={() => addToCart(product)}
-                          className="w-full py-3 bg-[#0B2419] hover:bg-[#1B5038] text-white text-[11px] font-bold tracking-widest uppercase transition-colors shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">shopping_cart</span>
-                          + THÊM NHANH VÀO GIỎ
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="p-4 space-y-2 flex flex-col flex-1 justify-between">
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between text-[11px] text-[#1B5038] uppercase tracking-wider font-semibold">
-                          <span>
-                            {product.category} • {product.parentCategory} (Cha)
-                          </span>
-                          <span className="text-[#0B2419]">{product.brand}</span>
-                        </div>
-                        <h3
-                          onClick={() => handleOpenProduct(product.id)}
-                          className="text-[15px] font-bold text-[#0B2419] hover:text-[#1B5038] transition-colors leading-snug cursor-pointer line-clamp-1"
-                        >
-                          {product.name}
-                        </h3>
-                        <p className="text-[11px] text-[#687069] line-clamp-1">{product.description}</p>
-                      </div>
-
-                      {/* Price & Action */}
-                      <div className="pt-2 border-t border-[#E8E9E3]/80 flex items-center justify-between">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-[17px] text-[#0B2419] font-bold font-mono">
-                            {((product.price as number) || 0).toLocaleString('vi-VN')} ₫
-                          </span>
-                          {product.originalPrice && (
-                            <span className="text-[13px] text-[#687069] line-through font-mono">
-                              {(product.originalPrice as number || 0).toLocaleString('vi-VN')} ₫
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenProduct(product.id)}
-                          className="text-[11px] tracking-wider text-[#0B2419] uppercase font-bold flex items-center gap-0.5 hover:underline cursor-pointer"
-                        >
-                          CHI TIẾT <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                        </button>
-                      </div>
+          {!loading && !error && products.length > 0 && (
+            <div className="mt-7 grid grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
+              {products.map((product) => (
+                <button
+                  key={product.product_id}
+                  type="button"
+                  onClick={() => openProduct(product.id)}
+                  className="group text-left"
+                >
+                  <div className="relative aspect-[3/4] overflow-hidden bg-[#ECEDE8] ring-1 ring-[#E2E5DE]">
+                    {product.imageUrl ? (
+                      <img
+                        src={product.imageUrl}
+                        alt={product.name}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]"
+                      />
+                    ) : (
+                      <span className="flex h-full items-center justify-center text-sm text-[#8A918B]">Chưa có ảnh</span>
+                    )}
+                    <div className="absolute inset-x-0 bottom-0 translate-y-full bg-[#071A12]/88 px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-white transition-transform duration-300 group-hover:translate-y-0">
+                      Xem chi tiết sản phẩm
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* SECTION: EDITORIAL CAMPAIGN & LOOKBOOK */}
-        <section className="w-full bg-[#FAF4DF] py-16" id="editorial">
-          <div className="w-full px-4 sm:px-8 lg:px-14 max-w-7xl mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-              {/* Left Visual Composition */}
-              <div className="lg:col-span-6 relative">
-                <div className="relative aspect-[4/5] overflow-hidden bg-white shadow-md">
-                  <img
-                    alt="Atelier Vert Craftsmanship and Fabric Texture Detail"
-                    className="w-full h-full object-cover object-center"
-                    src="https://lh3.googleusercontent.com/aida/AEtjO1WHRcMrnuUTbkYBPh2OKYQsUSkqjEhPkk93kMFesyYDEsGBHVtevc2JUQ0gGErDYzfuHhGZN8JUAjS3VccWxmduD0Iggn157B9oBLoiRZYEJwa-mG51j57_1AymuRkElenVWeJX0auZY6kfYL2iv175jA9FZYYrldHVC0T1D6-p98V-WHqNjOEiJoBFtGEd2hgntyeH88MPjHS9FPwgtQxWcHloFlSggZJDTMcZfSv4aih9E1UeBkvUDW8"
-                  />
-                </div>
-                {/* Floating Detail Box */}
-                <div className="hidden sm:block absolute -bottom-6 -right-6 bg-[#FFFDF5] p-6 shadow-xl max-w-xs border border-[#E8E9E3]">
-                  <span className="text-[10px] text-[#1B5038] tracking-widest uppercase block mb-1 font-bold">
-                    CHI TIẾT VẢI DỆT
-                  </span>
-                  <p className="text-[13px] text-[#424844] leading-relaxed">
-                    Chất liệu được xử lý co rút chuẩn xác trước khi may giúp trang phục may sẵn giữ nguyên phom dáng chuẩn mực và độ bền bỉ sau nhiều chu kỳ giặt.
-                  </p>
-                </div>
-              </div>
-
-              {/* Right Content Narrative */}
-              <div className="lg:col-span-6 lg:pl-10 space-y-4 mt-8 lg:mt-0">
-                <span className="text-[11px] tracking-[0.25em] text-[#1B5038] uppercase block font-bold">
-                  CHUẨN MỰC READY-TO-WEAR
-                </span>
-                <h2 className="font-serif text-3xl sm:text-4xl lg:text-[42px] text-[#0B2419] leading-[1.12]">
-                  PHOM DÁNG MAY SẴN CHUẨN MỰC.
-                </h2>
-                <p className="text-[15px] text-[#424844] font-light leading-relaxed">
-                  Bộ sưu tập may sẵn sẵn sàng giao ngay của Atelier Vert mang lại trải nghiệm vừa vặn hoàn hảo mà không cần chờ đợi đặt may. Ứng dụng hệ thống bảng size chuẩn hóa cho vóc dáng nam giới Việt, hàng có sẵn đủ size để bạn lựa chọn và nhận ngay chỉ sau 2 giờ.
-                </p>
-
-                <div className="grid grid-cols-2 gap-4 pt-2">
-                  <div className="bg-[#FFFDF5] p-4 border border-[#E8E9E3]">
-                    <span className="font-serif text-[18px] text-[#0B2419] font-bold block mb-1">
-                      Sẵn Sàng Giao Ngay
-                    </span>
-                    <p className="text-[12px] text-[#424844]">
-                      Hàng có sẵn tại hệ thống showroom, giao hỏa tốc 2H nội thành.
-                    </p>
+                  <div className="space-y-1.5 pt-4">
+                    <div className="flex items-center justify-between gap-3 text-[10px] uppercase tracking-wider text-[#687069]">
+                      <span>{product.category}</span>
+                      <span>{product.brand || 'FIDO'}</span>
+                    </div>
+                    <h3 className="line-clamp-2 text-[14px] font-semibold leading-5 text-[#0B2419]">{product.name}</h3>
+                    <p className="font-mono text-sm font-bold text-[#0B2419]">{money(product.base_price)}</p>
                   </div>
-                  <div className="bg-[#FFFDF5] p-4 border border-[#E8E9E3]">
-                    <span className="font-serif text-[18px] text-[#0B2419] font-bold block mb-1">
-                      Lên Gấu Lấy Ngay
-                    </span>
-                    <p className="text-[12px] text-[#424844]">
-                      Hỗ trợ lên gấu quần miễn phí lấy ngay tại cửa hàng chỉ 15 phút.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="pt-4">
-                  <button
-                    onClick={() => {
-                      setCurrentScreen('catalog');
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    className="inline-flex items-center gap-2 text-[12px] font-bold text-[#0B2419] tracking-widest uppercase hover:text-[#1B5038] transition-colors pb-1 border-b-2 border-[#0B2419] cursor-pointer"
-                  >
-                    <span>XEM BỘ SƯU TẬP READY-TO-WEAR</span>
-                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* SECTION: BRAND PHILOSOPHY BANNER */}
-        <section className="w-full bg-[#0B2419] text-[#FFFDF5] py-16 relative overflow-hidden" id="showroom">
-          <div className="w-full px-4 sm:px-8 lg:px-14 max-w-7xl mx-auto relative z-10">
-            <div className="max-w-4xl mx-auto text-center space-y-4">
-              <div className="flex items-center justify-center gap-3">
-                <span className="w-8 h-[1px] bg-[#E8C75B]"></span>
-                <span className="text-[11px] tracking-[0.3em] uppercase text-[#E8C75B] font-bold">
-                  TRIẾT LÝ ATELIER VERT
-                </span>
-                <span className="w-8 h-[1px] bg-[#E8C75B]"></span>
-              </div>
-              <blockquote className="font-serif text-2xl sm:text-3xl lg:text-4xl font-normal leading-tight text-[#FFFDF5]">
-                “THỜI TRANG MAY SẴN ĐẲNG CẤP: PHOM DÁNG CHUẨN MỰC, CHẤT LIỆU TINH TUYỂN VÀ SẴN SÀNG GIAO NGAY.”
-              </blockquote>
-              <p className="text-[14px] text-[#e1e3de] max-w-xl mx-auto font-light leading-relaxed">
-                Hàng có sẵn tại hệ thống showroom trên toàn quốc với đầy đủ bảng size. Ghé thăm cửa hàng để trải nghiệm trực tiếp, thử phom dáng chuẩn mực và nhận hỗ trợ lên gấu quần miễn phí lấy ngay.
-              </p>
-              <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
-                <button
-                  onClick={() => {
-                    setCurrentScreen('showrooms');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="px-8 py-4 bg-[#FFFDF5] text-[#0B2419] hover:bg-[#FAF4DF] text-[12px] tracking-widest uppercase font-bold transition-colors shadow-md cursor-pointer"
-                >
-                  TÌM CỬA HÀNG GẦN BẠN
                 </button>
-                <button
-                  onClick={() => {
-                    setCurrentScreen('showrooms');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="px-8 py-4 bg-transparent text-[#FFFDF5] hover:text-[#E8C75B] text-[12px] tracking-widest uppercase transition-colors flex items-center gap-2 border border-[#FFFDF5]/30 cursor-pointer"
-                >
-                  <span>ĐẶT LỊCH HẸN THỬ ĐỒ</span>
-                  <span className="material-symbols-outlined text-[18px]">calendar_month</span>
-                </button>
-              </div>
+              ))}
             </div>
+          )}
+        </div>
+      </section>
+
+      <section className="relative overflow-hidden bg-[#071A12] text-white">
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute -left-20 -top-24 h-80 w-80 rounded-full border border-[#E8C75B]/40" />
+          <div className="absolute -bottom-40 right-10 h-[520px] w-[520px] rounded-full border border-white/10" />
+        </div>
+        <div className="relative mx-auto flex max-w-7xl flex-col gap-8 px-4 py-16 sm:px-8 lg:flex-row lg:items-end lg:justify-between lg:px-14 lg:py-20">
+          <div className="max-w-2xl">
+            <span className="text-[10px] font-bold uppercase tracking-[0.28em] text-[#E8C75B]">FIDO Editorial</span>
+            <h2 className="mt-3 font-serif text-4xl leading-tight sm:text-5xl">Tối giản trong hình thức. Rõ ràng trong từng lựa chọn.</h2>
+            <p className="mt-4 max-w-xl text-sm leading-7 text-white/65">
+              Khám phá những thiết kế FIDO trong một không gian tinh gọn, nơi hình ảnh, phom dáng, màu sắc và trải nghiệm lựa chọn sản phẩm được đặt ở trung tâm.
+            </p>
           </div>
-        </section>
-      </div>
+          <button
+            type="button"
+            onClick={() => setCurrentScreen('catalog')}
+            className="shrink-0 bg-[#E8C75B] px-6 py-3 text-xs font-bold uppercase tracking-wider text-[#071A12] transition-transform hover:-translate-y-0.5"
+          >
+            Mở catalog
+          </button>
+        </div>
+      </section>
     </div>
   );
 };

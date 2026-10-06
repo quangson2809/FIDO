@@ -1,20 +1,40 @@
-import { ShowroomDto, ShowroomService } from '../types';
 import { apiClient } from '../../../services/http/apiClient';
-import { API_MODE } from '../../../constants/app';
+import type { ApiResponse } from '../../../types/api';
+import type {
+  ContentPageCreateInput,
+  ContentPageDto,
+  ContentPagePatchInput,
+  PublicContentPageDto,
+} from '../types';
 
-const mockShowrooms: ShowroomDto[] = [
-  { id: '1', name: 'Atelier Vert Flagship Hà Nội', city: 'Hà Nội', address: '128 Nguyễn Trãi', phone: '0900000001', imageUrl: '...', openingHours: '09:00 - 21:30' },
-  { id: '2', name: 'Atelier Vert Flagship TP.HCM', city: 'TP.HCM', address: '250 Lê Thánh Tôn', phone: '0900000002', imageUrl: '...', openingHours: '09:00 - 21:30' }
-];
+export const contentService = {
+  async getPublicPage(pageCode: string): Promise<PublicContentPageDto> {
+    const response = await apiClient.get<ApiResponse<PublicContentPageDto>, ApiResponse<PublicContentPageDto>>(
+      `/content-pages/${encodeURIComponent(pageCode)}`,
+    );
+    return response.data;
+  },
 
-const mockShowroomService: ShowroomService = {
-  async getShowrooms() { return mockShowrooms; }
+  async getAdminPages(): Promise<ContentPageDto[]> {
+    const response = await apiClient.get<ApiResponse<ContentPageDto[]>, ApiResponse<ContentPageDto[]>>(
+      '/admin/content-pages',
+    );
+    return response.data;
+  },
+
+  async createPage(input: ContentPageCreateInput): Promise<ContentPageDto> {
+    const response = await apiClient.post<ApiResponse<ContentPageDto>, ApiResponse<ContentPageDto>>(
+      '/admin/content-pages',
+      input,
+    );
+    return response.data;
+  },
+
+  async updatePage(pageId: number, input: ContentPagePatchInput): Promise<ContentPageDto> {
+    const response = await apiClient.patch<ApiResponse<ContentPageDto>, ApiResponse<ContentPageDto>>(
+      `/admin/content-pages/${pageId}`,
+      input,
+    );
+    return response.data;
+  },
 };
-
-const realShowroomService: ShowroomService = {
-  async getShowrooms() { return apiClient.get<ShowroomDto[], ShowroomDto[]>('/showrooms'); }
-};
-
-export const showroomService = API_MODE === 'mock' 
-  ? mockShowroomService 
-  : realShowroomService;

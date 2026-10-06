@@ -1,293 +1,207 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { adminAccessService } from '../../features/adminAccess/api/service';
+import type { AccessControlDto, RoleDetailDto } from '../../features/adminAccess/types';
+import type { PermissionDto } from '../../features/auth/types';
+import { getApiErrorMessage } from '../../services/http/apiError';
 
-interface PermissionMatrix {
-  id: string;
+interface RoleDraft {
+  code: string;
   name: string;
   description: string;
-  admin: boolean;
-  showroomManager: boolean;
-  masterTailor: boolean;
-  logisticsLead: boolean;
-  stylist: boolean;
+  permissionIds: number[];
 }
 
-export const AdminRolesView: React.FC<{
-  showToast: (msg: string) => void;
-}> = ({ showToast }) => {
-  const [matrix, setMatrix] = useState<PermissionMatrix[]>([
-    {
-      id: 'p1',
-      name: 'Duyệt & Đổi trạng thái đơn bưu kiện COD',
-      description: 'Chuyển đơn từ Chờ duyệt sang Đang chuẩn bị / Đang giao',
-      admin: true,
-      showroomManager: true,
-      masterTailor: false,
-      logisticsLead: true,
-      stylist: false,
-    },
-    {
-      id: 'p2',
-      name: 'Chỉnh sửa thông tin người nhận & Địa chỉ giao',
-      description: 'Sửa số điện thoại, ghi chú giao hàng, khung giờ nhận',
-      admin: true,
-      showroomManager: true,
-      masterTailor: false,
-      logisticsLead: true,
-      stylist: true,
-    },
-    {
-      id: 'p3',
-      name: 'Tiếp nhận & Cập nhật hàng đợi may lên gấu',
-      description: 'Chỉ định thợ may phụ trách, xác nhận hoàn thiện lên gấu',
-      admin: true,
-      showroomManager: true,
-      masterTailor: true,
-      logisticsLead: false,
-      stylist: false,
-    },
-    {
-      id: 'p4',
-      name: 'Quản lý Sản phẩm, Giá bán & Biến thể',
-      description: 'Tạo sản phẩm mới, cập nhật giá niêm yết, bật/tắt mở bán',
-      admin: true,
-      showroomManager: true,
-      masterTailor: false,
-      logisticsLead: false,
-      stylist: false,
-    },
-    {
-      id: 'p5',
-      name: 'Kiểm kê & Điều chỉnh tồn kho',
-      description: 'Tăng giảm số lượng tồn kho thực tế, nhập kho lô mới',
-      admin: true,
-      showroomManager: true,
-      masterTailor: false,
-      logisticsLead: true,
-      stylist: false,
-    },
-    {
-      id: 'p6',
-      name: 'Xem & Cập nhật số đo khách hàng VIP',
-      description: 'Lưu thông số vòng eo, độ dài ống quần khách hàng',
-      admin: true,
-      showroomManager: true,
-      masterTailor: true,
-      logisticsLead: false,
-      stylist: true,
-    },
-    {
-      id: 'p7',
-      name: 'Xem báo cáo tài chính & Doanh thu COD',
-      description: 'Xem tổng doanh số, tỷ lệ thu tiền COD thành công',
-      admin: true,
-      showroomManager: true,
-      masterTailor: false,
-      logisticsLead: false,
-      stylist: false,
-    },
-    {
-      id: 'p8',
-      name: 'Cấu hình hệ thống & Phân quyền',
-      description: 'Thêm bớt quyền, cài đặt máy chủ Atelier Vert',
-      admin: true,
-      showroomManager: false,
-      masterTailor: false,
-      logisticsLead: false,
-      stylist: false,
-    },
-  ]);
+interface PermissionDraft {
+  code: string;
+  name: string;
+}
 
-  const togglePerm = (
-    id: string,
-    roleKey: 'admin' | 'showroomManager' | 'masterTailor' | 'logisticsLead' | 'stylist'
-  ) => {
-    if (roleKey === 'admin') {
-      showToast('Không thể tước quyền tối cao của Quản Trị Viên (Super Admin)');
-      return;
+const emptyRole: RoleDraft = { code: '', name: '', description: '', permissionIds: [] };
+const emptyPermission: PermissionDraft = { code: '', name: '' };
+
+export const AdminRolesView: React.FC<{ showToast: (msg: string) => void }> = ({ showToast }) => {
+  const [access, setAccess] = useState<AccessControlDto | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [roleDraft, setRoleDraft] = useState<RoleDraft>(emptyRole);
+  const [permissionDraft, setPermissionDraft] = useState<PermissionDraft>(emptyPermission);
+  const [editingRole, setEditingRole] = useState<RoleDetailDto | null>(null);
+  const [editingRoleDraft, setEditingRoleDraft] = useState<RoleDraft>(emptyRole);
+  const [editingPermission, setEditingPermission] = useState<PermissionDto | null>(null);
+  const [editingPermissionDraft, setEditingPermissionDraft] = useState<PermissionDraft>(emptyPermission);
+
+  const loadAccess = async () => {
+    try {
+      setAccess(await adminAccessService.getAccessControl());
+      setError(null);
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể tải ma trận phân quyền.'));
     }
-    setMatrix((prev) =>
-      prev.map((row) => (row.id === id ? { ...row, [roleKey]: !row[roleKey] } : row))
-    );
-    showToast('Đã lưu thay đổi ma trận phân quyền RBAC thành công!');
   };
 
+  useEffect(() => {
+    let active = true;
+    void adminAccessService.getAccessControl()
+      .then((result) => { if (active) setAccess(result); })
+      .catch((requestError: unknown) => {
+        if (active) setError(getApiErrorMessage(requestError, 'Không thể tải ma trận phân quyền.'));
+      });
+    return () => { active = false; };
+  }, []);
+
+  const togglePermission = (draft: RoleDraft, permissionId: number): RoleDraft => ({
+    ...draft,
+    permissionIds: draft.permissionIds.includes(permissionId)
+      ? draft.permissionIds.filter((id) => id !== permissionId)
+      : [...draft.permissionIds, permissionId],
+  });
+
+  const createRole = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (busy || !roleDraft.code.trim() || !roleDraft.name.trim()) return;
+    setBusy(true);
+    try {
+      await adminAccessService.createRole({
+        code: roleDraft.code.trim(),
+        name: roleDraft.name.trim(),
+        description: roleDraft.description.trim() || null,
+        permission_ids: roleDraft.permissionIds,
+      });
+      setRoleDraft(emptyRole);
+      await loadAccess();
+      showToast('Đã tạo vai trò.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể tạo vai trò.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const startRoleEdit = (role: RoleDetailDto) => {
+    setEditingRole(role);
+    setEditingRoleDraft({
+      code: role.code,
+      name: role.name,
+      description: role.description ?? '',
+      permissionIds: role.permissions.map((permission) => permission.permission_id),
+    });
+  };
+
+  const saveRole = async () => {
+    if (!editingRole || busy || !editingRoleDraft.name.trim()) return;
+    setBusy(true);
+    try {
+      await adminAccessService.updateRole(editingRole.role_id, {
+        name: editingRoleDraft.name.trim(),
+        description: editingRoleDraft.description.trim() || null,
+        permission_ids: editingRoleDraft.permissionIds,
+      });
+      setEditingRole(null);
+      await loadAccess();
+      showToast('Đã cập nhật vai trò.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể cập nhật vai trò.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deleteRole = async (role: RoleDetailDto) => {
+    if (busy || !window.confirm(`Xóa vai trò ${role.code}?`)) return;
+    setBusy(true);
+    try {
+      await adminAccessService.deleteRole(role.role_id);
+      await loadAccess();
+      showToast('Đã xóa vai trò.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể xóa vai trò.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const createPermission = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (busy || !permissionDraft.code.trim() || !permissionDraft.name.trim()) return;
+    setBusy(true);
+    try {
+      await adminAccessService.createPermission({
+        code: permissionDraft.code.trim(),
+        name: permissionDraft.name.trim(),
+      });
+      setPermissionDraft(emptyPermission);
+      await loadAccess();
+      showToast('Đã tạo permission.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể tạo permission.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const startPermissionEdit = (permission: PermissionDto) => {
+    setEditingPermission(permission);
+    setEditingPermissionDraft({ code: permission.code, name: permission.name });
+  };
+
+  const savePermission = async () => {
+    if (!editingPermission || busy || !editingPermissionDraft.code.trim() || !editingPermissionDraft.name.trim()) return;
+    setBusy(true);
+    try {
+      await adminAccessService.updatePermission(editingPermission.permission_id, {
+        code: editingPermissionDraft.code.trim(),
+        name: editingPermissionDraft.name.trim(),
+      });
+      setEditingPermission(null);
+      await loadAccess();
+      showToast('Đã cập nhật permission.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể cập nhật permission.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deletePermission = async (permission: PermissionDto) => {
+    if (busy || !window.confirm(`Xóa permission ${permission.code}?`)) return;
+    setBusy(true);
+    try {
+      await adminAccessService.deletePermission(permission.permission_id);
+      await loadAccess();
+      showToast('Đã xóa permission.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể xóa permission.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (error && !access) return <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>;
+  if (!access) return <div className="p-8 text-center text-sm text-[#687069]">Đang tải phân quyền...</div>;
+
   return (
-    <div className="flex flex-col w-full space-y-6">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-1">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-xs text-[#687069]">
-            <span className="w-2 h-2 rounded-full bg-[#1B5038]"></span>
-            <span>Kiểm soát truy cập dựa trên vai trò (Role-Based Access Control)</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-['Playfair_Display',serif] text-[#0B2419] tracking-tight font-bold">
-            Phân Quyền Vai Trò &amp; Bảo Mật Hệ Thống (RBAC)
-          </h1>
-          <p className="text-sm text-[#424844] max-w-3xl">
-            Thiết lập quyền thao tác chi tiết cho từng nhóm tài khoản: Quản trị viên, Quản lý Showroom, Thợ may trưởng xưởng và Chuyên viên giao nhận COD.
-          </p>
-        </div>
+    <section className="space-y-6">
+      <header><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">RBAC</p><h1 className="mt-1 font-serif text-3xl">Vai trò & quyền</h1><p className="mt-2 max-w-3xl text-sm text-[#606863]">Đọc và ghi trực tiếp qua API RBAC. Frontend chỉ quản lý UX; backend vẫn là security boundary.</p></header>
+      {error && <div className="border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => showToast('Tất cả quyền hạn đã được đồng bộ với phiên đăng nhập của nhân viên')}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#0B2419] text-[#E5C358] hover:bg-[#123A29] transition-colors text-xs font-bold uppercase tracking-wider rounded shadow-xs"
-          >
-            <span className="material-symbols-outlined text-[18px]">verified_user</span>
-            <span>Đồng Bộ Quyền Hạn</span>
-          </button>
-        </div>
+      <form onSubmit={createRole} className="space-y-4 border border-[#E8E9E3] bg-white p-5">
+        <div><h2 className="font-serif text-xl">Tạo vai trò</h2><p className="mt-1 text-xs text-[#687069]">Role code chỉ được nhập khi tạo; cập nhật role không đổi code.</p></div>
+        <div className="grid gap-3 md:grid-cols-3"><input value={roleDraft.code} onChange={(event) => setRoleDraft((current) => ({ ...current, code: event.target.value }))} placeholder="Code" maxLength={80} className="border border-[#D9DDD6] px-3 py-2 text-sm" /><input value={roleDraft.name} onChange={(event) => setRoleDraft((current) => ({ ...current, name: event.target.value }))} placeholder="Tên vai trò" maxLength={150} className="border border-[#D9DDD6] px-3 py-2 text-sm" /><input value={roleDraft.description} onChange={(event) => setRoleDraft((current) => ({ ...current, description: event.target.value }))} placeholder="Mô tả" maxLength={500} className="border border-[#D9DDD6] px-3 py-2 text-sm" /></div>
+        <div className="flex flex-wrap gap-2">{access.permissions.map((permission) => <label key={permission.permission_id} className="flex items-center gap-2 border border-[#D9DDD6] px-2 py-1 text-xs"><input type="checkbox" checked={roleDraft.permissionIds.includes(permission.permission_id)} onChange={() => setRoleDraft((current) => togglePermission(current, permission.permission_id))} />{permission.code}</label>)}</div>
+        <button type="submit" disabled={busy} className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white disabled:opacity-40">Tạo vai trò</button>
+      </form>
+
+      <div className="grid gap-4 lg:grid-cols-2">{access.roles.map((role) => <article key={role.role_id} className="border border-[#E8E9E3] bg-white p-5"><div className="flex items-start justify-between gap-4"><div><p className="font-mono text-xs text-[#687069]">#{role.role_id}</p><h2 className="font-serif text-xl">{role.code}</h2><p className="mt-1 text-sm text-[#606863]">{role.name}</p>{role.description && <p className="mt-2 text-xs leading-5 text-[#687069]">{role.description}</p>}</div><span className="rounded bg-[#0B2419] px-2 py-1 text-xs font-bold text-white">{role.permissions.length} quyền</span></div><div className="mt-4 flex flex-wrap gap-2">{role.permissions.map((permission) => <span key={permission.permission_id} title={permission.name} className="border border-[#D9DDD6] bg-[#F8FAF4] px-2 py-1 text-xs">{permission.code}</span>)}</div><div className="mt-4 flex gap-3"><button type="button" disabled={busy} onClick={() => startRoleEdit(role)} className="text-xs font-semibold underline">Chỉnh sửa</button><button type="button" disabled={busy} onClick={() => void deleteRole(role)} className="text-xs font-semibold text-red-700 underline">Xóa</button></div></article>)}</div>
+
+      <div className="border border-[#E8E9E3] bg-white p-5">
+        <h2 className="font-serif text-xl">Permission catalog</h2>
+        <form onSubmit={createPermission} className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]"><input value={permissionDraft.code} onChange={(event) => setPermissionDraft((current) => ({ ...current, code: event.target.value }))} placeholder="Permission code" maxLength={120} className="border border-[#D9DDD6] px-3 py-2 text-sm" /><input value={permissionDraft.name} onChange={(event) => setPermissionDraft((current) => ({ ...current, name: event.target.value }))} placeholder="Tên permission" maxLength={200} className="border border-[#D9DDD6] px-3 py-2 text-sm" /><button disabled={busy} className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white disabled:opacity-40">Thêm</button></form>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{access.permissions.map((permission) => <div key={permission.permission_id} className="border border-[#E8E9E3] p-3"><p className="font-mono text-xs font-bold">{permission.code}</p><p className="mt-1 text-xs text-[#687069]">{permission.name}</p><div className="mt-3 flex gap-3"><button type="button" disabled={busy} onClick={() => startPermissionEdit(permission)} className="text-xs font-semibold underline">Sửa</button><button type="button" disabled={busy} onClick={() => void deletePermission(permission)} className="text-xs font-semibold text-red-700 underline">Xóa</button></div></div>)}</div>
       </div>
 
-      {/* Roles Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
-        <div className="bg-white p-4 rounded-lg border border-[#E8E9E3] shadow-xs">
-          <div className="text-[10px] font-bold text-[#E5C358] bg-[#0B2419] px-2 py-0.5 rounded inline-block uppercase">
-            Admin
-          </div>
-          <div className="mt-2 font-bold text-[#0B2419] text-sm">Quản Trị Tối Cao</div>
-          <p className="text-[11px] text-[#687069] mt-1">Toàn quyền toàn hệ thống</p>
-        </div>
+      {editingRole && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={() => setEditingRole(null)}><div className="w-full max-w-2xl bg-white p-6" onMouseDown={(event) => event.stopPropagation()}><div className="flex items-start justify-between"><div><p className="font-mono text-xs text-[#687069]">{editingRole.code}</p><h2 className="font-serif text-2xl">Chỉnh sửa vai trò</h2></div><button type="button" onClick={() => setEditingRole(null)} className="text-2xl">×</button></div><div className="mt-4 space-y-3"><input value={editingRoleDraft.name} onChange={(event) => setEditingRoleDraft((current) => ({ ...current, name: event.target.value }))} placeholder="Tên" maxLength={150} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /><textarea rows={3} value={editingRoleDraft.description} onChange={(event) => setEditingRoleDraft((current) => ({ ...current, description: event.target.value }))} placeholder="Mô tả" maxLength={500} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /><div className="flex flex-wrap gap-2">{access.permissions.map((permission) => <label key={permission.permission_id} className="flex items-center gap-2 border border-[#D9DDD6] px-2 py-1 text-xs"><input type="checkbox" checked={editingRoleDraft.permissionIds.includes(permission.permission_id)} onChange={() => setEditingRoleDraft((current) => togglePermission(current, permission.permission_id))} />{permission.code}</label>)}</div><button type="button" disabled={busy} onClick={() => void saveRole()} className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white disabled:opacity-40">Lưu</button></div></div></div>}
 
-        <div className="bg-white p-4 rounded-lg border border-[#E8E9E3] shadow-xs">
-          <div className="text-[10px] font-bold text-[#0B2419] bg-[#0B2419]/10 px-2 py-0.5 rounded inline-block uppercase">
-            Manager
-          </div>
-          <div className="mt-2 font-bold text-[#0B2419] text-sm">Quản Lý Showroom</div>
-          <p className="text-[11px] text-[#687069] mt-1">Vận hành bán lẻ &amp; kho</p>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg border border-[#E8E9E3] shadow-xs">
-          <div className="text-[10px] font-bold text-[#725C00] bg-[#E5C358]/20 px-2 py-0.5 rounded inline-block uppercase">
-            Tailor
-          </div>
-          <div className="mt-2 font-bold text-[#0B2419] text-sm">Thợ May Trưởng</div>
-          <p className="text-[11px] text-[#687069] mt-1">Xử lý cắt may &amp; số đo</p>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg border border-[#E8E9E3] shadow-xs">
-          <div className="text-[10px] font-bold text-[#424844] bg-[#687069]/15 px-2 py-0.5 rounded inline-block uppercase">
-            Logistics
-          </div>
-          <div className="mt-2 font-bold text-[#0B2419] text-sm">Điều Phối COD</div>
-          <p className="text-[11px] text-[#687069] mt-1">Đóng gói &amp; giao nhận</p>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg border border-[#E8E9E3] shadow-xs">
-          <div className="text-[10px] font-bold text-[#1B5038] bg-[#1B5038]/10 px-2 py-0.5 rounded inline-block uppercase">
-            Stylist
-          </div>
-          <div className="mt-2 font-bold text-[#0B2419] text-sm">Stylist / Bán Hàng</div>
-          <p className="text-[11px] text-[#687069] mt-1">Fitting &amp; tư vấn khách</p>
-        </div>
-      </div>
-
-      {/* Permission Matrix Table */}
-      <div className="bg-white rounded-lg border border-[#E8E9E3] shadow-xs overflow-hidden">
-        <div className="p-4 border-b border-[#F0F2ED]">
-          <h3 className="text-base font-bold text-[#0B2419]">Ma Trận Thao Tác Nghiệp Vụ</h3>
-          <p className="text-xs text-[#687069]">Bấm trực tiếp vào ô để cấp hoặc thu hồi quyền truy cập</p>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-[#424844]">
-            <thead className="bg-[#FAF9F5] text-[#687069] uppercase font-bold text-[10px] tracking-wider border-b border-[#E8E9E3]">
-              <tr>
-                <th className="py-3 px-4 w-2/5">Chức Năng &amp; Quyền Hạn</th>
-                <th className="py-3 px-4 text-center">Quản Trị Viên</th>
-                <th className="py-3 px-4 text-center">Quản Lý Showroom</th>
-                <th className="py-3 px-4 text-center">Thợ May Xưởng</th>
-                <th className="py-3 px-4 text-center">Điều Phối COD</th>
-                <th className="py-3 px-4 text-center">Stylist</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#F0F2ED]">
-              {matrix.map((row) => (
-                <tr key={row.id} className="hover:bg-[#FAF9F5]/70 transition-colors">
-                  <td className="py-3 px-4">
-                    <div className="font-bold text-[#0B2419]">{row.name}</div>
-                    <div className="text-[11px] text-[#687069]">{row.description}</div>
-                  </td>
-
-                  {/* Admin */}
-                  <td className="py-3 px-4 text-center">
-                    <button
-                      onClick={() => togglePerm(row.id, 'admin')}
-                      className="w-6 h-6 rounded bg-[#0B2419] text-[#E5C358] inline-flex items-center justify-center font-bold"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">check</span>
-                    </button>
-                  </td>
-
-                  {/* Showroom Manager */}
-                  <td className="py-3 px-4 text-center">
-                    <button
-                      onClick={() => togglePerm(row.id, 'showroomManager')}
-                      className={`w-6 h-6 rounded inline-flex items-center justify-center transition-colors ${
-                        row.showroomManager
-                          ? 'bg-[#1B5038] text-white'
-                          : 'bg-[#F0F2ED] text-[#A3AAA5] hover:bg-[#E8E9E3]'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-[16px]">
-                        {row.showroomManager ? 'check' : 'close'}
-                      </span>
-                    </button>
-                  </td>
-
-                  {/* Master Tailor */}
-                  <td className="py-3 px-4 text-center">
-                    <button
-                      onClick={() => togglePerm(row.id, 'masterTailor')}
-                      className={`w-6 h-6 rounded inline-flex items-center justify-center transition-colors ${
-                        row.masterTailor
-                          ? 'bg-[#725C00] text-white'
-                          : 'bg-[#F0F2ED] text-[#A3AAA5] hover:bg-[#E8E9E3]'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-[16px]">
-                        {row.masterTailor ? 'check' : 'close'}
-                      </span>
-                    </button>
-                  </td>
-
-                  {/* Logistics Lead */}
-                  <td className="py-3 px-4 text-center">
-                    <button
-                      onClick={() => togglePerm(row.id, 'logisticsLead')}
-                      className={`w-6 h-6 rounded inline-flex items-center justify-center transition-colors ${
-                        row.logisticsLead
-                          ? 'bg-[#0B2419] text-white'
-                          : 'bg-[#F0F2ED] text-[#A3AAA5] hover:bg-[#E8E9E3]'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-[16px]">
-                        {row.logisticsLead ? 'check' : 'close'}
-                      </span>
-                    </button>
-                  </td>
-
-                  {/* Stylist */}
-                  <td className="py-3 px-4 text-center">
-                    <button
-                      onClick={() => togglePerm(row.id, 'stylist')}
-                      className={`w-6 h-6 rounded inline-flex items-center justify-center transition-colors ${
-                        row.stylist
-                          ? 'bg-[#1B5038] text-white'
-                          : 'bg-[#F0F2ED] text-[#A3AAA5] hover:bg-[#E8E9E3]'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-[16px]">
-                        {row.stylist ? 'check' : 'close'}
-                      </span>
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+      {editingPermission && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={() => setEditingPermission(null)}><div className="w-full max-w-lg bg-white p-6" onMouseDown={(event) => event.stopPropagation()}><div className="flex justify-between"><h2 className="font-serif text-2xl">Chỉnh sửa permission</h2><button type="button" onClick={() => setEditingPermission(null)} className="text-2xl">×</button></div><div className="mt-4 space-y-3"><input value={editingPermissionDraft.code} onChange={(event) => setEditingPermissionDraft((current) => ({ ...current, code: event.target.value }))} maxLength={120} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /><input value={editingPermissionDraft.name} onChange={(event) => setEditingPermissionDraft((current) => ({ ...current, name: event.target.value }))} maxLength={200} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /><button type="button" disabled={busy} onClick={() => void savePermission()} className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white disabled:opacity-40">Lưu</button></div></div></div>}
+    </section>
   );
 };

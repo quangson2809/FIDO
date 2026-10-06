@@ -1,347 +1,190 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { profileService } from '../features/auth/api/profileService';
+import type { MeDto } from '../features/auth/types';
 
 export const ProfileScreen: React.FC = () => {
-  const { userProfile, updateUserProfile, setCurrentScreen, showToast } = useApp();
-  const [activeTab, setActiveTab] = useState<'info' | 'measurements' | 'addresses'>('info');
+  const { setCurrentScreen, showToast } = useApp();
+  const [profile, setProfile] = useState<MeDto | null>(null);
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [newAddress, setNewAddress] = useState('');
+  const [editingAddressId, setEditingAddressId] = useState<number | null>(null);
+  const [editingAddressText, setEditingAddressText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingAddress, setSavingAddress] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState({
-    name: userProfile.fullName || userProfile.name || 'Nguyễn Hoàng Nam',
-    email: userProfile.email || 'hoangnam@example.com',
-    phone: userProfile.phone || '0912 345 678',
-    address: userProfile.address || userProfile.addresses[0]?.address || '128 Nguyễn Trãi',
-    city: userProfile.city || 'TP. Hồ Chí Minh',
-    district: userProfile.district || 'Quận 1',
-  });
+  useEffect(() => {
+    let active = true;
+    const loadProfile = async () => {
+      try {
+        const me = await profileService.getMe();
+        if (!active) return;
+        setProfile(me);
+        setPhone(me.account.phone);
+        setEmail(me.account.email ?? '');
+        setError(null);
+      } catch {
+        if (active) setError('Không thể tải hồ sơ. Vui lòng đăng nhập lại nếu phiên đã hết hạn.');
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    void loadProfile();
+    return () => { active = false; };
+  }, []);
 
-  const defaultMeasurements = {
-    height: 178,
-    weight: 70,
-    chest: 96,
-    waist: 80,
-    hips: 98,
-    shoulder: 44,
-    inseam: 78,
-    preferredPantsLength: 96,
+  const handleSaveProfile = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const normalizedPhone = phone.trim();
+    const normalizedEmail = email.trim();
+    if (!normalizedPhone) {
+      showToast('Số điện thoại không được để trống.');
+      return;
+    }
+    setSavingProfile(true);
+    try {
+      const account = await profileService.updateProfile({ phone: normalizedPhone, ...(normalizedEmail ? { email: normalizedEmail } : {}) });
+      setProfile((current) => current ? { ...current, account } : current);
+      setPhone(account.phone);
+      setEmail(account.email ?? '');
+      showToast('Đã cập nhật hồ sơ.');
+    } catch {
+      showToast('Không thể cập nhật hồ sơ.');
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
-  const [measurements, setMeasurements] = useState(
-    userProfile.measurements || defaultMeasurements
-  );
-
-  const handleSaveInfo = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateUserProfile({
-      fullName: formData.name,
-      name: formData.name,
-      phone: formData.phone,
-      email: formData.email,
-      address: formData.address,
-      city: formData.city,
-      district: formData.district,
-    });
-    showToast('Đã lưu thông tin cá nhân thành công!');
+  const handleAddAddress = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const addressText = newAddress.trim();
+    if (!addressText) return;
+    setSavingAddress(true);
+    try {
+      const address = await profileService.addAddress({ address_text: addressText });
+      setProfile((current) => current ? { ...current, addresses: [...current.addresses, address] } : current);
+      setNewAddress('');
+      showToast('Đã thêm địa chỉ.');
+    } catch {
+      showToast('Không thể thêm địa chỉ.');
+    } finally {
+      setSavingAddress(false);
+    }
   };
 
-  const handleSaveMeasurements = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateUserProfile({ measurements });
-    showToast('Đã cập nhật hồ sơ số đo may đo Atelier Vert!');
+  const handleUpdateAddress = async (addressId: number) => {
+    const addressText = editingAddressText.trim();
+    if (!addressText) return;
+    setSavingAddress(true);
+    try {
+      const updated = await profileService.updateAddress(addressId, { address_text: addressText });
+      setProfile((current) => current ? { ...current, addresses: current.addresses.map((address) => address.address_id === addressId ? updated : address) } : current);
+      setEditingAddressId(null);
+      setEditingAddressText('');
+      showToast('Đã cập nhật địa chỉ.');
+    } catch {
+      showToast('Không thể cập nhật địa chỉ.');
+    } finally {
+      setSavingAddress(false);
+    }
   };
 
-  const memberTier = userProfile.membershipTier || userProfile.tier || 'ATELIER PRIVILEGE VIP';
-  const memberName = userProfile.fullName || userProfile.name || 'Nguyễn Hoàng Nam';
-  const points = userProfile.loyaltyPoints ?? userProfile.tierPoints ?? 24500;
+  const handleDeleteAddress = async (addressId: number) => {
+    setSavingAddress(true);
+    try {
+      await profileService.deleteAddress(addressId);
+      setProfile((current) => current ? { ...current, addresses: current.addresses.filter((address) => address.address_id !== addressId) } : current);
+      showToast('Đã xóa địa chỉ.');
+    } catch {
+      showToast('Không thể xóa địa chỉ.');
+    } finally {
+      setSavingAddress(false);
+    }
+  };
+
+  if (loading) return <div className="min-h-screen bg-[#FAF9F5] px-6 py-20 text-center text-sm text-[#0B2419]/60">Đang tải hồ sơ...</div>;
+  if (error || !profile) {
+    return <div className="min-h-screen bg-[#FAF9F5] px-6 py-20 text-center text-[#0B2419]"><p className="text-sm">{error ?? 'Không có dữ liệu hồ sơ.'}</p><button type="button" onClick={() => setCurrentScreen('auth')} className="mt-5 bg-[#0B2419] px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white">Đến trang đăng nhập</button></div>;
+  }
+
+  const roleNames = profile.roles.map((role) => role.code).join(' · ');
 
   return (
-    <div className="bg-[#FAF9F5] min-h-screen text-[#0B2419] font-['Plus_Jakarta_Sans',sans-serif] py-8 lg:py-12">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-xs text-[#0B2419]/60 uppercase tracking-widest mb-6">
-          <button onClick={() => setCurrentScreen('home')} className="hover:text-[#0B2419]">
-            Trang chủ
-          </button>
-          <span>/</span>
-          <span className="text-[#0B2419] font-semibold">Tài Khoản Thành Viên</span>
-        </div>
-
-        {/* Member Card Banner */}
-        <div className="bg-gradient-to-r from-[#071A12] via-[#0B2419] to-[#123A29] text-white p-6 sm:p-8 mb-8 relative overflow-hidden shadow-lg">
-          <div className="absolute right-0 top-0 w-80 h-80 bg-radial from-[#E8C75B]/20 to-transparent pointer-events-none -mr-20 -mt-20"></div>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-2 h-2 rounded-full bg-[#E8C75B] animate-pulse"></span>
-                <span className="text-xs uppercase tracking-[0.2em] text-[#E8C75B] font-bold">
-                  {memberTier}
-                </span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-['Playfair_Display',serif] font-bold">
-                {memberName}
-              </h1>
-              <p className="text-xs text-white/70 mt-1">
-                Mã hội viên: <span className="font-mono text-[#E8C75B] font-semibold">FID-VIP-88992</span> | Thành viên từ: 2024
-              </p>
+    <div className="min-h-screen bg-[#FAF9F5] text-[#0B2419]">
+      <section className="relative overflow-hidden bg-[#071A12] text-white">
+        <div className="absolute -right-20 -top-24 h-80 w-80 rounded-full border border-[#E8C75B]/20" />
+        <div className="absolute -bottom-48 left-1/3 h-[420px] w-[420px] rounded-full border border-white/5" />
+        <div className="relative mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+          <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+            <div className="flex items-center gap-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#E8C75B] text-[#071A12]"><span className="material-symbols-outlined text-[30px]">person</span></div>
+              <div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#E8C75B]">FIDO Account</p><h1 className="mt-1 font-serif text-3xl">Hồ sơ của tôi</h1><p className="mt-1 text-xs text-white/55">{roleNames || 'Tài khoản'}</p></div>
             </div>
+            <button type="button" onClick={() => setCurrentScreen('my-orders')} className="border border-white/25 bg-white/5 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white backdrop-blur transition hover:bg-white/10">Đơn hàng của tôi</button>
+          </div>
+        </div>
+      </section>
 
-            <div className="flex items-center gap-6">
-              <div className="text-right">
-                <span className="text-[11px] uppercase tracking-wider text-white/60 block">Điểm tích lũy</span>
-                <span className="text-2xl font-bold font-mono text-[#E8C75B]">
-                  {points.toLocaleString()} <span className="text-xs font-normal text-white">pts</span>
-                </span>
-                <span className="text-[10px] text-white/50 block mt-0.5">Tương đương 185.000₫ ưu đãi</span>
-              </div>
-              <button
-                onClick={() => setCurrentScreen('my-orders')}
-                className="px-4 py-2.5 bg-white text-[#0B2419] text-xs font-semibold uppercase tracking-wider hover:bg-white/90 transition-colors"
-              >
-                Đơn hàng của tôi
-              </button>
+      <main className="mx-auto grid max-w-6xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:px-8">
+        <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+          <div className="border border-[#E8E9E3] bg-white p-5 shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#687069]">Account overview</p>
+            <div className="mt-4 space-y-3 text-sm">
+              <div className="border-b border-[#E8E9E3] pb-3"><p className="text-[10px] uppercase tracking-wider text-[#687069]">Số điện thoại</p><p className="mt-1 font-semibold">{profile.account.phone}</p></div>
+              <div className="border-b border-[#E8E9E3] pb-3"><p className="text-[10px] uppercase tracking-wider text-[#687069]">Email</p><p className="mt-1 break-all font-semibold">{profile.account.email ?? 'Chưa có'}</p></div>
+              <div><p className="text-[10px] uppercase tracking-wider text-[#687069]">Địa chỉ đã lưu</p><p className="mt-1 font-serif text-2xl font-bold">{profile.addresses.length}</p></div>
             </div>
           </div>
+          <button type="button" onClick={() => setCurrentScreen('catalog')} className="flex w-full items-center justify-between border border-[#0B2419] bg-[#0B2419] px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-white"><span>Tiếp tục mua sắm</span><span className="material-symbols-outlined text-[18px]">arrow_forward</span></button>
+        </aside>
+
+        <div className="space-y-6">
+          <section className="border border-[#E8E9E3] bg-white p-6 shadow-sm sm:p-8">
+            <div className="flex items-center gap-3 border-b border-[#E8E9E3] pb-4"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FFFDF5] ring-1 ring-[#E8E9E3]"><span className="material-symbols-outlined">manage_accounts</span></span><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#687069]">Profile</p><h2 className="font-serif text-xl">Thông tin tài khoản</h2></div></div>
+            <form onSubmit={handleSaveProfile} className="mt-6 grid gap-5 sm:grid-cols-2">
+              <label className="space-y-1.5 text-xs font-medium"><span>Số điện thoại *</span><input value={phone} onChange={(event) => setPhone(event.target.value)} maxLength={20} required className="w-full border border-[#D9DDD6] bg-[#FAF9F5] px-3.5 py-3 text-sm outline-none transition focus:border-[#0B2419]" /></label>
+              <label className="space-y-1.5 text-xs font-medium"><span>Email</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} maxLength={254} className="w-full border border-[#D9DDD6] bg-[#FAF9F5] px-3.5 py-3 text-sm outline-none transition focus:border-[#0B2419]" /></label>
+              <div className="sm:col-span-2"><button type="submit" disabled={savingProfile} className="bg-[#0B2419] px-5 py-3 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-[#1B5038] disabled:opacity-50">{savingProfile ? 'Đang lưu...' : 'Lưu thay đổi'}</button></div>
+            </form>
+          </section>
+
+          <section className="border border-[#E8E9E3] bg-white p-6 shadow-sm sm:p-8">
+            <div className="flex flex-col justify-between gap-3 border-b border-[#E8E9E3] pb-4 sm:flex-row sm:items-end">
+              <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FFFDF5] ring-1 ring-[#E8E9E3]"><span className="material-symbols-outlined">location_on</span></span><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#687069]">Addresses</p><h2 className="font-serif text-xl">Địa chỉ đã lưu</h2></div></div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">{profile.addresses.length} địa chỉ</span>
+            </div>
+
+            <form onSubmit={handleAddAddress} className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <input value={newAddress} onChange={(event) => setNewAddress(event.target.value)} maxLength={500} placeholder="Nhập địa chỉ mới" className="min-w-0 flex-1 border border-[#D9DDD6] bg-[#FAF9F5] px-3.5 py-3 text-sm outline-none transition focus:border-[#0B2419]" />
+              <button type="submit" disabled={savingAddress || !newAddress.trim()} className="bg-[#0B2419] px-5 py-3 text-xs font-bold uppercase tracking-wider text-white disabled:opacity-50">Thêm địa chỉ</button>
+            </form>
+
+            <div className="mt-6 grid gap-3">
+              {profile.addresses.length === 0 && <div className="border border-dashed border-[#D9DDD6] bg-[#FFFDF5] px-4 py-10 text-center"><span className="material-symbols-outlined text-3xl text-[#687069]">home_pin</span><p className="mt-2 text-sm text-[#687069]">Chưa có địa chỉ đã lưu.</p></div>}
+
+              {profile.addresses.map((address, index) => (
+                <article key={address.address_id} className="border border-[#E8E9E3] bg-[#FFFDF5] p-4 sm:p-5">
+                  {editingAddressId === address.address_id ? (
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <input value={editingAddressText} onChange={(event) => setEditingAddressText(event.target.value)} maxLength={500} className="min-w-0 flex-1 border border-[#D9DDD6] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#0B2419]" />
+                      <button type="button" disabled={savingAddress || !editingAddressText.trim()} onClick={() => void handleUpdateAddress(address.address_id)} className="bg-[#0B2419] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50">Lưu</button>
+                      <button type="button" onClick={() => { setEditingAddressId(null); setEditingAddressText(''); }} className="border border-[#D9DDD6] bg-white px-4 py-2.5 text-xs font-semibold">Hủy</button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex min-w-0 gap-3"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0B2419] text-[11px] font-bold text-[#E8C75B]">{index + 1}</span><p className="pt-1 text-sm leading-6">{address.address_text}</p></div>
+                      <div className="flex shrink-0 gap-2"><button type="button" onClick={() => { setEditingAddressId(address.address_id); setEditingAddressText(address.address_text); }} className="border border-[#D9DDD6] bg-white px-3 py-1.5 text-xs font-semibold">Sửa</button><button type="button" disabled={savingAddress} onClick={() => void handleDeleteAddress(address.address_id)} className="border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 disabled:opacity-50">Xóa</button></div>
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          </section>
         </div>
-
-        {/* Content Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {/* Navigation Sidebar */}
-          <div className="md:col-span-1 space-y-2">
-            <button
-              onClick={() => setActiveTab('info')}
-              className={`w-full text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider transition-all flex items-center justify-between ${
-                activeTab === 'info'
-                  ? 'bg-[#0B2419] text-white'
-                  : 'bg-white text-[#0B2419] border border-[#0B2419]/10 hover:bg-[#FAF9F5]'
-              }`}
-            >
-              <span>Thông tin chung</span>
-              <span className="material-symbols-outlined text-sm">person</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('measurements')}
-              className={`w-full text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider transition-all flex items-center justify-between ${
-                activeTab === 'measurements'
-                  ? 'bg-[#0B2419] text-white'
-                  : 'bg-white text-[#0B2419] border border-[#0B2419]/10 hover:bg-[#FAF9F5]'
-              }`}
-            >
-              <span>Hồ sơ số đo may đo</span>
-              <span className="material-symbols-outlined text-sm">straighten</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('addresses')}
-              className={`w-full text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider transition-all flex items-center justify-between ${
-                activeTab === 'addresses'
-                  ? 'bg-[#0B2419] text-white'
-                  : 'bg-white text-[#0B2419] border border-[#0B2419]/10 hover:bg-[#FAF9F5]'
-              }`}
-            >
-              <span>Sổ địa chỉ nhận hàng</span>
-              <span className="material-symbols-outlined text-sm">home_pin</span>
-            </button>
-            <button
-              onClick={() => setCurrentScreen('my-orders')}
-              className="w-full text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider bg-white text-[#0B2419] border border-[#0B2419]/10 hover:bg-[#FAF9F5] transition-all flex items-center justify-between"
-            >
-              <span>Lịch sử đơn hàng</span>
-              <span className="material-symbols-outlined text-sm">receipt_long</span>
-            </button>
-            <button
-              onClick={() => setCurrentScreen('showrooms')}
-              className="w-full text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider bg-white text-[#0B2419] border border-[#0B2419]/10 hover:bg-[#FAF9F5] transition-all flex items-center justify-between"
-            >
-              <span>Đặt lịch Fitting Showroom</span>
-              <span className="material-symbols-outlined text-sm">calendar_month</span>
-            </button>
-          </div>
-
-          {/* Main Content Area */}
-          <div className="md:col-span-3">
-            {activeTab === 'info' && (
-              <div className="bg-white border border-[#0B2419]/10 p-6 sm:p-8 shadow-xs">
-                <h3 className="text-base font-bold text-[#0B2419] mb-4 pb-2 border-b border-[#0B2419]/10">
-                  Thông Tin Cá Nhân
-                </h3>
-                <form onSubmit={handleSaveInfo} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-[#0B2419] mb-1">Họ và tên</label>
-                      <input
-                        type="text"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full text-xs px-3.5 py-2.5 border border-[#0B2419]/20 focus:outline-none focus:border-[#0B2419] bg-[#FAF9F5]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-[#0B2419] mb-1">Số điện thoại</label>
-                      <input
-                        type="tel"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="w-full text-xs px-3.5 py-2.5 border border-[#0B2419]/20 focus:outline-none focus:border-[#0B2419] bg-[#FAF9F5]"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-[#0B2419] mb-1">Địa chỉ Email</label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full text-xs px-3.5 py-2.5 border border-[#0B2419]/20 focus:outline-none focus:border-[#0B2419] bg-[#FAF9F5]"
-                    />
-                  </div>
-
-                  <div className="pt-2">
-                    <button
-                      type="submit"
-                      className="px-6 py-2.5 bg-[#0B2419] text-white text-xs font-semibold uppercase tracking-wider hover:bg-[#123A29] transition-colors"
-                    >
-                      Lưu thay đổi
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
-
-            {activeTab === 'measurements' && (
-              <div className="bg-white border border-[#0B2419]/10 p-6 sm:p-8 shadow-xs">
-                <div className="flex items-center justify-between pb-2 mb-4 border-b border-[#0B2419]/10">
-                  <div>
-                    <h3 className="text-base font-bold text-[#0B2419]">Hồ Sơ Số Đo May Đo</h3>
-                    <p className="text-xs text-[#0B2419]/60">
-                      Hệ thống tự động áp dụng khi quý khách chọn tính năng &quot;Miễn phí lên gấu may đo&quot; khi mua hàng
-                    </p>
-                  </div>
-                  <span className="material-symbols-outlined text-2xl text-[#123A29]">design_services</span>
-                </div>
-
-                <form onSubmit={handleSaveMeasurements} className="space-y-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div>
-                      <label className="block text-[11px] font-medium text-[#0B2419] mb-1">Chiều cao (cm)</label>
-                      <input
-                        type="number"
-                        value={measurements.height}
-                        onChange={(e) => setMeasurements({ ...measurements, height: Number(e.target.value) })}
-                        className="w-full text-xs px-3 py-2 border border-[#0B2419]/20 bg-[#FAF9F5]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-medium text-[#0B2419] mb-1">Cân nặng (kg)</label>
-                      <input
-                        type="number"
-                        value={measurements.weight}
-                        onChange={(e) => setMeasurements({ ...measurements, weight: Number(e.target.value) })}
-                        className="w-full text-xs px-3 py-2 border border-[#0B2419]/20 bg-[#FAF9F5]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-medium text-[#0B2419] mb-1">Vòng ngực (cm)</label>
-                      <input
-                        type="number"
-                        value={measurements.chest}
-                        onChange={(e) => setMeasurements({ ...measurements, chest: Number(e.target.value) })}
-                        className="w-full text-xs px-3 py-2 border border-[#0B2419]/20 bg-[#FAF9F5]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-medium text-[#0B2419] mb-1">Vòng eo (cm)</label>
-                      <input
-                        type="number"
-                        value={measurements.waist}
-                        onChange={(e) => setMeasurements({ ...measurements, waist: Number(e.target.value) })}
-                        className="w-full text-xs px-3 py-2 border border-[#0B2419]/20 bg-[#FAF9F5]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-medium text-[#0B2419] mb-1">Vòng mông (cm)</label>
-                      <input
-                        type="number"
-                        value={measurements.hips}
-                        onChange={(e) => setMeasurements({ ...measurements, hips: Number(e.target.value) })}
-                        className="w-full text-xs px-3 py-2 border border-[#0B2419]/20 bg-[#FAF9F5]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-medium text-[#0B2419] mb-1">Rộng vai (cm)</label>
-                      <input
-                        type="number"
-                        value={measurements.shoulder}
-                        onChange={(e) => setMeasurements({ ...measurements, shoulder: Number(e.target.value) })}
-                        className="w-full text-xs px-3 py-2 border border-[#0B2419]/20 bg-[#FAF9F5]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-medium text-[#0B2419] mb-1">Dài đáy / Inseam (cm)</label>
-                      <input
-                        type="number"
-                        value={measurements.inseam}
-                        onChange={(e) => setMeasurements({ ...measurements, inseam: Number(e.target.value) })}
-                        className="w-full text-xs px-3 py-2 border border-[#0B2419]/20 bg-[#FAF9F5]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-medium text-[#0B2419] mb-1">Dài quần mong muốn (cm)</label>
-                      <input
-                        type="number"
-                        value={measurements.preferredPantsLength}
-                        onChange={(e) =>
-                          setMeasurements({ ...measurements, preferredPantsLength: Number(e.target.value) })
-                        }
-                        className="w-full text-xs px-3 py-2 border border-[#0B2419]/20 bg-[#FAF9F5]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="bg-[#FFFDF5] border border-[#0B2419]/10 p-3 text-xs text-[#0B2419]/70 flex items-center gap-2 mt-4">
-                    <span className="material-symbols-outlined text-base text-[#123A29]">info</span>
-                    Quý khách có thể ghé bất kỳ Showroom nào để chuyên viên đo may kiểm tra số đo miễn phí 100%.
-                  </div>
-
-                  <div className="pt-2">
-                    <button
-                      type="submit"
-                      className="px-6 py-2.5 bg-[#0B2419] text-white text-xs font-semibold uppercase tracking-wider hover:bg-[#123A29] transition-colors"
-                    >
-                      Lưu Hồ Sơ Số Đo
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
-
-            {activeTab === 'addresses' && (
-              <div className="bg-white border border-[#0B2419]/10 p-6 sm:p-8 shadow-xs">
-                <div className="flex items-center justify-between pb-2 mb-4 border-b border-[#0B2419]/10">
-                  <h3 className="text-base font-bold text-[#0B2419]">Sổ Địa Chỉ Giao Nhận</h3>
-                  <button
-                    onClick={() => showToast('Mở cửa sổ thêm địa chỉ mới')}
-                    className="text-xs font-semibold text-[#123A29] underline"
-                  >
-                    + Thêm địa chỉ mới
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="p-4 border-2 border-[#0B2419] bg-[#FAF9F5] relative">
-                    <span className="absolute top-3 right-3 text-[10px] font-bold uppercase tracking-wider bg-[#0B2419] text-white px-2 py-0.5">
-                      Mặc định
-                    </span>
-                    <h4 className="text-xs font-bold text-[#0B2419]">{memberName}</h4>
-                    <p className="text-xs text-[#0B2419]/70 mt-1">{userProfile.phone}</p>
-                    <p className="text-xs text-[#0B2419]/80 mt-1">
-                      {formData.address}, {formData.district}, {formData.city}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      </main>
     </div>
   );
 };

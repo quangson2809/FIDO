@@ -1,6 +1,7 @@
-<<<<<<< HEAD
-export interface ProductDto {
-=======
+import type { PaginationMeta } from '../../../types/api';
+
+export type SaleStatus = 'ON_SALE' | 'STOPPED';
+
 export interface CategoryDto {
   category_id: number;
   parent_category_id: number | null;
@@ -56,24 +57,85 @@ export interface ProductVariantDto {
   color: ColorDto;
   sku: string | null;
   effective_price: number;
-  sale_status: string;
+  sale_status: SaleStatus;
   available_quantity: number;
 }
 
 export interface ProductSummaryDto {
->>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
   product_id: number;
   name: string;
+  image_url: string | null;
+  category: CategoryDto;
+  brand: BrandDto | null;
   base_price: number;
-  sale_status: string;
+  sale_status: SaleStatus;
+}
+
+export interface ProductDetailDto {
+  product_id: number;
+  name: string;
+  description: string | null;
+  category: CategoryDto;
+  brand: BrandDto | null;
+  size_system: SizeSystemDto;
+  gender: string | null;
+  season: string | null;
+  style: string | null;
+  material_care: string | null;
+  base_price: number;
+  sale_status: SaleStatus;
+  images: ProductImageDto[];
+  variants: ProductVariantDto[];
+}
+
+export interface CatalogProductView {
+  id: string;
+  product_id: number;
+  sku: string;
+  name: string;
+  category: string;
+  parentCategory: string;
+  brand: string;
+  price: number;
+  base_price: number;
+  originalPrice?: number;
+  imageUrl: string;
+  galleryImages: string[];
+  statusBadge?: string;
+  description: string;
+  fabric: string;
+  colors: Array<{ name: string; hex: string }>;
+  sizes: Array<string | number>;
+  variants: ProductVariantDto[];
+  rating: number;
+  reviewsCount: number;
+  inStockCount: number;
+  sale_status: SaleStatus;
+}
+
+export interface CatalogProductQuery {
+  q?: string;
+  category_id?: number;
+  brand_id?: number;
+  min_price?: number;
+  max_price?: number;
+  size_value_id?: number;
+  color_id?: number;
+  gender?: string;
+  season?: string;
+  style?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface CatalogProductPage {
+  items: CatalogProductView[];
+  meta: PaginationMeta;
 }
 
 export interface CatalogService {
-<<<<<<< HEAD
-  getProducts(): Promise<ProductDto[]>;
-=======
-  getProducts(): Promise<CatalogProductView[]>;
-  getProductDetail(productId: number | string): Promise<CatalogProductView>;
+  listProducts(query?: CatalogProductQuery): Promise<CatalogProductPage>;
+  getProductDetail(productId: number | string): Promise<ProductDetailDto>;
   getMeta(): Promise<CatalogMetaDto>;
 }
 
@@ -82,7 +144,17 @@ export interface ProductCreateVariantInput {
   color_id: number;
   sku?: string | null;
   override_price?: number | null;
-  sale_status: string;
+  sale_status: SaleStatus;
+}
+
+export interface ProductCreateImageInput {
+  image_url: string;
+  alt_text?: string | null;
+}
+
+export interface ProductImageOrderInput {
+  image_id: number;
+  sort_order: number;
 }
 
 export interface ProductCreateInput {
@@ -96,8 +168,34 @@ export interface ProductCreateInput {
   style?: string | null;
   material_care?: string | null;
   base_price: number;
-  sale_status: string;
+  sale_status: SaleStatus;
+  images?: ProductCreateImageInput[];
   variants?: ProductCreateVariantInput[];
+}
+
+export interface ProductPatchInput {
+  category_id?: number;
+  brand_id?: number | null;
+  size_system_id?: number;
+  name?: string;
+  description?: string | null;
+  gender?: string | null;
+  season?: string | null;
+  style?: string | null;
+  material_care?: string | null;
+  base_price?: number;
+  sale_status?: SaleStatus;
+  images?: ProductCreateImageInput[];
+}
+
+export interface AdminProductQuery {
+  q?: string;
+  category_id?: number;
+  brand_id?: number;
+  size_system_id?: number;
+  sale_status?: SaleStatus;
+  page?: number;
+  page_size?: number;
 }
 
 export interface AdminProductSummaryDto {
@@ -108,16 +206,89 @@ export interface AdminProductSummaryDto {
   brand_id: number | null;
   size_system_id: number;
   base_price: number;
-  sale_status: string;
+  sale_status: SaleStatus;
   created_at: string;
   updated_at: string;
 }
 
-export interface AdminProductDetailDto extends ProductDetailDto {
+export interface AdminVariantDto {
+  variant_id: number;
+  product_id: number;
+  size_value_id: number;
+  color_id: number;
+  sku: string | null;
+  override_price: number | null;
+  sale_status: SaleStatus;
+  available_quantity: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminProductDetailDto {
+  product_id: number;
+  name: string;
+  description: string | null;
+  category: CategoryDto;
+  brand: BrandDto | null;
+  size_system: SizeSystemDto;
+  gender: string | null;
+  season: string | null;
+  style: string | null;
+  material_care: string | null;
+  base_price: number;
+  sale_status: SaleStatus;
+  images: ProductImageDto[];
+  variants: AdminVariantDto[];
   category_id: number;
   brand_id: number | null;
   size_system_id: number;
   created_at: string;
   updated_at: string;
->>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
+}
+
+export interface VariantPatchInput {
+  override_price?: number | null;
+  sale_status?: SaleStatus;
+}
+
+export interface CategoryCreateInput {
+  parent_category_id: number | null;
+  name: string;
+}
+
+export interface CategoryPatchInput {
+  parent_category_id?: number | null;
+  name?: string;
+}
+
+export interface BrandInput {
+  name: string;
+}
+
+export interface ColorCreateInput {
+  code: string;
+  name: string;
+}
+
+export interface ColorPatchInput {
+  code?: string;
+  name?: string;
+}
+
+export interface SizeValueCreateInput {
+  code: string;
+  display_name: string;
+  sort_order: number;
+}
+
+export interface SizeSystemCreateInput {
+  code: string;
+  name: string;
+  size_values: SizeValueCreateInput[];
+}
+
+export interface SizeSystemPatchInput {
+  code?: string;
+  name?: string;
+  size_values?: Array<SizeValueCreateInput & { size_value_id?: number }>;
 }
