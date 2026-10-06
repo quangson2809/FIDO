@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
+
+const DRAWER_TRANSITION_MS = 420;
 
 export const CartDrawer: React.FC = () => {
   const {
@@ -11,8 +13,50 @@ export const CartDrawer: React.FC = () => {
     updateCartQuantity,
     setCurrentScreen,
   } = useApp();
+  const [shouldRender, setShouldRender] = useState(isCartOpen);
+  const [isVisible, setIsVisible] = useState(false);
+  const animationFrameRef = useRef<number | null>(null);
+  const closeTimerRef = useRef<number | null>(null);
 
-  if (!isCartOpen) return null;
+  useEffect(() => {
+    if (animationFrameRef.current !== null) {
+      window.cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+
+    if (isCartOpen) {
+      setShouldRender(true);
+      animationFrameRef.current = window.requestAnimationFrame(() => {
+        animationFrameRef.current = window.requestAnimationFrame(() => {
+          setIsVisible(true);
+          animationFrameRef.current = null;
+        });
+      });
+    } else {
+      setIsVisible(false);
+      closeTimerRef.current = window.setTimeout(() => {
+        setShouldRender(false);
+        closeTimerRef.current = null;
+      }, DRAWER_TRANSITION_MS);
+    }
+
+    return () => {
+      if (animationFrameRef.current !== null) {
+        window.cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      if (closeTimerRef.current !== null) {
+        window.clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = null;
+      }
+    };
+  }, [isCartOpen]);
+
+  if (!shouldRender) return null;
 
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -23,22 +67,31 @@ export const CartDrawer: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden" id="cart-drawer-container">
+    <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden" id="cart-drawer-container">
       <button
         type="button"
         aria-label="Đóng giỏ hàng"
-        className="fixed inset-0 bg-[#071A12]/65 backdrop-blur-sm"
+        className={`fixed inset-0 bg-[#071A12]/65 backdrop-blur-sm transition-opacity duration-300 ease-out motion-reduce:transition-none ${
+          isVisible ? 'pointer-events-auto opacity-100' : 'opacity-0'
+        }`}
         onClick={() => setIsCartOpen(false)}
       />
 
       <div className="fixed inset-y-0 right-0 flex max-w-full pl-3 sm:pl-6">
-        <aside className="relative z-10 flex h-full w-screen max-w-[500px] animate-in flex-col border-l border-white/10 bg-[#FDFDFB] shadow-2xl slide-in-from-right duration-300">
+        <aside
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cart-drawer-title"
+          className={`relative z-10 flex h-full w-screen max-w-[500px] transform-gpu flex-col border-l border-white/10 bg-[#FDFDFB] shadow-2xl transition-transform duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none ${
+            isVisible ? 'pointer-events-auto translate-x-0' : 'translate-x-full'
+          }`}
+        >
           <header className="shrink-0 border-b border-[#E8E9E3] bg-white px-5 py-5 sm:px-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2.5">
                   <span className="material-symbols-outlined text-[24px] text-[#0B2419]">shopping_bag</span>
-                  <h2 className="font-serif text-[22px] tracking-tight text-[#0B2419]">Giỏ hàng của bạn</h2>
+                  <h2 id="cart-drawer-title" className="font-serif text-[22px] tracking-tight text-[#0B2419]">Giỏ hàng của bạn</h2>
                 </div>
                 <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#687069]">{itemCount} sản phẩm · lưu trên tài khoản FIDO</p>
               </div>
