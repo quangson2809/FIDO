@@ -49,16 +49,12 @@ export const AdminCustomersView: React.FC<AdminCustomersViewProps> = ({
     if (!initialCustomerId) return undefined;
 
     let active = true;
-    setDetailLoading(true);
     void adminAccessService.getCustomer(initialCustomerId)
       .then((result) => {
         if (active) setDetail(result);
       })
       .catch(() => {
         if (active) showToast('Không thể tải hồ sơ khách hàng.');
-      })
-      .finally(() => {
-        if (active) setDetailLoading(false);
       });
 
     return () => { active = false; };
@@ -85,8 +81,11 @@ export const AdminCustomersView: React.FC<AdminCustomersViewProps> = ({
     onCloseDetail?.();
   };
 
+  const routedDetailLoading = Boolean(
+    initialCustomerId && detail?.account.account_id !== initialCustomerId,
+  );
   const showDetailModal = Boolean(
-    (initialCustomerId && (detail || detailLoading))
+    initialCustomerId
     || (!onSelectCustomer && (detail || detailLoading)),
   );
 
@@ -126,7 +125,7 @@ export const AdminCustomersView: React.FC<AdminCustomersViewProps> = ({
       {showDetailModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={closeDetail}>
           <div className="max-h-[85vh] w-full max-w-3xl overflow-y-auto bg-white p-6 shadow-xl" onMouseDown={(event) => event.stopPropagation()}>
-            {detailLoading || !detail ? (
+            {routedDetailLoading || detailLoading || !detail ? (
               <div className="py-12 text-center text-sm text-[#687069]">Đang tải hồ sơ khách hàng...</div>
             ) : (
               <>
