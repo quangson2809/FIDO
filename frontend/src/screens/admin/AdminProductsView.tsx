@@ -8,6 +8,7 @@ import type {
   ProductCreateInput,
   SaleStatus,
 } from '../../features/catalog/types';
+import { getApiErrorMessage } from '../../services/http/apiError';
 import { resolveImageUrl } from '../../services/media/imageUrl';
 import type { PaginationMeta } from '../../types/api';
 
@@ -62,7 +63,9 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
     let active = true;
     void adminCatalogMetaService.getMeta()
       .then((result) => { if (active) setMeta(result); })
-      .catch(() => { if (active) setError('Không thể tải metadata catalog.'); });
+      .catch((requestError: unknown) => {
+        if (active) setError(getApiErrorMessage(requestError, 'Không thể tải metadata catalog.'));
+      });
     return () => { active = false; };
   }, []);
 
@@ -78,8 +81,8 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
       setProducts(response.data);
       setPagination(response.meta);
       setError(null);
-    }).catch(() => {
-      if (active) setError('Không thể tải danh sách sản phẩm quản trị.');
+    }).catch((requestError: unknown) => {
+      if (active) setError(getApiErrorMessage(requestError, 'Không thể tải danh sách sản phẩm quản trị.'));
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [page, query, saleStatus]);
@@ -133,6 +136,14 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
     };
   };
 
+  const finishCreate = (productId: number) => {
+    setForm(initialForm);
+    setImages([]);
+    setShowCreate(false);
+    setSelectedProductId(String(productId));
+    openProduct(productId, onSelectProduct);
+  };
+
   const create = async (event: React.FormEvent) => {
     event.preventDefault();
     const payload = createPayload();
@@ -140,19 +151,30 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
       showToast('Dữ liệu sản phẩm chưa hợp lệ.');
       return;
     }
+    if (images.length > 10) {
+      showToast('Mỗi lần chỉ tải tối đa 10 ảnh.');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const created = images.length > 0
-        ? await adminProductService.createProductWithImages(payload, images)
-        : await adminProductService.createProductJson(payload);
-      setForm(initialForm);
-      setImages([]);
-      setShowCreate(false);
-      setSelectedProductId(String(created.product_id));
+      const created = await adminProductService.createProduct(payload);
+
+      if (images.length > 0) {
+        try {
+          await adminProductService.uploadImages(created.product_id, images);
+        } catch (uploadError: unknown) {
+          finishCreate(created.product_id);
+          showToast(`Đã tạo ${created.name}, nhưng tải ảnh thất bại. Hãy bổ sung ảnh trong chi tiết sản phẩm.`);
+          setError(getApiErrorMessage(uploadError, 'Tải ảnh sản phẩm thất bại.'));
+          return;
+        }
+      }
+
+      finishCreate(created.product_id);
       showToast(`Đã tạo ${created.name}.`);
-      openProduct(created.product_id, onSelectProduct);
-    } catch {
-      showToast('Không thể tạo sản phẩm. Kiểm tra quyền và dữ liệu catalog.');
+    } catch (requestError: unknown) {
+      showToast(getApiErrorMessage(requestError, 'Không thể tạo sản phẩm. Kiểm tra quyền và dữ liệu catalog.'));
     } finally {
       setSubmitting(false);
     }
@@ -200,7 +222,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
             <label className="space-y-1"><span className="text-xs font-semibold">Giá *</span><input required type="number" min="0" step="0.01" value={form.basePrice} onChange={(event) => updateForm('basePrice', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>
             <label className="space-y-1"><span className="text-xs font-semibold">Trạng thái</span><select value={form.saleStatus} onChange={(event) => updateForm('saleStatus', event.target.value as SaleStatus)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="ON_SALE">ON_SALE</option><option value="STOPPED">STOPPED</option></select></label>
             <label className="space-y-1"><span className="text-xs font-semibold">Gender</span><select value={form.gender} onChange={(event) => updateForm('gender', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">—</option>{meta?.genders.map((item) => <option key={item}>{item}</option>)}</select></label>
-            <label className="space-y-1"><span className="text-xs font-semibold">Ảnh local</span><input type="file" multiple accept="image/*" onChange={(event) => setImages(Array.from(event.target.files ?? []))} className="w-full text-xs" /></label>
+            <label className="space-y-1"><span className="text-xs font-semibold">Ảnh local</span><input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => setImages(Array.from(event.target.files ?? []))} className="w-full text-xs" /></label>
           </div>
           <label className="block space-y-1"><span className="text-xs font-semibold">Mô tả</span><textarea rows={3} value={form.description} onChange={(event) => updateForm('description', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>
           <button disabled={submitting || !meta} className="bg-[#0B2419] px-5 py-2.5 text-xs font-bold uppercase text-white disabled:opacity-40">{submitting ? 'Đang tạo...' : 'Tạo sản phẩm'}</button>
