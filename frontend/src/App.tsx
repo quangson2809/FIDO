@@ -80,10 +80,7 @@ const RequireAdmin: React.FC<{ children: ReactNode }> = ({ children }) => {
   );
 
   useEffect(() => {
-    if (!hasApiAccessToken()) {
-      setState('unauthenticated');
-      return undefined;
-    }
+    if (!hasApiAccessToken()) return undefined;
 
     let active = true;
     void profileService.getMe()
