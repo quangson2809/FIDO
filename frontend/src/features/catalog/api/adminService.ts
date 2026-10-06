@@ -7,15 +7,10 @@ import type {
   AdminVariantDto,
   ProductCreateInput,
   ProductCreateVariantInput,
+  ProductImageOrderInput,
   ProductPatchInput,
   VariantPatchInput,
 } from '../types';
-
-const withoutJsonImages = (product: ProductCreateInput): ProductCreateInput => {
-  const metadata = { ...product };
-  delete metadata.images;
-  return metadata;
-};
 
 export const adminProductService = {
   async getProducts(query: AdminProductQuery = {}): Promise<ApiListResponse<AdminProductSummaryDto>> {
@@ -33,29 +28,11 @@ export const adminProductService = {
     return response.data;
   },
 
-  async createProductJson(product: ProductCreateInput): Promise<AdminProductDetailDto> {
+  async createProduct(product: ProductCreateInput): Promise<AdminProductDetailDto> {
     const response = await apiClient.post<
       ApiResponse<AdminProductDetailDto>,
       ApiResponse<AdminProductDetailDto>
     >('/admin/products', product);
-    return response.data;
-  },
-
-  async createProductWithImages(
-    product: ProductCreateInput,
-    imageFiles: readonly File[],
-  ): Promise<AdminProductDetailDto> {
-    const form = new FormData();
-    form.append(
-      'product',
-      new Blob([JSON.stringify(withoutJsonImages(product))], { type: 'application/json' }),
-    );
-    imageFiles.forEach((image) => form.append('images', image));
-
-    const response = await apiClient.post<
-      ApiResponse<AdminProductDetailDto>,
-      ApiResponse<AdminProductDetailDto>
-    >('/admin/products', form);
     return response.data;
   },
 
@@ -65,6 +42,29 @@ export const adminProductService = {
       ApiResponse<AdminProductDetailDto>
     >(`/admin/products/${productId}`, input);
     return response.data;
+  },
+
+  async uploadImages(productId: number, imageFiles: readonly File[]): Promise<AdminProductDetailDto> {
+    const form = new FormData();
+    imageFiles.forEach((image) => form.append('images', image));
+
+    const response = await apiClient.post<
+      ApiResponse<AdminProductDetailDto>,
+      ApiResponse<AdminProductDetailDto>
+    >(`/admin/products/${productId}/images`, form);
+    return response.data;
+  },
+
+  async reorderImages(productId: number, images: ProductImageOrderInput[]): Promise<AdminProductDetailDto> {
+    const response = await apiClient.patch<
+      ApiResponse<AdminProductDetailDto>,
+      ApiResponse<AdminProductDetailDto>
+    >(`/admin/products/${productId}/images`, { images });
+    return response.data;
+  },
+
+  async deleteImage(productId: number, imageId: number): Promise<void> {
+    await apiClient.delete<void, void>(`/admin/products/${productId}/images/${imageId}`);
   },
 
   async createVariants(productId: number, variants: ProductCreateVariantInput[]): Promise<AdminVariantDto[]> {
