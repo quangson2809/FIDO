@@ -1,8 +1,9 @@
 import React from 'react';
-import { useApp } from '../context/AppContext';
+import { useNavigate, useParams } from 'react-router-dom';
 
 export const OrderSuccessScreen: React.FC = () => {
-  const { selectedOrderId, setCurrentScreen } = useApp();
+  const navigate = useNavigate();
+  const { orderId = '' } = useParams<{ orderId: string }>();
 
   return (
     <div className="min-h-[70vh] bg-[#FFFDF5] px-4 py-14 text-[#0B2419] sm:px-8">
@@ -20,18 +21,18 @@ export const OrderSuccessScreen: React.FC = () => {
           Thông tin đơn hàng, tổng thanh toán và trạng thái tiếp theo được quản lý bởi backend. Bạn có thể theo dõi tiến trình trong khu vực đơn hàng của tài khoản.
         </p>
 
-        {selectedOrderId && (
+        {orderId && (
           <div className="relative mx-auto mt-7 w-fit border border-[#E8E9E3] bg-[#FAF9F5] px-5 py-3 text-sm">
             <span className="text-[#687069]">Mã tham chiếu nội bộ: </span>
-            <strong className="font-mono">#{selectedOrderId}</strong>
+            <strong className="font-mono">#{orderId}</strong>
           </div>
         )}
 
         <div className="relative mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-          {selectedOrderId && (
+          {orderId && (
             <button
               type="button"
-              onClick={() => setCurrentScreen('order-detail')}
+              onClick={() => navigate(`/orders/${encodeURIComponent(orderId)}`)}
               className="bg-[#0B2419] px-6 py-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-[#1B5038]"
             >
               Xem chi tiết đơn
@@ -39,14 +40,14 @@ export const OrderSuccessScreen: React.FC = () => {
           )}
           <button
             type="button"
-            onClick={() => setCurrentScreen('my-orders')}
+            onClick={() => navigate('/orders')}
             className="border border-[#0B2419] px-6 py-3 text-xs font-bold uppercase tracking-widest"
           >
             Đơn hàng của tôi
           </button>
           <button
             type="button"
-            onClick={() => setCurrentScreen('catalog')}
+            onClick={() => navigate('/products')}
             className="border border-[#D9DDD6] px-6 py-3 text-xs font-bold uppercase tracking-widest text-[#606863]"
           >
             Tiếp tục mua sắm
