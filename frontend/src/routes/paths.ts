@@ -1,5 +1,3 @@
-import type { ScreenId } from '../types';
-
 export const APP_PATHS = {
   home: '/',
   catalog: '/products',
@@ -41,59 +39,6 @@ export interface AdminRouteResolution {
   orderId?: number;
   customerId?: number;
 }
-
-export const getPathForScreen = (
-  screen: ScreenId,
-  selectedProductId = '',
-  selectedOrderId = '',
-): string => {
-  switch (screen) {
-    case 'home':
-      return APP_PATHS.home;
-    case 'catalog':
-      return APP_PATHS.catalog;
-    case 'product-detail':
-      return selectedProductId
-        ? `/products/${encodeURIComponent(selectedProductId)}`
-        : APP_PATHS.catalog;
-    case 'checkout':
-      return APP_PATHS.checkout;
-    case 'order-success':
-      return APP_PATHS.orderSuccess;
-    case 'order-detail':
-      return selectedOrderId
-        ? `/orders/${encodeURIComponent(selectedOrderId)}`
-        : APP_PATHS.myOrders;
-    case 'my-orders':
-      return APP_PATHS.myOrders;
-    case 'policy':
-      return APP_PATHS.policy;
-    case 'auth':
-      return APP_PATHS.auth;
-    case 'profile':
-      return APP_PATHS.profile;
-    case 'admin':
-      return APP_PATHS.admin;
-    case 'cart':
-    default:
-      return APP_PATHS.home;
-  }
-};
-
-export const getScreenFromPath = (pathname: string): ScreenId => {
-  if (pathname === APP_PATHS.adminLogin) return 'auth';
-  if (pathname.startsWith('/admin')) return 'admin';
-  if (/^\/products\/[^/]+\/?$/.test(pathname)) return 'product-detail';
-  if (pathname === APP_PATHS.catalog) return 'catalog';
-  if (pathname === APP_PATHS.orderSuccess) return 'order-success';
-  if (pathname === APP_PATHS.checkout) return 'checkout';
-  if (/^\/orders\/[^/]+\/?$/.test(pathname)) return 'order-detail';
-  if (pathname === APP_PATHS.myOrders) return 'my-orders';
-  if (pathname === APP_PATHS.policy) return 'policy';
-  if (pathname === APP_PATHS.auth) return 'auth';
-  if (pathname === APP_PATHS.profile) return 'profile';
-  return 'home';
-};
 
 export const getAdminPath = (menuKey: string): string =>
   ADMIN_PATHS[menuKey] ?? APP_PATHS.admin;
