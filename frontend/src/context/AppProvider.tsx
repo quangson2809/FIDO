@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { cartService } from '../features/cart/api/service';
 import type { CartDto } from '../features/cart/types';
+import { LatestMutationQueue } from '../features/cart/model/LatestMutationQueue';
 import {
   hasApiAccessToken,
   subscribeToApiAccessToken,
@@ -32,8 +33,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [toast, setToast] = useState({ message: '', visible: false });
 
   const cartViewRef = useRef<CartViewState>({ items: [], subtotal: 0 });
-  const mutationQueueRef = useRef<Promise<void>>(Promise.resolve());
-  const mutationGenerationRef = useRef(0);
+  const mutationQueueRef = useRef(new LatestMutationQueue<CartDto>());
 
   const showToast = useCallback((message: string) => {
     setToast({ message, visible: true });
@@ -75,17 +75,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     operation: () => Promise<CartDto>,
     errorMessage: string,
   ): void => {
-    const generation = ++mutationGenerationRef.current;
-
-    mutationQueueRef.current = mutationQueueRef.current.then(async () => {
-      try {
-        const cart = await operation();
-        if (generation === mutationGenerationRef.current) applyCart(cart);
-      } catch {
-        if (generation === mutationGenerationRef.current) {
-          await reconcileAfterMutationFailure(errorMessage);
-        }
-      }
+    mutationQueueRef.current.enqueue(operation, {
+      onLatestSuccess: applyCart,
+      onLatestError: () => reconcileAfterMutationFailure(errorMessage),
     });
   }, [applyCart, reconcileAfterMutationFailure]);
 
@@ -109,7 +101,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const unsubscribe = subscribeToApiAccessToken((token) => {
       if (!token && active) {
-        mutationGenerationRef.current += 1;
+        mutationQueueRef.current.invalidate();
         clearCartState();
         setIsCartOpen(false);
       }
