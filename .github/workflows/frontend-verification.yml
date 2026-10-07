@@ -40,6 +40,10 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: API integration smoke
+        working-directory: frontend
+        run: npm run test:api
+
       - name: Lint
         working-directory: frontend
         run: npm run lint
