@@ -9,7 +9,7 @@ import { authService } from '../api/service';
 import { profileService } from '../api/profileService';
 import type { MeDto } from '../types';
 import { isAdminProfile } from './sessionAccess';
-import { AuthSessionContext, type AuthSessionStatus } from './sessionContext';
+import { AuthSessionContext, type AuthSessionContextValue, type AuthSessionStatus } from './sessionContext';
 import {
   hasApiAccessToken,
   subscribeToApiAccessToken,
