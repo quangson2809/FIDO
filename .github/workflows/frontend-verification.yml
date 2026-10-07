@@ -44,6 +44,10 @@ jobs:
         working-directory: frontend
         run: npm run test:api
 
+      - name: Frontend architecture smoke
+        working-directory: frontend
+        run: npm run test:architecture
+
       - name: Lint
         working-directory: frontend
         run: npm run lint
