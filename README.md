@@ -45,7 +45,6 @@ FIDO/
 ├── frontend/
 │   ├── src/
 │   │   ├── app/routes/
-│   │   ├── context/
 │   │   ├── features/
 │   │   ├── routes/
 │   │   ├── screens/
@@ -71,7 +70,7 @@ Feature API service
 Shared HTTP client
 ```
 
-Authentication/session state is owned by the auth feature. The application-level context is limited to cross-cutting UI/cart concerns rather than routing or authentication ownership.
+Authentication/session state is owned by the auth feature, cart state is owned by the cart feature, and transient notifications are owned by shared UI. There is no global AppProvider that owns routing, auth, cart and toast together.
 
 Admin navigation uses the effective roles/permissions returned by the backend for UX visibility. Backend authorization remains the security boundary.
 
@@ -146,6 +145,7 @@ cd frontend
 npm ci
 npm run test:api
 npm run test:architecture
+npm run test:render
 npm run lint
 npm run build
 ```
