@@ -1,13 +1,7 @@
 import { createContext, useContext } from 'react';
-import type { CartItem, ScreenId } from '../types';
+import type { CartItem } from '../types';
 
 export interface AppContextType {
-  currentScreen: ScreenId;
-  setCurrentScreen: (screen: ScreenId) => void;
-  selectedProductId: string;
-  setSelectedProductId: (id: string) => void;
-  selectedOrderId: string;
-  setSelectedOrderId: (id: string) => void;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
   cartItems: CartItem[];
@@ -16,6 +10,7 @@ export interface AppContextType {
   addToCart: (variantId: number, productName: string, quantity?: number) => void;
   removeFromCart: (itemId: string) => void;
   updateCartQuantity: (itemId: string, quantity: number) => void;
+  changeCartQuantity: (itemId: string, delta: number) => void;
   toastMessage: string | null;
   showToast: (message: string) => void;
 }
