@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { profileService } from '../features/auth/api/profileService';
 import type { MeDto } from '../features/auth/types';
 
 export const ProfileScreen: React.FC = () => {
-  const { setCurrentScreen, showToast } = useApp();
+  const { showToast } = useApp();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<MeDto | null>(null);
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -107,7 +109,7 @@ export const ProfileScreen: React.FC = () => {
 
   if (loading) return <div className="min-h-screen bg-[#FAF9F5] px-6 py-20 text-center text-sm text-[#0B2419]/60">Đang tải hồ sơ...</div>;
   if (error || !profile) {
-    return <div className="min-h-screen bg-[#FAF9F5] px-6 py-20 text-center text-[#0B2419]"><p className="text-sm">{error ?? 'Không có dữ liệu hồ sơ.'}</p><button type="button" onClick={() => setCurrentScreen('auth')} className="mt-5 bg-[#0B2419] px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white">Đến trang đăng nhập</button></div>;
+    return <div className="min-h-screen bg-[#FAF9F5] px-6 py-20 text-center text-[#0B2419]"><p className="text-sm">{error ?? 'Không có dữ liệu hồ sơ.'}</p><button type="button" onClick={() => navigate('/login')} className="mt-5 bg-[#0B2419] px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white">Đến trang đăng nhập</button></div>;
   }
 
   const roleNames = profile.roles.map((role) => role.code).join(' · ');
@@ -123,7 +125,7 @@ export const ProfileScreen: React.FC = () => {
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#E8C75B] text-[#071A12]"><span className="material-symbols-outlined text-[30px]">person</span></div>
               <div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#E8C75B]">FIDO Account</p><h1 className="mt-1 font-serif text-3xl">Hồ sơ của tôi</h1><p className="mt-1 text-xs text-white/55">{roleNames || 'Tài khoản'}</p></div>
             </div>
-            <button type="button" onClick={() => setCurrentScreen('my-orders')} className="border border-white/25 bg-white/5 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white backdrop-blur transition hover:bg-white/10">Đơn hàng của tôi</button>
+            <button type="button" onClick={() => navigate('/orders')} className="border border-white/25 bg-white/5 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white backdrop-blur transition hover:bg-white/10">Đơn hàng của tôi</button>
           </div>
         </div>
       </section>
@@ -138,7 +140,7 @@ export const ProfileScreen: React.FC = () => {
               <div><p className="text-[10px] uppercase tracking-wider text-[#687069]">Địa chỉ đã lưu</p><p className="mt-1 font-serif text-2xl font-bold">{profile.addresses.length}</p></div>
             </div>
           </div>
-          <button type="button" onClick={() => setCurrentScreen('catalog')} className="flex w-full items-center justify-between border border-[#0B2419] bg-[#0B2419] px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-white"><span>Tiếp tục mua sắm</span><span className="material-symbols-outlined text-[18px]">arrow_forward</span></button>
+          <button type="button" onClick={() => navigate('/products')} className="flex w-full items-center justify-between border border-[#0B2419] bg-[#0B2419] px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-white"><span>Tiếp tục mua sắm</span><span className="material-symbols-outlined text-[18px]">arrow_forward</span></button>
         </aside>
 
         <div className="space-y-6">
