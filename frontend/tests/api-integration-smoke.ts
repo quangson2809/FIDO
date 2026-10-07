@@ -236,7 +236,7 @@ try {
   malformedLoginResponse = true;
   await assert.rejects(
     () => authService.login('0909000001', 'Fido@123'),
-    /data\.access_token must be a non-blank string/,
+    /Invalid API response from POST \/auth\/login: data\.access_token must be/,
   );
   assert.equal(hasApiAccessToken(), false, 'Malformed login payloads must not publish an access token');
   malformedLoginResponse = false;
@@ -245,7 +245,7 @@ try {
   malformedMeResponse = true;
   await assert.rejects(
     () => profileService.getMe(),
-    /data\.permissions\[0\]\.code must be a non-blank string/,
+    /Invalid API response from GET \/me: data\.permissions\[0\]\.code must be/,
   );
   malformedMeResponse = false;
 
