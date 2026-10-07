@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { profileService } from '../features/auth/api/profileService';
 import { checkoutService } from '../features/orders/api/checkoutService';
@@ -9,7 +10,8 @@ const money = (value: number): string => `${value.toLocaleString('vi-VN')}₫`;
 const requestKey = (request: CheckoutRequest): string => JSON.stringify(request);
 
 export const CheckoutScreen: React.FC = () => {
-  const { cartItems, cartSubtotal, setCurrentScreen, setSelectedOrderId } = useApp();
+  const { cartItems, cartSubtotal } = useApp();
+  const navigate = useNavigate();
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
@@ -24,7 +26,7 @@ export const CheckoutScreen: React.FC = () => {
   useEffect(() => {
     let active = true;
     if (!hasApiAccessToken()) {
-      setCurrentScreen('auth');
+      navigate('/login');
       return () => { active = false; };
     }
 
@@ -44,7 +46,7 @@ export const CheckoutScreen: React.FC = () => {
 
     void loadProfile();
     return () => { active = false; };
-  }, [setCurrentScreen]);
+  }, [navigate]);
 
   const invalidateQuote = () => {
     setQuote(null);
@@ -91,8 +93,7 @@ export const CheckoutScreen: React.FC = () => {
     setError(null);
     try {
       const result = await checkoutService.createOrder(request);
-      setSelectedOrderId(String(result.order_id));
-      setCurrentScreen('order-success');
+      navigate(`/checkout/success/${result.order_id}`);
     } catch {
       setError('Không thể tạo đơn hàng. Dữ liệu giỏ hàng có thể đã thay đổi; hãy cập nhật báo giá và thử lại.');
       setQuote(null);
@@ -105,7 +106,7 @@ export const CheckoutScreen: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#FAF9F5] text-[#0B2419]">
       <div className="border-b border-[#E2E5DE] bg-[#F5F6F2] px-4 py-3 sm:px-8">
-        <nav className="mx-auto flex max-w-7xl items-center gap-2 text-[13px] text-[#606863]"><button type="button" onClick={() => setCurrentScreen('catalog')} className="hover:text-[#0B2419]">Sản phẩm</button><span>/</span><span className="font-semibold text-[#0B2419]">Checkout</span></nav>
+        <nav className="mx-auto flex max-w-7xl items-center gap-2 text-[13px] text-[#606863]"><button type="button" onClick={() => navigate('/products')} className="hover:text-[#0B2419]">Sản phẩm</button><span>/</span><span className="font-semibold text-[#0B2419]">Checkout</span></nav>
       </div>
 
       <section className="border-b border-[#E8E9E3] bg-[#071A12] text-white">
