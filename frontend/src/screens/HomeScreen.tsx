@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { catalogService } from '../features/catalog/api/service';
 import type { CatalogMetaDto, CatalogProductView } from '../features/catalog/types';
+import { getApiErrorMessage } from '../services/http/apiError';
 
 const HERO_IMAGE =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuB43j3U0QGfklvPCyrYdm_4uqdh7U1m_789gJgb9dh6wEkBdhY0mzlP7RRDQrhmLsrOknJ0jGRSmcq2PpIVgOXBQ4oZv3lNU8bndQhMe1NvknIqzt4CKSagNfZxwQWAon2oy6ggXrwuqZITn4oBz_g9S47_4eVaQuBi8oxwXP7nih4Pze-AjnEh0sTWqBN0FpTQKswUiZsjLo6Gn8-32F9v9d7VMDcwjWJJ1bBVwriGH43Q4012h51B1A';
@@ -21,15 +22,15 @@ export const HomeScreen: React.FC = () => {
     const load = async () => {
       try {
         const [productPage, catalogMeta] = await Promise.all([
-          catalogService.listProducts({ page: 0, page_size: 8 }),
+          catalogService.listProducts({ page: 1, page_size: 8 }),
           catalogService.getMeta(),
         ]);
         if (!active) return;
         setProducts(productPage.items);
         setMeta(catalogMeta);
         setError(null);
-      } catch {
-        if (active) setError('Không thể tải dữ liệu catalog.');
+      } catch (requestError: unknown) {
+        if (active) setError(getApiErrorMessage(requestError, 'Không thể tải dữ liệu catalog.'));
       } finally {
         if (active) setLoading(false);
       }
