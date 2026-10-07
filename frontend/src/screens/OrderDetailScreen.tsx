@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { orderService } from '../features/orders/api/service';
 import type { OrderCustomerDetailDto } from '../features/orders/types';
+import { getApiErrorMessage } from '../services/http/apiError';
 import { resolveImageUrl } from '../services/media/imageUrl';
 
 const recipientEditableStatuses = new Set(['PENDING', 'CONFIRMED', 'PREPARING']);
@@ -46,10 +47,10 @@ export const OrderDetailScreen: React.FC = () => {
           setAddress(detail.recipient.address);
           setError(null);
         }
-      } catch {
+      } catch (requestError: unknown) {
         if (active) {
           setOrder(null);
-          setError('Không thể tải chi tiết đơn hàng.');
+          setError(getApiErrorMessage(requestError, 'Không thể tải chi tiết đơn hàng.'));
         }
       } finally {
         if (active) setLoading(false);
@@ -72,8 +73,8 @@ export const OrderDetailScreen: React.FC = () => {
       setPhone(updated.recipient.phone);
       setAddress(updated.recipient.address);
       setEditing(false);
-    } catch {
-      setError('Không thể cập nhật người nhận. Đơn hàng có thể đã chuyển sang trạng thái không cho phép chỉnh sửa.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể cập nhật người nhận. Đơn hàng có thể đã chuyển sang trạng thái không cho phép chỉnh sửa.'));
     } finally {
       setSaving(false);
     }
