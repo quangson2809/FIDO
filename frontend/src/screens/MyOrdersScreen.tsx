@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { orderService } from '../features/orders/api/service';
 import type { OrderPage, OrderStatus } from '../features/orders/types';
+import { getApiErrorMessage } from '../services/http/apiError';
 
 const statuses: OrderStatus[] = ['PENDING', 'CONFIRMED', 'PREPARING', 'SHIPPING', 'COMPLETED', 'DELIVERY_FAILED', 'CANCELLED', 'RETURNED'];
 const statusLabel: Record<OrderStatus, string> = {
@@ -35,8 +36,8 @@ export const MyOrdersScreen: React.FC = () => {
       try {
         const result = await orderService.getOrders({ ...(status === 'ALL' ? {} : { order_status: status }), page, page_size: 10 });
         if (active) { setOrders(result); setError(null); }
-      } catch {
-        if (active) { setOrders(null); setError('Không thể tải danh sách đơn hàng.'); }
+      } catch (requestError: unknown) {
+        if (active) { setOrders(null); setError(getApiErrorMessage(requestError, 'Không thể tải danh sách đơn hàng.')); }
       } finally {
         if (active) setLoading(false);
       }
