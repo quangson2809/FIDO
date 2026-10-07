@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { orderService } from '../features/orders/api/service';
 import type { OrderCustomerDetailDto } from '../features/orders/types';
-import { hasApiAccessToken } from '../services/http/apiClient';
 import { resolveImageUrl } from '../services/media/imageUrl';
 
 const recipientEditableStatuses = new Set(['PENDING', 'CONFIRMED', 'PREPARING']);
@@ -37,10 +36,6 @@ export const OrderDetailScreen: React.FC = () => {
       setLoading(false);
       return () => { active = false; };
     }
-    if (!hasApiAccessToken()) {
-      navigate('/login');
-      return () => { active = false; };
-    }
     const loadOrder = async () => {
       setLoading(true);
       try {
@@ -62,7 +57,7 @@ export const OrderDetailScreen: React.FC = () => {
     };
     void loadOrder();
     return () => { active = false; };
-  }, [navigate, orderId]);
+  }, [orderId]);
 
   const saveRecipient = async () => {
     if (!order || !phone.trim() || !address.trim() || saving) return;
