@@ -13,13 +13,13 @@ const toOptionalNumber = (value: string): number | undefined => {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 };
 
-export const useCatalogBrowse = () => {
+export const useCatalogBrowse = (requestedCategoryId?: number) => {
   const [products, setProducts] = useState<CatalogProductView[]>([]);
   const [meta, setMeta] = useState<CatalogMetaDto | null>(null);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [query, setQuery] = useState('');
-  const [categoryId, setCategoryId] = useState<number | undefined>();
+  const [categoryId, setCategoryId] = useState<number | undefined>(requestedCategoryId);
   const [brandId, setBrandId] = useState<number | undefined>();
   const [sizeValueId, setSizeValueId] = useState<number | undefined>();
   const [colorId, setColorId] = useState<number | undefined>();
@@ -34,6 +34,11 @@ export const useCatalogBrowse = () => {
   const [loading, setLoading] = useState(true);
   const [metaLoading, setMetaLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCategoryId(requestedCategoryId);
+    setPage(1);
+  }, [requestedCategoryId]);
 
   useEffect(() => {
     let active = true;

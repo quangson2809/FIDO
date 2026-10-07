@@ -31,6 +31,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [cartItems, setCartItems] = useState<CartViewItem[]>([]);
   const [cartSubtotal, setCartSubtotal] = useState(0);
+  const [cartRevision, setCartRevision] = useState(0);
 
   const cartViewRef = useRef<CartViewState>({ items: [], subtotal: 0 });
   const mutationQueueRef = useRef(new LatestMutationQueue<CartDto>());
@@ -39,6 +40,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     cartViewRef.current = { items, subtotal };
     setCartItems(items);
     setCartSubtotal(subtotal);
+    setCartRevision((current) => current + 1);
   }, []);
 
   const applyCart = useCallback((cart: CartDto): void => {
@@ -71,6 +73,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     operation: () => Promise<CartDto>,
     errorMessage: string,
   ): void => {
+    setCartRevision((current) => current + 1);
     mutationQueueRef.current.enqueue(operation, {
       onLatestSuccess: applyCart,
       onLatestError: () => reconcileAfterMutationFailure(errorMessage),
@@ -192,6 +195,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsCartOpen,
     cartItems,
     cartSubtotal,
+    cartRevision,
     refreshCart,
     addToCart,
     removeFromCart,

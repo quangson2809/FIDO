@@ -16,6 +16,7 @@ import type {
 import { useAuthSession } from '../features/auth/session/useAuthSession';
 import { useToast } from '../shared/ui/toast/useToast';
 import { getApiErrorMessage } from '../services/http/apiError';
+import { canPurchaseProductVariant } from '../features/catalog/model/purchaseAvailability';
 
 export const ProductDetailScreen: React.FC = () => {
   const { addToCart } = useCart();
@@ -115,8 +116,9 @@ export const ProductDetailScreen: React.FC = () => {
     [onSaleVariants, selectedColorId, selectedSizeValueId],
   );
 
-  const variantCanBePurchased = Boolean(
-    selectedVariant && selectedVariant.available_quantity > 0,
+  const variantCanBePurchased = canPurchaseProductVariant(
+    product?.sale_status,
+    selectedVariant,
   );
 
   const selectSize = (sizeValueId: number) => {

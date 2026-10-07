@@ -9,8 +9,8 @@ import type {
   SupplierDto,
 } from '../../features/inventory/types';
 import type { PaginationMeta } from '../../types/api';
+import { getVietnamToday } from '../../shared/time/vietnamCalendar';
 
-const today = () => new Date().toISOString().slice(0, 10);
 const emptyItem = (): GoodsReceiptItemInput => ({ variant_id: 0, quantity: 1 });
 
 export const AdminInwardView: React.FC<{
@@ -26,7 +26,7 @@ export const AdminInwardView: React.FC<{
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<GoodsReceiptDetailDto | null>(null);
   const [supplierId, setSupplierId] = useState('');
-  const [receiptDate, setReceiptDate] = useState(today());
+  const [receiptDate, setReceiptDate] = useState(getVietnamToday());
   const [note, setNote] = useState('');
   const [items, setItems] = useState<GoodsReceiptItemInput[]>([emptyItem()]);
   const [saving, setSaving] = useState(false);
@@ -65,7 +65,7 @@ export const AdminInwardView: React.FC<{
   const resetDraftForm = () => {
     setSelected(null);
     setSupplierId('');
-    setReceiptDate(today());
+    setReceiptDate(getVietnamToday());
     setNote('');
     setItems([emptyItem()]);
   };

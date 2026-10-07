@@ -60,6 +60,7 @@ const cartValue: CartContextValue = {
     quantity: 2,
   }],
   cartSubtotal: 398000,
+  cartRevision: 1,
   refreshCart: asyncNoOp,
   addToCart: noOp,
   removeFromCart: noOp,
@@ -167,5 +168,29 @@ const purchasePanelHtml = renderToStaticMarkup(
 assert.match(purchasePanelHtml, /FIDO Essential Tee/);
 assert.match(purchasePanelHtml, /Thêm vào giỏ hàng/);
 assert.match(purchasePanelHtml, /Còn 5/);
+
+const stoppedProductPanelHtml = renderToStaticMarkup(
+  <ProductPurchasePanel
+    product={{ ...product, sale_status: 'STOPPED' }}
+    selectedVariant={variant}
+    onSaleVariants={[variant]}
+    sizeOptions={[variant.size]}
+    colorOptions={[variant.color]}
+    selectedSizeValueId={variant.size.size_value_id}
+    selectedColorId={variant.color.color_id}
+    quantity={1}
+    variantCanBePurchased={false}
+    displayedPrice={variant.effective_price}
+    sizeAvailability={() => true}
+    colorAvailability={() => true}
+    onSelectSize={noOp}
+    onSelectColor={noOp}
+    onQuantityChange={noOp}
+    onAddToCart={noOp}
+  />,
+);
+assert.match(stoppedProductPanelHtml, /Sản phẩm đã ngừng bán/);
+assert.match(stoppedProductPanelHtml, /Không khả dụng/);
+assert.doesNotMatch(stoppedProductPanelHtml, />Thêm vào giỏ hàng</);
 
 process.stdout.write('Frontend render smoke: PASS\n');

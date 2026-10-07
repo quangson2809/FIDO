@@ -5,17 +5,16 @@ import { profileService } from '../features/auth/api/profileService';
 import { checkoutService } from '../features/orders/api/checkoutService';
 import type { CheckoutQuoteDto, CheckoutRequest } from '../features/orders/types';
 import { getApiErrorMessage } from '../services/http/apiError';
+import { buildCheckoutQuoteKey } from '../features/orders/model/checkoutQuoteKey';
 
 const money = (value: number): string => `${value.toLocaleString('vi-VN')}₫`;
-const requestKey = (request: CheckoutRequest): string => JSON.stringify(request);
 
 export const CheckoutScreen: React.FC = () => {
-  const { cartItems, cartSubtotal } = useCart();
+  const { cartItems, cartSubtotal, cartRevision } = useCart();
   const navigate = useNavigate();
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
-  const [voucherCode, setVoucherCode] = useState('');
   const [quote, setQuote] = useState<CheckoutQuoteDto | null>(null);
   const [quotedRequestKey, setQuotedRequestKey] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -53,10 +52,10 @@ export const CheckoutScreen: React.FC = () => {
     recipient_phone: phone.trim(),
     recipient_email: email.trim() || null,
     recipient_address: address.trim(),
-    voucher_code: voucherCode.trim() || null,
-  }), [address, email, phone, voucherCode]);
+    voucher_code: null,
+  }), [address, email, phone]);
 
-  const currentRequestKey = requestKey(request);
+  const currentRequestKey = buildCheckoutQuoteKey(request, cartRevision);
   const quoteIsCurrent = quote !== null && quotedRequestKey === currentRequestKey;
   const canRequestQuote = request.recipient_phone.length > 0 && request.recipient_address.length > 0 && cartItems.length > 0;
 
@@ -76,7 +75,7 @@ export const CheckoutScreen: React.FC = () => {
     } catch (requestError: unknown) {
       setQuote(null);
       setQuotedRequestKey(null);
-      setError(getApiErrorMessage(requestError, 'Không thể tạo báo giá. Kiểm tra thông tin nhận hàng, voucher và tồn kho.'));
+      setError(getApiErrorMessage(requestError, 'Không thể tạo báo giá. Kiểm tra thông tin nhận hàng và tồn kho.'));
     } finally {
       setQuoteLoading(false);
     }
@@ -108,7 +107,7 @@ export const CheckoutScreen: React.FC = () => {
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8 lg:px-14">
           <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#E8C75B]">FIDO Checkout</p>
           <div className="mt-2 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-            <div><h1 className="font-serif text-3xl sm:text-4xl">Xác nhận thông tin nhận hàng</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-white/65">Giá, tồn kho, voucher và tổng tiền được xác nhận lại từ backend trước khi tạo đơn.</p></div>
+            <div><h1 className="font-serif text-3xl sm:text-4xl">Xác nhận thông tin nhận hàng</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-white/65">Giá, tồn kho và tổng tiền được xác nhận lại từ backend trước khi tạo đơn.</p></div>
             <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-white/60"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#E8C75B] text-[#071A12]">1</span><span>Thông tin</span><span className="h-px w-6 bg-white/20"/><span className={`flex h-7 w-7 items-center justify-center rounded-full ${quoteIsCurrent ? 'bg-[#E8C75B] text-[#071A12]' : 'border border-white/30'}`}>2</span><span>Báo giá</span></div>
           </div>
         </div>
@@ -127,11 +126,11 @@ export const CheckoutScreen: React.FC = () => {
           </section>
 
           <section className="border border-[#E8E9E3] bg-white p-6 shadow-sm sm:p-7">
-            <div className="mb-5 flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FFFDF5] text-[#0B2419] ring-1 ring-[#E8E9E3]"><span className="material-symbols-outlined text-[20px]">sell</span></span><div><p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">Optional</p><h2 className="font-serif text-xl">Voucher</h2></div></div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <input type="text" maxLength={80} disabled={orderSubmitting} value={voucherCode} onChange={(event) => { setVoucherCode(event.target.value); invalidateQuote(); }} className="field-input min-w-0 flex-1 uppercase" placeholder="Nhập mã voucher nếu có" />
-              <button type="button" disabled={!canRequestQuote || quoteLoading || profileLoading || orderSubmitting} onClick={() => void loadQuote()} className="bg-[#0B2419] px-6 py-3 text-xs font-bold uppercase tracking-wider text-white disabled:cursor-not-allowed disabled:opacity-40">{quoteLoading ? 'Đang kiểm tra...' : quoteIsCurrent ? 'Cập nhật báo giá' : 'Kiểm tra & báo giá'}</button>
+            <div className="mb-4 flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FFFDF5] text-[#0B2419] ring-1 ring-[#E8E9E3]"><span className="material-symbols-outlined text-[20px]">price_check</span></span><div><p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">Server validation</p><h2 className="font-serif text-xl">Xác nhận báo giá</h2></div></div>
+            <div className="mb-4 border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Voucher tạm chưa khả dụng vì backend chưa khóa rule áp dụng. Checkout hiện gửi <span className="font-mono">voucher_code = null</span>.
             </div>
+            <button type="button" disabled={!canRequestQuote || quoteLoading || profileLoading || orderSubmitting} onClick={() => void loadQuote()} className="w-full bg-[#0B2419] px-6 py-3 text-xs font-bold uppercase tracking-wider text-white disabled:cursor-not-allowed disabled:opacity-40">{quoteLoading ? 'Đang kiểm tra...' : quoteIsCurrent ? 'Cập nhật báo giá' : 'Kiểm tra & báo giá'}</button>
           </section>
 
           {error && <div className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -156,7 +155,7 @@ export const CheckoutScreen: React.FC = () => {
                   <div className="flex justify-between gap-4"><dt>Phí giao hàng</dt><dd>{money(quote.shipping_fee)}</dd></div>
                   <div className="flex justify-between gap-4 border-t border-[#E8E9E3] pt-4"><dt className="font-bold">Tổng COD</dt><dd className="font-serif text-xl font-bold">{money(quote.total)}</dd></div>
                 </dl>
-                <p className="mt-3 text-[10px] leading-5 text-[#687069]">{quote.items.length} dòng hàng đã được backend kiểm tra.{voucherCode.trim() ? ` Voucher: ${voucherCode.trim()}.` : ''}</p>
+                <p className="mt-3 text-[10px] leading-5 text-[#687069]">{quote.items.length} dòng hàng đã được backend kiểm tra.</p>
                 <button type="button" disabled={orderSubmitting} onClick={() => void placeOrder()} className="mt-5 flex w-full items-center justify-center gap-2 bg-[#0B2419] px-5 py-3.5 text-xs font-bold uppercase tracking-[0.16em] text-white transition hover:bg-[#1B5038] disabled:opacity-40"><span>{orderSubmitting ? 'Đang tạo đơn...' : `Đặt hàng COD · ${money(quote.total)}`}</span><span className="material-symbols-outlined text-[18px]">arrow_forward</span></button>
               </>
             )}

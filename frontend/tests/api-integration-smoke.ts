@@ -150,6 +150,30 @@ const server = createServer((request, response) => {
     return;
   }
 
+  if (request.method === 'GET' && url.pathname === '/api/v1/me/orders/42') {
+    requireBearer(request);
+    writeJson(response, 200, {
+      data: {
+        order_id: 42,
+        order_code: 'FIDO-42',
+        order_status: 'PENDING',
+        recipient: { phone: '0909000001', email: null, address: 'Hà Nội' },
+        items: [],
+        subtotal: 100000,
+        discount: 0,
+        shipping_fee: 30000,
+        total: 130000,
+        payment: { payment_status: 'UNPAID', amount_due: 130000, amount_received: 0, amount_refunded: 0 },
+        shipping_info: null,
+        completed_at: null,
+        returned_at: null,
+        created_at: '2026-10-07T00:00:00',
+        updated_at: '2026-10-07T00:00:00',
+      },
+    });
+    return;
+  }
+
   if (request.method === 'GET' && url.pathname === '/api/v1/content-pages/shipping-policy') {
     writeJson(response, 200, {
       data: {
@@ -222,6 +246,9 @@ try {
 
   const orders = await orderService.getOrders({ page: 1, page_size: 10 });
   assert.equal(orders.meta.page, 1);
+
+  const orderDetail = await orderService.getOrder(42);
+  assert.equal(orderDetail.order_code, 'FIDO-42');
 
   const policy = await contentService.getPublicPage('shipping-policy');
   assert.equal(policy.page_code, 'shipping-policy');

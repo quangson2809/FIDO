@@ -174,7 +174,7 @@ export const HomeScreen: React.FC = () => {
                 <button
                   key={category.category_id}
                   type="button"
-                  onClick={() => navigate('/products')}
+                  onClick={() => navigate(`/products?category_id=${category.category_id}`)}
                   className="group relative min-h-36 overflow-hidden border border-[#E8E9E3] bg-[#FAF9F5] p-5 text-left transition-all hover:-translate-y-0.5 hover:border-[#0B2419] hover:shadow-md"
                 >
                   <span className="absolute right-4 top-3 font-serif text-5xl text-[#0B2419]/5">0{index + 1}</span>

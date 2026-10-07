@@ -211,7 +211,13 @@ export const ProductPurchasePanel: React.FC<{
       </div>
     )}
 
-    {onSaleVariants.length === 0 && (
+    {product.sale_status === 'STOPPED' && (
+      <div className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        Sản phẩm đã ngừng bán. Các lựa chọn bên dưới chỉ dùng để tham khảo.
+      </div>
+    )}
+
+    {product.sale_status === 'ON_SALE' && onSaleVariants.length === 0 && (
       <div className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         Sản phẩm chưa có biến thể đang bán.
       </div>

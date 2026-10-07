@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   CatalogFiltersPanel,
   CatalogProductGrid,
@@ -8,7 +8,12 @@ import { useCatalogBrowse } from '../features/catalog/hooks/useCatalogBrowse';
 
 export const CatalogScreen: React.FC = () => {
   const navigate = useNavigate();
-  const catalog = useCatalogBrowse();
+  const [searchParams] = useSearchParams();
+  const categoryParam = searchParams.get('category_id');
+  const requestedCategoryId = categoryParam && /^\d+$/.test(categoryParam) && Number(categoryParam) > 0
+    ? Number(categoryParam)
+    : undefined;
+  const catalog = useCatalogBrowse(requestedCategoryId);
   const [columnsCount, setColumnsCount] = useState<3 | 4>(4);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
 

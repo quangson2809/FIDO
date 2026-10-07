@@ -6,6 +6,7 @@ export interface CartContextValue {
   setIsCartOpen: (open: boolean) => void;
   cartItems: CartViewItem[];
   cartSubtotal: number;
+  cartRevision: number;
   refreshCart: () => Promise<void>;
   addToCart: (variantId: number, productName: string, quantity?: number) => void;
   removeFromCart: (itemId: string) => void;

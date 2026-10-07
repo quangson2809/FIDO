@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import { LatestMutationQueue } from '../src/features/cart/model/LatestMutationQueue';
 import { buildMovedImageOrder, sortProductImages } from '../src/features/catalog/model/productImageOrder';
 import { canAccessAdminModule } from '../src/features/auth/session/adminAccessPolicy';
+import { canPurchaseProductVariant } from '../src/features/catalog/model/purchaseAvailability';
+import { buildCheckoutQuoteKey } from '../src/features/orders/model/checkoutQuoteKey';
+import { getVietnamMonthStart, getVietnamToday } from '../src/shared/time/vietnamCalendar';
 import { isAdminProfile, isSuperAdminProfile } from '../src/features/auth/session/sessionAccess';
 import {
   adminCustomerDetailPath,
@@ -55,6 +58,27 @@ assert.equal(canAccessAdminModule('inventory', catalogStaff, ['CATALOG_READ', 'C
 assert.equal(canAccessAdminModule('reports', catalogStaff, ['CATALOG_READ', 'CATALOG_WRITE']), false);
 assert.equal(canAccessAdminModule('reports', profileWithRole('SUPERADMIN'), []), true);
 assert.equal(canAccessAdminModule('products', profileWithRole('CUSTOMER'), []), false);
+
+assert.equal(canPurchaseProductVariant('ON_SALE', { sale_status: 'ON_SALE', available_quantity: 2 }), true);
+assert.equal(canPurchaseProductVariant('STOPPED', { sale_status: 'ON_SALE', available_quantity: 2 }), false);
+assert.equal(canPurchaseProductVariant('ON_SALE', { sale_status: 'STOPPED', available_quantity: 2 }), false);
+assert.equal(canPurchaseProductVariant('ON_SALE', { sale_status: 'ON_SALE', available_quantity: 0 }), false);
+
+const checkoutRequest = {
+  recipient_phone: '0900000000',
+  recipient_email: null,
+  recipient_address: 'Hà Nội',
+  voucher_code: null,
+};
+assert.notEqual(
+  buildCheckoutQuoteKey(checkoutRequest, 4),
+  buildCheckoutQuoteKey(checkoutRequest, 5),
+  'any cart revision change must invalidate an existing checkout quote',
+);
+
+const vietnamBoundary = new Date('2026-10-07T17:30:00.000Z');
+assert.equal(getVietnamToday(vietnamBoundary), '2026-10-08');
+assert.equal(getVietnamMonthStart(vietnamBoundary), '2026-10-01');
 
 assert.deepEqual(
   resolveAdminRoute('/admin/products/960003'),

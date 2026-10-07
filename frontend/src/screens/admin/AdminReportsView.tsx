@@ -2,19 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { reportService } from '../../features/report/api/service';
 import type { ReportOverviewDto } from '../../features/report/types';
 import { getApiErrorMessage } from '../../services/http/apiError';
+import { getVietnamMonthStart, getVietnamToday } from '../../shared/time/vietnamCalendar';
 
 const formatMoney = (value: number): string => `${value.toLocaleString('vi-VN')}₫`;
-const today = (): string => new Date().toISOString().slice(0, 10);
-const startOfMonth = (): string => {
-  const date = new Date();
-  date.setDate(1);
-  return date.toISOString().slice(0, 10);
-};
 
 export const AdminReportsView: React.FC<{ showToast: (msg: string) => void }> = ({ showToast }) => {
-  const [fromDraft, setFromDraft] = useState(startOfMonth());
-  const [toDraft, setToDraft] = useState(today());
-  const [range, setRange] = useState({ from: startOfMonth(), to: today() });
+  const [fromDraft, setFromDraft] = useState(getVietnamMonthStart());
+  const [toDraft, setToDraft] = useState(getVietnamToday());
+  const [range, setRange] = useState({ from: getVietnamMonthStart(), to: getVietnamToday() });
   const [report, setReport] = useState<ReportOverviewDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
