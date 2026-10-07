@@ -1,5 +1,5 @@
 import React from 'react';
-import { useApp } from '../../../context/AppContext';
+import { useNavigate } from 'react-router-dom';
 
 const menuItems = [
   { id: 'admin-dashboard', label: 'Dashboard', icon: 'dashboard' },
@@ -8,7 +8,7 @@ const menuItems = [
 ] as const;
 
 export const AdminSidebar: React.FC = () => {
-  const { setCurrentScreen } = useApp();
+  const navigate = useNavigate();
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-[260px] bg-[#0B2419] text-white">
@@ -18,7 +18,7 @@ export const AdminSidebar: React.FC = () => {
           <button
             key={item.id}
             type="button"
-            onClick={() => setCurrentScreen('admin')}
+            onClick={() => navigate('/admin/dashboard')}
             className="w-full flex items-center gap-3 p-3 rounded hover:bg-[#1B5038]"
           >
             <span className="material-symbols-outlined">{item.icon}</span>
