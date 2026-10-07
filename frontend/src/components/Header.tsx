@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { useAuthSession } from '../features/auth/session/AuthSessionContext';
+import { useAuthSession } from '../features/auth/session/useAuthSession';
 
 const navItems = [
   { path: '/', label: 'Trang chủ', active: (pathname: string) => pathname === '/' },
