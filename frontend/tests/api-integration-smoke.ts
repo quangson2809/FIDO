@@ -23,6 +23,8 @@ const writeJson = (response: ServerResponse, status: number, body: unknown): voi
 };
 
 let bearerRequestCount = 0;
+let malformedLoginResponse = false;
+let malformedMeResponse = false;
 
 const requireBearer = (request: IncomingMessage): void => {
   assert.equal(request.headers.authorization, 'Bearer smoke-token');
@@ -39,12 +41,19 @@ const server = createServer((request, response) => {
 
   if (request.method === 'POST' && url.pathname === '/api/v1/auth/login') {
     writeJson(response, 200, {
-      data: {
-        access_token: 'smoke-token',
-        token_type: 'Bearer',
-        expires_in: 900,
-        account,
-      },
+      data: malformedLoginResponse
+        ? {
+            access_token: 42,
+            token_type: 'Bearer',
+            expires_in: 900,
+            account,
+          }
+        : {
+            access_token: 'smoke-token',
+            token_type: 'Bearer',
+            expires_in: 900,
+            account,
+          },
     });
     return;
   }
@@ -61,7 +70,9 @@ const server = createServer((request, response) => {
           name: 'Superadmin',
           description: null,
         }],
-        permissions: [],
+        permissions: malformedMeResponse
+          ? [{ permission_id: 1, code: 42, name: 'Broken permission' }]
+          : [],
       },
     });
     return;
@@ -222,7 +233,23 @@ try {
   await assert.rejects(() => apiClient.get('/test-unauthorized'));
   assert.equal(hasApiAccessToken(), false, '401 responses must invalidate the reactive auth token');
 
-  assert.ok(bearerRequestCount >= 5, 'Authenticated requests must include the bearer token');
+  malformedLoginResponse = true;
+  await assert.rejects(
+    () => authService.login('0909000001', 'Fido@123'),
+    /data\.access_token must be a non-blank string/,
+  );
+  assert.equal(hasApiAccessToken(), false, 'Malformed login payloads must not publish an access token');
+  malformedLoginResponse = false;
+
+  await authService.login('0909000001', 'Fido@123');
+  malformedMeResponse = true;
+  await assert.rejects(
+    () => profileService.getMe(),
+    /data\.permissions\[0\]\.code must be a non-blank string/,
+  );
+  malformedMeResponse = false;
+
+  assert.ok(bearerRequestCount >= 6, 'Authenticated requests must include the bearer token');
   process.stdout.write('API integration smoke: PASS\n');
 } finally {
   authService.logout();

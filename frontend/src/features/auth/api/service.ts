@@ -1,5 +1,6 @@
 import type { ApiResponse } from '../../../types/api';
 import { apiClient, setApiAccessToken } from '../../../services/http/apiClient';
+import { parseLoginResponse } from './runtimeContract';
 import type {
   AccountDto,
   AuthService,
@@ -8,9 +9,10 @@ import type {
 
 export const authService: AuthService = {
   async login(identifier, password) {
-    const response = await apiClient.post<ApiResponse<LoginResponseDto>>('/auth/login', { identifier, password });
-    setApiAccessToken(response.data.access_token);
-    return response.data;
+    const response = await apiClient.post<unknown>('/auth/login', { identifier, password });
+    const login = parseLoginResponse(response);
+    setApiAccessToken(login.access_token);
+    return login;
   },
   async register(phone, email, password) {
     const response = await apiClient.post<ApiResponse<AccountDto>>('/auth/register', { phone, email, password });

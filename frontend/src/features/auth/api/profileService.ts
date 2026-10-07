@@ -1,5 +1,6 @@
 import type { ApiResponse } from '../../../types/api';
 import { apiClient } from '../../../services/http/apiClient';
+import { parseMeResponse } from './runtimeContract';
 import type {
   AccountDto,
   AddressDto,
@@ -11,8 +12,8 @@ import type {
 
 export const profileService: ProfileService = {
   async getMe() {
-    const response = await apiClient.get<ApiResponse<MeDto>>('/me');
-    return response.data;
+    const response = await apiClient.get<unknown>('/me');
+    return parseMeResponse(response);
   },
 
   async updateProfile(input: ProfilePatchInput) {
