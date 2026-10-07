@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { authService } from '../features/auth/api/service';
-import { isAdminProfile, useAuthSession } from '../features/auth/session/AuthSessionContext';
+import { useAuthSession } from '../features/auth/session/AuthSessionContext';
+import { isAdminProfile } from '../features/auth/session/sessionAccess';
 import { getApiErrorMessage } from '../services/http/apiError';
 
 type AuthMode = 'login' | 'register';
