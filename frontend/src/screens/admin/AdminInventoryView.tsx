@@ -17,7 +17,7 @@ const transactionTypes: InventoryTransactionType[] = [
   'DELIVERY_RETURN_IN',
 ];
 
-export const AdminInventoryView: React.FC<{ showToast: (msg: string) => void }> = ({ showToast }) => {
+export const AdminInventoryView: React.FC<{ showToast: (msg: string) => void; canWrite: boolean }> = ({ showToast, canWrite }) => {
   const [skuInput, setSkuInput] = useState('');
   const [sku, setSku] = useState('');
   const [page, setPage] = useState(1);
@@ -93,7 +93,7 @@ export const AdminInventoryView: React.FC<{ showToast: (msg: string) => void }> 
 
   const adjust = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!selected || saving) return;
+    if (!canWrite || !selected || saving) return;
     const parsedDelta = Number(delta);
     if (!Number.isInteger(parsedDelta) || parsedDelta === 0 || !reason.trim()) {
       setError('Điều chỉnh kho cần quantity_delta là số nguyên khác 0 và lý do không rỗng.');
@@ -147,7 +147,7 @@ export const AdminInventoryView: React.FC<{ showToast: (msg: string) => void }> 
           <table className="min-w-full text-left text-sm">
             <thead className="bg-[#F5F6F2] text-xs uppercase text-[#606863]"><tr><th className="px-4 py-3">Variant / SKU</th><th className="px-4 py-3">Sản phẩm</th><th className="px-4 py-3">Quy cách</th><th className="px-4 py-3">Sale status</th><th className="px-4 py-3 text-right">Khả dụng</th><th className="px-4 py-3" /></tr></thead>
             <tbody className="divide-y divide-[#E2E5DE]">
-              {rows.map((row) => <tr key={row.variant_id}><td className="px-4 py-3"><strong className="font-mono">#{row.variant_id}</strong><p className="text-xs text-[#606863]">{row.sku ?? 'Không có SKU'}</p></td><td className="px-4 py-3"><strong>{row.product_name}</strong><p className="text-xs text-[#606863]">Product #{row.product_id}</p></td><td className="px-4 py-3">{row.size} · {row.color}</td><td className="px-4 py-3">{row.sale_status}</td><td className="px-4 py-3 text-right text-lg font-bold">{row.available_quantity}</td><td className="px-4 py-3 text-right"><button type="button" onClick={() => { setSelected(row); setDelta(''); setReason(''); }} className="border border-[#0B2419] px-3 py-2 text-xs font-bold uppercase">Điều chỉnh</button></td></tr>)}
+              {rows.map((row) => <tr key={row.variant_id}><td className="px-4 py-3"><strong className="font-mono">#{row.variant_id}</strong><p className="text-xs text-[#606863]">{row.sku ?? 'Không có SKU'}</p></td><td className="px-4 py-3"><strong>{row.product_name}</strong><p className="text-xs text-[#606863]">Product #{row.product_id}</p></td><td className="px-4 py-3">{row.size} · {row.color}</td><td className="px-4 py-3">{row.sale_status}</td><td className="px-4 py-3 text-right text-lg font-bold">{row.available_quantity}</td><td className="px-4 py-3 text-right">{canWrite && <button type="button" onClick={() => { setSelected(row); setDelta(''); setReason(''); }} className="border border-[#0B2419] px-3 py-2 text-xs font-bold uppercase">Điều chỉnh</button>}</td></tr>)}
             </tbody>
           </table>
         )}
@@ -155,7 +155,7 @@ export const AdminInventoryView: React.FC<{ showToast: (msg: string) => void }> 
 
       {meta && meta.total_pages > 1 && <div className="flex justify-center gap-3 text-sm"><button type="button" disabled={page <= 1 || loading} onClick={() => changePage(page - 1)} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang trước</button><span className="py-2">{meta.page} / {meta.total_pages}</span><button type="button" disabled={page >= meta.total_pages || loading} onClick={() => changePage(page + 1)} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang sau</button></div>}
 
-      {selected && <form onSubmit={adjust} className="rounded-lg border border-[#E2E5DE] bg-white p-5"><h2 className="font-serif text-xl font-bold">Điều chỉnh Variant #{selected.variant_id}</h2><p className="mt-1 text-xs text-[#606863]">Hiện khả dụng: {selected.available_quantity}. Delta dương tăng kho, delta âm giảm kho; backend kiểm tra invariant.</p><div className="mt-4 grid gap-3 md:grid-cols-[180px_1fr_auto]"><input type="number" step="1" required value={delta} onChange={(event) => setDelta(event.target.value)} placeholder="quantity_delta" className="border border-[#D9DDD6] px-3 py-2 text-sm" /><input required maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Lý do điều chỉnh" className="border border-[#D9DDD6] px-3 py-2 text-sm" /><button disabled={saving} className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white disabled:opacity-40">{saving ? 'Đang lưu...' : 'Xác nhận'}</button></div></form>}
+      {canWrite && selected && <form onSubmit={adjust} className="rounded-lg border border-[#E2E5DE] bg-white p-5"><h2 className="font-serif text-xl font-bold">Điều chỉnh Variant #{selected.variant_id}</h2><p className="mt-1 text-xs text-[#606863]">Hiện khả dụng: {selected.available_quantity}. Delta dương tăng kho, delta âm giảm kho; backend kiểm tra invariant.</p><div className="mt-4 grid gap-3 md:grid-cols-[180px_1fr_auto]"><input type="number" step="1" required value={delta} onChange={(event) => setDelta(event.target.value)} placeholder="quantity_delta" className="border border-[#D9DDD6] px-3 py-2 text-sm" /><input required maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Lý do điều chỉnh" className="border border-[#D9DDD6] px-3 py-2 text-sm" /><button disabled={saving} className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white disabled:opacity-40">{saving ? 'Đang lưu...' : 'Xác nhận'}</button></div></form>}
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="font-serif text-2xl font-bold">Inventory transactions</h2><p className="text-xs text-[#606863]">Lịch sử bất biến do backend tạo từ nhập kho, order và điều chỉnh tay.</p></div><select value={transactionType} onChange={(event) => { setTransactionPage(1); setTransactionType(event.target.value as InventoryTransactionType | ''); }} className="border border-[#D9DDD6] bg-white px-3 py-2 text-sm"><option value="">Tất cả loại</option>{transactionTypes.map((item) => <option key={item}>{item}</option>)}</select></div>

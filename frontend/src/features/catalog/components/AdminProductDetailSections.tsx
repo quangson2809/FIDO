@@ -13,6 +13,7 @@ export const AdminProductInfoSection: React.FC<{
   product: AdminProductDetailDto;
   editing: boolean;
   busy: boolean;
+  canWrite: boolean;
   name: string;
   description: string;
   basePrice: string;
@@ -28,6 +29,7 @@ export const AdminProductInfoSection: React.FC<{
   product,
   editing,
   busy,
+  canWrite,
   name,
   description,
   basePrice,
@@ -43,7 +45,7 @@ export const AdminProductInfoSection: React.FC<{
   <section className="rounded-lg border border-[#E2E5DE] bg-white p-5">
     <div className="flex items-center justify-between">
       <h2 className="font-serif text-xl font-bold">Thông tin sản phẩm</h2>
-      {!editing && (
+      {!editing && canWrite && (
         <button
           type="button"
           onClick={() => onEditingChange(true)}
@@ -54,7 +56,7 @@ export const AdminProductInfoSection: React.FC<{
       )}
     </div>
 
-    {editing ? (
+    {editing && canWrite ? (
       <div className="mt-4 space-y-3">
         <label className="block space-y-1">
           <span className="text-xs font-semibold">Tên</span>
@@ -137,6 +139,7 @@ export const AdminProductGallerySection: React.FC<{
   images: readonly ProductImageDto[];
   imageFiles: readonly File[];
   busy: boolean;
+  canWrite: boolean;
   onFilesChange: (files: File[]) => void;
   onUpload: () => void;
   onMove: (imageId: number, direction: -1 | 1) => void;
@@ -146,6 +149,7 @@ export const AdminProductGallerySection: React.FC<{
   images,
   imageFiles,
   busy,
+  canWrite,
   onFilesChange,
   onUpload,
   onMove,
@@ -162,23 +166,27 @@ export const AdminProductGallerySection: React.FC<{
       <span className="text-xs text-[#606863]">{images.length} ảnh</span>
     </div>
 
-    <div className="mt-4 flex flex-wrap items-center gap-3 border border-dashed border-[#D9DDD6] bg-[#F8FAF4] p-3">
-      <input
-        type="file"
-        multiple
-        accept="image/jpeg,image/png,image/webp"
-        onChange={(event) => onFilesChange(Array.from(event.target.files ?? []))}
-        className="min-w-0 flex-1 text-xs"
-      />
-      <button
-        type="button"
-        disabled={busy || imageFiles.length === 0}
-        onClick={onUpload}
-        className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white disabled:opacity-40"
-      >
-        Tải {imageFiles.length || ''} ảnh
-      </button>
-    </div>
+    {canWrite ? (
+      <div className="mt-4 flex flex-wrap items-center gap-3 border border-dashed border-[#D9DDD6] bg-[#F8FAF4] p-3">
+        <input
+          type="file"
+          multiple
+          accept="image/jpeg,image/png,image/webp"
+          onChange={(event) => onFilesChange(Array.from(event.target.files ?? []))}
+          className="min-w-0 flex-1 text-xs"
+        />
+        <button
+          type="button"
+          disabled={busy || imageFiles.length === 0}
+          onClick={onUpload}
+          className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white disabled:opacity-40"
+        >
+          Tải {imageFiles.length || ''} ảnh
+        </button>
+      </div>
+    ) : (
+      <p className="mt-4 text-xs text-[#687069]">Chế độ chỉ đọc: cần CATALOG_WRITE để thay đổi gallery.</p>
+    )}
 
     {images.length === 0 ? (
       <div className="mt-4 border border-[#E2E5DE] bg-[#F5F6F2] p-8 text-center text-sm text-[#606863]">
@@ -200,7 +208,7 @@ export const AdminProductGallerySection: React.FC<{
                   <span>#{image.image_id} · order {image.sort_order}</span>
                   {index === 0 && <span className="bg-[#0B2419] px-1.5 py-0.5 font-bold text-white">COVER</span>}
                 </div>
-                <div className="grid grid-cols-3 gap-1">
+                {canWrite && <div className="grid grid-cols-3 gap-1">
                   <button
                     type="button"
                     disabled={busy || index === 0}
@@ -225,7 +233,7 @@ export const AdminProductGallerySection: React.FC<{
                   >
                     Xóa
                   </button>
-                </div>
+                </div>}
               </figcaption>
             </figure>
           );
@@ -241,6 +249,7 @@ export const AdminProductVariantsPanel: React.FC<{
   sizesById: ReadonlyMap<number, SizeValueDto>;
   colorsById: ReadonlyMap<number, ColorDto>;
   busy: boolean;
+  canWrite: boolean;
   variantSize: string;
   variantColor: string;
   variantSku: string;
@@ -257,6 +266,7 @@ export const AdminProductVariantsPanel: React.FC<{
   sizesById,
   colorsById,
   busy,
+  canWrite,
   variantSize,
   variantColor,
   variantSku,
@@ -269,7 +279,7 @@ export const AdminProductVariantsPanel: React.FC<{
   onToggleVariant,
 }) => (
   <aside className="space-y-5">
-    <section className="rounded-lg border border-[#E2E5DE] bg-white p-5">
+    {canWrite && <section className="rounded-lg border border-[#E2E5DE] bg-white p-5">
       <h2 className="font-serif text-xl font-bold">Thêm biến thể</h2>
       <div className="mt-4 space-y-3">
         <select
@@ -315,7 +325,7 @@ export const AdminProductVariantsPanel: React.FC<{
           Thêm biến thể
         </button>
       </div>
-    </section>
+    </section>}
 
     <section className="rounded-lg border border-[#E2E5DE] bg-white p-5">
       <h2 className="font-serif text-xl font-bold">Biến thể hiện tại</h2>
@@ -339,14 +349,14 @@ export const AdminProductVariantsPanel: React.FC<{
               <p className="mt-1 text-xs">
                 Override: {variant.override_price === null ? '—' : `${variant.override_price.toLocaleString('vi-VN')}₫`}
               </p>
-              <button
+              {canWrite && <button
                 type="button"
                 disabled={busy}
                 onClick={() => onToggleVariant(variant.variant_id, variant.sale_status)}
                 className="mt-2 text-xs font-bold uppercase underline"
               >
                 {variant.sale_status === 'ON_SALE' ? 'Dừng bán' : 'Bán lại'}
-              </button>
+              </button>}
             </div>
           );
         })}

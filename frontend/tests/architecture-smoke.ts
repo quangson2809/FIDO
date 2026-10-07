@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { LatestMutationQueue } from '../src/features/cart/model/LatestMutationQueue';
 import { buildMovedImageOrder, sortProductImages } from '../src/features/catalog/model/productImageOrder';
-import { canAccessAdminModule } from '../src/features/auth/session/adminAccessPolicy';
+import { canAccessAdminModule, canWriteAdminModule } from '../src/features/auth/session/adminAccessPolicy';
 import { canPurchaseProductVariant } from '../src/features/catalog/model/purchaseAvailability';
 import { buildCheckoutQuoteKey } from '../src/features/orders/model/checkoutQuoteKey';
 import { getVietnamMonthStart, getVietnamToday } from '../src/shared/time/vietnamCalendar';
@@ -58,6 +58,20 @@ assert.equal(canAccessAdminModule('inventory', catalogStaff, ['CATALOG_READ', 'C
 assert.equal(canAccessAdminModule('reports', catalogStaff, ['CATALOG_READ', 'CATALOG_WRITE']), false);
 assert.equal(canAccessAdminModule('reports', profileWithRole('SUPERADMIN'), []), true);
 assert.equal(canAccessAdminModule('products', profileWithRole('CUSTOMER'), []), false);
+
+const catalogReadOnly = profileWithRole('ADMIN', ['CATALOG_READ']);
+assert.equal(canWriteAdminModule('products', catalogReadOnly, ['CATALOG_READ']), false);
+assert.equal(canWriteAdminModule('products', catalogStaff, ['CATALOG_READ', 'CATALOG_WRITE']), true);
+assert.equal(canWriteAdminModule('inventory', profileWithRole('ADMIN', ['INVENTORY_READ']), ['INVENTORY_READ']), false);
+assert.equal(
+  canWriteAdminModule(
+    'inventory',
+    profileWithRole('ADMIN', ['INVENTORY_READ', 'INVENTORY_WRITE']),
+    ['INVENTORY_READ', 'INVENTORY_WRITE'],
+  ),
+  true,
+);
+assert.equal(canWriteAdminModule('content', profileWithRole('SUPERADMIN'), []), true);
 
 assert.equal(canPurchaseProductVariant('ON_SALE', { sale_status: 'ON_SALE', available_quantity: 2 }), true);
 assert.equal(canPurchaseProductVariant('STOPPED', { sale_status: 'ON_SALE', available_quantity: 2 }), false);

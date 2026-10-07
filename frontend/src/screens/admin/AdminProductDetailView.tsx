@@ -17,9 +17,10 @@ interface Props {
   productId: number;
   onNavigateTab: (tab: string, breadcrumb: string) => void;
   showToast: (message: string) => void;
+  canWrite: boolean;
 }
 
-export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateTab, showToast }) => {
+export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateTab, showToast, canWrite }) => {
   const validId = Number.isInteger(productId) && productId > 0;
   const [product, setProduct] = useState<AdminProductDetailDto | null>(null);
   const [meta, setMeta] = useState<CatalogMetaDto | null>(null);
@@ -98,7 +99,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
   );
 
   const saveProduct = async () => {
-    if (!product || busy) return;
+    if (!canWrite || !product || busy) return;
 
     const price = Number(basePrice);
     if (!name.trim() || !Number.isFinite(price) || price < 0) return;
@@ -128,7 +129,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
   };
 
   const addVariant = async () => {
-    if (!product || busy) return;
+    if (!canWrite || !product || busy) return;
 
     const sizeId = Number(variantSize);
     const colorId = Number(variantColor);
@@ -163,7 +164,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
   };
 
   const toggleVariant = async (variantId: number, current: SaleStatus) => {
-    if (!product || busy) return;
+    if (!canWrite || !product || busy) return;
 
     setBusy(true);
     try {
@@ -179,7 +180,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
   };
 
   const uploadProductImages = async () => {
-    if (!product || busy || imageFiles.length === 0) return;
+    if (!canWrite || !product || busy || imageFiles.length === 0) return;
     if (imageFiles.length > 10) {
       showToast('Mỗi lần chỉ tải tối đa 10 ảnh.');
       return;
@@ -199,7 +200,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
   };
 
   const moveImage = async (imageId: number, direction: -1 | 1) => {
-    if (!product || busy) return;
+    if (!canWrite || !product || busy) return;
 
     const nextOrder = buildMovedImageOrder(product.images, imageId, direction);
     if (!nextOrder) return;
@@ -216,7 +217,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
   };
 
   const deleteProductImage = async (imageId: number) => {
-    if (!product || busy) return;
+    if (!canWrite || !product || busy) return;
     if (!window.confirm('Xóa ảnh này khỏi gallery sản phẩm?')) return;
 
     setBusy(true);
@@ -271,6 +272,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
             product={product}
             editing={editing}
             busy={busy}
+            canWrite={canWrite}
             name={name}
             description={description}
             basePrice={basePrice}
@@ -289,6 +291,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
             images={orderedImages}
             imageFiles={imageFiles}
             busy={busy}
+            canWrite={canWrite}
             onFilesChange={setImageFiles}
             onUpload={() => void uploadProductImages()}
             onMove={(imageId, direction) => void moveImage(imageId, direction)}
@@ -302,6 +305,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
           sizesById={sizesById}
           colorsById={colorsById}
           busy={busy}
+          canWrite={canWrite}
           variantSize={variantSize}
           variantColor={variantColor}
           variantSku={variantSku}

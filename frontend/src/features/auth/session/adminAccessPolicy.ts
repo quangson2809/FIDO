@@ -27,6 +27,11 @@ type AdminPermissionCode =
   | 'CONTENT_READ'
   | 'CUSTOMER_READ';
 
+type AdminWritePermissionCode =
+  | 'CATALOG_WRITE'
+  | 'INVENTORY_WRITE'
+  | 'CONTENT_WRITE';
+
 const readPermissionByModule: Partial<Record<AdminModuleKey, AdminPermissionCode>> = {
   orders: 'ORDER_READ',
   products: 'CATALOG_READ',
@@ -42,6 +47,18 @@ const readPermissionByModule: Partial<Record<AdminModuleKey, AdminPermissionCode
   content: 'CONTENT_READ',
 };
 
+const writePermissionByModule: Partial<Record<AdminModuleKey, AdminWritePermissionCode>> = {
+  products: 'CATALOG_WRITE',
+  categories: 'CATALOG_WRITE',
+  brands: 'CATALOG_WRITE',
+  sizes: 'CATALOG_WRITE',
+  colors: 'CATALOG_WRITE',
+  inventory: 'INVENTORY_WRITE',
+  inward: 'INVENTORY_WRITE',
+  suppliers: 'INVENTORY_WRITE',
+  content: 'CONTENT_WRITE',
+};
+
 const superadminOnlyModules = new Set<AdminModuleKey>(['staff', 'roles', 'reports']);
 
 export const canAccessAdminModule = (
@@ -55,5 +72,17 @@ export const canAccessAdminModule = (
   if (superadminOnlyModules.has(moduleKey)) return false;
 
   const requiredPermission = readPermissionByModule[moduleKey];
+  return requiredPermission ? permissionCodes.includes(requiredPermission) : false;
+};
+
+export const canWriteAdminModule = (
+  moduleKey: AdminModuleKey,
+  profile: MeDto | null,
+  permissionCodes: readonly string[],
+): boolean => {
+  if (!profile || !isAdminProfile(profile)) return false;
+  if (isSuperAdminProfile(profile)) return true;
+
+  const requiredPermission = writePermissionByModule[moduleKey];
   return requiredPermission ? permissionCodes.includes(requiredPermission) : false;
 };

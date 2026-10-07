@@ -1,7 +1,11 @@
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '../../shared/ui/toast/useToast';
 import { getAdminPath } from '../../routes/paths';
-import { canAccessAdminModule, type AdminModuleKey } from '../../features/auth/session/adminAccessPolicy';
+import {
+  canAccessAdminModule,
+  canWriteAdminModule,
+  type AdminModuleKey,
+} from '../../features/auth/session/adminAccessPolicy';
 import { useAuthSession } from '../../features/auth/session/useAuthSession';
 import { AdminAuditView } from '../../screens/admin/AdminAuditView';
 import { AdminCatalogMetaView } from '../../screens/admin/AdminCatalogMetaView';
@@ -32,6 +36,11 @@ const useAdminRouteDeps = () => {
   return { navigate, navigateTab, showToast };
 };
 
+const useAdminWriteAccess = (moduleKey: AdminModuleKey): boolean => {
+  const { profile, permissionCodes } = useAuthSession();
+  return canWriteAdminModule(moduleKey, profile, permissionCodes);
+};
+
 const dashboardModuleKeys: readonly AdminModuleKey[] = [
   'orders',
   'products',
@@ -55,6 +64,7 @@ export const AdminDashboardRoute = () => {
 
 export const AdminProductsRoute = () => {
   const { navigate, navigateTab, showToast } = useAdminRouteDeps();
+  const canWrite = useAdminWriteAccess('products');
   const openProduct = (productId: string) =>
     navigate(`/admin/products/${encodeURIComponent(productId)}`);
 
@@ -64,6 +74,7 @@ export const AdminProductsRoute = () => {
       onEditProduct={openProduct}
       onNavigateTab={navigateTab}
       showToast={showToast}
+      canWrite={canWrite}
     />
   );
 };
@@ -72,6 +83,7 @@ export const AdminProductDetailRoute = () => {
   const { productId } = useParams<{ productId: string }>();
   const parsedProductId = positiveInteger(productId);
   const { navigateTab, showToast } = useAdminRouteDeps();
+  const canWrite = useAdminWriteAccess('products');
 
   if (!parsedProductId) return <Navigate to="/admin/products" replace />;
 
@@ -80,6 +92,7 @@ export const AdminProductDetailRoute = () => {
       productId={parsedProductId}
       onNavigateTab={navigateTab}
       showToast={showToast}
+      canWrite={canWrite}
     />
   );
 };
@@ -90,12 +103,14 @@ const AdminCatalogMetaRoute = ({
   tab: 'categories' | 'brands' | 'sizes' | 'colors';
 }) => {
   const { navigateTab, showToast } = useAdminRouteDeps();
+  const canWrite = useAdminWriteAccess(tab);
   return (
     <AdminCatalogMetaView
       key={tab}
       initialTab={tab}
       onNavigateTab={navigateTab}
       showToast={showToast}
+      canWrite={canWrite}
     />
   );
 };
@@ -121,17 +136,20 @@ export const AdminOrderDetailRoute = () => {
 
 export const AdminInwardRoute = () => {
   const { navigateTab, showToast } = useAdminRouteDeps();
-  return <AdminInwardView showToast={showToast} onNavigateTab={navigateTab} />;
+  const canWrite = useAdminWriteAccess('inward');
+  return <AdminInwardView showToast={showToast} onNavigateTab={navigateTab} canWrite={canWrite} />;
 };
 
 export const AdminInventoryRoute = () => {
   const { showToast } = useAdminRouteDeps();
-  return <AdminInventoryView showToast={showToast} />;
+  const canWrite = useAdminWriteAccess('inventory');
+  return <AdminInventoryView showToast={showToast} canWrite={canWrite} />;
 };
 
 export const AdminSuppliersRoute = () => {
   const { navigateTab, showToast } = useAdminRouteDeps();
-  return <AdminSuppliersView showToast={showToast} onNavigateTab={navigateTab} />;
+  const canWrite = useAdminWriteAccess('suppliers');
+  return <AdminSuppliersView showToast={showToast} onNavigateTab={navigateTab} canWrite={canWrite} />;
 };
 
 export const AdminCustomersRoute = () => {
@@ -184,5 +202,6 @@ export const AdminReportsRoute = () => {
 
 export const AdminContentRoute = () => {
   const { showToast } = useAdminRouteDeps();
-  return <AdminSettingsView showToast={showToast} />;
+  const canWrite = useAdminWriteAccess('content');
+  return <AdminSettingsView showToast={showToast} canWrite={canWrite} />;
 };
