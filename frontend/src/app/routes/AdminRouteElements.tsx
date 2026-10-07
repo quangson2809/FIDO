@@ -1,6 +1,8 @@
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { getAdminPath } from '../../routes/paths';
+import { canAccessAdminModule, type AdminModuleKey } from '../../features/auth/session/adminAccessPolicy';
+import { useAuthSession } from '../../features/auth/session/useAuthSession';
 import { AdminAuditView } from '../../screens/admin/AdminAuditView';
 import { AdminCatalogMetaView } from '../../screens/admin/AdminCatalogMetaView';
 import { AdminCustomersView } from '../../screens/admin/AdminCustomersView';
@@ -30,9 +32,25 @@ const useAdminRouteDeps = () => {
   return { navigate, navigateTab, showToast };
 };
 
+const dashboardModuleKeys: readonly AdminModuleKey[] = [
+  'orders',
+  'products',
+  'inventory',
+  'inward',
+  'customers',
+  'staff',
+  'audit',
+  'reports',
+];
+
 export const AdminDashboardRoute = () => {
-  const { navigateTab, showToast } = useAdminRouteDeps();
-  return <AdminDashboardView onNavigateTab={navigateTab} showToast={showToast} />;
+  const { navigateTab } = useAdminRouteDeps();
+  const { profile, permissionCodes } = useAuthSession();
+  const visibleModuleKeys = dashboardModuleKeys.filter((moduleKey) =>
+    canAccessAdminModule(moduleKey, profile, permissionCodes),
+  );
+
+  return <AdminDashboardView onNavigateTab={navigateTab} visibleModuleKeys={visibleModuleKeys} />;
 };
 
 export const AdminProductsRoute = () => {
