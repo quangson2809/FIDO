@@ -24,23 +24,37 @@ const readStoredAccessToken = (): string | null => {
 
 let accessToken: string | null = readStoredAccessToken();
 
+type AccessTokenListener = (token: string | null) => void;
+const accessTokenListeners = new Set<AccessTokenListener>();
+
 export const setApiAccessToken = (token: string | null): void => {
-  accessToken = token && token.trim() ? token : null;
+  const nextToken = token && token.trim() ? token : null;
+  const changed = nextToken !== accessToken;
+  accessToken = nextToken;
 
-  if (typeof window === 'undefined') return;
-
-  try {
-    if (accessToken) {
-      window.sessionStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, accessToken);
-    } else {
-      window.sessionStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+  if (typeof window !== 'undefined') {
+    try {
+      if (accessToken) {
+        window.sessionStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, accessToken);
+      } else {
+        window.sessionStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+      }
+    } catch {
+      // Keep the in-memory token when browser storage is unavailable.
     }
-  } catch {
-    // Keep the in-memory token when browser storage is unavailable.
+  }
+
+  if (changed) {
+    accessTokenListeners.forEach((listener) => listener(accessToken));
   }
 };
 
 export const hasApiAccessToken = (): boolean => accessToken !== null;
+
+export const subscribeToApiAccessToken = (listener: AccessTokenListener): (() => void) => {
+  accessTokenListeners.add(listener);
+  return () => accessTokenListeners.delete(listener);
+};
 
 const axiosClient = axios.create({
   baseURL: API_BASE_URL,
