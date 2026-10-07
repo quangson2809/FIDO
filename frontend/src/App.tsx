@@ -1,23 +1,58 @@
-import React, { useEffect, useState, type ReactNode } from 'react';
-import { Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom';
-import { useApp } from './context/AppContext';
-import { AppProvider } from './context/AppProvider';
+import React, { Suspense, lazy, type ReactNode } from 'react';
+import {
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+} from 'react-router-dom';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
-import { CartDrawer } from './screens/CartDrawer';
-import { HomeScreen } from './screens/HomeScreen';
-import { CatalogScreen } from './screens/CatalogScreen';
-import { ProductDetailScreen } from './screens/ProductDetailScreen';
-import { CheckoutScreen } from './screens/CheckoutScreen';
-import { OrderSuccessScreen } from './screens/OrderSuccessScreen';
-import { OrderDetailScreen } from './screens/OrderDetailScreen';
-import { MyOrdersScreen } from './screens/MyOrdersScreen';
-import { PolicyScreen } from './screens/PolicyScreen';
-import { AuthScreen } from './screens/AuthScreen';
-import { ProfileScreen } from './screens/ProfileScreen';
-import { AdminScreen } from './screens/AdminScreen';
-import { profileService } from './features/auth/api/profileService';
-import { hasApiAccessToken } from './services/http/apiClient';
+import { AppProvider } from './context/AppProvider';
+import { useApp } from './context/AppContext';
+import { AuthSessionProvider, useAuthSession } from './features/auth/session/AuthSessionContext';
+
+const HomeScreen = lazy(() => import('./screens/HomeScreen').then((module) => ({ default: module.HomeScreen })));
+const CatalogScreen = lazy(() => import('./screens/CatalogScreen').then((module) => ({ default: module.CatalogScreen })));
+const ProductDetailScreen = lazy(() => import('./screens/ProductDetailScreen').then((module) => ({ default: module.ProductDetailScreen })));
+const CheckoutScreen = lazy(() => import('./screens/CheckoutScreen').then((module) => ({ default: module.CheckoutScreen })));
+const OrderSuccessScreen = lazy(() => import('./screens/OrderSuccessScreen').then((module) => ({ default: module.OrderSuccessScreen })));
+const OrderDetailScreen = lazy(() => import('./screens/OrderDetailScreen').then((module) => ({ default: module.OrderDetailScreen })));
+const MyOrdersScreen = lazy(() => import('./screens/MyOrdersScreen').then((module) => ({ default: module.MyOrdersScreen })));
+const PolicyScreen = lazy(() => import('./screens/PolicyScreen').then((module) => ({ default: module.PolicyScreen })));
+const AuthScreen = lazy(() => import('./screens/AuthScreen').then((module) => ({ default: module.AuthScreen })));
+const ProfileScreen = lazy(() => import('./screens/ProfileScreen').then((module) => ({ default: module.ProfileScreen })));
+const CartDrawer = lazy(() => import('./screens/CartDrawer').then((module) => ({ default: module.CartDrawer })));
+const AdminScreen = lazy(() => import('./screens/AdminScreen').then((module) => ({ default: module.AdminScreen })));
+
+const adminRoute = <K extends keyof typeof import('./app/routes/AdminRouteElements')>(name: K) =>
+  lazy(() => import('./app/routes/AdminRouteElements').then((module) => ({ default: module[name] })));
+
+const AdminDashboardRoute = adminRoute('AdminDashboardRoute');
+const AdminProductsRoute = adminRoute('AdminProductsRoute');
+const AdminProductDetailRoute = adminRoute('AdminProductDetailRoute');
+const AdminCategoriesRoute = adminRoute('AdminCategoriesRoute');
+const AdminBrandsRoute = adminRoute('AdminBrandsRoute');
+const AdminSizesRoute = adminRoute('AdminSizesRoute');
+const AdminColorsRoute = adminRoute('AdminColorsRoute');
+const AdminOrdersRoute = adminRoute('AdminOrdersRoute');
+const AdminOrderDetailRoute = adminRoute('AdminOrderDetailRoute');
+const AdminInwardRoute = adminRoute('AdminInwardRoute');
+const AdminInventoryRoute = adminRoute('AdminInventoryRoute');
+const AdminSuppliersRoute = adminRoute('AdminSuppliersRoute');
+const AdminCustomersRoute = adminRoute('AdminCustomersRoute');
+const AdminCustomerDetailRoute = adminRoute('AdminCustomerDetailRoute');
+const AdminStaffRoute = adminRoute('AdminStaffRoute');
+const AdminRolesRoute = adminRoute('AdminRolesRoute');
+const AdminAuditRoute = adminRoute('AdminAuditRoute');
+const AdminReportsRoute = adminRoute('AdminReportsRoute');
+const AdminContentRoute = adminRoute('AdminContentRoute');
+
+const RouteFallback = () => (
+  <div className="flex min-h-[40vh] items-center justify-center bg-[#FAF9F5] text-sm text-[#687069]">
+    Đang tải giao diện...
+  </div>
+);
 
 const Toast: React.FC = () => {
   const { toastMessage } = useApp();
@@ -42,65 +77,35 @@ const StorefrontLayout: React.FC = () => (
   </div>
 );
 
-const ProductDetailRoute: React.FC = () => {
-  const { productId } = useParams<{ productId: string }>();
-  const { selectedProductId, setSelectedProductId } = useApp();
+const RequireAuthenticated: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { status, isAuthenticated } = useAuthSession();
+  const location = useLocation();
 
-  useEffect(() => {
-    if (productId && productId !== selectedProductId) setSelectedProductId(productId);
-  }, [productId, selectedProductId, setSelectedProductId]);
-
-  if (!productId) return <Navigate to="/products" replace />;
-  if (productId !== selectedProductId) return null;
-  return <ProductDetailScreen />;
+  if (status === 'checking') return <RouteFallback />;
+  if (!isAuthenticated) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: `${location.pathname}${location.search}` }}
+      />
+    );
+  }
+  return <>{children}</>;
 };
-
-const OrderDetailRoute: React.FC = () => {
-  const { orderId } = useParams<{ orderId: string }>();
-  const { selectedOrderId, setSelectedOrderId } = useApp();
-
-  useEffect(() => {
-    if (orderId && orderId !== selectedOrderId) setSelectedOrderId(orderId);
-  }, [orderId, selectedOrderId, setSelectedOrderId]);
-
-  if (!orderId) return <Navigate to="/orders" replace />;
-  if (orderId !== selectedOrderId) return null;
-  return <OrderDetailScreen />;
-};
-
-const RequireAuthenticated: React.FC<{ children: ReactNode }> = ({ children }) => (
-  hasApiAccessToken() ? <>{children}</> : <Navigate to="/login" replace />
-);
-
-type AdminAccessState = 'checking' | 'allowed' | 'forbidden' | 'unauthenticated';
 
 const RequireAdmin: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [state, setState] = useState<AdminAccessState>(
-    hasApiAccessToken() ? 'checking' : 'unauthenticated',
-  );
+  const { status, isAuthenticated, isAdmin } = useAuthSession();
 
-  useEffect(() => {
-    if (!hasApiAccessToken()) return undefined;
-
-    let active = true;
-    void profileService.getMe()
-      .then((me) => {
-        if (!active) return;
-        const allowed = me.roles.some((role) => role.code === 'ADMIN' || role.code === 'SUPERADMIN');
-        setState(allowed ? 'allowed' : 'forbidden');
-      })
-      .catch(() => {
-        if (active) setState('unauthenticated');
-      });
-
-    return () => { active = false; };
-  }, []);
-
-  if (state === 'unauthenticated') return <Navigate to="/admin/login" replace />;
-  if (state === 'forbidden') return <Navigate to="/account" replace />;
-  if (state === 'checking') {
-    return <div className="flex min-h-screen items-center justify-center bg-[#071A12] text-sm text-white/70">Đang kiểm tra quyền quản trị...</div>;
+  if (status === 'checking') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#071A12] text-sm text-white/70">
+        Đang kiểm tra quyền quản trị...
+      </div>
+    );
   }
+  if (!isAuthenticated) return <Navigate to="/admin/login" replace />;
+  if (!isAdmin) return <Navigate to="/account" replace />;
   return <>{children}</>;
 };
 
@@ -119,43 +124,69 @@ const AdminLoginRoute: React.FC = () => (
 );
 
 const AppRoutes: React.FC = () => (
-  <Routes>
-    <Route element={<StorefrontLayout />}>
-      <Route path="/" element={<HomeScreen />} />
-      <Route path="/products" element={<CatalogScreen />} />
-      <Route path="/products/:productId" element={<ProductDetailRoute />} />
-      <Route path="/policies" element={<PolicyScreen />} />
-      <Route path="/login" element={<AuthScreen />} />
+  <Suspense fallback={<RouteFallback />}>
+    <Routes>
+      <Route element={<StorefrontLayout />}>
+        <Route path="/" element={<HomeScreen />} />
+        <Route path="/products" element={<CatalogScreen />} />
+        <Route path="/products/:productId" element={<ProductDetailScreen />} />
+        <Route path="/policies" element={<PolicyScreen />} />
+        <Route path="/login" element={<AuthScreen />} />
 
-      <Route path="/checkout" element={<RequireAuthenticated><CheckoutScreen /></RequireAuthenticated>} />
-      <Route path="/checkout/success" element={<RequireAuthenticated><OrderSuccessScreen /></RequireAuthenticated>} />
-      <Route path="/orders" element={<RequireAuthenticated><MyOrdersScreen /></RequireAuthenticated>} />
-      <Route path="/orders/:orderId" element={<RequireAuthenticated><OrderDetailRoute /></RequireAuthenticated>} />
-      <Route path="/account" element={<RequireAuthenticated><ProfileScreen /></RequireAuthenticated>} />
+        <Route path="/checkout" element={<RequireAuthenticated><CheckoutScreen /></RequireAuthenticated>} />
+        <Route path="/checkout/success/:orderId" element={<RequireAuthenticated><OrderSuccessScreen /></RequireAuthenticated>} />
+        <Route path="/checkout/success" element={<Navigate to="/orders" replace />} />
+        <Route path="/orders" element={<RequireAuthenticated><MyOrdersScreen /></RequireAuthenticated>} />
+        <Route path="/orders/:orderId" element={<RequireAuthenticated><OrderDetailScreen /></RequireAuthenticated>} />
+        <Route path="/account" element={<RequireAuthenticated><ProfileScreen /></RequireAuthenticated>} />
 
-      {/* The old showroom page contained business data that is not backed by the current API. */}
-      <Route path="/showrooms" element={<Navigate to="/" replace />} />
-    </Route>
+        <Route path="/showrooms" element={<Navigate to="/" replace />} />
+      </Route>
 
-    <Route path="/admin/login" element={<AdminLoginRoute />} />
-    <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+      <Route path="/admin/login" element={<AdminLoginRoute />} />
+      <Route path="/admin" element={<RequireAdmin><AdminRoute /></RequireAdmin>}>
+        <Route index element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="dashboard" element={<AdminDashboardRoute />} />
+        <Route path="products" element={<AdminProductsRoute />} />
+        <Route path="products/:productId" element={<AdminProductDetailRoute />} />
+        <Route path="catalog/categories" element={<AdminCategoriesRoute />} />
+        <Route path="catalog/brands" element={<AdminBrandsRoute />} />
+        <Route path="catalog/sizes" element={<AdminSizesRoute />} />
+        <Route path="catalog/colors" element={<AdminColorsRoute />} />
+        <Route path="orders" element={<AdminOrdersRoute />} />
+        <Route path="orders/:orderId" element={<AdminOrderDetailRoute />} />
+        <Route path="goods-receipts" element={<AdminInwardRoute />} />
+        <Route path="inventory" element={<AdminInventoryRoute />} />
+        <Route path="inventory/history" element={<AdminInventoryRoute />} />
+        <Route path="suppliers" element={<AdminSuppliersRoute />} />
+        <Route path="customers" element={<AdminCustomersRoute />} />
+        <Route path="customers/:customerId" element={<AdminCustomerDetailRoute />} />
+        <Route path="staff" element={<AdminStaffRoute />} />
+        <Route path="roles" element={<AdminRolesRoute />} />
+        <Route path="audit" element={<AdminAuditRoute />} />
+        <Route path="reports" element={<AdminReportsRoute />} />
+        <Route path="content" element={<AdminContentRoute />} />
 
-    {/* Legacy state-based detail URLs now redirect to stable resource URLs. */}
-    <Route path="/admin/products/detail" element={<Navigate to="/admin/products" replace />} />
-    <Route path="/admin/orders/detail" element={<Navigate to="/admin/orders" replace />} />
-    <Route path="/admin/customers/detail" element={<Navigate to="/admin/customers" replace />} />
-    <Route path="/admin/orders/tailoring" element={<Navigate to="/admin/orders" replace />} />
-    <Route path="/admin/vouchers" element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="products/detail" element={<Navigate to="/admin/products" replace />} />
+        <Route path="orders/detail" element={<Navigate to="/admin/orders" replace />} />
+        <Route path="orders/tailoring" element={<Navigate to="/admin/orders" replace />} />
+        <Route path="customers/detail" element={<Navigate to="/admin/customers" replace />} />
+        <Route path="vouchers" element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="settings" element={<Navigate to="/admin/content" replace />} />
+        <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+      </Route>
 
-    <Route path="/admin/*" element={<RequireAdmin><AdminRoute /></RequireAdmin>} />
-    <Route path="*" element={<Navigate to="/" replace />} />
-  </Routes>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  </Suspense>
 );
 
 export default function App() {
   return (
-    <AppProvider>
-      <AppRoutes />
-    </AppProvider>
+    <AuthSessionProvider>
+      <AppProvider>
+        <AppRoutes />
+      </AppProvider>
+    </AuthSessionProvider>
   );
 }
