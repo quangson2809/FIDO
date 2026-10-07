@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { adminOrderService } from '../../features/orders/api/adminService';
 import type { OrderStatus, PaymentStatus } from '../../features/orders/types';
+import { getApiErrorMessage } from '../../services/http/apiError';
 
 interface Props {
   onSelectOrder: (orderId: number) => void;
@@ -39,10 +40,10 @@ export const AdminOrdersView: React.FC<Props> = ({ onSelectOrder }) => {
           setData(result);
           setError(null);
         }
-      } catch {
+      } catch (requestError: unknown) {
         if (active) {
           setData(null);
-          setError('Không thể tải đơn hàng quản trị hoặc tài khoản không có quyền ORDER_READ.');
+          setError(getApiErrorMessage(requestError, 'Không thể tải đơn hàng quản trị hoặc tài khoản không có quyền ORDER_READ.'));
         }
       } finally {
         if (active) setLoading(false);
