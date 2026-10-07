@@ -1,9 +1,11 @@
 import React from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { getAdminPath, resolveAdminRoute } from '../routes/paths';
+import { canAccessAdminModule, type AdminModuleKey } from '../features/auth/session/adminAccessPolicy';
+import { useAuthSession } from '../features/auth/session/useAuthSession';
 
 interface NavItem {
-  key: string;
+  key: AdminModuleKey;
   label: string;
   icon: string;
   group: 'Vận hành' | 'Catalog' | 'Kho' | 'Tài khoản' | 'Hệ thống';
@@ -33,6 +35,7 @@ const groups: NavItem['group'][] = ['Vận hành', 'Catalog', 'Kho', 'Tài kho�
 export const AdminScreen: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { profile, permissionCodes } = useAuthSession();
   const route = resolveAdminRoute(location.pathname);
 
   const activeMenu = (() => {
@@ -44,7 +47,10 @@ export const AdminScreen: React.FC = () => {
     return route.menuKey;
   })();
 
-  const activeNavItem = navItems.find((item) => item.key === activeMenu);
+  const visibleNavItems = navItems.filter((item) =>
+    canAccessAdminModule(item.key, profile, permissionCodes),
+  );
+  const activeNavItem = visibleNavItems.find((item) => item.key === activeMenu);
   const navigateAdmin = (key: string) => navigate(getAdminPath(key));
 
   return (
@@ -63,11 +69,14 @@ export const AdminScreen: React.FC = () => {
         </div>
 
         <nav className="flex-1 px-3 py-4">
-          {groups.map((group) => (
+          {groups.map((group) => {
+            const groupItems = visibleNavItems.filter((item) => item.group === group);
+            if (groupItems.length === 0) return null;
+            return (
             <div key={group} className="mb-5 last:mb-0">
               <p className="mb-2 px-3 text-[9px] font-bold uppercase tracking-[0.2em] text-white/35">{group}</p>
               <div className="space-y-1">
-                {navItems.filter((item) => item.group === group).map((item) => {
+                {groupItems.map((item) => {
                   const active = activeMenu === item.key;
                   return (
                     <button
@@ -87,7 +96,8 @@ export const AdminScreen: React.FC = () => {
                 })}
               </div>
             </div>
-          ))}
+            );
+          })}
         </nav>
 
         <div className="border-t border-white/10 p-4">
@@ -124,7 +134,7 @@ export const AdminScreen: React.FC = () => {
               onChange={(event) => navigateAdmin(event.target.value)}
               className="w-full border border-[#D9DDD6] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#0B2419]"
             >
-              {navItems.map((item) => <option key={item.key} value={item.key}>{item.group} · {item.label}</option>)}
+              {visibleNavItems.map((item) => <option key={item.key} value={item.key}>{item.group} · {item.label}</option>)}
             </select>
           </div>
         </header>
