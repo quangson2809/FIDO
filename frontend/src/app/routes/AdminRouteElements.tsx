@@ -1,5 +1,5 @@
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { useApp } from '../../context/AppContext';
+import { useToast } from '../../shared/ui/toast/useToast';
 import { getAdminPath } from '../../routes/paths';
 import { canAccessAdminModule, type AdminModuleKey } from '../../features/auth/session/adminAccessPolicy';
 import { useAuthSession } from '../../features/auth/session/useAuthSession';
@@ -27,7 +27,7 @@ const positiveInteger = (value: string | undefined): number | null => {
 
 const useAdminRouteDeps = () => {
   const navigate = useNavigate();
-  const { showToast } = useApp();
+  const { showToast } = useToast();
   const navigateTab = (key: string) => navigate(getAdminPath(key));
   return { navigate, navigateTab, showToast };
 };
