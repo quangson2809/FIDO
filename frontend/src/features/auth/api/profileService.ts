@@ -11,35 +11,26 @@ import type {
 
 export const profileService: ProfileService = {
   async getMe() {
-    const response = await apiClient.get<ApiResponse<MeDto>, ApiResponse<MeDto>>('/me');
+    const response = await apiClient.get<ApiResponse<MeDto>>('/me');
     return response.data;
   },
 
   async updateProfile(input: ProfilePatchInput) {
-    const response = await apiClient.patch<
-      ApiResponse<AccountDto>,
-      ApiResponse<AccountDto>
-    >('/me', input);
+    const response = await apiClient.patch<ApiResponse<AccountDto>>('/me', input);
     return response.data;
   },
 
   async addAddress(input: AddressInput) {
-    const response = await apiClient.post<
-      ApiResponse<AddressDto>,
-      ApiResponse<AddressDto>
-    >('/me/addresses', input);
+    const response = await apiClient.post<ApiResponse<AddressDto>>('/me/addresses', input);
     return response.data;
   },
 
   async updateAddress(addressId: number, input: AddressInput) {
-    const response = await apiClient.patch<
-      ApiResponse<AddressDto>,
-      ApiResponse<AddressDto>
-    >(`/me/addresses/${addressId}`, input);
+    const response = await apiClient.patch<ApiResponse<AddressDto>>(`/me/addresses/${addressId}`, input);
     return response.data;
   },
 
   async deleteAddress(addressId: number) {
-    await apiClient.delete<void, void>(`/me/addresses/${addressId}`);
+    await apiClient.delete<void>(`/me/addresses/${addressId}`);
   },
 };
