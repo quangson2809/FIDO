@@ -25,28 +25,25 @@ const ProfileScreen = lazy(() => import('./screens/ProfileScreen').then((module)
 const CartDrawer = lazy(() => import('./screens/CartDrawer').then((module) => ({ default: module.CartDrawer })));
 const AdminScreen = lazy(() => import('./screens/AdminScreen').then((module) => ({ default: module.AdminScreen })));
 
-const adminRoute = <K extends keyof typeof import('./app/routes/AdminRouteElements')>(name: K) =>
-  lazy(() => import('./app/routes/AdminRouteElements').then((module) => ({ default: module[name] })));
-
-const AdminDashboardRoute = adminRoute('AdminDashboardRoute');
-const AdminProductsRoute = adminRoute('AdminProductsRoute');
-const AdminProductDetailRoute = adminRoute('AdminProductDetailRoute');
-const AdminCategoriesRoute = adminRoute('AdminCategoriesRoute');
-const AdminBrandsRoute = adminRoute('AdminBrandsRoute');
-const AdminSizesRoute = adminRoute('AdminSizesRoute');
-const AdminColorsRoute = adminRoute('AdminColorsRoute');
-const AdminOrdersRoute = adminRoute('AdminOrdersRoute');
-const AdminOrderDetailRoute = adminRoute('AdminOrderDetailRoute');
-const AdminInwardRoute = adminRoute('AdminInwardRoute');
-const AdminInventoryRoute = adminRoute('AdminInventoryRoute');
-const AdminSuppliersRoute = adminRoute('AdminSuppliersRoute');
-const AdminCustomersRoute = adminRoute('AdminCustomersRoute');
-const AdminCustomerDetailRoute = adminRoute('AdminCustomerDetailRoute');
-const AdminStaffRoute = adminRoute('AdminStaffRoute');
-const AdminRolesRoute = adminRoute('AdminRolesRoute');
-const AdminAuditRoute = adminRoute('AdminAuditRoute');
-const AdminReportsRoute = adminRoute('AdminReportsRoute');
-const AdminContentRoute = adminRoute('AdminContentRoute');
+const AdminDashboardRoute = lazy(() => import('./app/routes/AdminRouteElements').then((module) => ({ default: module.AdminDashboardRoute })));
+const AdminProductsRoute = lazy(() => import('./app/routes/AdminRouteElements').then((module) => ({ default: module.AdminProductsRoute })));
+const AdminProductDetailRoute = lazy(() => import('./app/routes/AdminRouteElements').then((module) => ({ default: module.AdminProductDetailRoute })));
+const AdminCategoriesRoute = lazy(() => import('./app/routes/AdminRouteElements').then((module) => ({ default: module.AdminCategoriesRoute })));
+const AdminBrandsRoute = lazy(() => import('./app/routes/AdminRouteElements').then((module) => ({ default: module.AdminBrandsRoute })));
+const AdminSizesRoute = lazy(() => import('./app/routes/AdminRouteElements').then((module) => ({ default: module.AdminSizesRoute })));
+const AdminColorsRoute = lazy(() => import('./app/routes/AdminRouteElements').then((module) => ({ default: module.AdminColorsRoute })));
+const AdminOrdersRoute = lazy(() => import('./app/routes/AdminRouteElements').then((module) => ({ default: module.AdminOrdersRoute })));
+const AdminOrderDetailRoute = lazy(() => import('./app/routes/AdminRouteElements').then((module) => ({ default: module.AdminOrderDetailRoute })));
+const AdminInwardRoute = lazy(() => import('./app/routes/AdminRouteElements').then((module) => ({ default: module.AdminInwardRoute })));
+const AdminInventoryRoute = lazy(() => import('./app/routes/AdminRouteElements').then((module) => ({ default: module.AdminInventoryRoute })));
+const AdminSuppliersRoute = lazy(() => import('./app/routes/AdminRouteElements').then((module) => ({ default: module.AdminSuppliersRoute })));
+const AdminCustomersRoute = lazy(() => import('./app/routes/AdminRouteElements').then((module) => ({ default: module.AdminCustomersRoute })));
+const AdminCustomerDetailRoute = lazy(() => import('./app/routes/AdminRouteElements').then((module) => ({ default: module.AdminCustomerDetailRoute })));
+const AdminStaffRoute = lazy(() => import('./app/routes/AdminRouteElements').then((module) => ({ default: module.AdminStaffRoute })));
+const AdminRolesRoute = lazy(() => import('./app/routes/AdminRouteElements').then((module) => ({ default: module.AdminRolesRoute })));
+const AdminAuditRoute = lazy(() => import('./app/routes/AdminRouteElements').then((module) => ({ default: module.AdminAuditRoute })));
+const AdminReportsRoute = lazy(() => import('./app/routes/AdminRouteElements').then((module) => ({ default: module.AdminReportsRoute })));
+const AdminContentRoute = lazy(() => import('./app/routes/AdminRouteElements').then((module) => ({ default: module.AdminContentRoute })));
 
 const RouteFallback = () => (
   <div className="flex min-h-[40vh] items-center justify-center bg-[#FAF9F5] text-sm text-[#687069]">
