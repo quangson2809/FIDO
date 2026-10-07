@@ -10,6 +10,7 @@ import {
 import { authService } from '../api/service';
 import { profileService } from '../api/profileService';
 import type { MeDto } from '../types';
+import { isAdminProfile } from './sessionAccess';
 import {
   hasApiAccessToken,
   subscribeToApiAccessToken,
@@ -29,9 +30,6 @@ interface AuthSessionContextValue {
 }
 
 const AuthSessionContext = createContext<AuthSessionContextValue | undefined>(undefined);
-
-export const isAdminProfile = (profile: MeDto | null): boolean =>
-  profile?.roles.some((role) => role.code === 'ADMIN' || role.code === 'SUPERADMIN') ?? false;
 
 export const AuthSessionProvider = ({ children }: { children: ReactNode }) => {
   const [status, setStatus] = useState<AuthSessionStatus>(
