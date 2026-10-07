@@ -3,7 +3,16 @@ import { LatestMutationQueue } from '../src/features/cart/model/LatestMutationQu
 import { buildMovedImageOrder, sortProductImages } from '../src/features/catalog/model/productImageOrder';
 import { canAccessAdminModule } from '../src/features/auth/session/adminAccessPolicy';
 import { isAdminProfile, isSuperAdminProfile } from '../src/features/auth/session/sessionAccess';
-import { resolveAdminRoute } from '../src/routes/paths';
+import {
+  adminCustomerDetailPath,
+  adminOrderDetailPath,
+  adminProductDetailPath,
+  checkoutSuccessPath,
+  orderDetailPath,
+  productDetailPath,
+  resolveAdminRoute,
+  toAdminChildPath,
+} from '../src/routes/paths';
 import {
   setApiAccessToken,
   subscribeToApiAccessToken,
@@ -64,6 +73,13 @@ assert.deepEqual(
   },
 );
 assert.equal(resolveAdminRoute('/admin/inventory/history').menuKey, 'history');
+assert.equal(productDetailPath('A/B'), '/products/A%2FB');
+assert.equal(orderDetailPath(42), '/orders/42');
+assert.equal(checkoutSuccessPath(42), '/checkout/success/42');
+assert.equal(adminProductDetailPath(960003), '/admin/products/960003');
+assert.equal(adminOrderDetailPath(42), '/admin/orders/42');
+assert.equal(adminCustomerDetailPath(7), '/admin/customers/7');
+assert.equal(toAdminChildPath('/admin/catalog/categories'), 'catalog/categories');
 
 const imageFixtures = [
   { image_id: 3, image_url: '3.jpg', alt_text: null, sort_order: 2 },
