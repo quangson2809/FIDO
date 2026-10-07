@@ -1,0 +1,59 @@
+import type { MeDto } from '../types';
+import { isAdminProfile, isSuperAdminProfile } from './sessionAccess';
+
+export type AdminModuleKey =
+  | 'dashboard'
+  | 'orders'
+  | 'products'
+  | 'categories'
+  | 'brands'
+  | 'sizes'
+  | 'colors'
+  | 'inventory'
+  | 'inward'
+  | 'suppliers'
+  | 'customers'
+  | 'staff'
+  | 'roles'
+  | 'audit'
+  | 'reports'
+  | 'content';
+
+type AdminPermissionCode =
+  | 'CATALOG_READ'
+  | 'INVENTORY_READ'
+  | 'ORDER_READ'
+  | 'AUDIT_READ'
+  | 'CONTENT_READ'
+  | 'CUSTOMER_READ';
+
+const readPermissionByModule: Partial<Record<AdminModuleKey, AdminPermissionCode>> = {
+  orders: 'ORDER_READ',
+  products: 'CATALOG_READ',
+  categories: 'CATALOG_READ',
+  brands: 'CATALOG_READ',
+  sizes: 'CATALOG_READ',
+  colors: 'CATALOG_READ',
+  inventory: 'INVENTORY_READ',
+  inward: 'INVENTORY_READ',
+  suppliers: 'INVENTORY_READ',
+  customers: 'CUSTOMER_READ',
+  audit: 'AUDIT_READ',
+  content: 'CONTENT_READ',
+};
+
+const superadminOnlyModules = new Set<AdminModuleKey>(['staff', 'roles', 'reports']);
+
+export const canAccessAdminModule = (
+  moduleKey: AdminModuleKey,
+  profile: MeDto | null,
+  permissionCodes: readonly string[],
+): boolean => {
+  if (!profile || !isAdminProfile(profile)) return false;
+  if (isSuperAdminProfile(profile)) return true;
+  if (moduleKey === 'dashboard') return true;
+  if (superadminOnlyModules.has(moduleKey)) return false;
+
+  const requiredPermission = readPermissionByModule[moduleKey];
+  return requiredPermission ? permissionCodes.includes(requiredPermission) : false;
+};
