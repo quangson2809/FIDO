@@ -15,7 +15,6 @@ export const AdminRolesView: React.FC<{ showToast: (msg: string) => void }> = ({
       setError(null);
     } catch (requestError: unknown) {
       setError(getApiErrorMessage(requestError, 'Không thể tải ma trận phân quyền.'));
-      throw requestError;
     }
   }, []);
 
