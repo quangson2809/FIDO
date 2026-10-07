@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
+import { useCart } from '../features/cart/hooks/useCart';
 import { profileService } from '../features/auth/api/profileService';
 import { checkoutService } from '../features/orders/api/checkoutService';
 import type { CheckoutQuoteDto, CheckoutRequest } from '../features/orders/types';
@@ -10,7 +10,7 @@ const money = (value: number): string => `${value.toLocaleString('vi-VN')}₫`;
 const requestKey = (request: CheckoutRequest): string => JSON.stringify(request);
 
 export const CheckoutScreen: React.FC = () => {
-  const { cartItems, cartSubtotal } = useApp();
+  const { cartItems, cartSubtotal } = useCart();
   const navigate = useNavigate();
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
