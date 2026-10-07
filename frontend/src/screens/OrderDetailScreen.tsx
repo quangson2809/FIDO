@@ -30,13 +30,9 @@ export const OrderDetailScreen: React.FC = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (!orderId) return undefined;
+
     let active = true;
-    if (!orderId) {
-      setOrder(null);
-      setError('Thiếu mã đơn hàng.');
-      setLoading(false);
-      return () => { active = false; };
-    }
     const loadOrder = async () => {
       setLoading(true);
       try {
@@ -80,6 +76,9 @@ export const OrderDetailScreen: React.FC = () => {
     }
   };
 
+  if (!orderId) {
+    return <div className="min-h-[60vh] bg-[#FFFDF5] p-14 text-center text-sm text-red-700">Thiếu mã đơn hàng.</div>;
+  }
   if (loading) return <div className="min-h-[60vh] bg-[#FFFDF5] p-14 text-center text-sm text-[#687069]">Đang tải đơn hàng...</div>;
   if (!order) {
     return <div className="min-h-[60vh] bg-[#FFFDF5] p-14 text-center"><p className="text-sm text-red-700">{error ?? 'Không tìm thấy đơn hàng.'}</p><button type="button" onClick={() => navigate('/orders')} className="mt-5 border border-[#0B2419] bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wider">Quay lại danh sách</button></div>;
