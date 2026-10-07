@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
+import { useCart } from '../features/cart/hooks/useCart';
+import { useToast } from '../shared/ui/toast/useToast';
 import { authService } from '../features/auth/api/service';
 import { useAuthSession } from '../features/auth/session/useAuthSession';
 import { isAdminProfile } from '../features/auth/session/sessionAccess';
@@ -13,7 +14,8 @@ interface AuthScreenProps {
 }
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ adminOnly = false }) => {
-  const { showToast, refreshCart } = useApp();
+  const { refreshCart } = useCart();
+  const { showToast } = useToast();
   const { login, logout } = useAuthSession();
   const navigate = useNavigate();
   const location = useLocation();
