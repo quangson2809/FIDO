@@ -7,6 +7,7 @@ import { catalogService } from '../src/features/catalog/api/service';
 import { contentService } from '../src/features/content/api/service';
 import { orderService } from '../src/features/orders/api/service';
 import { reportService } from '../src/features/report/api/service';
+import { apiClient, hasApiAccessToken } from '../src/services/http/apiClient';
 
 const account = {
   account_id: 900001,
@@ -165,6 +166,16 @@ const server = createServer((request, response) => {
     return;
   }
 
+  if (request.method === 'GET' && url.pathname === '/api/v1/test-unauthorized') {
+    requireBearer(request);
+    writeJson(response, 401, {
+      status: 401,
+      error: 'Unauthorized',
+      path: url.pathname,
+    });
+    return;
+  }
+
   writeJson(response, 404, {
     status: 404,
     error: 'Not Found',
@@ -207,7 +218,11 @@ try {
   const report = await reportService.getOverview('2026-10-01', '2026-10-07');
   assert.equal(report.net_sales, 100000);
 
-  assert.ok(bearerRequestCount >= 4, 'Authenticated requests must include the bearer token');
+  assert.equal(hasApiAccessToken(), true);
+  await assert.rejects(() => apiClient.get('/test-unauthorized'));
+  assert.equal(hasApiAccessToken(), false, '401 responses must invalidate the reactive auth token');
+
+  assert.ok(bearerRequestCount >= 5, 'Authenticated requests must include the bearer token');
   process.stdout.write('API integration smoke: PASS\n');
 } finally {
   authService.logout();
