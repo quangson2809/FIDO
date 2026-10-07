@@ -9,6 +9,7 @@ import {
 import { Footer } from '../../components/Footer';
 import { Header } from '../../components/Header';
 import { useAuthSession } from '../../features/auth/session/useAuthSession';
+import { ADMIN_DETAIL_PATHS, ADMIN_PATHS, APP_PATHS, toAdminChildPath } from '../../routes/paths';
 
 const HomeScreen = lazy(() => import('../../screens/HomeScreen').then((module) => ({ default: module.HomeScreen })));
 const CatalogScreen = lazy(() => import('../../screens/CatalogScreen').then((module) => ({ default: module.CatalogScreen })));
@@ -67,7 +68,7 @@ const RequireAuthenticated: React.FC<{ children: ReactNode }> = ({ children }) =
   if (!isAuthenticated) {
     return (
       <Navigate
-        to="/login"
+        to={APP_PATHS.auth}
         replace
         state={{ from: `${location.pathname}${location.search}` }}
       />
@@ -88,8 +89,8 @@ const RequireAdmin: React.FC<{ children: ReactNode }> = ({ children }) => {
     );
   }
 
-  if (!isAuthenticated) return <Navigate to="/admin/login" replace />;
-  if (!isAdmin) return <Navigate to="/account" replace />;
+  if (!isAuthenticated) return <Navigate to={APP_PATHS.adminLogin} replace />;
+  if (!isAdmin) return <Navigate to={APP_PATHS.profile} replace />;
 
   return <>{children}</>;
 };
@@ -110,56 +111,56 @@ export const AppRoutes: React.FC = () => (
   <Suspense fallback={<RouteFallback />}>
     <Routes>
       <Route element={<StorefrontLayout />}>
-        <Route path="/" element={<HomeScreen />} />
-        <Route path="/products" element={<CatalogScreen />} />
-        <Route path="/products/:productId" element={<ProductDetailScreen />} />
-        <Route path="/policies" element={<PolicyScreen />} />
-        <Route path="/login" element={<AuthScreen />} />
+        <Route path={APP_PATHS.home} element={<HomeScreen />} />
+        <Route path={APP_PATHS.catalog} element={<CatalogScreen />} />
+        <Route path={APP_PATHS.productDetail} element={<ProductDetailScreen />} />
+        <Route path={APP_PATHS.policy} element={<PolicyScreen />} />
+        <Route path={APP_PATHS.auth} element={<AuthScreen />} />
 
-        <Route path="/checkout" element={<RequireAuthenticated><CheckoutScreen /></RequireAuthenticated>} />
-        <Route path="/checkout/success/:orderId" element={<RequireAuthenticated><OrderSuccessScreen /></RequireAuthenticated>} />
-        <Route path="/checkout/success" element={<Navigate to="/orders" replace />} />
-        <Route path="/orders" element={<RequireAuthenticated><MyOrdersScreen /></RequireAuthenticated>} />
-        <Route path="/orders/:orderId" element={<RequireAuthenticated><OrderDetailScreen /></RequireAuthenticated>} />
-        <Route path="/account" element={<RequireAuthenticated><ProfileScreen /></RequireAuthenticated>} />
+        <Route path={APP_PATHS.checkout} element={<RequireAuthenticated><CheckoutScreen /></RequireAuthenticated>} />
+        <Route path={APP_PATHS.checkoutSuccessDetail} element={<RequireAuthenticated><OrderSuccessScreen /></RequireAuthenticated>} />
+        <Route path={APP_PATHS.checkoutSuccess} element={<Navigate to={APP_PATHS.myOrders} replace />} />
+        <Route path={APP_PATHS.myOrders} element={<RequireAuthenticated><MyOrdersScreen /></RequireAuthenticated>} />
+        <Route path={APP_PATHS.orderDetail} element={<RequireAuthenticated><OrderDetailScreen /></RequireAuthenticated>} />
+        <Route path={APP_PATHS.profile} element={<RequireAuthenticated><ProfileScreen /></RequireAuthenticated>} />
 
-        <Route path="/showrooms" element={<Navigate to="/" replace />} />
+        <Route path={APP_PATHS.showrooms} element={<Navigate to={APP_PATHS.home} replace />} />
       </Route>
 
-      <Route path="/admin/login" element={<AdminLoginRoute />} />
-      <Route path="/admin" element={<RequireAdmin><AdminRoute /></RequireAdmin>}>
-        <Route index element={<Navigate to="/admin/dashboard" replace />} />
-        <Route path="dashboard" element={<AdminDashboardRoute />} />
-        <Route path="products" element={<AdminProductsRoute />} />
-        <Route path="products/:productId" element={<AdminProductDetailRoute />} />
-        <Route path="catalog/categories" element={<AdminCategoriesRoute />} />
-        <Route path="catalog/brands" element={<AdminBrandsRoute />} />
-        <Route path="catalog/sizes" element={<AdminSizesRoute />} />
-        <Route path="catalog/colors" element={<AdminColorsRoute />} />
-        <Route path="orders" element={<AdminOrdersRoute />} />
-        <Route path="orders/:orderId" element={<AdminOrderDetailRoute />} />
-        <Route path="goods-receipts" element={<AdminInwardRoute />} />
-        <Route path="inventory" element={<AdminInventoryRoute />} />
-        <Route path="inventory/history" element={<AdminInventoryRoute />} />
-        <Route path="suppliers" element={<AdminSuppliersRoute />} />
-        <Route path="customers" element={<AdminCustomersRoute />} />
-        <Route path="customers/:customerId" element={<AdminCustomerDetailRoute />} />
-        <Route path="staff" element={<AdminStaffRoute />} />
-        <Route path="roles" element={<AdminRolesRoute />} />
-        <Route path="audit" element={<AdminAuditRoute />} />
-        <Route path="reports" element={<AdminReportsRoute />} />
-        <Route path="content" element={<AdminContentRoute />} />
+      <Route path={APP_PATHS.adminLogin} element={<AdminLoginRoute />} />
+      <Route path={APP_PATHS.adminRoot} element={<RequireAdmin><AdminRoute /></RequireAdmin>}>
+        <Route index element={<Navigate to={APP_PATHS.admin} replace />} />
+        <Route path={toAdminChildPath(ADMIN_PATHS.dashboard)} element={<AdminDashboardRoute />} />
+        <Route path={toAdminChildPath(ADMIN_PATHS.products)} element={<AdminProductsRoute />} />
+        <Route path={toAdminChildPath(ADMIN_DETAIL_PATHS.product)} element={<AdminProductDetailRoute />} />
+        <Route path={toAdminChildPath(ADMIN_PATHS.categories)} element={<AdminCategoriesRoute />} />
+        <Route path={toAdminChildPath(ADMIN_PATHS.brands)} element={<AdminBrandsRoute />} />
+        <Route path={toAdminChildPath(ADMIN_PATHS.sizes)} element={<AdminSizesRoute />} />
+        <Route path={toAdminChildPath(ADMIN_PATHS.colors)} element={<AdminColorsRoute />} />
+        <Route path={toAdminChildPath(ADMIN_PATHS.orders)} element={<AdminOrdersRoute />} />
+        <Route path={toAdminChildPath(ADMIN_DETAIL_PATHS.order)} element={<AdminOrderDetailRoute />} />
+        <Route path={toAdminChildPath(ADMIN_PATHS.inward)} element={<AdminInwardRoute />} />
+        <Route path={toAdminChildPath(ADMIN_PATHS.inventory)} element={<AdminInventoryRoute />} />
+        <Route path={toAdminChildPath(ADMIN_PATHS.history)} element={<AdminInventoryRoute />} />
+        <Route path={toAdminChildPath(ADMIN_PATHS.suppliers)} element={<AdminSuppliersRoute />} />
+        <Route path={toAdminChildPath(ADMIN_PATHS.customers)} element={<AdminCustomersRoute />} />
+        <Route path={toAdminChildPath(ADMIN_DETAIL_PATHS.customer)} element={<AdminCustomerDetailRoute />} />
+        <Route path={toAdminChildPath(ADMIN_PATHS.staff)} element={<AdminStaffRoute />} />
+        <Route path={toAdminChildPath(ADMIN_PATHS.roles)} element={<AdminRolesRoute />} />
+        <Route path={toAdminChildPath(ADMIN_PATHS.audit)} element={<AdminAuditRoute />} />
+        <Route path={toAdminChildPath(ADMIN_PATHS.reports)} element={<AdminReportsRoute />} />
+        <Route path={toAdminChildPath(ADMIN_PATHS.content)} element={<AdminContentRoute />} />
 
-        <Route path="products/detail" element={<Navigate to="/admin/products" replace />} />
-        <Route path="orders/detail" element={<Navigate to="/admin/orders" replace />} />
-        <Route path="orders/tailoring" element={<Navigate to="/admin/orders" replace />} />
-        <Route path="customers/detail" element={<Navigate to="/admin/customers" replace />} />
-        <Route path="vouchers" element={<Navigate to="/admin/dashboard" replace />} />
-        <Route path="settings" element={<Navigate to="/admin/content" replace />} />
-        <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="products/detail" element={<Navigate to={ADMIN_PATHS.products} replace />} />
+        <Route path="orders/detail" element={<Navigate to={ADMIN_PATHS.orders} replace />} />
+        <Route path="orders/tailoring" element={<Navigate to={ADMIN_PATHS.orders} replace />} />
+        <Route path="customers/detail" element={<Navigate to={ADMIN_PATHS.customers} replace />} />
+        <Route path="vouchers" element={<Navigate to={APP_PATHS.admin} replace />} />
+        <Route path="settings" element={<Navigate to={ADMIN_PATHS.content} replace />} />
+        <Route path="*" element={<Navigate to={APP_PATHS.admin} replace />} />
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to={APP_PATHS.home} replace />} />
     </Routes>
   </Suspense>
 );
