@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { LatestMutationQueue } from '../src/features/cart/model/LatestMutationQueue';
-import { isAdminProfile } from '../src/features/auth/session/AuthSessionContext';
+import { isAdminProfile } from '../src/features/auth/session/sessionAccess';
 import { resolveAdminRoute } from '../src/routes/paths';
 import {
   setApiAccessToken,
