@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { catalogService } from '../features/catalog/api/service';
 import type { CatalogProductView, ProductDetailDto, ProductVariantDto } from '../features/catalog/types';
+import { getApiErrorMessage } from '../services/http/apiError';
 
 export const ProductDetailScreen: React.FC = () => {
   const { selectedProductId, setSelectedProductId, addToCart, setCurrentScreen } = useApp();
@@ -21,22 +22,26 @@ export const ProductDetailScreen: React.FC = () => {
       try {
         const [detail, recommendationPage] = await Promise.all([
           catalogService.getProductDetail(selectedProductId),
-          catalogService.listProducts({ page: 0, page_size: 5 }),
+          catalogService.listProducts({ page: 1, page_size: 5 }).catch(() => null),
         ]);
         if (!active) return;
         const onSale = detail.variants.filter((variant) => variant.sale_status === 'ON_SALE');
         const initialVariant = onSale.find((variant) => variant.available_quantity > 0) ?? onSale[0] ?? null;
         setProduct(detail);
-        setRecommendations(recommendationPage.items.filter((item) => item.product_id !== detail.product_id).slice(0, 4));
+        setRecommendations(
+          recommendationPage?.items
+            .filter((item) => item.product_id !== detail.product_id)
+            .slice(0, 4) ?? [],
+        );
         setActiveImageIndex(0);
         setSelectedSizeValueId(initialVariant?.size.size_value_id ?? null);
         setSelectedColorId(initialVariant?.color.color_id ?? null);
         setQuantity(1);
         setError(null);
-      } catch {
+      } catch (requestError: unknown) {
         if (active) {
           setProduct(null);
-          setError('Không thể tải chi tiết sản phẩm.');
+          setError(getApiErrorMessage(requestError, 'Không thể tải chi tiết sản phẩm.'));
         }
       } finally {
         if (active) setLoading(false);
