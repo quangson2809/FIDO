@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
+import { useCart } from '../features/cart/hooks/useCart';
 import { catalogService } from '../features/catalog/api/service';
 import {
   ProductGallerySection,
@@ -14,10 +14,12 @@ import type {
   ProductVariantDto,
 } from '../features/catalog/types';
 import { useAuthSession } from '../features/auth/session/useAuthSession';
+import { useToast } from '../shared/ui/toast/useToast';
 import { getApiErrorMessage } from '../services/http/apiError';
 
 export const ProductDetailScreen: React.FC = () => {
-  const { addToCart, showToast } = useApp();
+  const { addToCart } = useCart();
+  const { showToast } = useToast();
   const { isAuthenticated } = useAuthSession();
   const navigate = useNavigate();
   const { productId = '' } = useParams<{ productId: string }>();
