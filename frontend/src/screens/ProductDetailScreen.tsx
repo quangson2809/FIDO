@@ -21,14 +21,9 @@ export const ProductDetailScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let active = true;
-    if (!productId) {
-      setProduct(null);
-      setError('Thiếu mã sản phẩm.');
-      setLoading(false);
-      return () => { active = false; };
-    }
+    if (!productId) return undefined;
 
+    let active = true;
     const load = async () => {
       setLoading(true);
       try {
@@ -129,6 +124,9 @@ export const ProductDetailScreen: React.FC = () => {
     setActiveImageIndex((current) => (current + offset + gallery.length) % gallery.length);
   };
 
+  if (!productId) {
+    return <div className="min-h-[60vh] bg-[#FFFDF5] p-14 text-center text-sm text-red-700">Thiếu mã sản phẩm.</div>;
+  }
   if (loading) return <div className="min-h-[60vh] bg-[#FFFDF5] p-14 text-center text-sm text-[#687069]">Đang tải sản phẩm...</div>;
   if (error || !product) {
     return (
