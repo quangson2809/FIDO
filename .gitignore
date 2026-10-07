@@ -22,6 +22,9 @@ backend/out/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+frontend/.smoke-dist/
+frontend/.architecture-dist/
+frontend/.render-dist/
 frontend/*.tsbuildinfo
 
 # Misc

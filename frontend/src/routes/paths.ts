@@ -1,19 +1,22 @@
-import type { ScreenId } from '../types';
-
 export const APP_PATHS = {
   home: '/',
   catalog: '/products',
+  productDetail: '/products/:productId',
   checkout: '/checkout',
-  orderSuccess: '/checkout/success',
+  checkoutSuccess: '/checkout/success',
+  checkoutSuccessDetail: '/checkout/success/:orderId',
   myOrders: '/orders',
+  orderDetail: '/orders/:orderId',
   policy: '/policies',
   auth: '/login',
   profile: '/account',
+  showrooms: '/showrooms',
+  adminRoot: '/admin',
   adminLogin: '/admin/login',
   admin: '/admin/dashboard',
 } as const;
 
-export const ADMIN_PATHS: Record<string, string> = {
+export const ADMIN_PATHS = {
   dashboard: '/admin/dashboard',
   products: '/admin/products',
   categories: '/admin/catalog/categories',
@@ -32,7 +35,15 @@ export const ADMIN_PATHS: Record<string, string> = {
   reports: '/admin/reports',
   content: '/admin/content',
   settings: '/admin/settings',
-};
+} as const;
+
+export const ADMIN_DETAIL_PATHS = {
+  product: '/admin/products/:productId',
+  order: '/admin/orders/:orderId',
+  customer: '/admin/customers/:customerId',
+} as const;
+
+export type AdminPathKey = keyof typeof ADMIN_PATHS;
 
 export interface AdminRouteResolution {
   menuKey: string;
@@ -42,61 +53,35 @@ export interface AdminRouteResolution {
   customerId?: number;
 }
 
-export const getPathForScreen = (
-  screen: ScreenId,
-  selectedProductId = '',
-  selectedOrderId = '',
-): string => {
-  switch (screen) {
-    case 'home':
-      return APP_PATHS.home;
-    case 'catalog':
-      return APP_PATHS.catalog;
-    case 'product-detail':
-      return selectedProductId
-        ? `/products/${encodeURIComponent(selectedProductId)}`
-        : APP_PATHS.catalog;
-    case 'checkout':
-      return APP_PATHS.checkout;
-    case 'order-success':
-      return APP_PATHS.orderSuccess;
-    case 'order-detail':
-      return selectedOrderId
-        ? `/orders/${encodeURIComponent(selectedOrderId)}`
-        : APP_PATHS.myOrders;
-    case 'my-orders':
-      return APP_PATHS.myOrders;
-    case 'policy':
-      return APP_PATHS.policy;
-    case 'auth':
-      return APP_PATHS.auth;
-    case 'profile':
-      return APP_PATHS.profile;
-    case 'admin':
-      return APP_PATHS.admin;
-    case 'cart':
-    default:
-      return APP_PATHS.home;
-  }
-};
-
-export const getScreenFromPath = (pathname: string): ScreenId => {
-  if (pathname === APP_PATHS.adminLogin) return 'auth';
-  if (pathname.startsWith('/admin')) return 'admin';
-  if (/^\/products\/[^/]+\/?$/.test(pathname)) return 'product-detail';
-  if (pathname === APP_PATHS.catalog) return 'catalog';
-  if (pathname === APP_PATHS.orderSuccess) return 'order-success';
-  if (pathname === APP_PATHS.checkout) return 'checkout';
-  if (/^\/orders\/[^/]+\/?$/.test(pathname)) return 'order-detail';
-  if (pathname === APP_PATHS.myOrders) return 'my-orders';
-  if (pathname === APP_PATHS.policy) return 'policy';
-  if (pathname === APP_PATHS.auth) return 'auth';
-  if (pathname === APP_PATHS.profile) return 'profile';
-  return 'home';
-};
-
 export const getAdminPath = (menuKey: string): string =>
-  ADMIN_PATHS[menuKey] ?? APP_PATHS.admin;
+  menuKey in ADMIN_PATHS
+    ? ADMIN_PATHS[menuKey as AdminPathKey]
+    : APP_PATHS.admin;
+
+export const toAdminChildPath = (absolutePath: string): string => {
+  const prefix = APP_PATHS.adminRoot + '/';
+  return absolutePath.startsWith(prefix)
+    ? absolutePath.slice(prefix.length)
+    : absolutePath;
+};
+
+export const productDetailPath = (productId: string | number): string =>
+  APP_PATHS.productDetail.replace(':productId', encodeURIComponent(String(productId)));
+
+export const orderDetailPath = (orderId: string | number): string =>
+  APP_PATHS.orderDetail.replace(':orderId', encodeURIComponent(String(orderId)));
+
+export const checkoutSuccessPath = (orderId: string | number): string =>
+  APP_PATHS.checkoutSuccessDetail.replace(':orderId', encodeURIComponent(String(orderId)));
+
+export const adminProductDetailPath = (productId: string | number): string =>
+  ADMIN_DETAIL_PATHS.product.replace(':productId', encodeURIComponent(String(productId)));
+
+export const adminOrderDetailPath = (orderId: string | number): string =>
+  ADMIN_DETAIL_PATHS.order.replace(':orderId', encodeURIComponent(String(orderId)));
+
+export const adminCustomerDetailPath = (customerId: string | number): string =>
+  ADMIN_DETAIL_PATHS.customer.replace(':customerId', encodeURIComponent(String(customerId)));
 
 const positiveInteger = (value: string | undefined): number | undefined => {
   if (!value) return undefined;
@@ -132,22 +117,22 @@ export const resolveAdminRoute = (pathname: string): AdminRouteResolution => {
     };
   }
 
-  if (pathname === '/admin/products') return { menuKey: 'products', breadcrumb: 'Sản phẩm' };
-  if (pathname === '/admin/catalog/categories') return { menuKey: 'categories', breadcrumb: 'Danh mục' };
-  if (pathname === '/admin/catalog/brands') return { menuKey: 'brands', breadcrumb: 'Thương hiệu' };
-  if (pathname === '/admin/catalog/sizes') return { menuKey: 'sizes', breadcrumb: 'Hệ size' };
-  if (pathname === '/admin/catalog/colors') return { menuKey: 'colors', breadcrumb: 'Màu sắc' };
-  if (pathname === '/admin/orders') return { menuKey: 'orders', breadcrumb: 'Đơn hàng' };
-  if (pathname === '/admin/goods-receipts') return { menuKey: 'inward', breadcrumb: 'Phiếu nhập kho' };
-  if (pathname === '/admin/inventory/history') return { menuKey: 'history', breadcrumb: 'Lịch sử biến động' };
-  if (pathname === '/admin/inventory') return { menuKey: 'inventory', breadcrumb: 'Tồn kho' };
-  if (pathname === '/admin/suppliers') return { menuKey: 'suppliers', breadcrumb: 'Nhà cung cấp' };
-  if (pathname === '/admin/customers') return { menuKey: 'customers', breadcrumb: 'Khách hàng' };
-  if (pathname === '/admin/staff') return { menuKey: 'staff', breadcrumb: 'Nhân viên' };
-  if (pathname === '/admin/roles') return { menuKey: 'roles', breadcrumb: 'Vai trò & quyền' };
-  if (pathname === '/admin/audit') return { menuKey: 'audit', breadcrumb: 'Audit' };
-  if (pathname === '/admin/reports') return { menuKey: 'reports', breadcrumb: 'Báo cáo' };
-  if (pathname === '/admin/content') return { menuKey: 'content', breadcrumb: 'Nội dung & chính sách' };
-  if (pathname === '/admin/settings') return { menuKey: 'settings', breadcrumb: 'Cài đặt nội dung' };
+  if (pathname === ADMIN_PATHS.products) return { menuKey: 'products', breadcrumb: 'Sản phẩm' };
+  if (pathname === ADMIN_PATHS.categories) return { menuKey: 'categories', breadcrumb: 'Danh mục' };
+  if (pathname === ADMIN_PATHS.brands) return { menuKey: 'brands', breadcrumb: 'Thương hiệu' };
+  if (pathname === ADMIN_PATHS.sizes) return { menuKey: 'sizes', breadcrumb: 'Hệ size' };
+  if (pathname === ADMIN_PATHS.colors) return { menuKey: 'colors', breadcrumb: 'Màu sắc' };
+  if (pathname === ADMIN_PATHS.orders) return { menuKey: 'orders', breadcrumb: 'Đơn hàng' };
+  if (pathname === ADMIN_PATHS.inward) return { menuKey: 'inward', breadcrumb: 'Phiếu nhập kho' };
+  if (pathname === ADMIN_PATHS.history) return { menuKey: 'history', breadcrumb: 'Lịch sử biến động' };
+  if (pathname === ADMIN_PATHS.inventory) return { menuKey: 'inventory', breadcrumb: 'Tồn kho' };
+  if (pathname === ADMIN_PATHS.suppliers) return { menuKey: 'suppliers', breadcrumb: 'Nhà cung cấp' };
+  if (pathname === ADMIN_PATHS.customers) return { menuKey: 'customers', breadcrumb: 'Khách hàng' };
+  if (pathname === ADMIN_PATHS.staff) return { menuKey: 'staff', breadcrumb: 'Nhân viên' };
+  if (pathname === ADMIN_PATHS.roles) return { menuKey: 'roles', breadcrumb: 'Vai trò & quyền' };
+  if (pathname === ADMIN_PATHS.audit) return { menuKey: 'audit', breadcrumb: 'Audit' };
+  if (pathname === ADMIN_PATHS.reports) return { menuKey: 'reports', breadcrumb: 'Báo cáo' };
+  if (pathname === ADMIN_PATHS.content) return { menuKey: 'content', breadcrumb: 'Nội dung & chính sách' };
+  if (pathname === ADMIN_PATHS.settings) return { menuKey: 'settings', breadcrumb: 'Cài đặt nội dung' };
   return { menuKey: 'dashboard', breadcrumb: 'Tổng quan' };
 };

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { inventoryAdminService } from '../../features/inventory/api/adminService';
+import { getApiErrorMessage } from '../../services/http/apiError';
 import type {
   GoodsReceiptDetailDto,
   GoodsReceiptItemInput,
@@ -8,14 +9,15 @@ import type {
   SupplierDto,
 } from '../../features/inventory/types';
 import type { PaginationMeta } from '../../types/api';
+import { getVietnamToday } from '../../shared/time/vietnamCalendar';
 
-const today = () => new Date().toISOString().slice(0, 10);
 const emptyItem = (): GoodsReceiptItemInput => ({ variant_id: 0, quantity: 1 });
 
 export const AdminInwardView: React.FC<{
   showToast: (msg: string) => void;
   onNavigateTab: (tab: string, breadcrumb: string) => void;
-}> = ({ showToast, onNavigateTab }) => {
+  canWrite: boolean;
+}> = ({ showToast, onNavigateTab, canWrite }) => {
   const [receipts, setReceipts] = useState<GoodsReceiptSummaryDto[]>([]);
   const [meta, setMeta] = useState<PaginationMeta | null>(null);
   const [suppliers, setSuppliers] = useState<SupplierDto[]>([]);
@@ -25,7 +27,7 @@ export const AdminInwardView: React.FC<{
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<GoodsReceiptDetailDto | null>(null);
   const [supplierId, setSupplierId] = useState('');
-  const [receiptDate, setReceiptDate] = useState(today());
+  const [receiptDate, setReceiptDate] = useState(getVietnamToday());
   const [note, setNote] = useState('');
   const [items, setItems] = useState<GoodsReceiptItemInput[]>([emptyItem()]);
   const [saving, setSaving] = useState(false);
@@ -55,8 +57,8 @@ export const AdminInwardView: React.FC<{
       setMeta(receiptResponse.meta);
       setSuppliers(supplierResponse.data);
       setError(null);
-    }).catch(() => {
-      if (active) setError('Không thể tải phiếu nhập hoặc danh sách nhà cung cấp.');
+    }).catch((requestError: unknown) => {
+      if (active) setError(getApiErrorMessage(requestError, 'Không thể tải phiếu nhập hoặc danh sách nhà cung cấp.'));
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [page, status]);
@@ -64,7 +66,7 @@ export const AdminInwardView: React.FC<{
   const resetDraftForm = () => {
     setSelected(null);
     setSupplierId('');
-    setReceiptDate(today());
+    setReceiptDate(getVietnamToday());
     setNote('');
     setItems([emptyItem()]);
   };
@@ -81,8 +83,8 @@ export const AdminInwardView: React.FC<{
     setError(null);
     try {
       editDetail(await inventoryAdminService.getReceipt(receiptId));
-    } catch {
-      setError('Không thể tải chi tiết phiếu nhập.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể tải chi tiết phiếu nhập.'));
     }
   };
 
@@ -103,7 +105,7 @@ export const AdminInwardView: React.FC<{
 
   const saveReceipt = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (saving) return;
+    if (!canWrite || saving) return;
     const parsedSupplier = Number(supplierId);
     const normalized = normalizedItems();
     if (!Number.isInteger(parsedSupplier) || parsedSupplier <= 0 || !receiptDate || !normalized) {
@@ -129,15 +131,15 @@ export const AdminInwardView: React.FC<{
       editDetail(detail);
       await loadList();
       showToast(selected ? 'Đã cập nhật phiếu nhập DRAFT.' : 'Đã tạo phiếu nhập DRAFT.');
-    } catch {
-      setError('Không thể lưu phiếu nhập. Chỉ DRAFT được sửa; backend cũng kiểm tra supplier, variant và duplicate.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể lưu phiếu nhập. Chỉ DRAFT được sửa; backend cũng kiểm tra supplier, variant và duplicate.'));
     } finally {
       setSaving(false);
     }
   };
 
   const runAction = async (action: 'CONFIRM' | 'CANCEL') => {
-    if (!selected || saving) return;
+    if (!canWrite || !selected || saving) return;
     setSaving(true);
     setError(null);
     try {
@@ -145,8 +147,8 @@ export const AdminInwardView: React.FC<{
       editDetail(detail);
       await loadList();
       showToast(action === 'CONFIRM' ? 'Đã xác nhận nhập kho.' : 'Đã hủy phiếu nhập.');
-    } catch {
-      setError('Không thể thực hiện action. Chỉ DRAFT có thể CONFIRM/CANCEL; backend giữ transaction và concurrency boundary.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể thực hiện action. Chỉ DRAFT có thể CONFIRM/CANCEL; backend giữ transaction và concurrency boundary.'));
     } finally {
       setSaving(false);
     }
@@ -156,7 +158,7 @@ export const AdminInwardView: React.FC<{
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">Goods receipts</p><h1 className="mt-1 font-serif text-3xl font-bold">Phiếu nhập kho</h1><p className="mt-2 text-sm text-[#606863]">DRAFT → CONFIRMED/CANCELLED. CONFIRM tăng inventory đúng một lần ở backend.</p></div><div className="flex gap-2"><button type="button" onClick={resetDraftForm} className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white">Phiếu mới</button><button type="button" onClick={() => onNavigateTab('suppliers', 'Nhà cung cấp')} className="border border-[#0B2419] px-4 py-2 text-xs font-bold uppercase">Nhà cung cấp</button></div></div>
+      <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">Goods receipts</p><h1 className="mt-1 font-serif text-3xl font-bold">Phiếu nhập kho</h1><p className="mt-2 text-sm text-[#606863]">DRAFT → CONFIRMED/CANCELLED. CONFIRM tăng inventory đúng một lần ở backend.</p></div><div className="flex gap-2">{canWrite && <button type="button" onClick={resetDraftForm} className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white">Phiếu mới</button>}<button type="button" onClick={() => onNavigateTab('suppliers', 'Nhà cung cấp')} className="border border-[#0B2419] px-4 py-2 text-xs font-bold uppercase">Nhà cung cấp</button></div></div>
       {error && <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_430px]">
@@ -166,13 +168,13 @@ export const AdminInwardView: React.FC<{
           {meta && meta.total_pages > 1 && <div className="flex justify-center gap-3 text-sm"><button type="button" disabled={page <= 1 || loading} onClick={() => { setLoading(true); setPage((value) => value - 1); }} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang trước</button><span className="py-2">{meta.page} / {meta.total_pages}</span><button type="button" disabled={page >= meta.total_pages || loading} onClick={() => { setLoading(true); setPage((value) => value + 1); }} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang sau</button></div>}
         </section>
 
-        <aside className="rounded-lg border border-[#E2E5DE] bg-white p-5"><div className="flex items-center justify-between gap-3"><div><h2 className="font-serif text-xl font-bold">{selected ? selected.receipt_code : 'Tạo phiếu DRAFT'}</h2>{selected && <p className="mt-1 text-xs font-bold">{selected.receipt_status}</p>}</div>{selected && <button type="button" onClick={resetDraftForm} className="text-xs font-bold uppercase underline">Phiếu mới</button>}</div>
-          <form onSubmit={saveReceipt} className="mt-5 space-y-4"><label className="block space-y-1"><span className="text-xs font-semibold">Supplier ACTIVE *</span><select required disabled={selected !== null && !isDraft} value={supplierId} onChange={(event) => setSupplierId(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]"><option value="">Chọn supplier</option>{suppliers.map((supplier) => <option key={supplier.supplier_id} value={supplier.supplier_id}>#{supplier.supplier_id} {supplier.name}</option>)}</select></label><label className="block space-y-1"><span className="text-xs font-semibold">Ngày nhập *</span><input type="date" required disabled={selected !== null && !isDraft} value={receiptDate} onChange={(event) => setReceiptDate(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]" /></label><label className="block space-y-1"><span className="text-xs font-semibold">Ghi chú</span><textarea rows={2} disabled={selected !== null && !isDraft} value={note} onChange={(event) => setNote(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]" /></label>
-            <div className="space-y-2"><div className="flex items-center justify-between"><span className="text-xs font-semibold">Items *</span>{(selected === null || isDraft) && <button type="button" onClick={() => setItems((current) => [...current, emptyItem()])} className="text-xs font-bold uppercase underline">+ Dòng</button>}</div>{items.map((item, index) => <div key={`${index}-${item.variant_id}`} className="grid grid-cols-[1fr_100px_auto] gap-2"><input type="number" min="1" step="1" disabled={selected !== null && !isDraft} value={item.variant_id || ''} onChange={(event) => setItem(index, { variant_id: Number(event.target.value) })} placeholder="Variant ID" className="border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]" /><input type="number" min="1" step="1" disabled={selected !== null && !isDraft} value={item.quantity} onChange={(event) => setItem(index, { quantity: Number(event.target.value) })} className="border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]" />{(selected === null || isDraft) && <button type="button" disabled={items.length === 1} onClick={() => setItems((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="px-2 text-red-700 disabled:opacity-30">×</button>}</div>)}</div>
-            {(selected === null || isDraft) && <button disabled={saving} className="w-full bg-[#0B2419] px-4 py-2.5 text-xs font-bold uppercase text-white disabled:opacity-40">{saving ? 'Đang lưu...' : selected ? 'Lưu DRAFT' : 'Tạo DRAFT'}</button>}
-          </form>
+        <aside className="rounded-lg border border-[#E2E5DE] bg-white p-5"><div className="flex items-center justify-between gap-3"><div><h2 className="font-serif text-xl font-bold">{selected ? selected.receipt_code : canWrite ? 'Tạo phiếu DRAFT' : 'Chi tiết phiếu nhập'}</h2>{selected && <p className="mt-1 text-xs font-bold">{selected.receipt_status}</p>}</div>{selected && canWrite && <button type="button" onClick={resetDraftForm} className="text-xs font-bold uppercase underline">Phiếu mới</button>}</div>
+          {(canWrite || selected) ? <form onSubmit={saveReceipt} className="mt-5 space-y-4"><label className="block space-y-1"><span className="text-xs font-semibold">Supplier ACTIVE *</span><select required disabled={!canWrite || (selected !== null && !isDraft)} value={supplierId} onChange={(event) => setSupplierId(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]"><option value="">Chọn supplier</option>{suppliers.map((supplier) => <option key={supplier.supplier_id} value={supplier.supplier_id}>#{supplier.supplier_id} {supplier.name}</option>)}</select></label><label className="block space-y-1"><span className="text-xs font-semibold">Ngày nhập *</span><input type="date" required disabled={!canWrite || (selected !== null && !isDraft)} value={receiptDate} onChange={(event) => setReceiptDate(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]" /></label><label className="block space-y-1"><span className="text-xs font-semibold">Ghi chú</span><textarea rows={2} disabled={!canWrite || (selected !== null && !isDraft)} value={note} onChange={(event) => setNote(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]" /></label>
+            <div className="space-y-2"><div className="flex items-center justify-between"><span className="text-xs font-semibold">Items *</span>{canWrite && (selected === null || isDraft) && <button type="button" onClick={() => setItems((current) => [...current, emptyItem()])} className="text-xs font-bold uppercase underline">+ Dòng</button>}</div>{items.map((item, index) => <div key={`${index}-${item.variant_id}`} className="grid grid-cols-[1fr_100px_auto] gap-2"><input type="number" min="1" step="1" disabled={!canWrite || (selected !== null && !isDraft)} value={item.variant_id || ''} onChange={(event) => setItem(index, { variant_id: Number(event.target.value) })} placeholder="Variant ID" className="border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]" /><input type="number" min="1" step="1" disabled={!canWrite || (selected !== null && !isDraft)} value={item.quantity} onChange={(event) => setItem(index, { quantity: Number(event.target.value) })} className="border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]" />{canWrite && (selected === null || isDraft) && <button type="button" disabled={items.length === 1} onClick={() => setItems((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="px-2 text-red-700 disabled:opacity-30">×</button>}</div>)}</div>
+            {canWrite && (selected === null || isDraft) && <button disabled={saving} className="w-full bg-[#0B2419] px-4 py-2.5 text-xs font-bold uppercase text-white disabled:opacity-40">{saving ? 'Đang lưu...' : selected ? 'Lưu DRAFT' : 'Tạo DRAFT'}</button>}
+          </form> : <p className="mt-5 text-sm text-[#606863]">Chọn một phiếu trong danh sách để xem chi tiết. Cần INVENTORY_WRITE để tạo hoặc thay đổi phiếu.</p>}
           {selected && <div className="mt-4 border-t border-[#E2E5DE] pt-4 text-xs text-[#606863]"><p>Created by account #{selected.created_by_account_id}</p><p>Confirmed by: {selected.confirmed_by_account_id ? `#${selected.confirmed_by_account_id}` : '—'}</p></div>}
-          {isDraft && <div className="mt-4 grid grid-cols-2 gap-2"><button type="button" disabled={saving} onClick={() => void runAction('CONFIRM')} className="bg-[#0B2419] px-3 py-2 text-xs font-bold uppercase text-white disabled:opacity-40">CONFIRM</button><button type="button" disabled={saving} onClick={() => void runAction('CANCEL')} className="border border-red-300 px-3 py-2 text-xs font-bold uppercase text-red-700 disabled:opacity-40">CANCEL</button></div>}
+          {canWrite && isDraft && <div className="mt-4 grid grid-cols-2 gap-2"><button type="button" disabled={saving} onClick={() => void runAction('CONFIRM')} className="bg-[#0B2419] px-3 py-2 text-xs font-bold uppercase text-white disabled:opacity-40">CONFIRM</button><button type="button" disabled={saving} onClick={() => void runAction('CANCEL')} className="border border-red-300 px-3 py-2 text-xs font-bold uppercase text-red-700 disabled:opacity-40">CANCEL</button></div>}
         </aside>
       </div>
     </div>

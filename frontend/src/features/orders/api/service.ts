@@ -29,24 +29,15 @@ const mockOrderService: OrderService = {
 
 const realOrderService: OrderService = {
   async getOrders(query: OrderListQuery = {}) {
-    const response = await apiClient.get<
-      ApiListResponse<OrderSummaryDto>,
-      ApiListResponse<OrderSummaryDto>
-    >('/me/orders', { params: query });
+    const response = await apiClient.get<ApiListResponse<OrderSummaryDto>>('/me/orders', { params: query });
     return { items: response.data, meta: response.meta };
   },
   async getOrder(orderId) {
-    const response = await apiClient.get<
-      ApiResponse<OrderCustomerDetailDto>,
-      ApiResponse<OrderCustomerDetailDto>
-    >(`/me/orders/${orderId}`);
+    const response = await apiClient.get<ApiResponse<OrderCustomerDetailDto>>(`/me/orders/${orderId}`);
     return response.data;
   },
   async updateRecipient(orderId, input: RecipientPatchInput) {
-    const response = await apiClient.patch<
-      ApiResponse<OrderCustomerDetailDto>,
-      ApiResponse<OrderCustomerDetailDto>
-    >(`/me/orders/${orderId}/recipient`, input);
+    const response = await apiClient.patch<ApiResponse<OrderCustomerDetailDto>>(`/me/orders/${orderId}/recipient`, input);
     return response.data;
   },
 };

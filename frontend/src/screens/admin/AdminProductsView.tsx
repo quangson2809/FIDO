@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useApp } from '../../context/AppContext';
 import { adminCatalogMetaService } from '../../features/catalog/api/adminCatalogMetaService';
 import { adminProductService } from '../../features/catalog/api/adminService';
 import type {
@@ -17,6 +16,7 @@ interface AdminProductsViewProps {
   onEditProduct?: (id: string) => void;
   onNavigateTab?: (tab: string, breadcrumb: string) => void;
   showToast: (message: string) => void;
+  canWrite: boolean;
 }
 
 type FormState = {
@@ -43,8 +43,8 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
   onEditProduct,
   onNavigateTab,
   showToast,
+  canWrite,
 }) => {
-  const { setSelectedProductId } = useApp();
   const [products, setProducts] = useState<AdminProductSummaryDto[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [meta, setMeta] = useState<CatalogMetaDto | null>(null);
@@ -98,9 +98,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
   }, [meta]);
 
   const openProduct = (id: number, callback?: (id: string) => void) => {
-    const value = String(id);
-    setSelectedProductId(value);
-    callback?.(value);
+    callback?.(String(id));
   };
 
   const updateForm = <K extends keyof FormState>(key: K, value: FormState[K]) =>
@@ -140,12 +138,12 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
     setForm(initialForm);
     setImages([]);
     setShowCreate(false);
-    setSelectedProductId(String(productId));
     openProduct(productId, onSelectProduct);
   };
 
   const create = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!canWrite) return;
     const payload = createPayload();
     if (!payload) {
       showToast('Dữ liệu sản phẩm chưa hợp lệ.');
@@ -202,7 +200,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
         </div>
         <div className="flex gap-2">
           {onNavigateTab && <button type="button" onClick={() => onNavigateTab('categories', 'Danh mục')} className="border border-[#D9DDD6] bg-white px-4 py-2 text-sm font-semibold">Metadata</button>}
-          <button type="button" onClick={() => setShowCreate((value) => !value)} className="bg-[#0B2419] px-4 py-2 text-sm font-bold uppercase text-white">{showCreate ? 'Đóng' : 'Thêm sản phẩm'}</button>
+          {canWrite && <button type="button" onClick={() => setShowCreate((value) => !value)} className="bg-[#0B2419] px-4 py-2 text-sm font-bold uppercase text-white">{showCreate ? 'Đóng' : 'Thêm sản phẩm'}</button>}
         </div>
       </div>
 
@@ -212,7 +210,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
         <button className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white">Tìm</button>
       </form>
 
-      {showCreate && (
+      {canWrite && showCreate && (
         <form onSubmit={create} className="space-y-4 rounded-lg border border-[#E2E5DE] bg-white p-5">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <label className="space-y-1"><span className="text-xs font-semibold">Tên *</span><input required maxLength={255} value={form.name} onChange={(event) => updateForm('name', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>
@@ -237,8 +235,8 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {products.map((product) => {
-            const image = resolveImageUrl(product.image_url);
-            return <article key={product.product_id} className="overflow-hidden rounded-lg border border-[#E2E5DE] bg-white"><div className="aspect-[3/2] bg-[#F5F6F2]">{image ? <img src={image} alt={product.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-xs text-[#606863]">Chưa có ảnh</div>}</div><div className="p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{product.name}</p><p className="mt-1 text-xs text-[#606863]">Product #{product.product_id} · Category #{product.category_id}</p></div><span className="text-[10px] font-bold">{product.sale_status}</span></div><p className="mt-3 font-bold">{product.base_price.toLocaleString('vi-VN')}₫</p><div className="mt-4 flex gap-2"><button type="button" onClick={() => openProduct(product.product_id, onSelectProduct)} className="border border-[#0B2419] px-3 py-2 text-xs font-bold uppercase">Chi tiết</button>{onEditProduct && <button type="button" onClick={() => openProduct(product.product_id, onEditProduct)} className="bg-[#0B2419] px-3 py-2 text-xs font-bold uppercase text-white">Chỉnh sửa</button>}</div></div></article>;
+            const image = resolveImageUrl(product.thumbnail);
+            return <article key={product.product_id} className="overflow-hidden rounded-lg border border-[#E2E5DE] bg-white"><div className="aspect-[3/2] bg-[#F5F6F2]">{image ? <img src={image} alt={product.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-xs text-[#606863]">Chưa có ảnh</div>}</div><div className="p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{product.name}</p><p className="mt-1 text-xs text-[#606863]">Product #{product.product_id} · Category #{product.category_id}</p></div><span className="text-[10px] font-bold">{product.sale_status}</span></div><p className="mt-3 font-bold">{product.base_price.toLocaleString('vi-VN')}₫</p><div className="mt-4 flex gap-2"><button type="button" onClick={() => openProduct(product.product_id, onSelectProduct)} className="border border-[#0B2419] px-3 py-2 text-xs font-bold uppercase">Chi tiết</button>{canWrite && onEditProduct && <button type="button" onClick={() => openProduct(product.product_id, onEditProduct)} className="bg-[#0B2419] px-3 py-2 text-xs font-bold uppercase text-white">Chỉnh sửa</button>}</div></div></article>;
           })}
         </div>
       )}

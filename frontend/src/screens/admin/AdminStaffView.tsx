@@ -38,7 +38,7 @@ export const AdminStaffView: React.FC<{ showToast: (msg: string) => void }> = ({
     const response = await adminAccessService.getStaff({
       q: query || undefined,
       role_id: roleId,
-      page: 0,
+      page: 1,
       page_size: 50,
     });
     setStaff(response.data);
@@ -57,7 +57,7 @@ export const AdminStaffView: React.FC<{ showToast: (msg: string) => void }> = ({
 
   useEffect(() => {
     let active = true;
-    void adminAccessService.getStaff({ q: query || undefined, role_id: roleId, page: 0, page_size: 50 })
+    void adminAccessService.getStaff({ q: query || undefined, role_id: roleId, page: 1, page_size: 50 })
       .then((response) => {
         if (!active) return;
         setStaff(response.data);

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { inventoryAdminService } from '../../features/inventory/api/adminService';
 import type { SupplierCreateInput, SupplierDto, SupplierUsageStatus } from '../../features/inventory/types';
 import type { PaginationMeta } from '../../types/api';
+import { getApiErrorMessage } from '../../services/http/apiError';
 
 const blankForm: SupplierCreateInput = {
   name: '', phone: null, email: null, address: null, usage_status: 'ACTIVE', note: null,
@@ -10,7 +11,8 @@ const blankForm: SupplierCreateInput = {
 export const AdminSuppliersView: React.FC<{
   showToast: (msg: string) => void;
   onNavigateTab?: (tab: string, breadcrumb: string) => void;
-}> = ({ showToast, onNavigateTab }) => {
+  canWrite: boolean;
+}> = ({ showToast, onNavigateTab, canWrite }) => {
   const [rows, setRows] = useState<SupplierDto[]>([]);
   const [meta, setMeta] = useState<PaginationMeta | null>(null);
   const [queryInput, setQueryInput] = useState('');
@@ -46,8 +48,8 @@ export const AdminSuppliersView: React.FC<{
       setRows(response.data);
       setMeta(response.meta);
       setError(null);
-    }).catch(() => {
-      if (active) setError('Không thể tải nhà cung cấp hoặc tài khoản thiếu INVENTORY_READ.');
+    }).catch((requestError: unknown) => {
+      if (active) setError(getApiErrorMessage(requestError, 'Không thể tải nhà cung cấp hoặc tài khoản thiếu INVENTORY_READ.'));
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [page, query, status]);
@@ -56,6 +58,7 @@ export const AdminSuppliersView: React.FC<{
     setForm((current) => ({ ...current, [key]: value }));
 
   const startEdit = (supplier: SupplierDto) => {
+    if (!canWrite) return;
     setEditingId(supplier.supplier_id);
     setForm({
       name: supplier.name,
@@ -74,7 +77,7 @@ export const AdminSuppliersView: React.FC<{
 
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!form.name.trim() || saving) return;
+    if (!canWrite || !form.name.trim() || saving) return;
     setSaving(true);
     setError(null);
     const normalized: SupplierCreateInput = {
@@ -91,8 +94,8 @@ export const AdminSuppliersView: React.FC<{
       await load();
       resetForm();
       showToast(editingId === null ? 'Đã tạo nhà cung cấp.' : 'Đã cập nhật nhà cung cấp.');
-    } catch {
-      setError('Không thể lưu nhà cung cấp. Kiểm tra dữ liệu và quyền INVENTORY_WRITE.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể lưu nhà cung cấp. Kiểm tra dữ liệu và quyền INVENTORY_WRITE.'));
     } finally {
       setSaving(false);
     }
@@ -105,9 +108,9 @@ export const AdminSuppliersView: React.FC<{
 
       <form onSubmit={(event) => { event.preventDefault(); setLoading(true); setPage(1); setQuery(queryInput.trim()); }} className="flex flex-wrap gap-3 rounded-lg border border-[#E2E5DE] bg-white p-4"><input value={queryInput} onChange={(event) => setQueryInput(event.target.value)} placeholder="Tên, email, địa chỉ..." className="min-w-64 flex-1 border border-[#D9DDD6] px-3 py-2 text-sm" /><select value={status} onChange={(event) => { setLoading(true); setPage(1); setStatus(event.target.value as SupplierUsageStatus | ''); }} className="border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">Tất cả trạng thái</option><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option></select><button className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white">Tìm</button></form>
 
-      <form onSubmit={save} className="space-y-4 rounded-lg border border-[#E2E5DE] bg-white p-5"><div className="flex justify-between"><h2 className="font-serif text-xl font-bold">{editingId === null ? 'Thêm nhà cung cấp' : `Sửa Supplier #${editingId}`}</h2>{editingId !== null && <button type="button" onClick={resetForm} className="text-xs font-bold uppercase underline">Hủy sửa</button>}</div><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3"><label className="space-y-1"><span className="text-xs font-semibold">Tên *</span><input required maxLength={255} value={form.name} onChange={(event) => setField('name', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label><label className="space-y-1"><span className="text-xs font-semibold">Điện thoại</span><input maxLength={20} value={form.phone ?? ''} onChange={(event) => setField('phone', event.target.value || null)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label><label className="space-y-1"><span className="text-xs font-semibold">Email</span><input type="email" maxLength={254} value={form.email ?? ''} onChange={(event) => setField('email', event.target.value || null)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label><label className="space-y-1"><span className="text-xs font-semibold">Địa chỉ</span><input maxLength={500} value={form.address ?? ''} onChange={(event) => setField('address', event.target.value || null)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label><label className="space-y-1"><span className="text-xs font-semibold">Trạng thái</span><select value={form.usage_status} onChange={(event) => setField('usage_status', event.target.value as SupplierUsageStatus)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option></select></label><label className="space-y-1"><span className="text-xs font-semibold">Ghi chú</span><input maxLength={500} value={form.note ?? ''} onChange={(event) => setField('note', event.target.value || null)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label></div><button disabled={saving} className="bg-[#0B2419] px-5 py-2.5 text-xs font-bold uppercase text-white disabled:opacity-40">{saving ? 'Đang lưu...' : editingId === null ? 'Tạo nhà cung cấp' : 'Lưu thay đổi'}</button></form>
+      {canWrite && <form onSubmit={save} className="space-y-4 rounded-lg border border-[#E2E5DE] bg-white p-5"><div className="flex justify-between"><h2 className="font-serif text-xl font-bold">{editingId === null ? 'Thêm nhà cung cấp' : `Sửa Supplier #${editingId}`}</h2>{editingId !== null && <button type="button" onClick={resetForm} className="text-xs font-bold uppercase underline">Hủy sửa</button>}</div><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3"><label className="space-y-1"><span className="text-xs font-semibold">Tên *</span><input required maxLength={255} value={form.name} onChange={(event) => setField('name', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label><label className="space-y-1"><span className="text-xs font-semibold">Điện thoại</span><input maxLength={20} value={form.phone ?? ''} onChange={(event) => setField('phone', event.target.value || null)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label><label className="space-y-1"><span className="text-xs font-semibold">Email</span><input type="email" maxLength={254} value={form.email ?? ''} onChange={(event) => setField('email', event.target.value || null)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label><label className="space-y-1"><span className="text-xs font-semibold">Địa chỉ</span><input maxLength={500} value={form.address ?? ''} onChange={(event) => setField('address', event.target.value || null)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label><label className="space-y-1"><span className="text-xs font-semibold">Trạng thái</span><select value={form.usage_status} onChange={(event) => setField('usage_status', event.target.value as SupplierUsageStatus)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option></select></label><label className="space-y-1"><span className="text-xs font-semibold">Ghi chú</span><input maxLength={500} value={form.note ?? ''} onChange={(event) => setField('note', event.target.value || null)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label></div><button disabled={saving} className="bg-[#0B2419] px-5 py-2.5 text-xs font-bold uppercase text-white disabled:opacity-40">{saving ? 'Đang lưu...' : editingId === null ? 'Tạo nhà cung cấp' : 'Lưu thay đổi'}</button></form>}
 
-      <div className="overflow-x-auto rounded-lg border border-[#E2E5DE] bg-white">{loading ? <div className="p-10 text-center text-sm">Đang tải...</div> : <table className="min-w-full text-left text-sm"><thead className="bg-[#F5F6F2] text-xs uppercase text-[#606863]"><tr><th className="px-4 py-3">Supplier</th><th className="px-4 py-3">Liên hệ</th><th className="px-4 py-3">Địa chỉ</th><th className="px-4 py-3">Trạng thái</th><th className="px-4 py-3" /></tr></thead><tbody className="divide-y divide-[#E2E5DE]">{rows.map((supplier) => <tr key={supplier.supplier_id}><td className="px-4 py-3"><strong>{supplier.name}</strong><p className="text-xs text-[#606863]">#{supplier.supplier_id}</p></td><td className="px-4 py-3 text-xs">{supplier.phone ?? '—'}<br />{supplier.email ?? '—'}</td><td className="max-w-xs px-4 py-3 text-xs">{supplier.address ?? '—'}</td><td className="px-4 py-3 font-bold">{supplier.usage_status}</td><td className="px-4 py-3 text-right"><button type="button" onClick={() => startEdit(supplier)} className="border border-[#0B2419] px-3 py-2 text-xs font-bold uppercase">Sửa</button></td></tr>)}</tbody></table>}</div>
+      <div className="overflow-x-auto rounded-lg border border-[#E2E5DE] bg-white">{loading ? <div className="p-10 text-center text-sm">Đang tải...</div> : <table className="min-w-full text-left text-sm"><thead className="bg-[#F5F6F2] text-xs uppercase text-[#606863]"><tr><th className="px-4 py-3">Supplier</th><th className="px-4 py-3">Liên hệ</th><th className="px-4 py-3">Địa chỉ</th><th className="px-4 py-3">Trạng thái</th><th className="px-4 py-3" /></tr></thead><tbody className="divide-y divide-[#E2E5DE]">{rows.map((supplier) => <tr key={supplier.supplier_id}><td className="px-4 py-3"><strong>{supplier.name}</strong><p className="text-xs text-[#606863]">#{supplier.supplier_id}</p></td><td className="px-4 py-3 text-xs">{supplier.phone ?? '—'}<br />{supplier.email ?? '—'}</td><td className="max-w-xs px-4 py-3 text-xs">{supplier.address ?? '—'}</td><td className="px-4 py-3 font-bold">{supplier.usage_status}</td><td className="px-4 py-3 text-right">{canWrite && <button type="button" onClick={() => startEdit(supplier)} className="border border-[#0B2419] px-3 py-2 text-xs font-bold uppercase">Sửa</button>}</td></tr>)}</tbody></table>}</div>
       {meta && meta.total_pages > 1 && <div className="flex justify-center gap-3 text-sm"><button type="button" disabled={page <= 1 || loading} onClick={() => { setLoading(true); setPage((value) => value - 1); }} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang trước</button><span className="py-2">{meta.page} / {meta.total_pages}</span><button type="button" disabled={page >= meta.total_pages || loading} onClick={() => { setLoading(true); setPage((value) => value + 1); }} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang sau</button></div>}
     </div>
   );

@@ -8,11 +8,13 @@ interface Props {
   initialTab?: Tab;
   onNavigateTab: (tab: string, breadcrumb: string) => void;
   showToast: (message: string) => void;
+  canWrite: boolean;
 }
 
 export const AdminCatalogMetaView: React.FC<Props> = ({
   initialTab = 'categories',
   showToast,
+  canWrite,
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [meta, setMeta] = useState<CatalogMetaDto | null>(null);
@@ -71,7 +73,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
 
   const createCurrent = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!name.trim() || busy) return;
+    if (!canWrite || !name.trim() || busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -104,6 +106,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
   };
 
   const rename = async (kind: Tab, id: number, currentName: string) => {
+    if (!canWrite) return;
     const nextName = window.prompt('Tên mới', currentName)?.trim();
     if (!nextName || busy) return;
     setBusy(true);
@@ -122,7 +125,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
   };
 
   const remove = async (kind: Tab, id: number) => {
-    if (busy || !window.confirm('Xóa mục này? Backend sẽ từ chối nếu còn quan hệ tham chiếu.')) return;
+    if (!canWrite || busy || !window.confirm('Xóa mục này? Backend sẽ từ chối nếu còn quan hệ tham chiếu.')) return;
     setBusy(true);
     setError(null);
     try {
@@ -166,14 +169,15 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
       </div>
 
       {error && <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
+      {!canWrite && <div className="border border-[#E2E5DE] bg-[#F8FAF4] p-3 text-sm text-[#606863]">Chế độ chỉ đọc. Cần CATALOG_WRITE để tạo, sửa hoặc xóa metadata.</div>}
 
-      <form onSubmit={createCurrent} className="grid gap-3 rounded-lg border border-[#E2E5DE] bg-white p-5 md:grid-cols-2 xl:grid-cols-4">
+      {canWrite && <form onSubmit={createCurrent} className="grid gap-3 rounded-lg border border-[#E2E5DE] bg-white p-5 md:grid-cols-2 xl:grid-cols-4">
         <label className="space-y-1"><span className="text-xs font-semibold">Tên *</span><input value={name} maxLength={150} onChange={(event) => setName(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" required /></label>
         {(activeTab === 'colors' || activeTab === 'sizes') && <label className="space-y-1"><span className="text-xs font-semibold">Code *</span><input value={code} maxLength={50} onChange={(event) => setCode(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" required /></label>}
         {activeTab === 'categories' && <label className="space-y-1"><span className="text-xs font-semibold">Parent category ID</span><input type="number" min="1" value={parentId} onChange={(event) => setParentId(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>}
         {activeTab === 'sizes' && <><label className="space-y-1"><span className="text-xs font-semibold">Size đầu tiên: code *</span><input value={sizeCode} maxLength={50} onChange={(event) => setSizeCode(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" required /></label><label className="space-y-1"><span className="text-xs font-semibold">Size đầu tiên: display *</span><input value={sizeDisplayName} maxLength={100} onChange={(event) => setSizeDisplayName(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" required /></label><label className="space-y-1"><span className="text-xs font-semibold">Sort order *</span><input type="number" value={sizeSortOrder} onChange={(event) => setSizeSortOrder(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" required /></label></>}
         <div className="flex items-end"><button type="submit" disabled={busy} className="w-full bg-[#0B2419] px-4 py-2.5 text-xs font-bold uppercase text-white disabled:opacity-40">{busy ? 'Đang xử lý...' : 'Tạo mới'}</button></div>
-      </form>
+      </form>}
 
       <div className="overflow-x-auto rounded-lg border border-[#E2E5DE] bg-white">
         <table className="min-w-full text-left text-sm">
@@ -182,7 +186,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
             {rows.map((row) => {
               const id = 'category_id' in row ? row.category_id : 'brand_id' in row ? row.brand_id : 'color_id' in row ? row.color_id : row.size_system_id;
               const detail = 'parent_category_id' in row ? `parent: ${row.parent_category_id ?? 'root'}` : 'size_values' in row ? `${row.code} · ${row.size_values.length} size values` : 'code' in row ? row.code : '';
-              return <tr key={id}><td className="px-4 py-3 font-mono">#{id}</td><td className="px-4 py-3 font-semibold">{row.name}</td><td className="px-4 py-3 text-xs text-[#606863]">{detail}</td><td className="px-4 py-3 text-right"><div className="flex justify-end gap-2"><button type="button" disabled={busy} onClick={() => void rename(activeTab, id, row.name)} className="border border-[#D9DDD6] px-3 py-1.5 text-xs font-semibold">Đổi tên</button><button type="button" disabled={busy} onClick={() => void remove(activeTab, id)} className="border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700">Xóa</button></div></td></tr>;
+              return <tr key={id}><td className="px-4 py-3 font-mono">#{id}</td><td className="px-4 py-3 font-semibold">{row.name}</td><td className="px-4 py-3 text-xs text-[#606863]">{detail}</td><td className="px-4 py-3 text-right">{canWrite && <div className="flex justify-end gap-2"><button type="button" disabled={busy} onClick={() => void rename(activeTab, id, row.name)} className="border border-[#D9DDD6] px-3 py-1.5 text-xs font-semibold">Đổi tên</button><button type="button" disabled={busy} onClick={() => void remove(activeTab, id)} className="border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700">Xóa</button></div>}</td></tr>;
             })}
           </tbody>
         </table>

@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:api": "vite build --ssr tests/api-integration-smoke.ts --outDir .smoke-dist && node .smoke-dist/api-integration-smoke.js",
+    "test:architecture": "vite build --ssr tests/architecture-smoke.ts --outDir .architecture-dist && node .architecture-dist/architecture-smoke.js",
+    "test:render": "vite build --ssr tests/render-smoke.tsx --outDir .render-dist && node .render-dist/render-smoke.js"
   },
   "dependencies": {
     "axios": "^1.17.0",

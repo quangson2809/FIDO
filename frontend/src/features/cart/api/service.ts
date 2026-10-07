@@ -66,31 +66,31 @@ const mockCartService: CartService = {
 
 const realCartService: CartService = {
   async getCart() {
-    const response = await apiClient.get<ApiResponse<CartDto>, ApiResponse<CartDto>>('/cart');
+    const response = await apiClient.get<ApiResponse<CartDto>>('/cart');
     return response.data;
   },
   async addItem(variantId, quantity) {
-    const response = await apiClient.post<ApiResponse<CartDto>, ApiResponse<CartDto>>(
+    const response = await apiClient.post<ApiResponse<CartDto>>(
       '/cart/items',
       { variant_id: variantId, quantity },
     );
     return response.data;
   },
   async updateItem(cartItemId, quantity) {
-    const response = await apiClient.patch<ApiResponse<CartDto>, ApiResponse<CartDto>>(
+    const response = await apiClient.patch<ApiResponse<CartDto>>(
       `/cart/items/${cartItemId}`,
       { quantity },
     );
     return response.data;
   },
   async removeItem(cartItemId) {
-    const response = await apiClient.delete<ApiResponse<CartDto>, ApiResponse<CartDto>>(
+    const response = await apiClient.delete<ApiResponse<CartDto>>(
       `/cart/items/${cartItemId}`,
     );
     return response.data;
   },
   async clear() {
-    const response = await apiClient.delete<ApiResponse<CartDto>, ApiResponse<CartDto>>('/cart');
+    const response = await apiClient.delete<ApiResponse<CartDto>>('/cart');
     return response.data;
   },
 };

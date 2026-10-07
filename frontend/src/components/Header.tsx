@@ -1,15 +1,40 @@
 import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useCart } from '../features/cart/hooks/useCart';
+import { useToast } from '../shared/ui/toast/useToast';
+import { useAuthSession } from '../features/auth/session/useAuthSession';
+
+const navItems = [
+  { path: '/', label: 'Trang chủ', active: (pathname: string) => pathname === '/' },
+  { path: '/products', label: 'Sản phẩm', active: (pathname: string) => pathname.startsWith('/products') },
+  { path: '/policies', label: 'Chính sách', active: (pathname: string) => pathname === '/policies' },
+  { path: '/orders', label: 'Đơn hàng', active: (pathname: string) => pathname.startsWith('/orders') },
+] as const;
 
 export const Header: React.FC = () => {
-  const { currentScreen, setCurrentScreen, setIsCartOpen, cartItems } = useApp();
+  const { setIsCartOpen, cartItems } = useCart();
+  const { showToast } = useToast();
+  const { isAuthenticated } = useAuthSession();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const totalCartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
 
-  const navigate = (screen: 'home' | 'catalog' | 'policy' | 'my-orders' | 'profile' | 'auth') => {
-    setCurrentScreen(screen);
+  const navigateTo = (path: string) => {
     setIsCategoryOpen(false);
+    navigate(path);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const openAccount = () => navigateTo(isAuthenticated ? '/account' : '/login');
+
+  const openCart = () => {
+    if (!isAuthenticated) {
+      showToast('Vui lòng đăng nhập để sử dụng giỏ hàng và đặt hàng.');
+      navigateTo('/login');
+      return;
+    }
+    setIsCartOpen(true);
   };
 
   return (
@@ -29,7 +54,7 @@ export const Header: React.FC = () => {
           <div className="flex items-center gap-6 lg:gap-9">
             <button
               type="button"
-              onClick={() => navigate('home')}
+              onClick={() => navigateTo('/')}
               className="group flex items-baseline gap-1.5 text-left focus:outline-none"
             >
               <span className="flex items-baseline text-2xl font-black tracking-[0.16em] text-[#0B2419]">
@@ -58,7 +83,7 @@ export const Header: React.FC = () => {
                 >
                   <button
                     type="button"
-                    onClick={() => navigate('catalog')}
+                    onClick={() => navigateTo('/products')}
                     className="flex w-full items-center justify-between px-4 py-3 text-left text-[13px] font-semibold text-[#0B2419] transition-colors hover:bg-[#F5F6F2]"
                   >
                     <span>Tất cả sản phẩm</span>
@@ -73,38 +98,36 @@ export const Header: React.FC = () => {
             </div>
 
             <nav className="hidden items-center gap-6 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#606863] xl:flex">
-              {[
-                ['home', 'Trang chủ'],
-                ['catalog', 'Sản phẩm'],
-                ['policy', 'Chính sách'],
-                ['my-orders', 'Đơn hàng'],
-              ].map(([screen, label]) => (
-                <button
-                  key={screen}
-                  type="button"
-                  onClick={() => navigate(screen as 'home' | 'catalog' | 'policy' | 'my-orders')}
-                  className={`relative py-2 transition-colors hover:text-[#0B2419] ${currentScreen === screen ? 'text-[#0B2419]' : ''}`}
-                >
-                  {label}
-                  {currentScreen === screen && <span className="absolute inset-x-0 -bottom-1 h-0.5 bg-[#0B2419]" />}
-                </button>
-              ))}
+              {navItems.map((item) => {
+                const active = item.active(location.pathname);
+                return (
+                  <button
+                    key={item.path}
+                    type="button"
+                    onClick={() => navigateTo(item.path)}
+                    className={`relative py-2 transition-colors hover:text-[#0B2419] ${active ? 'text-[#0B2419]' : ''}`}
+                  >
+                    {item.label}
+                    {active && <span className="absolute inset-x-0 -bottom-1 h-0.5 bg-[#0B2419]" />}
+                  </button>
+                );
+              })}
             </nav>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
             <button
               type="button"
-              onClick={() => navigate('profile')}
+              onClick={openAccount}
               className="flex h-10 items-center gap-1.5 px-2 text-[13px] font-medium text-[#0B2419] transition-colors hover:bg-[#F5F6F2] sm:px-3"
             >
               <span className="material-symbols-outlined text-[20px]">person</span>
-              <span className="hidden sm:inline">Tài khoản</span>
+              <span className="hidden sm:inline">{isAuthenticated ? 'Tài khoản' : 'Đăng nhập'}</span>
             </button>
 
             <button
               type="button"
-              onClick={() => setIsCartOpen(true)}
+              onClick={openCart}
               className="flex h-10 items-center gap-2 bg-[#0B2419] px-3 text-[13px] font-semibold text-white transition-colors hover:bg-[#123A29] sm:px-4"
             >
               <span className="material-symbols-outlined text-[19px]">shopping_bag</span>

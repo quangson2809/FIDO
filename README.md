@@ -1,36 +1,28 @@
 # FIDO
 
-FIDO is currently bootstrapped as a single Git repository containing a Spring Boot Web API and a React + TypeScript frontend.
-
-## Current scope
-
-This repository is intentionally at the **setup/bootstrap** stage only. It contains framework dependencies, database configuration, development environment configuration, CORS/security bootstrap, and a frontend-to-backend health check.
-
-It does **not** define business architecture yet: no domain modules, entities, repositories, services, use cases, business controllers, feature folders, or authentication flow have been introduced.
+FIDO is a monorepo for a fashion e-commerce system with a Spring Boot backend and a React + TypeScript frontend.
 
 ## Stack
 
 ### Backend
 
 - Java 17
-- Spring Boot 4.0.3
+- Spring Boot 4
 - Gradle Kotlin DSL
 - Spring Web MVC
 - Spring Data JPA
-- Spring Security
-- Spring Validation
-- Spring Boot Actuator
+- Spring Security + JWT
+- Flyway
+- MySQL
 - Springdoc OpenAPI
-- MySQL Connector/J
-- Lombok
 
 ### Frontend
 
 - React 19
 - TypeScript 6
 - Vite 8
-- Axios
 - React Router
+- Axios
 - Tailwind CSS 4
 - DaisyUI 5
 
@@ -38,95 +30,130 @@ It does **not** define business architecture yet: no domain modules, entities, r
 
 ```text
 FIDO/
-├── backend/   # Spring Boot application bootstrap
-├── frontend/  # React + TypeScript application bootstrap
-├── .gitignore
-├── .editorconfig
-└── README.md
+├── backend/
+│   ├── src/main/java/com/fido/modules/
+│   │   ├── account/
+│   │   ├── audit/
+│   │   ├── cart/
+│   │   ├── content/
+│   │   ├── inventory/
+│   │   ├── order/
+│   │   ├── product/
+│   │   └── report/
+│   ├── src/main/resources/
+│   └── AGENTS.md
+├── frontend/
+│   ├── src/
+│   │   ├── app/routes/
+│   │   ├── features/
+│   │   ├── routes/
+│   │   ├── screens/
+│   │   └── services/
+│   └── tests/
+├── docs/
+└── reference/
 ```
 
-The folders under `backend/src` and `frontend/src` are only the minimum framework-required scaffold. Application architecture has not been designed yet.
+## Frontend architecture
+
+Frontend routing is URL-driven. React Router owns navigation state; product, order, customer, checkout-success and admin detail identifiers come from route parameters instead of a parallel global navigation state.
+
+The intended dependency direction is:
+
+```text
+Route / Screen
+    ↓
+Feature component / feature hook
+    ↓
+Feature API service
+    ↓
+Shared HTTP client
+```
+
+Authentication/session state is owned by the auth feature, cart state is owned by the cart feature, and transient notifications are owned by shared UI. There is no global AppProvider that owns routing, auth, cart and toast together.
+
+Admin navigation uses the effective roles/permissions returned by the backend for UX visibility. Backend authorization remains the security boundary.
 
 ## Prerequisites
 
 - JDK 17
-- Gradle 9.3.1 or a compatible Gradle 9.x installation
 - Node.js 22+
 - npm
 - MySQL 8+
 
-## 1. Prepare MySQL
+## Backend
 
-Create an empty database:
-
-```sql
-CREATE DATABASE fido CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
-Copy the backend environment template:
+Prepare local environment variables from the backend template:
 
 ```powershell
 cd backend
 Copy-Item .env.example .env
 ```
 
-Update `.env` when your local MySQL credentials differ from the defaults.
-
-## 2. Run the backend
-
-From `backend/`:
+Run the backend:
 
 ```powershell
-gradle bootRun
+./gradlew bootRun
 ```
 
-The backend runs at `http://localhost:8080` by default.
+On Windows PowerShell, use:
 
-Technical smoke-test endpoint:
+```powershell
+.\gradlew.bat bootRun
+```
+
+Default API base URL:
 
 ```text
-GET http://localhost:8080/actuator/health
+http://localhost:8080/api/v1
 ```
 
-Swagger UI is available at:
+Swagger UI:
 
 ```text
 http://localhost:8080/swagger-ui.html
 ```
 
-## 3. Run the frontend
+## Frontend
 
-Copy the frontend environment template and install dependencies:
+Prepare the frontend environment and install dependencies:
 
 ```powershell
 cd frontend
 Copy-Item .env.example .env
-npm install
+npm ci
 npm run dev
 ```
 
-The frontend runs at `http://localhost:5173` by default and checks the backend health endpoint through Axios.
+The Vite development server uses port 5173 by default.
 
-## 4. Verification
+## Verification
 
-Backend compile/test:
+### Backend
 
 ```powershell
 cd backend
-gradle test
-gradle build
+./gradlew compileJava
+./gradlew test
+./gradlew check
 ```
 
-Frontend verification:
+### Frontend
 
 ```powershell
 cd frontend
+npm ci
+npm run test:api
+npm run test:architecture
+npm run test:render
 npm run lint
 npm run build
 ```
 
-## Setup completion boundary
+The frontend CI workflow runs the same smoke, lint, typecheck and production-build checks and uploads the generated `dist` artifact after a successful run.
 
-Once both applications build, MySQL connectivity succeeds, and the frontend reports backend status `UP`, the bootstrap phase is complete.
+## Notes
 
-Do not introduce business packages or feature structure until the architecture/design phase starts.
+- Frontend DTOs remain handwritten. Runtime validation is applied selectively at high-impact trust boundaries; `POST /auth/login` and `GET /me` are validated before token/session/RBAC state is accepted. No OpenAPI client generation is introduced.
+- Product image upload/reorder/delete use the dedicated backend image APIs; frontend code does not call the external image provider directly.
+- Frontend permission checks are for navigation/UX only. Authorization must continue to be enforced by backend Spring Security.

@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useCart } from '../features/cart/hooks/useCart';
+import { useToast } from '../shared/ui/toast/useToast';
 import { authService } from '../features/auth/api/service';
-import { profileService } from '../features/auth/api/profileService';
+import { useAuthSession } from '../features/auth/session/useAuthSession';
+import { isAdminProfile } from '../features/auth/session/sessionAccess';
+import { getApiErrorMessage } from '../services/http/apiError';
 
 type AuthMode = 'login' | 'register';
 
@@ -10,7 +14,11 @@ interface AuthScreenProps {
 }
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ adminOnly = false }) => {
-  const { setCurrentScreen, showToast, refreshCart } = useApp();
+  const { refreshCart } = useCart();
+  const { showToast } = useToast();
+  const { login, logout } = useAuthSession();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [mode, setMode] = useState<AuthMode>('login');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -35,12 +43,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ adminOnly = false }) => 
         return;
       }
 
-      await authService.login(identifier, password);
-      const me = await profileService.getMe();
-      const isInternalUser = me.roles.some((role) => role.code === 'ADMIN' || role.code === 'SUPERADMIN');
+      const me = await login(identifier, password);
+      const isInternalUser = isAdminProfile(me);
 
       if (adminOnly && !isInternalUser) {
-        authService.logout();
+        logout();
         showToast('Tài khoản này không có quyền truy cập khu vực quản trị.');
         return;
       }
@@ -52,12 +59,22 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ adminOnly = false }) => 
       }
 
       showToast('Đăng nhập thành công.');
-      setCurrentScreen(isInternalUser ? 'admin' : 'profile');
-    } catch {
+      const state = location.state;
+      const requestedPath = state && typeof state === 'object' && 'from' in state && typeof state.from === 'string'
+        ? state.from
+        : null;
+      const customerDestination = requestedPath && !requestedPath.startsWith('/admin')
+        ? requestedPath
+        : '/account';
+      navigate(isInternalUser ? '/admin/dashboard' : customerDestination, { replace: true });
+    } catch (requestError: unknown) {
       showToast(
-        !adminOnly && mode === 'register'
-          ? 'Đăng ký thất bại. Kiểm tra dữ liệu tài khoản.'
-          : 'Đăng nhập thất bại. Kiểm tra số điện thoại hoặc mật khẩu.',
+        getApiErrorMessage(
+          requestError,
+          !adminOnly && mode === 'register'
+            ? 'Đăng ký thất bại. Kiểm tra dữ liệu tài khoản.'
+            : 'Đăng nhập thất bại. Kiểm tra số điện thoại hoặc mật khẩu.',
+        ),
       );
     } finally {
       setSubmitting(false);
@@ -109,7 +126,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ adminOnly = false }) => 
         </form>
 
         {adminOnly && (
-          <button type="button" onClick={() => setCurrentScreen('home')} className="mt-5 w-full text-xs font-semibold uppercase tracking-wider text-[#606863] underline underline-offset-4">
+          <button type="button" onClick={() => navigate('/')} className="mt-5 w-full text-xs font-semibold uppercase tracking-wider text-[#606863] underline underline-offset-4">
             Quay lại cửa hàng
           </button>
         )}

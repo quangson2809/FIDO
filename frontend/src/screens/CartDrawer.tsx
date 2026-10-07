@@ -1,5 +1,6 @@
 import React from 'react';
-import { useApp } from '../context/AppContext';
+import { useNavigate } from 'react-router-dom';
+import { useCart } from '../features/cart/hooks/useCart';
 
 export const CartDrawer: React.FC = () => {
   const {
@@ -8,37 +9,48 @@ export const CartDrawer: React.FC = () => {
     cartItems,
     cartSubtotal,
     removeFromCart,
-    updateCartQuantity,
-    setCurrentScreen,
-  } = useApp();
-
-  if (!isCartOpen) return null;
-
+    changeCartQuantity,
+  } = useCart();
+  const navigate = useNavigate();
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleCheckout = () => {
     if (cartItems.length === 0) return;
     setIsCartOpen(false);
-    setCurrentScreen('checkout');
+    navigate('/checkout');
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden" id="cart-drawer-container">
+    <div
+      inert={!isCartOpen}
+      aria-hidden={!isCartOpen}
+      className="pointer-events-none fixed inset-0 z-50 overflow-hidden"
+      id="cart-drawer-container"
+    >
       <button
         type="button"
         aria-label="Đóng giỏ hàng"
-        className="fixed inset-0 bg-[#071A12]/65 backdrop-blur-sm"
+        className={`fixed inset-0 bg-[#071A12]/65 backdrop-blur-sm transition-opacity duration-300 ease-out motion-reduce:transition-none ${
+          isCartOpen ? 'pointer-events-auto opacity-100' : 'opacity-0'
+        }`}
         onClick={() => setIsCartOpen(false)}
       />
 
       <div className="fixed inset-y-0 right-0 flex max-w-full pl-3 sm:pl-6">
-        <aside className="relative z-10 flex h-full w-screen max-w-[500px] animate-in flex-col border-l border-white/10 bg-[#FDFDFB] shadow-2xl slide-in-from-right duration-300">
+        <aside
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cart-drawer-title"
+          className={`relative z-10 flex h-full w-screen max-w-[500px] transform-gpu flex-col border-l border-white/10 bg-[#FDFDFB] shadow-2xl transition-transform duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none ${
+            isCartOpen ? 'pointer-events-auto translate-x-0' : 'translate-x-full'
+          }`}
+        >
           <header className="shrink-0 border-b border-[#E8E9E3] bg-white px-5 py-5 sm:px-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2.5">
                   <span className="material-symbols-outlined text-[24px] text-[#0B2419]">shopping_bag</span>
-                  <h2 className="font-serif text-[22px] tracking-tight text-[#0B2419]">Giỏ hàng của bạn</h2>
+                  <h2 id="cart-drawer-title" className="font-serif text-[22px] tracking-tight text-[#0B2419]">Giỏ hàng của bạn</h2>
                 </div>
                 <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#687069]">{itemCount} sản phẩm · lưu trên tài khoản FIDO</p>
               </div>
@@ -59,7 +71,7 @@ export const CartDrawer: React.FC = () => {
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#FFFDF5] ring-1 ring-[#E8E9E3]"><span className="material-symbols-outlined text-4xl text-[#0B2419]/45">production_quantity_limits</span></div>
                 <p className="mt-5 font-serif text-xl text-[#0B2419]">Giỏ hàng đang trống</p>
                 <p className="mt-2 max-w-xs text-xs leading-5">Chọn size và màu từ một sản phẩm đang bán để thêm biến thể vào giỏ hàng.</p>
-                <button type="button" onClick={() => { setIsCartOpen(false); setCurrentScreen('catalog'); }} className="mt-5 bg-[#0B2419] px-5 py-3 text-xs font-bold uppercase tracking-widest text-white transition hover:bg-[#1B5038]">Khám phá catalog</button>
+                <button type="button" onClick={() => { setIsCartOpen(false); navigate('/products'); }} className="mt-5 bg-[#0B2419] px-5 py-3 text-xs font-bold uppercase tracking-widest text-white transition hover:bg-[#1B5038]">Khám phá catalog</button>
               </div>
             ) : (
               <div className="divide-y divide-[#E8E9E3]">
@@ -84,9 +96,9 @@ export const CartDrawer: React.FC = () => {
 
                       <div className="mt-3 flex items-end justify-between gap-3 border-t border-[#E8E9E3]/70 pt-3">
                         <div className="flex h-8 items-center border border-[#D9DDD6] bg-white">
-                          <button type="button" aria-label="Giảm số lượng" onClick={() => updateCartQuantity(item.id, item.quantity - 1)} className="flex h-full w-8 items-center justify-center transition hover:bg-[#F3F4EF]"><span className="material-symbols-outlined text-[15px]">remove</span></button>
+                          <button type="button" aria-label="Giảm số lượng" onClick={() => changeCartQuantity(item.id, -1)} className="flex h-full w-8 items-center justify-center transition hover:bg-[#F3F4EF]"><span className="material-symbols-outlined text-[15px]">remove</span></button>
                           <span className="w-9 text-center text-[13px] font-semibold">{item.quantity}</span>
-                          <button type="button" aria-label="Tăng số lượng" onClick={() => updateCartQuantity(item.id, item.quantity + 1)} className="flex h-full w-8 items-center justify-center transition hover:bg-[#F3F4EF]"><span className="material-symbols-outlined text-[15px]">add</span></button>
+                          <button type="button" aria-label="Tăng số lượng" onClick={() => changeCartQuantity(item.id, 1)} className="flex h-full w-8 items-center justify-center transition hover:bg-[#F3F4EF]"><span className="material-symbols-outlined text-[15px]">add</span></button>
                         </div>
                         <div className="text-right"><p className="text-[10px] text-[#687069]">{item.price.toLocaleString('vi-VN')}₫ / sản phẩm</p><p className="mt-0.5 font-serif text-lg font-bold text-[#0B2419]">{(item.price * item.quantity).toLocaleString('vi-VN')}₫</p></div>
                       </div>
@@ -104,7 +116,7 @@ export const CartDrawer: React.FC = () => {
             </div>
             <div className="mt-4 flex items-end justify-between border-t border-[#E8E9E3] pt-4"><span className="text-sm font-bold">Tạm tính</span><span className="font-serif text-2xl font-bold">{cartSubtotal.toLocaleString('vi-VN')}₫</span></div>
             <button type="button" disabled={cartItems.length === 0} onClick={handleCheckout} className="mt-4 flex w-full items-center justify-center gap-2 bg-[#0B2419] py-3.5 text-xs font-bold uppercase tracking-[0.18em] text-white transition hover:bg-[#1B5038] disabled:cursor-not-allowed disabled:opacity-40"><span>Tiếp tục checkout</span><span className="material-symbols-outlined text-[18px]">arrow_forward</span></button>
-            <button type="button" onClick={() => { setIsCartOpen(false); setCurrentScreen('catalog'); }} className="mt-2 w-full py-2 text-[11px] font-bold uppercase tracking-wider text-[#606863] transition hover:text-[#0B2419]">Tiếp tục mua sắm</button>
+            <button type="button" onClick={() => { setIsCartOpen(false); navigate('/products'); }} className="mt-2 w-full py-2 text-[11px] font-bold uppercase tracking-wider text-[#606863] transition hover:text-[#0B2419]">Tiếp tục mua sắm</button>
           </footer>
         </aside>
       </div>

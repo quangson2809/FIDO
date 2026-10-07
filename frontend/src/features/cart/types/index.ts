@@ -27,3 +27,14 @@ export interface CartService {
   removeItem(cartItemId: number): Promise<CartDto>;
   clear(): Promise<CartDto>;
 }
+
+export interface CartViewItem {
+  id: string;
+  name: string;
+  variantId: number;
+  price: number;
+  imageUrl: string;
+  size: string | number;
+  color: string;
+  quantity: number;
+}

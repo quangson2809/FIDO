@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { useApp } from '../context/AppContext';
+import { useNavigate } from 'react-router-dom';
 import { catalogService } from '../features/catalog/api/service';
 import type { CatalogMetaDto, CatalogProductView } from '../features/catalog/types';
+import { getApiErrorMessage } from '../services/http/apiError';
 
 const HERO_IMAGE =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuB43j3U0QGfklvPCyrYdm_4uqdh7U1m_789gJgb9dh6wEkBdhY0mzlP7RRDQrhmLsrOknJ0jGRSmcq2PpIVgOXBQ4oZv3lNU8bndQhMe1NvknIqzt4CKSagNfZxwQWAon2oy6ggXrwuqZITn4oBz_g9S47_4eVaQuBi8oxwXP7nih4Pze-AjnEh0sTWqBN0FpTQKswUiZsjLo6Gn8-32F9v9d7VMDcwjWJJ1bBVwriGH43Q4012h51B1A';
@@ -9,7 +10,7 @@ const HERO_IMAGE =
 const money = (value: number): string => `${value.toLocaleString('vi-VN')}₫`;
 
 export const HomeScreen: React.FC = () => {
-  const { setCurrentScreen, setSelectedProductId } = useApp();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<CatalogProductView[]>([]);
   const [meta, setMeta] = useState<CatalogMetaDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -21,15 +22,15 @@ export const HomeScreen: React.FC = () => {
     const load = async () => {
       try {
         const [productPage, catalogMeta] = await Promise.all([
-          catalogService.listProducts({ page: 0, page_size: 8 }),
+          catalogService.listProducts({ page: 1, page_size: 8 }),
           catalogService.getMeta(),
         ]);
         if (!active) return;
         setProducts(productPage.items);
         setMeta(catalogMeta);
         setError(null);
-      } catch {
-        if (active) setError('Không thể tải dữ liệu catalog.');
+      } catch (requestError: unknown) {
+        if (active) setError(getApiErrorMessage(requestError, 'Không thể tải dữ liệu catalog.'));
       } finally {
         if (active) setLoading(false);
       }
@@ -42,8 +43,7 @@ export const HomeScreen: React.FC = () => {
   }, []);
 
   const openProduct = (productId: string) => {
-    setSelectedProductId(productId);
-    setCurrentScreen('product-detail');
+    navigate(`/products/${encodeURIComponent(productId)}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -80,7 +80,7 @@ export const HomeScreen: React.FC = () => {
               <div className="flex flex-col items-stretch gap-3 pt-6 sm:flex-row sm:items-center">
                 <button
                   type="button"
-                  onClick={() => setCurrentScreen('catalog')}
+                  onClick={() => navigate('/products')}
                   className="inline-flex items-center justify-center gap-2 bg-[#0B2419] px-7 py-4 text-[12px] font-bold uppercase tracking-widest text-white shadow-md transition-all duration-300 hover:bg-[#1B5038]"
                 >
                   <span>Khám phá bộ sưu tập</span>
@@ -155,7 +155,7 @@ export const HomeScreen: React.FC = () => {
             </div>
             <button
               type="button"
-              onClick={() => setCurrentScreen('catalog')}
+              onClick={() => navigate('/products')}
               className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#0B2419]"
             >
               Xem toàn bộ
@@ -174,7 +174,7 @@ export const HomeScreen: React.FC = () => {
                 <button
                   key={category.category_id}
                   type="button"
-                  onClick={() => setCurrentScreen('catalog')}
+                  onClick={() => navigate(`/products?category_id=${category.category_id}`)}
                   className="group relative min-h-36 overflow-hidden border border-[#E8E9E3] bg-[#FAF9F5] p-5 text-left transition-all hover:-translate-y-0.5 hover:border-[#0B2419] hover:shadow-md"
                 >
                   <span className="absolute right-4 top-3 font-serif text-5xl text-[#0B2419]/5">0{index + 1}</span>
@@ -201,7 +201,7 @@ export const HomeScreen: React.FC = () => {
             </div>
             <button
               type="button"
-              onClick={() => setCurrentScreen('catalog')}
+              onClick={() => navigate('/products')}
               className="border border-[#0B2419] px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors hover:bg-[#0B2419] hover:text-white"
             >
               Xem catalog
@@ -265,7 +265,7 @@ export const HomeScreen: React.FC = () => {
           </div>
           <button
             type="button"
-            onClick={() => setCurrentScreen('catalog')}
+            onClick={() => navigate('/products')}
             className="shrink-0 bg-[#E8C75B] px-6 py-3 text-xs font-bold uppercase tracking-wider text-[#071A12] transition-transform hover:-translate-y-0.5"
           >
             Mở catalog

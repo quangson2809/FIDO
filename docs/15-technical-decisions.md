@@ -298,3 +298,14 @@ The earlier monetary/time HARD BLOCK is resolved. Phase 7's gate now depends on 
 - `IMGBB_API_KEY` is backend runtime secret configuration only. Real values are not logged, returned in API responses, persisted, exposed as frontend variables or committed to Git. `.env.example` contains only an empty placeholder and real `.env` files remain ignored.
 - Operational logs use safe identifiers/results only: Product upload may log `productId` and duration; the provider adapter logs result category/status and duration. It does not log provider request URI, API key, payload, response body or raw exception message.
 - Detailed implementation/verification notes live in `docs/21-image-security-operational-hardening.md`. Antivirus scanning, transcoding, quarantine, WAF/rate-limiter infrastructure and remote-asset garbage collection remain outside this phase.
+
+## Frontend runtime DTO validation — 2026-10-07
+
+The project owner selected the handwritten DTO/service approach with selective runtime validation instead of generated OpenAPI clients.
+
+- Keep existing TypeScript DTOs and feature API services; do not introduce client generation as part of this decision.
+- Validate runtime data first where malformed payloads can corrupt a high-impact client boundary. The initial scope is `POST /auth/login` and `GET /me`, because they establish access-token, session, role and permission state.
+- Parse those responses from `unknown` before publishing them into application state. Extra response fields remain forward-compatible; required fields must match the existing backend DTO contract.
+- A malformed login response must not publish an access token. A malformed `/me` response must fail before role/permission state is accepted.
+- Use a small dependency-free feature-local parser for this initial scope. Do not add a validation library until repeated schemas or broader runtime-validation coverage create a concrete reuse/maintenance need.
+- Other API DTOs remain compile-time typed for now and should be promoted to runtime validation based on impact and evidence, not by mechanically validating every endpoint.
