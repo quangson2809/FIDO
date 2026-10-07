@@ -8,10 +8,11 @@ import {
 } from 'react-router-dom';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
-import { AppProvider } from './context/AppProvider';
-import { useApp } from './context/AppContext';
+import { CartProvider } from './features/cart/context/CartProvider';
 import { AuthSessionProvider } from './features/auth/session/AuthSessionContext';
 import { useAuthSession } from './features/auth/session/useAuthSession';
+import { ToastProvider } from './shared/ui/toast/ToastProvider';
+import { ToastViewport } from './shared/ui/toast/ToastViewport';
 
 const HomeScreen = lazy(() => import('./screens/HomeScreen').then((module) => ({ default: module.HomeScreen })));
 const CatalogScreen = lazy(() => import('./screens/CatalogScreen').then((module) => ({ default: module.CatalogScreen })));
@@ -52,26 +53,12 @@ const RouteFallback = () => (
   </div>
 );
 
-const Toast: React.FC = () => {
-  const { toastMessage } = useApp();
-  if (!toastMessage) return null;
-  return (
-    <div className="fixed bottom-6 right-4 z-[70] sm:right-8">
-      <div className="flex items-center gap-3 border border-[#E8C75B]/30 bg-[#0B2419] px-5 py-3 text-white shadow-2xl">
-        <span className="material-symbols-outlined text-xl text-[#E8C75B]">info</span>
-        <span className="text-xs font-medium sm:text-sm">{toastMessage}</span>
-      </div>
-    </div>
-  );
-};
-
 const StorefrontLayout: React.FC = () => (
   <div className="flex min-h-screen flex-col bg-[#FAF9F5] text-[#0B2419]">
     <Header />
     <main className="flex-1 pb-8"><Outlet /></main>
     <CartDrawer />
     <Footer />
-    <Toast />
   </div>
 );
 
@@ -110,14 +97,12 @@ const RequireAdmin: React.FC<{ children: ReactNode }> = ({ children }) => {
 const AdminRoute: React.FC = () => (
   <div className="min-h-screen bg-[#071911] text-[#0B2419]">
     <AdminScreen />
-    <Toast />
   </div>
 );
 
 const AdminLoginRoute: React.FC = () => (
   <div className="min-h-screen bg-[#071A12]">
     <AuthScreen adminOnly />
-    <Toast />
   </div>
 );
 
@@ -182,9 +167,12 @@ const AppRoutes: React.FC = () => (
 export default function App() {
   return (
     <AuthSessionProvider>
-      <AppProvider>
-        <AppRoutes />
-      </AppProvider>
+      <ToastProvider>
+        <CartProvider>
+          <AppRoutes />
+          <ToastViewport />
+        </CartProvider>
+      </ToastProvider>
     </AuthSessionProvider>
   );
 }
