@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useApp } from '../context/AppContext';
+import { useNavigate } from 'react-router-dom';
 import { contentService } from '../features/content/api/service';
 import type { PublicContentPageDto } from '../features/content/types';
 import { getApiErrorMessage } from '../services/http/apiError';
@@ -11,7 +11,7 @@ const POLICY_PAGE_CODES = [
 ] as const;
 
 export const PolicyScreen: React.FC = () => {
-  const { setCurrentScreen } = useApp();
+  const navigate = useNavigate();
   const [pages, setPages] = useState<PublicContentPageDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,10 +85,10 @@ export const PolicyScreen: React.FC = () => {
         ))}
 
         <div className="flex gap-3">
-          <button type="button" onClick={() => setCurrentScreen('home')} className="border border-[#0B2419] px-4 py-2 text-xs font-bold uppercase">
+          <button type="button" onClick={() => navigate('/')} className="border border-[#0B2419] px-4 py-2 text-xs font-bold uppercase">
             Trang chủ
           </button>
-          <button type="button" onClick={() => setCurrentScreen('my-orders')} className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white">
+          <button type="button" onClick={() => navigate('/orders')} className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white">
             Đơn hàng của tôi
           </button>
         </div>
