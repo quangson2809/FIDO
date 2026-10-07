@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useApp } from '../context/AppContext';
+import { useNavigate } from 'react-router-dom';
 import { catalogService } from '../features/catalog/api/service';
 import type { CatalogMetaDto, CatalogProductView } from '../features/catalog/types';
 import type { PaginationMeta } from '../types/api';
@@ -15,7 +15,7 @@ const toOptionalNumber = (value: string): number | undefined => {
 };
 
 export const CatalogScreen: React.FC = () => {
-  const { setCurrentScreen, setSelectedProductId } = useApp();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<CatalogProductView[]>([]);
   const [meta, setMeta] = useState<CatalogMetaDto | null>(null);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
@@ -89,8 +89,7 @@ export const CatalogScreen: React.FC = () => {
   }, [brandId, categoryId, colorId, gender, maxPrice, minPrice, page, query, season, sizeValueId, style]);
 
   const openProduct = (productId: string) => {
-    setSelectedProductId(productId);
-    setCurrentScreen('product-detail');
+    navigate(`/products/${encodeURIComponent(productId)}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -145,7 +144,7 @@ export const CatalogScreen: React.FC = () => {
     <div className="min-h-screen bg-[#FFFFFF] text-[#0B2419]">
       <div className="border-b border-[#E2E5DE] bg-[#F5F6F2] px-4 py-3 sm:px-8">
         <nav className="mx-auto flex max-w-[1440px] items-center gap-2 text-[13px] font-medium text-[#606863]">
-          <button type="button" onClick={() => setCurrentScreen('home')} className="transition-colors hover:text-[#0B2419]">Trang chủ</button>
+          <button type="button" onClick={() => navigate('/')} className="transition-colors hover:text-[#0B2419]">Trang chủ</button>
           <span className="text-[#A0A69F]">/</span>
           <span className="font-semibold text-[#0B2419]">Catalog</span>
         </nav>
