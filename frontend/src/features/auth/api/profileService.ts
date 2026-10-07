@@ -5,7 +5,6 @@ import type {
   AccountDto,
   AddressDto,
   AddressInput,
-  MeDto,
   ProfilePatchInput,
   ProfileService,
 } from '../types';

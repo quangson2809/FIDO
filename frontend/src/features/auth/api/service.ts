@@ -4,7 +4,6 @@ import { parseLoginResponse } from './runtimeContract';
 import type {
   AccountDto,
   AuthService,
-  LoginResponseDto,
 } from '../types';
 
 export const authService: AuthService = {
