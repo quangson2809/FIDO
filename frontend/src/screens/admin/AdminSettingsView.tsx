@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { contentService } from '../../features/content/api/service';
 import type { ContentPageDto } from '../../features/content/types';
+import { getApiErrorMessage } from '../../services/http/apiError';
 
 export const AdminSettingsView: React.FC<{ showToast: (msg: string) => void }> = ({ showToast }) => {
   const [pages, setPages] = useState<ContentPageDto[]>([]);
@@ -26,8 +27,8 @@ export const AdminSettingsView: React.FC<{ showToast: (msg: string) => void }> =
         setPages(result);
         if (result.length > 0) selectPage(result[0]);
         setError(null);
-      } catch {
-        if (active) setError('Không thể tải content pages.');
+      } catch (requestError: unknown) {
+        if (active) setError(getApiErrorMessage(requestError, 'Không thể tải content pages.'));
       } finally {
         if (active) setLoading(false);
       }
@@ -45,8 +46,8 @@ export const AdminSettingsView: React.FC<{ showToast: (msg: string) => void }> =
       setPages((current) => current.map((page) => page.page_id === updated.page_id ? updated : page));
       selectPage(updated);
       showToast('Đã cập nhật nội dung.');
-    } catch {
-      showToast('Không thể cập nhật nội dung.');
+    } catch (requestError: unknown) {
+      showToast(getApiErrorMessage(requestError, 'Không thể cập nhật nội dung.'));
     } finally {
       setSaving(false);
     }
