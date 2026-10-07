@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '../shared/ui/toast/useToast';
 import { profileService } from '../features/auth/api/profileService';
 import type { MeDto } from '../features/auth/types';
+import { getApiErrorMessage } from '../services/http/apiError';
 
 export const ProfileScreen: React.FC = () => {
   const { showToast } = useToast();
@@ -28,8 +29,8 @@ export const ProfileScreen: React.FC = () => {
         setPhone(me.account.phone);
         setEmail(me.account.email ?? '');
         setError(null);
-      } catch {
-        if (active) setError('Không thể tải hồ sơ. Vui lòng đăng nhập lại nếu phiên đã hết hạn.');
+      } catch (requestError: unknown) {
+        if (active) setError(getApiErrorMessage(requestError, 'Không thể tải hồ sơ. Vui lòng đăng nhập lại nếu phiên đã hết hạn.'));
       } finally {
         if (active) setLoading(false);
       }
@@ -53,8 +54,8 @@ export const ProfileScreen: React.FC = () => {
       setPhone(account.phone);
       setEmail(account.email ?? '');
       showToast('Đã cập nhật hồ sơ.');
-    } catch {
-      showToast('Không thể cập nhật hồ sơ.');
+    } catch (requestError: unknown) {
+      showToast(getApiErrorMessage(requestError, 'Không thể cập nhật hồ sơ.'));
     } finally {
       setSavingProfile(false);
     }
@@ -70,8 +71,8 @@ export const ProfileScreen: React.FC = () => {
       setProfile((current) => current ? { ...current, addresses: [...current.addresses, address] } : current);
       setNewAddress('');
       showToast('Đã thêm địa chỉ.');
-    } catch {
-      showToast('Không thể thêm địa chỉ.');
+    } catch (requestError: unknown) {
+      showToast(getApiErrorMessage(requestError, 'Không thể thêm địa chỉ.'));
     } finally {
       setSavingAddress(false);
     }
@@ -87,8 +88,8 @@ export const ProfileScreen: React.FC = () => {
       setEditingAddressId(null);
       setEditingAddressText('');
       showToast('Đã cập nhật địa chỉ.');
-    } catch {
-      showToast('Không thể cập nhật địa chỉ.');
+    } catch (requestError: unknown) {
+      showToast(getApiErrorMessage(requestError, 'Không thể cập nhật địa chỉ.'));
     } finally {
       setSavingAddress(false);
     }
@@ -100,8 +101,8 @@ export const ProfileScreen: React.FC = () => {
       await profileService.deleteAddress(addressId);
       setProfile((current) => current ? { ...current, addresses: current.addresses.filter((address) => address.address_id !== addressId) } : current);
       showToast('Đã xóa địa chỉ.');
-    } catch {
-      showToast('Không thể xóa địa chỉ.');
+    } catch (requestError: unknown) {
+      showToast(getApiErrorMessage(requestError, 'Không thể xóa địa chỉ.'));
     } finally {
       setSavingAddress(false);
     }
