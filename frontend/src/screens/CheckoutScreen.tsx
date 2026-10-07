@@ -4,7 +4,6 @@ import { useApp } from '../context/AppContext';
 import { profileService } from '../features/auth/api/profileService';
 import { checkoutService } from '../features/orders/api/checkoutService';
 import type { CheckoutQuoteDto, CheckoutRequest } from '../features/orders/types';
-import { hasApiAccessToken } from '../services/http/apiClient';
 
 const money = (value: number): string => `${value.toLocaleString('vi-VN')}₫`;
 const requestKey = (request: CheckoutRequest): string => JSON.stringify(request);
@@ -25,11 +24,6 @@ export const CheckoutScreen: React.FC = () => {
 
   useEffect(() => {
     let active = true;
-    if (!hasApiAccessToken()) {
-      navigate('/login');
-      return () => { active = false; };
-    }
-
     const loadProfile = async () => {
       try {
         const me = await profileService.getMe();
@@ -46,7 +40,7 @@ export const CheckoutScreen: React.FC = () => {
 
     void loadProfile();
     return () => { active = false; };
-  }, [navigate]);
+  }, []);
 
   const invalidateQuote = () => {
     setQuote(null);
