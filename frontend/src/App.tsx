@@ -10,7 +10,8 @@ import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { AppProvider } from './context/AppProvider';
 import { useApp } from './context/AppContext';
-import { AuthSessionProvider, useAuthSession } from './features/auth/session/AuthSessionContext';
+import { AuthSessionProvider } from './features/auth/session/AuthSessionContext';
+import { useAuthSession } from './features/auth/session/useAuthSession';
 
 const HomeScreen = lazy(() => import('./screens/HomeScreen').then((module) => ({ default: module.HomeScreen })));
 const CatalogScreen = lazy(() => import('./screens/CatalogScreen').then((module) => ({ default: module.CatalogScreen })));
