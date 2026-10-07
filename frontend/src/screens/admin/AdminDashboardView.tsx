@@ -13,8 +13,11 @@ const modules = [
 
 export const AdminDashboardView: React.FC<{
   onNavigateTab: (tab: string, breadcrumb: string) => void;
-  showToast: (msg: string) => void;
-}> = ({ onNavigateTab }) => (
+  visibleModuleKeys: readonly string[];
+}> = ({ onNavigateTab, visibleModuleKeys }) => {
+  const visibleModules = modules.filter(([key]) => visibleModuleKeys.includes(key));
+
+  return (
   <section className="space-y-7">
     <div className="relative overflow-hidden border border-[#123A29] bg-[#071A12] px-6 py-7 text-white shadow-sm sm:px-8 sm:py-9">
       <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full border border-[#E8C75B]/20" />
@@ -34,11 +37,11 @@ export const AdminDashboardView: React.FC<{
 
     <div className="flex items-end justify-between border-b border-[#D9DDD6] pb-4">
       <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#687069]">Modules</p><h2 className="font-serif text-2xl">Không gian vận hành</h2></div>
-      <span className="hidden text-[10px] font-bold uppercase tracking-wider text-[#687069] sm:inline">{modules.length} module chính</span>
+      <span className="hidden text-[10px] font-bold uppercase tracking-wider text-[#687069] sm:inline">{visibleModules.length} module khả dụng</span>
     </div>
 
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {modules.map(([key, label, description, icon], index) => (
+      {visibleModules.map(([key, label, description, icon], index) => (
         <button
           key={key}
           type="button"
@@ -54,4 +57,5 @@ export const AdminDashboardView: React.FC<{
       ))}
     </div>
   </section>
-);
+  );
+};
