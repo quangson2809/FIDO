@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { authService } from '../features/auth/api/service';
-import { useAuthSession } from '../features/auth/session/AuthSessionContext';
+import { useAuthSession } from '../features/auth/session/useAuthSession';
 import { isAdminProfile } from '../features/auth/session/sessionAccess';
 import { getApiErrorMessage } from '../services/http/apiError';
 
