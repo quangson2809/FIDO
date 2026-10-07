@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 import { catalogService } from '../features/catalog/api/service';
 import type { CatalogProductView, ProductDetailDto, ProductVariantDto } from '../features/catalog/types';
 import { getApiErrorMessage } from '../services/http/apiError';
-import { useAuthSession } from '../features/auth/session/AuthSessionContext';
+import { useAuthSession } from '../features/auth/session/useAuthSession';
 
 export const ProductDetailScreen: React.FC = () => {
   const { addToCart, showToast } = useApp();
