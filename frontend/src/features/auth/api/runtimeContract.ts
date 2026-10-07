@@ -25,12 +25,15 @@ const fail = (endpoint: string, fieldPath: string, expected: string): never => {
   throw new AuthApiContractError(endpoint, fieldPath, expected);
 };
 
+const isContractObject = (value: unknown): value is ContractObject =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
 const expectObject = (
   value: unknown,
   endpoint: string,
   fieldPath: string,
 ): ContractObject => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+  if (!isContractObject(value)) {
     return fail(endpoint, fieldPath, 'an object');
   }
   return value;
