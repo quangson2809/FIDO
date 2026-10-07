@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { inventoryAdminService } from '../../features/inventory/api/adminService';
 import type { SupplierCreateInput, SupplierDto, SupplierUsageStatus } from '../../features/inventory/types';
 import type { PaginationMeta } from '../../types/api';
+import { getApiErrorMessage } from '../../services/http/apiError';
 
 const blankForm: SupplierCreateInput = {
   name: '', phone: null, email: null, address: null, usage_status: 'ACTIVE', note: null,
@@ -46,8 +47,8 @@ export const AdminSuppliersView: React.FC<{
       setRows(response.data);
       setMeta(response.meta);
       setError(null);
-    }).catch(() => {
-      if (active) setError('Không thể tải nhà cung cấp hoặc tài khoản thiếu INVENTORY_READ.');
+    }).catch((requestError: unknown) => {
+      if (active) setError(getApiErrorMessage(requestError, 'Không thể tải nhà cung cấp hoặc tài khoản thiếu INVENTORY_READ.'));
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [page, query, status]);
@@ -91,8 +92,8 @@ export const AdminSuppliersView: React.FC<{
       await load();
       resetForm();
       showToast(editingId === null ? 'Đã tạo nhà cung cấp.' : 'Đã cập nhật nhà cung cấp.');
-    } catch {
-      setError('Không thể lưu nhà cung cấp. Kiểm tra dữ liệu và quyền INVENTORY_WRITE.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể lưu nhà cung cấp. Kiểm tra dữ liệu và quyền INVENTORY_WRITE.'));
     } finally {
       setSaving(false);
     }
