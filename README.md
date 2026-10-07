@@ -76,10 +76,62 @@ Admin navigation uses the effective roles/permissions returned by the backend fo
 
 ## Prerequisites
 
+For the recommended Docker development workflow:
+
+- Docker Desktop or Docker Engine
+- Docker Compose v2.24+ (required for optional `env_file` support)
+
+For manual execution without Docker:
+
 - JDK 17
 - Node.js 22+
 - npm
 - MySQL 8+
+
+## One-command development with Docker Compose
+
+The development stack contains MySQL 8.4, Spring Boot and the Vite frontend. No local JDK, Node.js or MySQL process is required for this mode.
+
+Start everything from the repository root:
+
+```powershell
+docker compose up --build
+```
+
+Then use:
+
+```text
+Frontend:    http://localhost:5173
+Backend API: http://localhost:8080/api/v1
+Swagger:     http://localhost:8080/swagger-ui.html
+```
+
+Compose uses persistent named volumes for MySQL, the Gradle cache, npm cache and container-only `node_modules`. MySQL is intentionally not published to the host; the backend reaches it through the Compose network.
+
+The frontend source is bind-mounted and Vite HMR remains active. Backend source is also bind-mounted; after changing Java code, restart only the backend service so Gradle recompiles it:
+
+```powershell
+docker compose restart backend
+```
+
+Useful commands:
+
+```powershell
+# Follow logs
+docker compose logs -f backend
+docker compose logs -f frontend
+
+# Stop containers but keep the database volume
+docker compose down
+
+# Reset the complete Docker development state, including MySQL data
+docker compose down -v
+
+# Open a MySQL shell inside the DB container
+docker compose exec db mysql -uroot -p
+```
+
+The stack boots with development defaults, so copying an environment file is not required. To override Compose ports/passwords, copy the root `.env.example` to `.env`. If `backend/.env` already exists, Compose loads it automatically for optional backend settings such as JWT, seed/bootstrap configuration and ImgBB credentials; Compose still owns the DB host and internal service ports.
 
 ## Backend
 

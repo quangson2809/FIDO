@@ -1,0 +1,17 @@
+FROM gradle:9.3.1-jdk17
+
+# Development-only image. Root avoids bind-mount ownership problems across
+# Docker Desktop (Windows/macOS) and Linux hosts; this image is not for production.
+USER root
+ENV GRADLE_USER_HOME=/root/.gradle
+WORKDIR /workspace
+
+# Warm the Gradle dependency cache. Application sources are bind-mounted by Compose.
+COPY build.gradle.kts settings.gradle.kts gradle.properties ./
+COPY gradle ./gradle
+COPY gradlew gradlew.bat ./
+RUN gradle --no-daemon dependencies
+
+EXPOSE 8080
+
+CMD ["gradle", "bootRun", "--no-daemon"]
