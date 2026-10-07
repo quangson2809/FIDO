@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { catalogService } from '../features/catalog/api/service';
 import type { CatalogMetaDto, CatalogProductView } from '../features/catalog/types';
 import type { PaginationMeta } from '../types/api';
+import { getApiErrorMessage } from '../services/http/apiError';
 
 const PAGE_SIZE = 12;
 
@@ -31,7 +32,7 @@ export const CatalogScreen: React.FC = () => {
   const [maxPriceInput, setMaxPriceInput] = useState('');
   const [minPrice, setMinPrice] = useState<number | undefined>();
   const [maxPrice, setMaxPrice] = useState<number | undefined>();
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1);
   const [columnsCount, setColumnsCount] = useState<3 | 4>(4);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -44,8 +45,8 @@ export const CatalogScreen: React.FC = () => {
       try {
         const data = await catalogService.getMeta();
         if (active) setMeta(data);
-      } catch {
-        if (active) setError('Không thể tải metadata catalog.');
+      } catch (requestError: unknown) {
+        if (active) setError(getApiErrorMessage(requestError, 'Không thể tải metadata catalog.'));
       } finally {
         if (active) setMetaLoading(false);
       }
@@ -77,8 +78,8 @@ export const CatalogScreen: React.FC = () => {
         setProducts(result.items);
         setPagination(result.meta);
         setError(null);
-      } catch {
-        if (active) setError('Không thể tải danh sách sản phẩm.');
+      } catch (requestError: unknown) {
+        if (active) setError(getApiErrorMessage(requestError, 'Không thể tải danh sách sản phẩm.'));
       } finally {
         if (active) setLoading(false);
       }
@@ -95,12 +96,12 @@ export const CatalogScreen: React.FC = () => {
 
   const submitSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setPage(0);
+    setPage(1);
     setQuery(searchInput.trim());
   };
 
   const applyPriceRange = () => {
-    setPage(0);
+    setPage(1);
     setMinPrice(toOptionalNumber(minPriceInput));
     setMaxPrice(toOptionalNumber(maxPriceInput));
   };
@@ -119,7 +120,7 @@ export const CatalogScreen: React.FC = () => {
     setMaxPriceInput('');
     setMinPrice(undefined);
     setMaxPrice(undefined);
-    setPage(0);
+    setPage(1);
   };
 
   const activeFilterCount = [
@@ -204,13 +205,13 @@ export const CatalogScreen: React.FC = () => {
               </div>
 
               <div className="space-y-5 pt-5">
-                <FilterSelect label="Danh mục" value={categoryId ?? ''} disabled={metaLoading} onChange={(value) => { setCategoryId(value ? Number(value) : undefined); setPage(0); }} options={(meta?.categories ?? []).map((item) => ({ value: String(item.category_id), label: item.name }))} />
-                <FilterSelect label="Thương hiệu" value={brandId ?? ''} disabled={metaLoading} onChange={(value) => { setBrandId(value ? Number(value) : undefined); setPage(0); }} options={(meta?.brands ?? []).map((item) => ({ value: String(item.brand_id), label: item.name }))} />
-                <FilterSelect label="Size" value={sizeValueId ?? ''} disabled={metaLoading} onChange={(value) => { setSizeValueId(value ? Number(value) : undefined); setPage(0); }} options={(meta?.size_systems ?? []).flatMap((system) => system.size_values.map((size) => ({ value: String(size.size_value_id), label: `${system.name} · ${size.display_name}` })))} />
-                <FilterSelect label="Màu sắc" value={colorId ?? ''} disabled={metaLoading} onChange={(value) => { setColorId(value ? Number(value) : undefined); setPage(0); }} options={(meta?.colors ?? []).map((item) => ({ value: String(item.color_id), label: item.name }))} />
-                <FilterSelect label="Giới tính" value={gender ?? ''} disabled={metaLoading} onChange={(value) => { setGender(value || undefined); setPage(0); }} options={(meta?.genders ?? []).map((item) => ({ value: item, label: item }))} />
-                <FilterSelect label="Mùa" value={season ?? ''} disabled={metaLoading} onChange={(value) => { setSeason(value || undefined); setPage(0); }} options={(meta?.seasons ?? []).map((item) => ({ value: item, label: item }))} />
-                <FilterSelect label="Phong cách" value={style ?? ''} disabled={metaLoading} onChange={(value) => { setStyle(value || undefined); setPage(0); }} options={(meta?.styles ?? []).map((item) => ({ value: item, label: item }))} />
+                <FilterSelect label="Danh mục" value={categoryId ?? ''} disabled={metaLoading} onChange={(value) => { setCategoryId(value ? Number(value) : undefined); setPage(1); }} options={(meta?.categories ?? []).map((item) => ({ value: String(item.category_id), label: item.name }))} />
+                <FilterSelect label="Thương hiệu" value={brandId ?? ''} disabled={metaLoading} onChange={(value) => { setBrandId(value ? Number(value) : undefined); setPage(1); }} options={(meta?.brands ?? []).map((item) => ({ value: String(item.brand_id), label: item.name }))} />
+                <FilterSelect label="Size" value={sizeValueId ?? ''} disabled={metaLoading} onChange={(value) => { setSizeValueId(value ? Number(value) : undefined); setPage(1); }} options={(meta?.size_systems ?? []).flatMap((system) => system.size_values.map((size) => ({ value: String(size.size_value_id), label: `${system.name} · ${size.display_name}` })))} />
+                <FilterSelect label="Màu sắc" value={colorId ?? ''} disabled={metaLoading} onChange={(value) => { setColorId(value ? Number(value) : undefined); setPage(1); }} options={(meta?.colors ?? []).map((item) => ({ value: String(item.color_id), label: item.name }))} />
+                <FilterSelect label="Giới tính" value={gender ?? ''} disabled={metaLoading} onChange={(value) => { setGender(value || undefined); setPage(1); }} options={(meta?.genders ?? []).map((item) => ({ value: item, label: item }))} />
+                <FilterSelect label="Mùa" value={season ?? ''} disabled={metaLoading} onChange={(value) => { setSeason(value || undefined); setPage(1); }} options={(meta?.seasons ?? []).map((item) => ({ value: item, label: item }))} />
+                <FilterSelect label="Phong cách" value={style ?? ''} disabled={metaLoading} onChange={(value) => { setStyle(value || undefined); setPage(1); }} options={(meta?.styles ?? []).map((item) => ({ value: item, label: item }))} />
 
                 <div className="border-t border-[#E8E9E3] pt-4">
                   <p className="mb-2 text-[11px] font-bold uppercase tracking-wider">Khoảng giá</p>
@@ -257,9 +258,9 @@ export const CatalogScreen: React.FC = () => {
 
                 {pagination && totalPages > 1 && (
                   <div className="mt-12 flex items-center justify-center gap-3 border-t border-[#E8E9E3] pt-8 text-sm">
-                    <button type="button" disabled={page <= 0 || loading} onClick={() => setPage((current) => Math.max(0, current - 1))} className="border border-[#D9DDD6] px-4 py-2 transition hover:border-[#0B2419] disabled:opacity-40">Trang trước</button>
-                    <span className="px-2 font-semibold">{page + 1} / {totalPages}</span>
-                    <button type="button" disabled={page + 1 >= totalPages || loading} onClick={() => setPage((current) => current + 1)} className="border border-[#D9DDD6] px-4 py-2 transition hover:border-[#0B2419] disabled:opacity-40">Trang sau</button>
+                    <button type="button" disabled={page <= 1 || loading} onClick={() => setPage((current) => Math.max(1, current - 1))} className="border border-[#D9DDD6] px-4 py-2 transition hover:border-[#0B2419] disabled:opacity-40">Trang trước</button>
+                    <span className="px-2 font-semibold">{page} / {totalPages}</span>
+                    <button type="button" disabled={page >= totalPages || loading} onClick={() => setPage((current) => current + 1)} className="border border-[#D9DDD6] px-4 py-2 transition hover:border-[#0B2419] disabled:opacity-40">Trang sau</button>
                   </div>
                 )}
               </>
