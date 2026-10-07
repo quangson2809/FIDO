@@ -8,6 +8,7 @@ import { getApiErrorMessage } from '../../services/http/apiError';
 export const AdminRolesView: React.FC<{ showToast: (msg: string) => void }> = ({ showToast }) => {
   const [access, setAccess] = useState<AccessControlDto | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const loadAccess = useCallback(async () => {
     try {
@@ -68,12 +69,16 @@ export const AdminRolesView: React.FC<{ showToast: (msg: string) => void }> = ({
 
       <RoleManagementPanel
         access={access}
+        busy={busy}
+        onBusyChange={setBusy}
         refreshAccess={loadAccess}
         showToast={showToast}
       />
 
       <PermissionManagementPanel
         access={access}
+        busy={busy}
+        onBusyChange={setBusy}
         refreshAccess={loadAccess}
         showToast={showToast}
       />
