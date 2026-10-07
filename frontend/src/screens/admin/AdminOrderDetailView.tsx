@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { profileService } from '../../features/auth/api/profileService';
 import { adminOrderService } from '../../features/orders/api/adminService';
+import { getApiErrorMessage } from '../../services/http/apiError';
 import type { AdminOrderAction, AdminOrderDetailDto } from '../../features/orders/types';
 import { resolveImageUrl } from '../../services/media/imageUrl';
 
@@ -59,8 +60,8 @@ export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
         setPermissions(new Set(me.permissions.map((permission) => permission.code)));
         setSuperAdmin(me.roles.some((role) => role.code === 'SUPERADMIN'));
         setError(null);
-      } catch {
-        if (active) setError('Không thể tải chi tiết đơn hàng quản trị hoặc tài khoản không có quyền phù hợp.');
+      } catch (requestError: unknown) {
+        if (active) setError(getApiErrorMessage(requestError, 'Không thể tải chi tiết đơn hàng quản trị hoặc tài khoản không có quyền phù hợp.'));
       } finally {
         if (active) setLoading(false);
       }
@@ -81,8 +82,8 @@ export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
         reason: reason.trim() || null,
       }));
       setReason('');
-    } catch {
-      setError('Không thể thực hiện action. Trạng thái, quyền hoặc điều kiện nghiệp vụ có thể đã thay đổi.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể thực hiện action. Trạng thái, quyền hoặc điều kiện nghiệp vụ có thể đã thay đổi.'));
     } finally {
       setBusy(false);
     }
@@ -103,8 +104,8 @@ export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
         : { customer_service_note: note || null };
       applyOrder(await adminOrderService.update(order.order_id, input));
       setEditing(false);
-    } catch {
-      setError('Không thể cập nhật đơn hàng. Kiểm tra quyền ORDER_EDIT và trạng thái hiện tại.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể cập nhật đơn hàng. Kiểm tra quyền ORDER_EDIT và trạng thái hiện tại.'));
     } finally {
       setBusy(false);
     }
@@ -117,8 +118,8 @@ export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
     try {
       await adminOrderService.paymentAction(order.order_id, action);
       applyOrder(await adminOrderService.get(order.order_id));
-    } catch {
-      setError('Không thể cập nhật thanh toán. Kiểm tra ORDER_PAYMENT và điều kiện trạng thái.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể cập nhật thanh toán. Kiểm tra ORDER_PAYMENT và điều kiện trạng thái.'));
     } finally {
       setBusy(false);
     }
@@ -134,8 +135,8 @@ export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
         reason: reason.trim(),
       }));
       setReason('');
-    } catch {
-      setError('Không thể tiếp nhận trả hàng. Chỉ đơn COMPLETED và actor có ORDER_AFTER_SALES mới hợp lệ.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể tiếp nhận trả hàng. Chỉ đơn COMPLETED và actor có ORDER_AFTER_SALES mới hợp lệ.'));
     } finally {
       setBusy(false);
     }
