@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -11,25 +9,11 @@ import { authService } from '../api/service';
 import { profileService } from '../api/profileService';
 import type { MeDto } from '../types';
 import { isAdminProfile } from './sessionAccess';
+import { AuthSessionContext, type AuthSessionStatus } from './sessionContext';
 import {
   hasApiAccessToken,
   subscribeToApiAccessToken,
 } from '../../../services/http/apiClient';
-
-export type AuthSessionStatus = 'checking' | 'authenticated' | 'unauthenticated';
-
-interface AuthSessionContextValue {
-  status: AuthSessionStatus;
-  profile: MeDto | null;
-  isAuthenticated: boolean;
-  isAdmin: boolean;
-  permissionCodes: readonly string[];
-  login: (identifier: string, password: string) => Promise<MeDto>;
-  logout: () => void;
-  refreshProfile: () => Promise<MeDto | null>;
-}
-
-const AuthSessionContext = createContext<AuthSessionContextValue | undefined>(undefined);
 
 export const AuthSessionProvider = ({ children }: { children: ReactNode }) => {
   const [status, setStatus] = useState<AuthSessionStatus>(
@@ -131,8 +115,3 @@ export const AuthSessionProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export const useAuthSession = (): AuthSessionContextValue => {
-  const context = useContext(AuthSessionContext);
-  if (!context) throw new Error('useAuthSession must be used within AuthSessionProvider');
-  return context;
-};
