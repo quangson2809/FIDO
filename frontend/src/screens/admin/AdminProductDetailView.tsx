@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useApp } from '../../context/AppContext';
 import { adminCatalogMetaService } from '../../features/catalog/api/adminCatalogMetaService';
 import { adminProductService } from '../../features/catalog/api/adminService';
 import type { AdminProductDetailDto, CatalogMetaDto, SaleStatus } from '../../features/catalog/types';
@@ -7,13 +6,12 @@ import { getApiErrorMessage } from '../../services/http/apiError';
 import { resolveImageUrl } from '../../services/media/imageUrl';
 
 interface Props {
+  productId: number;
   onNavigateTab: (tab: string, breadcrumb: string) => void;
   showToast: (message: string) => void;
 }
 
-export const AdminProductDetailView: React.FC<Props> = ({ onNavigateTab, showToast }) => {
-  const { selectedProductId } = useApp();
-  const productId = Number(selectedProductId);
+export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateTab, showToast }) => {
   const validId = Number.isInteger(productId) && productId > 0;
   const [product, setProduct] = useState<AdminProductDetailDto | null>(null);
   const [meta, setMeta] = useState<CatalogMetaDto | null>(null);
