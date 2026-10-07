@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { inventoryAdminService } from '../../features/inventory/api/adminService';
+import { getApiErrorMessage } from '../../services/http/apiError';
 import type {
   InventoryRowDto,
   InventoryTransactionDto,
@@ -54,8 +55,8 @@ export const AdminInventoryView: React.FC<{ showToast: (msg: string) => void }> 
       setRows(response.data);
       setMeta(response.meta);
       setError(null);
-    }).catch(() => {
-      if (active) setError('Không thể tải tồn kho hoặc tài khoản thiếu INVENTORY_READ.');
+    }).catch((requestError: unknown) => {
+      if (active) setError(getApiErrorMessage(requestError, 'Không thể tải tồn kho hoặc tài khoản thiếu INVENTORY_READ.'));
     }).finally(() => {
       if (active) setLoading(false);
     });
@@ -72,8 +73,8 @@ export const AdminInventoryView: React.FC<{ showToast: (msg: string) => void }> 
       if (!active) return;
       setTransactions(response.data);
       setTransactionMeta(response.meta);
-    }).catch(() => {
-      if (active) setError('Không thể tải lịch sử giao dịch kho.');
+    }).catch((requestError: unknown) => {
+      if (active) setError(getApiErrorMessage(requestError, 'Không thể tải lịch sử giao dịch kho.'));
     });
     return () => { active = false; };
   }, [transactionPage, transactionType]);
@@ -119,8 +120,8 @@ export const AdminInventoryView: React.FC<{ showToast: (msg: string) => void }> 
       setTransactions(tx.data);
       setTransactionMeta(tx.meta);
       showToast('Đã điều chỉnh tồn kho qua backend.');
-    } catch {
-      setError('Không thể điều chỉnh tồn kho. Backend có thể từ chối do quyền, variant hoặc số lượng khả dụng.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể điều chỉnh tồn kho. Backend có thể từ chối do quyền, variant hoặc số lượng khả dụng.'));
     } finally {
       setSaving(false);
     }
