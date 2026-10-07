@@ -147,11 +147,6 @@ export interface ProductCreateVariantInput {
   sale_status: SaleStatus;
 }
 
-export interface ProductCreateImageInput {
-  image_url: string;
-  alt_text?: string | null;
-}
-
 export interface ProductImageOrderInput {
   image_id: number;
   sort_order: number;
@@ -184,7 +179,6 @@ export interface ProductPatchInput {
   material_care?: string | null;
   base_price?: number;
   sale_status?: SaleStatus;
-  images?: ProductCreateImageInput[];
 }
 
 export interface AdminProductQuery {
