@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
+import { useCart } from '../features/cart/hooks/useCart';
+import { useToast } from '../shared/ui/toast/useToast';
 import { useAuthSession } from '../features/auth/session/useAuthSession';
 
 const navItems = [
@@ -11,7 +12,8 @@ const navItems = [
 ] as const;
 
 export const Header: React.FC = () => {
-  const { setIsCartOpen, cartItems, showToast } = useApp();
+  const { setIsCartOpen, cartItems } = useCart();
+  const { showToast } = useToast();
   const { isAuthenticated } = useAuthSession();
   const navigate = useNavigate();
   const location = useLocation();
