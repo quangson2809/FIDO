@@ -64,7 +64,7 @@ export interface ProductVariantDto {
 export interface ProductSummaryDto {
   product_id: number;
   name: string;
-  image_url: string | null;
+  thumbnail: string | null;
   category: CategoryDto;
   brand: BrandDto | null;
   base_price: number;
@@ -169,7 +169,6 @@ export interface ProductCreateInput {
   material_care?: string | null;
   base_price: number;
   sale_status: SaleStatus;
-  images?: ProductCreateImageInput[];
   variants?: ProductCreateVariantInput[];
 }
 
@@ -201,7 +200,7 @@ export interface AdminProductQuery {
 export interface AdminProductSummaryDto {
   product_id: number;
   name: string;
-  image_url: string | null;
+  thumbnail: string | null;
   category_id: number;
   brand_id: number | null;
   size_system_id: number;
