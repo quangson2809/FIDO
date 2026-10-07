@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useApp } from '../context/AppContext';
+import { useNavigate, useParams } from 'react-router-dom';
 import { orderService } from '../features/orders/api/service';
 import type { OrderCustomerDetailDto } from '../features/orders/types';
 import { hasApiAccessToken } from '../services/http/apiClient';
@@ -19,7 +19,8 @@ const statusLabel: Record<string, string> = {
 };
 
 export const OrderDetailScreen: React.FC = () => {
-  const { selectedOrderId, setCurrentScreen } = useApp();
+  const navigate = useNavigate();
+  const { orderId = '' } = useParams<{ orderId: string }>();
   const [order, setOrder] = useState<OrderCustomerDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,14 +31,20 @@ export const OrderDetailScreen: React.FC = () => {
 
   useEffect(() => {
     let active = true;
+    if (!orderId) {
+      setOrder(null);
+      setError('Thiếu mã đơn hàng.');
+      setLoading(false);
+      return () => { active = false; };
+    }
     if (!hasApiAccessToken()) {
-      setCurrentScreen('auth');
+      navigate('/login');
       return () => { active = false; };
     }
     const loadOrder = async () => {
       setLoading(true);
       try {
-        const detail = await orderService.getOrder(selectedOrderId);
+        const detail = await orderService.getOrder(orderId);
         if (active) {
           setOrder(detail);
           setPhone(detail.recipient.phone);
@@ -55,7 +62,7 @@ export const OrderDetailScreen: React.FC = () => {
     };
     void loadOrder();
     return () => { active = false; };
-  }, [selectedOrderId, setCurrentScreen]);
+  }, [navigate, orderId]);
 
   const saveRecipient = async () => {
     if (!order || !phone.trim() || !address.trim() || saving) return;
@@ -79,7 +86,7 @@ export const OrderDetailScreen: React.FC = () => {
 
   if (loading) return <div className="min-h-[60vh] bg-[#FFFDF5] p-14 text-center text-sm text-[#687069]">Đang tải đơn hàng...</div>;
   if (!order) {
-    return <div className="min-h-[60vh] bg-[#FFFDF5] p-14 text-center"><p className="text-sm text-red-700">{error ?? 'Không tìm thấy đơn hàng.'}</p><button type="button" onClick={() => setCurrentScreen('my-orders')} className="mt-5 border border-[#0B2419] bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wider">Quay lại danh sách</button></div>;
+    return <div className="min-h-[60vh] bg-[#FFFDF5] p-14 text-center"><p className="text-sm text-red-700">{error ?? 'Không tìm thấy đơn hàng.'}</p><button type="button" onClick={() => navigate('/orders')} className="mt-5 border border-[#0B2419] bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wider">Quay lại danh sách</button></div>;
   }
 
   const canEditRecipient = recipientEditableStatuses.has(order.order_status);
@@ -87,7 +94,7 @@ export const OrderDetailScreen: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#FFFDF5] text-[#0B2419]">
       <div className="border-b border-[#E2E5DE] bg-[#F5F6F2] px-4 py-3 sm:px-8">
-        <nav className="mx-auto flex max-w-6xl items-center gap-2 text-[13px] text-[#606863]"><button type="button" onClick={() => setCurrentScreen('my-orders')} className="hover:text-[#0B2419]">Đơn hàng của tôi</button><span>/</span><span className="font-semibold text-[#0B2419]">{order.order_code}</span></nav>
+        <nav className="mx-auto flex max-w-6xl items-center gap-2 text-[13px] text-[#606863]"><button type="button" onClick={() => navigate('/orders')} className="hover:text-[#0B2419]">Đơn hàng của tôi</button><span>/</span><span className="font-semibold text-[#0B2419]">{order.order_code}</span></nav>
       </div>
 
       <section className="bg-[#071A12] text-white">
