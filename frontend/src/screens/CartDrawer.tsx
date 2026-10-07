@@ -1,7 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { useApp } from '../context/AppContext';
-
-const DRAWER_TRANSITION_MS = 420;
 
 export const CartDrawer: React.FC = () => {
   const {
@@ -13,51 +11,6 @@ export const CartDrawer: React.FC = () => {
     updateCartQuantity,
     setCurrentScreen,
   } = useApp();
-  const [shouldRender, setShouldRender] = useState(isCartOpen);
-  const [isVisible, setIsVisible] = useState(false);
-  const animationFrameRef = useRef<number | null>(null);
-  const closeTimerRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (animationFrameRef.current !== null) {
-      window.cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-    if (closeTimerRef.current !== null) {
-      window.clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-
-    if (isCartOpen) {
-      setShouldRender(true);
-      animationFrameRef.current = window.requestAnimationFrame(() => {
-        animationFrameRef.current = window.requestAnimationFrame(() => {
-          setIsVisible(true);
-          animationFrameRef.current = null;
-        });
-      });
-    } else {
-      setIsVisible(false);
-      closeTimerRef.current = window.setTimeout(() => {
-        setShouldRender(false);
-        closeTimerRef.current = null;
-      }, DRAWER_TRANSITION_MS);
-    }
-
-    return () => {
-      if (animationFrameRef.current !== null) {
-        window.cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-      if (closeTimerRef.current !== null) {
-        window.clearTimeout(closeTimerRef.current);
-        closeTimerRef.current = null;
-      }
-    };
-  }, [isCartOpen]);
-
-  if (!shouldRender) return null;
-
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleCheckout = () => {
@@ -67,12 +20,17 @@ export const CartDrawer: React.FC = () => {
   };
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden" id="cart-drawer-container">
+    <div
+      inert={!isCartOpen}
+      aria-hidden={!isCartOpen}
+      className="pointer-events-none fixed inset-0 z-50 overflow-hidden"
+      id="cart-drawer-container"
+    >
       <button
         type="button"
         aria-label="Đóng giỏ hàng"
         className={`fixed inset-0 bg-[#071A12]/65 backdrop-blur-sm transition-opacity duration-300 ease-out motion-reduce:transition-none ${
-          isVisible ? 'pointer-events-auto opacity-100' : 'opacity-0'
+          isCartOpen ? 'pointer-events-auto opacity-100' : 'opacity-0'
         }`}
         onClick={() => setIsCartOpen(false)}
       />
@@ -83,7 +41,7 @@ export const CartDrawer: React.FC = () => {
           aria-modal="true"
           aria-labelledby="cart-drawer-title"
           className={`relative z-10 flex h-full w-screen max-w-[500px] transform-gpu flex-col border-l border-white/10 bg-[#FDFDFB] shadow-2xl transition-transform duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none ${
-            isVisible ? 'pointer-events-auto translate-x-0' : 'translate-x-full'
+            isCartOpen ? 'pointer-events-auto translate-x-0' : 'translate-x-full'
           }`}
         >
           <header className="shrink-0 border-b border-[#E8E9E3] bg-white px-5 py-5 sm:px-6">
