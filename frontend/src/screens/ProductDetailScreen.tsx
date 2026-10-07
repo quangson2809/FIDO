@@ -1,11 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { catalogService } from '../features/catalog/api/service';
 import type { CatalogProductView, ProductDetailDto, ProductVariantDto } from '../features/catalog/types';
 import { getApiErrorMessage } from '../services/http/apiError';
+import { useAuthSession } from '../features/auth/session/AuthSessionContext';
 
 export const ProductDetailScreen: React.FC = () => {
-  const { selectedProductId, setSelectedProductId, addToCart, setCurrentScreen } = useApp();
+  const { addToCart, showToast } = useApp();
+  const { isAuthenticated } = useAuthSession();
+  const navigate = useNavigate();
+  const { productId = '' } = useParams<{ productId: string }>();
   const [product, setProduct] = useState<ProductDetailDto | null>(null);
   const [recommendations, setRecommendations] = useState<CatalogProductView[]>([]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -17,11 +22,18 @@ export const ProductDetailScreen: React.FC = () => {
 
   useEffect(() => {
     let active = true;
+    if (!productId) {
+      setProduct(null);
+      setError('Thiếu mã sản phẩm.');
+      setLoading(false);
+      return () => { active = false; };
+    }
+
     const load = async () => {
       setLoading(true);
       try {
         const [detail, recommendationPage] = await Promise.all([
-          catalogService.getProductDetail(selectedProductId),
+          catalogService.getProductDetail(productId),
           catalogService.listProducts({ page: 1, page_size: 5 }).catch(() => null),
         ]);
         if (!active) return;
@@ -49,7 +61,7 @@ export const ProductDetailScreen: React.FC = () => {
     };
     void load();
     return () => { active = false; };
-  }, [selectedProductId]);
+  }, [productId]);
 
   const gallery = useMemo(() => product?.images.map((image) => image.image_url) ?? [], [product]);
   const onSaleVariants = useMemo(() => product?.variants.filter((variant) => variant.sale_status === 'ON_SALE') ?? [], [product]);
@@ -99,11 +111,16 @@ export const ProductDetailScreen: React.FC = () => {
 
   const addCurrentVariantToCart = () => {
     if (!product || !selectedVariant || !variantCanBePurchased) return;
+    if (!isAuthenticated) {
+      showToast('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.');
+      navigate('/login');
+      return;
+    }
     addToCart(selectedVariant.variant_id, product.name, quantity);
   };
 
-  const openRecommendation = (productId: string) => {
-    setSelectedProductId(productId);
+  const openRecommendation = (nextProductId: string) => {
+    navigate(`/products/${encodeURIComponent(nextProductId)}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -117,7 +134,7 @@ export const ProductDetailScreen: React.FC = () => {
     return (
       <div className="min-h-[60vh] bg-[#FFFDF5] p-14 text-center">
         <p className="text-sm text-red-700">{error ?? 'Không tìm thấy sản phẩm.'}</p>
-        <button type="button" onClick={() => setCurrentScreen('catalog')} className="mt-5 border border-[#0B2419] bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider">Quay lại catalog</button>
+        <button type="button" onClick={() => navigate('/products')} className="mt-5 border border-[#0B2419] bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider">Quay lại catalog</button>
       </div>
     );
   }
@@ -135,9 +152,9 @@ export const ProductDetailScreen: React.FC = () => {
     <div className="w-full bg-white text-[#0B2419]">
       <div className="border-b border-[#E2E5DE] bg-[#F5F6F2] px-4 py-3 sm:px-8">
         <nav className="mx-auto flex max-w-7xl items-center gap-2 text-[13px] font-medium text-[#606863]">
-          <button type="button" onClick={() => setCurrentScreen('home')} className="hover:text-[#0B2419]">Trang chủ</button>
+          <button type="button" onClick={() => navigate('/')} className="hover:text-[#0B2419]">Trang chủ</button>
           <span className="text-[#A0A69F]">/</span>
-          <button type="button" onClick={() => setCurrentScreen('catalog')} className="hover:text-[#0B2419]">{product.category.name}</button>
+          <button type="button" onClick={() => navigate('/products')} className="hover:text-[#0B2419]">{product.category.name}</button>
           <span className="text-[#A0A69F]">/</span>
           <span className="max-w-[45vw] truncate font-semibold text-[#0B2419]">{product.name}</span>
         </nav>
@@ -268,7 +285,7 @@ export const ProductDetailScreen: React.FC = () => {
           <div className="mx-auto max-w-7xl px-4 py-12 sm:px-8 lg:px-14">
             <div className="mb-6 flex items-end justify-between gap-4">
               <div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#1B5038]">Curated selection</p><h2 className="mt-1 font-serif text-3xl">Sản phẩm khác</h2></div>
-              <button type="button" onClick={() => setCurrentScreen('catalog')} className="text-xs font-bold uppercase tracking-wider underline underline-offset-4">Xem catalog</button>
+              <button type="button" onClick={() => navigate('/products')} className="text-xs font-bold uppercase tracking-wider underline underline-offset-4">Xem catalog</button>
             </div>
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               {recommendations.map((item) => (
