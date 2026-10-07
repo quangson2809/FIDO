@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { authService } from '../features/auth/api/service';
 import { profileService } from '../features/auth/api/profileService';
+import { getApiErrorMessage } from '../services/http/apiError';
 
 type AuthMode = 'login' | 'register';
 
@@ -53,11 +54,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ adminOnly = false }) => 
 
       showToast('Đăng nhập thành công.');
       setCurrentScreen(isInternalUser ? 'admin' : 'profile');
-    } catch {
+    } catch (requestError: unknown) {
       showToast(
-        !adminOnly && mode === 'register'
-          ? 'Đăng ký thất bại. Kiểm tra dữ liệu tài khoản.'
-          : 'Đăng nhập thất bại. Kiểm tra số điện thoại hoặc mật khẩu.',
+        getApiErrorMessage(
+          requestError,
+          !adminOnly && mode === 'register'
+            ? 'Đăng ký thất bại. Kiểm tra dữ liệu tài khoản.'
+            : 'Đăng nhập thất bại. Kiểm tra số điện thoại hoặc mật khẩu.',
+        ),
       );
     } finally {
       setSubmitting(false);
