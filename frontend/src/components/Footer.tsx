@@ -1,8 +1,8 @@
 import React from 'react';
-import { useApp } from '../context/AppContext';
+import { useNavigate } from 'react-router-dom';
 
 export const Footer: React.FC = () => {
-  const { setCurrentScreen } = useApp();
+  const navigate = useNavigate();
 
   return (
     <footer className="border-t border-[#164E35] bg-[#0B2419] text-white/80">
@@ -23,18 +23,18 @@ export const Footer: React.FC = () => {
           <div>
             <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-white">Khám phá</h4>
             <div className="mt-4 flex flex-col items-start gap-2.5 text-xs text-white/60">
-              <button type="button" onClick={() => setCurrentScreen('home')} className="transition-colors hover:text-white">Trang chủ</button>
-              <button type="button" onClick={() => setCurrentScreen('catalog')} className="transition-colors hover:text-white">Sản phẩm</button>
-              <button type="button" onClick={() => setCurrentScreen('policy')} className="transition-colors hover:text-white">Chính sách</button>
+              <button type="button" onClick={() => navigate('/')} className="transition-colors hover:text-white">Trang chủ</button>
+              <button type="button" onClick={() => navigate('/products')} className="transition-colors hover:text-white">Sản phẩm</button>
+              <button type="button" onClick={() => navigate('/policies')} className="transition-colors hover:text-white">Chính sách</button>
             </div>
           </div>
 
           <div>
             <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-white">Tài khoản</h4>
             <div className="mt-4 flex flex-col items-start gap-2.5 text-xs text-white/60">
-              <button type="button" onClick={() => setCurrentScreen('profile')} className="transition-colors hover:text-white">Hồ sơ</button>
-              <button type="button" onClick={() => setCurrentScreen('my-orders')} className="transition-colors hover:text-white">Đơn hàng của tôi</button>
-              <button type="button" onClick={() => setCurrentScreen('auth')} className="transition-colors hover:text-white">Đăng nhập / đăng ký</button>
+              <button type="button" onClick={() => navigate('/account')} className="transition-colors hover:text-white">Hồ sơ</button>
+              <button type="button" onClick={() => navigate('/orders')} className="transition-colors hover:text-white">Đơn hàng của tôi</button>
+              <button type="button" onClick={() => navigate('/login')} className="transition-colors hover:text-white">Đăng nhập / đăng ký</button>
             </div>
           </div>
 
