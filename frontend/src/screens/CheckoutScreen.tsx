@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { profileService } from '../features/auth/api/profileService';
 import { checkoutService } from '../features/orders/api/checkoutService';
 import type { CheckoutQuoteDto, CheckoutRequest } from '../features/orders/types';
+import { getApiErrorMessage } from '../services/http/apiError';
 
 const money = (value: number): string => `${value.toLocaleString('vi-VN')}₫`;
 const requestKey = (request: CheckoutRequest): string => JSON.stringify(request);
@@ -31,8 +32,8 @@ export const CheckoutScreen: React.FC = () => {
         setPhone(me.account.phone);
         setEmail(me.account.email ?? '');
         setAddress(me.addresses[0]?.address_text ?? '');
-      } catch {
-        if (active) setError('Không thể tải thông tin tài khoản.');
+      } catch (requestError: unknown) {
+        if (active) setError(getApiErrorMessage(requestError, 'Không thể tải thông tin tài khoản.'));
       } finally {
         if (active) setProfileLoading(false);
       }
@@ -72,10 +73,10 @@ export const CheckoutScreen: React.FC = () => {
       const result = await checkoutService.quote(submittedRequest);
       setQuote(result);
       setQuotedRequestKey(submittedRequestKey);
-    } catch {
+    } catch (requestError: unknown) {
       setQuote(null);
       setQuotedRequestKey(null);
-      setError('Không thể tạo báo giá. Kiểm tra thông tin nhận hàng, voucher và tồn kho.');
+      setError(getApiErrorMessage(requestError, 'Không thể tạo báo giá. Kiểm tra thông tin nhận hàng, voucher và tồn kho.'));
     } finally {
       setQuoteLoading(false);
     }
@@ -88,8 +89,8 @@ export const CheckoutScreen: React.FC = () => {
     try {
       const result = await checkoutService.createOrder(request);
       navigate(`/checkout/success/${result.order_id}`);
-    } catch {
-      setError('Không thể tạo đơn hàng. Dữ liệu giỏ hàng có thể đã thay đổi; hãy cập nhật báo giá và thử lại.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể tạo đơn hàng. Dữ liệu giỏ hàng có thể đã thay đổi; hãy cập nhật báo giá và thử lại.'));
       setQuote(null);
       setQuotedRequestKey(null);
     } finally {
