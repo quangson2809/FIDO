@@ -36,11 +36,6 @@ export const useCatalogBrowse = (requestedCategoryId?: number) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setCategoryId(requestedCategoryId);
-    setPage(1);
-  }, [requestedCategoryId]);
-
-  useEffect(() => {
     let active = true;
 
     void catalogService.getMeta()

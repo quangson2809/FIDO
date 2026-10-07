@@ -4,32 +4,64 @@ import { orderService } from '../features/orders/api/service';
 import type { OrderCustomerDetailDto } from '../features/orders/types';
 import { getApiErrorMessage } from '../services/http/apiError';
 
+type VerificationState =
+  | {
+      orderId: number;
+      status: 'success';
+      order: OrderCustomerDetailDto;
+    }
+  | {
+      orderId: number;
+      status: 'error';
+      error: string;
+    };
+
 export const OrderSuccessScreen: React.FC = () => {
   const navigate = useNavigate();
   const { orderId = '' } = useParams<{ orderId: string }>();
   const parsedOrderId = /^\d+$/.test(orderId) && Number(orderId) > 0 ? Number(orderId) : null;
-  const [order, setOrder] = useState<OrderCustomerDetailDto | null>(null);
-  const [loading, setLoading] = useState(parsedOrderId !== null);
-  const [error, setError] = useState<string | null>(parsedOrderId === null ? 'Mã đơn hàng trên đường dẫn không hợp lệ.' : null);
+  const [verification, setVerification] = useState<VerificationState | null>(null);
 
   useEffect(() => {
     if (parsedOrderId === null) return undefined;
+
     let active = true;
-    setLoading(true);
     void orderService.getOrder(parsedOrderId)
-      .then((result) => {
-        if (!active) return;
-        setOrder(result);
-        setError(null);
+      .then((order) => {
+        if (active) {
+          setVerification({
+            orderId: parsedOrderId,
+            status: 'success',
+            order,
+          });
+        }
       })
       .catch((requestError: unknown) => {
-        if (!active) return;
-        setOrder(null);
-        setError(getApiErrorMessage(requestError, 'Không thể xác minh đơn hàng này. Đơn có thể không tồn tại hoặc không thuộc tài khoản hiện tại.'));
-      })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+        if (active) {
+          setVerification({
+            orderId: parsedOrderId,
+            status: 'error',
+            error: getApiErrorMessage(
+              requestError,
+              'Không thể xác minh đơn hàng này. Đơn có thể không tồn tại hoặc không thuộc tài khoản hiện tại.',
+            ),
+          });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
   }, [parsedOrderId]);
+
+  const currentVerification = verification?.orderId === parsedOrderId ? verification : null;
+  const loading = parsedOrderId !== null && currentVerification === null;
+  const order = currentVerification?.status === 'success' ? currentVerification.order : null;
+  const error = parsedOrderId === null
+    ? 'Mã đơn hàng trên đường dẫn không hợp lệ.'
+    : currentVerification?.status === 'error'
+      ? currentVerification.error
+      : null;
 
   if (loading) {
     return <div className="min-h-[70vh] bg-[#FFFDF5] px-4 py-14 text-[#0B2419] sm:px-8"><div className="mx-auto max-w-4xl border border-[#E8E9E3] bg-white p-12 text-center text-sm text-[#606863]">Đang xác minh đơn hàng...</div></div>;
