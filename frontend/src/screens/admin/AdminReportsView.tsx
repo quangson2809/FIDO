@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { reportService } from '../../features/report/api/service';
 import type { ReportOverviewDto } from '../../features/report/types';
+import { getApiErrorMessage } from '../../services/http/apiError';
 
 const formatMoney = (value: number): string => `${value.toLocaleString('vi-VN')}₫`;
 const today = (): string => new Date().toISOString().slice(0, 10);
@@ -26,8 +27,8 @@ export const AdminReportsView: React.FC<{ showToast: (msg: string) => void }> = 
         if (!active) return;
         setReport(result);
         setError(null);
-      } catch {
-        if (active) setError('Không thể tải báo cáo trong khoảng thời gian đã chọn.');
+      } catch (requestError: unknown) {
+        if (active) setError(getApiErrorMessage(requestError, 'Không thể tải báo cáo trong khoảng thời gian đã chọn.'));
       } finally {
         if (active) setLoading(false);
       }
