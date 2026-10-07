@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
 import { cartService } from '../features/cart/api/service';
 import type { CartDto } from '../features/cart/types';
-import { getPathForScreen, getScreenFromPath } from '../routes/paths';
-import { hasApiAccessToken } from '../services/http/apiClient';
+import {
+  hasApiAccessToken,
+  subscribeToApiAccessToken,
+} from '../services/http/apiClient';
 import { resolveImageUrl } from '../services/media/imageUrl';
-import type { CartItem, ScreenId } from '../types';
+import type { CartItem } from '../types';
 import { AppContext } from './AppContext';
 
 const toCartItems = (cart: CartDto): CartItem[] => cart.items.map((item) => ({
@@ -19,80 +20,83 @@ const toCartItems = (cart: CartDto): CartItem[] => cart.items.map((item) => ({
   quantity: item.quantity,
 }));
 
-export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const currentScreen = getScreenFromPath(location.pathname);
+interface CartViewState {
+  items: CartItem[];
+  subtotal: number;
+}
 
-  const [selectedProductIdState, setSelectedProductIdState] = useState('');
-  const [selectedOrderIdState, setSelectedOrderIdState] = useState('');
-  const selectedProductIdRef = useRef('');
-  const selectedOrderIdRef = useRef('');
+export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [cartSubtotal, setCartSubtotal] = useState(0);
   const [toast, setToast] = useState({ message: '', visible: false });
 
-  const setSelectedProductId = useCallback((id: string) => {
-    selectedProductIdRef.current = id;
-    setSelectedProductIdState(id);
-  }, []);
+  const cartViewRef = useRef<CartViewState>({ items: [], subtotal: 0 });
+  const mutationQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const mutationGenerationRef = useRef(0);
 
-  const setSelectedOrderId = useCallback((id: string) => {
-    selectedOrderIdRef.current = id;
-    setSelectedOrderIdState(id);
-  }, []);
-
-  const setCurrentScreen = useCallback((screen: ScreenId) => {
-    if (screen === 'cart') {
-      setIsCartOpen(true);
-      return;
-    }
-
-    setIsCartOpen(false);
-    navigate(getPathForScreen(
-      screen,
-      selectedProductIdRef.current,
-      selectedOrderIdRef.current,
-    ));
-  }, [navigate]);
-
-  const showToast = (message: string) => {
+  const showToast = useCallback((message: string) => {
     setToast({ message, visible: true });
     window.setTimeout(() => setToast((previous) => ({ ...previous, visible: false })), 3200);
-  };
+  }, []);
 
-  const applyCart = (cart: CartDto): void => {
-    setCartItems(toCartItems(cart));
-    setCartSubtotal(cart.subtotal);
-  };
+  const applyLocalCart = useCallback((items: CartItem[], subtotal: number): void => {
+    cartViewRef.current = { items, subtotal };
+    setCartItems(items);
+    setCartSubtotal(subtotal);
+  }, []);
 
-  const clearCartState = (): void => {
-    setCartItems([]);
-    setCartSubtotal(0);
-  };
+  const applyCart = useCallback((cart: CartDto): void => {
+    applyLocalCart(toCartItems(cart), cart.subtotal);
+  }, [applyLocalCart]);
 
-  const requireCartAuthentication = (): boolean => {
-    if (hasApiAccessToken()) return true;
-    clearCartState();
-    setIsCartOpen(false);
-    showToast('Vui lòng đăng nhập để sử dụng giỏ hàng và đặt hàng.');
-    setCurrentScreen('auth');
-    return false;
-  };
+  const clearCartState = useCallback((): void => {
+    applyLocalCart([], 0);
+  }, [applyLocalCart]);
 
-  const refreshCart = async (): Promise<void> => {
+  const refreshCart = useCallback(async (): Promise<void> => {
     if (!hasApiAccessToken()) {
       clearCartState();
       return;
     }
     applyCart(await cartService.getCart());
-  };
+  }, [applyCart, clearCartState]);
+
+  const reconcileAfterMutationFailure = useCallback(async (message: string): Promise<void> => {
+    showToast(message);
+    try {
+      await refreshCart();
+    } catch {
+      clearCartState();
+    }
+  }, [clearCartState, refreshCart, showToast]);
+
+  const enqueueCartMutation = useCallback((
+    operation: () => Promise<CartDto>,
+    errorMessage: string,
+  ): void => {
+    const generation = ++mutationGenerationRef.current;
+
+    mutationQueueRef.current = mutationQueueRef.current.then(async () => {
+      try {
+        const cart = await operation();
+        if (generation === mutationGenerationRef.current) applyCart(cart);
+      } catch {
+        if (generation === mutationGenerationRef.current) {
+          await reconcileAfterMutationFailure(errorMessage);
+        }
+      }
+    });
+  }, [applyCart, reconcileAfterMutationFailure]);
 
   useEffect(() => {
     let active = true;
+
     const loadCart = async () => {
-      if (!hasApiAccessToken()) return;
+      if (!hasApiAccessToken()) {
+        clearCartState();
+        return;
+      }
       try {
         const cart = await cartService.getCart();
         if (active) applyCart(cart);
@@ -100,47 +104,101 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (active) clearCartState();
       }
     };
+
     void loadCart();
-    return () => { active = false; };
-  }, []);
+
+    const unsubscribe = subscribeToApiAccessToken((token) => {
+      if (!token && active) {
+        mutationGenerationRef.current += 1;
+        clearCartState();
+        setIsCartOpen(false);
+      }
+    });
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [applyCart, clearCartState]);
+
+  const ensureCartAuthentication = (): boolean => {
+    if (hasApiAccessToken()) return true;
+    clearCartState();
+    setIsCartOpen(false);
+    showToast('Vui lòng đăng nhập để sử dụng giỏ hàng và đặt hàng.');
+    return false;
+  };
 
   const addToCart = (variantId: number, productName: string, quantity = 1) => {
-    if (!requireCartAuthentication()) return;
-    void cartService.addItem(variantId, Math.max(1, quantity))
-      .then((cart) => {
-        applyCart(cart);
-        setIsCartOpen(true);
-        showToast(`Đã thêm ${productName} vào giỏ hàng`);
-      })
-      .catch(() => showToast('Không thể cập nhật giỏ hàng. Vui lòng thử lại.'));
+    if (!ensureCartAuthentication()) return;
+
+    enqueueCartMutation(
+      () => cartService.addItem(variantId, Math.max(1, quantity)),
+      'Không thể cập nhật giỏ hàng. Vui lòng thử lại.',
+    );
+    setIsCartOpen(true);
+    showToast(`Đang thêm ${productName} vào giỏ hàng...`);
   };
 
   const removeFromCart = (itemId: string) => {
-    if (!requireCartAuthentication()) return;
-    void cartService.removeItem(Number(itemId))
-      .then(applyCart)
-      .catch(() => showToast('Không thể xóa sản phẩm khỏi giỏ hàng.'));
+    if (!ensureCartAuthentication()) return;
+
+    const item = cartViewRef.current.items.find((candidate) => candidate.id === itemId);
+    if (!item) return;
+
+    applyLocalCart(
+      cartViewRef.current.items.filter((candidate) => candidate.id !== itemId),
+      Math.max(0, cartViewRef.current.subtotal - item.price * item.quantity),
+    );
+
+    enqueueCartMutation(
+      () => cartService.removeItem(Number(itemId)),
+      'Không thể xóa sản phẩm khỏi giỏ hàng.',
+    );
   };
 
-  const updateCartQuantity = (itemId: string, quantity: number) => {
-    if (!requireCartAuthentication()) return;
-    if (quantity <= 0) {
+  const setCartQuantity = (itemId: string, quantity: number) => {
+    if (!ensureCartAuthentication()) return;
+
+    const item = cartViewRef.current.items.find((candidate) => candidate.id === itemId);
+    if (!item) return;
+
+    const normalizedQuantity = Math.trunc(quantity);
+    if (normalizedQuantity <= 0) {
       removeFromCart(itemId);
       return;
     }
-    void cartService.updateItem(Number(itemId), quantity)
-      .then(applyCart)
-      .catch(() => showToast('Không thể cập nhật số lượng giỏ hàng.'));
+    if (normalizedQuantity === item.quantity) return;
+
+    const nextItems = cartViewRef.current.items.map((candidate) =>
+      candidate.id === itemId
+        ? { ...candidate, quantity: normalizedQuantity }
+        : candidate,
+    );
+    const nextSubtotal = Math.max(
+      0,
+      cartViewRef.current.subtotal + (normalizedQuantity - item.quantity) * item.price,
+    );
+    applyLocalCart(nextItems, nextSubtotal);
+
+    enqueueCartMutation(
+      () => cartService.updateItem(Number(itemId), normalizedQuantity),
+      'Không thể cập nhật số lượng giỏ hàng.',
+    );
+  };
+
+  const updateCartQuantity = (itemId: string, quantity: number) => {
+    setCartQuantity(itemId, quantity);
+  };
+
+  const changeCartQuantity = (itemId: string, delta: number) => {
+    const item = cartViewRef.current.items.find((candidate) => candidate.id === itemId);
+    if (!item || !Number.isFinite(delta)) return;
+    setCartQuantity(itemId, item.quantity + Math.trunc(delta));
   };
 
   return (
     <AppContext.Provider value={{
-      currentScreen,
-      setCurrentScreen,
-      selectedProductId: selectedProductIdState,
-      setSelectedProductId,
-      selectedOrderId: selectedOrderIdState,
-      setSelectedOrderId,
       isCartOpen,
       setIsCartOpen,
       cartItems,
@@ -149,6 +207,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       addToCart,
       removeFromCart,
       updateCartQuantity,
+      changeCartQuantity,
       toastMessage: toast.visible ? toast.message : null,
       showToast,
     }}>
