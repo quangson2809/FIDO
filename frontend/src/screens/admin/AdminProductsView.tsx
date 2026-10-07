@@ -237,7 +237,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {products.map((product) => {
-            const image = resolveImageUrl(product.image_url);
+            const image = resolveImageUrl(product.thumbnail);
             return <article key={product.product_id} className="overflow-hidden rounded-lg border border-[#E2E5DE] bg-white"><div className="aspect-[3/2] bg-[#F5F6F2]">{image ? <img src={image} alt={product.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-xs text-[#606863]">Chưa có ảnh</div>}</div><div className="p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{product.name}</p><p className="mt-1 text-xs text-[#606863]">Product #{product.product_id} · Category #{product.category_id}</p></div><span className="text-[10px] font-bold">{product.sale_status}</span></div><p className="mt-3 font-bold">{product.base_price.toLocaleString('vi-VN')}₫</p><div className="mt-4 flex gap-2"><button type="button" onClick={() => openProduct(product.product_id, onSelectProduct)} className="border border-[#0B2419] px-3 py-2 text-xs font-bold uppercase">Chi tiết</button>{onEditProduct && <button type="button" onClick={() => openProduct(product.product_id, onEditProduct)} className="bg-[#0B2419] px-3 py-2 text-xs font-bold uppercase text-white">Chỉnh sửa</button>}</div></div></article>;
           })}
         </div>
