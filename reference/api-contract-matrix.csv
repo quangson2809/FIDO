@@ -1,0 +1,78 @@
+no,method,url,owner_module,access,route_status,contract_status,deferred_slice,evidence
+1,POST,/api/v1/auth/register,account,Public,PASS,PASS,none,AuthenticationController|AuthenticationService|AuthenticationProfileHttpTests
+2,POST,/api/v1/auth/login,account,Public,PASS,PASS,none,AuthenticationController|AuthenticationService|AuthenticationProfileHttpTests
+3,GET,/api/v1/me,account,JWT,PASS,PASS,none,ProfileController|ProfileQueryService|AuthenticationProfileHttpTests
+4,PATCH,/api/v1/me,account,JWT,PASS,PASS,none,ProfileController|ProfileCommandService|AuthenticationProfileHttpTests
+5,POST,/api/v1/me/addresses,account,JWT,PASS,PASS,none,ProfileController|ProfileCommandService|AddressHttpTests
+6,PATCH,/api/v1/me/addresses/{addressId},account,JWT,PASS,PASS,none,ProfileController|ProfileCommandService|AddressHttpTests
+7,DELETE,/api/v1/me/addresses/{addressId},account,JWT,PASS,PASS,none,ProfileController|ProfileCommandService|AddressHttpTests
+8,GET,/api/v1/me/orders,account/order,JWT,PASS,PASS,none,CustomerOrderController|OrderQueryService|OrderLifecycleHttpTests
+9,GET,/api/v1/me/orders/{orderId},account/order,JWT,PASS,PASS,none,CustomerOrderController|OrderQueryService|OrderLifecycleHttpTests
+10,PATCH,/api/v1/me/orders/{orderId}/recipient,order,JWT,PASS,PASS,none,CustomerOrderController|RecipientPatchRequest|OrderEditService|OrderLifecycleHttpTests
+11,GET,/api/v1/catalog/products,product,Public,PASS,PASS,none,PublicCatalogController|PublicCatalogQueryService|CatalogPublicHttpTests
+12,GET,/api/v1/catalog/products/{productId},product,Public,PASS,PASS,none,PublicCatalogController|PublicCatalogQueryService|CatalogPublicHttpTests
+13,GET,/api/v1/catalog/meta,product,Public,PASS,PASS,none,PublicCatalogController|PublicCatalogQueryService|CatalogPublicHttpTests
+14,GET,/api/v1/cart,cart,JWT optional / guest TBD,PASS,DEFERRED_PARTIAL,guest_cart_identity,CartController|CartQueryService|CartAccessHttpTests|docs/12 guest identity TBD
+15,POST,/api/v1/cart/items,cart,JWT optional / guest TBD,PASS,DEFERRED_PARTIAL,guest_cart_identity,CartController|CartCommandService|CartItemHttpTests|docs/12 guest identity TBD
+16,PATCH,/api/v1/cart/items/{cartItemId},cart,JWT optional / guest TBD,PASS,DEFERRED_PARTIAL,guest_cart_identity,CartController|CartCommandService|CartItemHttpTests|docs/12 guest identity TBD
+17,DELETE,/api/v1/cart/items/{cartItemId},cart,JWT optional / guest TBD,PASS,DEFERRED_PARTIAL,guest_cart_identity,CartController|CartCommandService|CartItemHttpTests|docs/12 guest identity TBD
+18,DELETE,/api/v1/cart,cart,JWT optional / guest TBD,PASS,DEFERRED_PARTIAL,guest_cart_identity,CartController|CartCommandService|CartItemHttpTests|docs/12 guest identity TBD
+19,POST,/api/v1/checkout/quote,order,JWT optional; voucher requires JWT,PASS,DEFERRED_PARTIAL,guest_identity+voucher_rules,CheckoutController|CheckoutQuoteService|CheckoutCalculationService|CheckoutQuoteHttpTests|docs/12 guest+voucher TBD
+20,POST,/api/v1/orders,order,JWT optional / guest TBD,PASS,DEFERRED_PARTIAL,guest_identity+voucher_rules+create_dedupe,OrderCreationController|OrderCreationService|OrderLifecycleHttpTests|docs/12 guest+voucher+dedupe TBD
+21,GET,/api/v1/admin/orders,order,JWT + permission,PASS,PASS,none,AdminOrderController|OrderQueryService|OrderAuthorizationHttpTests|OrderLifecycleHttpTests
+22,GET,/api/v1/admin/orders/{orderId},order,JWT + permission,PASS,PASS,none,AdminOrderController|OrderQueryService|OrderAuthorizationHttpTests|OrderLifecycleHttpTests
+23,PATCH,/api/v1/admin/orders/{orderId},order,JWT + permission,PASS,PASS,none,AdminOrderController|AdminOrderPatchRequest|OrderEditService|OrderLifecycleHttpTests
+24,POST,/api/v1/admin/orders/{orderId}/actions,order,JWT + permission,PASS,PASS,none,AdminOrderController|OrderActionRequest|OrderActionService|OrderAuthorizationHttpTests|OrderActionContractHttpTests|OrderStockHttpTests
+25,POST,/api/v1/admin/orders/{orderId}/payment-actions,order,JWT + permission,PASS,PASS,none,AdminOrderController|PaymentActionRequest|OrderPaymentService|OrderLifecycleHttpTests
+26,POST,/api/v1/admin/orders/{orderId}/after-sales,order,JWT + permission,PASS,DEFERRED_PARTIAL,exchange_size_semantics,AdminOrderController|AfterSalesRequest|OrderAfterSalesService|OrderLifecycleHttpTests|docs/12 EXCHANGE_SIZE deferred
+27,GET,/api/v1/admin/products,product,JWT + permission,PASS,PASS,none,AdminProductController|AdminCatalogQueryService|CatalogAdminHttpTests
+28,GET,/api/v1/admin/products/{productId},product,JWT + permission,PASS,PASS,none,AdminProductController|AdminCatalogQueryService|CatalogAdminHttpTests
+29,POST,/api/v1/admin/products,product,JWT + permission,PASS,PASS,none,AdminProductController|ProductAdminService|ProductCreateRequest|CatalogAdminHttpTests
+30,PATCH,/api/v1/admin/products/{productId},product,JWT + permission,PASS,PASS,none,AdminProductController|ProductAdminService|CatalogAdminHttpTests
+31,POST,/api/v1/admin/products/{productId}/variants,product,JWT + permission,PASS,PASS,none,AdminProductController|ProductAdminService|CatalogAdminHttpTests
+32,PATCH,/api/v1/admin/products/{productId}/variants/{variantId},product,JWT + permission,PASS,PASS,none,AdminProductController|ProductAdminService|CatalogAdminHttpTests
+33,GET,/api/v1/admin/catalog/meta,product,JWT + permission,PASS,PASS,none,AdminCatalogMasterController|AdminCatalogQueryService|CatalogAdminHttpTests
+34,POST,/api/v1/admin/categories,product,JWT + permission,PASS,PASS,none,AdminCatalogMasterController|CatalogMasterDataService|CatalogMasterDataHttpTests
+35,PATCH,/api/v1/admin/categories/{categoryId},product,JWT + permission,PASS,PASS,none,AdminCatalogMasterController|CatalogMasterDataService|CatalogMasterDataHttpTests
+36,DELETE,/api/v1/admin/categories/{categoryId},product,JWT + permission,PASS,PASS,none,AdminCatalogMasterController|CatalogMasterDataService|CatalogMasterDataHttpTests
+37,POST,/api/v1/admin/brands,product,JWT + permission,PASS,PASS,none,AdminCatalogMasterController|CatalogMasterDataService|CatalogMasterDataHttpTests
+38,PATCH,/api/v1/admin/brands/{brandId},product,JWT + permission,PASS,PASS,none,AdminCatalogMasterController|CatalogMasterDataService|CatalogMasterDataHttpTests
+39,DELETE,/api/v1/admin/brands/{brandId},product,JWT + permission,PASS,PASS,none,AdminCatalogMasterController|CatalogMasterDataService|CatalogMasterDataHttpTests
+40,POST,/api/v1/admin/size-systems,product,JWT + permission,PASS,PASS,none,AdminCatalogMasterController|SizeSystemAdminService|CatalogMasterDataHttpTests
+41,PATCH,/api/v1/admin/size-systems/{sizeSystemId},product,JWT + permission,PASS,PASS,none,AdminCatalogMasterController|SizeSystemAdminService|CatalogMasterDataHttpTests
+42,DELETE,/api/v1/admin/size-systems/{sizeSystemId},product,JWT + permission,PASS,PASS,none,AdminCatalogMasterController|SizeSystemAdminService|CatalogMasterDataHttpTests
+43,POST,/api/v1/admin/colors,product,JWT + permission,PASS,PASS,none,AdminCatalogMasterController|CatalogMasterDataService|CatalogMasterDataHttpTests
+44,PATCH,/api/v1/admin/colors/{colorId},product,JWT + permission,PASS,PASS,none,AdminCatalogMasterController|CatalogMasterDataService|CatalogMasterDataHttpTests
+45,DELETE,/api/v1/admin/colors/{colorId},product,JWT + permission,PASS,PASS,none,AdminCatalogMasterController|CatalogMasterDataService|CatalogMasterDataHttpTests
+46,GET,/api/v1/admin/suppliers,inventory,JWT + permission,PASS,PASS,none,SupplierController|SupplierQueryService|GoodsReceiptHttpTests|InventoryAuthorizationHttpTests
+47,GET,/api/v1/admin/suppliers/{supplierId},inventory,JWT + permission,PASS,PASS,none,SupplierController|SupplierQueryService|GoodsReceiptHttpTests|InventoryAuthorizationHttpTests
+48,POST,/api/v1/admin/suppliers,inventory,JWT + permission,PASS,PASS,none,SupplierController|SupplierCommandService|GoodsReceiptHttpTests|InventoryAuthorizationHttpTests
+49,PATCH,/api/v1/admin/suppliers/{supplierId},inventory,JWT + permission,PASS,PASS,none,SupplierController|SupplierCommandService|GoodsReceiptHttpTests|InventoryAuthorizationHttpTests
+50,GET,/api/v1/admin/goods-receipts,inventory,JWT + permission,PASS,PASS,none,GoodsReceiptController|GoodsReceiptQueryService|GoodsReceiptHttpTests
+51,GET,/api/v1/admin/goods-receipts/{receiptId},inventory,JWT + permission,PASS,PASS,none,GoodsReceiptController|GoodsReceiptQueryService|GoodsReceiptHttpTests
+52,POST,/api/v1/admin/goods-receipts,inventory,JWT + permission,PASS,PASS,none,GoodsReceiptController|GoodsReceiptCreateRequest|GoodsReceiptService|GoodsReceiptHttpTests
+53,PATCH,/api/v1/admin/goods-receipts/{receiptId},inventory,JWT + permission,PASS,PASS,none,GoodsReceiptController|GoodsReceiptService|GoodsReceiptHttpTests
+54,POST,/api/v1/admin/goods-receipts/{receiptId}/actions,inventory,JWT + permission,PASS,PASS,none,GoodsReceiptController|GoodsReceiptService|GoodsReceiptHttpTests
+55,GET,/api/v1/admin/inventory,inventory,JWT + permission,PASS,PASS,none,InventoryController|InventoryQueryService|InventoryAdjustmentHttpTests|InventoryAuthorizationHttpTests
+56,POST,/api/v1/admin/inventory/adjustments,inventory,JWT + permission,PASS,PASS,none,InventoryController|InventoryAdjustmentRequest|InventoryAdjustmentService|InventoryAdjustmentHttpTests
+57,GET,/api/v1/admin/inventory/transactions,inventory,JWT + permission,PASS,PASS,none,InventoryController|InventoryQueryService|InventoryAdjustmentHttpTests|InventoryAuthorizationHttpTests
+58,GET,/api/v1/admin/staff-accounts,account,JWT / Admin,PASS,PASS,none,StaffController|StaffQueryService|StaffHttpTests|docs/15 SUPERADMIN
+59,GET,/api/v1/admin/staff-accounts/{accountId},account,JWT / Admin,PASS,PASS,none,StaffController|StaffQueryService|StaffHttpTests|docs/15 SUPERADMIN
+60,POST,/api/v1/admin/staff-accounts,account,JWT / Admin,PASS,PASS,none,StaffController|StaffCommandService|StaffHttpTests|docs/15 SUPERADMIN
+61,PATCH,/api/v1/admin/staff-accounts/{accountId},account,JWT / Admin,PASS,PASS,none,StaffController|StaffCommandService|StaffHttpTests|docs/15 SUPERADMIN
+62,GET,/api/v1/admin/access-control,account,JWT / Admin,PASS,PASS,none,RbacController|RbacQueryService|RbacHttpTests|AccountAuthorizationHttpTests|docs/15 SUPERADMIN
+63,POST,/api/v1/admin/roles,account,JWT / Admin,PASS,PASS,none,RbacController|RbacCommandService|RbacHttpTests|docs/15 SUPERADMIN
+64,PATCH,/api/v1/admin/roles/{roleId},account,JWT / Admin,PASS,PASS,none,RbacController|RbacCommandService|RbacHttpTests|docs/15 SUPERADMIN
+65,DELETE,/api/v1/admin/roles/{roleId},account,JWT / Admin,PASS,PASS,none,RbacController|RbacCommandService|RbacHttpTests|docs/15 SUPERADMIN
+66,GET,/api/v1/admin/permissions,account,JWT / Admin,PASS,PASS,none,RbacController|RbacQueryService|RbacHttpTests|docs/05 no-meta list
+67,POST,/api/v1/admin/permissions,account,JWT / Admin,PASS,PASS,none,RbacController|RbacCommandService|RbacHttpTests|docs/15 SUPERADMIN
+68,PATCH,/api/v1/admin/permissions/{permissionId},account,JWT / Admin,PASS,PASS,none,RbacController|RbacCommandService|RbacHttpTests|docs/05 optional code/name
+69,DELETE,/api/v1/admin/permissions/{permissionId},account,JWT / Admin,PASS,PASS,none,RbacController|RbacCommandService|RbacHttpTests|docs/05 no referenced permission delete
+70,GET,/api/v1/admin/audit-logs,audit,JWT + permission,PASS,PASS,none,AuditController|AuditQueryService|AuditQueryApiTest
+71,GET,/api/v1/admin/reports/overview,report,JWT / Admin,PASS,PASS,none,ReportController|ReportService|ReportApiTest|docs/15 VN timezone rules
+72,GET,/api/v1/content-pages/{pageCode},content,Public,PASS,PASS,none,ContentPageController|ContentPageQueryService|ContentPageApiTest
+73,GET,/api/v1/admin/content-pages,content,JWT + permission,PASS,PASS,none,ContentPageController|ContentPageQueryService|ContentPageApiTest
+74,POST,/api/v1/admin/content-pages,content,JWT + permission,PASS,PASS,none,ContentPageController|ContentPageCommandService|ContentPageApiTest
+75,PATCH,/api/v1/admin/content-pages/{pageId},content,JWT + permission,PASS,PASS,none,ContentPageController|ContentPageCommandService|ContentPageApiTest
+76,GET,/api/v1/admin/customers,account,JWT + permission,PASS,PASS,none,CustomerController|CustomerQueryService|CustomerQueryApiTest|CUSTOMER_READ
+77,GET,/api/v1/admin/customers/{customerId},account,JWT + permission,PASS,PASS,none,CustomerController|CustomerQueryService|CustomerQueryApiTest|CUSTOMER_READ
