@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
+import { useToast } from '../shared/ui/toast/useToast';
 import { profileService } from '../features/auth/api/profileService';
 import type { MeDto } from '../features/auth/types';
 
 export const ProfileScreen: React.FC = () => {
-  const { showToast } = useApp();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<MeDto | null>(null);
   const [phone, setPhone] = useState('');
