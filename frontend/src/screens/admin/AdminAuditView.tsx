@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { adminAccessService } from '../../features/adminAccess/api/service';
+import { getApiErrorMessage } from '../../services/http/apiError';
 import type { AuditLogDto } from '../../features/adminAccess/types';
 
 const formatDate = (value: string): string => new Date(value).toLocaleString('vi-VN');
@@ -17,12 +18,12 @@ export const AdminAuditView: React.FC<{ showToast: (msg: string) => void }> = ({
     let active = true;
     const load = async () => {
       try {
-        const response = await adminAccessService.getAuditLogs({ action: action || undefined, target_type: targetType || undefined, page: 0, page_size: 100 });
+        const response = await adminAccessService.getAuditLogs({ action: action || undefined, target_type: targetType || undefined, page: 1, page_size: 100 });
         if (!active) return;
         setLogs(response.data);
         setError(null);
-      } catch {
-        if (active) setError('Không thể tải audit log.');
+      } catch (requestError: unknown) {
+        if (active) setError(getApiErrorMessage(requestError, 'Không thể tải audit log.'));
       } finally {
         if (active) setLoading(false);
       }
