@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { orderService } from '../features/orders/api/service';
 import type { OrderPage, OrderStatus } from '../features/orders/types';
-import { hasApiAccessToken } from '../services/http/apiClient';
 
 const statuses: OrderStatus[] = ['PENDING', 'CONFIRMED', 'PREPARING', 'SHIPPING', 'COMPLETED', 'DELIVERY_FAILED', 'CANCELLED', 'RETURNED'];
 const statusLabel: Record<OrderStatus, string> = {
@@ -31,10 +30,6 @@ export const MyOrdersScreen: React.FC = () => {
 
   useEffect(() => {
     let active = true;
-    if (!hasApiAccessToken()) {
-      navigate('/login');
-      return () => { active = false; };
-    }
     const load = async () => {
       setLoading(true);
       try {
@@ -48,7 +43,7 @@ export const MyOrdersScreen: React.FC = () => {
     };
     void load();
     return () => { active = false; };
-  }, [navigate, page, status]);
+  }, [page, status]);
 
   const changeStatus = (value: OrderStatus | 'ALL') => { setStatus(value); setPage(1); };
 
