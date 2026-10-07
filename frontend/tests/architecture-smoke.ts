@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { LatestMutationQueue } from '../src/features/cart/model/LatestMutationQueue';
+import { buildMovedImageOrder, sortProductImages } from '../src/features/catalog/model/productImageOrder';
 import { canAccessAdminModule } from '../src/features/auth/session/adminAccessPolicy';
 import { isAdminProfile, isSuperAdminProfile } from '../src/features/auth/session/sessionAccess';
 import { resolveAdminRoute } from '../src/routes/paths';
@@ -63,6 +64,20 @@ assert.deepEqual(
   },
 );
 assert.equal(resolveAdminRoute('/admin/inventory/history').menuKey, 'history');
+
+const imageFixtures = [
+  { image_id: 3, image_url: '3.jpg', alt_text: null, sort_order: 2 },
+  { image_id: 1, image_url: '1.jpg', alt_text: null, sort_order: 0 },
+  { image_id: 2, image_url: '2.jpg', alt_text: null, sort_order: 1 },
+];
+assert.deepEqual(sortProductImages(imageFixtures).map((image) => image.image_id), [1, 2, 3]);
+assert.deepEqual(buildMovedImageOrder(imageFixtures, 2, -1), [
+  { image_id: 2, sort_order: 0 },
+  { image_id: 1, sort_order: 1 },
+  { image_id: 3, sort_order: 2 },
+]);
+assert.equal(buildMovedImageOrder(imageFixtures, 1, -1), null);
+assert.equal(buildMovedImageOrder(imageFixtures, 3, 1), null);
 
 const tokenEvents: Array<string | null> = [];
 const unsubscribe = subscribeToApiAccessToken((token) => tokenEvents.push(token));
