@@ -26,10 +26,11 @@ const togglePermission = (draft: RoleDraft, permissionId: number): RoleDraft => 
 
 export const RoleManagementPanel: React.FC<{
   access: AccessControlDto;
+  busy: boolean;
+  onBusyChange: (busy: boolean) => void;
   refreshAccess: () => Promise<void>;
   showToast: (message: string) => void;
-}> = ({ access, refreshAccess, showToast }) => {
-  const [busy, setBusy] = useState(false);
+}> = ({ access, busy, onBusyChange, refreshAccess, showToast }) => {
   const [error, setError] = useState<string | null>(null);
   const [roleDraft, setRoleDraft] = useState<RoleDraft>(emptyRole);
   const [editingRole, setEditingRole] = useState<RoleDetailDto | null>(null);
@@ -39,7 +40,7 @@ export const RoleManagementPanel: React.FC<{
     event.preventDefault();
     if (busy || !roleDraft.code.trim() || !roleDraft.name.trim()) return;
 
-    setBusy(true);
+    onBusyChange(true);
     setError(null);
     try {
       await adminAccessService.createRole({
@@ -54,7 +55,7 @@ export const RoleManagementPanel: React.FC<{
     } catch (requestError: unknown) {
       setError(getApiErrorMessage(requestError, 'Không thể tạo vai trò.'));
     } finally {
-      setBusy(false);
+      onBusyChange(false);
     }
   };
 
@@ -71,7 +72,7 @@ export const RoleManagementPanel: React.FC<{
   const saveRole = async () => {
     if (!editingRole || busy || !editingRoleDraft.name.trim()) return;
 
-    setBusy(true);
+    onBusyChange(true);
     setError(null);
     try {
       await adminAccessService.updateRole(editingRole.role_id, {
@@ -85,14 +86,14 @@ export const RoleManagementPanel: React.FC<{
     } catch (requestError: unknown) {
       setError(getApiErrorMessage(requestError, 'Không thể cập nhật vai trò.'));
     } finally {
-      setBusy(false);
+      onBusyChange(false);
     }
   };
 
   const deleteRole = async (role: RoleDetailDto) => {
     if (busy || !window.confirm(`Xóa vai trò ${role.code}?`)) return;
 
-    setBusy(true);
+    onBusyChange(true);
     setError(null);
     try {
       await adminAccessService.deleteRole(role.role_id);
@@ -101,7 +102,7 @@ export const RoleManagementPanel: React.FC<{
     } catch (requestError: unknown) {
       setError(getApiErrorMessage(requestError, 'Không thể xóa vai trò.'));
     } finally {
-      setBusy(false);
+      onBusyChange(false);
     }
   };
 
