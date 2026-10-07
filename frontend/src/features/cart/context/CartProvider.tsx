@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import React, { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { cartService } from '../api/service';
 import { LatestMutationQueue } from '../model/LatestMutationQueue';
 import type { CartDto, CartViewItem } from '../types';
@@ -187,7 +187,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setCartQuantity(itemId, item.quantity + Math.trunc(delta));
   };
 
-  const value = useMemo<CartContextValue>(() => ({
+  const value: CartContextValue = {
     isCartOpen,
     setIsCartOpen,
     cartItems,
@@ -197,7 +197,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     removeFromCart,
     updateCartQuantity,
     changeCartQuantity,
-  }), [cartItems, cartSubtotal, isCartOpen, refreshCart]);
+  };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };
