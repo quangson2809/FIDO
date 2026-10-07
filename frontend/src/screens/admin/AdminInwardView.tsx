@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { inventoryAdminService } from '../../features/inventory/api/adminService';
+import { getApiErrorMessage } from '../../services/http/apiError';
 import type {
   GoodsReceiptDetailDto,
   GoodsReceiptItemInput,
@@ -55,8 +56,8 @@ export const AdminInwardView: React.FC<{
       setMeta(receiptResponse.meta);
       setSuppliers(supplierResponse.data);
       setError(null);
-    }).catch(() => {
-      if (active) setError('Không thể tải phiếu nhập hoặc danh sách nhà cung cấp.');
+    }).catch((requestError: unknown) => {
+      if (active) setError(getApiErrorMessage(requestError, 'Không thể tải phiếu nhập hoặc danh sách nhà cung cấp.'));
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [page, status]);
@@ -81,8 +82,8 @@ export const AdminInwardView: React.FC<{
     setError(null);
     try {
       editDetail(await inventoryAdminService.getReceipt(receiptId));
-    } catch {
-      setError('Không thể tải chi tiết phiếu nhập.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể tải chi tiết phiếu nhập.'));
     }
   };
 
@@ -129,8 +130,8 @@ export const AdminInwardView: React.FC<{
       editDetail(detail);
       await loadList();
       showToast(selected ? 'Đã cập nhật phiếu nhập DRAFT.' : 'Đã tạo phiếu nhập DRAFT.');
-    } catch {
-      setError('Không thể lưu phiếu nhập. Chỉ DRAFT được sửa; backend cũng kiểm tra supplier, variant và duplicate.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể lưu phiếu nhập. Chỉ DRAFT được sửa; backend cũng kiểm tra supplier, variant và duplicate.'));
     } finally {
       setSaving(false);
     }
@@ -145,8 +146,8 @@ export const AdminInwardView: React.FC<{
       editDetail(detail);
       await loadList();
       showToast(action === 'CONFIRM' ? 'Đã xác nhận nhập kho.' : 'Đã hủy phiếu nhập.');
-    } catch {
-      setError('Không thể thực hiện action. Chỉ DRAFT có thể CONFIRM/CANCEL; backend giữ transaction và concurrency boundary.');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể thực hiện action. Chỉ DRAFT có thể CONFIRM/CANCEL; backend giữ transaction và concurrency boundary.'));
     } finally {
       setSaving(false);
     }
