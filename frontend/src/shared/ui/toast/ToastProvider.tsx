@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ToastContext, type ToastContextValue } from './toastContext';
 
 const TOAST_DURATION_MS = 3200;
@@ -6,6 +6,12 @@ const TOAST_DURATION_MS = 3200;
 export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [message, setMessage] = useState<string | null>(null);
   const timeoutRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (timeoutRef.current !== null) {
+      window.clearTimeout(timeoutRef.current);
+    }
+  }, []);
 
   const showToast = useCallback((nextMessage: string) => {
     setMessage(nextMessage);
