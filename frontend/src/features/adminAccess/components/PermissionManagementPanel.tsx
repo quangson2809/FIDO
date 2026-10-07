@@ -13,10 +13,11 @@ const emptyPermission: PermissionDraft = { code: '', name: '' };
 
 export const PermissionManagementPanel: React.FC<{
   access: AccessControlDto;
+  busy: boolean;
+  onBusyChange: (busy: boolean) => void;
   refreshAccess: () => Promise<void>;
   showToast: (message: string) => void;
-}> = ({ access, refreshAccess, showToast }) => {
-  const [busy, setBusy] = useState(false);
+}> = ({ access, busy, onBusyChange, refreshAccess, showToast }) => {
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<PermissionDraft>(emptyPermission);
   const [editingPermission, setEditingPermission] = useState<PermissionDto | null>(null);
@@ -26,7 +27,7 @@ export const PermissionManagementPanel: React.FC<{
     event.preventDefault();
     if (busy || !draft.code.trim() || !draft.name.trim()) return;
 
-    setBusy(true);
+    onBusyChange(true);
     setError(null);
     try {
       await adminAccessService.createPermission({
@@ -39,7 +40,7 @@ export const PermissionManagementPanel: React.FC<{
     } catch (requestError: unknown) {
       setError(getApiErrorMessage(requestError, 'Không thể tạo permission.'));
     } finally {
-      setBusy(false);
+      onBusyChange(false);
     }
   };
 
@@ -56,7 +57,7 @@ export const PermissionManagementPanel: React.FC<{
       || !editingDraft.name.trim()
     ) return;
 
-    setBusy(true);
+    onBusyChange(true);
     setError(null);
     try {
       await adminAccessService.updatePermission(editingPermission.permission_id, {
@@ -69,14 +70,14 @@ export const PermissionManagementPanel: React.FC<{
     } catch (requestError: unknown) {
       setError(getApiErrorMessage(requestError, 'Không thể cập nhật permission.'));
     } finally {
-      setBusy(false);
+      onBusyChange(false);
     }
   };
 
   const deletePermission = async (permission: PermissionDto) => {
     if (busy || !window.confirm(`Xóa permission ${permission.code}?`)) return;
 
-    setBusy(true);
+    onBusyChange(true);
     setError(null);
     try {
       await adminAccessService.deletePermission(permission.permission_id);
@@ -85,7 +86,7 @@ export const PermissionManagementPanel: React.FC<{
     } catch (requestError: unknown) {
       setError(getApiErrorMessage(requestError, 'Không thể xóa permission.'));
     } finally {
-      setBusy(false);
+      onBusyChange(false);
     }
   };
 
