@@ -128,4 +128,34 @@ await latestPublished;
 assert.deepEqual(executionOrder, ['first', 'second']);
 assert.deepEqual(publishedValues, [2], 'only the newest queued cart response may publish');
 
+const invalidatedQueue = new LatestMutationQueue<number>();
+const invalidatedPublishedValues: number[] = [];
+let resolveInvalidated!: () => void;
+const invalidatedFinished = new Promise<void>((resolve) => {
+  resolveInvalidated = resolve;
+});
+invalidatedQueue.enqueue(
+  async () => {
+    await Promise.resolve();
+    return 99;
+  },
+  {
+    onLatestSuccess: (value) => {
+      invalidatedPublishedValues.push(value);
+      resolveInvalidated();
+    },
+    onLatestError: resolveInvalidated,
+  },
+);
+invalidatedQueue.invalidate();
+await Promise.race([
+  invalidatedFinished,
+  new Promise<void>((resolve) => setTimeout(resolve, 20)),
+]);
+assert.deepEqual(
+  invalidatedPublishedValues,
+  [],
+  'invalidating the cart queue must suppress stale in-flight publication',
+);
+
 process.stdout.write('Frontend architecture smoke: PASS\n');
