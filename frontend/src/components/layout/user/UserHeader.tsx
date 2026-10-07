@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { useApp } from '../../../context/AppContext';
+import { useNavigate } from 'react-router-dom';
 
 export const UserHeader: React.FC = () => {
-  const { setCurrentScreen } = useApp();
+  const navigate = useNavigate();
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
 
   return (
@@ -17,7 +17,7 @@ export const UserHeader: React.FC = () => {
 
       <header className="sticky top-0 left-0 w-full h-[68px] bg-white border-b border-[#E2E5DE] z-40 px-4 sm:px-8 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-6 sm:gap-8">
-          <button type="button" onClick={() => setCurrentScreen('home')} className="flex items-baseline gap-1.5 focus:outline-none group text-left">
+          <button type="button" onClick={() => navigate('/')} className="flex items-baseline gap-1.5 focus:outline-none group text-left">
             <span className="text-2xl font-black tracking-widest text-[#0B2419] flex items-baseline">
               FIDO
               <span className="inline-block w-2 h-2 rounded-full bg-[#E8C75B] ml-0.5"></span>
@@ -33,7 +33,7 @@ export const UserHeader: React.FC = () => {
             </button>
             {isCategoryOpen && (
               <div onMouseLeave={() => setIsCategoryOpen(false)} className="absolute left-0 top-full w-60 bg-white border border-[#E2E5DE] shadow-xl py-2 rounded-md z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-                <button type="button" onClick={() => { setCurrentScreen('catalog'); setIsCategoryOpen(false); }} className="w-full text-left px-4 py-2.5 text-[13px] text-[#0B2419] hover:bg-[#F5F6F2] hover:text-[#1B5038] font-semibold flex items-center justify-between transition-colors border-b border-[#E2E5DE]/60">
+                <button type="button" onClick={() => { navigate('/products'); setIsCategoryOpen(false); }} className="w-full text-left px-4 py-2.5 text-[13px] text-[#0B2419] hover:bg-[#F5F6F2] hover:text-[#1B5038] font-semibold flex items-center justify-between transition-colors border-b border-[#E2E5DE]/60">
                   <span>Tất cả sản phẩm (124)</span>
                 </button>
                 {/* ... other items ... */}
