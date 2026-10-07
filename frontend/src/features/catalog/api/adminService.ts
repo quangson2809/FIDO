@@ -13,10 +13,7 @@ import type {
 } from '../types';
 
 const createProduct = async (product: ProductCreateInput): Promise<AdminProductDetailDto> => {
-  const response = await apiClient.post<
-    ApiResponse<AdminProductDetailDto>,
-    ApiResponse<AdminProductDetailDto>
-  >('/admin/products', product);
+  const response = await apiClient.post<ApiResponse<AdminProductDetailDto>>('/admin/products', product);
   return response.data;
 };
 
@@ -27,66 +24,45 @@ const uploadImages = async (
   const form = new FormData();
   imageFiles.forEach((image) => form.append('images', image));
 
-  const response = await apiClient.post<
-    ApiResponse<AdminProductDetailDto>,
-    ApiResponse<AdminProductDetailDto>
-  >(`/admin/products/${productId}/images`, form);
+  const response = await apiClient.post<ApiResponse<AdminProductDetailDto>>(`/admin/products/${productId}/images`, form);
   return response.data;
 };
 
 export const adminProductService = {
   async getProducts(query: AdminProductQuery = {}): Promise<ApiListResponse<AdminProductSummaryDto>> {
-    return apiClient.get<
-      ApiListResponse<AdminProductSummaryDto>,
-      ApiListResponse<AdminProductSummaryDto>
-    >('/admin/products', { params: query });
+    return apiClient.get<ApiListResponse<AdminProductSummaryDto>>('/admin/products', { params: query });
   },
 
   async getProduct(productId: number): Promise<AdminProductDetailDto> {
-    const response = await apiClient.get<
-      ApiResponse<AdminProductDetailDto>,
-      ApiResponse<AdminProductDetailDto>
-    >(`/admin/products/${productId}`);
+    const response = await apiClient.get<ApiResponse<AdminProductDetailDto>>(`/admin/products/${productId}`);
     return response.data;
   },
 
   createProduct,
 
   async updateProduct(productId: number, input: ProductPatchInput): Promise<AdminProductDetailDto> {
-    const response = await apiClient.patch<
-      ApiResponse<AdminProductDetailDto>,
-      ApiResponse<AdminProductDetailDto>
-    >(`/admin/products/${productId}`, input);
+    const response = await apiClient.patch<ApiResponse<AdminProductDetailDto>>(`/admin/products/${productId}`, input);
     return response.data;
   },
 
   uploadImages,
 
   async reorderImages(productId: number, images: ProductImageOrderInput[]): Promise<AdminProductDetailDto> {
-    const response = await apiClient.patch<
-      ApiResponse<AdminProductDetailDto>,
-      ApiResponse<AdminProductDetailDto>
-    >(`/admin/products/${productId}/images`, { images });
+    const response = await apiClient.patch<ApiResponse<AdminProductDetailDto>>(`/admin/products/${productId}/images`, { images });
     return response.data;
   },
 
   async deleteImage(productId: number, imageId: number): Promise<void> {
-    await apiClient.delete<void, void>(`/admin/products/${productId}/images/${imageId}`);
+    await apiClient.delete<void>(`/admin/products/${productId}/images/${imageId}`);
   },
 
   async createVariants(productId: number, variants: ProductCreateVariantInput[]): Promise<AdminVariantDto[]> {
-    const response = await apiClient.post<
-      ApiResponse<AdminVariantDto[]>,
-      ApiResponse<AdminVariantDto[]>
-    >(`/admin/products/${productId}/variants`, { variants });
+    const response = await apiClient.post<ApiResponse<AdminVariantDto[]>>(`/admin/products/${productId}/variants`, { variants });
     return response.data;
   },
 
   async updateVariant(productId: number, variantId: number, input: VariantPatchInput): Promise<AdminVariantDto> {
-    const response = await apiClient.patch<
-      ApiResponse<AdminVariantDto>,
-      ApiResponse<AdminVariantDto>
-    >(`/admin/products/${productId}/variants/${variantId}`, input);
+    const response = await apiClient.patch<ApiResponse<AdminVariantDto>>(`/admin/products/${productId}/variants/${variantId}`, input);
     return response.data;
   },
 };
