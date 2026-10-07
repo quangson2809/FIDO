@@ -45,10 +45,7 @@ const normalizeDetailImages = (product: ProductDetailDto): ProductDetailDto => (
 });
 
 const loadProductPage = async (query: CatalogProductQuery = {}): Promise<CatalogProductPage> => {
-  const response = await apiClient.get<
-    ApiListResponse<ProductSummaryDto>,
-    ApiListResponse<ProductSummaryDto>
-  >('/catalog/products', { params: query });
+  const response = await apiClient.get<ApiListResponse<ProductSummaryDto>>('/catalog/products', { params: query });
 
   return {
     items: response.data.map(summaryToView),
@@ -59,17 +56,11 @@ const loadProductPage = async (query: CatalogProductQuery = {}): Promise<Catalog
 export const catalogService: CatalogService = {
   listProducts: loadProductPage,
   async getProductDetail(productId) {
-    const response = await apiClient.get<
-      ApiResponse<ProductDetailDto>,
-      ApiResponse<ProductDetailDto>
-    >(`/catalog/products/${productId}`);
+    const response = await apiClient.get<ApiResponse<ProductDetailDto>>(`/catalog/products/${productId}`);
     return normalizeDetailImages(response.data);
   },
   async getMeta() {
-    const response = await apiClient.get<
-      ApiResponse<CatalogMetaDto>,
-      ApiResponse<CatalogMetaDto>
-    >('/catalog/meta');
+    const response = await apiClient.get<ApiResponse<CatalogMetaDto>>('/catalog/meta');
     return response.data;
   },
 };
