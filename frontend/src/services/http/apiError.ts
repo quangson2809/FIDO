@@ -1,19 +1,15 @@
 import axios from 'axios';
 
-interface ErrorPayload {
-  status?: number;
-  error?: string;
-  message?: string;
-  path?: string;
-}
-
-const asErrorPayload = (value: unknown): ErrorPayload | null => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  return value as ErrorPayload;
+const objectProperty = (value: unknown, key: string): unknown => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  return Reflect.get(value, key);
 };
 
 const nonBlank = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim() ? value.trim() : undefined;
+
+const numericStatus = (value: unknown): number | undefined =>
+  typeof value === 'number' && Number.isInteger(value) ? value : undefined;
 
 export class ApiClientError extends Error {
   readonly status?: number;
@@ -33,15 +29,20 @@ export const normalizeApiError = (error: unknown): ApiClientError => {
   if (error instanceof ApiClientError) return error;
 
   if (axios.isAxiosError(error)) {
-    const payload = asErrorPayload(error.response?.data);
-    const status = error.response?.status ?? payload?.status;
+    const payload = error.response?.data;
+    const status = error.response?.status ?? numericStatus(objectProperty(payload, 'status'));
     const message =
-      nonBlank(payload?.message)
-      ?? nonBlank(payload?.error)
+      nonBlank(objectProperty(payload, 'message'))
+      ?? nonBlank(objectProperty(payload, 'error'))
       ?? (status ? `Yêu cầu API thất bại (${status}).` : nonBlank(error.message))
       ?? 'Không thể kết nối tới API.';
 
-    return new ApiClientError(message, status, nonBlank(payload?.path), error);
+    return new ApiClientError(
+      message,
+      status,
+      nonBlank(objectProperty(payload, 'path')),
+      error,
+    );
   }
 
   if (error instanceof Error) {
@@ -52,6 +53,12 @@ export const normalizeApiError = (error: unknown): ApiClientError => {
 };
 
 export const getApiErrorMessage = (error: unknown, fallback: string): string => {
-  const message = normalizeApiError(error).message.trim();
-  return message || fallback;
+  const normalized = normalizeApiError(error);
+  const message = normalized.message.trim();
+
+  if (!message || /^Yêu cầu API thất bại \(\d+\)\.$/.test(message)) {
+    return normalized.status ? `${fallback} (HTTP ${normalized.status})` : fallback;
+  }
+
+  return message;
 };
