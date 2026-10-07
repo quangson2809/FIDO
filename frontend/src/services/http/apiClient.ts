@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios';
 import { normalizeApiError } from './apiError';
 
 const DEFAULT_API_BASE_URL = 'http://localhost:8080/api/v1';
@@ -42,14 +42,14 @@ export const setApiAccessToken = (token: string | null): void => {
 
 export const hasApiAccessToken = (): boolean => accessToken !== null;
 
-export const apiClient = axios.create({
+const axiosClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     Accept: 'application/json',
   },
 });
 
-apiClient.interceptors.request.use((config) => {
+axiosClient.interceptors.request.use((config) => {
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   } else {
@@ -58,7 +58,7 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-apiClient.interceptors.response.use(
+axiosClient.interceptors.response.use(
   (response) => response,
   (error: unknown) => {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
@@ -67,3 +67,28 @@ apiClient.interceptors.response.use(
     return Promise.reject(normalizeApiError(error));
   },
 );
+
+const responseBody = async <T>(request: Promise<AxiosResponse<T>>): Promise<T> =>
+  (await request).data;
+
+export const apiClient = {
+  get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    return responseBody(axiosClient.get<T>(url, config));
+  },
+
+  post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+    return responseBody(axiosClient.post<T>(url, data, config));
+  },
+
+  put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+    return responseBody(axiosClient.put<T>(url, data, config));
+  },
+
+  patch<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+    return responseBody(axiosClient.patch<T>(url, data, config));
+  },
+
+  delete<T = void>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    return responseBody(axiosClient.delete<T>(url, config));
+  },
+};
