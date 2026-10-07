@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { adminAccessService } from '../../features/adminAccess/api/service';
 import type { CustomerDetailDto, CustomerSummaryDto } from '../../features/adminAccess/types';
+import { getApiErrorMessage } from '../../services/http/apiError';
 
 const formatDate = (value: string | null): string => value
   ? new Date(value).toLocaleString('vi-VN')
@@ -31,12 +32,12 @@ export const AdminCustomersView: React.FC<AdminCustomersViewProps> = ({
     let active = true;
     const load = async () => {
       try {
-        const response = await adminAccessService.getCustomers({ q: query || undefined, page: 0, page_size: 50 });
+        const response = await adminAccessService.getCustomers({ q: query || undefined, page: 1, page_size: 50 });
         if (!active) return;
         setCustomers(response.data);
         setError(null);
-      } catch {
-        if (active) setError('Không thể tải danh sách khách hàng.');
+      } catch (requestError: unknown) {
+        if (active) setError(getApiErrorMessage(requestError, 'Không thể tải danh sách khách hàng.'));
       } finally {
         if (active) setLoading(false);
       }
@@ -53,8 +54,8 @@ export const AdminCustomersView: React.FC<AdminCustomersViewProps> = ({
       .then((result) => {
         if (active) setDetail(result);
       })
-      .catch(() => {
-        if (active) showToast('Không thể tải hồ sơ khách hàng.');
+      .catch((requestError: unknown) => {
+        if (active) showToast(getApiErrorMessage(requestError, 'Không thể tải hồ sơ khách hàng.'));
       });
 
     return () => { active = false; };
@@ -69,8 +70,8 @@ export const AdminCustomersView: React.FC<AdminCustomersViewProps> = ({
     setDetailLoading(true);
     try {
       setDetail(await adminAccessService.getCustomer(customerId));
-    } catch {
-      showToast('Không thể tải hồ sơ khách hàng.');
+    } catch (requestError: unknown) {
+      showToast(getApiErrorMessage(requestError, 'Không thể tải hồ sơ khách hàng.'));
     } finally {
       setDetailLoading(false);
     }
