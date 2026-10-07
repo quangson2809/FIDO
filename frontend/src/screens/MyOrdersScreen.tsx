@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useApp } from '../context/AppContext';
+import { useNavigate } from 'react-router-dom';
 import { orderService } from '../features/orders/api/service';
 import type { OrderPage, OrderStatus } from '../features/orders/types';
 import { hasApiAccessToken } from '../services/http/apiClient';
@@ -22,7 +22,7 @@ const statusClass: Record<OrderStatus, string> = {
 };
 
 export const MyOrdersScreen: React.FC = () => {
-  const { setCurrentScreen, setSelectedOrderId } = useApp();
+  const navigate = useNavigate();
   const [status, setStatus] = useState<OrderStatus | 'ALL'>('ALL');
   const [page, setPage] = useState(1);
   const [orders, setOrders] = useState<OrderPage | null>(null);
@@ -32,7 +32,7 @@ export const MyOrdersScreen: React.FC = () => {
   useEffect(() => {
     let active = true;
     if (!hasApiAccessToken()) {
-      setCurrentScreen('auth');
+      navigate('/login');
       return () => { active = false; };
     }
     const load = async () => {
@@ -48,7 +48,7 @@ export const MyOrdersScreen: React.FC = () => {
     };
     void load();
     return () => { active = false; };
-  }, [page, setCurrentScreen, status]);
+  }, [navigate, page, status]);
 
   const changeStatus = (value: OrderStatus | 'ALL') => { setStatus(value); setPage(1); };
 
@@ -58,7 +58,7 @@ export const MyOrdersScreen: React.FC = () => {
         <div className="mx-auto max-w-6xl px-4 py-9 sm:px-6 lg:px-8">
           <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
             <div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#E8C75B]">My FIDO</p><h1 className="mt-1 font-serif text-3xl sm:text-4xl">Đơn hàng của tôi</h1><p className="mt-2 text-sm text-white/60">Theo dõi các đơn hàng thuộc tài khoản đang đăng nhập.</p></div>
-            <button type="button" onClick={() => setCurrentScreen('catalog')} className="border border-white/25 bg-white/5 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white backdrop-blur transition hover:bg-white/10">Tiếp tục mua sắm</button>
+            <button type="button" onClick={() => navigate('/products')} className="border border-white/25 bg-white/5 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white backdrop-blur transition hover:bg-white/10">Tiếp tục mua sắm</button>
           </div>
         </div>
       </section>
@@ -90,7 +90,7 @@ export const MyOrdersScreen: React.FC = () => {
                     <div><p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">Thanh toán</p><p className="mt-1 font-semibold">{order.payment_status}</p></div>
                     <div><p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">Giá trị đơn</p><p className="mt-1 font-serif text-xl font-bold">{order.total.toLocaleString('vi-VN')}₫</p></div>
                   </div>
-                  <button type="button" onClick={() => { setSelectedOrderId(String(order.order_id)); setCurrentScreen('order-detail'); }} className="flex items-center justify-center gap-2 border border-[#0B2419] px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition hover:bg-[#0B2419] hover:text-white"><span>Chi tiết</span><span className="material-symbols-outlined text-[18px] transition group-hover:translate-x-0.5">arrow_forward</span></button>
+                  <button type="button" onClick={() => navigate(`/orders/${order.order_id}`)} className="flex items-center justify-center gap-2 border border-[#0B2419] px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition hover:bg-[#0B2419] hover:text-white"><span>Chi tiết</span><span className="material-symbols-outlined text-[18px] transition group-hover:translate-x-0.5">arrow_forward</span></button>
                 </div>
               </article>
             ))}
