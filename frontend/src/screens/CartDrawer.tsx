@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
+import { useCart } from '../features/cart/hooks/useCart';
 
 export const CartDrawer: React.FC = () => {
   const {
@@ -10,7 +10,7 @@ export const CartDrawer: React.FC = () => {
     cartSubtotal,
     removeFromCart,
     changeCartQuantity,
-  } = useApp();
+  } = useCart();
   const navigate = useNavigate();
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
