@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useApp } from '../../context/AppContext';
 import { adminCatalogMetaService } from '../../features/catalog/api/adminCatalogMetaService';
 import { adminProductService } from '../../features/catalog/api/adminService';
 import type {
@@ -44,7 +43,6 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
   onNavigateTab,
   showToast,
 }) => {
-  const { setSelectedProductId } = useApp();
   const [products, setProducts] = useState<AdminProductSummaryDto[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [meta, setMeta] = useState<CatalogMetaDto | null>(null);
@@ -98,9 +96,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
   }, [meta]);
 
   const openProduct = (id: number, callback?: (id: string) => void) => {
-    const value = String(id);
-    setSelectedProductId(value);
-    callback?.(value);
+    callback?.(String(id));
   };
 
   const updateForm = <K extends keyof FormState>(key: K, value: FormState[K]) =>
@@ -140,7 +136,6 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
     setForm(initialForm);
     setImages([]);
     setShowCreate(false);
-    setSelectedProductId(String(productId));
     openProduct(productId, onSelectProduct);
   };
 
