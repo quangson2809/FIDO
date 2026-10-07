@@ -10,6 +10,7 @@ on:
       - main
     paths:
       - "backend/**"
+      - "reference/**"
       - ".github/workflows/backend-verification.yml"
   workflow_dispatch:
 
