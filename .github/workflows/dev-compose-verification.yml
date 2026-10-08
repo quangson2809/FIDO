@@ -8,6 +8,8 @@ on:
       - "compose.yaml"
       - ".env.example"
       - "backend/.env.example"
+      - "backend/build.gradle.kts"
+      - "backend/src/main/java/com/fido/config/security/JwtConfig.java"
       - "backend/src/main/resources/**"
       - ".github/workflows/dev-compose-verification.yml"
   pull_request:
@@ -19,6 +21,8 @@ on:
       - "backend/Dockerfile.dev"
       - "backend/.dockerignore"
       - "backend/.env.example"
+      - "backend/build.gradle.kts"
+      - "backend/src/main/java/com/fido/config/security/JwtConfig.java"
       - "backend/src/main/resources/application-dev.properties"
       - "frontend/Dockerfile.dev"
       - "frontend/.dockerignore"
