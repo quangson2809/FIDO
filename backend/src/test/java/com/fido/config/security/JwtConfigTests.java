@@ -18,6 +18,12 @@ class JwtConfigTests {
     }
 
     @Test
+    void previouslyPublishedDevelopmentKeyIsAlwaysRejected() {
+        String published = "Zmlkby1sb2NhbC1kZXYtc2lnbmluZy1rZXktZG8tbm90LXVzZS1pbi1wcm9kdWN0aW9uLTIwMjY=";
+        assertThrows(IllegalStateException.class, () -> config.jwtKey(published));
+    }
+
+    @Test
     void validExternalKeyWorksWithoutADevelopmentFallback() {
         String configuredKey = Base64.getEncoder().encodeToString(new byte[32]);
         assertNotNull(config.jwtKey(configuredKey));
