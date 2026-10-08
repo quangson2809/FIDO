@@ -30,14 +30,14 @@ class OrderHardeningHttpTests extends OrderHttpSupport {
         long orderId = createOrder(user(), variant, 1);
         db.update("UPDATE orders SET order_status='COMPLETED', completed_at=? WHERE order_id=?",
                 LocalDateTime.now(ZoneOffset.UTC).minusDays(2).minusSeconds(5), orderId);
-        int audits = db.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE target_id=? AND action='ORDER_RETURN_ACCEPT'", Integer.class, orderId);
+        int audits = db.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE target_id=? AND action='ORDER_RETURN_ACCEPT'", Integer.class, Long.toString(orderId));
         var rejected = call("POST", "/api/v1/admin/orders/" + orderId + "/after-sales", root.token(),
                 Map.of("operation", "RETURN", "reason", "Received at store"));
         assertEquals(409, rejected.status(), rejected.body());
         assertEquals("COMPLETED", db.queryForObject("SELECT order_status FROM orders WHERE order_id=?", String.class, orderId));
         assertEquals(5, stock(variant.variantId()));
         assertEquals(0, movementCount(orderId, "CUSTOMER_RETURN_IN"));
-        assertEquals(audits, db.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE target_id=? AND action='ORDER_RETURN_ACCEPT'", Integer.class, orderId));
+        assertEquals(audits, db.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE target_id=? AND action='ORDER_RETURN_ACCEPT'", Integer.class, Long.toString(orderId)));
         assertEquals("UNPAID", db.queryForObject("SELECT payment_status FROM payments WHERE order_id=?", String.class, orderId));
     }
 }

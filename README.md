@@ -131,7 +131,7 @@ docker compose down -v
 docker compose exec db mysql -uroot -p
 ```
 
-The stack boots with development defaults, so copying an environment file is not required. To override Compose ports/passwords, copy the root `.env.example` to `.env`. If `backend/.env` already exists, Compose loads it automatically for optional backend settings such as JWT, seed/bootstrap configuration and ImgBB credentials; Compose still owns the DB host and internal service ports.
+The stack explicitly selects the `dev` profile and boots with development defaults, so copying an environment file is not required. To override Compose ports/passwords, copy the root `.env.example` to `.env`. If `backend/.env` already exists, Compose loads it automatically for optional backend settings such as JWT, seed/bootstrap configuration and ImgBB credentials; Compose still owns the DB host and internal service ports.
 
 ## Backend
 
@@ -145,13 +145,13 @@ Copy-Item .env.example .env
 Run the backend:
 
 ```powershell
-./gradlew bootRun
+./gradlew bootRun --args="--spring.profiles.active=dev"
 ```
 
 On Windows PowerShell, use:
 
 ```powershell
-.\gradlew.bat bootRun
+.\gradlew.bat bootRun --args="--spring.profiles.active=dev"
 ```
 
 Default API base URL:

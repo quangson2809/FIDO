@@ -30,6 +30,7 @@ services:
       - path: ./backend/.env
         required: false
     environment:
+      SPRING_PROFILES_ACTIVE: dev
       DB_URL: jdbc:mysql://db:3306/fido?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       DB_USERNAME: root
       DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}

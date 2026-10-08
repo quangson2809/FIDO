@@ -10,8 +10,8 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.stereotype.Service;
 
 /**
- * Owns state-aware action visibility.
- * Actor capability authorization is enforced separately by OrderAuthorization.
+ * Shared state/prerequisite policy for action visibility and command execution.
+ * Actor capability authorization and mutation side effects remain separate.
  */
 @Service
 public class OrderActionPolicy {
