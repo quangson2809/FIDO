@@ -9,7 +9,7 @@ import java.util.Base64;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.boot.WebApplicationType;
 
 class ExternalEnvironmentConfigTests {
@@ -37,7 +37,7 @@ class ExternalEnvironmentConfigTests {
         }
     }
 
-    @SpringBootConfiguration
+    @Configuration(proxyBeanMethods = false)
     static class IsolatedConfiguration {
     }
 }
