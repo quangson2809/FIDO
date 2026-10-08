@@ -31,10 +31,10 @@ public class ImgBbImageStorageClient implements ImageStorageGateway {
 
     @Autowired
     public ImgBbImageStorageClient(
-            @Value("${app.image-storage.imgbb.base-url:https://api.imgbb.com}") String baseUrl,
+            @Value("${app.image-storage.imgbb.base-url}") String baseUrl,
             @Value("${app.image-storage.imgbb.api-key:}") String apiKey,
-            @Value("${app.image-storage.imgbb.connect-timeout:5s}") Duration connectTimeout,
-            @Value("${app.image-storage.imgbb.read-timeout:20s}") Duration readTimeout
+            @Value("${app.image-storage.imgbb.connect-timeout}") Duration connectTimeout,
+            @Value("${app.image-storage.imgbb.read-timeout}") Duration readTimeout
     ) {
         this(createClient(baseUrl, connectTimeout, readTimeout), apiKey);
     }
