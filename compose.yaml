@@ -68,4 +68,4 @@ volumes:
   mysql_data:
   gradle_cache:
   frontend_node_modules:
-  npm_cache
+  npm_cache:
