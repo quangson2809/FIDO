@@ -270,17 +270,17 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
     }
 
     @Test
-    void databaseFailureOnSecondInsertRollsBackAlreadyInsertedPrefix() throws Exception {
+    void invalidSecondProviderUrlRollsBackAlreadyInsertedPrefix() throws Exception {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         long productId = createCatalog(writer).productId();
         List<String> before = storedImageUrls(productId);
-        // The provider succeeded twice; the second URL exceeds the actual VARCHAR(1000) constraint.
+        // The second provider URL is rejected before it reaches VARCHAR(1000); the first insert must roll back.
         storage.succeed("https://storage.test/valid.png", "https://storage.test/" + "x".repeat(1001));
 
         Result response = uploadImages(productId, writer.token(),
                 List.of(imagePart("first.png"), imagePart("second.png")));
 
-        assertEquals(409, response.status(), response.body());
+        assertEquals(502, response.status(), response.body());
         assertEquals(List.of("first.png", "second.png"), storage.uploadedFilenames());
         assertEquals(before, storedImageUrls(productId));
     }

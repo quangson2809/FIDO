@@ -174,7 +174,7 @@ Effective from Phase 10, Product creation and binary image upload are separate c
 - If `images` is omitted, the current Product image collection is unchanged.
 - If `images` is present, it replaces the complete collection.
 - `images: []` deletes all Product images.
-- Every item requires `image_url` and `sort_order`; `alt_text` is nullable/optional.
+- Every item requires `image_url` and `sort_order`; `alt_text` is nullable/optional. `image_url` must be a valid absolute HTTPS URI with a host, without userinfo or fragment; invalid URLs return 400. No provider-host restriction is assumed.
 - `sort_order` must be non-negative, unique within the Product and contiguous `0..n-1`; `sort_order = 0` is the cover.
 - Replacement validates the complete requested order before deleting the existing collection.
 

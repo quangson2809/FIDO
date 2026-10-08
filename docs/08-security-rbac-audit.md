@@ -23,7 +23,7 @@
 Current API supports staff account list/detail/create/update role set, access-control view, Role CRUD and Permission CRUD.
 
 Rules:
-- account role update uses full `role_ids` replacement when provided;
+- account role update uses full `role_ids` replacement when provided; staff updates must retain ADMIN or SUPERADMIN, and cannot remove the last SUPERADMIN;
 - role permission update uses full `permission_ids` replacement when provided;
 - Role delete only when no Account references it;
 - Permission delete only when no Role references it;

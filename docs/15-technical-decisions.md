@@ -314,6 +314,7 @@ The project owner selected the handwritten DTO/service approach with selective r
 
 Base: `aca05117d6650bb3a5eb9ef0283973cfa40e4371`. Scope: findings #1, #4, #5, #7, #8, #9, #10, #11, #13, #18, #20.
 
+- Compose and local bootRun select dev explicitly; non-dev datasource properties use DB environment variables without development credential fallbacks.
 - No implicit dev profile. The known public development JWT key is accepted only when the explicit active-profile list is exactly `dev`; missing, default-only and mixed profiles fail closed. No runtime secret is committed.
 - Exception logs use a safe category message, HTTP method, matched route template, numeric path IDs, status and internal stack/cause types for server/database failures. Raw throwable messages, query strings, bodies and credentials are excluded because SQL/provider exceptions may include secrets. Lock/deadlock/optimistic concurrency failures map to existing HTTP 409; the public Boot error envelope is unchanged.
 - Inventory commands sort a copy of all stock lines by `variantId`, across receipt/confirmation/restoration. Atomic conditional inventory updates remain; only the affected managed Inventory is refreshed afterward. No global persistence-context clearing. GoodsReceipt uses its existing pessimistic row lock and managed state transitions instead of redundant bulk updates.

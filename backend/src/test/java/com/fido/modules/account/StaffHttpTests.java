@@ -148,7 +148,10 @@ class StaffHttpTests extends AccountHttpSupport {
 
         assertEquals(400, call("PATCH", "/api/v1/admin/staff-accounts/" + accountId,
                 token, Map.of("email", "staff@example.test", "role_ids", List.of())).status());
-        long customerRoleId = db.queryForObject("SELECT role_id FROM roles WHERE code='CUSTOMER'", Long.class);
+        String customCode = "NON_STAFF_" + UUID.randomUUID();
+        db.update("INSERT INTO roles (code, name) VALUES (?, ?)", customCode, "Non-staff test role");
+        long customerRoleId = db.queryForObject("SELECT role_id FROM roles WHERE code=?", Long.class, customCode);
+        roleIds.add(customerRoleId);
         assertEquals(400, call("PATCH", "/api/v1/admin/staff-accounts/" + accountId,
                 token, Map.of("role_ids", List.of(customerRoleId))).status());
         var unchanged = call("GET", "/api/v1/admin/staff-accounts/" + accountId, token, null);
