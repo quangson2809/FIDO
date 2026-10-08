@@ -58,6 +58,9 @@ public class ProductImageAdminService {
         int nextSortOrder = current.size();
 
         for (ImageStorageGateway.UploadedImage stored : uploaded) {
+            if (!ProductImageUrlPolicy.isValid(stored.url())) {
+                throw new ProductImageStorageException(HttpStatus.BAD_GATEWAY, "Image storage returned an invalid HTTPS URL");
+            }
             ProductImage image = new ProductImage();
             image.setProductId(productId);
             image.setImageUrl(stored.url());

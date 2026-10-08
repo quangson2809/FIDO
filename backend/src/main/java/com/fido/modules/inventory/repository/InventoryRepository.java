@@ -76,8 +76,7 @@ public interface InventoryRepository extends Repository<Inventory, Long> {
 
 
     @Modifying(
-            flushAutomatically = true,
-            clearAutomatically = true
+            flushAutomatically = true
     )
     @Query("""
             update Inventory inventory
@@ -93,8 +92,7 @@ public interface InventoryRepository extends Repository<Inventory, Long> {
     );
 
     @Modifying(
-            flushAutomatically = true,
-            clearAutomatically = true
+            flushAutomatically = true
     )
     @Query("""
             update Inventory inventory

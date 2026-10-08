@@ -5,6 +5,7 @@ on:
     branches:
       - feature/backend-phase-0-discovery
       - feature/phase-2-3-image-persistence
+      - fix/backend-confirmed-findings-20261007
   pull_request:
     branches:
       - main

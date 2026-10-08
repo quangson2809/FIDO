@@ -82,10 +82,10 @@ public class OrderAfterSalesService {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        OrderPolicy.requireReturnWithinWindow(order.getCompletedAt(), now);
         order.setOrderStatus(OrderPolicy.RETURNED);
-        order.setReturnedAt(
-                LocalDateTime.now(ZoneOffset.UTC)
-        );
+        order.setReturnedAt(now);
         order.setCustomerServiceNote(
                 appendNote(
                         order.getCustomerServiceNote(),

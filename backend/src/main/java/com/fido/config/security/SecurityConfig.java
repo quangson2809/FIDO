@@ -11,6 +11,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
@@ -55,7 +56,11 @@ public class SecurityConfig {
                         .permitAll()
 
                         .requestMatchers("/api/v1/admin/**")
-                        .authenticated()
+                        .access((authentication, context) -> new AuthorizationDecision(
+                                authentication.get().isAuthenticated()
+                                        && authentication.get().getAuthorities().stream().anyMatch(authority ->
+                                                "ROLE_SUPERADMIN".equals(authority.getAuthority())
+                                                        || authority.getAuthority().startsWith("PERMISSION_"))))
 
                         .requestMatchers(
                                 "/api/v1/me",

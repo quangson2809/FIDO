@@ -66,8 +66,7 @@ public class ImgBbImageStorageClient implements ImageStorageGateway {
             if (response == null
                     || !Boolean.TRUE.equals(response.success())
                     || response.data() == null
-                    || response.data().url() == null
-                    || response.data().url().isBlank()) {
+                    || !ProductImageUrlPolicy.isValid(response.data().url())) {
                 logProviderResult("invalid_response", startedAt);
                 throw integrationFailure(
                         HttpStatus.BAD_GATEWAY,

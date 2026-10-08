@@ -218,6 +218,8 @@ public class StaffCommandService {
                 request.role_ids()
         );
 
+        requireStaffRole(selectedRoles);
+
         protectLastSuperadmin(
                 accountId,
                 selectedRoles,

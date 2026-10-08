@@ -11,6 +11,19 @@ import org.junit.jupiter.api.Test;
 class ProductImageAdminHttpTests extends CatalogHttpSupport {
 
     @Test
+    void invalidImageUrlCannotReplaceExistingGallery() throws Exception {
+        Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
+        long productId = createCatalog(writer).productId();
+        List<Long> before = storedImageIds(productId);
+        for (String url : List.of("http://example.test/a.png", "javascript:alert(1)", "https:/broken")) {
+            var response = call("PATCH", "/api/v1/admin/products/" + productId, writer.token(),
+                    Map.of("images", List.of(Map.of("image_url", url, "sort_order", 0))));
+            assertEquals(400, response.status(), response.body());
+            assertEquals(before, storedImageIds(productId));
+        }
+    }
+
+    @Test
     void patchRejectsNullImageEntryBeforeChangingGallery() throws Exception {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         long productId = createCatalog(writer).productId();

@@ -8,6 +8,9 @@ import java.util.Optional;
 public interface AccountRepository extends Repository<Account, Long> {
     Optional<Account> findById(Long id);
     Account save(Account entity);
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select a from Account a where a.accountId = :id")
+    Optional<Account> findByIdForUpdate(@org.springframework.data.repository.query.Param("id") Long id);
     @org.springframework.data.jpa.repository.Query("""
         select a from Account a
         where :q is null or a.phone like concat('%',:q,'%') or a.email like concat('%',:q,'%')

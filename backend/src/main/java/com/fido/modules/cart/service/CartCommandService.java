@@ -1,6 +1,7 @@
 package com.fido.modules.cart.service;
 
 import com.fido.modules.cart.dto.request.CartItemCreateRequest;
+import com.fido.modules.account.service.AccountMutationLockService;
 import com.fido.modules.cart.dto.request.CartItemQuantityRequest;
 import com.fido.modules.cart.dto.response.CartDto;
 import com.fido.modules.cart.entity.Cart;
@@ -19,17 +20,20 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional
 public class CartCommandService {
 
+    private final AccountMutationLockService accountLocks;
     private final CartRepository carts;
     private final CartItemRepository items;
     private final CatalogVariantReadService catalog;
     private final CartQueryService query;
 
     public CartCommandService(
+            AccountMutationLockService accountLocks,
             CartRepository carts,
             CartItemRepository items,
             CatalogVariantReadService catalog,
             CartQueryService query
     ) {
+        this.accountLocks = accountLocks;
         this.carts = carts;
         this.items = items;
         this.catalog = catalog;
@@ -42,11 +46,7 @@ public class CartCommandService {
     ) {
         Cart cart = currentOrCreate(accountId);
 
-        var variant = catalog.get(request.variant_id());
-
-        if (!variant.purchasable()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
-        }
+        requirePurchasable(request.variant_id());
 
         CartItem item = items
                 .findByCartIdAndVariantId(
@@ -90,6 +90,7 @@ public class CartCommandService {
                 cartItemId
         );
 
+        requirePurchasable(item.getVariantId());
         item.setQuantity(request.quantity());
         items.save(item);
 
@@ -127,9 +128,16 @@ public class CartCommandService {
         return query.toDto(cart);
     }
 
+    private void requirePurchasable(Long variantId) {
+        if (!catalog.get(variantId).purchasable()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Variant is not purchasable");
+        }
+    }
+
     private Cart currentOrCreate(Long accountId) {
+        accountLocks.lock(accountId);
         return carts
-                .findFirstByAccountIdOrderByUpdatedAtDescCartIdDesc(accountId)
+                .findFirstForUpdateByAccountIdOrderByUpdatedAtDescCartIdDesc(accountId)
                 .orElseGet(() -> {
                     Cart cart = new Cart();
                     cart.setAccountId(accountId);

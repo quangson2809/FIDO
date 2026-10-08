@@ -146,28 +146,15 @@ class StaffHttpTests extends AccountHttpSupport {
                 ).status()
         );
 
-        assertEquals(
-                200,
-                call(
-                        "PATCH",
-                        "/api/v1/admin/staff-accounts/" + accountId,
-                        token,
-                        Map.of(
-                                "email", "staff@example.test",
-                                "role_ids", List.of()
-                        )
-                ).status()
-        );
-
-        assertEquals(
-                404,
-                call(
-                        "GET",
-                        "/api/v1/admin/staff-accounts/" + accountId,
-                        token,
-                        null
-                ).status()
-        );
+        assertEquals(400, call("PATCH", "/api/v1/admin/staff-accounts/" + accountId,
+                token, Map.of("email", "staff@example.test", "role_ids", List.of())).status());
+        long customerRoleId = db.queryForObject("SELECT role_id FROM roles WHERE code='CUSTOMER'", Long.class);
+        assertEquals(400, call("PATCH", "/api/v1/admin/staff-accounts/" + accountId,
+                token, Map.of("role_ids", List.of(customerRoleId))).status());
+        var unchanged = call("GET", "/api/v1/admin/staff-accounts/" + accountId, token, null);
+        assertEquals(200, unchanged.status());
+        assertEquals("ADMIN", unchanged.data().get("data").get("roles").get(0).get("code").asText());
+        assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM accounts WHERE account_id=? AND email='staff@example.test'", Integer.class, accountId));
 
         var me = call(
                 "GET",

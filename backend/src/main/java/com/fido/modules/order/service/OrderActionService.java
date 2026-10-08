@@ -28,6 +28,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional
 public class OrderActionService {
 
+    private final OrderActionPolicy policy;
     private final OrderRepository orders;
     private final OrderItemRepository items;
     private final PaymentRepository payments;
@@ -37,6 +38,7 @@ public class OrderActionService {
     private final AuditService audit;
 
     public OrderActionService(
+            OrderActionPolicy policy,
             OrderRepository orders,
             OrderItemRepository items,
             PaymentRepository payments,
@@ -45,6 +47,7 @@ public class OrderActionService {
             OrderQueryService query,
             AuditService audit
     ) {
+        this.policy = policy;
         this.orders = orders;
         this.items = items;
         this.payments = payments;
@@ -64,6 +67,11 @@ public class OrderActionService {
             Authentication authentication
     ) {
         Order order = locked(orderId);
+        Payment payment = payments.findById(orderId)
+                .orElseThrow(() -> new IllegalStateException("Order payment is missing"));
+        if (!policy.requireExecutable(order, payment, request.action())) {
+            return query.adminDetailInternal(order, authentication);
+        }
 
         Order result = switch (request.action()) {
             case "CONFIRM" ->
@@ -110,18 +118,6 @@ public class OrderActionService {
             Order order,
             String reason
     ) {
-        if (OrderPolicy.CONFIRMED.equals(
-                order.getOrderStatus()
-        )) {
-            return order;
-        }
-
-        if (!OrderPolicy.PENDING.equals(
-                order.getOrderStatus()
-        )) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
-        }
-
         inventoryCommands.deductConfirmedOrder(
                 actor,
                 order.getOrderId(),
@@ -153,18 +149,6 @@ public class OrderActionService {
             Order order,
             String reason
     ) {
-        if (OrderPolicy.DELIVERY_FAILED.equals(
-                order.getOrderStatus()
-        )) {
-            return order;
-        }
-
-        if (!OrderPolicy.SHIPPING.equals(
-                order.getOrderStatus()
-        )) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
-        }
-
         order.setOrderStatus(OrderPolicy.DELIVERY_FAILED);
 
         if (reason != null && !reason.isBlank()) {
@@ -198,27 +182,6 @@ public class OrderActionService {
             Long actor,
             Order order
     ) {
-        if (OrderPolicy.SHIPPING.equals(
-                order.getOrderStatus()
-        )) {
-            return order;
-        }
-
-        if (!OrderPolicy.DELIVERY_FAILED.equals(
-                order.getOrderStatus()
-        )) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
-        }
-
-        var stockState =
-                movements.orderStockState(
-                        order.getOrderId()
-                );
-
-        if (stockState.deliveryReturned()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
-        }
-
         order.setOrderStatus(OrderPolicy.SHIPPING);
         orders.save(order);
 
@@ -242,32 +205,6 @@ public class OrderActionService {
             Long actor,
             Order order
     ) {
-        if (OrderPolicy.COMPLETED.equals(
-                order.getOrderStatus()
-        )) {
-            return order;
-        }
-
-        if (!OrderPolicy.SHIPPING.equals(
-                order.getOrderStatus()
-        )) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
-        }
-
-        Payment payment = payments
-                .findById(order.getOrderId())
-                .orElseThrow(() ->
-                        new IllegalStateException(
-                                "Order payment is missing"
-                        )
-                );
-
-        if (!OrderPolicy.PAID.equals(
-                payment.getPaymentStatus()
-        )) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
-        }
-
         order.setOrderStatus(OrderPolicy.COMPLETED);
         order.setCompletedAt(
                 LocalDateTime.now(ZoneOffset.UTC)
@@ -296,23 +233,6 @@ public class OrderActionService {
             Order order,
             String reason
     ) {
-        if (OrderPolicy.CANCELLED.equals(
-                order.getOrderStatus()
-        )) {
-            return order;
-        }
-
-        boolean cancellable = List.of(
-                OrderPolicy.PENDING,
-                OrderPolicy.CONFIRMED,
-                OrderPolicy.PREPARING,
-                OrderPolicy.DELIVERY_FAILED
-        ).contains(order.getOrderStatus());
-
-        if (!cancellable) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
-        }
-
         var stockState =
                 movements.orderStockState(
                         order.getOrderId()
@@ -359,21 +279,6 @@ public class OrderActionService {
             Order order,
             String reason
     ) {
-        if (!OrderPolicy.DELIVERY_FAILED.equals(
-                order.getOrderStatus()
-        )) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
-        }
-
-        var stockState =
-                movements.orderStockState(
-                        order.getOrderId()
-                );
-
-        if (stockState.deliveryReturned()) {
-            return order;
-        }
-
         inventoryCommands.restoreDeliveryReturn(
                 actor,
                 order.getOrderId(),
@@ -401,18 +306,6 @@ public class OrderActionService {
             String target,
             AuditAction auditAction
     ) {
-        if (target.equals(order.getOrderStatus())) {
-            return order;
-        }
-
-        if (!expected.equals(order.getOrderStatus())
-                || !OrderPolicy.canTransition(
-                        order.getOrderStatus(),
-                        target
-                )) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
-        }
-
         order.setOrderStatus(target);
         orders.save(order);
 

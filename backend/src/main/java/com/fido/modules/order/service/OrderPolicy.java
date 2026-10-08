@@ -1,6 +1,7 @@
 package com.fido.modules.order.service;
 
 import java.util.Map;
+import java.time.LocalDateTime;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -70,6 +71,12 @@ public final class OrderPolicy {
         return TRANSITIONS
                 .getOrDefault(from, Set.of())
                 .contains(to);
+    }
+
+    public static void requireReturnWithinWindow(LocalDateTime completedAt, LocalDateTime now) {
+        if (completedAt == null || now.isBefore(completedAt) || now.isAfter(completedAt.plusDays(2))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Return is outside the two-day window");
+        }
     }
 
     public static boolean recipientEditable(String status) {

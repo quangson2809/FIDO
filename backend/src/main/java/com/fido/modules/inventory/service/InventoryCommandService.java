@@ -7,6 +7,8 @@ import com.fido.modules.inventory.repository.InventoryTransactionRepository;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Comparator;
+import jakarta.persistence.EntityManager;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -21,13 +23,16 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional(propagation = Propagation.MANDATORY)
 public class InventoryCommandService {
 
+    private final EntityManager em;
     private final InventoryRepository inventories;
     private final InventoryTransactionRepository transactions;
 
     public InventoryCommandService(
+            EntityManager em,
             InventoryRepository inventories,
             InventoryTransactionRepository transactions
     ) {
+        this.em = em;
         this.inventories = inventories;
         this.transactions = transactions;
     }
@@ -39,7 +44,7 @@ public class InventoryCommandService {
     ) {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
-        for (StockLine line : lines) {
+        for (StockLine line : ordered(lines)) {
             requireTrackedVariant(line.variantId());
 
             increment(
@@ -78,6 +83,7 @@ public class InventoryCommandService {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
+        refreshInventory(variantId);
         return record(
                 InventoryMovement.manualAdjustment(
                         actor,
@@ -96,7 +102,7 @@ public class InventoryCommandService {
     ) {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
-        for (StockLine line : lines) {
+        for (StockLine line : ordered(lines)) {
             int updated = inventories.adjustIfNonNegative(
                     line.variantId(),
                     -line.quantity(),
@@ -107,6 +113,7 @@ public class InventoryCommandService {
                 throw new ResponseStatusException(HttpStatus.CONFLICT);
             }
 
+            refreshInventory(line.variantId());
             record(
                     InventoryMovement.confirmedOrder(
                             actor,
@@ -157,7 +164,7 @@ public class InventoryCommandService {
     ) {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
-        for (StockLine line : lines) {
+        for (StockLine line : ordered(lines)) {
             increment(
                     line.variantId(),
                     line.quantity(),
@@ -192,6 +199,17 @@ public class InventoryCommandService {
                     "Inventory row missing during stock mutation"
             );
         }
+        refreshInventory(variantId);
+    }
+
+    private List<StockLine> ordered(List<StockLine> lines) {
+        return lines.stream().sorted(Comparator.comparing(StockLine::variantId)).toList();
+    }
+
+    private void refreshInventory(Long variantId) {
+        // Bulk JPQL bypasses managed state. Refresh only this module-owned row;
+        // clearing the transaction would detach caller Order/GoodsReceipt entities.
+        em.refresh(em.getReference(Inventory.class, variantId));
     }
 
     private InventoryTransaction record(

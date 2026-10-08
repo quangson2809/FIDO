@@ -309,3 +309,29 @@ The project owner selected the handwritten DTO/service approach with selective r
 - A malformed login response must not publish an access token. A malformed `/me` response must fail before role/permission state is accepted.
 - Use a small dependency-free feature-local parser for this initial scope. Do not add a validation library until repeated schemas or broader runtime-validation coverage create a concrete reuse/maintenance need.
 - Other API DTOs remain compile-time typed for now and should be promoted to runtime validation based on impact and evidence, not by mechanically validating every endpoint.
+
+## Confirmed backend hardening — 2026-10-07
+
+Base: `aca05117d6650bb3a5eb9ef0283973cfa40e4371`. Scope: findings #1, #4, #5, #7, #8, #9, #10, #11, #13, #18, #20.
+
+- No implicit dev profile. The known public development JWT key is accepted only when the explicit active-profile list is exactly `dev`; missing, default-only and mixed profiles fail closed. No runtime secret is committed.
+- Exception logs use a safe category message, HTTP method, matched route template, numeric path IDs, status and internal stack/cause types for server/database failures. Raw throwable messages, query strings, bodies and credentials are excluded because SQL/provider exceptions may include secrets. Lock/deadlock/optimistic concurrency failures map to existing HTTP 409; the public Boot error envelope is unchanged.
+- Inventory commands sort a copy of all stock lines by `variantId`, across receipt/confirmation/restoration. Atomic conditional inventory updates remain; only the affected managed Inventory is refreshed afterward. No global persistence-context clearing. GoodsReceipt uses its existing pessimistic row lock and managed state transitions instead of redundant bulk updates.
+- Account-owned pessimistic locking serializes authenticated cart commands before reading/creating a current cart. The cart current-row lookup is a locking read. This prevents first-cart/first-item races and lost increments across application instances without assuming a new unique account-cart schema constraint. Cart reads remain read-only. Guest cart remains deferred.
+- Staff role replacement must retain at least one of ADMIN/SUPERADMIN; full replacement semantics and last-superadmin protection remain.
+- Admin namespace admission requires SUPERADMIN or an effective permission loaded from the database. It does not require ADMIN in addition to a custom capability role, and it does not grant ADMIN any capability. Existing service-level checks still authorize each operation.
+- Existing Product PATCH image URLs and provider output must be absolute HTTPS URIs with a host, no userinfo/fragment and a valid port. No provider-host allowlist is invented. Historical snapshots are untouched. The live Analyst API now excludes images from Product PATCH whereas this repository still documents/supports replacement: removing that write path requires a separate contract migration.
+- OrderActionPolicy is the common source for advertised/executable actions, including payment/delivery-return prerequisites. It delegates transitions to OrderPolicy; command services retain side effects and authorization. Repeating an already-applied command remains a no-op.
+- RETURN enforces an inclusive two-day interval from completed_at in UTC, before any state/note/audit mutation. Missing/future completed_at is rejected. Accepted-return retry remains a no-op. Tags/physical inspection remain staff checks; no automatic refund or stock restoration is inferred.
+
+### #8: fixed business policy, missing receipt command representation
+
+The live DB source (`12y5Wjo2y0Ig2ncU9uPqxe7PcSlD6mZFa`, sections after-sales/C-17) confirms two days, intact tags, and CUSTOMER_RETURN_IN only after physically received, inspected, sellable goods. This is **not** a business-policy TBD and requires no new after-sales resource/table.
+
+The live consolidated API (`1WNaHu6g_-XINTVcUvGX9vSJnpSyLff-PebkkDk_9mMk`, Appendix A #26) accepts only operation RETURN/EXCHANGE_SIZE + reason; source_variant_id/target_variant_id/quantity are specified for EXCHANGE_SIZE. It has no received/inspection/sellable flag or separate customer-receipt action. Automatically crediting all items on RETURN would violate C-17 and the current repository contract. Inferring inspection from free text, silently repurposing exchange fields, or adding a public action/field would invent public semantics.
+
+Therefore only the receipt-command wiring is MATERIAL_DECISION_REQUIRED: approve an explicit representation for the actual receipt/inspection result and whether it covers the whole order or selected sellable quantities. Until then #8 is PARTIAL: the return window is implemented, CUSTOMER_RETURN_IN is not exposed or claimed implemented. No unused speculative internal write method is added.
+
+### Explicit exclusions retained
+
+#2 COD collection/cancellation policy; #6 create-order idempotency strategy; #14 phone canonical format; #23 phone-change authentication remain material decisions. #16/#17/#21/#22/#24/#25 are not changed merely to satisfy the old report. #26 DB environment variables are already wired in application-dev.properties. No schema, phone normalization, payment state rules or capability assignments are changed.

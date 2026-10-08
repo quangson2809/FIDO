@@ -181,23 +181,10 @@ public class GoodsReceiptService {
 
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
-        int transitioned = receipts.confirmDraft(
-                receiptId,
-                actor,
-                now
-        );
-
-        if (transitioned == 0) {
-            GoodsReceipt after = receipt(receiptId);
-
-            if (InventoryPolicy.RECEIPT_CONFIRMED.equals(
-                    after.getReceiptStatus()
-            )) {
-                return query.detailInternal(after);
-            }
-
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
-        }
+        current.setReceiptStatus(InventoryPolicy.RECEIPT_CONFIRMED);
+        current.setConfirmedByAccountId(actor);
+        current.setConfirmedAt(now);
+        current.setUpdatedAt(now);
 
         var stockLines = receiptItems.stream()
                 .map(item ->
@@ -223,9 +210,7 @@ public class GoodsReceiptService {
                 )
         );
 
-        return query.detailInternal(
-                receipt(receiptId)
-        );
+        return query.detailInternal(current);
     }
 
     private GoodsReceiptDetailDto cancel(
@@ -246,14 +231,8 @@ public class GoodsReceiptService {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
-        int transitioned = receipts.cancelDraft(
-                receiptId,
-                LocalDateTime.now(ZoneOffset.UTC)
-        );
-
-        if (transitioned != 1) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
-        }
+        current.setReceiptStatus(InventoryPolicy.RECEIPT_CANCELLED);
+        current.setUpdatedAt(LocalDateTime.now(ZoneOffset.UTC));
 
         audit.record(
                 AuditEvent.of(
@@ -264,9 +243,7 @@ public class GoodsReceiptService {
                 )
         );
 
-        return query.detailInternal(
-                receipt(receiptId)
-        );
+        return query.detailInternal(current);
     }
 
     private void saveItems(
@@ -359,13 +336,6 @@ public class GoodsReceiptService {
 
     private void validateVariant(Long variantId) {
         inventoryCommands.requireTrackedVariant(variantId);
-    }
-
-    private GoodsReceipt receipt(Long receiptId) {
-        return receipts.findById(receiptId)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND)
-                );
     }
 
     private GoodsReceipt receiptForUpdate(Long receiptId) {

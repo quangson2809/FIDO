@@ -310,6 +310,9 @@ public class ProductAdminService {
         var sortOrders = new HashSet<Integer>();
 
         for (ProductImageInput item : requested) {
+            if (!ProductImageUrlPolicy.isValid(item.image_url())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image URL must be a valid HTTPS URI");
+            }
             Integer sortOrder = item.sort_order();
             if (sortOrder == null
                     || sortOrder < 0

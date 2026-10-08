@@ -12,5 +12,8 @@ public interface CartRepository extends Repository<Cart, Long> {
             Long accountId
     );
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    Optional<Cart> findFirstForUpdateByAccountIdOrderByUpdatedAtDescCartIdDesc(Long accountId);
+
     Cart save(Cart entity);
 }
