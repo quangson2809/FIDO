@@ -1,6 +1,15 @@
 name: Dev Compose verification
 
 on:
+  push:
+    branches:
+      - fix/frontend-product-variant-selection
+    paths:
+      - "compose.yaml"
+      - ".env.example"
+      - "backend/.env.example"
+      - "backend/src/main/resources/**"
+      - ".github/workflows/dev-compose-verification.yml"
   pull_request:
     branches:
       - main
