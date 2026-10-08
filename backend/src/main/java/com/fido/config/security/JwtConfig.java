@@ -2,8 +2,6 @@ package com.fido.config.security;
 
 import java.time.Instant;
 import java.util.Base64;
-import java.util.Arrays;
-import org.springframework.core.env.Environment;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,7 +23,11 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 public class JwtConfig {
 
     @Bean
-    SecretKey jwtKey(@Value("${app.jwt.secret-base64}") String secret, Environment environment) {
+    SecretKey jwtKey(@Value("${app.jwt.secret-base64}") String secret) {
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException("JWT_SECRET_BASE64 is required");
+        }
+
         byte[] bytes;
 
         try {
@@ -38,13 +40,6 @@ public class JwtConfig {
             throw new IllegalStateException("JWT key requires at least 256 bits");
         }
 
-        byte[] developmentKey = Base64.getDecoder().decode(
-                "Zmlkby1sb2NhbC1kZXYtc2lnbmluZy1rZXktZG8tbm90LXVzZS1pbi1wcm9kdWN0aW9uLTIwMjY=");
-        // Only an explicitly dev-only runtime may use the public development key.
-        if (Arrays.equals(bytes, developmentKey)
-                && !Arrays.equals(environment.getActiveProfiles(), new String[]{"dev"})) {
-            throw new IllegalStateException("Public development JWT key requires the dev-only profile");
-        }
         return new SecretKeySpec(bytes, "HmacSHA256");
     }
 
