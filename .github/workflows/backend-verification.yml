@@ -6,6 +6,7 @@ on:
       - feature/backend-phase-0-discovery
       - feature/phase-2-3-image-persistence
       - fix/backend-confirmed-findings-20261007
+      - fix/frontend-product-variant-selection
   pull_request:
     branches:
       - main
