@@ -30,10 +30,26 @@ jobs:
     timeout-minutes: 15
     env:
       MYSQL_ROOT_PASSWORD: ci-compose-password
+      MYSQL_DATABASE: fido
+      MYSQL_TZ: UTC
+      DOCKER_DB_URL: jdbc:mysql://db:3306/fido?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DOCKER_DB_USERNAME: root
+      DOCKER_BACKEND_INTERNAL_PORT: "8080"
+      BACKEND_PORT: "8080"
+      FRONTEND_PORT: "5173"
+      APP_CORS_ALLOWED_ORIGINS: http://localhost:5173
+      VITE_API_MODE: real
+      VITE_API_BASE_URL: http://localhost:8080/api/v1
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Prepare CI backend settings
+        run: |
+          cp backend/.env.example backend/.env
+          sed -i 's/^DB_PASSWORD=.*/DB_PASSWORD=ci-compose-password/' backend/.env
+          sed -i "s/^JWT_SECRET_BASE64=.*/JWT_SECRET_BASE64=$(openssl rand -base64 32)/" backend/.env
 
       - name: Show Docker Compose version
         run: docker compose version
