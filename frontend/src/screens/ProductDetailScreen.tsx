@@ -30,6 +30,7 @@ export const ProductDetailScreen: React.FC = () => {
   const [selectedSizeValueId, setSelectedSizeValueId] = useState<number | null>(null);
   const [selectedColorId, setSelectedColorId] = useState<number | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [colorClearedBySizeChange, setColorClearedBySizeChange] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,6 +60,7 @@ export const ProductDetailScreen: React.FC = () => {
             .slice(0, 4) ?? [],
         );
         setActiveImageIndex(0);
+        setColorClearedBySizeChange(false);
         setSelectedSizeValueId(initialVariant?.size.size_value_id ?? null);
         setSelectedColorId(initialVariant?.color.color_id ?? null);
         setQuantity(1);
@@ -96,24 +98,18 @@ export const ProductDetailScreen: React.FC = () => {
 
   const colorOptions = useMemo(() => {
     const byId = new Map<number, ProductVariantDto['color']>();
-    onSaleVariants
-      .filter(
-        (variant) =>
-          selectedSizeValueId === null
-          || variant.size.size_value_id === selectedSizeValueId,
-      )
-      .forEach((variant) => byId.set(variant.color.color_id, variant.color));
+    onSaleVariants.forEach((variant) => byId.set(variant.color.color_id, variant.color));
     return [...byId.values()];
-  }, [onSaleVariants, selectedSizeValueId]);
+  }, [onSaleVariants]);
 
   const selectedVariant = useMemo(
     () =>
-      onSaleVariants.find(
+      product?.variants.find(
         (variant) =>
           variant.size.size_value_id === selectedSizeValueId
           && variant.color.color_id === selectedColorId,
       ) ?? null,
-    [onSaleVariants, selectedColorId, selectedSizeValueId],
+    [product, selectedColorId, selectedSizeValueId],
   );
 
   const variantCanBePurchased = canPurchaseProductVariant(
@@ -123,25 +119,29 @@ export const ProductDetailScreen: React.FC = () => {
 
   const selectSize = (sizeValueId: number) => {
     setSelectedSizeValueId(sizeValueId);
-    const compatibleVariants = onSaleVariants.filter(
-      (variant) => variant.size.size_value_id === sizeValueId,
+    const currentColorStillValid = product?.variants.some(
+      (variant) => variant.size.size_value_id === sizeValueId
+        && variant.color.color_id === selectedColorId,
     );
-    const currentColorStillValid = compatibleVariants.find(
-      (variant) => variant.color.color_id === selectedColorId,
-    );
-    const fallback =
-      compatibleVariants.find((variant) => variant.available_quantity > 0)
-      ?? compatibleVariants[0]
-      ?? null;
-
-    setSelectedColorId((currentColorStillValid ?? fallback)?.color.color_id ?? null);
+    const colorWasCleared = selectedColorId !== null && !currentColorStillValid;
+    setColorClearedBySizeChange(colorWasCleared);
+    if (colorWasCleared) setSelectedColorId(null);
     setQuantity(1);
   };
 
   const selectColor = (colorId: number) => {
+    if (!colorCompatibility(colorId)) return;
     setSelectedColorId(colorId);
+    setColorClearedBySizeChange(false);
     setQuantity(1);
   };
+
+  const colorCompatibility = (colorId: number): boolean =>
+    onSaleVariants.some(
+      (variant) => (selectedSizeValueId === null
+        || variant.size.size_value_id === selectedSizeValueId)
+        && variant.color.color_id === colorId,
+    );
 
   const colorAvailability = (colorId: number): boolean =>
     onSaleVariants.some(
@@ -265,6 +265,10 @@ export const ProductDetailScreen: React.FC = () => {
           displayedPrice={displayedPrice}
           sizeAvailability={sizeAvailability}
           colorAvailability={colorAvailability}
+          colorCompatibility={colorCompatibility}
+          colorSelectionNotice={colorClearedBySizeChange
+            ? `Màu đã chọn không có ở size ${sizeOptions.find((size) => size.size_value_id === selectedSizeValueId)?.display_name ?? ''}. Vui lòng chọn màu khác.`
+            : null}
           onSelectSize={selectSize}
           onSelectColor={selectColor}
           onQuantityChange={setQuantity}

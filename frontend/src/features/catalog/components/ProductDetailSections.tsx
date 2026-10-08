@@ -120,6 +120,8 @@ export const ProductPurchasePanel: React.FC<{
   displayedPrice: number;
   sizeAvailability: (sizeValueId: number) => boolean;
   colorAvailability: (colorId: number) => boolean;
+  colorCompatibility: (colorId: number) => boolean;
+  colorSelectionNotice?: string | null;
   onSelectSize: (sizeValueId: number) => void;
   onSelectColor: (colorId: number) => void;
   onQuantityChange: (quantity: number) => void;
@@ -137,6 +139,8 @@ export const ProductPurchasePanel: React.FC<{
   displayedPrice,
   sizeAvailability,
   colorAvailability,
+  colorCompatibility,
+  colorSelectionNotice,
   onSelectSize,
   onSelectColor,
   onQuantityChange,
@@ -154,15 +158,21 @@ export const ProductPurchasePanel: React.FC<{
 
     <div className="flex items-center justify-between border border-[#E8E9E3] bg-[#FFFDF5] p-4">
       <div>
-        <p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">Giá hiện tại</p>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">{selectedVariant ? 'Giá hiện tại' : 'Giá gốc tham khảo'}</p>
         <span className="mt-1 block font-serif text-2xl font-bold">{displayedPrice.toLocaleString('vi-VN')}₫</span>
       </div>
       {selectedVariant && (
         <div className={'px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ' + (selectedVariant.available_quantity > 0 ? 'bg-[#E8C75B] text-[#071A12]' : 'bg-[#E8E9E3] text-[#687069]')}>
-          {selectedVariant.available_quantity > 0 ? 'Còn ' + selectedVariant.available_quantity : 'Hết hàng'}
+          {selectedVariant.sale_status === 'STOPPED' ? 'Biến thể ngừng bán' : selectedVariant.available_quantity > 0 ? 'Còn ' + selectedVariant.available_quantity : 'Hết hàng'}
         </div>
       )}
     </div>
+
+    {!selectedVariant && (
+      <p className="text-sm text-[#687069]">
+        Vui lòng chọn {selectedSizeValueId === null ? 'kích cỡ và màu sắc' : 'màu sắc'} để xác định giá chính xác.
+      </p>
+    )}
 
     {sizeOptions.length > 0 && (
       <div className="space-y-3">
@@ -177,6 +187,7 @@ export const ProductPurchasePanel: React.FC<{
               <button
                 key={size.size_value_id}
                 type="button"
+                aria-pressed={selectedSizeValueId === size.size_value_id}
                 onClick={() => onSelectSize(size.size_value_id)}
                 className={'relative border px-2 py-2.5 text-sm font-semibold transition ' + (selectedSizeValueId === size.size_value_id ? 'border-[#0B2419] bg-[#0B2419] text-white' : 'border-[#D9DDD6] bg-white hover:border-[#0B2419]') + (available ? '' : ' opacity-45')}
               >
@@ -195,12 +206,15 @@ export const ProductPurchasePanel: React.FC<{
         <div className="flex flex-wrap gap-2">
           {colorOptions.map((color) => {
             const available = colorAvailability(color.color_id);
+            const compatible = colorCompatibility(color.color_id);
             return (
               <button
                 key={color.color_id}
                 type="button"
+                disabled={!compatible}
+                aria-pressed={selectedColorId === color.color_id}
                 onClick={() => onSelectColor(color.color_id)}
-                className={'inline-flex items-center gap-2 border px-3 py-2.5 text-sm transition ' + (selectedColorId === color.color_id ? 'border-[#0B2419] bg-[#0B2419] text-white' : 'border-[#D9DDD6] bg-white hover:border-[#0B2419]') + (available ? '' : ' opacity-45')}
+                className={'inline-flex items-center gap-2 border px-3 py-2.5 text-sm transition disabled:cursor-not-allowed ' + (selectedColorId === color.color_id ? 'border-[#0B2419] bg-[#0B2419] text-white' : 'border-[#D9DDD6] bg-white hover:border-[#0B2419]') + (available ? '' : ' opacity-45')}
               >
                 <span className={'h-2.5 w-2.5 rounded-full border ' + (selectedColorId === color.color_id ? 'border-white bg-[#E8C75B]' : 'border-[#687069] bg-[#F3F4EF]')} />
                 {color.name}
@@ -210,6 +224,12 @@ export const ProductPurchasePanel: React.FC<{
         </div>
       </div>
     )}
+
+    <div role="status" aria-live="polite" className="text-sm text-[#687069]">
+      {colorSelectionNotice && <p>{colorSelectionNotice}</p>}
+      {selectedColorId === null && <p>Vui lòng chọn màu sắc</p>}
+      {selectedSizeValueId === null && <p>Vui lòng chọn kích cỡ</p>}
+    </div>
 
     {product.sale_status === 'STOPPED' && (
       <div className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -255,7 +275,7 @@ export const ProductPurchasePanel: React.FC<{
         </button>
       </div>
       <p className="mt-3 text-[10px] leading-5 text-[#687069]">
-        Giá và số lượng khả dụng lấy từ biến thể hiện tại. Giỏ hàng được lưu qua backend sau khi đăng nhập.
+        {selectedVariant ? 'Giá và số lượng khả dụng theo kích cỡ, màu sắc đã chọn.' : 'Giá tham khảo có thể khác giá của biến thể bạn chọn.'}
       </p>
     </div>
   </aside>

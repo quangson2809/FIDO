@@ -160,6 +160,7 @@ const purchasePanelHtml = renderToStaticMarkup(
     displayedPrice={variant.effective_price}
     sizeAvailability={() => true}
     colorAvailability={() => true}
+    colorCompatibility={() => true}
     onSelectSize={noOp}
     onSelectColor={noOp}
     onQuantityChange={noOp}
@@ -214,6 +215,7 @@ const stoppedProductPanelHtml = renderToStaticMarkup(
     displayedPrice={variant.effective_price}
     sizeAvailability={() => true}
     colorAvailability={() => true}
+    colorCompatibility={() => true}
     onSelectSize={noOp}
     onSelectColor={noOp}
     onQuantityChange={noOp}
