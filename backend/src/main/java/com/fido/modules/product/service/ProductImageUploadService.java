@@ -45,8 +45,8 @@ public class ProductImageUploadService {
             ImageStorageGateway storage,
             CatalogReferenceService references,
             ProductImageAdminService productImages,
-            @Value("${app.image-storage.max-upload-size:32MB}") DataSize maxUploadSize,
-            @Value("${app.image-storage.max-files-per-request:10}") int maxFilesPerRequest
+            @Value("${app.image-storage.max-upload-size}") DataSize maxUploadSize,
+            @Value("${app.image-storage.max-files-per-request}") int maxFilesPerRequest
     ) {
         if (maxUploadSize.toBytes() <= 0) {
             throw new IllegalArgumentException("Image upload size limit must be positive");
