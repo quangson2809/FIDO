@@ -7,6 +7,9 @@ import { cartService } from '../src/features/cart/api/service';
 import { catalogService } from '../src/features/catalog/api/service';
 import { contentService } from '../src/features/content/api/service';
 import { orderService } from '../src/features/orders/api/service';
+import { checkoutService } from '../src/features/orders/api/checkoutService';
+import { voucherService } from '../src/features/promotion/api/service';
+import type { VoucherInput } from '../src/features/promotion/types';
 import { reportService } from '../src/features/report/api/service';
 import { apiClient, hasApiAccessToken } from '../src/services/http/apiClient';
 
@@ -33,6 +36,25 @@ const requireBearer = (request: IncomingMessage): void => {
 };
 
 let capturedSizeBody: unknown;
+let capturedVoucherBody: unknown;
+let capturedQuoteBody: unknown;
+let capturedOrderBody: unknown;
+const voucherPolicy: VoucherInput = {
+  code: 'SAVE10K',
+  discount_type: 'FIXED_AMOUNT',
+  discount_value: 10000,
+  maximum_discount: null,
+  minimum_amount: 0,
+  starts_at: '2026-10-09T00:00:00Z',
+  ends_at: '2026-11-09T00:00:00Z',
+  scope: 'ALL',
+  product_ids: [],
+  category_ids: [],
+  global_limit: null,
+  customer_limit: 1,
+  enabled: true,
+};
+const voucherDetail = { ...voucherPolicy, voucher_id: 27, active_usage: 0, ever_used: false };
 const server = createServer((request, response) => {
   const url = new URL(request.url ?? '/', 'http://localhost');
 
@@ -43,6 +65,54 @@ const server = createServer((request, response) => {
     request.on('end', () => {
       capturedSizeBody = JSON.parse(body);
       writeJson(response, 200, { data: { size_system_id: 12, code: 'ALPHA', name: 'Alpha', size_values: [] } });
+    });
+    return;
+  }
+  if (url.pathname === '/api/v1/admin/vouchers' && request.method === 'GET') {
+    requireBearer(request);
+    assert.equal(url.searchParams.get('search'), 'SAVE');
+    assert.equal(url.searchParams.get('page'), '1');
+    writeJson(response, 200, {
+      data: [voucherDetail],
+      meta: { page: 1, page_size: 20, total: 1, total_pages: 1 },
+    });
+    return;
+  }
+  if ((url.pathname === '/api/v1/admin/vouchers' && request.method === 'POST')
+    || (url.pathname === '/api/v1/admin/vouchers/27' && request.method === 'PUT')) {
+    requireBearer(request);
+    let raw = '';
+    request.on('data', (chunk: Buffer) => { raw += chunk.toString(); });
+    request.on('end', () => {
+      capturedVoucherBody = JSON.parse(raw);
+      writeJson(response, request.method === 'POST' ? 201 : 200, { data: voucherDetail });
+    });
+    return;
+  }
+  if (url.pathname === '/api/v1/checkout/quote' && request.method === 'POST') {
+    requireBearer(request);
+    let raw = '';
+    request.on('data', (chunk: Buffer) => { raw += chunk.toString(); });
+    request.on('end', () => {
+      capturedQuoteBody = JSON.parse(raw);
+      writeJson(response, 200, { data: {
+        quote_id: 'voucher-smoke-quote',
+        items: [], subtotal: 100000, discount: 10000, shipping_fee: 30000, total: 120000,
+        voucher: { voucher_id: 27, code: 'SAVE10K' },
+      } });
+    });
+    return;
+  }
+  if (url.pathname === '/api/v1/orders' && request.method === 'POST') {
+    requireBearer(request);
+    let raw = '';
+    request.on('data', (chunk: Buffer) => { raw += chunk.toString(); });
+    request.on('end', () => {
+      capturedOrderBody = JSON.parse(raw);
+      writeJson(response, 201, { data: {
+        order_id: 43, order_code: 'FIDO-43', order_status: 'PENDING',
+        subtotal: 100000, discount: 10000, shipping_fee: 30000, total: 120000,
+      } });
     });
     return;
   }
@@ -251,6 +321,30 @@ try {
   assert.deepEqual(capturedSizeBody, { size_values: sizes }, 'Preserve IDs and all retained sizes');
   await adminCatalogMetaService.updateSizeSystem(12, { size_values: sizes.slice(1) });
   assert.deepEqual(capturedSizeBody, { size_values: sizes.slice(1) }, 'Only omit explicitly removed sizes');
+  const listed = await voucherService.list('SAVE', 1);
+  assert.equal(listed.data[0]?.code, 'SAVE10K');
+  const createdVoucher = await voucherService.create(voucherPolicy);
+  assert.equal(createdVoucher.voucher_id, 27);
+  assert.deepEqual(capturedVoucherBody, voucherPolicy, 'Create must preserve the typed voucher policy');
+  await voucherService.update(27, { ...voucherPolicy, enabled: false });
+  assert.deepEqual(capturedVoucherBody, { ...voucherPolicy, enabled: false }, 'Update uses existing resource and full policy');
+
+  const checkoutRequest = {
+    recipient_phone: '0909000001',
+    recipient_email: null,
+    recipient_address: 'Hà Nội',
+    voucher_code: 'SAVE10K',
+  };
+  const quotedVoucher = await checkoutService.quote(checkoutRequest);
+  assert.deepEqual(capturedQuoteBody, checkoutRequest);
+  assert.equal(quotedVoucher.discount, 10000);
+  assert.equal(quotedVoucher.total, 120000);
+  assert.equal(quotedVoucher.voucher?.code, 'SAVE10K');
+  if (!quotedVoucher.quote_id) throw new Error('Missing voucher quotation ID');
+  const placedOrder = await checkoutService.createOrder({ ...checkoutRequest, quote_id: quotedVoucher.quote_id });
+  assert.equal(placedOrder.order_id, 43);
+  assert.deepEqual(capturedOrderBody, { ...checkoutRequest, quote_id: 'voucher-smoke-quote' });
+
   const me = await profileService.getMe();
   assert.equal(me.roles[0]?.code, 'SUPERADMIN');
 

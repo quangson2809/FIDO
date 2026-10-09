@@ -23,9 +23,9 @@ class VoucherDiscountTests {
 
     @Test
     void percentageRoundsHalfUpToTwoDecimalPlaces() {
-        assertEquals(new BigDecimal("33.33"),
+        assertEquals(new BigDecimal("0.13"),
                 VoucherRedemptionService.discount("PERCENTAGE",
-                        new BigDecimal("33.33"), new BigDecimal("100"),
-                        new BigDecimal("100.01")));
+                        new BigDecimal("12.50"), new BigDecimal("100"),
+                        new BigDecimal("1.00")));
     }
 }
