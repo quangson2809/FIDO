@@ -1,3 +1,7 @@
+import { OrderProgress } from '../../features/orders/components/OrderProgress';
+import { useToast } from '../../shared/ui/toast/useToast';
+import { formatVietnamDateTime } from '../../shared/time/formatVietnamDateTime';
+import { statusLabel } from '../../shared/admin/statusLabels';
 import { useDirtyForm } from '../../shared/admin/dirtyFormContext';
 import React, { useEffect, useState } from 'react';
 import { profileService } from '../../features/auth/api/profileService';
@@ -26,6 +30,7 @@ const recipientEditable = (status: AdminOrderDetailDto['order_status']) =>
   status === 'PENDING' || status === 'CONFIRMED' || status === 'PREPARING';
 
 export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
+  const { showToast } = useToast();
   const [order, setOrder] = useState<AdminOrderDetailDto | null>(null);
   const [permissions, setPermissions] = useState<Set<string>>(new Set());
   const [superAdmin, setSuperAdmin] = useState(false);
@@ -89,6 +94,7 @@ export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
         reason: reason.trim() || null,
       }));
       setReason('');
+      showToast('Đã cập nhật đơn hàng.');
     } catch (requestError: unknown) {
       setError(getApiErrorMessage(requestError, 'Không thể thực hiện action. Trạng thái, quyền hoặc điều kiện nghiệp vụ có thể đã thay đổi.'));
     } finally {
@@ -111,6 +117,7 @@ export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
         : { customer_service_note: note || null };
       applyOrder(await adminOrderService.update(order.order_id, input));
       setEditing(false);
+      showToast('Đã lưu thông tin đơn hàng.');
     } catch (requestError: unknown) {
       setError(getApiErrorMessage(requestError, 'Không thể cập nhật đơn hàng. Kiểm tra quyền ORDER_EDIT và trạng thái hiện tại.'));
     } finally {
@@ -127,6 +134,7 @@ export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
     try {
       const payment = await adminOrderService.paymentAction(order.order_id, action);
       applyOrder({ ...order, payment });
+      showToast(action === 'COLLECT_COD' ? 'Đã ghi nhận thu COD.' : 'Đã ghi nhận hoàn tiền.');
       setRevision((value) => value + 1);
     } catch (requestError: unknown) {
       setError(getApiErrorMessage(requestError, 'Không thể cập nhật thanh toán. Kiểm tra ORDER_PAYMENT và điều kiện trạng thái.'));
@@ -147,6 +155,7 @@ export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
         reason: reason.trim(),
       }));
       setReason('');
+      showToast('Đã cập nhật đơn hàng.');
     } catch (requestError: unknown) {
       setError(getApiErrorMessage(requestError, 'Không thể tiếp nhận trả hàng. Chỉ đơn COMPLETED và actor có ORDER_AFTER_SALES mới hợp lệ.'));
     } finally {
@@ -168,11 +177,12 @@ export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
           <button type="button" onClick={onBack} className="mb-3 text-xs font-bold uppercase tracking-wider underline">← Danh sách đơn</button>
           <p className="font-mono text-sm text-[#606863]">{order.order_code}</p>
           <h1 className="mt-1 font-serif text-2xl font-bold text-[#0B2419]">Chi tiết đơn hàng</h1>
-          <p className="mt-1 text-xs text-[#606863]">Tạo: {order.created_at} · Cập nhật: {order.updated_at}</p>
+          <p className="mt-1 text-xs text-[#606863]">Tạo: {formatVietnamDateTime(order.created_at)} · Cập nhật: {formatVietnamDateTime(order.updated_at)}</p>
         </div>
-        <div className="text-right"><span className="inline-block bg-[#FAF4DF] px-3 py-2 text-xs font-bold">{order.order_status}</span><p className="mt-2 text-xs">Payment: {order.payment.payment_status}</p></div>
+        <div className="text-right"><span className="inline-block bg-[#FAF4DF] px-3 py-2 text-xs font-bold">{statusLabel(order.order_status)}</span><p className="mt-2 text-xs">Thanh toán: {statusLabel(order.payment.payment_status)}</p></div>
       </div>
 
+      <OrderProgress status={order.order_status} />
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -210,23 +220,23 @@ export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
           </section>
 
           <section className="rounded-lg border border-[#E2E5DE] bg-white p-5">
-            <h2 className="font-serif text-xl font-bold">Order actions</h2>
+            <h2 className="font-serif text-xl font-bold">Xử lý đơn hàng</h2>
             <label className="mt-4 block space-y-1"><span className="text-xs font-semibold">Lý do / ghi chú action</span><textarea rows={2} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>
             <div className="mt-4 flex flex-wrap gap-2">
-              {order.allowed_actions.map((action) => <button key={action} type="button" disabled={busy} onClick={() => void runOrderAction(action)} className="border border-[#0B2419] px-3 py-2 text-xs font-bold uppercase disabled:opacity-40">{actionLabel[action]}</button>)}
+              {order.allowed_actions.map((action) => <button key={action} type="button" disabled={busy} onClick={() => void runOrderAction(action)} className={action === 'CANCEL' || action === 'DELIVERY_FAILED' || action === 'DELIVERY_RETURN_IN' ? 'admin-danger' : 'admin-primary'}>{actionLabel[action]}</button>)}
               {order.allowed_actions.length === 0 && <p className="text-xs text-[#606863]">Backend không cấp action trạng thái nào cho actor/order hiện tại.</p>}
             </div>
           </section>
 
           {(showCollectCod || showRefund || showReturn) && (
             <section className="rounded-lg border border-[#E2E5DE] bg-white p-5">
-              <h2 className="font-serif text-xl font-bold">Payment & after-sales</h2>
-              <div className="mt-4 space-y-2">
+              <h2 className="font-serif text-xl font-bold">Thanh toán & trả hàng</h2>
+              <dl className="mt-4 space-y-2 text-sm"><div>Phải thu: {order.payment.amount_due.toLocaleString('vi-VN')}₫</div><div>Đã thu: {order.payment.amount_received.toLocaleString('vi-VN')}₫</div><div>Đã hoàn: {order.payment.amount_refunded.toLocaleString('vi-VN')}₫</div></dl><div className="mt-4 space-y-2">
                 {showCollectCod && <button type="button" disabled={busy} onClick={() => void runPaymentAction('COLLECT_COD')} className="w-full bg-[#0B2419] px-3 py-2 text-xs font-bold uppercase text-white disabled:opacity-40">Thu COD</button>}
                 {showRefund && <button type="button" disabled={busy} onClick={() => void runPaymentAction('REFUND')} className="w-full border border-[#0B2419] px-3 py-2 text-xs font-bold uppercase disabled:opacity-40">Hoàn tiền</button>}
                 {showReturn && <button type="button" disabled={busy || !reason.trim()} onClick={() => void acceptReturn()} className="w-full border border-[#0B2419] px-3 py-2 text-xs font-bold uppercase disabled:opacity-40">Tiếp nhận trả hàng</button>}
               </div>
-              {showReturn && <p className="mt-2 text-[11px] text-[#606863]">RETURN yêu cầu lý do; EXCHANGE_SIZE chưa được expose vì backend hiện trả NOT_IMPLEMENTED.</p>}
+              {showReturn && <p className="mt-2 text-[11px] text-[#606863]">Nhập lý do tiếp nhận trả hàng. Hệ thống kiểm tra thời hạn 2 ngày kể từ khi hoàn tất; nhập lại kho và hoàn tiền là thao tác riêng.</p>}
             </section>
           )}
         </aside>

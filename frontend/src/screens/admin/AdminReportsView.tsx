@@ -1,3 +1,4 @@
+import { statusLabel } from '../../shared/admin/statusLabels';
 import { useCallback } from 'react';
 import { useRemoteQuery } from '../../shared/hooks/useRemoteQuery';
 import { QueryFeedback } from '../../shared/admin/QueryFeedback';
@@ -19,7 +20,7 @@ export const AdminReportsView: React.FC<{ showToast: (msg: string) => void }> = 
       <header>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">Report overview</p>
         <h1 className="mt-1 font-serif text-3xl text-[#0B2419]">Báo cáo doanh số</h1>
-        <p className="mt-2 max-w-3xl text-sm text-[#606863]">Số liệu lấy trực tiếp từ API báo cáo FIDO. Frontend không tự tính doanh thu, tỷ lệ giao hàng, top sản phẩm hoặc hiệu suất dịch vụ.</p>
+        <p className="mt-2 max-w-3xl text-sm text-[#606863]">Doanh số theo ngày hoàn tất đơn; trả hàng điều chỉnh vào kỳ hoàn tất ban đầu. Số đơn theo ngày tạo. Múi giờ Việt Nam.</p>
       </header>
 
       <form onSubmit={(event) => { event.preventDefault(); if (fromDraft > toDraft) { showToast('Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc.'); return; } query.reload(); setRange({ from: fromDraft, to: toDraft }); }} className="flex flex-wrap items-end gap-3">
@@ -36,7 +37,7 @@ export const AdminReportsView: React.FC<{ showToast: (msg: string) => void }> = 
             <article className="border border-[#E8E9E3] bg-white p-5"><p className="text-xs uppercase text-[#687069]">Điều chỉnh trả hàng</p><p className="mt-2 font-serif text-2xl font-bold">{formatMoney(report.returned_adjustment)}</p></article>
             <article className="border border-[#E8E9E3] bg-white p-5"><p className="text-xs uppercase text-[#687069]">Doanh số thuần</p><p className="mt-2 font-serif text-2xl font-bold text-[#1B5038]">{formatMoney(report.net_sales)}</p></article>
           </div>
-          <div className="border border-[#E8E9E3] bg-white p-5"><div className="flex items-center justify-between gap-4"><div><h2 className="font-serif text-xl">Số đơn theo trạng thái</h2><p className="mt-1 text-xs text-[#687069]">{report.from} → {report.to}</p></div></div><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{Object.entries(report.orders_by_status).map(([status, count]) => <div key={status} className="border border-[#E8E9E3] bg-[#F8FAF4] p-3"><p className="font-mono text-xs font-bold">{status}</p><p className="mt-1 text-2xl font-bold">{count}</p></div>)}</div></div>
+          <div className="border border-[#E8E9E3] bg-white p-5"><div className="flex items-center justify-between gap-4"><div><h2 className="font-serif text-xl">Số đơn theo trạng thái</h2><p className="mt-1 text-xs text-[#687069]">{report.from} → {report.to} · Múi giờ Việt Nam</p></div></div><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{Object.entries(report.orders_by_status).map(([status, count]) => <div key={status} className="border border-[#E8E9E3] bg-[#F8FAF4] p-3"><p className="font-mono text-xs font-bold">{statusLabel(status)}</p><p className="mt-1 text-2xl font-bold">{count}</p><meter aria-label={statusLabel(status)} min={0} max={Math.max(1, ...Object.values(report.orders_by_status))} value={count} className="mt-2 h-3 w-full" /></div>)}</div></div>
         </>
       )}
     </section>

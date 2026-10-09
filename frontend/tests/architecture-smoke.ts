@@ -213,3 +213,11 @@ assert.deepEqual(
 );
 
 process.stdout.write('Frontend architecture smoke: PASS\n');
+
+const { formatVietnamDateTime } = await import('../src/shared/time/formatVietnamDateTime');
+assert.equal(formatVietnamDateTime('2026-10-07T17:30:00'), formatVietnamDateTime('2026-10-07T17:30:00Z'), 'backend UTC timestamps without offset must not use browser timezone');
+assert.equal(formatVietnamDateTime('invalid'), '—');
+const { statusLabel } = await import('../src/shared/admin/statusLabels');
+assert.equal(statusLabel('PENDING'), 'Chờ xác nhận');
+assert.equal(statusLabel('REFUNDED'), 'Đã hoàn tiền');
+assert.equal(statusLabel('DRAFT'), 'Bản nháp');

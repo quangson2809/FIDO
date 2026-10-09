@@ -12,7 +12,12 @@ const date = '2026-10-08T03:00:00Z';
 const role = { role_id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null };
 let me = { account: { account_id: 1, phone: '0900000000', email: null, created_at: date, updated_at: date }, addresses: [], roles: [role], permissions: [] };
 const pagination = (data, pageNumber = 1, total = data.length) => ({ data, meta: { page: pageNumber, page_size: 20, total, total_pages: Math.ceil(total / 20) } });
-const metadata = { categories: [], brands: [], colors: [], size_systems: [], genders: [], seasons: [], styles: [] };
+const size = { size_value_id: 1, size_system_id: 1, code: 'M', display_name: 'M', sort_order: 0 };
+const color = { color_id: 1, code: 'BLACK', name: 'Đen' };
+const metadata = { categories: [{ category_id: 1, parent_category_id: null, name: 'Áo' }], brands: [], colors: [color, { color_id: 2, code: 'WHITE', name: 'Trắng' }], size_systems: [{ size_system_id: 1, code: 'TOP', name: 'Áo', size_values: [size] }], genders: [], seasons: [], styles: [] };
+let product = { product_id: 1, name: 'Áo thử nghiệm', description: null, category: metadata.categories[0], category_id: 1, brand: null, brand_id: null, size_system: metadata.size_systems[0], size_system_id: 1, gender: null, season: null, style: null, material_care: null, base_price: 200000, sale_status: 'ON_SALE', images: [], variants: [{ variant_id: 10, product_id: 1, size_value_id: 1, color_id: 1, sku: 'TEE-M-BLACK', override_price: null, sale_status: 'ON_SALE', available_quantity: 5, created_at: date, updated_at: date }], created_at: date, updated_at: date };
+let order = { order_id: 1, order_code: 'ORD-001', order_status: 'PENDING', recipient: { phone: '0900111222', email: null, address: 'Hà Nội' }, items: [], subtotal: 200000, discount: 0, shipping_fee: 0, total: 200000, shipping_info: null, completed_at: null, returned_at: null, created_at: date, updated_at: date, customer_account_id: 1, voucher_id: null, customer_service_note: null, cancel_reason: null, payment: { payment_status: 'UNPAID', amount_due: 200000, amount_received: 0, amount_refunded: 0, collected_by_account_id: null, collected_at: null, refunded_by_account_id: null, refunded_at: null }, allowed_actions: ['CONFIRM', 'CANCEL'] };
+let priceError = true;
 const supplier = { supplier_id: 1, name: 'Nhà cung cấp mẫu', phone: null, email: null, address: null, usage_status: 'ACTIVE', note: null };
 let receipt = { receipt_id: 1, receipt_code: 'GR-001', supplier_id: 1, receipt_status: 'DRAFT', receipt_date: '2026-10-08', confirmed_at: null, created_at: date, updated_at: date, created_by_account_id: 1, confirmed_by_account_id: null, note: null, items: [{ receipt_item_id: 1, variant_id: 10, quantity: 2 }] };
 let customerError = false;
@@ -28,11 +33,18 @@ await page.route('**/api/v1/**', async (route) => {
   if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' } });
   if (request.method() !== 'GET') {
     writes.push({ path, body: request.postDataJSON() });
+    if (path === '/admin/orders/1/actions') { order = { ...order, order_status: 'CONFIRMED', allowed_actions: ['PREPARE', 'CANCEL'] }; return send({ data: order }); }
+    if (path === '/admin/orders/1/payment-actions') { order = { ...order, payment: { ...order.payment, payment_status: 'PAID', amount_received: 200000 } }; return send({ data: order.payment }); }
+    if (path === '/admin/products/1/variants/10' && !priceError) { product = { ...product, variants: [{ ...product.variants[0], ...request.postDataJSON() }] }; return send({ data: product.variants[0] }); }
     if (path === '/admin/goods-receipts/1/actions') { receipt = { ...receipt, receipt_status: 'CONFIRMED' }; return send({ data: receipt }); }
     return send({ message: 'Lỗi lưu thử nghiệm' }, 500);
   }
   if (path === '/me') return send({ data: me });
   if (path === '/cart') return send({ data: { cart_id: 1, account_id: 1, items: [], subtotal: 0 } });
+  if (path === '/admin/products/1') return send({ data: product });
+  if (path === '/admin/products') return send(pagination([product]));
+  if (path === '/admin/orders/1') return send({ data: order });
+  if (path === '/admin/orders') return send(pagination([{ ...order, payment_status: order.payment.payment_status }]));
   if (path === '/admin/catalog/meta') return send({ data: metadata });
   if (path === '/admin/customers/1') return send({ message: 'Không tải được hồ sơ' }, 500);
   if (path === '/admin/customers') {
@@ -51,7 +63,7 @@ await page.route('**/api/v1/**', async (route) => {
   if (path === '/admin/content-pages') return send({ data: [{ page_id: 1, page_code: 'POLICY', title: 'Chính sách', content: 'Nội dung gốc' }] });
   return send(pagination([]));
 });
-const goto = async (path) => { await page.goto(`http://localhost:5180${path}`); await page.getByText('Hệ thống quản trị', { exact: true }).waitFor(); };
+const goto = async (path) => { console.log('Check', path); await page.goto(`http://localhost:5180${path}`); await page.getByText('Hệ thống quản trị', { exact: true }).waitFor(); };
 try {
   await goto('/admin/customers');
   await page.getByRole('cell', { name: '0900111222', exact: true }).waitFor();
@@ -78,7 +90,7 @@ try {
   await page.getByRole('dialog').getByRole('alert').waitFor();
   await page.getByRole('button', { name: 'Đóng hộp thoại' }).click();
   await goto('/admin/catalog/categories');
-  await page.getByRole('button', { name: 'brands', exact: true }).click();
+  await page.getByRole('button', { name: 'Thương hiệu', exact: true }).click();
   assert.match(page.url(), /catalog\/brands/);
   await page.goBack(); assert.match(page.url(), /catalog\/categories/);
   await goto('/admin/content');
@@ -95,15 +107,15 @@ try {
   await page.getByRole('button', { name: 'Chi tiết', exact: true }).click();
   await page.getByRole('textbox', { name: 'Ghi chú' }).fill('Thay đổi chưa lưu');
   const writeCount = writes.length;
-  await page.getByRole('button', { name: 'CONFIRM', exact: true }).click();
+  await page.getByRole('button', { name: 'Xác nhận nhập kho', exact: true }).click();
   await page.getByText('Phiếu có thay đổi chưa lưu.', { exact: false }).waitFor();
   assert.equal(writes.length, writeCount, 'dirty receipt cannot confirm');
   await page.getByRole('textbox', { name: 'Ghi chú' }).fill('');
   page.once('dialog', (dialog) => dialog.dismiss());
-  await page.getByRole('button', { name: 'CONFIRM', exact: true }).click();
+  await page.getByRole('button', { name: 'Xác nhận nhập kho', exact: true }).click();
   assert.equal(writes.length, writeCount, 'cancelled confirmation sends no request');
   page.once('dialog', (dialog) => dialog.accept());
-  await page.getByRole('button', { name: 'CONFIRM', exact: true }).click();
+  await page.getByRole('button', { name: 'Xác nhận nhập kho', exact: true }).click();
   await page.getByText('Đã xác nhận nhập kho.', { exact: true }).waitFor();
   assert.equal(writes.length, writeCount + 1);
   await goto('/admin/reports');
@@ -112,6 +124,38 @@ try {
   await page.getByRole('button', { name: 'Xem báo cáo' }).click();
   await page.getByRole('alert').waitFor();
   assert.equal(await page.getByText('123.456₫').count(), 0, 'stale report hidden');
+  await goto('/admin/goods-receipts');
+  await page.getByRole('button', { name: 'Chọn biến thể', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: /Áo thử nghiệm/ }).click();
+  await page.getByText('TEE-M-BLACK · M / Đen', { exact: true }).waitFor();
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: /Sản phẩm/ }).first().click();
+  await goto('/admin/products/1');
+  const price = page.getByRole('spinbutton', { name: 'Giá riêng TEE-M-BLACK' });
+  await price.fill('250000');
+  await page.getByRole('button', { name: 'Lưu giá', exact: true }).click();
+  await page.getByRole('alert').waitFor();
+  assert.equal(await price.inputValue(), '250000', 'failed price edit preserves input');
+  priceError = false;
+  await page.getByRole('button', { name: 'Lưu giá', exact: true }).click();
+  await page.getByText('Override: 250.000₫', { exact: false }).waitFor();
+  await goto('/admin/orders/1');
+  const beforeAction = writes.length;
+  page.once('dialog', (dialog) => dialog.dismiss());
+  await page.getByRole('button', { name: 'Xác nhận', exact: true }).click();
+  assert.equal(writes.length, beforeAction);
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Xác nhận', exact: true }).click();
+  await page.getByRole('button', { name: 'Bắt đầu chuẩn bị', exact: true }).waitFor();
+  assert.equal(writes.length, beforeAction + 1);
+  page.once('dialog', (dialog) => { assert.match(dialog.message(), /200.000/); dialog.accept(); });
+  await page.getByRole('button', { name: 'Thu COD', exact: true }).click();
+  await page.getByText('Thanh toán: Đã thu tiền', { exact: false }).waitFor();
+  await goto('/admin/orders?status=PENDING');
+  assert.equal(await page.getByRole('combobox', { name: 'Trạng thái đơn' }).inputValue(), 'PENDING');
+  await page.getByRole('combobox', { name: 'Trạng thái đơn' }).selectOption('CONFIRMED');
+  await page.goBack();
+  assert.equal(await page.getByRole('combobox', { name: 'Trạng thái đơn' }).inputValue(), 'PENDING');
   me = { ...me, roles: [{ ...role, code: 'ADMIN' }], permissions: [] };
   await goto('/admin/products');
   await page.getByRole('heading', { name: 'Không có quyền truy cập' }).waitFor();

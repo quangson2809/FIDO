@@ -1,7 +1,10 @@
+import { useSearchParams } from 'react-router-dom';
+import { formatVietnamDateTime } from '../../shared/time/formatVietnamDateTime';
+import { statusLabel } from '../../shared/admin/statusLabels';
 import { useCallback } from 'react';
 import { useRemoteQuery } from '../../shared/hooks/useRemoteQuery';
 import { QueryFeedback } from '../../shared/admin/QueryFeedback';
-import React, { useState } from 'react';
+import React from 'react';
 import { adminOrderService } from '../../features/orders/api/adminService';
 import type { OrderStatus, PaymentStatus } from '../../features/orders/types';
 
@@ -17,14 +20,20 @@ const orderStatuses: OrderStatus[] = [
 const paymentStatuses: PaymentStatus[] = ['UNPAID', 'PAID', 'REFUNDED'];
 
 export const AdminOrdersView: React.FC<Props> = ({ onSelectOrder }) => {
-  const [orderCode, setOrderCode] = useState('');
-  const [status, setStatus] = useState<OrderStatus | ''>('');
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | ''>('');
-  const [page, setPage] = useState(1);
+  const [params, setParams] = useSearchParams();
+  const orderCode = params.get('q') ?? '';
+  const status = orderStatuses.find((value) => value === params.get('status')) ?? '';
+  const paymentStatus = paymentStatuses.find((value) => value === params.get('payment')) ?? '';
+  const rawPage = Number(params.get('page'));
+  const page = Number.isSafeInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+  const filter = (key: string, value: string) => setParams((current) => { const next = new URLSearchParams(current); if (value) next.set(key, value); else next.delete(key); if (key !== 'page') next.delete('page'); return next; });
+  const setOrderCode = (value: string) => filter('q', value);
+  const setStatus = (value: string) => filter('status', value);
+  const setPaymentStatus = (value: string) => filter('payment', value);
+  const setPage = (value: number) => filter('page', String(value));
   const list = useRemoteQuery(useCallback(() => adminOrderService.list({ order_code: orderCode.trim() || undefined, order_status: status || undefined, payment_status: paymentStatus || undefined, page, page_size: 20 }), [orderCode, status, paymentStatus, page]));
   const { data, loading, error } = list;
 
-  const resetPage = () => setPage(1);
 
   return (
     <div className="space-y-6">
@@ -37,20 +46,20 @@ export const AdminOrdersView: React.FC<Props> = ({ onSelectOrder }) => {
       <div className="grid gap-3 rounded-lg border border-[#E2E5DE] bg-white p-4 md:grid-cols-3">
         <label className="space-y-1">
           <span className="text-xs font-semibold">Mã đơn</span>
-          <input value={orderCode} onChange={(event) => { setOrderCode(event.target.value); resetPage(); }} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" placeholder="ORD-..." />
+          <input value={orderCode} onChange={(event) => { setOrderCode(event.target.value); }} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" placeholder="ORD-..." />
         </label>
         <label className="space-y-1">
           <span className="text-xs font-semibold">Trạng thái đơn</span>
-          <select value={status} onChange={(event) => { setStatus(event.target.value as OrderStatus | ''); resetPage(); }} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm">
+          <select value={status} onChange={(event) => { setStatus(event.target.value as OrderStatus | ''); }} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm">
             <option value="">Tất cả</option>
-            {orderStatuses.map((item) => <option key={item} value={item}>{item}</option>)}
+            {orderStatuses.map((item) => <option key={item} value={item}>{statusLabel(item)}</option>)}
           </select>
         </label>
         <label className="space-y-1">
           <span className="text-xs font-semibold">Thanh toán</span>
-          <select value={paymentStatus} onChange={(event) => { setPaymentStatus(event.target.value as PaymentStatus | ''); resetPage(); }} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm">
+          <select value={paymentStatus} onChange={(event) => { setPaymentStatus(event.target.value as PaymentStatus | ''); }} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm">
             <option value="">Tất cả</option>
-            {paymentStatuses.map((item) => <option key={item} value={item}>{item}</option>)}
+            {paymentStatuses.map((item) => <option key={item} value={item}>{statusLabel(item)}</option>)}
           </select>
         </label>
       </div>
@@ -71,10 +80,10 @@ export const AdminOrdersView: React.FC<Props> = ({ onSelectOrder }) => {
               {data.data.map((order) => (
                 <tr key={order.order_id}>
                   <td className="px-4 py-3 font-mono font-semibold">{order.order_code}</td>
-                  <td className="px-4 py-3">{order.order_status}</td>
-                  <td className="px-4 py-3">{order.payment_status}</td>
+                  <td className="px-4 py-3">{statusLabel(order.order_status)}</td>
+                  <td className="px-4 py-3">{statusLabel(order.payment_status)}</td>
                   <td className="px-4 py-3 font-semibold">{order.total.toLocaleString('vi-VN')}₫</td>
-                  <td className="px-4 py-3 text-xs text-[#606863]">{order.created_at}</td>
+                  <td className="px-4 py-3 text-xs text-[#606863]">{formatVietnamDateTime(order.created_at)}</td>
                   <td className="px-4 py-3 text-right"><button type="button" onClick={() => onSelectOrder(order.order_id)} className="border border-[#0B2419] px-3 py-2 text-xs font-bold uppercase tracking-wider">Chi tiết</button></td>
                 </tr>
               ))}
@@ -85,9 +94,9 @@ export const AdminOrdersView: React.FC<Props> = ({ onSelectOrder }) => {
 
       {data && data.meta.total_pages > 1 && (
         <div className="flex items-center justify-center gap-3 text-sm">
-          <button type="button" disabled={page <= 1 || loading} onClick={() => setPage((value) => Math.max(1, value - 1))} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang trước</button>
+          <button type="button" disabled={page <= 1 || loading} onClick={() => setPage(Math.max(1, page - 1))} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang trước</button>
           <span>Trang {data.meta.page} / {data.meta.total_pages}</span>
-          <button type="button" disabled={page >= data.meta.total_pages || loading} onClick={() => setPage((value) => value + 1)} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang sau</button>
+          <button type="button" disabled={page >= data.meta.total_pages || loading} onClick={() => setPage(page + 1)} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang sau</button>
         </div>
       )}
     </div>

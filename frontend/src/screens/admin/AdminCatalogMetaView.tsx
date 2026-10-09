@@ -1,3 +1,5 @@
+import { Modal } from '../../shared/admin/Modal';
+import { getApiErrorMessage } from '../../services/http/apiError';
 import { useDirtyForm } from '../../shared/admin/dirtyFormContext';
 import React, { useEffect, useState } from 'react';
 import { adminCatalogMetaService } from '../../features/catalog/api/adminCatalogMetaService';
@@ -23,6 +25,8 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<{ kind: Tab; id: number; name: string } | null>(null);
+  const [nextName, setNextName] = useState('');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [parentId, setParentId] = useState('');
@@ -30,7 +34,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
   const [sizeCode, setSizeCode] = useState('');
   const [sizeSortOrder, setSizeSortOrder] = useState('0');
 
-  useDirtyForm(Boolean(name || code || parentId || sizeDisplayName || sizeCode || sizeSortOrder !== '0'));
+  const canDiscard = useDirtyForm(Boolean((renaming && nextName !== renaming.name) || name || code || parentId || sizeDisplayName || sizeCode || sizeSortOrder !== '0'));
 
   const load = async () => {
     setLoading(true);
@@ -109,20 +113,20 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
     }
   };
 
-  const rename = async (kind: Tab, id: number, currentName: string) => {
-    if (!canWrite) return;
-    const nextName = window.prompt('Tên mới', currentName)?.trim();
-    if (!nextName || busy) return;
+  const rename = async () => {
+    if (!canWrite || !renaming || !nextName.trim() || busy) return;
+    const { kind, id } = renaming;
     setBusy(true);
     setError(null);
     try {
-      if (kind === 'categories') await adminCatalogMetaService.updateCategory(id, { name: nextName });
-      if (kind === 'brands') await adminCatalogMetaService.updateBrand(id, { name: nextName });
-      if (kind === 'colors') await adminCatalogMetaService.updateColor(id, { name: nextName });
-      if (kind === 'sizes') await adminCatalogMetaService.updateSizeSystem(id, { name: nextName });
+      if (kind === 'categories') await adminCatalogMetaService.updateCategory(id, { name: nextName.trim() });
+      if (kind === 'brands') await adminCatalogMetaService.updateBrand(id, { name: nextName.trim() });
+      if (kind === 'colors') await adminCatalogMetaService.updateColor(id, { name: nextName.trim() });
+      if (kind === 'sizes') await adminCatalogMetaService.updateSizeSystem(id, { name: nextName.trim() });
+      setRenaming(null);
       await load();
-    } catch {
-      setError('Không thể cập nhật metadata.');
+    } catch (failure: unknown) {
+      setError(getApiErrorMessage(failure, 'Không thể cập nhật metadata.'));
     } finally {
       setBusy(false);
     }
@@ -157,6 +161,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
 
   return (
     <div className="space-y-6">
+      {renaming && <Modal title={`Đổi tên ${renaming.name}`} busy={busy} onClose={() => { if (canDiscard()) setRenaming(null); }}><form onSubmit={(event) => { event.preventDefault(); void rename(); }}><label>Tên mới<input required disabled={busy} maxLength={renaming.kind === 'colors' ? 100 : 150} value={nextName} onChange={(event) => setNextName(event.target.value)} /></label>{error && <p role="alert" className="text-red-700">{error}</p>}<button type="submit" className="admin-primary" disabled={busy || !nextName.trim()}>Lưu tên</button></form></Modal>}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">Catalog master data</p>
@@ -168,7 +173,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
 
       <div className="flex flex-wrap gap-2">
         {(['categories', 'brands', 'sizes', 'colors'] as Tab[]).map((tab) => (
-          <button key={tab} type="button" onClick={() => onNavigateTab(tab, tab)} aria-current={activeTab === tab ? 'page' : undefined} className={`px-4 py-2 text-xs font-bold uppercase ${activeTab === tab ? 'bg-[#0B2419] text-white' : 'border border-[#D9DDD6] bg-white'}`}>{tab}</button>
+          <button key={tab} type="button" onClick={() => onNavigateTab(tab, tab)} aria-current={activeTab === tab ? 'page' : undefined} className={`px-4 py-2 text-xs font-bold uppercase ${activeTab === tab ? 'bg-[#0B2419] text-white' : 'border border-[#D9DDD6] bg-white'}`}>{{ categories: 'Danh mục', brands: 'Thương hiệu', sizes: 'Hệ size', colors: 'Màu sắc' }[tab]}</button>
         ))}
       </div>
 
@@ -176,9 +181,9 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
       {!canWrite && <div className="border border-[#E2E5DE] bg-[#F8FAF4] p-3 text-sm text-[#606863]">Chế độ chỉ đọc. Cần CATALOG_WRITE để tạo, sửa hoặc xóa metadata.</div>}
 
       {canWrite && <form onSubmit={createCurrent} className="grid gap-3 rounded-lg border border-[#E2E5DE] bg-white p-5 md:grid-cols-2 xl:grid-cols-4"><fieldset disabled={busy} className="contents">
-        <label className="space-y-1"><span className="text-xs font-semibold">Tên *</span><input value={name} maxLength={150} onChange={(event) => setName(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" required /></label>
+        <label className="space-y-1"><span className="text-xs font-semibold">Tên *</span><input value={name} maxLength={activeTab === 'colors' ? 100 : 150} onChange={(event) => setName(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" required /></label>
         {(activeTab === 'colors' || activeTab === 'sizes') && <label className="space-y-1"><span className="text-xs font-semibold">Code *</span><input value={code} maxLength={50} onChange={(event) => setCode(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" required /></label>}
-        {activeTab === 'categories' && <label className="space-y-1"><span className="text-xs font-semibold">Parent category ID</span><input type="number" min="1" value={parentId} onChange={(event) => setParentId(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>}
+        {activeTab === 'categories' && <label className="space-y-1"><span className="text-xs font-semibold">Danh mục cha</span><select value={parentId} onChange={(event) => setParentId(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">Danh mục gốc</option>{meta?.categories.map((category) => <option key={category.category_id} value={category.category_id}>{category.name}</option>)}</select></label>}
         {activeTab === 'sizes' && <><label className="space-y-1"><span className="text-xs font-semibold">Size đầu tiên: code *</span><input value={sizeCode} maxLength={50} onChange={(event) => setSizeCode(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" required /></label><label className="space-y-1"><span className="text-xs font-semibold">Size đầu tiên: display *</span><input value={sizeDisplayName} maxLength={100} onChange={(event) => setSizeDisplayName(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" required /></label><label className="space-y-1"><span className="text-xs font-semibold">Sort order *</span><input type="number" value={sizeSortOrder} onChange={(event) => setSizeSortOrder(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" required /></label></>}
         <div className="flex items-end"><button type="submit" disabled={busy} className="w-full bg-[#0B2419] px-4 py-2.5 text-xs font-bold uppercase text-white disabled:opacity-40">{busy ? 'Đang xử lý...' : 'Tạo mới'}</button></div>
       </fieldset></form>}
@@ -190,7 +195,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
             {rows.map((row) => {
               const id = 'category_id' in row ? row.category_id : 'brand_id' in row ? row.brand_id : 'color_id' in row ? row.color_id : row.size_system_id;
               const detail = 'parent_category_id' in row ? `parent: ${row.parent_category_id ?? 'root'}` : 'size_values' in row ? `${row.code} · ${row.size_values.length} size values` : 'code' in row ? row.code : '';
-              return <tr key={id}><td className="px-4 py-3 font-mono">#{id}</td><td className="px-4 py-3 font-semibold">{row.name}</td><td className="px-4 py-3 text-xs text-[#606863]">{detail}</td><td className="px-4 py-3 text-right">{canWrite && <div className="flex justify-end gap-2"><button type="button" disabled={busy} onClick={() => void rename(activeTab, id, row.name)} className="border border-[#D9DDD6] px-3 py-1.5 text-xs font-semibold">Đổi tên</button><button type="button" disabled={busy} onClick={() => void remove(activeTab, id)} className="border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700">Xóa</button></div>}</td></tr>;
+              return <tr key={id}><td className="px-4 py-3 font-mono">#{id}</td><td className="px-4 py-3 font-semibold">{row.name}</td><td className="px-4 py-3 text-xs text-[#606863]">{detail}</td><td className="px-4 py-3 text-right">{canWrite && <div className="flex justify-end gap-2"><button type="button" disabled={busy} onClick={() => { setRenaming({ kind: activeTab, id, name: row.name }); setNextName(row.name); }} className="border border-[#D9DDD6] px-3 py-1.5 text-xs font-semibold">Đổi tên</button><button type="button" disabled={busy} onClick={() => void remove(activeTab, id)} className="border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700">Xóa</button></div>}</td></tr>;
             })}
           </tbody>
         </table>

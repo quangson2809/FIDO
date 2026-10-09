@@ -5,6 +5,7 @@ import type { ContentPageDto } from '../../features/content/types';
 import { getApiErrorMessage } from '../../services/http/apiError';
 
 export const AdminSettingsView: React.FC<{ showToast: (msg: string) => void; canWrite: boolean }> = ({ showToast, canWrite }) => {
+  const [preview, setPreview] = useState(false);
   const [pages, setPages] = useState<ContentPageDto[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [title, setTitle] = useState('');
@@ -60,6 +61,8 @@ export const AdminSettingsView: React.FC<{ showToast: (msg: string) => void; can
   return (
     <section className="space-y-6">
       <header><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">Content pages</p><h1 className="mt-1 font-serif text-3xl">Quản lý nội dung</h1><p className="mt-2 max-w-3xl text-sm text-[#606863]">FIDO hiện có API content page, không có generic business-settings API. Vì vậy màn hình này chỉ quản lý nội dung được backend hỗ trợ.</p></header>
+      <button type="button" aria-pressed={preview} onClick={() => setPreview((value) => !value)} className="admin-secondary">{preview ? "Ẩn xem trước" : "Xem trước nội dung"}</button>
+      {preview && <article className="rounded-xl border border-[#E2E5DE] bg-white p-6"><h2 className="font-serif text-2xl">{title}</h2><p className="mt-4 whitespace-pre-wrap leading-7">{content}</p></article>}
       {error && <div className="border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}<button type="button" onClick={() => { setLoading(true); setRevision((value) => value + 1); }}>Thử lại</button></div>}
       {!canWrite && <div className="border border-[#E8E9E3] bg-[#F8FAF4] p-3 text-sm text-[#606863]">Chế độ chỉ đọc. Cần CONTENT_WRITE để cập nhật nội dung.</div>}
       {loading ? <div className="p-8 text-center text-sm text-[#687069]">Đang tải...</div> : pages.length === 0 ? <div className="border border-[#E8E9E3] bg-white p-8 text-center text-sm text-[#687069]">Chưa có content page. Không tự tạo page code mặc định vì đó là dữ liệu nghiệp vụ.</div> : (

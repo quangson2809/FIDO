@@ -1,3 +1,5 @@
+import { formatVietnamDateTime } from '../../shared/time/formatVietnamDateTime';
+import { statusLabel } from '../../shared/admin/statusLabels';
 import { useRemoteQuery } from '../../shared/hooks/useRemoteQuery';
 import { QueryFeedback } from '../../shared/admin/QueryFeedback';
 import { Pagination } from '../../shared/admin/Pagination';
@@ -5,9 +7,6 @@ import { Modal } from '../../shared/admin/Modal';
 import React, { useCallback, useState } from 'react';
 import { adminAccessService } from '../../features/adminAccess/api/service';
 
-const formatDate = (value: string | null): string => value
-  ? new Date(value).toLocaleString('vi-VN')
-  : 'Chưa có đơn';
 
 interface AdminCustomersViewProps {
   initialCustomerId?: number;
@@ -57,7 +56,7 @@ export const AdminCustomersView: React.FC<AdminCustomersViewProps> = ({
                 <td className="px-4 py-3 font-semibold">{customer.phone}</td>
                 <td className="px-4 py-3">{customer.email ?? '—'}</td>
                 <td className="px-4 py-3">{customer.order_count}</td>
-                <td className="px-4 py-3">{formatDate(customer.last_order_at)}</td>
+                <td className="px-4 py-3">{formatVietnamDateTime(customer.last_order_at)}</td>
                 <td className="px-4 py-3 text-right"><button type="button" onClick={() => void openDetail(customer.account_id)} className="border border-[#0B2419] px-3 py-1.5 text-xs font-semibold">Chi tiết</button></td>
               </tr>
             ))}
@@ -78,7 +77,7 @@ function CustomerDetail({ customerId, onClose }: { customerId: number; onClose: 
     <QueryFeedback loading={query.loading} error={query.error} onRetry={query.reload} />
     {detail && <div className="space-y-4"><h3>{detail.account.phone}</h3><p>{detail.account.email ?? 'Không có email'}</p>
       <h3>Địa chỉ</h3>{detail.addresses.length ? detail.addresses.map((address) => <p key={address.address_id}>{address.address_text}</p>) : <p>Chưa có địa chỉ.</p>}
-      <h3>Đơn hàng gần đây</h3>{detail.orders.length ? detail.orders.map((order) => <p key={order.order_id}>{order.order_code} · {order.order_status} · {order.total.toLocaleString('vi-VN')}₫</p>) : <p>Chưa có đơn hàng.</p>}
+      <h3>Đơn hàng gần đây</h3>{detail.orders.length ? detail.orders.map((order) => <p key={order.order_id}>{order.order_code} · {statusLabel(order.order_status)} · {order.total.toLocaleString('vi-VN')}₫</p>) : <p>Chưa có đơn hàng.</p>}
     </div>}
   </Modal>;
 }

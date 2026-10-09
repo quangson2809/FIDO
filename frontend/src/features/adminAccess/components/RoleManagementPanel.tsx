@@ -1,3 +1,4 @@
+import { AccessChangePreview } from './AccessChangePreview';
 import { useDirtyForm } from '../../../shared/admin/dirtyFormContext';
 import { Modal } from '../../../shared/admin/Modal';
 import React, { useState } from 'react';
@@ -270,6 +271,7 @@ export const RoleManagementPanel: React.FC<{
                   </label>
                 ))}
               </div>
+              <AccessChangePreview label="quyền" before={editingRole.permissions.map((permission) => permission.permission_id)} after={editingRoleDraft.permissionIds} items={access.permissions.map((permission) => ({ id: permission.permission_id, name: permission.code }))} />
               <button
                 type="button"
                 disabled={busy}

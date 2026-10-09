@@ -1,3 +1,4 @@
+import { statusLabel } from '../../shared/admin/statusLabels';
 import { useDirtyForm } from '../../shared/admin/dirtyFormContext';
 import React, { useEffect, useMemo, useState } from 'react';
 import { adminCatalogMetaService } from '../../features/catalog/api/adminCatalogMetaService';
@@ -43,9 +44,9 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
   const infoDirty = Boolean(product && editing && (name !== product.name || description !== (product.description ?? '') || basePrice !== String(product.base_price) || saleStatus !== product.sale_status));
   const canDiscard = useDirtyForm(infoDirty || Boolean(variantSize || variantColor || variantSku || variantOverridePrice || imageFiles.length));
 
-  const applyProduct = (detail: AdminProductDetailDto) => {
+  const applyProduct = (detail: AdminProductDetailDto, preserveDraft = true) => {
     setProduct(detail);
-    if (editing) return;
+    if (editing && preserveDraft) return;
     setName(detail.name);
     setDescription(detail.description ?? '');
     setBasePrice(String(detail.base_price));
@@ -117,7 +118,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
         description: description.trim() || null,
         base_price: price,
         sale_status: saleStatus,
-      }));
+      }), false);
       setEditing(false);
       setError(null);
       showToast('Đã cập nhật sản phẩm.');
@@ -269,11 +270,12 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
           <p className="font-mono text-xs text-[#606863]">Product #{product.product_id}</p>
           <h1 className="mt-1 font-serif text-3xl font-bold">{product.name}</h1>
         </div>
-        <span className="bg-[#FAF4DF] px-3 py-2 text-xs font-bold">{product.sale_status}</span>
+        <span className="bg-[#FAF4DF] px-3 py-2 text-xs font-bold">{statusLabel(product.sale_status)}</span>
       </div>
 
       {error && <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
 
+      <nav aria-label="Các bước quản lý sản phẩm" className="admin-steps"><a href="#product-info">1. Thông tin</a><a href="#product-images">2. Hình ảnh</a><a href="#product-variants">3. Biến thể</a></nav>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
           <AdminProductInfoSection
@@ -323,6 +325,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
           onVariantSkuChange={setVariantSku}
           onVariantOverridePriceChange={setVariantOverridePrice}
           onAddVariant={() => void addVariant()}
+          onVariantSaved={(updated) => setProduct((current) => current ? { ...current, variants: current.variants.map((variant) => variant.variant_id === updated.variant_id ? updated : variant) } : current)}
           onToggleVariant={(variantId, current) => void toggleVariant(variantId, current)}
         />
       </div>

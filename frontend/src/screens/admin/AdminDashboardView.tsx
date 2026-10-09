@@ -1,3 +1,4 @@
+import { AdminWorkQueue } from '../../features/adminAccess/components/AdminWorkQueue';
 import React from 'react';
 
 const modules = [
@@ -35,6 +36,7 @@ export const AdminDashboardView: React.FC<{
       </div>
     </div>
 
+    <AdminWorkQueue modules={visibleModuleKeys} />
     <div className="flex items-end justify-between border-b border-[#D9DDD6] pb-4">
       <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#687069]">Modules</p><h2 className="font-serif text-2xl">Không gian vận hành</h2></div>
       <span className="hidden text-[10px] font-bold uppercase tracking-wider text-[#687069] sm:inline">{visibleModules.length} module khả dụng</span>

@@ -1,6 +1,10 @@
+import { VariantPriceEditor } from './VariantPriceEditor';
+import { ImageFilePreview } from './ImageFilePreview';
+import { statusLabel } from '../../../shared/admin/statusLabels';
 import React from 'react';
 import type {
   AdminProductDetailDto,
+  AdminVariantDto,
   CatalogMetaDto,
   ColorDto,
   ProductImageDto,
@@ -42,7 +46,7 @@ export const AdminProductInfoSection: React.FC<{
   onSave,
   onCancel,
 }) => (
-  <section className="rounded-lg border border-[#E2E5DE] bg-white p-5">
+  <section id="product-info" className="rounded-lg border border-[#E2E5DE] bg-white p-5">
     <div className="flex items-center justify-between">
       <h2 className="font-serif text-xl font-bold">Thông tin sản phẩm</h2>
       {!editing && canWrite && (
@@ -95,8 +99,8 @@ export const AdminProductInfoSection: React.FC<{
               onChange={(event) => onSaleStatusChange(event.target.value as SaleStatus)}
               className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
             >
-              <option value="ON_SALE">ON_SALE</option>
-              <option value="STOPPED">STOPPED</option>
+              <option value="ON_SALE">{statusLabel('ON_SALE')}</option>
+              <option value="STOPPED">{statusLabel('STOPPED')}</option>
             </select>
           </label>
         </div>
@@ -155,7 +159,7 @@ export const AdminProductGallerySection: React.FC<{
   onMove,
   onDelete,
 }) => (
-  <section className="rounded-lg border border-[#E2E5DE] bg-white p-5">
+  <section id="product-images" className="rounded-lg border border-[#E2E5DE] bg-white p-5">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h2 className="font-serif text-xl font-bold">Ảnh sản phẩm</h2>
@@ -169,6 +173,8 @@ export const AdminProductGallerySection: React.FC<{
     {canWrite ? (
       <div className="mt-4 flex flex-wrap items-center gap-3 border border-dashed border-[#D9DDD6] bg-[#F8FAF4] p-3">
         <input
+          aria-label="Chọn ảnh sản phẩm"
+          disabled={busy}
           type="file"
           multiple
           accept="image/jpeg,image/png,image/webp"
@@ -188,6 +194,7 @@ export const AdminProductGallerySection: React.FC<{
       <p className="mt-4 text-xs text-[#687069]">Chế độ chỉ đọc: cần CATALOG_WRITE để thay đổi gallery.</p>
     )}
 
+    <ImageFilePreview files={imageFiles} />
     {images.length === 0 ? (
       <div className="mt-4 border border-[#E2E5DE] bg-[#F5F6F2] p-8 text-center text-sm text-[#606863]">
         Gallery đang trống.
@@ -212,6 +219,7 @@ export const AdminProductGallerySection: React.FC<{
                   <button
                     type="button"
                     disabled={busy || index === 0}
+                    aria-label={`Đưa ảnh ${index + 1} lên trước`}
                     onClick={() => onMove(image.image_id, -1)}
                     className="border border-[#D9DDD6] px-1 py-1 disabled:opacity-30"
                   >
@@ -220,6 +228,7 @@ export const AdminProductGallerySection: React.FC<{
                   <button
                     type="button"
                     disabled={busy || index === images.length - 1}
+                    aria-label={`Đưa ảnh ${index + 1} ra sau`}
                     onClick={() => onMove(image.image_id, 1)}
                     className="border border-[#D9DDD6] px-1 py-1 disabled:opacity-30"
                   >
@@ -259,6 +268,7 @@ export const AdminProductVariantsPanel: React.FC<{
   onVariantSkuChange: (value: string) => void;
   onVariantOverridePriceChange: (value: string) => void;
   onAddVariant: () => void;
+  onVariantSaved: (variant: AdminVariantDto) => void;
   onToggleVariant: (variantId: number, saleStatus: SaleStatus) => void;
 }> = ({
   product,
@@ -277,8 +287,9 @@ export const AdminProductVariantsPanel: React.FC<{
   onVariantOverridePriceChange,
   onAddVariant,
   onToggleVariant,
+  onVariantSaved,
 }) => (
-  <aside className="space-y-5">
+  <aside id="product-variants" className="space-y-5">
     {canWrite && <section className="rounded-lg border border-[#E2E5DE] bg-white p-5">
       <h2 className="font-serif text-xl font-bold">Thêm biến thể</h2>
       <div className="mt-4 space-y-3">
@@ -298,7 +309,7 @@ export const AdminProductVariantsPanel: React.FC<{
           className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
         >
           <option value="">Chọn màu</option>
-          {meta?.colors.map((item) => <option key={item.color_id} value={item.color_id}>{item.name}</option>)}
+          {meta?.colors.map((item) => <option key={item.color_id} value={item.color_id} disabled={product.variants.some((variant) => variant.size_value_id === Number(variantSize) && variant.color_id === item.color_id)}>{item.name}{product.variants.some((variant) => variant.size_value_id === Number(variantSize) && variant.color_id === item.color_id) ? " · Đã có" : ""}</option>)}
         </select>
         <input
           maxLength={100}
@@ -318,7 +329,7 @@ export const AdminProductVariantsPanel: React.FC<{
         />
         <button
           type="button"
-          disabled={busy || !variantSize || !variantColor}
+          disabled={busy || !variantSize || !variantColor || product.variants.some((variant) => variant.size_value_id === Number(variantSize) && variant.color_id === Number(variantColor))}
           onClick={onAddVariant}
           className="w-full bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white disabled:opacity-40"
         >
@@ -341,7 +352,7 @@ export const AdminProductVariantsPanel: React.FC<{
                 <strong>
                   {size?.display_name ?? `Size #${variant.size_value_id}`} · {color?.name ?? `Color #${variant.color_id}`}
                 </strong>
-                <span className="text-[10px] font-bold">{variant.sale_status}</span>
+                <span className="text-[10px] font-bold">{statusLabel(variant.sale_status)}</span>
               </div>
               <p className="mt-1 text-xs text-[#606863]">
                 {variant.sku ?? `Variant #${variant.variant_id}`} · Available {variant.available_quantity}
@@ -349,6 +360,7 @@ export const AdminProductVariantsPanel: React.FC<{
               <p className="mt-1 text-xs">
                 Override: {variant.override_price === null ? '—' : `${variant.override_price.toLocaleString('vi-VN')}₫`}
               </p>
+              {canWrite && <VariantPriceEditor key={`${variant.variant_id}-${variant.override_price}`} variant={variant} onSaved={onVariantSaved} />}
               {canWrite && <button
                 type="button"
                 disabled={busy}
