@@ -1,3 +1,4 @@
+import { adminCatalogMetaService } from '../src/features/catalog/api/adminCatalogMetaService';
 import assert from 'node:assert/strict';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { authService } from '../src/features/auth/api/service';
@@ -31,9 +32,20 @@ const requireBearer = (request: IncomingMessage): void => {
   bearerRequestCount += 1;
 };
 
+let capturedSizeBody: unknown;
 const server = createServer((request, response) => {
   const url = new URL(request.url ?? '/', 'http://localhost');
 
+  if (url.pathname === '/api/v1/admin/size-systems/12' && request.method === 'PATCH') {
+    requireBearer(request);
+    let body = '';
+    request.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+    request.on('end', () => {
+      capturedSizeBody = JSON.parse(body);
+      writeJson(response, 200, { data: { size_system_id: 12, code: 'ALPHA', name: 'Alpha', size_values: [] } });
+    });
+    return;
+  }
   if (request.method === 'POST' && url.pathname === '/api/v1/auth/register') {
     writeJson(response, 201, { data: account });
     return;
@@ -230,6 +242,15 @@ try {
   const login = await authService.login('0909000001', 'Fido@123');
   assert.equal(login.access_token, 'smoke-token');
 
+  const sizes = [
+    { size_value_id: 21, code: 'M', display_name: 'Medium', sort_order: 2 },
+    { size_value_id: 22, code: 'L', display_name: 'Large', sort_order: 1 },
+    { code: 'XL', display_name: 'Extra large', sort_order: 3 },
+  ];
+  await adminCatalogMetaService.updateSizeSystem(12, { size_values: sizes });
+  assert.deepEqual(capturedSizeBody, { size_values: sizes }, 'Preserve IDs and all retained sizes');
+  await adminCatalogMetaService.updateSizeSystem(12, { size_values: sizes.slice(1) });
+  assert.deepEqual(capturedSizeBody, { size_values: sizes.slice(1) }, 'Only omit explicitly removed sizes');
   const me = await profileService.getMe();
   assert.equal(me.roles[0]?.code, 'SUPERADMIN');
 

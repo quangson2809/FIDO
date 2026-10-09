@@ -334,7 +334,8 @@ public class ProductAdminService {
             Long productId,
             VariantBatchCreateRequest request
     ) {
-        Product product = references.product(productId);
+        // Serialize size-system changes and variant creation on the same product row.
+        Product product = references.productForUpdate(productId);
 
         var variantInputs = request.variants()
                 .stream()

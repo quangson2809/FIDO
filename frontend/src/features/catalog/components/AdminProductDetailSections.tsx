@@ -10,11 +10,15 @@ import type {
   ProductImageDto,
   SaleStatus,
   SizeValueDto,
+  SizeSystemDto,
 } from '../types';
 import { resolveImageUrl } from '../../../services/media/imageUrl';
 
 export const AdminProductInfoSection: React.FC<{
   product: AdminProductDetailDto;
+  sizeSystems: readonly SizeSystemDto[];
+  sizeSystemId: string;
+  onSizeSystemChange: (value: string) => void;
   editing: boolean;
   busy: boolean;
   canWrite: boolean;
@@ -31,6 +35,9 @@ export const AdminProductInfoSection: React.FC<{
   onCancel: () => void;
 }> = ({
   product,
+  sizeSystems,
+  sizeSystemId,
+  onSizeSystemChange,
   editing,
   busy,
   canWrite,
@@ -63,6 +70,8 @@ export const AdminProductInfoSection: React.FC<{
 
     {editing && canWrite ? (
       <fieldset disabled={busy} className="mt-4 space-y-3">
+        <label className="block space-y-1">Hệ size<select value={sizeSystemId} onChange={(event) => onSizeSystemChange(event.target.value)}>{sizeSystems.map((system) => <option key={system.size_system_id} value={system.size_system_id}>{system.name}</option>)}</select></label>
+        <p className="text-xs">Chỉ đổi được khi các biến thể tương thích với hệ size mới. Không tự chuyển đổi hoặc xóa biến thể.</p>
         <label className="block space-y-1">
           <span className="text-xs font-semibold">Tên</span>
           <input

@@ -183,6 +183,9 @@ const adminProduct: AdminProductDetailDto = {
 const readOnlyProductInfoHtml = renderToStaticMarkup(
   <AdminProductInfoSection
     product={adminProduct}
+    sizeSystems={[adminProduct.size_system]}
+    sizeSystemId={String(adminProduct.size_system.size_system_id)}
+    onSizeSystemChange={noOp}
     editing={false}
     busy={false}
     canWrite={false}

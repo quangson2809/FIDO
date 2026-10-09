@@ -11,5 +11,6 @@ public interface SizeValueRepository extends Repository<SizeValue, Long> {
     SizeValue save(SizeValue entity);
     List<SizeValue> findAllBySizeSystemIdOrderBySortOrderAscSizeValueIdAsc(Long sizeSystemId);
     List<SizeValue> findAllBySizeValueIdIn(Collection<Long> sizeValueIds);
+    List<SizeValue> findAllByOrderBySizeSystemIdAscSortOrderAscSizeValueIdAsc();
     void delete(SizeValue entity);
 }

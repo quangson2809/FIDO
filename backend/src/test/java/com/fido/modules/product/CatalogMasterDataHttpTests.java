@@ -10,6 +10,45 @@ import org.junit.jupiter.api.Test;
 class CatalogMasterDataHttpTests extends CatalogHttpSupport {
 
     @Test
+    void sizeValueSynchronizationPreservesIdsAndRollsBackForbiddenMeaningChanges() throws Exception {
+        Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
+        var fixture = createCatalog(writer);
+        String path = "/api/v1/admin/size-systems/" + fixture.systemId();
+        var current = fixture.systemResponse().data().get("data").get("size_values");
+        var retained = new java.util.ArrayList<Map<String, Object>>();
+        for (var value : current) {
+            retained.add(Map.of("size_value_id", value.get("size_value_id").asLong(),
+                    "code", value.get("code").asText(), "display_name", value.get("display_name").asText(),
+                    "sort_order", value.get("sort_order").asInt() + 10));
+        }
+        retained.add(Map.of("code", "EXTRA", "display_name", "Extra", "sort_order", -1));
+        var added = call("PATCH", path, writer.token(), Map.of("size_values", retained));
+        assertEquals(200, added.status(), added.body());
+        assertEquals(current.size() + 1, added.data().get("data").get("size_values").size());
+        assertEquals("EXTRA", added.data().get("data").get("size_values").get(0).get("code").asText());
+        assertEquals(1, db.queryForObject("SELECT COUNT(*) FROM size_values WHERE size_value_id=? AND size_system_id=?",
+                Integer.class, fixture.sizeM(), fixture.systemId()));
+
+        retained.remove(retained.size() - 1);
+        var removed = call("PATCH", path, writer.token(), Map.of("size_values", retained));
+        assertEquals(200, removed.status(), removed.body());
+        assertEquals(current.size(), removed.data().get("data").get("size_values").size());
+        String originalName = removed.data().get("data").get("name").asText();
+        for (int index = 0; index < retained.size(); index++) {
+            if (retained.get(index).get("size_value_id").equals(fixture.sizeM())) {
+                var changed = new java.util.HashMap<>(retained.get(index));
+                changed.put("display_name", "Different meaning");
+                retained.set(index, changed);
+            }
+        }
+        assertEquals(409, call("PATCH", path, writer.token(),
+                Map.of("name", "Must roll back", "size_values", retained)).status());
+        assertEquals(originalName, db.queryForObject("SELECT name FROM size_systems WHERE size_system_id=?",
+                String.class, fixture.systemId()));
+        assertEquals(409, call("PATCH", path, writer.token(), Map.of("size_values", List.of())).status());
+    }
+
+    @Test
     void masterDataCreationAndReferenceRules() throws Exception {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         var fixture = createCatalog(writer);

@@ -1,9 +1,9 @@
 import { Modal } from '../../shared/admin/Modal';
-import { getApiErrorMessage } from '../../services/http/apiError';
+import { ApiClientError, getApiErrorMessage } from '../../services/http/apiError';
 import { useDirtyForm } from '../../shared/admin/dirtyFormContext';
 import React, { useEffect, useState } from 'react';
 import { adminCatalogMetaService } from '../../features/catalog/api/adminCatalogMetaService';
-import type { CatalogMetaDto } from '../../features/catalog/types';
+import type { CatalogMetaDto, SizeSystemDto, SizeSystemPatchInput } from '../../features/catalog/types';
 
 type Tab = 'categories' | 'brands' | 'sizes' | 'colors';
 
@@ -30,11 +30,59 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [parentId, setParentId] = useState('');
-  const [sizeDisplayName, setSizeDisplayName] = useState('');
-  const [sizeCode, setSizeCode] = useState('');
-  const [sizeSortOrder, setSizeSortOrder] = useState('0');
+  const [sizeValues, setSizeValues] = useState<NonNullable<SizeSystemPatchInput['size_values']>>([]);
+  const [editingSizes, setEditingSizes] = useState<SizeSystemDto | null>(null);
+  const [sizeValuesDirty, setSizeValuesDirty] = useState(false);
 
-  const canDiscard = useDirtyForm(Boolean((renaming && nextName !== renaming.name) || name || code || parentId || sizeDisplayName || sizeCode || sizeSortOrder !== '0'));
+  const canDiscard = useDirtyForm(Boolean((renaming && nextName !== renaming.name) || name || code || parentId || sizeValuesDirty));
+
+  const validateSizes = () => {
+    const codes = new Set<string>();
+    for (const value of sizeValues) {
+      const normalized = value.code.trim().toLowerCase();
+      if (!normalized || !value.display_name.trim() || !Number.isInteger(value.sort_order)
+        || value.sort_order < -2147483648 || value.sort_order > 2147483647) {
+        throw new Error('Nhập code, tên hiển thị và thứ tự nguyên hợp lệ cho từng size.');
+      }
+      if (codes.has(normalized)) throw new Error('Code size không được trùng trong cùng hệ.');
+      codes.add(normalized);
+    }
+    return sizeValues.map((value) => ({ ...value, code: value.code.trim(), display_name: value.display_name.trim() }));
+  };
+
+  const saveSizes = async () => {
+    if (!canWrite || !editingSizes || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await adminCatalogMetaService.updateSizeSystem(editingSizes.size_system_id, { size_values: validateSizes() });
+      setMeta((current) => current ? { ...current, size_systems: current.size_systems.map((system) => system.size_system_id === updated.size_system_id ? updated : system) } : current);
+      setEditingSizes(null);
+      setSizeValues([]);
+      setSizeValuesDirty(false);
+      showToast('Đã lưu danh sách size.');
+    } catch (failure: unknown) {
+      setError(failure instanceof ApiClientError && failure.status === 409 ? 'Không thể lưu: size đang được sử dụng không được xóa hoặc đổi code/tên; code size phải duy nhất.' : getApiErrorMessage(failure, 'Không thể lưu danh sách size.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const sizeFields = (
+    <div className="space-y-3 col-span-full">
+      <p className="text-sm">Size đã được sử dụng chỉ có thể đổi thứ tự. Xóa một dòng rồi lưu để xóa size.</p>
+      {sizeValues.map((value, index) => (
+        <div key={value.size_value_id ?? `new-${index}`} className="flex flex-wrap gap-2">
+          {value.size_value_id && <span>#{value.size_value_id}</span>}
+          <label>Code<input required maxLength={50} value={value.code} onChange={(event) => { setSizeValues(sizeValues.map((item, i) => i === index ? { ...item, code: event.target.value } : item)); setSizeValuesDirty(true); }} /></label>
+          <label>Tên hiển thị<input required maxLength={100} value={value.display_name} onChange={(event) => { setSizeValues(sizeValues.map((item, i) => i === index ? { ...item, display_name: event.target.value } : item)); setSizeValuesDirty(true); }} /></label>
+          <label>Thứ tự<input required type="number" step="1" min={-2147483648} max={2147483647} value={Number.isNaN(value.sort_order) ? '' : value.sort_order} onChange={(event) => { setSizeValues(sizeValues.map((item, i) => i === index ? { ...item, sort_order: event.target.valueAsNumber } : item)); setSizeValuesDirty(true); }} /></label>
+          <button type="button" onClick={() => { setSizeValues(sizeValues.filter((_, i) => i !== index)); setSizeValuesDirty(true); }}>Xóa dòng {index + 1}</button>
+        </div>
+      ))}
+      <button type="button" onClick={() => { setSizeValues([...sizeValues, { code: '', display_name: '', sort_order: sizeValues.length }]); setSizeValuesDirty(true); }}>Thêm size</button>
+    </div>
+  );
 
   const load = async () => {
     setLoading(true);
@@ -74,9 +122,8 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
     setName('');
     setCode('');
     setParentId('');
-    setSizeDisplayName('');
-    setSizeCode('');
-    setSizeSortOrder('0');
+    setSizeValues([]);
+    setSizeValuesDirty(false);
   };
 
   const createCurrent = async (event: React.FormEvent) => {
@@ -95,19 +142,18 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
         if (!code.trim()) throw new Error('invalid');
         await adminCatalogMetaService.createColor({ code: code.trim(), name: name.trim() });
       } else {
-        const sortOrder = Number(sizeSortOrder);
-        if (!code.trim() || !sizeCode.trim() || !sizeDisplayName.trim() || !Number.isInteger(sortOrder)) throw new Error('invalid');
+        if (!code.trim()) throw new Error('Nhập code hệ size.');
         await adminCatalogMetaService.createSizeSystem({
           code: code.trim(),
           name: name.trim(),
-          size_values: [{ code: sizeCode.trim(), display_name: sizeDisplayName.trim(), sort_order: sortOrder }],
+          size_values: validateSizes(),
         });
       }
       clearForm();
       await load();
       showToast('Đã cập nhật catalog metadata.');
-    } catch {
-      setError('Không thể tạo metadata. Kiểm tra dữ liệu, quan hệ và quyền CATALOG_WRITE.');
+    } catch (failure: unknown) {
+      setError(getApiErrorMessage(failure, 'Không thể tạo metadata. Kiểm tra dữ liệu, quan hệ và quyền CATALOG_WRITE.'));
     } finally {
       setBusy(false);
     }
@@ -161,6 +207,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
 
   return (
     <div className="space-y-6">
+      {editingSizes && canWrite && <Modal title={`Danh sách size: ${editingSizes.name}`} busy={busy} onClose={() => { if (canDiscard()) { setEditingSizes(null); setSizeValues([]); setSizeValuesDirty(false); } }}><form onSubmit={(event) => { event.preventDefault(); void saveSizes(); }}><fieldset disabled={busy}>{sizeFields}<button type="submit" className="admin-primary">{busy ? 'Đang lưu...' : 'Lưu danh sách size'}</button></fieldset>{error && <p role="alert">{error}</p>}</form></Modal>}
       {renaming && <Modal title={`Đổi tên ${renaming.name}`} busy={busy} onClose={() => { if (canDiscard()) setRenaming(null); }}><form onSubmit={(event) => { event.preventDefault(); void rename(); }}><label>Tên mới<input required disabled={busy} maxLength={renaming.kind === 'colors' ? 100 : 150} value={nextName} onChange={(event) => setNextName(event.target.value)} /></label>{error && <p role="alert" className="text-red-700">{error}</p>}<button type="submit" className="admin-primary" disabled={busy || !nextName.trim()}>Lưu tên</button></form></Modal>}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -180,11 +227,11 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
       {error && <div role="alert" className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
       {!canWrite && <div className="border border-[#E2E5DE] bg-[#F8FAF4] p-3 text-sm text-[#606863]">Chế độ chỉ đọc. Cần CATALOG_WRITE để tạo, sửa hoặc xóa metadata.</div>}
 
-      {canWrite && <form onSubmit={createCurrent} className="grid gap-3 rounded-lg border border-[#E2E5DE] bg-white p-5 md:grid-cols-2 xl:grid-cols-4"><fieldset disabled={busy} className="contents">
+      {canWrite && !editingSizes && <form onSubmit={createCurrent} className="grid gap-3 rounded-lg border border-[#E2E5DE] bg-white p-5 md:grid-cols-2 xl:grid-cols-4"><fieldset disabled={busy} className="contents">
         <label className="space-y-1"><span className="text-xs font-semibold">Tên *</span><input value={name} maxLength={activeTab === 'colors' ? 100 : 150} onChange={(event) => setName(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" required /></label>
         {(activeTab === 'colors' || activeTab === 'sizes') && <label className="space-y-1"><span className="text-xs font-semibold">Code *</span><input value={code} maxLength={50} onChange={(event) => setCode(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" required /></label>}
         {activeTab === 'categories' && <label className="space-y-1"><span className="text-xs font-semibold">Danh mục cha</span><select value={parentId} onChange={(event) => setParentId(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">Danh mục gốc</option>{meta?.categories.map((category) => <option key={category.category_id} value={category.category_id}>{category.name}</option>)}</select></label>}
-        {activeTab === 'sizes' && <><label className="space-y-1"><span className="text-xs font-semibold">Size đầu tiên: code *</span><input value={sizeCode} maxLength={50} onChange={(event) => setSizeCode(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" required /></label><label className="space-y-1"><span className="text-xs font-semibold">Size đầu tiên: display *</span><input value={sizeDisplayName} maxLength={100} onChange={(event) => setSizeDisplayName(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" required /></label><label className="space-y-1"><span className="text-xs font-semibold">Sort order *</span><input type="number" value={sizeSortOrder} onChange={(event) => setSizeSortOrder(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" required /></label></>}
+        {activeTab === 'sizes' && sizeFields}
         <div className="flex items-end"><button type="submit" disabled={busy} className="w-full bg-[#0B2419] px-4 py-2.5 text-xs font-bold uppercase text-white disabled:opacity-40">{busy ? 'Đang xử lý...' : 'Tạo mới'}</button></div>
       </fieldset></form>}
 
@@ -195,7 +242,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
             {rows.map((row) => {
               const id = 'category_id' in row ? row.category_id : 'brand_id' in row ? row.brand_id : 'color_id' in row ? row.color_id : row.size_system_id;
               const detail = 'parent_category_id' in row ? `parent: ${row.parent_category_id ?? 'root'}` : 'size_values' in row ? `${row.code} · ${row.size_values.length} size values` : 'code' in row ? row.code : '';
-              return <tr key={id}><td className="px-4 py-3 font-mono">#{id}</td><td className="px-4 py-3 font-semibold">{row.name}</td><td className="px-4 py-3 text-xs text-[#606863]">{detail}</td><td className="px-4 py-3 text-right">{canWrite && <div className="flex justify-end gap-2"><button type="button" disabled={busy} onClick={() => { setRenaming({ kind: activeTab, id, name: row.name }); setNextName(row.name); }} className="border border-[#D9DDD6] px-3 py-1.5 text-xs font-semibold">Đổi tên</button><button type="button" disabled={busy} onClick={() => void remove(activeTab, id)} className="border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700">Xóa</button></div>}</td></tr>;
+              return <tr key={id}><td className="px-4 py-3 font-mono">#{id}</td><td className="px-4 py-3 font-semibold">{row.name}</td><td className="px-4 py-3 text-xs text-[#606863]">{detail}{'size_values' in row && <ul>{row.size_values.map((value) => <li key={value.size_value_id}>#{value.size_value_id} · {value.code} · {value.display_name} · Thứ tự {value.sort_order}</li>)}</ul>}</td><td className="px-4 py-3 text-right">{canWrite && <div className="flex justify-end gap-2">{'size_values' in row && <button type="button" disabled={busy} onClick={() => { if (!canDiscard()) return; clearForm(); setEditingSizes(row); setSizeValues(row.size_values.map(({ size_value_id, code, display_name, sort_order }) => ({ size_value_id, code, display_name, sort_order }))); setError(null); }}>Quản lý size</button>}<button type="button" disabled={busy} onClick={() => { setRenaming({ kind: activeTab, id, name: row.name }); setNextName(row.name); }} className="border border-[#D9DDD6] px-3 py-1.5 text-xs font-semibold">Đổi tên</button><button type="button" disabled={busy} onClick={() => void remove(activeTab, id)} className="border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700">Xóa</button></div>}</td></tr>;
             })}
           </tbody>
         </table>

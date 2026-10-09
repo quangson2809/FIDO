@@ -13,7 +13,7 @@ import {
   sortProductImages,
 } from '../../features/catalog/model/productImageOrder';
 import type { AdminProductDetailDto, CatalogMetaDto, SaleStatus } from '../../features/catalog/types';
-import { getApiErrorMessage } from '../../services/http/apiError';
+import { ApiClientError, getApiErrorMessage } from '../../services/http/apiError';
 
 interface Props {
   productId: number;
@@ -35,13 +35,14 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
   const [description, setDescription] = useState('');
   const [basePrice, setBasePrice] = useState('');
   const [saleStatus, setSaleStatus] = useState<SaleStatus>('ON_SALE');
+  const [sizeSystemId, setSizeSystemId] = useState('');
   const [variantSize, setVariantSize] = useState('');
   const [variantColor, setVariantColor] = useState('');
   const [variantSku, setVariantSku] = useState('');
   const [variantOverridePrice, setVariantOverridePrice] = useState('');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
 
-  const infoDirty = Boolean(product && editing && (name !== product.name || description !== (product.description ?? '') || basePrice !== String(product.base_price) || saleStatus !== product.sale_status));
+  const infoDirty = Boolean(product && editing && (sizeSystemId !== String(product.size_system.size_system_id) || name !== product.name || description !== (product.description ?? '') || basePrice !== String(product.base_price) || saleStatus !== product.sale_status));
   const canDiscard = useDirtyForm(infoDirty || Boolean(variantSize || variantColor || variantSku || variantOverridePrice || imageFiles.length));
 
   const applyProduct = (detail: AdminProductDetailDto, preserveDraft = true) => {
@@ -50,7 +51,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
     setName(detail.name);
     setDescription(detail.description ?? '');
     setBasePrice(String(detail.base_price));
-    setSaleStatus(detail.sale_status);
+    setSaleStatus(detail.sale_status); setSizeSystemId(String(detail.size_system.size_system_id));
   };
 
   const refresh = async () => {
@@ -74,7 +75,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
     ])
       .then(([detail, metadata]) => {
         if (!active) return;
-        setProduct(detail); setName(detail.name); setDescription(detail.description ?? ''); setBasePrice(String(detail.base_price)); setSaleStatus(detail.sale_status);
+        setProduct(detail); setName(detail.name); setDescription(detail.description ?? ''); setBasePrice(String(detail.base_price)); setSaleStatus(detail.sale_status); setSizeSystemId(String(detail.size_system.size_system_id));
         setMeta(metadata);
         setError(null);
       })
@@ -108,22 +109,25 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
   const saveProduct = async () => {
     if (!canWrite || !product || busy) return;
 
+    if (!meta?.size_systems.some((system) => system.size_system_id === Number(sizeSystemId))) { setError('Chọn hệ size hợp lệ.'); return; }
     const price = Number(basePrice);
     if (!name.trim() || !basePrice.trim() || !Number.isFinite(price) || price < 0) { setError('Nhập tên sản phẩm và giá hợp lệ (không âm).'); return; }
 
     setBusy(true);
     try {
       applyProduct(await adminProductService.updateProduct(product.product_id, {
+        size_system_id: Number(sizeSystemId),
         name: name.trim(),
         description: description.trim() || null,
         base_price: price,
         sale_status: saleStatus,
       }), false);
+      setVariantSize('');
       setEditing(false);
       setError(null);
       showToast('Đã cập nhật sản phẩm.');
     } catch (requestError: unknown) {
-      setError(getApiErrorMessage(requestError, 'Không thể cập nhật sản phẩm.'));
+      setError(requestError instanceof ApiClientError && requestError.status === 409 && Number(sizeSystemId) !== product.size_system.size_system_id ? 'Không thể đổi hệ size: sản phẩm có biến thể không tương thích. Dữ liệu chưa được thay đổi.' : getApiErrorMessage(requestError, 'Không thể cập nhật sản phẩm.'));
     } finally {
       setBusy(false);
     }
@@ -132,7 +136,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
   const cancelProductEdit = () => {
     if (!product) return;
     if (!canDiscard()) return;
-    setName(product.name); setDescription(product.description ?? ''); setBasePrice(String(product.base_price)); setSaleStatus(product.sale_status);
+    setName(product.name); setDescription(product.description ?? ''); setBasePrice(String(product.base_price)); setSaleStatus(product.sale_status); setSizeSystemId(String(product.size_system.size_system_id));
     setEditing(false);
   };
 
@@ -280,6 +284,9 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
         <div className="space-y-6">
           <AdminProductInfoSection
             product={product}
+            sizeSystems={meta?.size_systems ?? []}
+            sizeSystemId={sizeSystemId}
+            onSizeSystemChange={setSizeSystemId}
             editing={editing}
             busy={busy}
             canWrite={canWrite}

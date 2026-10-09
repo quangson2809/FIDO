@@ -3,6 +3,9 @@ package com.fido.modules.product.service;
 import com.fido.modules.product.dto.response.CatalogMetaDto;
 import com.fido.modules.product.dto.response.SizeSystemDto;
 import com.fido.modules.product.entity.SizeSystem;
+import com.fido.modules.product.entity.SizeValue;
+import java.util.List;
+import java.util.stream.Collectors;
 import com.fido.modules.product.mapper.CatalogMapper;
 import com.fido.modules.product.repository.BrandRepository;
 import com.fido.modules.product.repository.CategoryRepository;
@@ -73,12 +76,19 @@ public class CatalogMetaService {
                 .map(CatalogMapper::brand)
                 .toList();
 
+        var valuesBySystem = sizeValues
+                .findAllByOrderBySizeSystemIdAscSortOrderAscSizeValueIdAsc()
+                .stream()
+                .collect(Collectors.groupingBy(
+                        SizeValue::getSizeSystemId,
+                        Collectors.mapping(CatalogMapper::sizeValue, Collectors.toList())
+                ));
         var sizeSystemDtos = sizeSystems
                 .findAllByOrderBySizeSystemIdAsc()
                 .stream()
-                .map(sizeSystem ->
-                        sizeSystemDto(sizeSystem.getSizeSystemId())
-                )
+                .map(system -> CatalogMapper.sizeSystem(
+                        system, valuesBySystem.getOrDefault(system.getSizeSystemId(), List.of())
+                ))
                 .toList();
 
         var colorDtos = colors
