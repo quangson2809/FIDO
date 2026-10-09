@@ -32,11 +32,16 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [cartItems, setCartItems] = useState<CartViewItem[]>([]);
   const [cartSubtotal, setCartSubtotal] = useState(0);
   const [cartRevision, setCartRevision] = useState(0);
+  const [mutationPending, setMutationPending] = useState(false);
+  const [checkoutPending, setCheckoutPending] = useState(false);
+  const checkoutLockRef = useRef(false);
+  const viewVersionRef = useRef(0);
 
   const cartViewRef = useRef<CartViewState>({ items: [], subtotal: 0 });
   const mutationQueueRef = useRef(new LatestMutationQueue<CartDto>());
 
   const applyLocalCart = useCallback((items: CartViewItem[], subtotal: number): void => {
+    viewVersionRef.current += 1;
     cartViewRef.current = { items, subtotal };
     setCartItems(items);
     setCartSubtotal(subtotal);
@@ -57,7 +62,9 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
 
-    applyCart(await cartService.getCart());
+    const version = viewVersionRef.current;
+    const cart = await cartService.getCart();
+    if (version === viewVersionRef.current) applyCart(cart);
   }, [applyCart, clearCartState]);
 
   const reconcileAfterMutationFailure = useCallback(async (message: string): Promise<void> => {
@@ -73,10 +80,15 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     operation: () => Promise<CartDto>,
     errorMessage: string,
   ): void => {
+    viewVersionRef.current += 1;
+    setMutationPending(true);
     setCartRevision((current) => current + 1);
     mutationQueueRef.current.enqueue(operation, {
-      onLatestSuccess: applyCart,
-      onLatestError: () => reconcileAfterMutationFailure(errorMessage),
+      onLatestSuccess: (cart) => { applyCart(cart); setMutationPending(false); },
+      onLatestError: async () => {
+        await reconcileAfterMutationFailure(errorMessage);
+        setMutationPending(false);
+      },
     });
   }, [applyCart, reconcileAfterMutationFailure]);
 
@@ -89,11 +101,12 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
 
+      const version = viewVersionRef.current;
       try {
         const cart = await cartService.getCart();
-        if (active) applyCart(cart);
+        if (active && version === viewVersionRef.current) applyCart(cart);
       } catch {
-        if (active) clearCartState();
+        if (active && version === viewVersionRef.current) clearCartState();
       }
     };
 
@@ -102,6 +115,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const unsubscribe = subscribeToApiAccessToken((token) => {
       if (!token && active) {
         mutationQueueRef.current.invalidate();
+        setMutationPending(false);
         clearCartState();
         setIsCartOpen(false);
       }
@@ -114,12 +128,40 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [applyCart, clearCartState]);
 
   const ensureCartAuthentication = (): boolean => {
+    if (checkoutLockRef.current) {
+      showToast('Vui lòng chờ hoàn tất bước xác nhận đơn hàng.');
+      return false;
+    }
     if (hasApiAccessToken()) return true;
 
     clearCartState();
     setIsCartOpen(false);
     showToast('Vui lòng đăng nhập để sử dụng giỏ hàng và đặt hàng.');
     return false;
+  };
+
+  const withCartLock = async <T,>(operation: () => Promise<T>): Promise<T> => {
+    if (checkoutLockRef.current) throw new Error('Giỏ hàng đang được xử lý.');
+    checkoutLockRef.current = true;
+    setCheckoutPending(true);
+    try {
+      await mutationQueueRef.current.whenIdle();
+      return await operation();
+    } finally {
+      checkoutLockRef.current = false;
+      setCheckoutPending(false);
+    }
+  };
+
+  const synchronizePurchasedCart = async (): Promise<void> => {
+    clearCartState();
+    setIsCartOpen(false);
+    try {
+      await refreshCart();
+    } catch {
+      // Order creation already succeeded; a failed read must not invite another purchase.
+      showToast('Đơn đã được tạo. Chưa thể tải lại giỏ hàng; vui lòng tải lại trang khi có kết nối.');
+    }
   };
 
   const addToCart = (variantId: number, productName: string, quantity = 1) => {
@@ -196,6 +238,9 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     cartItems,
     cartSubtotal,
     cartRevision,
+    isCartBusy: mutationPending || checkoutPending,
+    withCartLock,
+    synchronizePurchasedCart,
     refreshCart,
     addToCart,
     removeFromCart,

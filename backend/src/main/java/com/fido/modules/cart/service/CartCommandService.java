@@ -14,6 +14,7 @@ import java.time.ZoneOffset;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -126,6 +127,12 @@ public class CartCommandService {
         touch(cart);
 
         return query.toDto(cart);
+    }
+
+    /** Hold the same locks as cart mutations until the enclosing order transaction completes. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void lockForCheckout(Long accountId) {
+        currentOrCreate(accountId);
     }
 
     private void requirePurchasable(Long variantId) {

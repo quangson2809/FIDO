@@ -8,6 +8,7 @@ export const CartDrawer: React.FC = () => {
     setIsCartOpen,
     cartItems,
     cartSubtotal,
+    isCartBusy,
     removeFromCart,
     changeCartQuantity,
   } = useCart();
@@ -86,7 +87,7 @@ export const CartDrawer: React.FC = () => {
                       <div>
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">Variant</p><h3 className="mt-0.5 line-clamp-2 font-serif text-[16px] leading-5 text-[#0B2419]">{item.name}</h3></div>
-                          <button type="button" aria-label="Xóa sản phẩm" onClick={() => removeFromCart(item.id)} className="p-1 text-[#687069] transition hover:bg-red-50 hover:text-[#BA1A1A]"><span className="material-symbols-outlined text-[18px]">delete_outline</span></button>
+                          <button type="button" disabled={isCartBusy} aria-label="Xóa sản phẩm" onClick={() => removeFromCart(item.id)} className="p-1 text-[#687069] transition hover:bg-red-50 hover:text-[#BA1A1A]"><span className="material-symbols-outlined text-[18px]">delete_outline</span></button>
                         </div>
                         <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#424844]">
                           <span className="border border-[#D9DDD6] bg-white px-2 py-1">Size {item.size}</span>
@@ -96,9 +97,9 @@ export const CartDrawer: React.FC = () => {
 
                       <div className="mt-3 flex items-end justify-between gap-3 border-t border-[#E8E9E3]/70 pt-3">
                         <div className="flex h-8 items-center border border-[#D9DDD6] bg-white">
-                          <button type="button" aria-label="Giảm số lượng" onClick={() => changeCartQuantity(item.id, -1)} className="flex h-full w-8 items-center justify-center transition hover:bg-[#F3F4EF]"><span className="material-symbols-outlined text-[15px]">remove</span></button>
+                          <button type="button" disabled={isCartBusy} aria-label="Giảm số lượng" onClick={() => changeCartQuantity(item.id, -1)} className="flex h-full w-8 items-center justify-center transition hover:bg-[#F3F4EF]"><span className="material-symbols-outlined text-[15px]">remove</span></button>
                           <span className="w-9 text-center text-[13px] font-semibold">{item.quantity}</span>
-                          <button type="button" aria-label="Tăng số lượng" onClick={() => changeCartQuantity(item.id, 1)} className="flex h-full w-8 items-center justify-center transition hover:bg-[#F3F4EF]"><span className="material-symbols-outlined text-[15px]">add</span></button>
+                          <button type="button" disabled={isCartBusy} aria-label="Tăng số lượng" onClick={() => changeCartQuantity(item.id, 1)} className="flex h-full w-8 items-center justify-center transition hover:bg-[#F3F4EF]"><span className="material-symbols-outlined text-[15px]">add</span></button>
                         </div>
                         <div className="text-right"><p className="text-[10px] text-[#687069]">{item.price.toLocaleString('vi-VN')}₫ / sản phẩm</p><p className="mt-0.5 font-serif text-lg font-bold text-[#0B2419]">{(item.price * item.quantity).toLocaleString('vi-VN')}₫</p></div>
                       </div>
@@ -115,7 +116,7 @@ export const CartDrawer: React.FC = () => {
               <div className="flex items-center justify-between text-xs text-[#687069]"><span>Phí giao hàng và giảm giá</span><span>Xác nhận ở checkout</span></div>
             </div>
             <div className="mt-4 flex items-end justify-between border-t border-[#E8E9E3] pt-4"><span className="text-sm font-bold">Tạm tính</span><span className="font-serif text-2xl font-bold">{cartSubtotal.toLocaleString('vi-VN')}₫</span></div>
-            <button type="button" disabled={cartItems.length === 0} onClick={handleCheckout} className="mt-4 flex w-full items-center justify-center gap-2 bg-[#0B2419] py-3.5 text-xs font-bold uppercase tracking-[0.18em] text-white transition hover:bg-[#1B5038] disabled:cursor-not-allowed disabled:opacity-40"><span>Tiếp tục checkout</span><span className="material-symbols-outlined text-[18px]">arrow_forward</span></button>
+            <button type="button" disabled={cartItems.length === 0 || isCartBusy} onClick={handleCheckout} className="mt-4 flex w-full items-center justify-center gap-2 bg-[#0B2419] py-3.5 text-xs font-bold uppercase tracking-[0.18em] text-white transition hover:bg-[#1B5038] disabled:cursor-not-allowed disabled:opacity-40"><span>Tiếp tục checkout</span><span className="material-symbols-outlined text-[18px]">arrow_forward</span></button>
             <button type="button" onClick={() => { setIsCartOpen(false); navigate('/products'); }} className="mt-2 w-full py-2 text-[11px] font-bold uppercase tracking-wider text-[#606863] transition hover:text-[#0B2419]">Tiếp tục mua sắm</button>
           </footer>
         </aside>

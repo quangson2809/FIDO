@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../features/cart/hooks/useCart';
 import { profileService } from '../features/auth/api/profileService';
@@ -6,11 +6,13 @@ import { checkoutService } from '../features/orders/api/checkoutService';
 import type { CheckoutQuoteDto, CheckoutRequest } from '../features/orders/types';
 import { getApiErrorMessage } from '../services/http/apiError';
 import { buildCheckoutQuoteKey } from '../features/orders/model/checkoutQuoteKey';
+import { sameCheckoutQuote } from '../features/orders/model/sameCheckoutQuote';
+import { CheckoutConfirmationDialog } from '../features/orders/components/CheckoutConfirmationDialog';
 
 const money = (value: number): string => `${value.toLocaleString('vi-VN')}₫`;
 
 export const CheckoutScreen: React.FC = () => {
-  const { cartItems, cartSubtotal, cartRevision } = useCart();
+  const { cartItems, cartSubtotal, cartRevision, isCartBusy, withCartLock, synchronizePurchasedCart } = useCart();
   const navigate = useNavigate();
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -20,6 +22,8 @@ export const CheckoutScreen: React.FC = () => {
   const [profileLoading, setProfileLoading] = useState(true);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [orderSubmitting, setOrderSubmitting] = useState(false);
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const submittingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -60,6 +64,7 @@ export const CheckoutScreen: React.FC = () => {
   const canRequestQuote = request.recipient_phone.length > 0 && request.recipient_address.length > 0 && cartItems.length > 0;
 
   const loadQuote = async () => {
+    if (isCartBusy || quoteLoading) return;
     if (!canRequestQuote) {
       setError('Cần có sản phẩm trong giỏ, số điện thoại và địa chỉ nhận hàng.');
       return;
@@ -69,7 +74,7 @@ export const CheckoutScreen: React.FC = () => {
     setQuoteLoading(true);
     setError(null);
     try {
-      const result = await checkoutService.quote(submittedRequest);
+      const result = await withCartLock(() => checkoutService.quote(submittedRequest));
       setQuote(result);
       setQuotedRequestKey(submittedRequestKey);
     } catch (requestError: unknown) {
@@ -82,17 +87,30 @@ export const CheckoutScreen: React.FC = () => {
   };
 
   const placeOrder = async () => {
-    if (!quoteIsCurrent || orderSubmitting) return;
+    if (!confirmationOpen || !quoteIsCurrent || isCartBusy || submittingRef.current) return;
+    submittingRef.current = true;
     setOrderSubmitting(true);
     setError(null);
     try {
-      const result = await checkoutService.createOrder(request);
-      navigate(`/checkout/success/${result.order_id}`);
+      await withCartLock(async () => {
+        const latestQuote = await checkoutService.quote(request);
+        if (!sameCheckoutQuote(quote, latestQuote)) {
+          setQuote(latestQuote);
+          setConfirmationOpen(false);
+          setError('Giá hoặc sản phẩm đã thay đổi. Vui lòng xem báo giá mới và xác nhận lại.');
+          return;
+        }
+        const result = await checkoutService.createOrder(request);
+        await synchronizePurchasedCart();
+        navigate(`/checkout/success/${result.order_id}`);
+      });
     } catch (requestError: unknown) {
       setError(getApiErrorMessage(requestError, 'Không thể tạo đơn hàng. Dữ liệu giỏ hàng có thể đã thay đổi; hãy cập nhật báo giá và thử lại.'));
+      setConfirmationOpen(false);
       setQuote(null);
       setQuotedRequestKey(null);
     } finally {
+      submittingRef.current = false;
       setOrderSubmitting(false);
     }
   };
@@ -128,12 +146,12 @@ export const CheckoutScreen: React.FC = () => {
           <section className="border border-[#E8E9E3] bg-white p-6 shadow-sm sm:p-7">
             <div className="mb-4 flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FFFDF5] text-[#0B2419] ring-1 ring-[#E8E9E3]"><span className="material-symbols-outlined text-[20px]">price_check</span></span><div><p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">Server validation</p><h2 className="font-serif text-xl">Xác nhận báo giá</h2></div></div>
             <div className="mb-4 border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Voucher tạm chưa khả dụng vì backend chưa khóa rule áp dụng. Checkout hiện gửi <span className="font-mono">voucher_code = null</span>.
+              Voucher hiện chưa khả dụng.
             </div>
-            <button type="button" disabled={!canRequestQuote || quoteLoading || profileLoading || orderSubmitting} onClick={() => void loadQuote()} className="w-full bg-[#0B2419] px-6 py-3 text-xs font-bold uppercase tracking-wider text-white disabled:cursor-not-allowed disabled:opacity-40">{quoteLoading ? 'Đang kiểm tra...' : quoteIsCurrent ? 'Cập nhật báo giá' : 'Kiểm tra & báo giá'}</button>
+            <button type="button" disabled={!canRequestQuote || quoteLoading || profileLoading || orderSubmitting || isCartBusy} onClick={() => void loadQuote()} className="w-full bg-[#0B2419] px-6 py-3 text-xs font-bold uppercase tracking-wider text-white disabled:cursor-not-allowed disabled:opacity-40">{quoteLoading ? 'Đang kiểm tra...' : quoteIsCurrent ? 'Cập nhật báo giá' : 'Kiểm tra & báo giá'}</button>
           </section>
 
-          {error && <div className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+          {error && <div role="alert" className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
         </div>
 
         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
@@ -156,12 +174,17 @@ export const CheckoutScreen: React.FC = () => {
                   <div className="flex justify-between gap-4 border-t border-[#E8E9E3] pt-4"><dt className="font-bold">Tổng COD</dt><dd className="font-serif text-xl font-bold">{money(quote.total)}</dd></div>
                 </dl>
                 <p className="mt-3 text-[10px] leading-5 text-[#687069]">{quote.items.length} dòng hàng đã được backend kiểm tra.</p>
-                <button type="button" disabled={orderSubmitting} onClick={() => void placeOrder()} className="mt-5 flex w-full items-center justify-center gap-2 bg-[#0B2419] px-5 py-3.5 text-xs font-bold uppercase tracking-[0.16em] text-white transition hover:bg-[#1B5038] disabled:opacity-40"><span>{orderSubmitting ? 'Đang tạo đơn...' : `Đặt hàng COD · ${money(quote.total)}`}</span><span className="material-symbols-outlined text-[18px]">arrow_forward</span></button>
+                <button type="button" disabled={orderSubmitting || quoteLoading || isCartBusy} onClick={() => setConfirmationOpen(true)} className="mt-5 flex w-full items-center justify-center gap-2 bg-[#0B2419] px-5 py-3.5 text-xs font-bold uppercase tracking-[0.16em] text-white transition hover:bg-[#1B5038] disabled:opacity-40"><span>{orderSubmitting ? 'Đang tạo đơn...' : `Đặt hàng COD · ${money(quote.total)}`}</span><span className="material-symbols-outlined text-[18px]">arrow_forward</span></button>
               </>
             )}
           </section>
         </aside>
       </section>
+      {confirmationOpen && quote && <CheckoutConfirmationDialog
+        request={request} quote={quote} busy={orderSubmitting}
+        current={quoteIsCurrent && (!isCartBusy || orderSubmitting)} error={error}
+        onCancel={() => setConfirmationOpen(false)} onConfirm={() => void placeOrder()}
+      />}
     </div>
   );
 };

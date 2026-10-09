@@ -8,6 +8,7 @@ on:
       - fix/backend-confirmed-findings-20261007
       - fix/frontend-product-variant-selection
       - feature/admin-ui-ux-improvements
+      - feature/cart-checkout-voucher-improvements
   pull_request:
     branches:
       - main

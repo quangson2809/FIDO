@@ -5,6 +5,7 @@ import com.fido.modules.audit.service.AuditEvent;
 import com.fido.modules.audit.service.AuditService;
 import com.fido.modules.audit.service.AuditTargetType;
 import com.fido.modules.cart.service.CheckoutCartView;
+import com.fido.modules.cart.service.CartCommandService;
 import com.fido.modules.order.dto.request.CreateOrderRequest;
 import com.fido.modules.order.dto.response.OrderConfirmationDto;
 import com.fido.modules.order.entity.Order;
@@ -26,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class OrderCreationService {
 
     private final CheckoutCalculationService checkout;
+    private final CartCommandService cart;
     private final OrderRepository orders;
     private final OrderItemRepository items;
     private final PaymentRepository payments;
@@ -33,12 +35,14 @@ public class OrderCreationService {
 
     public OrderCreationService(
             CheckoutCalculationService checkout,
+            CartCommandService cart,
             OrderRepository orders,
             OrderItemRepository items,
             PaymentRepository payments,
             AuditService audit
     ) {
         this.checkout = checkout;
+        this.cart = cart;
         this.orders = orders;
         this.items = items;
         this.payments = payments;
@@ -49,6 +53,7 @@ public class OrderCreationService {
             Long accountId,
             CreateOrderRequest request
     ) {
+        cart.lockForCheckout(accountId);
         CheckoutCalculation calculation = checkout.calculate(
                 accountId,
                 request.voucher_code()
@@ -69,6 +74,8 @@ public class OrderCreationService {
                 order.getOrderId(),
                 calculation.total()
         );
+
+        cart.clear(accountId);
 
         audit.record(
                 AuditEvent.of(

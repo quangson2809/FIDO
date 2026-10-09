@@ -31,4 +31,8 @@ export class LatestMutationQueue<T> {
   invalidate(): void {
     this.generation += 1;
   }
+
+  whenIdle(): Promise<void> {
+    return this.tail;
+  }
 }

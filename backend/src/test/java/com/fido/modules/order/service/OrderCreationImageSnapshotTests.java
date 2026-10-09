@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.fido.modules.audit.service.AuditService;
 import com.fido.modules.cart.service.CheckoutCartView;
+import com.fido.modules.cart.service.CartCommandService;
 import com.fido.modules.order.dto.request.CreateOrderRequest;
 import com.fido.modules.order.entity.Order;
 import com.fido.modules.order.entity.OrderItem;
@@ -31,6 +32,7 @@ class OrderCreationImageSnapshotTests {
         AuditService audit = mock(AuditService.class);
         OrderCreationService service = new OrderCreationService(
                 checkout,
+                mock(CartCommandService.class),
                 orders,
                 items,
                 payments,

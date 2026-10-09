@@ -221,3 +221,31 @@ const { statusLabel } = await import('../src/shared/admin/statusLabels');
 assert.equal(statusLabel('PENDING'), 'Chờ xác nhận');
 assert.equal(statusLabel('REFUNDED'), 'Đã hoàn tiền');
 assert.equal(statusLabel('DRAFT'), 'Bản nháp');
+
+const { sameCheckoutQuote } = await import('../src/features/orders/model/sameCheckoutQuote');
+const confirmedQuote = {
+  items: [{ variant_id: 1, quantity: 2, product_name: 'Áo', size: 'M', color: 'Đen', unit_price: 100000, line_total: 200000, available_quantity: 10 }],
+  subtotal: 200000, discount: 0, shipping_fee: 30000, total: 230000, voucher: null,
+};
+assert.equal(sameCheckoutQuote(confirmedQuote, structuredClone(confirmedQuote)), true);
+assert.equal(sameCheckoutQuote(confirmedQuote, { ...confirmedQuote, total: 240000 }), false);
+assert.equal(sameCheckoutQuote(confirmedQuote, { ...confirmedQuote, items: [{ ...confirmedQuote.items[0], quantity: 3 }] }), false);
+assert.equal(sameCheckoutQuote(confirmedQuote, { ...confirmedQuote, items: [{ ...confirmedQuote.items[0], variant_id: 2 }] }), false);
+assert.equal(sameCheckoutQuote(confirmedQuote, { ...confirmedQuote, items: [{ ...confirmedQuote.items[0], available_quantity: 9 }] }), true);
+
+const drainingQueue = new LatestMutationQueue<number>();
+let releasePending: () => void = () => { throw new Error('Pending operation not initialized'); };
+const pendingOperation = new Promise<void>((resolve) => { releasePending = resolve; });
+const drainedValues: number[] = [];
+drainingQueue.enqueue(async () => { await pendingOperation; return 1; }, {
+  onLatestSuccess: (value) => drainedValues.push(value), onLatestError: () => { throw new Error('Unexpected failure'); },
+});
+let drained = false;
+const waitForDrain = drainingQueue.whenIdle().then(() => { drained = true; });
+await Promise.resolve();
+assert.equal(drained, false, 'checkout must wait for pending cart mutations');
+releasePending();
+await waitForDrain;
+assert.deepEqual(drainedValues, [1]);
+assert.equal(drained, true);
+process.stdout.write('Checkout quote comparison and cart drain: PASS\n');
