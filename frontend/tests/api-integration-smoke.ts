@@ -9,6 +9,7 @@ import { contentService } from '../src/features/content/api/service';
 import { orderService } from '../src/features/orders/api/service';
 import { checkoutService } from '../src/features/orders/api/checkoutService';
 import { voucherService } from '../src/features/promotion/api/service';
+import { voucherSubmission } from '../src/features/promotion/model/voucherFormModel';
 import type { VoucherInput } from '../src/features/promotion/types';
 import { reportService } from '../src/features/report/api/service';
 import { apiClient, hasApiAccessToken } from '../src/services/http/apiClient';
@@ -326,8 +327,14 @@ try {
   const createdVoucher = await voucherService.create(voucherPolicy);
   assert.equal(createdVoucher.voucher_id, 27);
   assert.deepEqual(capturedVoucherBody, voucherPolicy, 'Create must preserve the typed voucher policy');
-  await voucherService.update(27, { ...voucherPolicy, enabled: false });
-  assert.deepEqual(capturedVoucherBody, { ...voucherPolicy, enabled: false }, 'Update uses existing resource and full policy');
+  // Real editor receives VoucherDetail, not VoucherInput. Its response metadata
+  // must never be serialized into the strict VoucherRequest endpoint.
+  await voucherService.update(27, voucherSubmission({ ...voucherDetail, enabled: false }, false));
+  assert.deepEqual(capturedVoucherBody, { ...voucherPolicy, enabled: false },
+    'Updating from a server detail must send only the approved VoucherRequest fields');
+  await voucherService.update(27, { ...voucherDetail, enabled: false });
+  assert.deepEqual(capturedVoucherBody, { ...voucherPolicy, enabled: false },
+    'HTTP service boundary also strips response metadata for other callers');
 
   const checkoutRequest = {
     recipient_phone: '0909000001',

@@ -4,7 +4,7 @@ import { voucherService } from '../api/service';
 import { Modal } from '../../../shared/admin/Modal';
 import { getApiErrorMessage } from '../../../services/http/apiError';
 import { VoucherCategoryPicker, VoucherProductPicker } from './VoucherScopePicker';
-import { changeVoucherDiscountType, changeVoucherScope, voucherSubmission } from '../model/voucherFormModel';
+import { changeVoucherDiscountType, changeVoucherScope, voucherRequestFields, voucherSubmission } from '../model/voucherFormModel';
 
 const blank: VoucherInput = {
   code: '', discount_type: 'FIXED_AMOUNT', discount_value: 0, maximum_discount: null,
@@ -24,7 +24,7 @@ export function VoucherForm({ voucher, canWrite, onClose, onSaved }: {
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [form, setForm] = useState<VoucherInput>(voucher ?? blank);
+  const [form, setForm] = useState<VoucherInput>(() => voucher ? voucherRequestFields(voucher) : blank);
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
   const [error, setError] = useState<string | null>(null);

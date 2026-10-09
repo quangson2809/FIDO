@@ -4,7 +4,7 @@ import { buildMovedImageOrder, sortProductImages } from '../src/features/catalog
 import { canAccessAdminModule, canWriteAdminModule } from '../src/features/auth/session/adminAccessPolicy';
 import { canPurchaseProductVariant } from '../src/features/catalog/model/purchaseAvailability';
 import { buildCheckoutQuoteKey } from '../src/features/orders/model/checkoutQuoteKey';
-import { changeVoucherScope, changeVoucherDiscountType, voucherSubmission } from '../src/features/promotion/model/voucherFormModel';
+import { changeVoucherScope, changeVoucherDiscountType, voucherRequestFields, voucherSubmission } from '../src/features/promotion/model/voucherFormModel';
 import type { VoucherInput } from '../src/features/promotion/types';
 import { getVietnamMonthStart, getVietnamToday } from '../src/shared/time/vietnamCalendar';
 import { isAdminProfile, isSuperAdminProfile } from '../src/features/auth/session/sessionAccess';
@@ -66,6 +66,21 @@ const voucherFixture: VoucherInput = {
 assert.deepEqual(voucherSubmission(voucherFixture, false).category_ids, [5, 8], 'do not replace real category IDs with labels');
 assert.equal(voucherSubmission(voucherFixture, false).maximum_discount, null, 'fixed amount has no cap');
 assert.equal(voucherSubmission(voucherFixture, true).maximum_discount, 10, 'preserve immutable historical cap for used voucher');
+const voucherServerDetail = { ...voucherFixture, voucher_id: 990001, active_usage: 0, ever_used: true };
+const expectedVoucherFields = {
+  ...voucherFixture,
+  code: 'WELCOME10',
+  maximum_discount: null,
+};
+assert.deepEqual(voucherRequestFields(voucherServerDetail), voucherFixture,
+  'response-only metadata must not enter editing state');
+assert.deepEqual(voucherSubmission(voucherServerDetail, false), expectedVoucherFields,
+  'submission must contain only request fields, even if input is a server detail');
+assert.deepEqual(voucherSubmission(voucherServerDetail, true), {
+  ...voucherFixture, code: 'WELCOME10',
+}, 'used voucher retains immutable policy without leaking response metadata');
+assert.equal(Object.keys(voucherSubmission(voucherServerDetail, true)).length, Object.keys(voucherFixture).length,
+  'no additional property can leak from VoucherDetail to VoucherRequest');
 const productScope = changeVoucherScope(voucherFixture, 'PRODUCT');
 assert.deepEqual(productScope.category_ids, []);
 assert.deepEqual(productScope.product_ids, []);
