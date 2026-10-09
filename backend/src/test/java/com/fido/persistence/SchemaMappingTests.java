@@ -33,13 +33,15 @@ class SchemaMappingTests {
     @Autowired AccountRepository accounts;
 
     @Test
-    void exactly28DomainTablesAndEntitiesMatchApprovedOwnership() throws Exception {
+    void domainTablesAndEntitiesMatchApprovedOwnership() throws Exception {
         Map<String,String> owners = new HashMap<>();
         for (String line : Files.readAllLines(Path.of("../reference/table-ownership.csv")).subList(1, 29)) {
             String[] parts = line.split(",");
             owners.put(parts[1].trim(), parts[0].trim());
         }
-        assertEquals(28, owners.size());
+        owners.put("voucher_usages", "promotion");
+        owners.put("checkout_quotes", "order");
+        assertEquals(30, owners.size());
         Set<String> mapped = new HashSet<>();
         for (EntityType<?> entity : em.getMetamodel().getEntities()) {
             Class<?> type = entity.getJavaType();
@@ -47,14 +49,17 @@ class SchemaMappingTests {
             assertEquals("com.fido.modules." + owners.get(table) + ".entity", type.getPackageName());
             mapped.add(table);
             Object key = switch (table) {
+                case "checkout_quotes" -> "fixture-quote";
                 case "roles" -> 101L;
                 case "account_roles" -> new AccountRoleId(1L,101L);
-                case "role_permissions" -> new RolePermissionId(101L,1L);
+                case "permissions" -> 1001L;
+                case "role_permissions" -> new RolePermissionId(101L,1001L);
                 default -> 1L;
             };
             assertNotNull(em.find(type, key), "Cannot read fixture for " + table);
         }
         assertEquals(owners.keySet(), mapped);
+        mapped.addAll(Set.of("voucher_products", "voucher_categories"));
         try (Connection connection = dataSource.getConnection()) {
             Set<String> actual = new HashSet<>();
             try (var rows = connection.getMetaData().getTables(connection.getCatalog(), connection.getSchema(), "%", new String[]{"TABLE"})) {
@@ -69,7 +74,7 @@ class SchemaMappingTests {
                 Map<String,Column> expected = new HashMap<>();
                 for (var field : entity.getJavaType().getDeclaredFields()) {
                     Column col = field.getAnnotation(Column.class);
-                    if(col != null) expected.put(col.name(), col);
+                    if(col != null && !field.isAnnotationPresent(jakarta.persistence.ElementCollection.class)) expected.put(col.name(), col);
                 }
                 Set<String> actualColumns = new HashSet<>();
                 String dbTable = connection.getMetaData().storesUpperCaseIdentifiers() ? table.toUpperCase(Locale.ROOT) : table;

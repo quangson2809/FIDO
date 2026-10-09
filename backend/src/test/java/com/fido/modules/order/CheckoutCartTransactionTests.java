@@ -60,7 +60,7 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
         assertEquals(0, count("orders", customer));
         var voucher = call("POST", "/api/v1/orders", customer.token(), Map.of(
                 "recipient_phone", "0900000000", "recipient_address", "Hanoi", "voucher_code", "UNAPPROVED"));
-        assertEquals(501, voucher.status());
+        assertEquals(409, voucher.status());
         assertEquals(2, cartQuantity(customer));
     }
 

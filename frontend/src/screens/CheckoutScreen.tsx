@@ -4,9 +4,8 @@ import { useCart } from '../features/cart/hooks/useCart';
 import { profileService } from '../features/auth/api/profileService';
 import { checkoutService } from '../features/orders/api/checkoutService';
 import type { CheckoutQuoteDto, CheckoutRequest } from '../features/orders/types';
-import { getApiErrorMessage } from '../services/http/apiError';
+import { ApiClientError, getApiErrorMessage } from '../services/http/apiError';
 import { buildCheckoutQuoteKey } from '../features/orders/model/checkoutQuoteKey';
-import { sameCheckoutQuote } from '../features/orders/model/sameCheckoutQuote';
 import { CheckoutConfirmationDialog } from '../features/orders/components/CheckoutConfirmationDialog';
 
 const money = (value: number): string => `${value.toLocaleString('vi-VN')}₫`;
@@ -17,6 +16,7 @@ export const CheckoutScreen: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
+  const [voucherCode, setVoucherCode] = useState('');
   const [quote, setQuote] = useState<CheckoutQuoteDto | null>(null);
   const [quotedRequestKey, setQuotedRequestKey] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -56,8 +56,8 @@ export const CheckoutScreen: React.FC = () => {
     recipient_phone: phone.trim(),
     recipient_email: email.trim() || null,
     recipient_address: address.trim(),
-    voucher_code: null,
-  }), [address, email, phone]);
+    voucher_code: voucherCode.trim() || null,
+  }), [address, email, phone, voucherCode]);
 
   const currentRequestKey = buildCheckoutQuoteKey(request, cartRevision);
   const quoteIsCurrent = quote !== null && quotedRequestKey === currentRequestKey;
@@ -93,22 +93,18 @@ export const CheckoutScreen: React.FC = () => {
     setError(null);
     try {
       await withCartLock(async () => {
-        const latestQuote = await checkoutService.quote(request);
-        if (!sameCheckoutQuote(quote, latestQuote)) {
-          setQuote(latestQuote);
-          setConfirmationOpen(false);
-          setError('Giá hoặc sản phẩm đã thay đổi. Vui lòng xem báo giá mới và xác nhận lại.');
-          return;
-        }
-        const result = await checkoutService.createOrder(request);
+        if (!quote.quote_id) throw new Error('Báo giá thiếu mã xác nhận. Vui lòng tính lại.');
+        const result = await checkoutService.createOrder({ ...request, quote_id: quote.quote_id });
         synchronizePurchasedCart();
         navigate(`/checkout/success/${result.order_id}`);
       });
     } catch (requestError: unknown) {
       setError(getApiErrorMessage(requestError, 'Không thể tạo đơn hàng. Dữ liệu giỏ hàng có thể đã thay đổi; hãy cập nhật báo giá và thử lại.'));
       setConfirmationOpen(false);
-      setQuote(null);
-      setQuotedRequestKey(null);
+      if (requestError instanceof ApiClientError && requestError.status && requestError.status < 500) {
+        setQuote(null);
+        setQuotedRequestKey(null);
+      }
     } finally {
       submittingRef.current = false;
       setOrderSubmitting(false);
@@ -145,8 +141,14 @@ export const CheckoutScreen: React.FC = () => {
 
           <section className="border border-[#E8E9E3] bg-white p-6 shadow-sm sm:p-7">
             <div className="mb-4 flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FFFDF5] text-[#0B2419] ring-1 ring-[#E8E9E3]"><span className="material-symbols-outlined text-[20px]">price_check</span></span><div><p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">Server validation</p><h2 className="font-serif text-xl">Xác nhận báo giá</h2></div></div>
-            <div className="mb-4 border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Voucher hiện chưa khả dụng.
+            <div className="mb-5 space-y-3">
+              <Field label="Mã voucher"><input maxLength={80} value={voucherCode} disabled={orderSubmitting || quoteLoading}
+                onChange={(event) => { setVoucherCode(event.target.value); invalidateQuote(); }}
+                placeholder="Nhập mã ưu đãi" className="field-input" /></Field>
+              <p className="text-sm text-[#687069]">Áp dụng một mã cho tiền hàng đủ điều kiện. Bấm kiểm tra báo giá để xem mức giảm.</p>
+              {voucherCode && <button type="button" disabled={orderSubmitting || quoteLoading} className="text-sm underline"
+                onClick={() => { setVoucherCode(''); invalidateQuote(); }}>Xóa mã voucher</button>}
+              {quoteIsCurrent && quote.voucher && <p role="status" className="text-sm text-green-800">Đã áp dụng {quote.voucher.code}: giảm {money(quote.discount)}</p>}
             </div>
             <button type="button" disabled={!canRequestQuote || quoteLoading || profileLoading || orderSubmitting || isCartBusy} onClick={() => void loadQuote()} className="w-full bg-[#0B2419] px-6 py-3 text-xs font-bold uppercase tracking-wider text-white disabled:cursor-not-allowed disabled:opacity-40">{quoteLoading ? 'Đang kiểm tra...' : quoteIsCurrent ? 'Cập nhật báo giá' : 'Kiểm tra & báo giá'}</button>
           </section>

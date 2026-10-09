@@ -13,7 +13,7 @@ export const checkoutService: CheckoutService = {
     return response.data;
   },
 
-  async createOrder(request: CheckoutRequest) {
+  async createOrder(request: CheckoutRequest & { quote_id: string }) {
     const response = await apiClient.post<ApiResponse<OrderConfirmationDto>>('/orders', request);
     return response.data;
   },

@@ -325,6 +325,7 @@ abstract class CartHttpSupport {
 
     @AfterEach
     void clean() {
+        for (Long id : accounts) db.update("DELETE FROM checkout_quotes WHERE account_id=?", id);
         for (Long accountId : accounts) {
             db.update(
                     """

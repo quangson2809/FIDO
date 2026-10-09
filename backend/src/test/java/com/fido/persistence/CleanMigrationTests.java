@@ -50,14 +50,14 @@ class CleanMigrationTests {
         var flyway = Flyway.configure().dataSource(dataSource)
                 .locations("classpath:db/migration").cleanDisabled(false).load();
         try {
-            assertEquals(4, flyway.migrate().migrationsExecuted);
+            assertEquals(5, flyway.migrate().migrationsExecuted);
             var jdbc = new JdbcTemplate(dataSource);
             jdbc.update("INSERT INTO categories(name) VALUES ('phase14-before-clean')");
 
             flyway.clean();
-            assertEquals(4, flyway.migrate().migrationsExecuted);
+            assertEquals(5, flyway.migrate().migrationsExecuted);
             flyway.validate();
-            assertEquals("4", flyway.info().current().getVersion().getVersion());
+            assertEquals("5", flyway.info().current().getVersion().getVersion());
             assertEquals(0, flyway.info().pending().length);
             assertEquals(0, flyway.migrate().migrationsExecuted);
             assertEquals(0, jdbc.queryForObject(

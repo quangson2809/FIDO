@@ -11,11 +11,13 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class CheckoutCalculationService {
 
+    private final com.fido.modules.promotion.service.VoucherRedemptionService vouchers;
     private final CartQueryService cart;
     private final BigDecimal shippingFee;
 
     public CheckoutCalculationService(
             CartQueryService cart,
+            com.fido.modules.promotion.service.VoucherRedemptionService vouchers,
             @Value("${app.checkout.shipping-fee}")
                     BigDecimal shippingFee
     ) {
@@ -26,6 +28,7 @@ public class CheckoutCalculationService {
         }
 
         this.cart = cart;
+        this.vouchers = vouchers;
         this.shippingFee = shippingFee;
     }
 
@@ -33,7 +36,7 @@ public class CheckoutCalculationService {
             Long accountId,
             String voucherCode
     ) {
-        rejectUnsupportedVoucher(voucherCode);
+
 
         CheckoutCartView current = cart.checkoutView(accountId);
 
@@ -45,7 +48,11 @@ public class CheckoutCalculationService {
                 this::requireCheckoutReady
         );
 
-        BigDecimal discount = BigDecimal.ZERO;
+        var voucher = voucherCode == null || voucherCode.isBlank()
+                ? new com.fido.modules.promotion.service.VoucherRedemptionService.Discount(null,null,BigDecimal.ZERO)
+                : vouchers.evaluate(accountId, voucherCode, current.items().stream()
+                .map(i -> new com.fido.modules.promotion.service.VoucherRedemptionService.Line(i.variantId(),i.lineTotal())).toList());
+        BigDecimal discount = voucher.amount();
         BigDecimal total = current.subtotal()
                 .subtract(discount)
                 .add(shippingFee);
@@ -55,16 +62,9 @@ public class CheckoutCalculationService {
                 current.subtotal(),
                 discount,
                 shippingFee,
-                total
+                total,
+                voucher
         );
-    }
-
-    private void rejectUnsupportedVoucher(String voucherCode) {
-        if (voucherCode != null && !voucherCode.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_IMPLEMENTED
-            );
-        }
     }
 
     private void requireCheckoutReady(

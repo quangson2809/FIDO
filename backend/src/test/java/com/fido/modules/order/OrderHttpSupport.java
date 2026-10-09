@@ -541,7 +541,9 @@ abstract class OrderHttpSupport {
 
     @AfterEach
     void clean() {
+        for (Long id : accounts) db.update("DELETE FROM checkout_quotes WHERE account_id=?", id);
         for (Long orderId : orderIds) {
+            db.update("DELETE FROM voucher_usages WHERE order_id=?", orderId);
             db.update(
                     "DELETE FROM inventory_transactions WHERE order_id=?",
                     orderId

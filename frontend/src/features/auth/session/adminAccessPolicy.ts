@@ -2,6 +2,7 @@ import type { MeDto } from '../types';
 import { isAdminProfile, isSuperAdminProfile } from './sessionAccess';
 
 export type AdminModuleKey =
+  | 'vouchers'
   | 'dashboard'
   | 'orders'
   | 'products'
@@ -20,6 +21,7 @@ export type AdminModuleKey =
   | 'content';
 
 type AdminPermissionCode =
+  | 'VOUCHER_READ'
   | 'CATALOG_READ'
   | 'INVENTORY_READ'
   | 'ORDER_READ'
@@ -28,11 +30,13 @@ type AdminPermissionCode =
   | 'CUSTOMER_READ';
 
 type AdminWritePermissionCode =
+  | 'VOUCHER_WRITE'
   | 'CATALOG_WRITE'
   | 'INVENTORY_WRITE'
   | 'CONTENT_WRITE';
 
 const readPermissionByModule: Partial<Record<AdminModuleKey, AdminPermissionCode>> = {
+  vouchers: 'VOUCHER_READ',
   orders: 'ORDER_READ',
   products: 'CATALOG_READ',
   categories: 'CATALOG_READ',
@@ -48,6 +52,7 @@ const readPermissionByModule: Partial<Record<AdminModuleKey, AdminPermissionCode
 };
 
 const writePermissionByModule: Partial<Record<AdminModuleKey, AdminWritePermissionCode>> = {
+  vouchers: 'VOUCHER_WRITE',
   products: 'CATALOG_WRITE',
   categories: 'CATALOG_WRITE',
   brands: 'CATALOG_WRITE',
@@ -69,6 +74,7 @@ export const canAccessAdminModule = (
   if (!profile || !isAdminProfile(profile)) return false;
   if (isSuperAdminProfile(profile)) return true;
   if (moduleKey === 'dashboard') return true;
+  if (moduleKey === 'vouchers' && permissionCodes.includes('VOUCHER_WRITE')) return true;
   if (superadminOnlyModules.has(moduleKey)) return false;
 
   const requiredPermission = readPermissionByModule[moduleKey];

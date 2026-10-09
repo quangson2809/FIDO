@@ -119,6 +119,8 @@ export interface VoucherDto {
 }
 
 export interface CheckoutQuoteDto {
+  quote_id?: string;
+  expires_at?: string;
   items: CheckoutItemDto[];
   subtotal: number;
   discount: number;
@@ -217,5 +219,5 @@ export interface OrderService {
 
 export interface CheckoutService {
   quote(request: CheckoutRequest): Promise<CheckoutQuoteDto>;
-  createOrder(request: CheckoutRequest): Promise<OrderConfirmationDto>;
+  createOrder(request: CheckoutRequest & { quote_id: string }): Promise<OrderConfirmationDto>;
 }

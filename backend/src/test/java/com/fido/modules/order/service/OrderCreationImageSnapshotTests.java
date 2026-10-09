@@ -36,7 +36,9 @@ class OrderCreationImageSnapshotTests {
                 orders,
                 items,
                 payments,
-                audit
+                audit,
+                mock(CheckoutQuoteStore.class),
+                mock(com.fido.modules.promotion.service.VoucherRedemptionService.class)
         );
 
         String currentCover = "https://cdn.test/current-cover.jpg";

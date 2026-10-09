@@ -1,3 +1,4 @@
+import { AdminVouchersView } from '../../screens/admin/AdminVouchersView';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '../../shared/ui/toast/useToast';
 import { getAdminPath } from '../../routes/paths';
@@ -205,4 +206,10 @@ export const AdminContentRoute = () => {
   const { showToast } = useAdminRouteDeps();
   const canWrite = useAdminWriteAccess('content');
   return <AdminSettingsView showToast={showToast} canWrite={canWrite} />;
+};
+
+export const AdminVouchersRoute = () => {
+  const { showToast } = useAdminRouteDeps();
+  const canWrite = useAdminWriteAccess('vouchers');
+  return <AdminVouchersView canWrite={canWrite} showToast={showToast} />;
 };

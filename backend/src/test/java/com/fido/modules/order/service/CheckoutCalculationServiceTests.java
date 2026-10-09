@@ -28,6 +28,7 @@ class CheckoutCalculationServiceTests {
     void setUp() {
         service = new CheckoutCalculationService(
                 cart,
+                org.mockito.Mockito.mock(com.fido.modules.promotion.service.VoucherRedemptionService.class),
                 new BigDecimal("30000.00")
         );
     }
@@ -75,19 +76,6 @@ class CheckoutCalculationServiceTests {
         assertEquals(
                 1,
                 result.items().size()
-        );
-    }
-
-    @Test
-    void rejectsVoucherUntilVoucherRulesAreImplemented() {
-        ResponseStatusException error = assertThrows(
-                ResponseStatusException.class,
-                () -> service.calculate(10L, "PROMO")
-        );
-
-        assertEquals(
-                HttpStatus.NOT_IMPLEMENTED,
-                error.getStatusCode()
         );
     }
 

@@ -36,6 +36,7 @@ public class OrderActionService {
     private final InventoryMovementQueryService movements;
     private final OrderQueryService query;
     private final AuditService audit;
+    private final com.fido.modules.promotion.service.VoucherRedemptionService vouchers;
 
     public OrderActionService(
             OrderActionPolicy policy,
@@ -45,7 +46,8 @@ public class OrderActionService {
             InventoryCommandService inventoryCommands,
             InventoryMovementQueryService movements,
             OrderQueryService query,
-            AuditService audit
+            AuditService audit,
+            com.fido.modules.promotion.service.VoucherRedemptionService vouchers
     ) {
         this.policy = policy;
         this.orders = orders;
@@ -55,6 +57,7 @@ public class OrderActionService {
         this.movements = movements;
         this.query = query;
         this.audit = audit;
+        this.vouchers = vouchers;
     }
 
     @PreAuthorize(
@@ -249,6 +252,7 @@ public class OrderActionService {
 
         String sourceStatus = order.getOrderStatus();
 
+        vouchers.restoreCancelledOrder(order.getOrderId(), order.getVoucherId());
         order.setOrderStatus(OrderPolicy.CANCELLED);
         order.setCancelReason(
                 reason == null || reason.isBlank()

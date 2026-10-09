@@ -36,6 +36,7 @@ const AdminOrdersRoute = lazy(() => import('./AdminRouteElements').then((module)
 const AdminOrderDetailRoute = lazy(() => import('./AdminRouteElements').then((module) => ({ default: module.AdminOrderDetailRoute })));
 const AdminInwardRoute = lazy(() => import('./AdminRouteElements').then((module) => ({ default: module.AdminInwardRoute })));
 const AdminInventoryRoute = lazy(() => import('./AdminRouteElements').then((module) => ({ default: module.AdminInventoryRoute })));
+const AdminVouchersRoute = lazy(() => import('./AdminRouteElements').then((module) => ({ default: module.AdminVouchersRoute })));
 const AdminSuppliersRoute = lazy(() => import('./AdminRouteElements').then((module) => ({ default: module.AdminSuppliersRoute })));
 const AdminCustomersRoute = lazy(() => import('./AdminRouteElements').then((module) => ({ default: module.AdminCustomersRoute })));
 const AdminCustomerDetailRoute = lazy(() => import('./AdminRouteElements').then((module) => ({ default: module.AdminCustomerDetailRoute })));
@@ -156,7 +157,7 @@ export const AppRoutes: React.FC = () => (
         <Route path="orders/detail" element={<Navigate to={ADMIN_PATHS.orders} replace />} />
         <Route path="orders/tailoring" element={<Navigate to={ADMIN_PATHS.orders} replace />} />
         <Route path="customers/detail" element={<Navigate to={ADMIN_PATHS.customers} replace />} />
-        <Route path="vouchers" element={<Navigate to={APP_PATHS.admin} replace />} />
+        <Route path="vouchers" element={<AdminVouchersRoute />} />
         <Route path="settings" element={<Navigate to={ADMIN_PATHS.content} replace />} />
         <Route path="*" element={<Navigate to={APP_PATHS.admin} replace />} />
       </Route>

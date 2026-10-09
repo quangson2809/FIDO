@@ -344,3 +344,39 @@ Therefore only the receipt-command wiring is MATERIAL_DECISION_REQUIRED: approve
 - FE waits for its cart mutation queue, excludes new local mutations during quotation/order submission, discards stale cart reads, and synchronizes the cart after successful order creation. The confirmation dialog shows the quoted lines, recipient and COD totals. Opening/cancelling never creates an order. A synchronous submission guard prevents double clicks.
 - FE reuses API #19 immediately before POST #20 and requires another confirmation when quoted lines or money changed. This reduces stale purchases but **does not guarantee atomic quote-to-order consistency**; a catalog/cart change between the two requests remains possible. Approval is needed for a server-validated quote/version/token or equivalent contract. No client-authoritative total or hidden fingerprint has been introduced.
 - Voucher Customer/Admin remain blocked by docs/12: discount/value, dates/minimum/scope, usage/stacking, lifecycle/allocation, redemption/cancellation semantics and the corresponding approved management API/schema. No placeholder management or fake discount was added.
+
+## Voucher V1 and checkout quote persistence (2026-10-09)
+
+Approved scope supersedes the earlier voucher deferral: FIXED_AMOUNT/PERCENTAGE
+(with required percentage cap), ALL/PRODUCT/CATEGORY including descendants,
+start/end, eligible-merchandise minimum, nullable global limit, customer limit
+(default 1), no stacking/ownership allocation. Money uses 2 decimals HALF_UP.
+Quote checks do not consume usage. PENDING creation consumes; CANCELLED restores
+once; RETURNED does not. Voucher row locks serialize redemption and edits; current
+locking usage reads avoid stale MySQL repeatable-read counts. Existing code-only
+vouchers migrate disabled and require configuration.
+
+Promotion owns voucher policy, targets and usage. Product exposes scope resolution
+without entities. Order invokes promotion services in its transaction and keeps
+historical monetary snapshots. Used voucher policy/code/scope/start are immutable;
+only extension, increased limits, enable/disable are supported. No delete API.
+Capabilities VOUCHER_READ and VOUCHER_WRITE are seeded without role grants;
+SUPERADMIN bypasses capability checks. WRITE also permits management reads.
+
+Quotes are persisted with opaque UUID, authenticated account, SHA-256 content
+fingerprint, 15-minute expiry and eventual order ID. Fingerprints cover recipient,
+selected variants, quantities, displayed snapshots, voucher and all money amounts.
+Account/cart mutation locking serializes quote creation/use; create revalidates
+within its transaction, rejects changed/expired quotes with 409, and returns the
+existing order on retry (including expired consumed quotes). Frontend always sends
+quote_id and retains it after uncertain network/server errors. Existing non-voucher
+API clients may still omit quote_id for compatibility; they do not receive the new
+quote consistency/idempotent replay guarantee. Voucher placement requires quote_id.
+
+The existing checkout quote response adds quote_id/expires_at; order create adds
+optional quote_id. Admin /api/v1/admin/vouchers: GET (search/page/page_size), POST;
+/{id}: GET, PUT full policy including enabled. Request fields: code, discount_type,
+discount_value, maximum_discount, minimum_amount, starts_at, ends_at, scope,
+product_ids, category_ids, global_limit, customer_limit, enabled. Detail adds
+voucher_id, active_usage, ever_used. No public wallet/list/allocation API.
+Only authored rejection reasons from these endpoints are exposed to clients.

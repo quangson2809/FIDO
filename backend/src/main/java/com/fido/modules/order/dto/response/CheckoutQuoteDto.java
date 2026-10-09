@@ -9,6 +9,8 @@ public record CheckoutQuoteDto(
         BigDecimal discount,
         BigDecimal shipping_fee,
         BigDecimal total,
-        VoucherDto voucher
+        VoucherDto voucher,
+        String quote_id,
+        java.time.Instant expires_at
 ) {
 }

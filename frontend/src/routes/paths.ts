@@ -27,6 +27,7 @@ export const ADMIN_PATHS = {
   inward: '/admin/goods-receipts',
   inventory: '/admin/inventory',
   history: '/admin/inventory/history',
+  vouchers: '/admin/vouchers',
   suppliers: '/admin/suppliers',
   customers: '/admin/customers',
   staff: '/admin/staff',
@@ -132,6 +133,7 @@ export const resolveAdminRoute = (pathname: string): AdminRouteResolution => {
   if (pathname === ADMIN_PATHS.roles) return { menuKey: 'roles', breadcrumb: 'Vai trò & quyền' };
   if (pathname === ADMIN_PATHS.audit) return { menuKey: 'audit', breadcrumb: 'Audit' };
   if (pathname === ADMIN_PATHS.reports) return { menuKey: 'reports', breadcrumb: 'Báo cáo' };
+  if (pathname === ADMIN_PATHS.vouchers) return { menuKey: 'vouchers', breadcrumb: 'Voucher' };
   if (pathname === ADMIN_PATHS.content) return { menuKey: 'content', breadcrumb: 'Nội dung & chính sách' };
   if (pathname === ADMIN_PATHS.settings) return { menuKey: 'settings', breadcrumb: 'Cài đặt nội dung' };
   return { menuKey: 'dashboard', breadcrumb: 'Tổng quan' };

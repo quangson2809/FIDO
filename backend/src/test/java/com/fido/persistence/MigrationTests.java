@@ -17,7 +17,7 @@ class MigrationTests {
     void validatesAndDoesNotReapplyMigrationsOnRestart() {
         flyway.validate();
         assertEquals(0, flyway.migrate().migrationsExecuted);
-        assertEquals("4", flyway.info().current().getVersion().getVersion());
+        assertEquals("5", flyway.info().current().getVersion().getVersion());
         assertEquals(0, flyway.info().pending().length);
     }
 }

@@ -1,9 +1,9 @@
 INSERT INTO accounts VALUES (1,'test-only-hash','0900000001',NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
 INSERT INTO addresses VALUES (1,1,'Test address',CURRENT_TIMESTAMP);
 INSERT INTO roles VALUES (101,'fixture-role','Fixture role',NULL);
-INSERT INTO permissions VALUES (1,'fixture-permission','Fixture permission');
+INSERT INTO permissions VALUES (1001,'fixture-permission','Fixture permission');
 INSERT INTO account_roles VALUES (1,101);
-INSERT INTO role_permissions VALUES (101,1);
+INSERT INTO role_permissions VALUES (101,1001);
 INSERT INTO categories VALUES (1,NULL,'Root');
 INSERT INTO brands VALUES (1,'Fixture brand');
 INSERT INTO size_systems VALUES (1,'fixture-size-system','Fixture system');
@@ -15,7 +15,7 @@ VALUES (1,1,'https://example.invalid/test.png',NULL,0);
 INSERT INTO product_variants VALUES (1,1,1,1,NULL,NULL,'fixture-status',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
 INSERT INTO carts VALUES (1,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
 INSERT INTO cart_items VALUES (1,1,1,1);
-INSERT INTO vouchers VALUES (1,'fixture-voucher');
+INSERT INTO vouchers(voucher_id,code) VALUES (1,'fixture-voucher');
 INSERT INTO orders VALUES (1,'fixture-order',1,'0900000001',NULL,'Test address',100.00,0.00,30000.00,30100.00,NULL,'PENDING',NULL,NULL,NULL,NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
 INSERT INTO order_items (
     order_item_id,
@@ -39,3 +39,8 @@ INSERT INTO inventories VALUES (1,10,CURRENT_TIMESTAMP);
 INSERT INTO inventory_transactions VALUES (1,1,10,'OPENING_STOCK',NULL,NULL,1,NULL,CURRENT_TIMESTAMP);
 INSERT INTO audit_logs VALUES (1,1,'fixture.action','fixture','1',NULL,CURRENT_TIMESTAMP);
 INSERT INTO content_pages VALUES (1,'fixture-page','Fixture page','Fixture content',1,CURRENT_TIMESTAMP);
+
+INSERT INTO voucher_usages(order_id,voucher_id,account_id,restored) VALUES(1,1,1,FALSE);
+INSERT INTO voucher_products(voucher_id,product_id) VALUES(1,1);
+INSERT INTO voucher_categories(voucher_id,category_id) VALUES(1,1);
+INSERT INTO checkout_quotes(quote_id,account_id,fingerprint,expires_at) VALUES('fixture-quote',1,'fixture',CURRENT_TIMESTAMP);

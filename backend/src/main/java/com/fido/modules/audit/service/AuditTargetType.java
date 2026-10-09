@@ -1,6 +1,7 @@
 package com.fido.modules.audit.service;
 
 public enum AuditTargetType {
+    VOUCHER,
     ACCOUNT,
     ROLE,
     PERMISSION,

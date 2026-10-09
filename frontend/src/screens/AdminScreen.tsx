@@ -29,6 +29,7 @@ const navItems: NavItem[] = [
   { key: 'roles', label: 'Vai trò & quyền', icon: 'admin_panel_settings', group: 'Tài khoản' },
   { key: 'audit', label: 'Audit', icon: 'history', group: 'Hệ thống' },
   { key: 'reports', label: 'Báo cáo', icon: 'monitoring', group: 'Hệ thống' },
+  { key: 'vouchers', label: 'Voucher', icon: 'sell', group: 'Vận hành' },
   { key: 'content', label: 'Nội dung', icon: 'article', group: 'Hệ thống' },
 ];
 

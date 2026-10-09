@@ -234,3 +234,10 @@ The latest API document includes #66–69:
 - DELETE `/api/v1/admin/permissions/{permissionId}`: only when no Role references the Permission
 
 Do not use the older 73-endpoint numbering as current baseline.
+
+### Approved Voucher V1 extension
+
+See `15-technical-decisions.md` (2026-10-09) for voucher management request fields,
+capabilities, persisted checkout quote IDs and compatibility semantics. Voucher
+management is now implemented rather than deferred. This extension preserves
+existing response envelopes and snake_case contracts.

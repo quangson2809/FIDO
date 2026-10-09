@@ -13,6 +13,7 @@ page.on('pageerror', error => errors.push(error.message));
 let quantity = 2;
 let price = 100000;
 let orders = 0;
+let quotedPrice = price;
 let rejectOrder = false;
 let delayOrder = false;
 let delayMutation = false;
@@ -21,7 +22,7 @@ let releaseOrder = () => {};
 let releaseMutation = () => {};
 const item = () => ({ cart_item_id: 1, variant_id: 1, product_name: 'Áo FIDO thử nghiệm', size: 'M', color: 'Đen', quantity, unit_price: price, line_total: quantity * price, available_quantity: 10, image_url: null });
 const cart = () => ({ cart_id: 1, account_id: 1, items: quantity ? [item()] : [], subtotal: quantity * price });
-const quote = () => ({ items: [item()], subtotal: quantity * price, discount: 0, shipping_fee: 30000, total: quantity * price + 30000, voucher: null });
+const quote = () => ({ quote_id: 'test-quote', items: [item()], subtotal: quantity * price, discount: 0, shipping_fee: 30000, total: quantity * price + 30000, voucher: null });
 const me = { account: { account_id: 1, phone: '0900000000', email: 'user@example.test', created_at: '2026-10-09T00:00:00Z', updated_at: '2026-10-09T00:00:00Z' }, addresses: [{ address_id: 1, address_text: 'Hà Nội', created_at: '2026-10-09T00:00:00Z' }], roles: [{ role_id: 1, code: 'CUSTOMER', name: 'Customer', description: null }], permissions: [] };
 await page.addInitScript(() => sessionStorage.setItem('fido.accessToken', 'fixture'));
 await page.route('**/api/v1/**', async route => {
@@ -36,8 +37,10 @@ await page.route('**/api/v1/**', async route => {
     quantity = request.postDataJSON().quantity;
     return send({ data: cart() });
   }
-  if (path === '/checkout/quote') return send({ data: quote() });
+  if (path === '/checkout/quote') { quotedPrice = price; return send({ data: quote() }); }
   if (path === '/orders' && request.method() === 'POST') {
+    assert.equal(request.postDataJSON().quote_id, 'test-quote');
+    if (price !== quotedPrice) return send({ message: 'Giá hoặc sản phẩm đã thay đổi' }, 409);
     orders++;
     if (delayOrder) await new Promise(resolve => { releaseOrder = resolve; });
     if (rejectOrder) return send({ message: 'Không thể tạo đơn thử nghiệm' }, 409);
@@ -75,6 +78,7 @@ try {
   await confirm().click();
   await page.getByRole('alert').filter({ hasText: 'Giá hoặc sản phẩm đã thay đổi' }).waitFor();
   assert.equal(orders, 0, 'changed quote must require new confirmation');
+  await loadQuote();
   await openDialog();
   assert.match(await dialog.innerText(), /270\.000/);
   rejectOrder = true;

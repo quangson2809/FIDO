@@ -32,6 +32,8 @@ public class OrderCreationService {
     private final OrderItemRepository items;
     private final PaymentRepository payments;
     private final AuditService audit;
+    private final CheckoutQuoteStore quotes;
+    private final com.fido.modules.promotion.service.VoucherRedemptionService vouchers;
 
     public OrderCreationService(
             CheckoutCalculationService checkout,
@@ -39,7 +41,9 @@ public class OrderCreationService {
             OrderRepository orders,
             OrderItemRepository items,
             PaymentRepository payments,
-            AuditService audit
+            AuditService audit,
+            CheckoutQuoteStore quotes,
+            com.fido.modules.promotion.service.VoucherRedemptionService vouchers
     ) {
         this.checkout = checkout;
         this.cart = cart;
@@ -47,6 +51,8 @@ public class OrderCreationService {
         this.items = items;
         this.payments = payments;
         this.audit = audit;
+        this.quotes = quotes;
+        this.vouchers = vouchers;
     }
 
     public OrderConfirmationDto create(
@@ -54,10 +60,17 @@ public class OrderCreationService {
             CreateOrderRequest request
     ) {
         cart.lockForCheckout(accountId);
+        var quote = quotes.find(accountId, request.quote_id());
+        if (quote != null && quote.getOrderId() != null) {
+            return OrderMapper.confirmation(orders.findById(quote.getOrderId()).orElseThrow(),
+                    payments.findById(quote.getOrderId()).orElseThrow());
+        }
         CheckoutCalculation calculation = checkout.calculate(
                 accountId,
                 request.voucher_code()
         );
+
+        quotes.requireMatching(quote, request.recipient_phone(), request.recipient_email(), request.recipient_address(), calculation);
 
         Order order = persistOrder(
                 accountId,
@@ -75,6 +88,8 @@ public class OrderCreationService {
                 calculation.total()
         );
 
+        vouchers.consume(order.getOrderId(), accountId, calculation.voucher());
+        if (quote != null) quote.setOrderId(order.getOrderId());
         cart.clear(accountId);
 
         audit.record(
@@ -107,7 +122,7 @@ public class OrderCreationService {
         order.setDiscountSnapshot(calculation.discount());
         order.setShippingFeeSnapshot(calculation.shippingFee());
         order.setTotalSnapshot(calculation.total());
-        order.setVoucherId(null);
+        order.setVoucherId(calculation.voucher().voucherId());
         order.setOrderStatus(OrderPolicy.PENDING);
 
         return orders.save(order);

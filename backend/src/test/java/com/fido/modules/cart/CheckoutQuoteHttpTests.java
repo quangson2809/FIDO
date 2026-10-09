@@ -168,7 +168,7 @@ class CheckoutQuoteHttpTests extends CartHttpSupport {
         );
 
         assertEquals(
-                501,
+                409,
                 call(
                         "POST",
                         "/api/v1/checkout/quote",
