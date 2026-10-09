@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - fix/frontend-product-variant-selection
+      - feature/admin-ui-ux-improvements
     paths:
       - "compose.yaml"
       - ".env.example"
