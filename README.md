@@ -131,36 +131,65 @@ docker compose down -v
 docker compose exec db mysql -uroot -p
 ```
 
-The stack explicitly selects the `dev` profile and boots with development defaults, so copying an environment file is not required. To override Compose ports/passwords, copy the root `.env.example` to `.env`. If `backend/.env` already exists, Compose loads it automatically for optional backend settings such as JWT, seed/bootstrap configuration and ImgBB credentials; Compose still owns the DB host and internal service ports.
+The Docker stack requires two ignored files: root `.env` for Compose infrastructure and
+`backend/.env` for Spring Boot runtime configuration. Compose overrides the backend
+`DB_URL` to use the Docker service hostname `db`, while local `bootRun` uses the URL
+in `backend/.env` (typically `localhost`). Both modes use the profile selected in
+`backend/.env`; there is no hardcoded `dev` profile in Gradle or Compose.
+
+Prepare the configuration once from the Git-tracked templates:
+
+```powershell
+Copy-Item .env.example .env
+Copy-Item backend/.env.example backend/.env
+```
+
+Set `MYSQL_ROOT_PASSWORD` in root `.env`, set `DB_PASSWORD` in `backend/.env`
+for your local MySQL installation, and supply a private `JWT_SECRET_BASE64` in
+`backend/.env`. For local development the template sets `SPRING_PROFILES_ACTIVE=dev`;
+change it only if the target environment requires another profile. For Docker Compose,
+`backend/.env` must exist because it carries the application's signing secret;
+the database connection is overridden by Compose with the root `.env` settings.
+
+Generate a signing key on Windows PowerShell once (never commit the result):
+
+```powershell
+$bytes = New-Object byte[] 32
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($bytes)
+[Convert]::ToBase64String($bytes)
+$rng.Dispose()
+```
+
+Paste the Base64 output into `JWT_SECRET_BASE64=` in `backend/.env` and keep that
+key stable between restarts. Docker Compose and direct `bootRun` both fail closed
+if the secret is missing, malformed, or too short. Other runtime settings, including
+server port, CORS, upload limits, provider URL, and checkout shipping fee, are
+supplied through the appropriate `.env` template. `.env.example` files are templates
+only and are never loaded automatically as runtime configuration.
 
 ## Backend
 
-Prepare local environment variables from the backend template:
+Run locally without Docker from any IDE through the Gradle `bootRun` task or the
+terminal. Gradle sets only the working directory so Spring always resolves the
+ignored `backend/.env` file consistently. No IDE-specific profile or command-line
+arguments are necessary.
 
 ```powershell
 cd backend
-Copy-Item .env.example .env
+.\gradlew.bat bootRun
 ```
 
-Run the backend:
+A successful local startup logs the profile selected by
+`SPRING_PROFILES_ACTIVE` in `backend/.env`. The root `.env` is for Compose only.
 
-```powershell
-./gradlew bootRun --args="--spring.profiles.active=dev"
-```
-
-On Windows PowerShell, use:
-
-```powershell
-.\gradlew.bat bootRun --args="--spring.profiles.active=dev"
-```
-
-Default API base URL:
+Default API base URL (with the example ports):
 
 ```text
 http://localhost:8080/api/v1
 ```
 
-Swagger UI:
+Swagger UI (with the example ports):
 
 ```text
 http://localhost:8080/swagger-ui.html

@@ -4,9 +4,9 @@ services:
   db:
     image: mysql:8.4
     environment:
-      MYSQL_DATABASE: fido
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
-      TZ: UTC
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?Configure MYSQL_DATABASE in root .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Configure MYSQL_ROOT_PASSWORD in root .env}
+      TZ: ${MYSQL_TZ:?Configure MYSQL_TZ in root .env}
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -28,16 +28,16 @@ services:
     working_dir: /workspace
     env_file:
       - path: ./backend/.env
-        required: false
+        required: true
     environment:
-      SPRING_PROFILES_ACTIVE: dev
-      DB_URL: jdbc:mysql://db:3306/fido?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: root
-      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
-      SERVER_PORT: "8080"
-      APP_CORS_ALLOWED_ORIGINS: "http://localhost:${FRONTEND_PORT:-5173}"
+      # Docker service DNS differs from a directly running local backend.
+      DB_URL: ${DOCKER_DB_URL:?Configure DOCKER_DB_URL in root .env}
+      DB_USERNAME: ${DOCKER_DB_USERNAME:?Configure DOCKER_DB_USERNAME in root .env}
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Configure MYSQL_ROOT_PASSWORD in root .env}
+      SERVER_PORT: ${DOCKER_BACKEND_INTERNAL_PORT:?Configure DOCKER_BACKEND_INTERNAL_PORT in root .env}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:?Configure APP_CORS_ALLOWED_ORIGINS in root .env}
     ports:
-      - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
+      - "127.0.0.1:${BACKEND_PORT:?Configure BACKEND_PORT in root .env}:${DOCKER_BACKEND_INTERNAL_PORT:?Configure DOCKER_BACKEND_INTERNAL_PORT in root .env}"
     volumes:
       - ./backend:/workspace
       - gradle_cache:/root/.gradle
@@ -52,11 +52,11 @@ services:
     init: true
     working_dir: /app
     environment:
-      VITE_API_MODE: real
-      VITE_API_BASE_URL: "http://localhost:${BACKEND_PORT:-8080}/api/v1"
+      VITE_API_MODE: ${VITE_API_MODE:?Configure VITE_API_MODE in root .env}
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:?Configure VITE_API_BASE_URL in root .env}
       CHOKIDAR_USEPOLLING: "true"
     ports:
-      - "127.0.0.1:${FRONTEND_PORT:-5173}:5173"
+      - "127.0.0.1:${FRONTEND_PORT:?Configure FRONTEND_PORT in root .env}:5173"
     volumes:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules

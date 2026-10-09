@@ -16,7 +16,7 @@ public class CheckoutCalculationService {
 
     public CheckoutCalculationService(
             CartQueryService cart,
-            @Value("${app.checkout.shipping-fee:30000.00}")
+            @Value("${app.checkout.shipping-fee}")
                     BigDecimal shippingFee
     ) {
         if (shippingFee.signum() < 0) {

@@ -2,8 +2,9 @@ package com.fido.config.security;
 
 import java.time.Instant;
 import java.util.Base64;
-import java.util.Arrays;
-import org.springframework.core.env.Environment;
+import java.util.HexFormat;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,9 +24,16 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
 @Configuration
 public class JwtConfig {
+    // SHA-256 of the previously published development signing key; not a signing secret.
+    private static final String REVOKED_PUBLIC_KEY_SHA256 =
+            "565d07b454cc4bfebf2ac2d045ba9b49284c27af61af3138d9228e6290fe4dd8";
 
     @Bean
-    SecretKey jwtKey(@Value("${app.jwt.secret-base64}") String secret, Environment environment) {
+    SecretKey jwtKey(@Value("${app.jwt.secret-base64}") String secret) {
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException("JWT_SECRET_BASE64 is required");
+        }
+
         byte[] bytes;
 
         try {
@@ -38,13 +46,15 @@ public class JwtConfig {
             throw new IllegalStateException("JWT key requires at least 256 bits");
         }
 
-        byte[] developmentKey = Base64.getDecoder().decode(
-                "Zmlkby1sb2NhbC1kZXYtc2lnbmluZy1rZXktZG8tbm90LXVzZS1pbi1wcm9kdWN0aW9uLTIwMjY=");
-        // Only an explicitly dev-only runtime may use the public development key.
-        if (Arrays.equals(bytes, developmentKey)
-                && !Arrays.equals(environment.getActiveProfiles(), new String[]{"dev"})) {
-            throw new IllegalStateException("Public development JWT key requires the dev-only profile");
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(bytes);
+            if (HexFormat.of().formatHex(digest).equals(REVOKED_PUBLIC_KEY_SHA256)) {
+                throw new IllegalStateException("Previously published development JWT key is not permitted");
+            }
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 is required for JWT signing-key validation", ex);
         }
+
         return new SecretKeySpec(bytes, "HmacSHA256");
     }
 

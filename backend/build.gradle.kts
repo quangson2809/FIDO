@@ -56,3 +56,8 @@ dependencies {
 tasks.withType<Test> {
     useJUnitPlatform()
 }
+
+// Resolve the optional backend/.env import relative to the project, not an IDE working directory.
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+    workingDir = projectDir
+}
