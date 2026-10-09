@@ -1,10 +1,14 @@
 -- Approved Voucher V1. Legacy code-only vouchers stay unavailable until configured.
-ALTER TABLE vouchers ADD COLUMN discount_type VARCHAR(20),
- ADD COLUMN discount_value DECIMAL(18,2), ADD COLUMN maximum_discount DECIMAL(18,2),
- ADD COLUMN minimum_amount DECIMAL(18,2), ADD COLUMN starts_at TIMESTAMP(6),
- ADD COLUMN ends_at TIMESTAMP(6), ADD COLUMN scope VARCHAR(20),
- ADD COLUMN global_limit BIGINT, ADD COLUMN customer_limit BIGINT,
- ADD COLUMN enabled BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE vouchers ADD COLUMN discount_type VARCHAR(20);
+ALTER TABLE vouchers ADD COLUMN discount_value DECIMAL(18,2);
+ALTER TABLE vouchers ADD COLUMN maximum_discount DECIMAL(18,2);
+ALTER TABLE vouchers ADD COLUMN minimum_amount DECIMAL(18,2);
+ALTER TABLE vouchers ADD COLUMN starts_at TIMESTAMP(6);
+ALTER TABLE vouchers ADD COLUMN ends_at TIMESTAMP(6);
+ALTER TABLE vouchers ADD COLUMN scope VARCHAR(20);
+ALTER TABLE vouchers ADD COLUMN global_limit BIGINT;
+ALTER TABLE vouchers ADD COLUMN customer_limit BIGINT;
+ALTER TABLE vouchers ADD COLUMN enabled BOOLEAN NOT NULL DEFAULT FALSE;
 CREATE TABLE voucher_products (
  voucher_id BIGINT NOT NULL, product_id BIGINT NOT NULL,
  PRIMARY KEY(voucher_id, product_id),
