@@ -101,7 +101,7 @@ export const CheckoutScreen: React.FC = () => {
           return;
         }
         const result = await checkoutService.createOrder(request);
-        await synchronizePurchasedCart();
+        synchronizePurchasedCart();
         navigate(`/checkout/success/${result.order_id}`);
       });
     } catch (requestError: unknown) {

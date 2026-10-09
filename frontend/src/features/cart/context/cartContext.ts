@@ -9,7 +9,7 @@ export interface CartContextValue {
   cartRevision: number;
   isCartBusy: boolean;
   withCartLock: <T>(operation: () => Promise<T>) => Promise<T>;
-  synchronizePurchasedCart: () => Promise<void>;
+  synchronizePurchasedCart: () => void;
   refreshCart: () => Promise<void>;
   addToCart: (variantId: number, productName: string, quantity?: number) => void;
   removeFromCart: (itemId: string) => void;

@@ -153,15 +153,13 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const synchronizePurchasedCart = async (): Promise<void> => {
+  const synchronizePurchasedCart = (): void => {
     clearCartState();
     setIsCartOpen(false);
-    try {
-      await refreshCart();
-    } catch {
-      // Order creation already succeeded; a failed read must not invite another purchase.
+    // Refresh must not delay navigation or turn an already-created order into a failed checkout.
+    void refreshCart().catch(() => {
       showToast('Đơn đã được tạo. Chưa thể tải lại giỏ hàng; vui lòng tải lại trang khi có kết nối.');
-    }
+    });
   };
 
   const addToCart = (variantId: number, productName: string, quantity = 1) => {
