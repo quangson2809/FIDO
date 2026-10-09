@@ -227,3 +227,20 @@ assert.match(stoppedProductPanelHtml, /Không khả dụng/);
 assert.doesNotMatch(stoppedProductPanelHtml, />Thêm vào giỏ hàng</);
 
 process.stdout.write('Frontend render smoke: PASS\n');
+
+// Admin query/permission states are distinct and actionable even without data.
+const { QueryFeedback } = await import('../src/shared/admin/QueryFeedback');
+const { Pagination } = await import('../src/shared/admin/Pagination');
+const { ApiClientError } = await import('../src/services/http/apiError');
+assert.match(renderToStaticMarkup(<QueryFeedback loading />), /role="status"/);
+assert.match(renderToStaticMarkup(<QueryFeedback empty />), /Chưa có dữ liệu/);
+assert.match(renderToStaticMarkup(<QueryFeedback empty filtered />), /Không có kết quả phù hợp/);
+const forbiddenHtml = renderToStaticMarkup(<QueryFeedback error={new ApiClientError('Forbidden', 403)} onRetry={noOp} />);
+assert.match(forbiddenHtml, /không có quyền/);
+assert.match(forbiddenHtml, /Thử lại/);
+const paginationHtml = renderToStaticMarkup(<Pagination meta={{ page: 1, page_size: 20, total: 25, total_pages: 2 }} onPage={noOp} />);
+assert.match(paginationHtml, /25 kết quả/);
+assert.match(paginationHtml, /disabled=""/);
+const forbiddenAdmin = renderWithShell(<Routes><Route path="/admin" element={<AdminScreen />}><Route path="inventory" element={<div>Protected inventory content</div>} /></Route></Routes>, '/admin/inventory');
+assert.match(forbiddenAdmin, /Không có quyền truy cập/);
+assert.doesNotMatch(forbiddenAdmin, /Protected inventory content/);

@@ -54,7 +54,7 @@ export const AdminScreen: React.FC = () => {
   const navigateAdmin = (key: string) => navigate(getAdminPath(key));
 
   return (
-    <div className="min-h-screen bg-[#F6F7F2] text-[#191C19]">
+    <div className="admin-ui min-h-screen bg-[#F6F7F2] text-[#191C19]">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 overflow-y-auto border-r border-white/10 bg-[#071A12] text-white lg:flex lg:flex-col">
         <div className="border-b border-white/10 px-5 py-6">
           <button type="button" onClick={() => navigateAdmin('dashboard')} className="flex items-center gap-3 text-left">
@@ -130,6 +130,7 @@ export const AdminScreen: React.FC = () => {
           </div>
           <div className="border-t border-[#E8E9E3] bg-[#FFFDF5] px-4 py-2 lg:hidden">
             <select
+              aria-label="Điều hướng quản trị"
               value={activeMenu}
               onChange={(event) => navigateAdmin(event.target.value)}
               className="w-full border border-[#D9DDD6] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#0B2419]"
@@ -140,7 +141,7 @@ export const AdminScreen: React.FC = () => {
         </header>
 
         <main className="min-h-[calc(100vh-64px)] p-4 sm:p-6 lg:p-8">
-          <Outlet />
+          {activeNavItem ? <Outlet /> : <section role="alert" className="admin-state"><h1>Không có quyền truy cập</h1><p>Tài khoản của bạn chưa được cấp quyền xem mục này.</p><button type="button" onClick={() => navigateAdmin('dashboard')}>Về tổng quan</button></section>}
         </main>
       </div>
     </div>

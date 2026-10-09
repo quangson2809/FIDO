@@ -1,3 +1,4 @@
+import { useDirtyForm } from '../../shared/admin/dirtyFormContext';
 import React, { useEffect, useState } from 'react';
 import { adminCatalogMetaService } from '../../features/catalog/api/adminCatalogMetaService';
 import type { CatalogMetaDto } from '../../features/catalog/types';
@@ -14,9 +15,10 @@ interface Props {
 export const AdminCatalogMetaView: React.FC<Props> = ({
   initialTab = 'categories',
   showToast,
+  onNavigateTab,
   canWrite,
 }) => {
-  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+  const activeTab = initialTab;
   const [meta, setMeta] = useState<CatalogMetaDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -27,6 +29,8 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
   const [sizeDisplayName, setSizeDisplayName] = useState('');
   const [sizeCode, setSizeCode] = useState('');
   const [sizeSortOrder, setSizeSortOrder] = useState('0');
+
+  useDirtyForm(Boolean(name || code || parentId || sizeDisplayName || sizeCode || sizeSortOrder !== '0'));
 
   const load = async () => {
     setLoading(true);
@@ -125,7 +129,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
   };
 
   const remove = async (kind: Tab, id: number) => {
-    if (!canWrite || busy || !window.confirm('Xóa mục này? Backend sẽ từ chối nếu còn quan hệ tham chiếu.')) return;
+    if (!canWrite || busy || !window.confirm(`Xóa ${kind} #${id}? Mục sẽ bị xóa nếu không còn quan hệ tham chiếu.`)) return;
     setBusy(true);
     setError(null);
     try {
@@ -164,20 +168,20 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
 
       <div className="flex flex-wrap gap-2">
         {(['categories', 'brands', 'sizes', 'colors'] as Tab[]).map((tab) => (
-          <button key={tab} type="button" onClick={() => setActiveTab(tab)} className={`px-4 py-2 text-xs font-bold uppercase ${activeTab === tab ? 'bg-[#0B2419] text-white' : 'border border-[#D9DDD6] bg-white'}`}>{tab}</button>
+          <button key={tab} type="button" onClick={() => onNavigateTab(tab, tab)} aria-current={activeTab === tab ? 'page' : undefined} className={`px-4 py-2 text-xs font-bold uppercase ${activeTab === tab ? 'bg-[#0B2419] text-white' : 'border border-[#D9DDD6] bg-white'}`}>{tab}</button>
         ))}
       </div>
 
       {error && <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
       {!canWrite && <div className="border border-[#E2E5DE] bg-[#F8FAF4] p-3 text-sm text-[#606863]">Chế độ chỉ đọc. Cần CATALOG_WRITE để tạo, sửa hoặc xóa metadata.</div>}
 
-      {canWrite && <form onSubmit={createCurrent} className="grid gap-3 rounded-lg border border-[#E2E5DE] bg-white p-5 md:grid-cols-2 xl:grid-cols-4">
+      {canWrite && <form onSubmit={createCurrent} className="grid gap-3 rounded-lg border border-[#E2E5DE] bg-white p-5 md:grid-cols-2 xl:grid-cols-4"><fieldset disabled={busy} className="contents">
         <label className="space-y-1"><span className="text-xs font-semibold">Tên *</span><input value={name} maxLength={150} onChange={(event) => setName(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" required /></label>
         {(activeTab === 'colors' || activeTab === 'sizes') && <label className="space-y-1"><span className="text-xs font-semibold">Code *</span><input value={code} maxLength={50} onChange={(event) => setCode(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" required /></label>}
         {activeTab === 'categories' && <label className="space-y-1"><span className="text-xs font-semibold">Parent category ID</span><input type="number" min="1" value={parentId} onChange={(event) => setParentId(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>}
         {activeTab === 'sizes' && <><label className="space-y-1"><span className="text-xs font-semibold">Size đầu tiên: code *</span><input value={sizeCode} maxLength={50} onChange={(event) => setSizeCode(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" required /></label><label className="space-y-1"><span className="text-xs font-semibold">Size đầu tiên: display *</span><input value={sizeDisplayName} maxLength={100} onChange={(event) => setSizeDisplayName(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" required /></label><label className="space-y-1"><span className="text-xs font-semibold">Sort order *</span><input type="number" value={sizeSortOrder} onChange={(event) => setSizeSortOrder(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" required /></label></>}
         <div className="flex items-end"><button type="submit" disabled={busy} className="w-full bg-[#0B2419] px-4 py-2.5 text-xs font-bold uppercase text-white disabled:opacity-40">{busy ? 'Đang xử lý...' : 'Tạo mới'}</button></div>
-      </form>}
+      </fieldset></form>}
 
       <div className="overflow-x-auto rounded-lg border border-[#E2E5DE] bg-white">
         <table className="min-w-full text-left text-sm">

@@ -89,6 +89,7 @@ export const AdminProductDetailRoute = () => {
 
   return (
     <AdminProductDetailView
+      key={parsedProductId}
       productId={parsedProductId}
       onNavigateTab={navigateTab}
       showToast={showToast}
@@ -131,7 +132,7 @@ export const AdminOrderDetailRoute = () => {
   const { navigate } = useAdminRouteDeps();
 
   if (!parsedOrderId) return <Navigate to="/admin/orders" replace />;
-  return <AdminOrderDetailView orderId={parsedOrderId} onBack={() => navigate('/admin/orders')} />;
+  return <AdminOrderDetailView key={parsedOrderId} orderId={parsedOrderId} onBack={() => navigate('/admin/orders')} />;
 };
 
 export const AdminInwardRoute = () => {

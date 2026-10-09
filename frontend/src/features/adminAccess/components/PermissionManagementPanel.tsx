@@ -1,3 +1,5 @@
+import { useDirtyForm } from '../../../shared/admin/dirtyFormContext';
+import { Modal } from '../../../shared/admin/Modal';
 import React, { useState } from 'react';
 import { adminAccessService } from '../api/service';
 import type { AccessControlDto } from '../types';
@@ -22,6 +24,10 @@ export const PermissionManagementPanel: React.FC<{
   const [draft, setDraft] = useState<PermissionDraft>(emptyPermission);
   const [editingPermission, setEditingPermission] = useState<PermissionDto | null>(null);
   const [editingDraft, setEditingDraft] = useState<PermissionDraft>(emptyPermission);
+
+  const editDirty = Boolean(editingPermission && (editingDraft.code !== editingPermission.code || editingDraft.name !== editingPermission.name));
+  const canDiscard = useDirtyForm(editDirty || JSON.stringify(draft) !== JSON.stringify(emptyPermission));
+  const closeEdit = () => { if (!busy && canDiscard()) setEditingPermission(null); };
 
   const createPermission = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -75,7 +81,7 @@ export const PermissionManagementPanel: React.FC<{
   };
 
   const deletePermission = async (permission: PermissionDto) => {
-    if (busy || !window.confirm(`Xóa permission ${permission.code}?`)) return;
+    if (busy || !window.confirm(`Xóa quyền ${permission.code}? Thao tác loại bỏ mục này khỏi danh mục phân quyền; hệ thống sẽ kiểm tra các ràng buộc đang sử dụng.`)) return;
 
     onBusyChange(true);
     setError(null);
@@ -103,7 +109,7 @@ export const PermissionManagementPanel: React.FC<{
       <form
         onSubmit={createPermission}
         className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]"
-      >
+      ><fieldset disabled={busy} className="contents">
         <input
           value={draft.code}
           onChange={(event) => setDraft((current) => ({ ...current, code: event.target.value }))}
@@ -124,7 +130,7 @@ export const PermissionManagementPanel: React.FC<{
         >
           Thêm
         </button>
-      </form>
+      </fieldset></form>
 
       <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {access.permissions.map((permission) => (
@@ -154,19 +160,12 @@ export const PermissionManagementPanel: React.FC<{
       </div>
 
       {editingPermission && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onMouseDown={() => setEditingPermission(null)}
-        >
-          <div
-            className="w-full max-w-lg bg-white p-6"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
+        <Modal title="Chỉnh sửa quyền" onClose={closeEdit} busy={busy}>
             <div className="flex justify-between">
               <h2 className="font-serif text-2xl">Chỉnh sửa permission</h2>
               <button
                 type="button"
-                onClick={() => setEditingPermission(null)}
+                onClick={closeEdit}
                 className="text-2xl"
               >
                 ×
@@ -194,8 +193,7 @@ export const PermissionManagementPanel: React.FC<{
                 Lưu
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

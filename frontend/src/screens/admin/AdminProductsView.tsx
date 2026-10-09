@@ -1,15 +1,17 @@
+import { useDirtyForm } from '../../shared/admin/dirtyFormContext';
+import { useCallback } from 'react';
+import { useRemoteQuery } from '../../shared/hooks/useRemoteQuery';
+import { QueryFeedback } from '../../shared/admin/QueryFeedback';
 import React, { useEffect, useMemo, useState } from 'react';
 import { adminCatalogMetaService } from '../../features/catalog/api/adminCatalogMetaService';
 import { adminProductService } from '../../features/catalog/api/adminService';
 import type {
-  AdminProductSummaryDto,
   CatalogMetaDto,
   ProductCreateInput,
   SaleStatus,
 } from '../../features/catalog/types';
 import { getApiErrorMessage } from '../../services/http/apiError';
 import { resolveImageUrl } from '../../services/media/imageUrl';
-import type { PaginationMeta } from '../../types/api';
 
 interface AdminProductsViewProps {
   onSelectProduct?: (id: string) => void;
@@ -45,19 +47,22 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
   showToast,
   canWrite,
 }) => {
-  const [products, setProducts] = useState<AdminProductSummaryDto[]>([]);
-  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [meta, setMeta] = useState<CatalogMetaDto | null>(null);
   const [queryInput, setQueryInput] = useState('');
   const [query, setQuery] = useState('');
   const [saleStatus, setSaleStatus] = useState<SaleStatus | ''>('');
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
+  const list = useRemoteQuery(useCallback(() => adminProductService.getProducts({ ...(query ? { q: query } : {}), ...(saleStatus ? { sale_status: saleStatus } : {}), page, page_size: 20 }), [page, query, saleStatus]));
+  const products = list.data?.data ?? [];
+  const pagination = list.data?.meta ?? null;
+  const loading = list.loading;
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<FormState>(initialForm);
   const [images, setImages] = useState<File[]>([]);
+
+  const canDiscard = useDirtyForm(JSON.stringify(form) !== JSON.stringify(initialForm) || images.length > 0);
 
   useEffect(() => {
     let active = true;
@@ -69,23 +74,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
     return () => { active = false; };
   }, []);
 
-  useEffect(() => {
-    let active = true;
-    void adminProductService.getProducts({
-      ...(query ? { q: query } : {}),
-      ...(saleStatus ? { sale_status: saleStatus } : {}),
-      page,
-      page_size: 20,
-    }).then((response) => {
-      if (!active) return;
-      setProducts(response.data);
-      setPagination(response.meta);
-      setError(null);
-    }).catch((requestError: unknown) => {
-      if (active) setError(getApiErrorMessage(requestError, 'Không thể tải danh sách sản phẩm quản trị.'));
-    }).finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [page, query, saleStatus]);
+
 
   const leafCategories = useMemo(() => {
     if (!meta) return [];
@@ -143,7 +132,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
 
   const create = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!canWrite) return;
+    if (!canWrite || submitting) return;
     const payload = createPayload();
     if (!payload) {
       showToast('Dữ liệu sản phẩm chưa hợp lệ.');
@@ -179,14 +168,14 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
   };
 
   const requestSearch = (nextQuery: string, nextStatus: SaleStatus | '') => {
-    setLoading(true);
+    list.reload();
     setPage(1);
     setQuery(nextQuery);
     setSaleStatus(nextStatus);
   };
 
   const changePage = (nextPage: number) => {
-    setLoading(true);
+    list.reload();
     setPage(nextPage);
   };
 
@@ -200,7 +189,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
         </div>
         <div className="flex gap-2">
           {onNavigateTab && <button type="button" onClick={() => onNavigateTab('categories', 'Danh mục')} className="border border-[#D9DDD6] bg-white px-4 py-2 text-sm font-semibold">Metadata</button>}
-          {canWrite && <button type="button" onClick={() => setShowCreate((value) => !value)} className="bg-[#0B2419] px-4 py-2 text-sm font-bold uppercase text-white">{showCreate ? 'Đóng' : 'Thêm sản phẩm'}</button>}
+          {canWrite && <button type="button" onClick={() => { if (!showCreate || canDiscard()) setShowCreate((value) => !value); }} className="bg-[#0B2419] px-4 py-2 text-sm font-bold uppercase text-white">{showCreate ? 'Đóng' : 'Thêm sản phẩm'}</button>}
         </div>
       </div>
 
@@ -211,7 +200,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
       </form>
 
       {canWrite && showCreate && (
-        <form onSubmit={create} className="space-y-4 rounded-lg border border-[#E2E5DE] bg-white p-5">
+        <form onSubmit={create} className="space-y-4 rounded-lg border border-[#E2E5DE] bg-white p-5"><fieldset disabled={submitting} className="contents">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <label className="space-y-1"><span className="text-xs font-semibold">Tên *</span><input required maxLength={255} value={form.name} onChange={(event) => updateForm('name', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>
             <label className="space-y-1"><span className="text-xs font-semibold">Danh mục lá *</span><select required value={form.categoryId} onChange={(event) => updateForm('categoryId', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">Chọn</option>{leafCategories.map((item) => <option key={item.category_id} value={item.category_id}>{item.name}</option>)}</select></label>
@@ -224,13 +213,14 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
           </div>
           <label className="block space-y-1"><span className="text-xs font-semibold">Mô tả</span><textarea rows={3} value={form.description} onChange={(event) => updateForm('description', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>
           <button disabled={submitting || !meta} className="bg-[#0B2419] px-5 py-2.5 text-xs font-bold uppercase text-white disabled:opacity-40">{submitting ? 'Đang tạo...' : 'Tạo sản phẩm'}</button>
-        </form>
+        </fieldset></form>
       )}
 
+      <QueryFeedback error={list.error} onRetry={list.reload} />
       {error && <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
       {loading ? (
         <div className="rounded-lg border border-[#E2E5DE] bg-white p-10 text-center text-sm">Đang tải...</div>
-      ) : products.length === 0 ? (
+      ) : list.error ? null : products.length === 0 ? (
         <div className="rounded-lg border border-[#E2E5DE] bg-white p-10 text-center text-sm">Không có sản phẩm phù hợp.</div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

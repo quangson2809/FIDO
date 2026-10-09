@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import { useCallback } from 'react';
+import { useRemoteQuery } from '../../shared/hooks/useRemoteQuery';
+import { QueryFeedback } from '../../shared/admin/QueryFeedback';
+import React, { useState } from 'react';
 import { adminOrderService } from '../../features/orders/api/adminService';
 import type { OrderStatus, PaymentStatus } from '../../features/orders/types';
-import { getApiErrorMessage } from '../../services/http/apiError';
 
 interface Props {
   onSelectOrder: (orderId: number) => void;
@@ -19,42 +21,8 @@ export const AdminOrdersView: React.FC<Props> = ({ onSelectOrder }) => {
   const [status, setStatus] = useState<OrderStatus | ''>('');
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | ''>('');
   const [page, setPage] = useState(1);
-  const [data, setData] = useState<Awaited<ReturnType<typeof adminOrderService.list>> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-
-    const load = async () => {
-      setLoading(true);
-      try {
-        const result = await adminOrderService.list({
-          ...(orderCode.trim() ? { order_code: orderCode.trim() } : {}),
-          ...(status ? { order_status: status } : {}),
-          ...(paymentStatus ? { payment_status: paymentStatus } : {}),
-          page,
-          page_size: 20,
-        });
-        if (active) {
-          setData(result);
-          setError(null);
-        }
-      } catch (requestError: unknown) {
-        if (active) {
-          setData(null);
-          setError(getApiErrorMessage(requestError, 'Không thể tải đơn hàng quản trị hoặc tài khoản không có quyền ORDER_READ.'));
-        }
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-
-    void load();
-    return () => {
-      active = false;
-    };
-  }, [orderCode, page, paymentStatus, status]);
+  const list = useRemoteQuery(useCallback(() => adminOrderService.list({ order_code: orderCode.trim() || undefined, order_status: status || undefined, payment_status: paymentStatus || undefined, page, page_size: 20 }), [orderCode, status, paymentStatus, page]));
+  const { data, loading, error } = list;
 
   const resetPage = () => setPage(1);
 
@@ -90,7 +58,7 @@ export const AdminOrdersView: React.FC<Props> = ({ onSelectOrder }) => {
       {loading ? (
         <div className="rounded-lg border border-[#E2E5DE] bg-white p-10 text-center text-sm text-[#606863]">Đang tải đơn hàng...</div>
       ) : error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">{error}</div>
+        <QueryFeedback error={error} onRetry={list.reload} />
       ) : !data || data.data.length === 0 ? (
         <div className="rounded-lg border border-[#E2E5DE] bg-white p-10 text-center text-sm">Không có đơn hàng phù hợp.</div>
       ) : (

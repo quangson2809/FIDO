@@ -1,3 +1,4 @@
+import { useDirtyForm } from '../../shared/admin/dirtyFormContext';
 import React, { useEffect, useMemo, useState } from 'react';
 import { adminCatalogMetaService } from '../../features/catalog/api/adminCatalogMetaService';
 import { adminProductService } from '../../features/catalog/api/adminService';
@@ -25,6 +26,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
   const [product, setProduct] = useState<AdminProductDetailDto | null>(null);
   const [meta, setMeta] = useState<CatalogMetaDto | null>(null);
   const [loading, setLoading] = useState(true);
+  const [revision, setRevision] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -38,8 +40,12 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
   const [variantOverridePrice, setVariantOverridePrice] = useState('');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
 
+  const infoDirty = Boolean(product && editing && (name !== product.name || description !== (product.description ?? '') || basePrice !== String(product.base_price) || saleStatus !== product.sale_status));
+  const canDiscard = useDirtyForm(infoDirty || Boolean(variantSize || variantColor || variantSku || variantOverridePrice || imageFiles.length));
+
   const applyProduct = (detail: AdminProductDetailDto) => {
     setProduct(detail);
+    if (editing) return;
     setName(detail.name);
     setDescription(detail.description ?? '');
     setBasePrice(String(detail.base_price));
@@ -67,7 +73,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
     ])
       .then(([detail, metadata]) => {
         if (!active) return;
-        applyProduct(detail);
+        setProduct(detail); setName(detail.name); setDescription(detail.description ?? ''); setBasePrice(String(detail.base_price)); setSaleStatus(detail.sale_status);
         setMeta(metadata);
         setError(null);
       })
@@ -83,7 +89,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
     return () => {
       active = false;
     };
-  }, [productId, validId]);
+  }, [productId, validId, revision]);
 
   const colorsById = useMemo(
     () => new Map(meta?.colors.map((item) => [item.color_id, item]) ?? []),
@@ -102,7 +108,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
     if (!canWrite || !product || busy) return;
 
     const price = Number(basePrice);
-    if (!name.trim() || !Number.isFinite(price) || price < 0) return;
+    if (!name.trim() || !basePrice.trim() || !Number.isFinite(price) || price < 0) { setError('Nhập tên sản phẩm và giá hợp lệ (không âm).'); return; }
 
     setBusy(true);
     try {
@@ -124,7 +130,8 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
 
   const cancelProductEdit = () => {
     if (!product) return;
-    applyProduct(product);
+    if (!canDiscard()) return;
+    setName(product.name); setDescription(product.description ?? ''); setBasePrice(String(product.base_price)); setSaleStatus(product.sale_status);
     setEditing(false);
   };
 
@@ -139,7 +146,8 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
       !sizesById.has(sizeId)
       || !colorsById.has(colorId)
       || (override !== null && (!Number.isFinite(override) || override < 0))
-    ) return;
+    ) { setError('Chọn size, màu và giá hợp lệ.'); return; }
+    if (product.variants.some((item) => item.size_value_id === sizeId && item.color_id === colorId)) { setError('Tổ hợp size và màu này đã tồn tại.'); return; }
 
     setBusy(true);
     try {
@@ -218,7 +226,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
 
   const deleteProductImage = async (imageId: number) => {
     if (!canWrite || !product || busy) return;
-    if (!window.confirm('Xóa ảnh này khỏi gallery sản phẩm?')) return;
+    if (!window.confirm(`Xóa ảnh #${imageId} của ${product.name}? Nếu là ảnh bìa, ảnh tiếp theo sẽ thay thế.`)) return;
 
     setBusy(true);
     try {
@@ -242,7 +250,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
   if (!product) {
     return (
       <div className="space-y-4 border border-red-200 bg-white p-6 text-sm text-red-700">
-        {error ?? 'Không tìm thấy sản phẩm.'}
+        {error ?? 'Không tìm thấy sản phẩm.'}<button type="button" onClick={() => { setLoading(true); setRevision((value) => value + 1); }}>Thử lại</button>
       </div>
     );
   }

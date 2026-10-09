@@ -1,3 +1,4 @@
+import { DirtyFormProvider } from '../../shared/admin/DirtyFormProvider';
 import React, { Suspense, lazy, type ReactNode } from 'react';
 import {
   Navigate,
@@ -97,7 +98,7 @@ const RequireAdmin: React.FC<{ children: ReactNode }> = ({ children }) => {
 
 const AdminRoute: React.FC = () => (
   <div className="min-h-screen bg-[#071911] text-[#0B2419]">
-    <AdminScreen />
+    <DirtyFormProvider><AdminScreen /></DirtyFormProvider>
   </div>
 );
 

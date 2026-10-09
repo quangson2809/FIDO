@@ -1,3 +1,5 @@
+import { useDirtyForm } from '../../../shared/admin/dirtyFormContext';
+import { Modal } from '../../../shared/admin/Modal';
 import React, { useState } from 'react';
 import { adminAccessService } from '../api/service';
 import type { AccessControlDto, RoleDetailDto } from '../types';
@@ -36,6 +38,10 @@ export const RoleManagementPanel: React.FC<{
   const [editingRole, setEditingRole] = useState<RoleDetailDto | null>(null);
   const [editingRoleDraft, setEditingRoleDraft] = useState<RoleDraft>(emptyRole);
 
+  const editDirty = Boolean(editingRole && (editingRoleDraft.name !== editingRole.name || editingRoleDraft.description !== (editingRole.description ?? '') || JSON.stringify([...editingRoleDraft.permissionIds].sort()) !== JSON.stringify(editingRole.permissions.map((permission) => permission.permission_id).sort())));
+  const canDiscard = useDirtyForm(editDirty || JSON.stringify(roleDraft) !== JSON.stringify(emptyRole));
+  const closeEdit = () => { if (!busy && canDiscard()) setEditingRole(null); };
+
   const createRole = async (event: React.FormEvent) => {
     event.preventDefault();
     if (busy || !roleDraft.code.trim() || !roleDraft.name.trim()) return;
@@ -72,6 +78,7 @@ export const RoleManagementPanel: React.FC<{
   const saveRole = async () => {
     if (!editingRole || busy || !editingRoleDraft.name.trim()) return;
 
+    if (!window.confirm(`Lưu vai trò ${editingRole.code}?\nQuyền hiện tại: ${editingRole.permissions.map((permission) => permission.code).join(', ') || 'Không có'}\nQuyền sau khi lưu: ${access.permissions.filter((permission) => editingRoleDraft.permissionIds.includes(permission.permission_id)).map((permission) => permission.code).join(', ') || 'Không có'}\nThay đổi ảnh hưởng đến tài khoản đang dùng vai trò này.`)) return;
     onBusyChange(true);
     setError(null);
     try {
@@ -91,7 +98,7 @@ export const RoleManagementPanel: React.FC<{
   };
 
   const deleteRole = async (role: RoleDetailDto) => {
-    if (busy || !window.confirm(`Xóa vai trò ${role.code}?`)) return;
+    if (busy || !window.confirm(`Xóa vai trò ${role.code}? Thao tác loại bỏ mục này khỏi danh mục phân quyền; hệ thống sẽ kiểm tra các ràng buộc đang sử dụng.`)) return;
 
     onBusyChange(true);
     setError(null);
@@ -114,7 +121,7 @@ export const RoleManagementPanel: React.FC<{
         </div>
       )}
 
-      <form onSubmit={createRole} className="space-y-4 border border-[#E8E9E3] bg-white p-5">
+      <form onSubmit={createRole} className="space-y-4 border border-[#E8E9E3] bg-white p-5"><fieldset disabled={busy} className="contents">
         <div>
           <h2 className="font-serif text-xl">Tạo vai trò</h2>
           <p className="mt-1 text-xs text-[#687069]">
@@ -169,7 +176,7 @@ export const RoleManagementPanel: React.FC<{
         >
           Tạo vai trò
         </button>
-      </form>
+      </fieldset></form>
 
       <div className="grid gap-4 lg:grid-cols-2">
         {access.roles.map((role) => (
@@ -223,20 +230,13 @@ export const RoleManagementPanel: React.FC<{
       </div>
 
       {editingRole && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onMouseDown={() => setEditingRole(null)}
-        >
-          <div
-            className="w-full max-w-2xl bg-white p-6"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
+        <Modal title="Chỉnh sửa vai trò" onClose={closeEdit} busy={busy}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="font-mono text-xs text-[#687069]">{editingRole.code}</p>
                 <h2 className="font-serif text-2xl">Chỉnh sửa vai trò</h2>
               </div>
-              <button type="button" onClick={() => setEditingRole(null)} className="text-2xl">×</button>
+              <button type="button" onClick={closeEdit} className="text-2xl">×</button>
             </div>
 
             <div className="mt-4 space-y-3">
@@ -279,8 +279,7 @@ export const RoleManagementPanel: React.FC<{
                 Lưu
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

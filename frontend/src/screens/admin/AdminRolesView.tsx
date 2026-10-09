@@ -42,7 +42,7 @@ export const AdminRolesView: React.FC<{ showToast: (msg: string) => void }> = ({
   if (error && !access) {
     return (
       <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-        {error}
+        {error}<button type="button" onClick={() => void loadAccess()}>Thử lại</button>
       </div>
     );
   }
@@ -63,7 +63,7 @@ export const AdminRolesView: React.FC<{ showToast: (msg: string) => void }> = ({
 
       {error && (
         <div className="border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          {error}
+          {error}<button type="button" onClick={() => void loadAccess()}>Thử lại</button>
         </div>
       )}
 
