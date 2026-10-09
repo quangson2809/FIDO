@@ -16,13 +16,20 @@ class VoucherCheckoutHttpTests extends OrderHttpSupport {
     @Autowired PlatformTransactionManager transactions;
     @Autowired OrderCreationService creation;
     private final List<Long> voucherIds=new ArrayList<>();
+    private final List<Long> parentCategoryIds=new ArrayList<>();
 
     @Override void clean() {
-        super.clean();
+        // Release scoped foreign keys before the shared fixture removes products/categories.
         for (Long id:voucherIds) {
             db.update("DELETE FROM voucher_products WHERE voucher_id=?",id);
             db.update("DELETE FROM voucher_categories WHERE voucher_id=?",id);
+        }
+        super.clean();
+        for (Long id:voucherIds) {
             db.update("DELETE FROM vouchers WHERE voucher_id=?",id);
+        }
+        for (Long id:parentCategoryIds) {
+            db.update("DELETE FROM categories WHERE category_id=?",id);
         }
     }
     Map<String,Object> policy(String code) {
@@ -118,6 +125,51 @@ class VoucherCheckoutHttpTests extends OrderHttpSupport {
         assertNull(db.queryForObject("SELECT order_id FROM checkout_quotes WHERE quote_id=?",Long.class,q));
         assertEquals(201,place(buyer,code,q).status());
     }
+    @Test void scopedVoucherUsesOnlyEligibleProductPricesAndCategoryDescendants() throws Exception {
+        var admin=superadmin(); var buyer=user();
+        var eligible=createVariant(10,100000,null);
+        var excluded=createVariant(10,400000,null);
+        add(buyer,eligible); add(buyer,excluded);
+
+        String code="V"+UUID.randomUUID();
+        var policy=policy(code);
+        policy.put("discount_type","PERCENTAGE");
+        policy.put("discount_value",20);
+        policy.put("maximum_discount",15000);
+        policy.put("scope","PRODUCT");
+        policy.put("product_ids",List.of(eligible.productId()));
+        policy.put("minimum_amount",200000);
+        long id=voucher(admin,policy);
+
+        // The unrelated 400,000 VND product must not satisfy an eligible minimum.
+        assertEquals(409,call("POST","/api/v1/checkout/quote",buyer.token(),request(code)).status());
+        policy.put("minimum_amount",100000);
+        assertEquals(200,call("PUT","/api/v1/admin/vouchers/"+id,admin.token(),policy).status());
+        var productQuote=call("POST","/api/v1/checkout/quote",buyer.token(),request(code));
+        assertEquals(200,productQuote.status(),productQuote.body());
+        assertEquals(15000,productQuote.data().get("data").get("discount").asInt());
+        assertEquals(515000,productQuote.data().get("data").get("total").asInt());
+
+        String parentName="Voucher-parent-"+UUID.randomUUID();
+        db.update("INSERT INTO categories(parent_category_id,name) VALUES(NULL,?)",parentName);
+        Long parentId=db.queryForObject("SELECT category_id FROM categories WHERE name=?",Long.class,parentName);
+        parentCategoryIds.add(parentId);
+        db.update("UPDATE categories SET parent_category_id=? WHERE category_id=?",parentId,eligible.categoryId());
+
+        policy.put("scope","CATEGORY");
+        policy.put("product_ids",List.of());
+        policy.put("category_ids",List.of(parentId));
+        policy.put("discount_type","FIXED_AMOUNT");
+        policy.put("discount_value",30000);
+        policy.remove("maximum_discount");
+        var updated=call("PUT","/api/v1/admin/vouchers/"+id,admin.token(),policy);
+        assertEquals(200,updated.status(),updated.body());
+        var descendantQuote=call("POST","/api/v1/checkout/quote",buyer.token(),request(code));
+        assertEquals(200,descendantQuote.status(),descendantQuote.body());
+        assertEquals(30000,descendantQuote.data().get("data").get("discount").asInt());
+        assertEquals(500000,descendantQuote.data().get("data").get("total").asInt());
+    }
+
     @Test void internalAdminWithoutCustomerIdentityCannotRedeemVoucher() throws Exception {
         var admin = superadmin();
         var employee = plainAdmin();
