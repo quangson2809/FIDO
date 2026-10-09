@@ -57,7 +57,7 @@ export const AdminRolesView: React.FC<{ showToast: (msg: string) => void }> = ({
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">RBAC</p>
         <h1 className="mt-1 font-serif text-3xl">Vai trò & quyền</h1>
         <p className="mt-2 max-w-3xl text-sm text-[#606863]">
-          Đọc và ghi trực tiếp qua API RBAC. Frontend chỉ quản lý UX; backend vẫn là security boundary.
+          Quản lý vai trò và các quyền được gán. Kiểm tra kỹ thay đổi vì chúng ảnh hưởng đến tài khoản đang sử dụng.
         </p>
       </header>
 
@@ -67,6 +67,7 @@ export const AdminRolesView: React.FC<{ showToast: (msg: string) => void }> = ({
         </div>
       )}
 
+      <fieldset disabled={Boolean(error)} className="space-y-6">
       <RoleManagementPanel
         access={access}
         busy={busy}
@@ -82,6 +83,7 @@ export const AdminRolesView: React.FC<{ showToast: (msg: string) => void }> = ({
         refreshAccess={loadAccess}
         showToast={showToast}
       />
+      </fieldset>
     </section>
   );
 };

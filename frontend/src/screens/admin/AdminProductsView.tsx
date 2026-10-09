@@ -194,17 +194,17 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">Catalog admin</p>
           <h1 className="mt-1 font-serif text-3xl font-bold text-[#0B2419]">Sản phẩm</h1>
-          <p className="mt-2 text-sm text-[#606863]">Danh sách tìm kiếm/lọc/phân trang trên backend; ảnh upload đi qua backend.</p>
+          <p className="mt-2 text-sm text-[#606863]">Tìm kiếm và quản lý sản phẩm, hình ảnh, giá bán và biến thể.</p>
         </div>
         <div className="flex gap-2">
-          {onNavigateTab && <button type="button" onClick={() => onNavigateTab('categories', 'Danh mục')} className="border border-[#D9DDD6] bg-white px-4 py-2 text-sm font-semibold">Metadata</button>}
+          {onNavigateTab && <button type="button" onClick={() => onNavigateTab('categories', 'Danh mục')} className="border border-[#D9DDD6] bg-white px-4 py-2 text-sm font-semibold">Thuộc tính</button>}
           {canWrite && <button type="button" onClick={() => { if (!showCreate || canDiscard()) setShowCreate((value) => !value); }} className="bg-[#0B2419] px-4 py-2 text-sm font-bold uppercase text-white">{showCreate ? 'Đóng' : 'Thêm sản phẩm'}</button>}
         </div>
       </div>
 
       <form onSubmit={(event) => { event.preventDefault(); requestSearch(queryInput.trim(), saleStatus); }} className="flex flex-wrap gap-3 rounded-lg border border-[#E2E5DE] bg-white p-4">
-        <input value={queryInput} onChange={(event) => setQueryInput(event.target.value)} placeholder="Tên sản phẩm" className="min-w-64 flex-1 border border-[#D9DDD6] px-3 py-2 text-sm" />
-        <select value={saleStatus} onChange={(event) => requestSearch(query, event.target.value as SaleStatus | '')} className="border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">Mọi trạng thái</option><option value="ON_SALE">{statusLabel('ON_SALE')}</option><option value="STOPPED">{statusLabel('STOPPED')}</option></select>
+        <input aria-label="Tên sản phẩm" value={queryInput} onChange={(event) => setQueryInput(event.target.value)} placeholder="Tên sản phẩm" className="min-w-64 flex-1 border border-[#D9DDD6] px-3 py-2 text-sm" />
+        <select aria-label="Trạng thái bán" value={saleStatus} onChange={(event) => requestSearch(query, event.target.value as SaleStatus | '')} className="border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">Mọi trạng thái</option><option value="ON_SALE">{statusLabel('ON_SALE')}</option><option value="STOPPED">{statusLabel('STOPPED')}</option></select>
         <select aria-label="Lọc danh mục" value={categoryId} onChange={(event) => { setCategoryId(event.target.value); setPage(1); }}><option value="">Tất cả danh mục</option>{meta?.categories.map((item) => <option key={item.category_id} value={item.category_id}>{item.name}</option>)}</select>
         <select aria-label="Lọc thương hiệu" value={brandId} onChange={(event) => { setBrandId(event.target.value); setPage(1); }}><option value="">Tất cả thương hiệu</option>{meta?.brands.map((item) => <option key={item.brand_id} value={item.brand_id}>{item.name}</option>)}</select>
         <button className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white">Tìm</button>
@@ -218,12 +218,12 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
             <label className="space-y-1"><span className="text-xs font-semibold">Tên *</span><input required maxLength={255} value={form.name} onChange={(event) => updateForm('name', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>
             <label className="space-y-1"><span className="text-xs font-semibold">Danh mục lá *</span><select required value={form.categoryId} onChange={(event) => updateForm('categoryId', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">Chọn</option>{leafCategories.map((item) => <option key={item.category_id} value={item.category_id}>{item.name}</option>)}</select></label>
             <label className="space-y-1"><span className="text-xs font-semibold">Hệ size *</span><select required value={form.sizeSystemId} onChange={(event) => updateForm('sizeSystemId', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">Chọn</option>{meta?.size_systems.map((item) => <option key={item.size_system_id} value={item.size_system_id}>{item.name}</option>)}</select></label>
-            <label className="space-y-1"><span className="text-xs font-semibold">Brand</span><select value={form.brandId} onChange={(event) => updateForm('brandId', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">Không gán</option>{meta?.brands.map((item) => <option key={item.brand_id} value={item.brand_id}>{item.name}</option>)}</select></label>
+            <label className="space-y-1"><span className="text-xs font-semibold">Thương hiệu</span><select value={form.brandId} onChange={(event) => updateForm('brandId', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">Không gán</option>{meta?.brands.map((item) => <option key={item.brand_id} value={item.brand_id}>{item.name}</option>)}</select></label>
             <label className="space-y-1"><span className="text-xs font-semibold">Giá *</span><input required type="number" min="0" step="0.01" value={form.basePrice} onChange={(event) => updateForm('basePrice', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>
             <label className="space-y-1"><span className="text-xs font-semibold">Trạng thái</span><select value={form.saleStatus} onChange={(event) => updateForm('saleStatus', event.target.value as SaleStatus)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="ON_SALE">{statusLabel('ON_SALE')}</option><option value="STOPPED">{statusLabel('STOPPED')}</option></select></label>
-            <label className="space-y-1"><span className="text-xs font-semibold">Gender</span><select value={form.gender} onChange={(event) => updateForm('gender', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">—</option>{meta?.genders.map((item) => <option key={item}>{item}</option>)}</select></label>
-            <label className="space-y-1"><span className="text-xs font-semibold">Ảnh local</span><input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => setImages(Array.from(event.target.files ?? []))} className="w-full text-xs" /></label>
+            <label className="space-y-1"><span className="text-xs font-semibold">Giới tính</span><select value={form.gender} onChange={(event) => updateForm('gender', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"><option value="">—</option>{meta?.genders.map((item) => <option key={item}>{item}</option>)}</select></label>
           </fieldset>
+            <label className="space-y-1"><span className="text-xs font-semibold">Chọn ảnh</span><input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => setImages(Array.from(event.target.files ?? []))} className="w-full text-xs" /></label>
           <ImageFilePreview files={images} />
           <label className="block space-y-1"><span className="text-xs font-semibold">Mô tả</span><textarea rows={3} disabled={pendingProductId !== null} value={form.description} onChange={(event) => updateForm('description', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>
           <button disabled={submitting || !meta} className="bg-[#0B2419] px-5 py-2.5 text-xs font-bold uppercase text-white disabled:opacity-40">{submitting ? 'Đang lưu...' : pendingProductId ? 'Thử tải ảnh lại' : 'Tạo sản phẩm'}</button>
@@ -231,7 +231,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
       )}
 
       <QueryFeedback error={list.error} onRetry={list.reload} />
-      {error && <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
+      {error && <div role="alert" className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
       {loading ? (
         <div className="rounded-lg border border-[#E2E5DE] bg-white p-10 text-center text-sm">Đang tải...</div>
       ) : list.error ? null : products.length === 0 ? (

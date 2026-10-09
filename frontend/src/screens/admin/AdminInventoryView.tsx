@@ -1,3 +1,5 @@
+import { Link, useLocation } from 'react-router-dom';
+import { StatusBadge } from '../../shared/admin/StatusBadge';
 import { formatVietnamDateTime } from '../../shared/time/formatVietnamDateTime';
 import { statusLabel } from '../../shared/admin/statusLabels';
 import { useDirtyForm } from '../../shared/admin/dirtyFormContext';
@@ -22,6 +24,7 @@ const transactionTypes: InventoryTransactionType[] = [
 ];
 
 export const AdminInventoryView: React.FC<{ showToast: (msg: string) => void; canWrite: boolean }> = ({ showToast, canWrite }) => {
+  const historyMode = useLocation().pathname.endsWith('/history');
   const [skuInput, setSkuInput] = useState('');
   const [sku, setSku] = useState('');
   const [page, setPage] = useState(1);
@@ -38,7 +41,6 @@ export const AdminInventoryView: React.FC<{ showToast: (msg: string) => void; ca
   const [transactionPage, setTransactionPage] = useState(1);
 
   const canDiscard = useDirtyForm(Boolean(selected && (delta || reason)));
-  const refreshInventory = async () => { list.reload(); };
 
 
 
@@ -75,13 +77,13 @@ export const AdminInventoryView: React.FC<{ showToast: (msg: string) => void; ca
         quantity_delta: parsedDelta,
         reason: reason.trim(),
       });
-      await refreshInventory();
+      list.reload();
       setSelected(null);
       setDelta('');
       setReason('');
       setTransactionPage(1);
       history.reload();
-      showToast('Đã điều chỉnh tồn kho qua backend.');
+      showToast('Đã điều chỉnh tồn kho.');
     } catch (requestError: unknown) {
       setError(getApiErrorMessage(requestError, 'Không thể điều chỉnh tồn kho. Backend có thể từ chối do quyền, variant hoặc số lượng khả dụng.'));
     } finally {
@@ -93,24 +95,26 @@ export const AdminInventoryView: React.FC<{ showToast: (msg: string) => void; ca
     <div className="space-y-7">
       <header>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">Inventory</p>
-        <h1 className="mt-1 font-serif text-3xl font-bold text-[#0B2419]">Tồn kho theo biến thể</h1>
-        <p className="mt-2 text-sm text-[#606863]">Số lượng khả dụng và transaction lấy trực tiếp từ backend; không suy diễn kho, reserved stock hay ngưỡng low-stock.</p>
+        <h1 className="mt-1 font-serif text-3xl font-bold text-[#0B2419]">{historyMode ? 'Lịch sử giao dịch kho' : 'Tồn kho theo biến thể'}</h1>
+        <p className="mt-2 text-sm text-[#606863]">Kiểm tra số lượng theo từng size, màu và SKU. Mỗi điều chỉnh cần có lý do cụ thể.</p>
       </header>
 
+      <nav aria-label="Quản lý kho" className="admin-steps"><Link to="/admin/inventory" aria-current={!historyMode ? 'page' : undefined}>Tồn kho</Link><Link to="/admin/inventory/history" aria-current={historyMode ? 'page' : undefined}>Lịch sử giao dịch</Link></nav>
+      <div hidden={historyMode} className="space-y-5">
       <QueryFeedback error={list.error} onRetry={list.reload} />
-      {error && <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
+      {error && <div role="alert" className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
 
       <form onSubmit={applySearch} className="flex flex-wrap gap-3 rounded-lg border border-[#E2E5DE] bg-white p-4">
-        <input value={skuInput} onChange={(event) => setSkuInput(event.target.value)} placeholder="Lọc theo SKU" className="min-w-64 flex-1 border border-[#D9DDD6] px-3 py-2 text-sm" />
+        <input aria-label="Lọc theo SKU" value={skuInput} onChange={(event) => setSkuInput(event.target.value)} placeholder="Lọc theo SKU" className="min-w-64 flex-1 border border-[#D9DDD6] px-3 py-2 text-sm" />
         <button className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white">Tìm</button>
       </form>
 
       <section className="overflow-x-auto rounded-lg border border-[#E2E5DE] bg-white">
         {loading ? <div className="p-10 text-center text-sm text-[#606863]">Đang tải tồn kho...</div> : list.error ? null : rows.length === 0 ? <div className="p-10 text-center text-sm">Không có biến thể phù hợp.</div> : (
           <table className="min-w-full text-left text-sm">
-            <thead className="bg-[#F5F6F2] text-xs uppercase text-[#606863]"><tr><th className="px-4 py-3">Variant / SKU</th><th className="px-4 py-3">Sản phẩm</th><th className="px-4 py-3">Quy cách</th><th className="px-4 py-3">Sale status</th><th className="px-4 py-3 text-right">Khả dụng</th><th className="px-4 py-3" /></tr></thead>
+            <thead className="bg-[#F5F6F2] text-xs uppercase text-[#606863]"><tr><th className="px-4 py-3">Variant / SKU</th><th className="px-4 py-3">Sản phẩm</th><th className="px-4 py-3">Quy cách</th><th className="px-4 py-3">Trạng thái bán</th><th className="px-4 py-3 text-right">Khả dụng</th><th className="px-4 py-3" /></tr></thead>
             <tbody className="divide-y divide-[#E2E5DE]">
-              {rows.map((row) => <tr key={row.variant_id}><td className="px-4 py-3"><strong className="font-mono">#{row.variant_id}</strong><p className="text-xs text-[#606863]">{row.sku ?? 'Không có SKU'}</p></td><td className="px-4 py-3"><strong>{row.product_name}</strong><p className="text-xs text-[#606863]">Product #{row.product_id}</p></td><td className="px-4 py-3">{row.size} · {row.color}</td><td className="px-4 py-3">{statusLabel(row.sale_status)}</td><td className="px-4 py-3 text-right text-lg font-bold">{row.available_quantity}</td><td className="px-4 py-3 text-right">{canWrite && <button type="button" onClick={() => { if (saving || !canDiscard()) return; setSelected(row); setDelta(''); setReason(''); }} className="border border-[#0B2419] px-3 py-2 text-xs font-bold uppercase">Điều chỉnh</button>}</td></tr>)}
+              {rows.map((row) => <tr key={row.variant_id}><td className="px-4 py-3"><strong className="font-mono">#{row.variant_id}</strong><p className="text-xs text-[#606863]">{row.sku ?? 'Không có SKU'}</p></td><td className="px-4 py-3"><strong>{row.product_name}</strong><p className="text-xs text-[#606863]">Product #{row.product_id}</p></td><td className="px-4 py-3">{row.size} · {row.color}</td><td className="px-4 py-3"><StatusBadge status={row.sale_status} /></td><td className="px-4 py-3 text-right text-lg font-bold">{row.available_quantity}</td><td className="px-4 py-3 text-right">{canWrite && <button type="button" onClick={() => { if (saving || !canDiscard()) return; setSelected(row); setDelta(''); setReason(''); }} className="border border-[#0B2419] px-3 py-2 text-xs font-bold uppercase">Điều chỉnh</button>}</td></tr>)}
             </tbody>
           </table>
         )}
@@ -118,12 +122,13 @@ export const AdminInventoryView: React.FC<{ showToast: (msg: string) => void; ca
 
       {meta && meta.total_pages > 1 && <div className="flex justify-center gap-3 text-sm"><button type="button" disabled={page <= 1 || loading} onClick={() => changePage(page - 1)} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang trước</button><span className="py-2">{meta.page} / {meta.total_pages}</span><button type="button" disabled={page >= meta.total_pages || loading} onClick={() => changePage(page + 1)} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang sau</button></div>}
 
-      {canWrite && selected && <form onSubmit={adjust} className="rounded-lg border border-[#E2E5DE] bg-white p-5"><fieldset disabled={saving} className="contents"><h2 className="font-serif text-xl font-bold">Điều chỉnh {selected.product_name}</h2><p className="mt-1 text-xs text-[#606863]">Hiện khả dụng: {selected.available_quantity}. Delta dương tăng kho, delta âm giảm kho; backend kiểm tra invariant.</p><p className="mt-3 font-semibold">Dự kiến: {selected.available_quantity} → {Number.isInteger(Number(delta)) ? selected.available_quantity + Number(delta) : "—"}</p><div className="mt-4 grid gap-3 md:grid-cols-[180px_1fr_auto]"><input type="number" step="1" required value={delta} onChange={(event) => setDelta(event.target.value)} aria-label="Số lượng điều chỉnh" placeholder="Tăng (+) / giảm (−)" className="border border-[#D9DDD6] px-3 py-2 text-sm" /><input required maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Lý do điều chỉnh" className="border border-[#D9DDD6] px-3 py-2 text-sm" /><button disabled={saving} className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white disabled:opacity-40">{saving ? 'Đang lưu...' : 'Xác nhận'}</button></div></fieldset></form>}
+      {canWrite && selected && <form onSubmit={adjust} className="rounded-lg border border-[#E2E5DE] bg-white p-5"><fieldset disabled={saving} className="contents"><h2 className="font-serif text-xl font-bold">Điều chỉnh {selected.product_name}</h2><p className="mt-1 text-xs text-[#606863]">Hiện khả dụng: {selected.available_quantity}. Nhập số dương để tăng kho, số âm để giảm kho.</p><p className="mt-3 font-semibold">Dự kiến: {selected.available_quantity} → {Number.isInteger(Number(delta)) ? selected.available_quantity + Number(delta) : "—"}</p><div className="mt-4 grid gap-3 md:grid-cols-[180px_1fr_auto]"><input type="number" step="1" required value={delta} onChange={(event) => setDelta(event.target.value)} aria-label="Số lượng điều chỉnh" placeholder="Tăng (+) / giảm (−)" className="border border-[#D9DDD6] px-3 py-2 text-sm" /><input aria-label="Lý do điều chỉnh" required maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Lý do điều chỉnh" className="border border-[#D9DDD6] px-3 py-2 text-sm" /><button disabled={saving} className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white disabled:opacity-40">{saving ? 'Đang lưu...' : 'Xác nhận'}</button></div></fieldset></form>}
 
-      <section className="space-y-4">
-        <div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="font-serif text-2xl font-bold">Inventory transactions</h2><p className="text-xs text-[#606863]">Lịch sử bất biến do backend tạo từ nhập kho, order và điều chỉnh tay.</p></div><select value={transactionType} onChange={(event) => { setTransactionPage(1); setTransactionType(event.target.value as InventoryTransactionType | ''); }} className="border border-[#D9DDD6] bg-white px-3 py-2 text-sm"><option value="">Tất cả loại</option>{transactionTypes.map((item) => <option key={item} value={item}>{statusLabel(item)}</option>)}</select></div>
+      </div>
+      <section hidden={!historyMode} className="space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="font-serif text-2xl font-bold">Lịch sử giao dịch kho</h2><p className="text-xs text-[#606863]">Các lần nhập, xuất và điều chỉnh kho đã được ghi nhận.</p></div><select aria-label="Loại giao dịch" value={transactionType} onChange={(event) => { setTransactionPage(1); setTransactionType(event.target.value as InventoryTransactionType | ''); }} className="border border-[#D9DDD6] bg-white px-3 py-2 text-sm"><option value="">Tất cả loại</option>{transactionTypes.map((item) => <option key={item} value={item}>{statusLabel(item)}</option>)}</select></div>
         <QueryFeedback loading={history.loading} error={history.error} empty={!history.loading && !history.error && transactions.length === 0} onRetry={history.reload} />
-        <div className="overflow-x-auto rounded-lg border border-[#E2E5DE] bg-white"><table className="min-w-full text-left text-sm"><thead className="bg-[#F5F6F2] text-xs uppercase text-[#606863]"><tr><th className="px-4 py-3">Thời gian / Mã</th><th className="px-4 py-3">Variant</th><th className="px-4 py-3">Loại</th><th className="px-4 py-3 text-right">Delta</th><th className="px-4 py-3">Nguồn</th><th className="px-4 py-3">Lý do</th></tr></thead><tbody className="divide-y divide-[#E2E5DE]">{transactions.map((tx) => <tr key={tx.txn_id}><td className="px-4 py-3 font-mono">#{tx.txn_id}<p className="text-xs">{formatVietnamDateTime(tx.created_at)}</p></td><td className="px-4 py-3">#{tx.variant_id}</td><td className="px-4 py-3">{statusLabel(tx.transaction_type)}</td><td className="px-4 py-3 text-right font-bold">{tx.quantity_delta > 0 ? '+' : ''}{tx.quantity_delta}</td><td className="px-4 py-3 text-xs">{tx.order_id ? `Order #${tx.order_id}` : tx.goods_receipt_id ? `Receipt #${tx.goods_receipt_id}` : 'Manual'}</td><td className="max-w-sm px-4 py-3 text-xs">{tx.reason ?? '—'}</td></tr>)}</tbody></table></div>
+        <div className="overflow-x-auto rounded-lg border border-[#E2E5DE] bg-white"><table className="min-w-full text-left text-sm"><thead className="bg-[#F5F6F2] text-xs uppercase text-[#606863]"><tr><th className="px-4 py-3">Thời gian / Mã</th><th className="px-4 py-3">Biến thể</th><th className="px-4 py-3">Loại</th><th className="px-4 py-3 text-right">Thay đổi</th><th className="px-4 py-3">Nguồn</th><th className="px-4 py-3">Lý do</th></tr></thead><tbody className="divide-y divide-[#E2E5DE]">{transactions.map((tx) => <tr key={tx.txn_id}><td className="px-4 py-3 font-mono">#{tx.txn_id}<p className="text-xs">{formatVietnamDateTime(tx.created_at)}</p></td><td className="px-4 py-3">#{tx.variant_id}</td><td className="px-4 py-3">{statusLabel(tx.transaction_type)}</td><td className="px-4 py-3 text-right font-bold">{tx.quantity_delta > 0 ? '+' : ''}{tx.quantity_delta}</td><td className="px-4 py-3 text-xs">{tx.order_id ? `Order #${tx.order_id}` : tx.goods_receipt_id ? `Receipt #${tx.goods_receipt_id}` : 'Manual'}</td><td className="max-w-sm px-4 py-3 text-xs">{tx.reason ?? '—'}</td></tr>)}</tbody></table></div>
         {transactionMeta && transactionMeta.total_pages > 1 && <div className="flex justify-center gap-3 text-sm"><button type="button" disabled={transactionPage <= 1} onClick={() => setTransactionPage((value) => value - 1)} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang trước</button><span className="py-2">{transactionMeta.page} / {transactionMeta.total_pages}</span><button type="button" disabled={transactionPage >= transactionMeta.total_pages} onClick={() => setTransactionPage((value) => value + 1)} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang sau</button></div>}
       </section>
     </div>

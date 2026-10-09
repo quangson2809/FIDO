@@ -126,26 +126,26 @@ export const RoleManagementPanel: React.FC<{
         <div>
           <h2 className="font-serif text-xl">Tạo vai trò</h2>
           <p className="mt-1 text-xs text-[#687069]">
-            Role code chỉ được nhập khi tạo; cập nhật role không đổi code.
+            Mã vai trò không thể đổi sau khi tạo.
           </p>
         </div>
 
         <div className="grid gap-3 md:grid-cols-3">
-          <input
+          <input aria-label="Code"
             value={roleDraft.code}
             onChange={(event) => setRoleDraft((current) => ({ ...current, code: event.target.value }))}
             placeholder="Code"
             maxLength={80}
             className="border border-[#D9DDD6] px-3 py-2 text-sm"
           />
-          <input
+          <input aria-label="Tên vai trò"
             value={roleDraft.name}
             onChange={(event) => setRoleDraft((current) => ({ ...current, name: event.target.value }))}
             placeholder="Tên vai trò"
             maxLength={150}
             className="border border-[#D9DDD6] px-3 py-2 text-sm"
           />
-          <input
+          <input aria-label="Mô tả"
             value={roleDraft.description}
             onChange={(event) => setRoleDraft((current) => ({ ...current, description: event.target.value }))}
             placeholder="Mô tả"
@@ -240,15 +240,16 @@ export const RoleManagementPanel: React.FC<{
               <button type="button" onClick={closeEdit} className="text-2xl">×</button>
             </div>
 
-            <div className="mt-4 space-y-3">
-              <input
+            {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+            <fieldset disabled={busy} className="mt-4 space-y-3">
+              <input aria-label="Tên"
                 value={editingRoleDraft.name}
                 onChange={(event) => setEditingRoleDraft((current) => ({ ...current, name: event.target.value }))}
                 placeholder="Tên"
                 maxLength={150}
                 className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
               />
-              <textarea
+              <textarea aria-label="Mô tả"
                 rows={3}
                 value={editingRoleDraft.description}
                 onChange={(event) => setEditingRoleDraft((current) => ({ ...current, description: event.target.value }))}
@@ -280,7 +281,7 @@ export const RoleManagementPanel: React.FC<{
               >
                 Lưu
               </button>
-            </div>
+            </fieldset>
         </Modal>
       )}
     </div>

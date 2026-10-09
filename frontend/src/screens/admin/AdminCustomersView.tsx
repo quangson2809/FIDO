@@ -36,11 +36,11 @@ export const AdminCustomersView: React.FC<AdminCustomersViewProps> = ({
       <header>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">Customer accounts</p>
         <h1 className="mt-1 font-serif text-3xl text-[#0B2419]">Khách hàng</h1>
-        <p className="mt-2 max-w-3xl text-sm text-[#606863]">Dữ liệu lấy từ API tài khoản khách hàng. Không hiển thị loyalty, số đo hay CRM note khi backend không có contract tương ứng.</p>
+        <p className="mt-2 max-w-3xl text-sm text-[#606863]">Tra cứu thông tin liên hệ, địa chỉ và lịch sử mua hàng của khách hàng.</p>
       </header>
 
       <form onSubmit={(event) => { event.preventDefault(); setPage(1); list.reload(); setQuery(queryDraft.trim()); }} className="flex max-w-2xl gap-3">
-        <input value={queryDraft} onChange={(event) => setQueryDraft(event.target.value)} placeholder="Tìm theo số điện thoại hoặc email" className="min-w-0 flex-1 border border-[#D9DDD6] bg-white px-3 py-2 text-sm" />
+        <input aria-label="Tìm theo số điện thoại hoặc email" value={queryDraft} onChange={(event) => setQueryDraft(event.target.value)} placeholder="Tìm theo số điện thoại hoặc email" className="min-w-0 flex-1 border border-[#D9DDD6] bg-white px-3 py-2 text-sm" />
         <button type="submit" className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase tracking-wider text-white">Tìm</button>
       </form>
 

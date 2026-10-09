@@ -1,3 +1,4 @@
+import { StatusBadge } from '../../shared/admin/StatusBadge';
 import { useSearchParams } from 'react-router-dom';
 import { formatVietnamDateTime } from '../../shared/time/formatVietnamDateTime';
 import { statusLabel } from '../../shared/admin/statusLabels';
@@ -40,7 +41,7 @@ export const AdminOrdersView: React.FC<Props> = ({ onSelectOrder }) => {
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">Order management</p>
         <h1 className="mt-1 font-serif text-2xl font-bold text-[#0B2419]">Đơn hàng</h1>
-        <p className="mt-1 text-sm text-[#606863]">Lọc và thao tác trên contract `/api/v1/admin/orders`; không có batch action giả lập.</p>
+        <p className="mt-1 text-sm text-[#606863]">Theo dõi đơn hàng, kiểm tra thanh toán và xử lý từng bước giao hàng.</p>
       </div>
 
       <div className="grid gap-3 rounded-lg border border-[#E2E5DE] bg-white p-4 md:grid-cols-3">
@@ -80,8 +81,8 @@ export const AdminOrdersView: React.FC<Props> = ({ onSelectOrder }) => {
               {data.data.map((order) => (
                 <tr key={order.order_id}>
                   <td className="px-4 py-3 font-mono font-semibold">{order.order_code}</td>
-                  <td className="px-4 py-3">{statusLabel(order.order_status)}</td>
-                  <td className="px-4 py-3">{statusLabel(order.payment_status)}</td>
+                  <td className="px-4 py-3"><StatusBadge status={order.order_status} /></td>
+                  <td className="px-4 py-3"><StatusBadge status={order.payment_status} /></td>
                   <td className="px-4 py-3 font-semibold">{order.total.toLocaleString('vi-VN')}₫</td>
                   <td className="px-4 py-3 text-xs text-[#606863]">{formatVietnamDateTime(order.created_at)}</td>
                   <td className="px-4 py-3 text-right"><button type="button" onClick={() => onSelectOrder(order.order_id)} className="border border-[#0B2419] px-3 py-2 text-xs font-bold uppercase tracking-wider">Chi tiết</button></td>

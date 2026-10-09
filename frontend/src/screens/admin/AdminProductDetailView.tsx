@@ -1,4 +1,4 @@
-import { statusLabel } from '../../shared/admin/statusLabels';
+import { StatusBadge } from '../../shared/admin/StatusBadge';
 import { useDirtyForm } from '../../shared/admin/dirtyFormContext';
 import React, { useEffect, useMemo, useState } from 'react';
 import { adminCatalogMetaService } from '../../features/catalog/api/adminCatalogMetaService';
@@ -270,10 +270,10 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
           <p className="font-mono text-xs text-[#606863]">Product #{product.product_id}</p>
           <h1 className="mt-1 font-serif text-3xl font-bold">{product.name}</h1>
         </div>
-        <span className="bg-[#FAF4DF] px-3 py-2 text-xs font-bold">{statusLabel(product.sale_status)}</span>
+        <span className="bg-[#FAF4DF] px-3 py-2 text-xs font-bold"><StatusBadge status={product.sale_status} /></span>
       </div>
 
-      {error && <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
+      {error && <div role="alert" className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
 
       <nav aria-label="Các bước quản lý sản phẩm" className="admin-steps"><a href="#product-info">1. Thông tin</a><a href="#product-images">2. Hình ảnh</a><a href="#product-variants">3. Biến thể</a></nav>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -325,6 +325,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
           onVariantSkuChange={setVariantSku}
           onVariantOverridePriceChange={setVariantOverridePrice}
           onAddVariant={() => void addVariant()}
+          onBusyChange={setBusy}
           onVariantSaved={(updated) => setProduct((current) => current ? { ...current, variants: current.variants.map((variant) => variant.variant_id === updated.variant_id ? updated : variant) } : current)}
           onToggleVariant={(variantId, current) => void toggleVariant(variantId, current)}
         />

@@ -98,7 +98,7 @@ export const PermissionManagementPanel: React.FC<{
 
   return (
     <div className="border border-[#E8E9E3] bg-white p-5">
-      <h2 className="font-serif text-xl">Permission catalog</h2>
+      <h2 className="font-serif text-xl">Danh mục quyền</h2>
 
       {error && (
         <div className="mt-4 border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -110,17 +110,17 @@ export const PermissionManagementPanel: React.FC<{
         onSubmit={createPermission}
         className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]"
       ><fieldset disabled={busy} className="contents">
-        <input
+        <input aria-label="Mã quyền"
           value={draft.code}
           onChange={(event) => setDraft((current) => ({ ...current, code: event.target.value }))}
-          placeholder="Permission code"
+          placeholder="Mã quyền"
           maxLength={120}
           className="border border-[#D9DDD6] px-3 py-2 text-sm"
         />
-        <input
+        <input aria-label="Tên quyền"
           value={draft.name}
           onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
-          placeholder="Tên permission"
+          placeholder="Tên quyền"
           maxLength={200}
           className="border border-[#D9DDD6] px-3 py-2 text-sm"
         />
@@ -162,7 +162,7 @@ export const PermissionManagementPanel: React.FC<{
       {editingPermission && (
         <Modal title="Chỉnh sửa quyền" onClose={closeEdit} busy={busy}>
             <div className="flex justify-between">
-              <h2 className="font-serif text-2xl">Chỉnh sửa permission</h2>
+              <h2 className="font-serif text-2xl">Chỉnh sửa quyền</h2>
               <button
                 type="button"
                 onClick={closeEdit}
@@ -171,14 +171,15 @@ export const PermissionManagementPanel: React.FC<{
                 ×
               </button>
             </div>
-            <div className="mt-4 space-y-3">
-              <input
+            {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+            <fieldset disabled={busy} className="mt-4 space-y-3">
+              <input aria-label="Mã quyền"
                 value={editingDraft.code}
                 onChange={(event) => setEditingDraft((current) => ({ ...current, code: event.target.value }))}
                 maxLength={120}
                 className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
               />
-              <input
+              <input aria-label="Tên quyền"
                 value={editingDraft.name}
                 onChange={(event) => setEditingDraft((current) => ({ ...current, name: event.target.value }))}
                 maxLength={200}
@@ -192,7 +193,7 @@ export const PermissionManagementPanel: React.FC<{
               >
                 Lưu
               </button>
-            </div>
+            </fieldset>
         </Modal>
       )}
     </div>

@@ -165,8 +165,8 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">Catalog master data</p>
-          <h1 className="mt-1 font-serif text-3xl font-bold text-[#0B2419]">Metadata catalog</h1>
-          <p className="mt-2 text-sm text-[#606863]">Dữ liệu lấy trực tiếp từ `/admin/catalog/meta`; không dùng danh sách mẫu.</p>
+          <h1 className="mt-1 font-serif text-3xl font-bold text-[#0B2419]">Danh mục & thuộc tính</h1>
+          <p className="mt-2 text-sm text-[#606863]">Quản lý danh mục, thương hiệu, hệ size và màu dùng cho sản phẩm.</p>
         </div>
         <button type="button" disabled={loading} onClick={() => void load()} className="border border-[#0B2419] px-4 py-2 text-xs font-bold uppercase disabled:opacity-40">Làm mới</button>
       </div>
@@ -177,7 +177,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
         ))}
       </div>
 
-      {error && <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
+      {error && <div role="alert" className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
       {!canWrite && <div className="border border-[#E2E5DE] bg-[#F8FAF4] p-3 text-sm text-[#606863]">Chế độ chỉ đọc. Cần CATALOG_WRITE để tạo, sửa hoặc xóa metadata.</div>}
 
       {canWrite && <form onSubmit={createCurrent} className="grid gap-3 rounded-lg border border-[#E2E5DE] bg-white p-5 md:grid-cols-2 xl:grid-cols-4"><fieldset disabled={busy} className="contents">

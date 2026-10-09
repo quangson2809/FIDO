@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { normalizeApiError } from '../../services/http/apiError';
 import type { ApiClientError } from '../../services/http/apiError';
 
 // The loader identity is the request key. Never publish data for an older key.
 export function useRemoteQuery<T>(load: () => Promise<T>) {
   const [revision, setRevision] = useState(0);
-  const request = useCallback(() => { void revision; return load(); }, [load, revision]);
+  const request = useMemo(() => ({ load, revision }), [load, revision]);
   const [result, setResult] = useState<{
     request: typeof request;
     data: T | null;
@@ -13,7 +13,7 @@ export function useRemoteQuery<T>(load: () => Promise<T>) {
   } | null>(null);
   useEffect(() => {
     let active = true;
-    Promise.resolve().then(request).then(
+    Promise.resolve().then(request.load).then(
       (data) => { if (active) setResult({ request, data, error: null }); },
       (error: unknown) => { if (active) setResult({ request, data: null, error: normalizeApiError(error) }); },
     );

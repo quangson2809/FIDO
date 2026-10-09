@@ -1,3 +1,4 @@
+import { StatusBadge } from '../../shared/admin/StatusBadge';
 import { OrderProgress } from '../../features/orders/components/OrderProgress';
 import { useToast } from '../../shared/ui/toast/useToast';
 import { formatVietnamDateTime } from '../../shared/time/formatVietnamDateTime';
@@ -179,11 +180,11 @@ export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
           <h1 className="mt-1 font-serif text-2xl font-bold text-[#0B2419]">Chi tiết đơn hàng</h1>
           <p className="mt-1 text-xs text-[#606863]">Tạo: {formatVietnamDateTime(order.created_at)} · Cập nhật: {formatVietnamDateTime(order.updated_at)}</p>
         </div>
-        <div className="text-right"><span className="inline-block bg-[#FAF4DF] px-3 py-2 text-xs font-bold">{statusLabel(order.order_status)}</span><p className="mt-2 text-xs">Thanh toán: {statusLabel(order.payment.payment_status)}</p></div>
+        <div className="text-right"><span className="inline-block bg-[#FAF4DF] px-3 py-2 text-xs font-bold"><StatusBadge status={order.order_status} /></span><p className="mt-2 text-xs">Thanh toán: {statusLabel(order.payment.payment_status)}</p></div>
       </div>
 
       <OrderProgress status={order.order_status} />
-      {error && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
+      {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
@@ -201,10 +202,10 @@ export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
             <div className="flex items-center justify-between gap-3"><h2 className="font-serif text-xl font-bold">Người nhận & ghi chú</h2>{can('ORDER_EDIT') && !editing && <button type="button" onClick={() => setEditing(true)} className="text-xs font-bold uppercase underline">Chỉnh sửa</button>}</div>
             {editing ? (
               <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <label className="space-y-1"><span className="text-xs font-semibold">Điện thoại</span><input disabled={!recipientEditable(order.order_status)} maxLength={20} value={phone} onChange={(event) => setPhone(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]" /></label>
-                <label className="space-y-1"><span className="text-xs font-semibold">Email</span><input disabled={!recipientEditable(order.order_status)} maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]" /></label>
-                <label className="space-y-1 md:col-span-2"><span className="text-xs font-semibold">Địa chỉ</span><textarea disabled={!recipientEditable(order.order_status)} rows={3} maxLength={500} value={address} onChange={(event) => setAddress(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]" /></label>
-                <label className="space-y-1 md:col-span-2"><span className="text-xs font-semibold">Ghi chú CSKH</span><textarea rows={3} value={note} onChange={(event) => setNote(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>
+                <label className="space-y-1"><span className="text-xs font-semibold">Điện thoại</span><input disabled={busy || !recipientEditable(order.order_status)} maxLength={20} value={phone} onChange={(event) => setPhone(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]" /></label>
+                <label className="space-y-1"><span className="text-xs font-semibold">Email</span><input disabled={busy || !recipientEditable(order.order_status)} maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]" /></label>
+                <label className="space-y-1 md:col-span-2"><span className="text-xs font-semibold">Địa chỉ</span><textarea disabled={busy || !recipientEditable(order.order_status)} rows={3} maxLength={500} value={address} onChange={(event) => setAddress(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]" /></label>
+                <label className="space-y-1 md:col-span-2"><span className="text-xs font-semibold">Ghi chú CSKH</span><textarea disabled={busy} rows={3} value={note} onChange={(event) => setNote(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>
                 <div className="flex gap-2 md:col-span-2"><button type="button" disabled={busy} onClick={() => void saveOrder()} className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white disabled:opacity-40">Lưu</button><button type="button" disabled={busy} onClick={() => { if (!canDiscard()) return; setPhone(order.recipient.phone); setEmail(order.recipient.email ?? ''); setAddress(order.recipient.address); setNote(order.customer_service_note ?? ''); setEditing(false); }} className="border border-[#0B2419] px-4 py-2 text-xs font-bold uppercase">Hủy</button></div>
               </div>
             ) : (
@@ -221,10 +222,10 @@ export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
 
           <section className="rounded-lg border border-[#E2E5DE] bg-white p-5">
             <h2 className="font-serif text-xl font-bold">Xử lý đơn hàng</h2>
-            <label className="mt-4 block space-y-1"><span className="text-xs font-semibold">Lý do / ghi chú action</span><textarea rows={2} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>
+            <label className="mt-4 block space-y-1"><span className="text-xs font-semibold">Lý do / ghi chú action</span><textarea disabled={busy} rows={2} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" /></label>
             <div className="mt-4 flex flex-wrap gap-2">
               {order.allowed_actions.map((action) => <button key={action} type="button" disabled={busy} onClick={() => void runOrderAction(action)} className={action === 'CANCEL' || action === 'DELIVERY_FAILED' || action === 'DELIVERY_RETURN_IN' ? 'admin-danger' : 'admin-primary'}>{actionLabel[action]}</button>)}
-              {order.allowed_actions.length === 0 && <p className="text-xs text-[#606863]">Backend không cấp action trạng thái nào cho actor/order hiện tại.</p>}
+              {order.allowed_actions.length === 0 && <p className="text-xs text-[#606863]">Hiện không có thao tác chuyển trạng thái phù hợp với đơn hàng và quyền của bạn.</p>}
             </div>
           </section>
 

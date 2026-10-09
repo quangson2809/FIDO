@@ -52,6 +52,7 @@ export const AdminProductInfoSection: React.FC<{
       {!editing && canWrite && (
         <button
           type="button"
+          disabled={busy}
           onClick={() => onEditingChange(true)}
           className="text-xs font-bold uppercase underline"
         >
@@ -61,7 +62,7 @@ export const AdminProductInfoSection: React.FC<{
     </div>
 
     {editing && canWrite ? (
-      <div className="mt-4 space-y-3">
+      <fieldset disabled={busy} className="mt-4 space-y-3">
         <label className="block space-y-1">
           <span className="text-xs font-semibold">Tên</span>
           <input
@@ -93,7 +94,7 @@ export const AdminProductInfoSection: React.FC<{
             />
           </label>
           <label className="space-y-1">
-            <span className="text-xs font-semibold">Sale status</span>
+            <span className="text-xs font-semibold">Trạng thái bán</span>
             <select
               value={saleStatus}
               onChange={(event) => onSaleStatusChange(event.target.value as SaleStatus)}
@@ -122,12 +123,12 @@ export const AdminProductInfoSection: React.FC<{
             Hủy
           </button>
         </div>
-      </div>
+      </fieldset>
     ) : (
       <dl className="mt-4 space-y-2 text-sm">
-        <div className="flex justify-between gap-4"><dt className="text-[#606863]">Category</dt><dd>{product.category.name}</dd></div>
-        <div className="flex justify-between gap-4"><dt className="text-[#606863]">Brand</dt><dd>{product.brand?.name ?? '—'}</dd></div>
-        <div className="flex justify-between gap-4"><dt className="text-[#606863]">Size system</dt><dd>{product.size_system.name}</dd></div>
+        <div className="flex justify-between gap-4"><dt className="text-[#606863]">Danh mục</dt><dd>{product.category.name}</dd></div>
+        <div className="flex justify-between gap-4"><dt className="text-[#606863]">Thương hiệu</dt><dd>{product.brand?.name ?? '—'}</dd></div>
+        <div className="flex justify-between gap-4"><dt className="text-[#606863]">Hệ size</dt><dd>{product.size_system.name}</dd></div>
         <div className="flex justify-between gap-4"><dt className="text-[#606863]">Giá</dt><dd className="font-bold">{product.base_price.toLocaleString('vi-VN')}₫</dd></div>
         <div className="border-t border-[#E2E5DE] pt-2">
           <dt className="text-[#606863]">Mô tả</dt>
@@ -164,7 +165,7 @@ export const AdminProductGallerySection: React.FC<{
       <div>
         <h2 className="font-serif text-xl font-bold">Ảnh sản phẩm</h2>
         <p className="mt-1 text-xs text-[#606863]">
-          Ảnh đầu tiên (sort_order = 0) là cover/thumbnail. Upload, reorder và delete đều đi qua API backend.
+          Ảnh đầu tiên là ảnh bìa. Dùng các nút mũi tên để đổi thứ tự ảnh.
         </p>
       </div>
       <span className="text-xs text-[#606863]">{images.length} ảnh</span>
@@ -191,13 +192,13 @@ export const AdminProductGallerySection: React.FC<{
         </button>
       </div>
     ) : (
-      <p className="mt-4 text-xs text-[#687069]">Chế độ chỉ đọc: cần CATALOG_WRITE để thay đổi gallery.</p>
+      <p className="mt-4 text-xs text-[#687069]">Chế độ chỉ đọc. Bạn chưa có quyền thay đổi ảnh.</p>
     )}
 
     <ImageFilePreview files={imageFiles} />
     {images.length === 0 ? (
       <div className="mt-4 border border-[#E2E5DE] bg-[#F5F6F2] p-8 text-center text-sm text-[#606863]">
-        Gallery đang trống.
+        Chưa có ảnh sản phẩm.
       </div>
     ) : (
       <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -268,6 +269,7 @@ export const AdminProductVariantsPanel: React.FC<{
   onVariantSkuChange: (value: string) => void;
   onVariantOverridePriceChange: (value: string) => void;
   onAddVariant: () => void;
+  onBusyChange: (busy: boolean) => void;
   onVariantSaved: (variant: AdminVariantDto) => void;
   onToggleVariant: (variantId: number, saleStatus: SaleStatus) => void;
 }> = ({
@@ -288,12 +290,14 @@ export const AdminProductVariantsPanel: React.FC<{
   onAddVariant,
   onToggleVariant,
   onVariantSaved,
+  onBusyChange,
 }) => (
   <aside id="product-variants" className="space-y-5">
     {canWrite && <section className="rounded-lg border border-[#E2E5DE] bg-white p-5">
       <h2 className="font-serif text-xl font-bold">Thêm biến thể</h2>
       <div className="mt-4 space-y-3">
-        <select
+        <select aria-label="Chọn size"
+          disabled={busy}
           value={variantSize}
           onChange={(event) => onVariantSizeChange(event.target.value)}
           className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
@@ -303,7 +307,8 @@ export const AdminProductVariantsPanel: React.FC<{
             <option key={item.size_value_id} value={item.size_value_id}>{item.display_name}</option>
           ))}
         </select>
-        <select
+        <select aria-label="Chọn màu"
+          disabled={busy}
           value={variantColor}
           onChange={(event) => onVariantColorChange(event.target.value)}
           className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
@@ -311,20 +316,22 @@ export const AdminProductVariantsPanel: React.FC<{
           <option value="">Chọn màu</option>
           {meta?.colors.map((item) => <option key={item.color_id} value={item.color_id} disabled={product.variants.some((variant) => variant.size_value_id === Number(variantSize) && variant.color_id === item.color_id)}>{item.name}{product.variants.some((variant) => variant.size_value_id === Number(variantSize) && variant.color_id === item.color_id) ? " · Đã có" : ""}</option>)}
         </select>
-        <input
+        <input aria-label="SKU (không bắt buộc)"
           maxLength={100}
+          disabled={busy}
           value={variantSku}
           onChange={(event) => onVariantSkuChange(event.target.value)}
-          placeholder="SKU (optional)"
+          placeholder="SKU (không bắt buộc)"
           className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
         />
-        <input
+        <input aria-label="Giá riêng (không bắt buộc)"
           type="number"
           min="0"
           step="0.01"
+          disabled={busy}
           value={variantOverridePrice}
           onChange={(event) => onVariantOverridePriceChange(event.target.value)}
-          placeholder="Override price (optional)"
+          placeholder="Giá riêng (không bắt buộc)"
           className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
         />
         <button
@@ -355,12 +362,12 @@ export const AdminProductVariantsPanel: React.FC<{
                 <span className="text-[10px] font-bold">{statusLabel(variant.sale_status)}</span>
               </div>
               <p className="mt-1 text-xs text-[#606863]">
-                {variant.sku ?? `Variant #${variant.variant_id}`} · Available {variant.available_quantity}
+                {variant.sku ?? `Variant #${variant.variant_id}`} · Tồn {variant.available_quantity}
               </p>
               <p className="mt-1 text-xs">
-                Override: {variant.override_price === null ? '—' : `${variant.override_price.toLocaleString('vi-VN')}₫`}
+                Giá riêng: {variant.override_price === null ? '—' : `${variant.override_price.toLocaleString('vi-VN')}₫`}
               </p>
-              {canWrite && <VariantPriceEditor key={`${variant.variant_id}-${variant.override_price}`} variant={variant} onSaved={onVariantSaved} />}
+              {canWrite && <VariantPriceEditor key={`${variant.variant_id}-${variant.override_price}`} variant={variant} onSaved={onVariantSaved} busy={busy} onBusyChange={onBusyChange} />}
               {canWrite && <button
                 type="button"
                 disabled={busy}

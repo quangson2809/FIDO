@@ -9,6 +9,7 @@ const page = await browser.newPage();
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 const date = '2026-10-08T03:00:00Z';
+const permission = { permission_id: 1, code: 'CATALOG_READ', name: 'Xem danh mục' };
 const role = { role_id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null };
 let me = { account: { account_id: 1, phone: '0900000000', email: null, created_at: date, updated_at: date }, addresses: [], roles: [role], permissions: [] };
 const pagination = (data, pageNumber = 1, total = data.length) => ({ data, meta: { page: pageNumber, page_size: 20, total, total_pages: Math.ceil(total / 20) } });
@@ -59,11 +60,14 @@ await page.route('**/api/v1/**', async (route) => {
   if (path === '/admin/goods-receipts') return send(pagination([receipt]));
   if (path === '/admin/goods-receipts/1') return send({ data: receipt });
   if (path === '/admin/inventory') return send(pagination([{ variant_id: 10, sku: 'TEE-M-BLACK', product_id: 1, product_name: 'Áo thử nghiệm', size: 'M', color: 'Đen', sale_status: 'ON_SALE', available_quantity: 5, updated_at: date }]));
-  if (path === '/admin/access-control') return send({ data: { roles: [{ ...role, permissions: [] }], permissions: [] } });
+  if (path === '/admin/staff-accounts') return send(pagination([{ account: me.account, roles: [role] }], Number(url.searchParams.get('page') || 1), 25));
+  if (path === '/admin/staff-accounts/1') return send({ data: { account: me.account, roles: [role], permissions: [permission] } });
+  if (path === '/admin/audit-logs') return send(pagination([{ audit_id: 1, actor_account_id: 1, action: 'PRODUCT_UPDATE', target_type: 'PRODUCT', target_id: '1', description: 'Cập nhật sản phẩm', created_at: date }], Number(url.searchParams.get('page') || 1), 25));
+  if (path === '/admin/access-control') return send({ data: { roles: [{ ...role, permissions: [permission] }], permissions: [permission] } });
   if (path === '/admin/content-pages') return send({ data: [{ page_id: 1, page_code: 'POLICY', title: 'Chính sách', content: 'Nội dung gốc' }] });
   return send(pagination([]));
 });
-const goto = async (path) => { console.log('Check', path); await page.goto(`http://localhost:5180${path}`); await page.getByText('Hệ thống quản trị', { exact: true }).waitFor(); };
+const goto = async (path) => { console.log('Check', path); await page.goto(`http://localhost:5180${path}`, { waitUntil: 'domcontentloaded' }); await page.getByText('Hệ thống quản trị', { exact: true }).waitFor(); };
 try {
   await goto('/admin/customers');
   await page.getByRole('cell', { name: '0900111222', exact: true }).waitFor();
@@ -90,7 +94,7 @@ try {
   await page.getByRole('dialog').getByRole('alert').waitFor();
   await page.getByRole('button', { name: 'Đóng hộp thoại' }).click();
   await goto('/admin/catalog/categories');
-  await page.getByRole('button', { name: 'Thương hiệu', exact: true }).click();
+  await page.locator('main').getByRole('button', { name: 'Thương hiệu', exact: true }).click();
   assert.match(page.url(), /catalog\/brands/);
   await page.goBack(); assert.match(page.url(), /catalog\/categories/);
   await goto('/admin/content');
@@ -138,7 +142,7 @@ try {
   assert.equal(await price.inputValue(), '250000', 'failed price edit preserves input');
   priceError = false;
   await page.getByRole('button', { name: 'Lưu giá', exact: true }).click();
-  await page.getByText('Override: 250.000₫', { exact: false }).waitFor();
+  await page.getByText('Giá riêng: 250.000₫', { exact: false }).waitFor();
   await goto('/admin/orders/1');
   const beforeAction = writes.length;
   page.once('dialog', (dialog) => dialog.dismiss());
@@ -156,9 +160,56 @@ try {
   await page.getByRole('combobox', { name: 'Trạng thái đơn' }).selectOption('CONFIRMED');
   await page.goBack();
   assert.equal(await page.getByRole('combobox', { name: 'Trạng thái đơn' }).inputValue(), 'PENDING');
+  await goto('/admin/staff');
+  await page.getByRole('button', { name: 'Sau', exact: true }).click();
+  await page.getByText('Trang 2', { exact: false }).waitFor();
+  await page.getByRole('button', { name: 'Chi tiết', exact: true }).click();
+  await page.getByRole('dialog').getByRole('textbox', { name: 'Số điện thoại', exact: true }).fill('0900999888');
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Lưu thay đổi', exact: true }).click();
+  await page.getByRole('dialog').getByRole('alert').waitFor();
+  assert.equal(await page.getByRole('dialog').getByRole('textbox', { name: 'Số điện thoại', exact: true }).inputValue(), '0900999888');
+  page.once('dialog', (dialog) => dialog.dismiss());
+  await page.keyboard.press('Escape');
+  assert.equal(await page.getByRole('dialog').count(), 1, 'dirty modal survives cancelled Escape');
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.keyboard.press('Escape');
+  await goto('/admin/roles');
+  await page.getByRole('button', { name: 'Chỉnh sửa', exact: true }).click();
+  await page.getByRole('dialog').getByRole('checkbox', { name: 'CATALOG_READ', exact: true }).uncheck();
+  await page.getByText('Gỡ: CATALOG_READ', { exact: true }).waitFor();
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('dialog').getByRole('button', { name: 'Lưu', exact: true }).click();
+  await page.getByRole('dialog').getByRole('alert').waitFor();
+  assert.equal(await page.getByRole('dialog').getByRole('checkbox', { name: 'CATALOG_READ', exact: true }).isChecked(), false);
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Đóng hộp thoại' }).click();
+  await goto('/admin/audit');
+  await page.getByRole('button', { name: 'Sau', exact: true }).click();
+  await page.getByText('Trang 2', { exact: false }).waitFor();
+  // Visual layout and accessible form naming across every Admin module.
+  const routes = ['/admin/dashboard', '/admin/products', '/admin/products/1', '/admin/orders', '/admin/orders/1', '/admin/inventory', '/admin/inventory/history', '/admin/goods-receipts', '/admin/suppliers', '/admin/customers', '/admin/staff', '/admin/roles', '/admin/audit', '/admin/reports', '/admin/content', '/admin/catalog/categories', '/admin/catalog/brands', '/admin/catalog/sizes', '/admin/catalog/colors'];
+  reportError = false;
+  for (const width of [1440, 768, 375]) {
+    await page.setViewportSize({ width, height: 1000 });
+    for (const path of routes) {
+      await goto(path);
+      await page.locator('main h1').waitFor();
+      await page.waitForTimeout(80);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+      if (overflow) console.error(await page.locator('body *').evaluateAll((nodes) => nodes.filter((node) => node.getBoundingClientRect().right > innerWidth + 1).map((node) => ({tag: node.tagName, cls: node.className, right: node.getBoundingClientRect().right, position: getComputedStyle(node).position})).slice(-15)));
+      assert.equal(overflow, false, `no page overflow ${path} at ${width}px`);
+      const unnamed = await page.locator('main input:not([type=checkbox]), main select, main textarea').evaluateAll((inputs) => inputs.filter((input) => !input.labels?.length && !input.getAttribute('aria-label') && !input.getAttribute('aria-labelledby')).map((input) => input.outerHTML));
+      assert.deepEqual(unnamed, [], `inputs have labels on ${path}`);
+    }
+    await goto('/admin/products');
+    await page.locator('table tbody tr').first().waitFor();
+    await page.screenshot({ path: `/tmp/fido-admin-products-${width}.png`, fullPage: true });
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
   me = { ...me, roles: [{ ...role, code: 'ADMIN' }], permissions: [] };
   await goto('/admin/products');
   await page.getByRole('heading', { name: 'Không có quyền truy cập' }).waitFor();
   assert.deepEqual(errors, []);
   console.log('Admin UX browser regression: PASS');
-} finally { await browser.close(); await server.close(); }
+} catch (failure) { await page.screenshot({ path: '/tmp/fido-admin-failure.png', fullPage: true }); console.error(await page.locator('body').innerText()); throw failure; } finally { await browser.close(); await server.close(); }
