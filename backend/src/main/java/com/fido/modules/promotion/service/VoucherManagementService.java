@@ -9,7 +9,9 @@ import com.fido.modules.product.service.PromotionCatalogService;
 import com.fido.modules.audit.service.*;
 import java.math.BigDecimal;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -33,8 +35,17 @@ public class VoucherManagementService {
     }
     @PreAuthorize(READ) @Transactional(readOnly=true)
     public Page<VoucherDetailDto> list(String search,int page,int pageSize) {
-        return vouchers.findByCodeContainingIgnoreCase(search,
-                PageRequest.of(page-1,pageSize,Sort.by("voucherId").descending())).map(this::dto);
+        var pageResult = vouchers.findByCodeContainingIgnoreCase(search,
+                PageRequest.of(page-1,pageSize,Sort.by("voucherId").descending()));
+        var ids = pageResult.getContent().stream().map(Voucher::getVoucherId).toList();
+        Map<Long, VoucherUsageRepository.UsageCounts> usageByVoucher = ids.isEmpty()
+                ? Map.of()
+                : usages.summarize(ids).stream().collect(Collectors.toMap(
+                        VoucherUsageRepository.UsageCounts::getVoucherId, usage -> usage));
+        return pageResult.map(v -> {
+            var usage = usageByVoucher.get(v.getVoucherId());
+            return dto(v, usage == null ? 0L : usage.getActiveCount(), usage != null && usage.getTotalCount() > 0);
+        });
     }
     @PreAuthorize(READ) @Transactional(readOnly=true)
     public VoucherDetailDto detail(Long id) { return dto(vouchers.findById(id).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND))); }
@@ -89,9 +100,13 @@ public class VoucherManagementService {
         v.setGlobalLimit(r.global_limit()); v.setCustomerLimit(customerLimit(r)); v.setEnabled(r.enabled());
     }
     private VoucherDetailDto dto(Voucher v) {
+        return dto(v, usages.countByVoucherIdAndRestoredFalse(v.getVoucherId()), usages.existsByVoucherId(v.getVoucherId()));
+    }
+
+    private VoucherDetailDto dto(Voucher v, long activeUsage, boolean everUsed) {
         return new VoucherDetailDto(v.getVoucherId(),v.getCode(),v.getDiscountType(),v.getDiscountValue(),
             v.getMaximumDiscount(),v.getMinimumAmount(),v.getStartsAt(),v.getEndsAt(),v.getScope(),
             Set.copyOf(v.getProductIds()),Set.copyOf(v.getCategoryIds()),v.getGlobalLimit(),v.getCustomerLimit(),
-            v.isEnabled(),usages.countByVoucherIdAndRestoredFalse(v.getVoucherId()),usages.existsByVoucherId(v.getVoucherId()));
+            v.isEnabled(),activeUsage,everUsed);
     }
 }

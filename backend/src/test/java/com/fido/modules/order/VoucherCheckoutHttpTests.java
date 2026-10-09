@@ -65,6 +65,13 @@ class VoucherCheckoutHttpTests extends OrderHttpSupport {
         }
         return result;
     }
+    long listedActiveUsage(User admin, String code) throws Exception {
+        var result = call("GET", "/api/v1/admin/vouchers?search=" + code, admin.token(), null);
+        assertEquals(200, result.status(), result.body());
+        assertEquals(1, result.data().get("data").size());
+        return result.data().get("data").get(0).get("active_usage").asLong();
+    }
+
     @Test void quoteConsumesNothingRetryReturnsSameOrderAndCancellationRestoresOnce() throws Exception {
         User admin=superadmin(), buyer=user(); var item=createVariant(10,100000,null);
         String code="V"+UUID.randomUUID(); var policy=policy(code); long voucher=voucher(admin,policy); add(buyer,item);
@@ -74,12 +81,14 @@ class VoucherCheckoutHttpTests extends OrderHttpSupport {
         long order=first.data().get("data").get("order_id").asLong();
         assertEquals(new BigDecimal("10000.00"),db.queryForObject("SELECT discount_snapshot FROM orders WHERE order_id=?",BigDecimal.class,order));
         assertEquals(10,stock(item.variantId()));
+        assertEquals(1L, listedActiveUsage(admin, code));
         add(buyer,item);
         var retry=place(buyer,code,quote); assertEquals(order,retry.data().get("data").get("order_id").asLong());
         assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM cart_items ci JOIN carts c ON ci.cart_id=c.cart_id WHERE c.account_id=?",Integer.class,buyer.accountId()));
         assertEquals(409,call("POST","/api/v1/checkout/quote",buyer.token(),request(code)).status());
         assertEquals(200,action(admin,order,"CANCEL").status()); assertEquals(200,action(admin,order,"CANCEL").status());
         assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM voucher_usages WHERE voucher_id=? AND restored=TRUE",Integer.class,voucher));
+        assertEquals(0L, listedActiveUsage(admin, code));
         quote(buyer,code);
         policy.put("discount_value",20000);
         assertEquals(409,call("PUT","/api/v1/admin/vouchers/"+voucher,admin.token(),policy).status());

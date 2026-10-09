@@ -28,15 +28,17 @@ public class PromotionCatalogService {
                                      Set<Long> productIds, Set<Long> categoryIds) {
         if ("ALL".equals(scope)) return Set.copyOf(variantIds);
         Set<Long> expanded = new HashSet<>(categoryIds);
-        var tree = categories.findAllByOrderByCategoryIdAsc();
-        boolean changed;
-        do {
-            changed=false;
-            for (var category:tree) {
-                if (expanded.contains(category.getParentCategoryId()))
-                    changed |= expanded.add(category.getCategoryId());
-            }
-        } while(changed);
+        if ("CATEGORY".equals(scope)) {
+            var tree = categories.findAllByOrderByCategoryIdAsc();
+            boolean changed;
+            do {
+                changed=false;
+                for (var category:tree) {
+                    if (expanded.contains(category.getParentCategoryId()))
+                        changed |= expanded.add(category.getCategoryId());
+                }
+            } while(changed);
+        }
         var found=variants.findAllByVariantIdIn(variantIds);
         Set<Long> eligibleProducts = new HashSet<>(productIds);
         if ("CATEGORY".equals(scope)) {
