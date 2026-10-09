@@ -63,7 +63,8 @@ jobs:
         run: |
           cp backend/.env.example backend/.env
           sed -i 's/^DB_PASSWORD=.*/DB_PASSWORD=ci-compose-password/' backend/.env
-          sed -i "s/^JWT_SECRET_BASE64=.*/JWT_SECRET_BASE64=$(openssl rand -base64 32)/" backend/.env
+          sed -i '/^JWT_SECRET_BASE64=/d' backend/.env
+          printf 'JWT_SECRET_BASE64=%s\n' "$(openssl rand -base64 32)" >> backend/.env
 
       - name: Show Docker Compose version
         run: docker compose version
