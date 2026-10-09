@@ -137,3 +137,4 @@ export function VoucherForm({ voucher, canWrite, onClose, onSaved }: {
       </div>
     </form>
   </Modal>;
+}

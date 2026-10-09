@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { catalogService } from '../../catalog/api/service';
 import type { CatalogProductView, CategoryDto } from '../../catalog/types';
 import { QueryFeedback } from '../../../shared/admin/QueryFeedback';
@@ -71,34 +71,37 @@ export function VoucherProductPicker({ selectedIds, onChange, disabled }: Picker
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [labels, setLabels] = useState<Record<number, string>>({});
-  const [lookupRevision, setLookupRevision] = useState(0);
-  const [lookupLoading, setLookupLoading] = useState(false);
-  const [lookupError, setLookupError] = useState(false);
+  const [failedIds, setFailedIds] = useState<number[]>([]);
   const results = useRemoteQuery(useCallback(() =>
     catalogService.listProducts({ q: search || undefined, page, page_size: 20 }), [search, page]));
+  const missingIds = useMemo(() => selectedIds.filter((id) =>
+    !Object.hasOwn(labels, id) && !failedIds.includes(id)), [selectedIds, labels, failedIds]);
 
-  // Existing voucher references may point to stopped products that public search excludes.
-  // Resolve their labels by the existing product-detail endpoint, never by hard-coded IDs.
+  // Resolve saved references through Catalog detail: stopped products need labels too.
+  // Failed lookups are retried only by explicit user action, not in a request loop.
   useEffect(() => {
-    const missing = selectedIds.filter((id) => !Object.hasOwn(labels, id));
-    if (missing.length === 0) return;
+    if (missingIds.length === 0) return;
     let active = true;
-    void Promise.allSettled(missing.map((id) => catalogService.getProductDetail(id))).then((found) => {
+    void Promise.allSettled(missingIds.map((id) => catalogService.getProductDetail(id))).then((found) => {
       if (!active) return;
       const names: Record<number, string> = {};
-      let failed = false;
+      const failures: number[] = [];
       found.forEach((result, index) => {
-        if (result.status === 'fulfilled') names[missing[index]] = result.value.name;
-        else failed = true;
+        const id = missingIds[index];
+        if (result.status === 'fulfilled') names[id] = result.value.name;
+        else failures.push(id);
       });
-      setLabels((current) => ({ ...current, ...names }));
-      setLookupError(failed);
-      setLookupLoading(false);
+      if (Object.keys(names).length > 0) setLabels((current) => ({ ...current, ...names }));
+      if (failures.length > 0) setFailedIds((current) => [...new Set([...current, ...failures])]);
     });
     return () => { active = false; };
-    // labels are a display cache; retry is explicit to avoid repeated failed requests.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedIds, lookupRevision]);
+  }, [missingIds]);
+
+  const searchProducts = () => {
+    setSearch(draft.trim());
+    setPage(1);
+    results.reload();
+  };
 
   const selectProduct = (product: CatalogProductView) => {
     if (selectedIds.includes(product.product_id)) return;
@@ -118,20 +121,19 @@ export function VoucherProductPicker({ selectedIds, onChange, disabled }: Picker
           onClick={() => onChange(selectedIds.filter((selected) => selected !== id))}>Bỏ</button>}
       </span>)}
     </div>}
-    {lookupLoading && <p role="status" className="text-sm text-[#606863]">Đang tải tên sản phẩm đã chọn…</p>}
-    {lookupError && <div role="alert" className="text-sm text-red-700">
+    {missingIds.length > 0 && <p role="status" className="text-sm text-[#606863]">Đang tải tên sản phẩm đã chọn…</p>}
+    {selectedIds.some((id) => failedIds.includes(id)) && <div role="alert" className="text-sm text-red-700">
       Không tải được tên một số sản phẩm đã chọn.
-      <button type="button" className="ml-2 underline" onClick={() => { setLookupError(false); setLookupLoading(true); setLookupRevision((value) => value + 1); }}>Thử lại</button>
+      <button type="button" className="ml-2 underline" onClick={() => setFailedIds([])}>Thử lại</button>
     </div>}
-    <form className="flex flex-wrap items-end gap-2" onSubmit={(event) => {
-      event.preventDefault(); setSearch(draft.trim()); setPage(1); results.reload();
-    }}>
+    <div className="flex flex-wrap items-end gap-2">
       <label className="min-w-0 flex-1 text-sm">Tên sản phẩm
         <input className="field-input mt-1 w-full" value={draft} onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); searchProducts(); } }}
           placeholder="Tìm theo tên sản phẩm" disabled={disabled} />
       </label>
-      <button type="submit" className="admin-secondary" disabled={disabled}>Tìm sản phẩm</button>
-    </form>
+      <button type="button" className="admin-secondary" disabled={disabled} onClick={searchProducts}>Tìm sản phẩm</button>
+    </div>
     <QueryFeedback loading={results.loading} error={results.error} onRetry={results.reload}
       empty={!results.loading && !results.error && results.data?.items.length === 0} filtered={Boolean(search)} />
     {!results.loading && !results.error && <div className="max-h-64 divide-y overflow-y-auto rounded border border-[#D9DDD6]">
