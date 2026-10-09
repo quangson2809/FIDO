@@ -118,6 +118,17 @@ class VoucherCheckoutHttpTests extends OrderHttpSupport {
         assertNull(db.queryForObject("SELECT order_id FROM checkout_quotes WHERE quote_id=?",Long.class,q));
         assertEquals(201,place(buyer,code,q).status());
     }
+    @Test void internalAdminWithoutCustomerIdentityCannotRedeemVoucher() throws Exception {
+        var admin = superadmin();
+        var employee = plainAdmin();
+        var item = createVariant(10, 100000, null);
+        String code = "V" + UUID.randomUUID();
+        voucher(admin, policy(code));
+        add(employee, item);
+        var response = call("POST", "/api/v1/checkout/quote", employee.token(), request(code));
+        assertEquals(403, response.status(), response.body());
+    }
+
     @Test void adminAuthorizationValidationAndEligibilityReasons() throws Exception {
         var admin=superadmin(); var buyer=user(); var reader=employeeWithPermission("VOUCHER_READ");
         String code="V"+UUID.randomUUID(); var policy=policy(code);

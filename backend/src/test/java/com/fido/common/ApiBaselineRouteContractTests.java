@@ -37,7 +37,11 @@ class ApiBaselineRouteContractTests {
             new Route(
                     "PATCH",
                     "/api/v1/admin/products/{productId}/images"
-            )
+            ),
+            new Route("GET", "/api/v1/admin/vouchers"),
+            new Route("POST", "/api/v1/admin/vouchers"),
+            new Route("GET", "/api/v1/admin/vouchers/{id}"),
+            new Route("PUT", "/api/v1/admin/vouchers/{id}")
     );
 
     @Autowired

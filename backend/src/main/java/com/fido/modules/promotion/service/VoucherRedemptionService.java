@@ -30,9 +30,13 @@ public class VoucherRedemptionService {
     public record Discount(Long voucherId, String code, BigDecimal amount) {}
     public Discount evaluate(Long accountId, String code, List<Line> lines) {
         if (code==null || code.isBlank()) return new Discount(null,null,BigDecimal.ZERO);
-        boolean customer=accounts.findAccess(accountId)
-                .map(a->a.roles().stream().anyMatch(r->"CUSTOMER".equals(r.code()))).orElse(false);
-        if (!customer) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Voucher chỉ dành cho khách hàng đã đăng nhập");
+        // Public registration creates a roleless customer account. ADMIN and SUPERADMIN
+        // identify internal accounts; do not require an unassigned CUSTOMER role.
+        boolean internalAccount = accounts.findAccess(accountId)
+                .map(access -> access.roles().stream()
+                        .anyMatch(role -> "ADMIN".equals(role.code()) || "SUPERADMIN".equals(role.code())))
+                .orElse(true);
+        if (internalAccount) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Voucher chỉ dành cho khách hàng đã đăng nhập");
         Voucher v=vouchers.lockByCode(code.trim()).orElseThrow(()->rejected("Mã voucher không tồn tại"));
         Instant now=Instant.now();
         if (!v.isEnabled() || v.getStartsAt()==null) throw rejected("Voucher chưa được bật");

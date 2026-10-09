@@ -428,7 +428,17 @@ class OrderStockHttpTests extends OrderHttpSupport {
         );
 
         assertEquals(
-                501,
+                200,
+                call(
+                        "POST",
+                        "/api/v1/cart/items",
+                        customer.token(),
+                        Map.of("variant_id", first.variantId(), "quantity", 1)
+                ).status()
+        );
+        // Voucher V1 rejects unknown codes; it no longer returns the deferred-feature 501.
+        assertEquals(
+                409,
                 call(
                         "POST",
                         "/api/v1/orders",
