@@ -4,6 +4,8 @@ import { buildMovedImageOrder, sortProductImages } from '../src/features/catalog
 import { canAccessAdminModule, canWriteAdminModule } from '../src/features/auth/session/adminAccessPolicy';
 import { canPurchaseProductVariant } from '../src/features/catalog/model/purchaseAvailability';
 import { buildCheckoutQuoteKey } from '../src/features/orders/model/checkoutQuoteKey';
+import { changeVoucherScope, changeVoucherDiscountType, voucherSubmission } from '../src/features/promotion/model/voucherFormModel';
+import type { VoucherInput } from '../src/features/promotion/types';
 import { getVietnamMonthStart, getVietnamToday } from '../src/shared/time/vietnamCalendar';
 import { isAdminProfile, isSuperAdminProfile } from '../src/features/auth/session/sessionAccess';
 import {
@@ -50,6 +52,30 @@ assert.equal(isAdminProfile(profileWithRole('CUSTOMER')), false);
 assert.equal(isAdminProfile(null), false);
 assert.equal(isSuperAdminProfile(profileWithRole('SUPERADMIN')), true);
 assert.equal(isSuperAdminProfile(profileWithRole('ADMIN')), false);
+
+const voucherStaff = profileWithRole('ADMIN', ['VOUCHER_WRITE']);
+assert.equal(canAccessAdminModule('vouchers', voucherStaff, ['VOUCHER_WRITE']), true);
+assert.equal(canAccessAdminModule('products', voucherStaff, ['VOUCHER_WRITE']), false);
+const voucherFixture: VoucherInput = {
+  code: ' WELCOME10 ', discount_type: 'FIXED_AMOUNT', discount_value: 10000,
+  maximum_discount: 10, minimum_amount: 400000,
+  scope: 'CATEGORY', category_ids: [5, 8], product_ids: [],
+  starts_at: '2026-10-09T00:00:00Z', ends_at: '2026-10-12T00:00:00Z',
+  global_limit: 10, customer_limit: 1, enabled: true,
+};
+assert.deepEqual(voucherSubmission(voucherFixture, false).category_ids, [5, 8], 'do not replace real category IDs with labels');
+assert.equal(voucherSubmission(voucherFixture, false).maximum_discount, null, 'fixed amount has no cap');
+assert.equal(voucherSubmission(voucherFixture, true).maximum_discount, 10, 'preserve immutable historical cap for used voucher');
+const productScope = changeVoucherScope(voucherFixture, 'PRODUCT');
+assert.deepEqual(productScope.category_ids, []);
+assert.deepEqual(productScope.product_ids, []);
+assert.equal(productScope.scope, 'PRODUCT');
+assert.deepEqual(voucherSubmission({ ...productScope, product_ids: [21, 22] }, false).product_ids, [21, 22]);
+assert.deepEqual(voucherSubmission({ ...productScope, product_ids: [21, 22] }, false).category_ids, []);
+const allScope = changeVoucherScope({ ...productScope, product_ids: [21] }, 'ALL');
+assert.deepEqual(voucherSubmission(allScope, false).product_ids, []);
+assert.deepEqual(voucherSubmission(allScope, false).category_ids, []);
+assert.equal(changeVoucherDiscountType({ ...voucherFixture, discount_type: 'PERCENTAGE' }, 'FIXED_AMOUNT').maximum_discount, null);
 
 const catalogStaff = profileWithRole('ADMIN', ['CATALOG_READ', 'CATALOG_WRITE']);
 assert.equal(canAccessAdminModule('dashboard', catalogStaff, ['CATALOG_READ', 'CATALOG_WRITE']), true);

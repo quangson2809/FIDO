@@ -4,6 +4,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { Header } from '../src/components/Header';
 import { AdminScreen } from '../src/screens/AdminScreen';
+import { VoucherForm } from '../src/features/promotion/components/VoucherForm';
+import type { VoucherDetail } from '../src/features/promotion/types';
 import { ProductPurchasePanel } from '../src/features/catalog/components/ProductDetailSections';
 import { AdminProductInfoSection } from '../src/features/catalog/components/AdminProductDetailSections';
 import { AuthSessionContext, type AuthSessionContextValue } from '../src/features/auth/session/sessionContext';
@@ -102,6 +104,29 @@ assert.match(adminHtml, /Sản phẩm/);
 assert.match(adminHtml, /Nested admin content/);
 assert.doesNotMatch(adminHtml, />Tồn kho</);
 assert.doesNotMatch(adminHtml, />Vai trò &amp; quyền</);
+
+const voucherAllHtml = renderToStaticMarkup(<VoucherForm voucher={null} canWrite onClose={noOp} onSaved={noOp} />);
+assert.match(voucherAllHtml, /Toàn bộ sản phẩm/);
+assert.doesNotMatch(voucherAllHtml, /Tìm danh mục|Tìm sản phẩm|ID danh mục|Giảm tối đa/);
+const voucherCategory: VoucherDetail = {
+  voucher_id: 30, code: 'WELCOME10', discount_type: 'FIXED_AMOUNT', discount_value: 10000,
+  maximum_discount: null, minimum_amount: 400000, starts_at: '2026-10-09T00:00:00Z',
+  ends_at: '2026-10-12T00:00:00Z', scope: 'CATEGORY',
+  product_ids: [], category_ids: [5], global_limit: 10, customer_limit: 1,
+  enabled: true, active_usage: 0, ever_used: false,
+};
+const voucherCategoryHtml = renderToStaticMarkup(<VoucherForm voucher={voucherCategory} canWrite onClose={noOp} onSaved={noOp} />);
+assert.match(voucherCategoryHtml, /Chọn danh mục áp dụng/);
+assert.doesNotMatch(voucherCategoryHtml, /ID danh mục/);
+const voucherProductHtml = renderToStaticMarkup(<VoucherForm
+  voucher={{ ...voucherCategory, scope: 'PRODUCT', category_ids: [], product_ids: [12] }}
+  canWrite onClose={noOp} onSaved={noOp} />);
+assert.match(voucherProductHtml, /Tìm sản phẩm/);
+assert.doesNotMatch(voucherProductHtml, /ID sản phẩm/);
+const voucherPercentHtml = renderToStaticMarkup(<VoucherForm
+  voucher={{ ...voucherCategory, discount_type: 'PERCENTAGE', discount_value: 10, maximum_discount: 10000 }}
+  canWrite onClose={noOp} onSaved={noOp} />);
+assert.match(voucherPercentHtml, /Giảm tối đa/);
 
 const variant: ProductVariantDto = {
   variant_id: 101,
