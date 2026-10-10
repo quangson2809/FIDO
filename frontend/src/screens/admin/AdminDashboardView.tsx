@@ -5,6 +5,14 @@ import { DashboardAnalytics } from '../../features/report/components/ReportTabs'
 import { defaultReportRange } from '../../features/report/model/reportFilters';
 
 const modules = [
+  ['vouchers', 'Voucher', 'Chính sách ưu đãi và mã giảm giá', 'sell'],
+  ['categories', 'Danh mục', 'Phân loại sản phẩm', 'category'],
+  ['brands', 'Thương hiệu', 'Quản lý thương hiệu', 'verified'],
+  ['sizes', 'Hệ size', 'Hệ thống kích cỡ và giá trị size', 'straighten'],
+  ['colors', 'Màu sắc', 'Quản lý màu sắc sản phẩm', 'palette'],
+  ['suppliers', 'Nhà cung cấp', 'Thông tin nhà cung cấp', 'local_shipping'],
+  ['roles', 'Vai trò và quyền', 'Cấp quyền truy cập theo vai trò', 'shield'],
+  ['content', 'Nội dung', 'Trang thông tin cửa hàng', 'description'],
   ['orders', 'Đơn hàng', 'Xác nhận, chuẩn bị và giao đơn hàng', 'receipt_long'],
   ['products', 'Sản phẩm', 'Danh mục sản phẩm và biến thể', 'styler'],
   ['inventory', 'Tồn kho', 'Tồn kho và lịch sử giao dịch', 'inventory_2'],

@@ -275,3 +275,15 @@ assert.match(paginationHtml, /disabled=""/);
 const forbiddenAdmin = renderWithShell(<Routes><Route path="/admin" element={<AdminScreen />}><Route path="inventory" element={<div>Protected inventory content</div>} /></Route></Routes>, '/admin/inventory');
 assert.match(forbiddenAdmin, /Không có quyền truy cập/);
 assert.doesNotMatch(forbiddenAdmin, /Protected inventory content/);
+
+import { SalesSection, ProductsSection } from '../src/features/report/components/ReportSections';
+const zeroSales = renderToStaticMarkup(<SalesSection report={{ from: '2026-01-01', to: '2026-01-01', granularity: 'DAY', timezone: 'Asia/Ho_Chi_Minh', points: [{ period_start: '2026-01-01', completed_sales: 0, returned_adjustment: 0, net_sales: 0 }] }} />);
+assert.match(zeroSales, /Chưa có doanh số/);
+assert.match(zeroSales, /Bảng doanh số chính xác/);
+assert.match(zeroSales, /0₫/);
+const ranked = { from: '2026-01-01', to: '2026-01-01', items: [{ product_id: 8, product_name: 'Historical product', thumbnail: null, completed_units: 2, returned_units: 2, net_units: 0 }] };
+const forbiddenProductLink = renderToStaticMarkup(<MemoryRouter><ProductsSection report={ranked} canReadCatalog={false} /></MemoryRouter>);
+assert.doesNotMatch(forbiddenProductLink, /href=/);
+assert.match(forbiddenProductLink, /Historical product/);
+const allowedProductLink = renderToStaticMarkup(<MemoryRouter><ProductsSection report={ranked} canReadCatalog /></MemoryRouter>);
+assert.match(allowedProductLink, /href="\/admin\/products\/8"/);

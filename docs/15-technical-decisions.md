@@ -400,3 +400,19 @@ Only authored rejection reasons from these endpoints are exposed to clients.
   Order drill-down uses UTC instants and the inclusive upper boundary `16:59:59.999999Z` for the last Vietnam day.
   Product links require CATALOG_READ; order links require ORDER_READ.
 - Deferred: Category/Brand, profit/cost, traffic/conversion/ROAS, cache/aggregate tables. No new performance index without measured evidence.
+
+### Repeatable UI verification
+
+`frontend/tests/report-browser-smoke.mjs` starts Vite automatically (or accepts BROWSER_BASE_URL) and executes deterministic
+browser assertions with HTTP fixtures. Supply an external Playwright installation and Chromium executable if the environment
+has no installed browser via PLAYWRIGHT_MODULE_PATH and CHROMIUM_EXECUTABLE_PATH. No runtime chart/browser package is added to FIDO.
+Screenshots are emitted under ignored frontend/.browser-evidence. This proves rendered UI interactions; it is explicitly not
+live deployed Backend end-to-end certification. H2/MySQL HTTP tests separately exercise the real Backend.
+
+Reviewed structural scope: ReportController→ReportService→ReportRepository; typed DTOs; class-level role/capability guard;
+read-only transaction; no foreign repositories/entities or aggregate ownership moved. Private period helpers and feature-owned
+SVG reuse serve the required three views, with no framework/cache/base service or new runtime dependency.
+Reviewed behavior: shared Overview/sales formula, completion-cohort returns, creation-date/current-state counts, zero buckets,
+product variant totals and deterministic ranking, permission-aware navigation, stale request suppression and inclusive UTC drill-down.
+MySQL EXPLAIN on the CI fixture uses PK/FK lookups for joins and scans the small Orders cohort; no representative load or timing evidence
+justifies a new index. Assess production-volume execution plans separately before performance tuning.

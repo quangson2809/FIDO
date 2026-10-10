@@ -294,3 +294,17 @@ process.stdout.write('Checkout quote comparison and cart drain: PASS\n');
 assert.equal(canAccessAdminModule('reports', profileWithRole('ADMIN'), ['REPORT_READ']), true);
 assert.equal(canAccessAdminModule('reports', profileWithRole('ADMIN'), []), false);
 assert.equal(canAccessAdminModule('reports', profileWithRole('CUSTOMER'), ['REPORT_READ']), false);
+
+import { readReportFilters, orderDrilldown, isCalendarDate } from '../src/features/report/model/reportFilters';
+import { parseSales, parseOrders, parseProducts } from '../src/features/report/api/parseReport';
+assert.equal(isCalendarDate('2026-02-30'), false);
+assert.equal(readReportFilters(new URLSearchParams('from=bad&to=2026-10-10')).valid, false);
+assert.equal(readReportFilters(new URLSearchParams('from=2026-10-10&to=2026-10-01')).valid, false);
+assert.equal(readReportFilters(new URLSearchParams('granularity=YEAR')).valid, false);
+const drill = new URL(orderDrilldown({ from: '2026-10-01', to: '2026-10-10', granularity: 'WEEK' }, 'PENDING', '2026-09-28'), 'http://test');
+assert.equal(drill.searchParams.get('created_from'), '2026-09-30T17:00:00Z');
+assert.equal(drill.searchParams.get('created_to'), '2026-10-04T16:59:59.999999Z');
+assert.equal(drill.searchParams.get('status'), 'PENDING');
+assert.throws(() => parseSales({ from: '2026-01-01', to: '2026-01-01', granularity: 'DAY', timezone: 'UTC', points: [] }));
+assert.throws(() => parseProducts({ from: '2026-01-01', to: '2026-01-01', items: [{ product_id: 1, product_name: 'Test', thumbnail: null, completed_units: 'bad', returned_units: 0, net_units: 0 }] }));
+assert.throws(() => parseOrders({ from: '2026-01-01', to: '2026-01-01', granularity: 'DAY', timezone: 'Asia/Ho_Chi_Minh', points: [{ period_start: '2026-01-01', total_orders: 3, orders_by_status: {} }] }));

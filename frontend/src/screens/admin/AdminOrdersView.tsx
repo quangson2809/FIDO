@@ -27,7 +27,7 @@ export const AdminOrdersView: React.FC<Props> = ({ onSelectOrder }) => {
   const paymentStatus = paymentStatuses.find((value) => value === params.get('payment')) ?? '';
   const createdFrom = params.get('created_from') ?? '';
   const createdTo = params.get('created_to') ?? '';
-  const validTime = (value: string) => !value || (Number.isFinite(Date.parse(value)));
+  const validTime = (value: string) => !value || Number.isFinite(Date.parse(value));
   const dateFiltersValid = validTime(createdFrom) && validTime(createdTo) && (!createdFrom || !createdTo || Date.parse(createdFrom) <= Date.parse(createdTo));
   const rawPage = Number(params.get('page'));
   const page = Number.isSafeInteger(rawPage) && rawPage > 0 ? rawPage : 1;
@@ -36,7 +36,7 @@ export const AdminOrdersView: React.FC<Props> = ({ onSelectOrder }) => {
   const setStatus = (value: string) => filter('status', value);
   const setPaymentStatus = (value: string) => filter('payment', value);
   const setPage = (value: number) => filter('page', String(value));
-  const list = useRemoteQuery(useCallback(() => adminOrderService.list({ order_code: orderCode.trim() || undefined, order_status: status || undefined, payment_status: paymentStatus || undefined, created_from: dateFiltersValid ? createdFrom || undefined : undefined, created_to: dateFiltersValid ? createdTo || undefined : undefined, page, page_size: 20 }), [orderCode, status, paymentStatus, page, createdFrom, createdTo, dateFiltersValid]));
+  const list = useRemoteQuery(useCallback(() => dateFiltersValid ? adminOrderService.list({ order_code: orderCode.trim() || undefined, order_status: status || undefined, payment_status: paymentStatus || undefined, created_from: createdFrom || undefined, created_to: createdTo || undefined, page, page_size: 20 }) : Promise.resolve(null), [orderCode, status, paymentStatus, page, createdFrom, createdTo, dateFiltersValid]));
   const { data, loading, error } = list;
 
 
@@ -70,7 +70,7 @@ export const AdminOrdersView: React.FC<Props> = ({ onSelectOrder }) => {
       </div>
 
       {(createdFrom || createdTo) && <p className="admin-state">Lọc theo ngày tạo (UTC): {createdFrom || 'Không giới hạn'} → {createdTo || 'Không giới hạn'}{!dateFiltersValid && <strong> · Khoảng thời gian không hợp lệ.</strong>} <button type="button" className="admin-secondary" onClick={() => setParams((current) => { const next = new URLSearchParams(current); next.delete('created_from'); next.delete('created_to'); next.delete('page'); return next; })}>Bỏ lọc thời gian</button></p>}
-      {loading ? (
+      {!dateFiltersValid ? <QueryFeedback error="Khoảng thời gian không hợp lệ. Bỏ lọc thời gian để tiếp tục." /> : loading ? (
         <div className="rounded-lg border border-[#E2E5DE] bg-white p-10 text-center text-sm text-[#606863]">Đang tải đơn hàng...</div>
       ) : error ? (
         <QueryFeedback error={error} onRetry={list.reload} />

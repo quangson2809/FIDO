@@ -43,6 +43,7 @@ const useAdminWriteAccess = (moduleKey: AdminModuleKey): boolean => {
 };
 
 const dashboardModuleKeys: readonly AdminModuleKey[] = [
+  'vouchers', 'categories', 'brands', 'sizes', 'colors', 'suppliers', 'roles', 'content',
   'orders',
   'products',
   'inventory',
