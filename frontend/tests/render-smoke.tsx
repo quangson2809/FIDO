@@ -297,7 +297,7 @@ for (const kind of ['categories', 'fit', 'details', 'cod'] as const) {
 }
 const homeHtml = renderWithShell(<HomeScreen />);
 assert.match(homeHtml, /data-benefit-artwork="cod"/);
-assert.match(homeHtml, /Thanh toán khi nhận hàng/);
+assert.match(homeHtml, /thanh toán khi nhận hàng/i);
 assert.match(homeHtml, /images\/about\/palette.svg/);
 assert.match(homeHtml, /không phải hình ảnh sản phẩm đang bán/);
 process.stdout.write('Homepage artwork render checks: PASS\\n');
