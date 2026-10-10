@@ -342,12 +342,11 @@ a:hover > .material-symbols-outlined {
 @media (max-width: 600px) { .report-plot svg text { font-size: 24px; } }
 
 /* Storefront primitives are scoped to the customer layout. */
-.storefront { min-width: 0; }
+.storefront { min-width: 0; overflow-wrap: anywhere; }
 .storefront main { min-width: 0; }
 .storefront :is(button, a, input, select, textarea):focus-visible { outline: 2px solid var(--color-forest-light); outline-offset: 3px; box-shadow: 0 0 0 3px var(--color-surface-ivory); }
 .storefront :is(button, input, select, textarea) { min-height: 44px; }
 .storefront button { min-width: 44px; }
-.storefront p, .storefront dd { overflow-wrap: anywhere; }
 .storefront [class*="text-[9px]"], .storefront [class*="text-[10px]"], .storefront [class*="text-[11px]"] { font-size: 12px; }
 .storefront [class*="text-white/"] { color: rgb(255 255 255 / 80%); }
 .storefront :is(input,select,textarea) { max-width: 100%; }

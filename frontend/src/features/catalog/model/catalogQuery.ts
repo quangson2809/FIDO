@@ -2,10 +2,10 @@ import type { CatalogMetaDto, CatalogProductQuery } from '../types';
 export const filterKeys = ['category_id', 'brand_id', 'size_value_id', 'color_id', 'gender', 'season', 'style', 'min_price', 'max_price'] as const;
 export type CatalogFilterKey = typeof filterKeys[number];
 export type CatalogFilters = Partial<Pick<CatalogProductQuery, CatalogFilterKey>>;
-const positiveInteger = (value: string | null): number | undefined => {
+const positiveInteger = (value: string | null, maximum = Number.MAX_SAFE_INTEGER): number | undefined => {
   if (!value || !/^\d+$/.test(value)) return undefined;
   const parsed = Number(value);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
+  return Number.isSafeInteger(parsed) && parsed > 0 && parsed <= maximum ? parsed : undefined;
 };
 const price = (value: string | null): number | undefined => {
   if (!value || !/^\d+(?:\.\d{1,2})?$/.test(value)) return undefined;
@@ -13,7 +13,8 @@ const price = (value: string | null): number | undefined => {
   return Number.isFinite(parsed) && parsed <= Number.MAX_SAFE_INTEGER ? parsed : undefined;
 };
 export function readCatalogQuery(params: URLSearchParams, meta?: CatalogMetaDto | null): CatalogProductQuery {
-  const query: CatalogProductQuery = { page: positiveInteger(params.get('page')) ?? 1 };
+  // The existing controller binds page to a Java Integer, while filter IDs are Longs.
+  const query: CatalogProductQuery = { page: positiveInteger(params.get('page'), 2_147_483_647) ?? 1 };
   const q = params.get('q')?.trim();
   if (q) query.q = q;
   for (const key of ['category_id', 'brand_id', 'size_value_id', 'color_id'] as const) {

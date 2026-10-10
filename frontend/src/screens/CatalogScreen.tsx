@@ -12,7 +12,7 @@ export const CatalogScreen = () => {
   const [columnsCount, setColumnsCount] = useState<3 | 4>(4);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filters = (mobile = false) => <>
-    {catalog.metaError && <p role="alert" className="p-4 text-sm text-red-700">{catalog.metaError}<button type="button" onClick={catalog.reload} className="ml-2 underline">Thử lại</button></p>}
+    {catalog.metaError && <p role="alert" className="p-4 text-sm text-red-700">{catalog.metaError}<button type="button" onClick={catalog.reloadMetadata} className="ml-2 underline">Thử lại</button></p>}
     {catalog.metaLoading && <p role="status" className="p-4 text-sm">Đang tải bộ lọc...</p>}
     <CatalogFiltersPanel priceErrorId={catalog.priceError ? mobile ? 'mobile-catalog-price-error' : 'catalog-price-error' : undefined} priceInvalid={Boolean(catalog.priceError)} meta={catalog.meta} metaLoading={catalog.metaLoading || !catalog.meta} activeFilterCount={catalog.activeFilterCount}
       categoryId={catalog.draft.filters.category_id} brandId={catalog.draft.filters.brand_id}

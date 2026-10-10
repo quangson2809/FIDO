@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCart } from '../features/cart/hooks/useCart';
 import { catalogService } from '../features/catalog/api/service';
@@ -9,7 +9,6 @@ import {
   ProductSpecsSection,
 } from '../features/catalog/components/ProductDetailSections';
 import type {
-  CatalogProductView,
   ProductDetailDto,
   ProductVariantDto,
 } from '../features/catalog/types';
@@ -19,6 +18,7 @@ import { getStorefrontErrorMessage } from '../services/http/storefrontError';
 import { StorefrontDialog } from '../shared/ui/storefront/StorefrontDialog';
 import { StorefrontImage } from '../shared/ui/storefront/StorefrontImage';
 import { canPurchaseProductVariant } from '../features/catalog/model/purchaseAvailability';
+import { useRemoteQuery } from '../shared/hooks/useRemoteQuery';
 
 export const ProductDetailScreen: React.FC = () => {
   const { addToCart } = useCart();
@@ -27,7 +27,9 @@ export const ProductDetailScreen: React.FC = () => {
   const navigate = useNavigate();
   const { productId = '' } = useParams<{ productId: string }>();
   const [product, setProduct] = useState<ProductDetailDto | null>(null);
-  const [recommendations, setRecommendations] = useState<CatalogProductView[]>([]);
+  const recommendationQuery = useRemoteQuery(useCallback(() => catalogService.listProducts({ page: 1, page_size: 5 }), []));
+  const recommendations = (recommendationQuery.data?.items ?? []).filter(item => String(item.product_id) !== productId).slice(0, 4);
+  const recommendationError = recommendationQuery.error ? getStorefrontErrorMessage(recommendationQuery.error, 'Không thể tải sản phẩm gợi ý. Bạn vẫn có thể chọn và mua sản phẩm này.') : null;
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [selectedSizeValueId, setSelectedSizeValueId] = useState<number | null>(null);
   const [selectedColorId, setSelectedColorId] = useState<number | null>(null);
@@ -45,10 +47,7 @@ export const ProductDetailScreen: React.FC = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const [detail, recommendationPage] = await Promise.all([
-          catalogService.getProductDetail(productId),
-          catalogService.listProducts({ page: 1, page_size: 5 }).catch(() => null),
-        ]);
+        const detail = await catalogService.getProductDetail(productId);
         if (!active) return;
 
         const onSale = detail.variants.filter((variant) => variant.sale_status === 'ON_SALE');
@@ -58,11 +57,6 @@ export const ProductDetailScreen: React.FC = () => {
           ?? null;
 
         setProduct(detail);
-        setRecommendations(
-          recommendationPage?.items
-            .filter((item) => item.product_id !== detail.product_id)
-            .slice(0, 4) ?? [],
-        );
         setActiveImageIndex(0);
         setColorSelectionNotice(null);
         setSelectedSizeValueId(initialVariant?.size.size_value_id ?? null);
@@ -180,7 +174,7 @@ export const ProductDetailScreen: React.FC = () => {
 
   const openRecommendation = (nextProductId: string) => {
     navigate('/products/' + encodeURIComponent(nextProductId));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   };
 
   const moveImage = (offset: -1 | 1) => {
@@ -287,6 +281,9 @@ export const ProductDetailScreen: React.FC = () => {
       {zoomOpen && <StorefrontDialog name="Ảnh sản phẩm" onClose={() => setZoomOpen(false)} className="m-auto max-h-[92dvh] w-[calc(100%-24px)] max-w-4xl overflow-auto p-4"><div className="p-4"><button autoFocus type="button" onClick={() => setZoomOpen(false)} className="mb-4 min-h-11 border px-4">Đóng ảnh</button><StorefrontImage src={gallery[activeImageIndex]} alt={product.name} loading="eager" className="max-h-[75dvh] w-full object-contain" /></div></StorefrontDialog>}
       <ProductRecommendationsSection
         recommendations={recommendations}
+        loading={recommendationQuery.loading}
+        error={recommendationError}
+        onRetry={recommendationQuery.reload}
         onOpenProduct={openRecommendation}
         onOpenCatalog={() => navigate('/products')}
       />

@@ -2,10 +2,10 @@ import { StorefrontIcon } from '../components/StorefrontIcon';
 import { Link } from 'react-router-dom';
 import { StorefrontImage } from '../shared/ui/storefront/StorefrontImage';
 import { QueryFeedback } from '../shared/ui/storefront/QueryFeedback';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { catalogService } from '../features/catalog/api/service';
-import type { CatalogMetaDto, CatalogProductView } from '../features/catalog/types';
+import { useRemoteQuery } from '../shared/hooks/useRemoteQuery';
 import { getStorefrontErrorMessage } from '../services/http/storefrontError';
 
 const HERO_IMAGE = '/images/about/wardrobe.svg';
@@ -14,42 +14,16 @@ const money = (value: number): string => `${value.toLocaleString('vi-VN')}₫`;
 
 export const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
-  const [products, setProducts] = useState<CatalogProductView[]>([]);
-  const [meta, setMeta] = useState<CatalogMetaDto | null>(null);
-  const [retry, setRetry] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-
-    const load = async () => {
-      setLoading(true);
-      try {
-        const [productPage, catalogMeta] = await Promise.all([
-          catalogService.listProducts({ page: 1, page_size: 8 }),
-          catalogService.getMeta(),
-        ]);
-        if (!active) return;
-        setProducts(productPage.items);
-        setMeta(catalogMeta);
-        setError(null);
-      } catch (requestError: unknown) {
-        if (active) setError(getStorefrontErrorMessage(requestError, 'Không thể tải sản phẩm và danh mục. Vui lòng thử lại.'));
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-
-    void load();
-    return () => {
-      active = false;
-    };
-  }, [retry]);
+  const productQuery = useRemoteQuery(useCallback(() => catalogService.listProducts({ page: 1, page_size: 8 }), []));
+  const metaQuery = useRemoteQuery(useCallback(() => catalogService.getMeta(), []));
+  const products = productQuery.data?.items ?? [];
+  const meta = metaQuery.data;
+  const productError = productQuery.error ? getStorefrontErrorMessage(productQuery.error, 'Không thể tải sản phẩm. Vui lòng thử lại.') : null;
+  const metaError = metaQuery.error ? getStorefrontErrorMessage(metaQuery.error, 'Không thể tải danh mục. Vui lòng thử lại.') : null;
 
   const openProduct = (productId: string) => {
     navigate(`/products/${encodeURIComponent(productId)}`);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   };
 
   const rootCategories = meta?.categories.filter((category) => category.parent_category_id === null) ?? [];
@@ -168,12 +142,12 @@ export const HomeScreen: React.FC = () => {
             </button>
           </div>
 
-          {loading && <div role="status" className="py-8 text-sm text-[#687069]">Đang tải danh mục...</div>}
-          {!loading && error && <QueryFeedback error={error} onRetry={() => setRetry(value => value + 1)} />}
-          {!loading && !error && rootCategories.length === 0 && (
+          {metaQuery.loading && <div role="status" className="py-8 text-sm text-[#687069]">Đang tải danh mục...</div>}
+          {!metaQuery.loading && metaError && <QueryFeedback error={metaError} onRetry={metaQuery.reload} />}
+          {!metaQuery.loading && !metaError && rootCategories.length === 0 && (
             <div className="py-8 text-sm text-[#687069]">Chưa có danh mục gốc để hiển thị.</div>
           )}
-          {!loading && !error && rootCategories.length > 0 && (
+          {!metaQuery.loading && !metaError && rootCategories.length > 0 && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {rootCategories.slice(0, 8).map((category, index) => (
                 <button
@@ -213,12 +187,12 @@ export const HomeScreen: React.FC = () => {
             </button>
           </div>
 
-          <QueryFeedback loading={loading} error={error} onRetry={() => setRetry(value => value + 1)} />
-          {!loading && !error && products.length === 0 && (
+          <QueryFeedback loading={productQuery.loading} error={productError} onRetry={productQuery.reload} />
+          {!productQuery.loading && !productError && products.length === 0 && (
             <div className="py-12 text-center text-sm text-[#687069]">Chưa có sản phẩm để hiển thị. Bạn có thể xem bộ sưu tập để khám phá thêm.</div>
           )}
 
-          {!loading && !error && products.length > 0 && (
+          {!productQuery.loading && !productError && products.length > 0 && (
             <div className="mt-7 grid grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
               {products.map((product) => (
                 <button

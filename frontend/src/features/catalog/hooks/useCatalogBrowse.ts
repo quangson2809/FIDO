@@ -15,8 +15,11 @@ export const useCatalogBrowse = () => {
   const query = readCatalogQuery(params, meta);
   const queryKey = catalogQueryParams(query).toString();
   const [draft, setDraft] = useState({ key: queryKey, filters: toFilters(query), min: String(query.min_price ?? ''), max: String(query.max_price ?? ''), search: query.q ?? '' });
-  if (draft.key !== queryKey) setDraft({ key: queryKey, filters: toFilters(query), min: String(query.min_price ?? ''), max: String(query.max_price ?? ''), search: query.q ?? '' });
   const [priceError, setPriceError] = useState<string | null>(null);
+  if (draft.key !== queryKey) {
+    setDraft({ key: queryKey, filters: toFilters(query), min: String(query.min_price ?? ''), max: String(query.max_price ?? ''), search: query.q ?? '' });
+    setPriceError(null);
+  }
 
   const results = useRemoteQuery(useCallback(() => catalogService.listProducts({ ...readCatalogQuery(new URLSearchParams(queryKey)), page_size: 12 }), [queryKey]));
   // Canonicalize malformed or unsupported URL parameters without creating a history entry.
@@ -45,6 +48,7 @@ export const useCatalogBrowse = () => {
     clearFilters: () => { setPriceError(null); setParams({}); setDraft({ key: '', filters: {}, min: '', max: '', search: '' }); },
     removeFilter: (key: CatalogFilterKey | 'q') => setParams(catalogQueryParams({ ...query, [key]: undefined, page: 1 })),
     setPage: (page: number) => setParams(catalogQueryParams({ ...query, page })),
-    reload: () => { results.reload(); metadata.reload(); },
+    reload: results.reload,
+    reloadMetadata: metadata.reload,
   };
 };

@@ -1,6 +1,7 @@
 import { StorefrontIcon } from '../../../components/StorefrontIcon';
 import React from 'react';
 import { StorefrontImage } from '../../../shared/ui/storefront/StorefrontImage';
+import { QueryFeedback } from '../../../shared/ui/storefront/QueryFeedback';
 import type {
   CatalogProductView,
   ProductDetailDto,
@@ -291,13 +292,16 @@ export const ProductPurchasePanel: React.FC<{
 
 export const ProductRecommendationsSection: React.FC<{
   recommendations: readonly CatalogProductView[];
+  loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
   onOpenProduct: (productId: string) => void;
   onOpenCatalog: () => void;
-}> = ({ recommendations, onOpenProduct, onOpenCatalog }) => {
-  if (recommendations.length === 0) return null;
+}> = ({ recommendations, loading, error, onRetry, onOpenProduct, onOpenCatalog }) => {
+  if (recommendations.length === 0 && !loading && !error) return null;
 
   return (
-    <section className="border-t border-[#E8E9E3] bg-[#FFFDF5]">
+    <section aria-label="Sản phẩm khác" className="border-t border-[#E8E9E3] bg-[#FFFDF5]">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-8 lg:px-14">
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
@@ -312,6 +316,7 @@ export const ProductRecommendationsSection: React.FC<{
             Xem sản phẩm
           </button>
         </div>
+        <QueryFeedback loading={loading} error={error} onRetry={onRetry} />
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {recommendations.map((item) => (
             <button

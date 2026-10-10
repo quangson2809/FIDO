@@ -1,6 +1,6 @@
 # Real-browser screenshot evidence
 
-Captured from Vite running actual FIDO source with isolated contract fixtures. These are application screenshots, not design mockups. Before captures use detached base `6697fa037bc58914ce32b02e5abc833628246669`; after captures use the implementation committed with this evidence. Images in the gallery fixtures are original local FIDO illustrations, not claims about real catalog inventory.
+Captured from Vite running actual FIDO source with isolated contract fixtures. These are application screenshots, not design mockups. Original before captures use detached base `6697fa037bc58914ce32b02e5abc833628246669`; original after captures document the first implementation delivered at `41ecb709818621eabe398dac3ecc4a1c276ab242`. Images in the gallery fixtures are original local FIDO illustrations, not claims about real catalog inventory.
 
 | Scenario | Before (375px) | After (375px) | Desktop after |
 | --- | --- | --- | --- |
@@ -12,3 +12,12 @@ Captured from Vite running actual FIDO source with isolated contract fixtures. T
 | Home | — | Full browser-run artifact | [Local illustration](after-home-1440.png) |
 
 Each browser run produces the broader 375/768/1024/1440 coverage in `frontend/.browser-evidence`; Actions uploads that directory as `storefront-browser-evidence`. The verification report is [storefront-ui-ux.md](../../storefront-ui-ux.md).
+
+## Follow-up revalidation
+
+Before images below use detached `41ecb709818621eabe398dac3ecc4a1c276ab242`; after images use the supplemental source committed with them. The final Actions artifact regenerates the full responsive evidence for the exact pushed revision.
+
+| Scenario | Before (375px) | After (375px) |
+| --- | --- | --- |
+| Home metadata fails while products succeed | [Both sections unavailable](review-before-home-partial-375.png) | [Product section preserved, independent category retry](review-after-home-partial-375.png) |
+| Quote expires while confirmation is open | [Misleading changed-data message](review-before-expired-confirmation-375.png) | [Specific expiry message, disabled submit, modal focus/scroll guards](review-after-expired-confirmation-375.png) |

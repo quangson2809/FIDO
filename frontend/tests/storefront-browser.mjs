@@ -90,7 +90,7 @@ try {
   await orderButton.click();
   const confirmation = page.getByRole('dialog', { name: 'Xác nhận đặt hàng', exact: true });
   await confirmation.getByRole('button', { name: 'Xác nhận đặt hàng COD' }).waitFor();
-  await page.getByText('Báo giá đã hết hạn.', { exact: false }).waitFor();
+  await confirmation.getByRole('alert').filter({ hasText: 'Báo giá đã hết hạn.' }).waitFor();
   assert.equal(await confirmation.getByRole('button', { name: 'Xác nhận đặt hàng COD' }).isDisabled(), true);
   assert.equal(fixture.state.orders, 0);
   await confirmation.getByRole('button', { name: 'Quay lại chỉnh sửa' }).click();

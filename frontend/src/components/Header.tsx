@@ -110,12 +110,11 @@ export const Header: React.FC = () => {
               </span>
             </button>
 
-            <div className="relative">
+            <div className="relative" onKeyDown={event => { if (event.key === 'Escape' && isCategoryOpen) { setIsCategoryOpen(false); categoryButtonRef.current?.focus(); } }}>
               <button
                 type="button"
                 ref={categoryButtonRef} aria-label="Danh mục sản phẩm" aria-expanded={isCategoryOpen} aria-controls="storefront-category-menu"
                 onClick={() => setIsCategoryOpen((value) => !value)}
-                onMouseEnter={() => setIsCategoryOpen(true)}
                 className="flex items-center gap-1.5 py-2 text-[13px] font-semibold tracking-wide text-[#0B2419] transition-colors hover:text-[#1B5038]"
               >
                 <StorefrontIcon name="grid_view" className="h-5 w-5" />
@@ -129,7 +128,6 @@ export const Header: React.FC = () => {
               {isCategoryOpen && (
                 <div
                   id="storefront-category-menu"
-                  onKeyDown={event => { if (event.key === 'Escape') { setIsCategoryOpen(false); categoryButtonRef.current?.focus(); } }}
                   onMouseLeave={() => setIsCategoryOpen(false)}
                   className="absolute left-0 top-full w-64 border border-[#E2E5DE] bg-white p-2 shadow-2xl"
                 >
@@ -181,6 +179,7 @@ export const Header: React.FC = () => {
               aria-expanded={isMenuOpen}
               aria-controls="storefront-mobile-menu"
               onClick={() => setIsMenuOpen((open) => !open)}
+              onKeyDown={event => { if (event.key === 'Escape') setIsMenuOpen(false); }}
               className="flex h-10 w-10 items-center justify-center text-[#0B2419] focus-visible:outline-2 focus-visible:outline-offset-2 xl:hidden"
             >
               <StorefrontIcon name={isMenuOpen ? 'close' : 'menu'} />

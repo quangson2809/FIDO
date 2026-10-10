@@ -315,6 +315,8 @@ import { getStorefrontErrorMessage } from '../src/services/http/storefrontError'
 import { ApiClientError } from '../src/services/http/apiError';
 assert.deepEqual(readCatalogQuery(new URLSearchParams('page=NaN&category_id=-1&brand_id=1.2&min_price=-2&max_price=bad')), { page: 1 });
 assert.deepEqual(readCatalogQuery(new URLSearchParams('min_price=200&max_price=100')), { page: 1 });
+assert.deepEqual(readCatalogQuery(new URLSearchParams('page=2147483648&category_id=2')), { page: 1, category_id: 2 }, 'page must fit the backend Integer contract');
+assert.equal(readCatalogQuery(new URLSearchParams('page=2147483647')).page, 2147483647, 'do not invent a smaller pagination limit');
 const sharedCatalogQuery = readCatalogQuery(new URLSearchParams('q=shirt&category_id=2&color_id=3&min_price=0&page=2'));
 assert.equal(catalogQueryParams(sharedCatalogQuery).toString(), 'q=shirt&category_id=2&color_id=3&min_price=0&page=2');
 assert.deepEqual(recipientErrors({ recipient_phone: '+84 90-000-0000', recipient_email: 'user@example.test', recipient_address: 'Hà Nội' }), { phone: null, email: null, address: null });

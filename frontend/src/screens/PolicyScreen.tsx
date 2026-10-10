@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { contentService } from '../features/content/api/service';
 import type { PublicContentPageDto } from '../features/content/types';
 import { getStorefrontErrorMessage } from '../services/http/storefrontError';
+import { normalizeApiError } from '../services/http/apiError';
 
 const POLICY_PAGE_CODES = [
   'shipping-policy',
@@ -29,11 +30,13 @@ export const PolicyScreen: React.FC = () => {
         );
         if (!active) return;
 
-        const loaded = results.flatMap((result) =>
-          result.status === 'fulfilled' ? [result.value] : [],
-        );
-
-        setPages(loaded);
+        setPages(current => results.flatMap((result, index) => {
+          if (result.status === 'fulfilled') return [result.value];
+          const { status } = normalizeApiError(result.reason);
+          // Keep a successfully loaded policy on temporary read failures, but respect removal/access denial.
+          if (status === 401 || status === 403 || status === 404) return [];
+          return current.filter(page => page.page_code === POLICY_PAGE_CODES[index]);
+        }));
         setError(
           results.some(result => result.status === 'rejected')
             ? 'Một số chính sách chưa tải được. Vui lòng thử lại để xem đầy đủ nội dung.'
@@ -66,7 +69,7 @@ export const PolicyScreen: React.FC = () => {
         <QueryFeedback loading={loading} error={error} onRetry={() => setRetry(value => value + 1)} />
 
         {pages.length > 0 && <nav aria-label="Mục lục chính sách" className="flex flex-wrap gap-3 text-sm">{pages.map(page => <a key={page.page_code} className="min-h-11 border bg-white px-4 py-3 underline" href={`#${page.page_code}`}>{page.title}</a>)}</nav>}
-        {!loading && pages.map((page) => (
+        {pages.map((page) => (
           <article id={page.page_code} key={page.page_code} className="scroll-mt-24 border border-[#E8E9E3] bg-white p-5 sm:p-8">
             <h2 className="mt-2 font-serif text-2xl">{page.title}</h2>
             <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-[#424844]">

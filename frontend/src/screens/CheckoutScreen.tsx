@@ -225,6 +225,7 @@ export const CheckoutScreen: React.FC = () => {
       {confirmationOpen && quote && <CheckoutConfirmationDialog
         request={request} quote={quote} busy={orderSubmitting}
         current={quoteIsCurrent && (!isCartBusy || orderSubmitting)} error={error}
+        expired={quoteExpired}
         onCancel={() => setConfirmationOpen(false)} onConfirm={() => void placeOrder()}
       />}
     </div>
