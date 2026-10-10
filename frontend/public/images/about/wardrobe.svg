@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000">
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#e5e0d5"/><stop offset="1" stop-color="#c4c9bc"/></linearGradient><linearGradient id="coat"><stop stop-color="#173e2c"/><stop offset="1" stop-color="#315440"/></linearGradient><filter id="shadow"><feDropShadow dx="0" dy="14" stdDeviation="15" flood-color="#0b2419" flood-opacity=".16"/></filter></defs>
+<path fill="url(#bg)" d="M0 0h800v1000H0z"/><path fill="#f5f1e6" d="M60 65h420v770H60z"/><path stroke="#c2bcac" fill="none" d="M95 110h350v680H95z"/><circle cx="682" cy="165" r="150" fill="#e8c75b" opacity=".42"/><path fill="#b1baac" d="M0 820l800-150v330H0z"/>
+<g filter="url(#shadow)"><path fill="#cec1a6" d="M398 475l74-10 37 25 100 331-87 9-72-235-39 246-91-3z"/><path stroke="#aa9d84" stroke-width="3" fill="none" d="M458 500l-8 95m-60-88-37 306m129-305 91 301"/>
+<path fill="url(#coat)" d="M261 230l97-45 63 1 102 48 69 223-76 27-35-113 21 194-263 4 21-198-35 117-75-26z"/>
+<path fill="#f4ecda" d="M358 185l28 35 35-34 27 146-70 111-47-112z"/><path fill="#123724" d="M352 188l31 80-59 57 56 119-68-60 19-162zm69-2-37 82 60 64-62 112 85-75-28-160z"/>
+<path stroke="#84927d" stroke-width="2" fill="none" d="M381 443v109m-116-37h61m99-1h61"/><circle cx="395" cy="467" r="4" fill="#d8bd69"/><circle cx="395" cy="502" r="4" fill="#d8bd69"/>
+</g><path stroke="#887e68" stroke-width="4" fill="none" d="M389 165v-35c0-30 42-30 42-8m-42 43-122 57h258z"/>
+<path fill="#0b2419" d="M609 727q79-36 100 14l24 30-116 20zM330 842h81l-2 41-110 3q-20-22 31-44z"/><path stroke="#f6f2e7" stroke-width="2" d="M620 780l105-14"/><path stroke="#0b2419" stroke-width="2" d="M69 906h665"/><text x="70" y="947" font-family="Georgia,serif" font-size="27" fill="#0b2419" letter-spacing="4">FORM / COLOUR / EVERYDAY</text>
+</svg>

@@ -1,0 +1,360 @@
+.fido-about {
+  background: #faf9f5;
+  color: #0b2419;
+}
+.about-container {
+  width: min(100% - 48px, 1280px);
+  margin-inline: auto;
+}
+.fido-about h1,
+.fido-about h2 {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  letter-spacing: -0.035em;
+}
+.fido-about h1 {
+  font-size: clamp(2.7rem, 4.3vw, 4.6rem);
+  line-height: 1.12;
+  margin: 24px 0;
+}
+.fido-about h2 {
+  font-size: clamp(2rem, 3.1vw, 3.4rem);
+  line-height: 1.2;
+  margin: 16px 0 28px;
+}
+.fido-about em {
+  font-weight: 400;
+  color: #1b5038;
+}
+.fido-about p {
+  font-size: 15px;
+  line-height: 1.9;
+  color: #505c52;
+}
+.fido-about p + p {
+  margin-top: 18px;
+}
+.fido-about .about-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+  color: #1b5038;
+}
+.about-hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: center;
+  padding-block: 60px 80px;
+}
+.about-hero-copy {
+  padding-block: 24px;
+}
+.fido-about .about-intro {
+  max-width: 470px;
+  margin-bottom: 32px;
+}
+.about-button {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  background: #0b2419;
+  color: white;
+  padding: 16px 24px;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background 0.2s;
+}
+.about-button:hover {
+  background: #1b5038;
+}
+.fido-about a:focus-visible {
+  outline: 3px solid #927300;
+  outline-offset: 5px;
+}
+.fido-about .about-signature {
+  margin-top: 40px;
+  font-size: 11px;
+  letter-spacing: 0.13em;
+}
+.fido-about figure {
+  margin: 0;
+  min-width: 0;
+}
+.fido-about img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.fido-about figcaption {
+  padding-top: 12px;
+  color: #505c52;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  line-height: 1.6;
+}
+.about-hero-art {
+  align-self: start;
+  background: #e5e0d5;
+}
+.about-hero-art img {
+  aspect-ratio: 4/5;
+}
+.about-hero-art figcaption {
+  background: #faf9f5;
+}
+.about-story {
+  display: grid;
+  grid-template-columns: 5fr 6fr;
+  gap: 110px;
+  align-items: center;
+  padding-block: 40px 100px;
+}
+.about-story-art {
+  background: #d9ded3;
+}
+.about-story-art img {
+  aspect-ratio: 8/9;
+}
+.about-story-art figcaption {
+  background: #faf9f5;
+}
+.about-values {
+  background: #0b2419;
+  color: white;
+  padding-block: 80px;
+}
+.about-values .about-eyebrow {
+  color: #e8c75b;
+}
+.about-values-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 32px;
+  margin-top: 52px;
+}
+.about-values-grid article {
+  border-top: 1px solid #708477;
+  padding-top: 24px;
+}
+.about-value-mark {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #e8c75b;
+}
+.about-value-mark svg {
+  width: 36px;
+  height: 36px;
+}
+.about-value-mark span:last-child {
+  font-size: 11px;
+}
+.fido-about .about-value-name {
+  color: #e8c75b;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  margin-top: 30px;
+}
+.fido-about h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 10px 0;
+}
+.about-values-grid p:last-child {
+  color: #d5dfd5;
+  font-size: 13px;
+  line-height: 1.85;
+  margin-top: 12px;
+}
+.about-experience {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 100px;
+  padding-block: 110px;
+}
+.about-experience > div > p {
+  max-width: 380px;
+}
+.about-text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 40px;
+  border-bottom: 1px solid #0b2419;
+  padding-block: 16px 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.about-experience ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.about-experience li {
+  display: flex;
+  gap: 24px;
+  padding: 22px 0;
+  border-bottom: 1px solid #d9ddd6;
+}
+.about-experience li:first-child {
+  padding-top: 0;
+}
+.about-step-number {
+  color: #1b5038;
+  font-family: var(--font-serif);
+  font-size: 28px;
+}
+.about-experience li h3 {
+  margin-top: 0;
+}
+.about-experience li p {
+  font-size: 13px;
+}
+.about-editorial {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 32px 70px;
+  padding-bottom: 100px;
+}
+.about-editorial-heading {
+  grid-column: 1/-1;
+}
+.about-editorial figure {
+  background: #ebe6da;
+}
+.about-editorial img {
+  aspect-ratio: 18/13;
+}
+.about-editorial figcaption {
+  background: #faf9f5;
+}
+.fido-about .about-editorial-note {
+  align-self: end;
+  max-width: 330px;
+  font-size: 20px;
+  font-family: var(--font-serif);
+}
+.about-final {
+  background: #eaece2;
+  padding-block: 80px;
+  text-align: center;
+}
+.about-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 32px;
+}
+.about-button-secondary {
+  background: transparent;
+  border: 1px solid #0b2419;
+  color: #0b2419;
+}
+.about-button-secondary:hover {
+  background: #dce1d2;
+}
+@media (max-width: 1000px) {
+  .about-hero {
+    gap: 32px;
+  }
+  .about-story,
+  .about-experience {
+    gap: 48px;
+  }
+  .about-values-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .about-editorial {
+    gap: 32px;
+  }
+}
+@media (max-width: 600px) {
+  .about-container {
+    width: calc(100% - 40px);
+  }
+  .about-hero,
+  .about-story,
+  .about-experience,
+  .about-editorial {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .about-hero {
+    padding-block: 32px 56px;
+  }
+  .about-hero-copy {
+    padding: 0;
+  }
+  .about-hero-art img {
+    max-height: 440px;
+  }
+  .about-story {
+    padding-block: 16px 56px;
+  }
+  .about-story > div {
+    grid-row: 1;
+  }
+  .about-story-art img {
+    max-height: 400px;
+  }
+  .about-values {
+    padding-block: 56px;
+  }
+  .about-values-grid {
+    gap: 32px 20px;
+    margin-top: 32px;
+  }
+  .fido-about h3 {
+    font-size: 16px;
+  }
+  .about-value-mark svg {
+    width: 28px;
+    height: 28px;
+  }
+  .about-experience {
+    padding-block: 56px;
+  }
+  .about-editorial {
+    padding-bottom: 56px;
+  }
+  .about-editorial-heading {
+    grid-column: auto;
+  }
+  .fido-about .about-editorial-note {
+    margin: 0;
+    max-width: none;
+  }
+  .about-final {
+    padding-block: 56px;
+  }
+  .about-actions {
+    flex-direction: column;
+  }
+  .about-button {
+    width: 100%;
+  }
+  .fido-about .about-signature {
+    margin-top: 24px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fido-about * {
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.about-art-fallback {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #e5e0d5;
+  color: #0b2419;
+  font-family: var(--font-serif);
+  text-align: center;
+}

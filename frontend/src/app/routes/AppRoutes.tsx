@@ -19,6 +19,7 @@ const CheckoutScreen = lazy(() => import('../../screens/CheckoutScreen').then((m
 const OrderSuccessScreen = lazy(() => import('../../screens/OrderSuccessScreen').then((module) => ({ default: module.OrderSuccessScreen })));
 const OrderDetailScreen = lazy(() => import('../../screens/OrderDetailScreen').then((module) => ({ default: module.OrderDetailScreen })));
 const MyOrdersScreen = lazy(() => import('../../screens/MyOrdersScreen').then((module) => ({ default: module.MyOrdersScreen })));
+const AboutScreen = lazy(() => import('../../screens/AboutScreen').then((module) => ({ default: module.AboutScreen })));
 const PolicyScreen = lazy(() => import('../../screens/PolicyScreen').then((module) => ({ default: module.PolicyScreen })));
 const AuthScreen = lazy(() => import('../../screens/AuthScreen').then((module) => ({ default: module.AuthScreen })));
 const ProfileScreen = lazy(() => import('../../screens/ProfileScreen').then((module) => ({ default: module.ProfileScreen })));
@@ -116,6 +117,7 @@ export const AppRoutes: React.FC = () => (
         <Route path={APP_PATHS.home} element={<HomeScreen />} />
         <Route path={APP_PATHS.catalog} element={<CatalogScreen />} />
         <Route path={APP_PATHS.productDetail} element={<ProductDetailScreen />} />
+        <Route path={APP_PATHS.about} element={<AboutScreen />} />
         <Route path={APP_PATHS.policy} element={<PolicyScreen />} />
         <Route path={APP_PATHS.auth} element={<AuthScreen />} />
 

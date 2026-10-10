@@ -1,5 +1,8 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+
+import { StorefrontIcon } from './StorefrontIcon';
+import { APP_PATHS } from '../routes/paths';
 
 export const Footer: React.FC = () => {
   const navigate = useNavigate();
@@ -10,40 +13,114 @@ export const Footer: React.FC = () => {
         <div className="grid grid-cols-1 gap-10 border-b border-white/10 pb-12 md:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-2xl font-black tracking-[0.16em] text-white">FIDO</span>
+              <span className="text-2xl font-black tracking-[0.16em] text-white">
+                FIDO
+              </span>
               <span className="h-1.5 w-1.5 rounded-full bg-[#E5C358]" />
-              <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#E5C358]">Fashion</span>
+              <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#E5C358]">
+                Fashion
+              </span>
             </div>
-            <p className="mt-3 text-xs font-medium tracking-wide text-[#E5C358]">Fit • Innovate • Devote • Open</p>
+            <p className="mt-3 text-xs font-medium tracking-wide text-[#E5C358]">
+              Fit • Innovate • Devote • Open
+            </p>
             <p className="mt-4 max-w-xs text-xs leading-6 text-white/55">
-              Không gian thời trang FIDO với ngôn ngữ thị giác tối giản, tập trung vào sản phẩm và trải nghiệm mua sắm rõ ràng.
+              Không gian thời trang FIDO với ngôn ngữ thị giác tối giản, tập
+              trung vào sản phẩm và trải nghiệm mua sắm rõ ràng.
             </p>
           </div>
 
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-white">Khám phá</h4>
+            <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-white">
+              Khám phá
+            </h4>
             <div className="mt-4 flex flex-col items-start gap-2.5 text-xs text-white/60">
-              <button type="button" onClick={() => navigate('/')} className="transition-colors hover:text-white">Trang chủ</button>
-              <button type="button" onClick={() => navigate('/products')} className="transition-colors hover:text-white">Sản phẩm</button>
-              <button type="button" onClick={() => navigate('/policies')} className="transition-colors hover:text-white">Chính sách</button>
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="transition-colors hover:text-white"
+              >
+                Trang chủ
+              </button>
+              <Link
+                to={APP_PATHS.about}
+                onClick={() => window.scrollTo(0, 0)}
+                className="transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4"
+              >
+                Về FIDO
+              </Link>
+              <button
+                type="button"
+                onClick={() => navigate('/products')}
+                className="transition-colors hover:text-white"
+              >
+                Sản phẩm
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/policies')}
+                className="transition-colors hover:text-white"
+              >
+                Chính sách
+              </button>
             </div>
           </div>
 
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-white">Tài khoản</h4>
+            <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-white">
+              Tài khoản
+            </h4>
             <div className="mt-4 flex flex-col items-start gap-2.5 text-xs text-white/60">
-              <button type="button" onClick={() => navigate('/account')} className="transition-colors hover:text-white">Hồ sơ</button>
-              <button type="button" onClick={() => navigate('/orders')} className="transition-colors hover:text-white">Đơn hàng của tôi</button>
-              <button type="button" onClick={() => navigate('/login')} className="transition-colors hover:text-white">Đăng nhập / đăng ký</button>
+              <button
+                type="button"
+                onClick={() => navigate('/account')}
+                className="transition-colors hover:text-white"
+              >
+                Hồ sơ
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/orders')}
+                className="transition-colors hover:text-white"
+              >
+                Đơn hàng của tôi
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="transition-colors hover:text-white"
+              >
+                Đăng nhập / đăng ký
+              </button>
             </div>
           </div>
 
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-white">Trải nghiệm FIDO</h4>
+            <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-white">
+              Trải nghiệm FIDO
+            </h4>
             <div className="mt-4 space-y-3 text-xs leading-6 text-white/60">
-              <p className="flex items-start gap-2"><span className="material-symbols-outlined mt-0.5 text-[16px] text-[#E5C358]">payments</span><span>Thanh toán COD trong luồng đặt hàng hiện tại.</span></p>
-              <p className="flex items-start gap-2"><span className="material-symbols-outlined mt-0.5 text-[16px] text-[#E5C358]">tune</span><span>Chọn size và màu theo biến thể sản phẩm.</span></p>
-              <p className="flex items-start gap-2"><span className="material-symbols-outlined mt-0.5 text-[16px] text-[#E5C358]">inventory_2</span><span>Giá và khả dụng được lấy từ dữ liệu hệ thống.</span></p>
+              <p className="flex items-start gap-2">
+                <StorefrontIcon
+                  name="payments"
+                  className="mt-0.5 h-4 w-4 text-[#E5C358]"
+                />
+                <span>Thanh toán COD trong luồng đặt hàng hiện tại.</span>
+              </p>
+              <p className="flex items-start gap-2">
+                <StorefrontIcon
+                  name="tune"
+                  className="mt-0.5 h-4 w-4 text-[#E5C358]"
+                />
+                <span>Chọn size và màu theo biến thể sản phẩm.</span>
+              </p>
+              <p className="flex items-start gap-2">
+                <StorefrontIcon
+                  name="inventory_2"
+                  className="mt-0.5 h-4 w-4 text-[#E5C358]"
+                />
+                <span>Giá và khả dụng được lấy từ dữ liệu hệ thống.</span>
+              </p>
             </div>
           </div>
         </div>

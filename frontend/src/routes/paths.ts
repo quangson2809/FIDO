@@ -8,6 +8,7 @@ export const APP_PATHS = {
   myOrders: '/orders',
   orderDetail: '/orders/:orderId',
   policy: '/policies',
+  about: '/about',
   auth: '/login',
   profile: '/account',
   showrooms: '/showrooms',

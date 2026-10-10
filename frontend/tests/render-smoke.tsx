@@ -287,3 +287,15 @@ assert.doesNotMatch(forbiddenProductLink, /href=/);
 assert.match(forbiddenProductLink, /Historical product/);
 const allowedProductLink = renderToStaticMarkup(<MemoryRouter><ProductsSection report={ranked} canReadCatalog /></MemoryRouter>);
 assert.match(allowedProductLink, /href="\/admin\/products\/8"/);
+
+import { AboutScreen } from '../src/screens/AboutScreen';
+import { Footer } from '../src/components/Footer';
+const aboutHtml = renderWithShell(<AboutScreen />, '/about');
+assert.equal((aboutHtml.match(/<h1 /g) ?? []).length, 1);
+for (const text of ['Câu chuyện FIDO', 'FIT', 'INNOVATE', 'DEVOTE', 'OPEN', 'Khám phá sản phẩm', 'Mua sắm ngay', 'Xem chính sách']) assert.ok(aboutHtml.includes(text));
+assert.match(aboutHtml, /href="\/products"/);
+assert.match(aboutHtml, /href="\/policies"/);
+assert.match(aboutHtml, /loading="lazy"/);
+assert.match(renderWithShell(<Header />, '/about'), /<a[^>]*aria-current="page"[^>]*href="\/about"/);
+assert.match(renderWithShell(<Footer />), /href="\/about"/);
+console.log('About render and navigation checks passed');
