@@ -12,6 +12,7 @@ public interface ProductVariantRepository extends Repository<ProductVariant, Lon
     ProductVariant save(ProductVariant entity);
     List<ProductVariant> findAllByProductIdOrderByVariantIdAsc(Long productId);
     List<ProductVariant> findAllByVariantIdIn(Collection<Long> variantIds);
+    List<ProductVariant> findAllByProductIdInAndSaleStatus(Collection<Long> productIds, String saleStatus);
     boolean existsByProductIdAndSizeValueIdAndColorId(Long productId, Long sizeValueId, Long colorId);
     boolean existsBySizeValueId(Long sizeValueId);
     boolean existsByColorId(Long colorId);

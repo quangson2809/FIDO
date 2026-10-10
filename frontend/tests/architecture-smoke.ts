@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { productSummaryMetadata, productSummarySizes } from '../src/features/catalog/model/productSummary';
+import { summaryMaterialCare, summarySizes } from '../src/features/catalog/api/summaryFields';
 import { LatestMutationQueue } from '../src/features/cart/model/LatestMutationQueue';
 import { buildMovedImageOrder, sortProductImages } from '../src/features/catalog/model/productImageOrder';
 import { canAccessAdminModule, canWriteAdminModule } from '../src/features/auth/session/adminAccessPolicy';
@@ -23,6 +25,33 @@ import {
   subscribeToApiAccessToken,
 } from '../src/services/http/apiClient';
 import type { MeDto } from '../src/features/auth/types';
+
+const numericSizes = [29, 30, 31].map((value, index) => ({
+  size_value_id: index + 1, size_system_id: 1, code: String(value), display_name: String(value), sort_order: index,
+}));
+assert.equal(productSummarySizes(numericSizes), 'Size 29 – 31');
+assert.equal(productSummarySizes([numericSizes[0], numericSizes[2]]), 'Size 29 · 31');
+assert.equal(productSummarySizes([numericSizes[0]]), 'Size 29');
+assert.equal(productSummarySizes([{ ...numericSizes[0], code: 'Waist 29', display_name: 'Waist 29' }, numericSizes[1]]), 'Size Waist 29 · 30');
+assert.equal(productSummarySizes([{ ...numericSizes[0], code: 'M', display_name: 'Medium' },
+  { ...numericSizes[1], code: 'L', display_name: 'Large' }]), 'Size M · L');
+assert.equal(productSummarySizes([{ ...numericSizes[0], code: '', display_name: 'Medium' }]), 'Size Medium');
+assert.equal(productSummarySizes([]), 'Chưa có size đang bán');
+assert.equal(productSummarySizes(null), 'Size: xem chi tiết');
+const summary = { id: '1', product_id: 1, name: 'Managed product', imageUrl: '', base_price: 200000,
+  sale_status: 'ON_SALE' as const, materialCare: 'Giặt mặt trái.', brand: 'FIDO', category: 'Quần', sizes: numericSizes };
+assert.deepEqual(productSummaryMetadata(summary), { text: 'Giặt mặt trái.', label: 'Chất liệu & chăm sóc: Giặt mặt trái.' });
+assert.deepEqual(productSummaryMetadata({ ...summary, materialCare: null }), { text: 'Thương hiệu: FIDO', label: 'Thương hiệu: FIDO' });
+assert.deepEqual(productSummaryMetadata({ ...summary, materialCare: ' ', brand: '' }), { text: 'Danh mục: Quần', label: 'Danh mục: Quần' });
+assert.equal(productSummaryMetadata({ ...summary, materialCare: null, brand: '', category: '' }), null);
+assert.equal(summaryMaterialCare(undefined), null);
+assert.throws(() => summaryMaterialCare(12));
+assert.equal(summarySizes(undefined), null);
+assert.deepEqual(summarySizes(numericSizes), numericSizes);
+assert.deepEqual(summarySizes([]), []);
+assert.throws(() => summarySizes(null));
+assert.throws(() => summarySizes([{ ...numericSizes[0], sort_order: '0' }]));
+assert.throws(() => summarySizes([{ ...numericSizes[0], size_value_id: -1 }]));
 
 const profileWithRole = (code: string, permissionCodes: readonly string[] = []): MeDto => ({
   account: {

@@ -7,6 +7,7 @@ import { AdminScreen } from '../src/screens/AdminScreen';
 import { VoucherForm } from '../src/features/promotion/components/VoucherForm';
 import type { VoucherDetail } from '../src/features/promotion/types';
 import { ProductPurchasePanel } from '../src/features/catalog/components/ProductDetailSections';
+import { ProductSummaryCard } from '../src/features/catalog/components/ProductSummaryCard';
 import { AdminProductInfoSection } from '../src/features/catalog/components/AdminProductDetailSections';
 import { AuthSessionContext, type AuthSessionContextValue } from '../src/features/auth/session/sessionContext';
 import { CartContext, type CartContextValue } from '../src/features/cart/context/cartContext';
@@ -15,6 +16,18 @@ import type { MeDto } from '../src/features/auth/types';
 import type { AdminProductDetailDto, ProductDetailDto, ProductVariantDto } from '../src/features/catalog/types';
 
 const noOp = () => undefined;
+const summaryHtml = renderToStaticMarkup(<ProductSummaryCard product={{
+  id: '37', product_id: 37, name: 'Sản phẩm thật từ catalog', category: 'Quần', brand: 'FIDO',
+  base_price: 890000, imageUrl: '/managed-product.jpg', sale_status: 'ON_SALE', materialCare: null,
+  sizes: [{ size_value_id: 1, size_system_id: 1, code: '29', display_name: '29', sort_order: 1 },
+    { size_value_id: 2, size_system_id: 1, code: '34', display_name: '34', sort_order: 2 }],
+}} onOpenProduct={noOp} />);
+assert.match(summaryHtml, /Sản phẩm thật từ catalog/);
+assert.match(summaryHtml, /890\.000 đ/);
+assert.match(summaryHtml, /Size 29 · 34/);
+assert.match(summaryHtml, /cơ bản/);
+assert.match(summaryHtml, /aria-haspopup="dialog"/);
+assert.doesNotMatch(summaryHtml, /HÀNG MỚI|WOOL BLEND|Yêu thích|Giá cơ bản<\/|>Xem chi tiết</);
 const asyncNoOp = async () => undefined;
 
 const profile: MeDto = {

@@ -90,19 +90,19 @@ Never trust/accept these from clients unless a source explicitly makes them conf
 
 `ProductVariantDto(variant_id,size,color,sku?,effective_price,sale_status,available_quantity)`
 
-<<<<<<< HEAD
-`ProductSummaryDto(product_id,name,category,brand?,base_price,sale_status)`
-
-`ProductDetailDto(product_id,name,description?,category,brand?,size_system,gender?,season?,style?,material_care?,base_price,sale_status,images[],variants[])`
-
-=======
-`ProductSummaryDto(product_id,name,thumbnail?,category,brand?,base_price,sale_status)`
+`ProductSummaryDto(product_id,name,thumbnail?,category,brand?,base_price,sale_status,material_care?,sizes[])`
 
 `ProductDetailDto(product_id,name,description?,category,brand?,size_system,gender?,season?,style?,material_care?,base_price,sale_status,images[],variants[])`
 
 `AdminProductSummaryDto(product_id,name,thumbnail?,category_id,brand_id?,size_system_id,base_price,sale_status,created_at,updated_at)`
 
->>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
+API #11 addendum (2026-10-10): `material_care` is the managed Product field verbatim,
+including care instructions; it is not a separate extracted material name. `sizes` contains
+unique SizeValueDto values from ON_SALE variants, ordered by `sort_order`, then `size_value_id`.
+It covers all selling variants of each returned Product, independently of filter matches and stock.
+The page query already restricts Products to ON_SALE with an ON_SALE variant. Empty lists remain
+arrays. Existing `base_price` and detail effective-price semantics remain unchanged.
+
 `AdminVariantDto(variant_id,product_id,size_value_id,color_id,sku?,override_price?,sale_status,available_quantity,created_at,updated_at)`
 
 `CatalogMetaDto(categories[],brands[],size_systems[],colors[],genders[],seasons[],styles[])`; last three are derived from managed catalog values.

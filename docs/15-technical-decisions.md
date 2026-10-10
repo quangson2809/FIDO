@@ -424,3 +424,28 @@ justifies a new index. Assess production-volume execution plans separately befor
 - Product summary uses only API #11 fields. Size/color/material information is retrieved via existing API #12 only when opening a card's information dialog; no per-card eager requests, fabricated ratings/stock, wishlist, new schema or DTO fields.
 - Footer contact comes from public build configuration `VITE_SUPPORT_EMAIL` and `VITE_SUPPORT_HOTLINE`. No confirmed store contact exists in repo/audit; blank configuration displays explicit unavailable copy. The reference image's hotline is not adopted as real store data.
 - Admin searches operate on already-complete metadata/access-control/content responses, without inventing server filters. Existing service writes, size IDs in payloads and permission controls remain intact. Logout uses the existing AuthSession context; Admin checks existing dirty-form ownership before clearing the session.
+
+
+## Product summary redesign — 2026-10-10
+
+- Current task authorizes an additive API #11 extension for existing domain data. This supersedes
+  the initial audit follow-up limitation to existing summary fields: `material_care` and `sizes`
+  now come from the summary; colors and full care text still use the on-demand API #12 dialog.
+- Product module queries ON_SALE variants for all page Product IDs once, then batch-loads
+  SizeValue references. It deduplicates by size identity and sorts by `sort_order`, then ID.
+  Page/filter/navigation/detail/stock behavior stays unchanged. No migration or new dependency.
+- Frontend validates the additive fields at the catalog service mapping boundary. An older
+  Backend missing sizes yields “Size: xem chi tiết”, never an invented empty-size assertion.
+  Combined material/care text is explicitly labeled; missing text falls back to a labeled
+  brand/category. No material extraction heuristic or example content is used.
+- Base price remains visible with compact “cơ bản” qualification. A summary variant price
+  or price range would change presentation semantics and still needs owner confirmation.
+- Only consecutive exact integer display labels may collapse into an inclusive size range;
+  custom labels and gaps remain explicit lists in managed order.
+- Compact summary size labels use managed SizeValue codes (e.g. M/L), falling back to the
+  display name only for an empty code. The information dialog retains the full display names.
+- The image information control is a distinct sibling button (44px touch target), not a
+  wishlist. It preserves the existing detail dialog and its retry/focus-return behavior.
+  There is no wishlist mechanism or new-product policy in the current repo; neither is faked.
+- Card geometry/hover styles are scoped to `.product-summary-*`, avoiding the global
+  editorial `.group` image lift and radius. Native focus-visible and reduced motion are retained.

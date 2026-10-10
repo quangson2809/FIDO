@@ -2,6 +2,7 @@ import type { ApiListResponse, ApiResponse } from '../../../types/api';
 import { apiClient } from '../../../services/http/apiClient';
 import { sortProductImages } from '../model/productImageOrder';
 import { resolveImageUrl } from '../../../services/media/imageUrl';
+import { summaryMaterialCare, summarySizes } from './summaryFields';
 import type {
   CatalogMetaDto,
   CatalogProductPage,
@@ -23,6 +24,8 @@ const summaryToView = (product: ProductSummaryDto): CatalogProductView => ({
   base_price: product.base_price,
   imageUrl: imageOrEmpty(product.thumbnail),
   sale_status: product.sale_status,
+  materialCare: summaryMaterialCare(product.material_care),
+  sizes: summarySizes(product.sizes),
 });
 
 const normalizeDetailImages = (product: ProductDetailDto): ProductDetailDto => ({

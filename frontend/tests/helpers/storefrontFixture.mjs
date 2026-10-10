@@ -3,7 +3,7 @@ export const date = '2026-10-10T03:00:00Z';
 export const meta = {
   categories: [{ category_id: 1, parent_category_id: null, name: 'Áo' }, { category_id: 2, parent_category_id: null, name: 'Quần' }],
   brands: [{ brand_id: 1, name: 'FIDO' }],
-  size_systems: [{ size_system_id: 1, code: 'TOP', name: 'Áo', size_values: [{ size_value_id: 1, code: 'M', display_name: 'M', sort_order: 1 }] }],
+  size_systems: [{ size_system_id: 1, code: 'TOP', name: 'Áo', size_values: [{ size_value_id: 1, size_system_id: 1, code: 'M', display_name: 'M', sort_order: 1 }] }],
   colors: [{ color_id: 1, code: 'BLACK', name: 'Đen' }], genders: ['UNISEX'], seasons: ['ALL'], styles: ['MINIMAL'],
 };
 export const me = { account: { account_id: 1, phone: '0900000000', email: 'user@example.test', created_at: date, updated_at: date }, addresses: [{ address_id: 1, address_text: 'Hà Nội', created_at: date }, { address_id: 2, address_text: 'Nghệ An', created_at: date }], roles: [{ role_id: 1, code: 'CUSTOMER', name: 'Khách hàng', description: null }], permissions: [] };
@@ -28,7 +28,7 @@ export function storefrontFixture() {
     if (path === '/catalog/products/1') return send({ data: product });
     if (path === '/catalog/products') {
       const hasResult = url.searchParams.get('category_id') !== '2' && url.searchParams.get('q') !== 'missing';
-      return send({ data: hasResult ? [{ ...product, thumbnail: null }] : [], meta: { page: Number(url.searchParams.get('page') || 1), page_size: 12, total: hasResult ? 25 : 0, total_pages: hasResult ? 3 : 0 } });
+      return send({ data: hasResult ? [{ ...product, thumbnail: null, sizes: [product.variants[0].size] }] : [], meta: { page: Number(url.searchParams.get('page') || 1), page_size: 12, total: hasResult ? 25 : 0, total_pages: hasResult ? 3 : 0 } });
     }
     if (path === '/cart') return send({ data: cart() });
     if (path === '/cart/items' && request.method() === 'POST') { state.quantity += request.postDataJSON().quantity; return send({ data: cart() }); }

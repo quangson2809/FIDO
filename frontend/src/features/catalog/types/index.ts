@@ -69,6 +69,8 @@ export interface ProductSummaryDto {
   brand: BrandDto | null;
   base_price: number;
   sale_status: SaleStatus;
+  material_care?: string | null;
+  sizes?: SizeValueDto[];
 }
 
 export interface ProductDetailDto {
@@ -97,6 +99,8 @@ export interface CatalogProductView {
   base_price: number;
   imageUrl: string;
   sale_status: SaleStatus;
+  materialCare: string | null;
+  sizes: readonly SizeValueDto[] | null;
 }
 
 export interface CatalogProductQuery {

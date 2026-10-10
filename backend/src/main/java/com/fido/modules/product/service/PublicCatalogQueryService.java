@@ -8,6 +8,7 @@ import com.fido.modules.product.dto.response.CatalogMetaDto;
 import com.fido.modules.product.dto.response.ProductDetailDto;
 import com.fido.modules.product.dto.response.ProductSummaryDto;
 import com.fido.modules.product.dto.response.ProductVariantDto;
+import com.fido.modules.product.dto.response.SizeValueDto;
 import com.fido.modules.product.entity.Brand;
 import com.fido.modules.product.entity.Category;
 import com.fido.modules.product.entity.Color;
@@ -21,6 +22,7 @@ import com.fido.modules.product.repository.ProductImageRepository;
 import com.fido.modules.product.repository.ProductRepository;
 import com.fido.modules.product.repository.ProductVariantRepository;
 import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -90,14 +92,14 @@ public class PublicCatalogQueryService {
         );
 
         List<Product> productsOnPage = result.getContent();
+        var productIds = productsOnPage.stream().map(Product::getProductId).toList();
 
         Map<Long, Category> categoriesById = categoryMap(productsOnPage);
         Map<Long, Brand> brandsById = brandMap(productsOnPage);
         Map<Long, String> thumbnailsByProductId = imageRead.representativeByProductIds(
-                productsOnPage.stream()
-                        .map(Product::getProductId)
-                        .toList()
+                productIds
         );
+        Map<Long, List<SizeValueDto>> sizesByProductId = sellingSizesByProductId(productIds);
 
         var data = productsOnPage
                 .stream()
@@ -122,7 +124,9 @@ public class PublicCatalogQueryService {
                                         )
                                 ),
                         product.getBasePrice(),
-                        product.getSaleStatus()
+                        product.getSaleStatus(),
+                        product.getMaterialCare(),
+                        sizesByProductId.getOrDefault(product.getProductId(), List.of())
                 ))
                 .toList();
 
@@ -138,6 +142,28 @@ public class PublicCatalogQueryService {
 
     public CatalogMetaDto publicMeta() {
         return metaService.meta();
+    }
+
+    private Map<Long, List<SizeValueDto>> sellingSizesByProductId(List<Long> productIds) {
+        if (productIds.isEmpty()) {
+            return Map.of();
+        }
+        var sellingVariants = variants.findAllByProductIdInAndSaleStatus(productIds, CatalogPolicy.ON_SALE);
+        var sizesById = references.sizeValuesById(sellingVariants.stream()
+                .map(ProductVariant::getSizeValueId).distinct().toList());
+
+        // Batch references before mapping: page size must not determine the query count.
+        return sellingVariants.stream().collect(Collectors.groupingBy(
+                ProductVariant::getProductId,
+                Collectors.collectingAndThen(Collectors.toList(), productVariants -> productVariants.stream()
+                        .map(ProductVariant::getSizeValueId)
+                        .distinct()
+                        .map(id -> required(sizesById, id, "Variant references missing size"))
+                        .sorted(Comparator.comparing(SizeValue::getSortOrder)
+                                .thenComparing(SizeValue::getSizeValueId))
+                        .map(CatalogMapper::sizeValue)
+                        .toList())
+        ));
     }
 
     private ProductDetailDto detailInternal(Product product) {

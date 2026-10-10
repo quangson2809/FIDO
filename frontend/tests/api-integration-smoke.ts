@@ -177,6 +177,8 @@ const server = createServer((request, response) => {
         brand: null,
         base_price: 199000,
         sale_status: 'ON_SALE',
+        material_care: 'Giặt mặt trái.',
+        sizes: [{ size_value_id: 12, size_system_id: 3, code: '30', display_name: '30', sort_order: 2 }],
       }],
       meta: {
         page: 1,
@@ -375,6 +377,9 @@ try {
   const catalog = await catalogService.listProducts({ page: 1, page_size: 8 });
   assert.equal(catalog.items[0]?.product_id, 960001);
   assert.equal(catalog.items[0]?.imageUrl, 'https://example.com/product.jpg');
+  assert.equal(catalog.items[0]?.base_price, 199000);
+  assert.equal(catalog.items[0]?.materialCare, 'Giặt mặt trái.');
+  assert.deepEqual(catalog.items[0]?.sizes, [{ size_value_id: 12, size_system_id: 3, code: '30', display_name: '30', sort_order: 2 }]);
   assert.equal(catalog.meta.page, 1);
 
   const meta = await catalogService.getMeta();

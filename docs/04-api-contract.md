@@ -266,3 +266,13 @@ An unknown category returns an empty paginated result. Existing response fields,
 sale-state/variant predicates, effective-price filtering and pagination remain
 unchanged. The frontend category route uses this existing endpoint and does not
 add a separate category API.
+
+
+### Product summary card read addendum — 2026-10-10
+
+API #11 adds nullable `material_care` and `sizes: SizeValueDto[]` using existing domain data.
+No new endpoint, schema, Admin response or filtering/pagination semantics are introduced.
+Material/care text is returned verbatim. Sizes are unique by identity across ON_SALE variants,
+sorted by managed sort order then identity; zero stock does not mean stopped sale.
+Product cover, `base_price` and API #12 `effective_price` remain unchanged. Summary sizes
+are loaded in one variants query and one SizeValue batch per page, never detail calls per card.

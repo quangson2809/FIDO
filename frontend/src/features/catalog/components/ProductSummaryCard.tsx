@@ -6,6 +6,7 @@ import { StorefrontDialog } from '../../../shared/ui/storefront/StorefrontDialog
 import { QueryFeedback } from '../../../shared/ui/storefront/QueryFeedback';
 import { useRemoteQuery } from '../../../shared/hooks/useRemoteQuery';
 import { getStorefrontErrorMessage } from '../../../services/http/storefrontError';
+import { productSummaryMetadata, productSummarySizes } from '../model/productSummary';
 
 function ProductSummaryDetails({ productId }: { productId: number }) {
   const detail = useRemoteQuery(useCallback(() => catalogService.getProductDetail(productId), [productId]));
@@ -25,23 +26,61 @@ function ProductSummaryDetails({ productId }: { productId: number }) {
 
 export function ProductSummaryCard({ product, onOpenProduct }: { product: CatalogProductView; onOpenProduct: (id: string) => void }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
-  return <article className="group min-w-0">
-    <button type="button" aria-label={`Xem chi tiết: ${product.name}`} onClick={() => onOpenProduct(product.id)} className="block w-full text-left">
-      <div className="relative aspect-[3/4] overflow-hidden bg-[#F3F4EF] ring-1 ring-[#E8E9E3]">
-        <StorefrontImage loading="lazy" src={product.imageUrl || undefined} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.035]" />
-        <span className="absolute left-2 top-2 bg-forest-deep px-2 py-1 text-xs font-semibold text-white">{product.sale_status === 'ON_SALE' ? 'Đang bán' : 'Ngừng bán'}</span>
+  const metadata = productSummaryMetadata(product);
+  const sizes = productSummarySizes(product.sizes);
+
+  return (
+    <article className="product-summary-card">
+      <button
+        type="button"
+        aria-label={`Xem chi tiết: ${product.name}`}
+        onClick={() => onOpenProduct(product.id)}
+        className="product-summary-open"
+      >
+        <span className="product-summary-photo">
+          <StorefrontImage
+            loading="lazy"
+            src={product.imageUrl || undefined}
+            alt={product.name}
+            className="product-summary-image"
+          />
+        </span>
+      </button>
+      <div className="product-summary-content">
+        <span className="product-summary-metadata" title={metadata?.label} aria-label={metadata?.label}>{metadata?.text || '\u00a0'}</span>
+        <h2 className="product-summary-title" title={product.name}>{product.name}</h2>
+        <span className="product-summary-footer">
+          <span className="product-summary-price" title="Giá cơ bản. Giá từng biến thể được xác nhận khi chọn size và màu.">
+            <span>{product.base_price.toLocaleString('vi-VN')} đ</span>
+            <span className="product-summary-price-label">cơ bản</span>
+          </span>
+          <span className="product-summary-sizes" title={sizes}>{sizes}</span>
+        </span>
       </div>
-      <div className="pt-4">
-        <div className="flex flex-wrap gap-x-3 text-xs text-muted-grey"><span>{product.category}</span>{product.brand && <span className="font-semibold text-forest-deep">{product.brand}</span>}</div>
-        <h2 className="mt-2 line-clamp-2 min-h-12 font-serif text-[17px] leading-6">{product.name}</h2>
-        <p className="mt-2 text-xs text-muted-grey">Giá cơ bản</p><p className="font-mono text-sm font-bold">{product.base_price.toLocaleString('vi-VN')}₫</p>
-        <span className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold underline">Xem chi tiết</span>
-      </div>
-    </button>
-    <button type="button" aria-haspopup="dialog" onClick={() => setDetailsOpen(true)} className="mt-1 min-h-11 w-full border border-border-subtle bg-white px-2 text-sm">Xem size & chất liệu<span className="sr-only">: {product.name}</span></button>
-    {detailsOpen && <StorefrontDialog name={`Thông tin ${product.name}`} onClose={() => setDetailsOpen(false)} className="max-w-lg p-6">
-      <header className="mb-5 flex items-start justify-between gap-4"><h2 className="font-serif text-2xl">{product.name}</h2><button autoFocus type="button" aria-label="Đóng thông tin sản phẩm" onClick={() => setDetailsOpen(false)} className="h-11 w-11 shrink-0">×</button></header>
-      <ProductSummaryDetails productId={product.product_id} />
-    </StorefrontDialog>}
-  </article>;
+      <button
+        type="button"
+        aria-label={`Xem size & chất liệu: ${product.name}`}
+        aria-haspopup="dialog"
+        aria-expanded={detailsOpen}
+        title="Xem size, màu, chất liệu & chăm sóc"
+        onClick={() => setDetailsOpen(true)}
+        className="product-summary-info"
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 11v6" />
+          <circle cx="12" cy="7.5" r=".8" fill="currentColor" stroke="none" />
+        </svg>
+      </button>
+      {detailsOpen && (
+        <StorefrontDialog name={`Thông tin ${product.name}`} onClose={() => setDetailsOpen(false)} className="product-summary-dialog">
+          <header className="mb-5 flex items-start justify-between gap-4">
+            <h2 className="font-serif text-2xl">{product.name}</h2>
+            <button autoFocus type="button" aria-label="Đóng thông tin sản phẩm" onClick={() => setDetailsOpen(false)} className="h-11 w-11 shrink-0">×</button>
+          </header>
+          <ProductSummaryDetails productId={product.product_id} />
+        </StorefrontDialog>
+      )}
+    </article>
+  );
 }

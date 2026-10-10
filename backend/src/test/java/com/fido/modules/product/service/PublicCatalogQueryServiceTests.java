@@ -143,6 +143,61 @@ class PublicCatalogQueryServiceTests {
         verifyNoInteractions(images);
     }
 
+    @Test
+    void summarySizesBatchThePageAndDeduplicateColorsInManagedOrder() {
+        Product first = product(101L, 5L, "First");
+        Product second = product(102L, 5L, "Second");
+        when(first.getMaterialCare()).thenReturn("Cotton; wash gently.");
+        Category category = mock(Category.class);
+        when(category.getCategoryId()).thenReturn(5L);
+        when(products.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(first, second)));
+        when(categories.findAllByCategoryIdIn(List.of(5L))).thenReturn(List.of(category));
+
+        ProductVariant large = summaryVariant(101L, 12L);
+        ProductVariant medium = summaryVariant(101L, 11L);
+        ProductVariant mediumOtherColor = summaryVariant(101L, 11L);
+        ProductVariant otherProduct = summaryVariant(102L, 12L);
+        when(variants.findAllByProductIdInAndSaleStatus(List.of(101L, 102L), CatalogPolicy.ON_SALE))
+                .thenReturn(List.of(large, medium, mediumOtherColor, otherProduct));
+        SizeValue m = size(11L);
+        SizeValue l = size(12L);
+        when(m.getSortOrder()).thenReturn(1);
+        when(l.getSortOrder()).thenReturn(2);
+        when(references.sizeValuesById(List.of(12L, 11L))).thenReturn(Map.of(11L, m, 12L, l));
+
+        var result = service.publicProducts(new CatalogProductFilter(
+                null, null, null, null, null, null, null, null, null, null, 1, 2));
+
+        assertEquals("Cotton; wash gently.", result.data().get(0).material_care());
+        assertEquals(List.of(11L, 12L), result.data().get(0).sizes().stream()
+                .map(size -> size.size_value_id()).toList());
+        assertEquals(List.of(12L), result.data().get(1).sizes().stream()
+                .map(size -> size.size_value_id()).toList());
+        assertEquals(new BigDecimal("100000.00"), result.data().get(0).base_price());
+        verify(variants, times(1)).findAllByProductIdInAndSaleStatus(List.of(101L, 102L), CatalogPolicy.ON_SALE);
+        verify(references, times(1)).sizeValuesById(List.of(12L, 11L));
+        verify(variants, never()).findAllByProductIdOrderByVariantIdAsc(anyLong());
+        verifyNoInteractions(inventory);
+    }
+
+    @Test
+    void emptySummaryPageDoesNotQueryVariantsOrSizes() {
+        when(products.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+        var result = service.publicProducts(new CatalogProductFilter(
+                null, null, null, null, null, null, null, null, null, null, 1, 20));
+        assertEquals(List.of(), result.data());
+        verifyNoInteractions(variants, references, categories, brands, inventory);
+    }
+
+    private ProductVariant summaryVariant(Long productId, Long sizeId) {
+        ProductVariant variant = mock(ProductVariant.class);
+        when(variant.getProductId()).thenReturn(productId);
+        when(variant.getSizeValueId()).thenReturn(sizeId);
+        return variant;
+    }
+
     private Product product(Long id, Long categoryId, String name) {
         Product product = mock(Product.class);
         when(product.getProductId()).thenReturn(id);
