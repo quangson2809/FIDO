@@ -8,6 +8,8 @@ import { VoucherForm } from '../src/features/promotion/components/VoucherForm';
 import type { VoucherDetail } from '../src/features/promotion/types';
 import { ProductPurchasePanel } from '../src/features/catalog/components/ProductDetailSections';
 import { ProductSummaryCard } from '../src/features/catalog/components/ProductSummaryCard';
+import { BenefitCardIllustration, CategoryCardIllustration, resolveCategoryArtwork } from '../src/screens/home/HomeCardIllustrations';
+import { HomeScreen } from '../src/screens/HomeScreen';
 import { AdminProductInfoSection } from '../src/features/catalog/components/AdminProductDetailSections';
 import { AuthSessionContext, type AuthSessionContextValue } from '../src/features/auth/session/sessionContext';
 import { CartContext, type CartContextValue } from '../src/features/cart/context/cartContext';
@@ -271,6 +273,34 @@ const stoppedProductPanelHtml = renderToStaticMarkup(
 assert.match(stoppedProductPanelHtml, /Sản phẩm đã ngừng bán/);
 assert.match(stoppedProductPanelHtml, /Không khả dụng/);
 assert.doesNotMatch(stoppedProductPanelHtml, />Thêm vào giỏ hàng</);
+
+
+for (const [name, expected] of [
+  ['Áo sơ mi', 'tops'],
+  ['Quần jeans', 'bottoms'],
+  ['Váy', 'dresses'],
+  ['Phụ kiện', 'accessories'],
+  ['Giày thể thao', 'shoes'],
+  ['Thời trang nam', 'menswear'],
+  ['Thời trang nữ', 'womenswear'],
+  ['Bộ sưu tập mới', 'essentials'],
+] as const) {
+  assert.equal(resolveCategoryArtwork(name), expected);
+  const card = renderToStaticMarkup(<CategoryCardIllustration name={name} />);
+  assert.match(card, new RegExp(`data-artwork="${expected}"`));
+  assert.match(card, /aria-hidden="true"/);
+}
+for (const kind of ['categories', 'fit', 'details', 'cod'] as const) {
+  const art = renderToStaticMarkup(<BenefitCardIllustration kind={kind} />);
+  assert.match(art, new RegExp(`data-benefit-artwork="${kind}"`));
+  assert.match(art, /aria-hidden="true"/);
+}
+const homeHtml = renderWithShell(<HomeScreen />);
+assert.match(homeHtml, /data-benefit-artwork="cod"/);
+assert.match(homeHtml, /Thanh toán khi nhận hàng/);
+assert.match(homeHtml, /images\/about\/palette.svg/);
+assert.match(homeHtml, /không phải hình ảnh sản phẩm đang bán/);
+process.stdout.write('Homepage artwork render checks: PASS\\n');
 
 process.stdout.write('Frontend render smoke: PASS\n');
 
