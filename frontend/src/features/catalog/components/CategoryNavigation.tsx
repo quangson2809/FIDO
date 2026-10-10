@@ -1,31 +1,53 @@
-import { useCallback, useRef, useState } from 'react';
+import { useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { catalogService } from '../api/service';
-import { buildCategoryTree } from '../model/categoryTree';
-import { CategoryLinks } from './CategoryLinks';
+import { APP_PATHS } from '../../../routes/paths';
 import { StorefrontIcon } from '../../../components/StorefrontIcon';
-import { useRemoteQuery } from '../../../shared/hooks/useRemoteQuery';
-import { QueryFeedback } from '../../../shared/ui/storefront/QueryFeedback';
-import { getStorefrontErrorMessage } from '../../../services/http/storefrontError';
+import { useCatalogCategories } from '../hooks/useCatalogCategories';
+import { CategoryMegaMenu } from './CategoryMegaMenu';
 
-export function CategoryNavigation({ onNavigate }: { onNavigate: () => void }) {
-  const metadata = useRemoteQuery(useCallback(() => catalogService.getMeta(), []));
-  const [open, setOpen] = useState(false);
+interface Props {
+  open: boolean;
+  active: boolean;
+  onOpenChange: (open: boolean) => void;
+  onNavigate: () => void;
+}
+
+export function CategoryNavigation({ open, active, onOpenChange, onNavigate }: Props) {
+  const { nodes, loading, error, reload } = useCatalogCategories();
+  const link = useRef<HTMLAnchorElement>(null);
   const button = useRef<HTMLButtonElement>(null);
-  const close = () => { setOpen(false); onNavigate(); };
-  const nodes = buildCategoryTree(metadata.data?.categories ?? []);
-  return <div className="relative"
-    onMouseEnter={() => { if (window.matchMedia('(hover: hover)').matches) setOpen(true); }}
-    onMouseLeave={() => { if (!button.current?.parentElement?.contains(document.activeElement)) setOpen(false); }}
-    onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}
-    onKeyDown={event => { if (event.key === 'Escape') { setOpen(false); button.current?.focus(); } }}>
-    <button ref={button} type="button" aria-label="Danh mục sản phẩm" aria-expanded={open} aria-controls="storefront-category-menu" onClick={() => setOpen(value => window.matchMedia('(hover: hover)').matches ? true : !value)} className="flex min-h-11 items-center gap-1.5 text-[13px] font-semibold">
-      <StorefrontIcon name="grid_view" className="h-5 w-5" /><span className="hidden sm:inline">Danh mục</span><StorefrontIcon name="expand_more" className={`h-4 w-4 ${open ? 'rotate-180' : ''}`} />
+  const trigger = useRef<HTMLElement | null>(null);
+  const closeAndNavigate = () => { onOpenChange(false); onNavigate(); };
+  return <div className="category-navigation" data-open={open}
+    onPointerEnter={event => {
+      if (event.pointerType === 'mouse' && window.matchMedia('(min-width: 1024px) and (hover: hover)').matches) {
+        trigger.current = link.current;
+        onOpenChange(true);
+      }
+    }}
+    onPointerLeave={event => { if (event.pointerType === 'mouse') onOpenChange(false); }}
+    onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) onOpenChange(false); }}
+    onKeyDown={event => {
+      if (event.key === 'Escape' && open) {
+        event.preventDefault(); event.stopPropagation();
+        onOpenChange(false); (trigger.current ?? button.current)?.focus();
+      }
+    }}>
+    <Link ref={link} to={APP_PATHS.catalog} onClick={closeAndNavigate}
+      aria-current={active ? 'page' : undefined} aria-expanded={open} aria-controls="storefront-category-menu"
+      onKeyDown={event => {
+        if (event.key === 'ArrowDown' || event.key === ' ') {
+          event.preventDefault(); trigger.current = link.current; onOpenChange(true);
+        }
+      }} className="category-navigation-link">Sản phẩm</Link>
+    <button ref={button} type="button" aria-label="Danh mục sản phẩm" aria-expanded={open} aria-controls="storefront-category-menu"
+      onClick={() => { trigger.current = button.current; onOpenChange(!open); }} className="category-navigation-toggle">
+      <StorefrontIcon name="grid_view" className="category-navigation-mobile-icon h-5 w-5" />
+      <span className="category-navigation-mobile-label">Sản phẩm</span>
+      <StorefrontIcon name="expand_more" className={`h-4 w-4 ${open ? 'rotate-180' : ''}`} />
     </button>
-    {open && <nav id="storefront-category-menu" aria-label="Danh mục phân cấp" className="absolute left-0 top-full max-h-[70vh] w-72 max-w-[calc(100vw-9rem)] overflow-auto border border-border-subtle bg-white p-2 shadow-xl">
-      <Link to="/products" onClick={close} className="flex min-h-11 items-center border-b border-border-subtle px-3 text-sm font-semibold">Tất cả sản phẩm</Link>
-      <QueryFeedback loading={metadata.loading} error={metadata.error ? getStorefrontErrorMessage(metadata.error, 'Không thể tải danh mục.') : null} onRetry={metadata.reload} />
-      {!metadata.loading && !metadata.error && (nodes.length ? <CategoryLinks nodes={nodes} onNavigate={close} /> : <p className="p-3 text-sm">Chưa có danh mục.</p>)}
-    </nav>}
+    <nav id="storefront-category-menu" aria-label="Danh mục phân cấp" aria-hidden={!open} inert={!open} className="category-mega-panel" data-open={open}>
+      <CategoryMegaMenu nodes={nodes} loading={loading} error={error} onRetry={reload} onNavigate={closeAndNavigate} />
+    </nav>
   </div>;
 }

@@ -43,7 +43,16 @@ export const Header: React.FC = () => {
   const { isAuthenticated } = useAuthSession();
   const navigate = useNavigate();
   const location = useLocation();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [menu, setMenu] = useState<{ routeKey: string; kind: 'primary' | 'catalog' | null }>({ routeKey: location.key, kind: null });
+  // Discard route-owned disclosure state permanently, including on Back/Forward.
+  if (menu.routeKey !== location.key) setMenu({ routeKey: location.key, kind: null });
+  const activeMenu = menu.routeKey === location.key ? menu.kind : null;
+  const isMenuOpen = activeMenu === 'primary';
+  const setActiveMenu = (kind: typeof menu.kind) => setMenu({ routeKey: location.key, kind });
+  const setCategoriesOpen = (open: boolean) => {
+    if (open) setActiveMenu('catalog');
+    else if (activeMenu === 'catalog') setActiveMenu(null);
+  };
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const totalCartCount = cartItems.reduce(
     (total, item) => total + item.quantity,
@@ -51,7 +60,7 @@ export const Header: React.FC = () => {
   );
 
   const navigateTo = (path: string) => {
-    setIsMenuOpen(false);
+    setActiveMenu(null);
     navigate(path);
     window.scrollTo({
       top: 0,
@@ -62,13 +71,14 @@ export const Header: React.FC = () => {
   };
 
   const closeNavigation = () => {
-    setIsMenuOpen(false);
+    setActiveMenu(null);
     window.scrollTo(0, 0);
   };
 
   const openAccount = () => navigateTo(isAuthenticated ? '/account' : '/login');
 
   const openCart = () => {
+    setActiveMenu(null);
     if (!isAuthenticated) {
       showToast('Vui lòng đăng nhập để sử dụng giỏ hàng và đặt hàng.');
       navigateTo('/login');
@@ -92,8 +102,8 @@ export const Header: React.FC = () => {
       </div>
 
       <header className="sticky top-0 z-40 h-[72px] w-full border-b border-[#E2E5DE] bg-white/95 shadow-sm backdrop-blur-md">
-        <div className="mx-auto flex h-full max-w-[1440px] items-center justify-between px-4 sm:px-8 lg:px-12">
-          <div className="flex items-center gap-3 sm:gap-6 lg:gap-9">
+        <div className="mx-auto flex h-full max-w-[1440px] items-center justify-between px-4 sm:px-8 xl:px-12">
+          <div className="flex h-full items-center gap-3 sm:gap-6 xl:gap-9">
             <button
               type="button"
               onClick={() => navigateTo('/')}
@@ -103,26 +113,28 @@ export const Header: React.FC = () => {
                 FIDO
                 <span className="ml-0.5 inline-block h-2 w-2 rounded-full bg-[#E8C75B] transition-transform group-hover:scale-125" />
               </span>
-              <span className="hidden text-[9px] font-bold uppercase tracking-[0.18em] text-[#1B5038] sm:inline">
+              <span className="hidden text-[9px] font-bold uppercase tracking-[0.18em] text-[#1B5038] xl:inline">
                 Fashion
               </span>
             </button>
 
-            <CategoryNavigation onNavigate={closeNavigation} />
-
             <nav
               aria-label="Điều hướng chính"
-              className="hidden items-center gap-6 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#606863] xl:flex"
+              className="flex h-full items-center gap-4 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#606863] xl:gap-6"
             >
               {navItems.map((item) => {
                 const active = item.active(location.pathname);
+                if (item.path === APP_PATHS.catalog) return <CategoryNavigation key={item.path}
+                  open={activeMenu === 'catalog'} active={active || location.pathname.startsWith('/categories/')}
+                  onOpenChange={setCategoriesOpen} onNavigate={closeNavigation} />;
                 return (
                   <Link
                     key={item.path}
                     to={item.path}
                     aria-current={active ? 'page' : undefined}
                     onClick={closeNavigation}
-                    className={`relative py-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 hover:text-[#0B2419] ${active ? 'text-[#0B2419]' : ''}`}
+                    onPointerEnter={event => { if (event.pointerType === 'mouse') setCategoriesOpen(false); }}
+                    className={`relative hidden py-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 hover:text-[#0B2419] lg:inline-flex ${active ? 'text-[#0B2419]' : ''}`}
                   >
                     {item.label}
                     {active && (
@@ -135,16 +147,16 @@ export const Header: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2">
-            <LogoutButton className="hidden xl:inline-flex xl:items-center" />
+            <LogoutButton className="hidden lg:inline-flex lg:items-center" />
             <button
               ref={menuButtonRef}
               type="button"
               aria-label={isMenuOpen ? 'Đóng menu' : 'Mở menu'}
               aria-expanded={isMenuOpen}
               aria-controls="storefront-mobile-menu"
-              onClick={() => setIsMenuOpen((open) => !open)}
-              onKeyDown={event => { if (event.key === 'Escape') setIsMenuOpen(false); }}
-              className="flex h-10 w-10 items-center justify-center text-[#0B2419] focus-visible:outline-2 focus-visible:outline-offset-2 xl:hidden"
+              onClick={() => setActiveMenu(isMenuOpen ? null : 'primary')}
+              onKeyDown={event => { if (event.key === 'Escape') setActiveMenu(null); }}
+              className="flex h-10 w-10 items-center justify-center text-[#0B2419] focus-visible:outline-2 focus-visible:outline-offset-2 lg:hidden"
             >
               <StorefrontIcon name={isMenuOpen ? 'close' : 'menu'} />
             </button>
@@ -180,11 +192,11 @@ export const Header: React.FC = () => {
             aria-label="Điều hướng mobile"
             onKeyDown={(event) => {
               if (event.key === 'Escape') {
-                setIsMenuOpen(false);
+                setActiveMenu(null);
                 menuButtonRef.current?.focus();
               }
             }}
-            className="absolute inset-x-0 top-full border-b border-[#E2E5DE] bg-white p-4 shadow-lg xl:hidden"
+            className="absolute inset-x-0 top-full border-b border-[#E2E5DE] bg-white p-4 shadow-lg lg:hidden"
           >
             <LogoutButton className="w-full text-left" />
             {navItems.map((item) => (

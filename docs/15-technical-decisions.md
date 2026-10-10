@@ -449,3 +449,25 @@ justifies a new index. Assess production-volume execution plans separately befor
   There is no wishlist mechanism or new-product policy in the current repo; neither is faked.
 - Card geometry/hover styles are scoped to `.product-summary-*`, avoiding the global
   editorial `.group` image lift and radius. Native focus-visible and reduced motion are retained.
+
+## Header mega menu — 2026-10-11
+
+- The desktop Products link remains `/products` and owns the category disclosure together
+  with its adjacent button. The existing separate category dropdown is replaced, not duplicated.
+  Hover uses one DOM region spanning the full Header height and its absolutely positioned panel;
+  pointer leave closes even when the trigger retains focus. There are no hover timers.
+- Header owns one mutually exclusive primary/catalog menu state. Route identity invalidates and
+  clears that state so Back/Forward cannot restore an old open menu. The category controller owns
+  only pointer/keyboard events and the initiating trigger ref for Escape focus restoration.
+- `useCatalogCategories` reuses `catalogService.getMeta`, `useRemoteQuery`, safe error formatting
+  and the existing category tree model. `CategoryMegaMenu` renders data and callbacks only;
+  `CategoryLinks` retains its existing list layout and adds a menu layout. No API or Backend change.
+- Roots and child groups become fluid columns; recursive links preserve every category level.
+  Visual indentation is limited after three nested child groups to keep narrow/deep trees readable,
+  without limiting data depth. Long labels wrap and large trees scroll inside the overlay.
+- Two existing FIDO illustrations (`about/wardrobe.svg`, `about/details.svg`) link to About and
+  Catalog. They do not assert promotions, new products or campaigns. Reference video assets are
+  used only for review evidence. The menu keeps FIDO colors, typography and design tokens.
+- The panel uses a short opacity/translate transition without affecting layout. Closed content is
+  inert and hidden from accessibility APIs; opening content accepts interaction immediately.
+  Keyboard disclosure, Tab exit, Escape, reduced motion and touch use the same state owner.

@@ -11,7 +11,7 @@
     "test:api": "vite build --ssr tests/api-integration-smoke.ts --outDir .smoke-dist && node .smoke-dist/api-integration-smoke.js",
     "test:architecture": "vite build --ssr tests/architecture-smoke.ts --outDir .architecture-dist && node .architecture-dist/architecture-smoke.js",
     "test:render": "vite build --ssr tests/render-smoke.tsx --outDir .render-dist && node .render-dist/render-smoke.js",
-    "test:browser": "node tests/catalog-browser.mjs && node tests/product-variant-selection.mjs && node tests/checkout-flow.mjs && node tests/storefront-browser.mjs && node tests/storefront-recovery.mjs && node tests/audit-followup-browser.mjs && node tests/product-summary-browser.mjs"
+    "test:browser": "node tests/catalog-browser.mjs && node tests/product-variant-selection.mjs && node tests/checkout-flow.mjs && node tests/storefront-browser.mjs && node tests/storefront-recovery.mjs && node tests/audit-followup-browser.mjs && node tests/product-summary-browser.mjs && node tests/header-mega-menu-browser.mjs"
   },
   "dependencies": {
     "axios": "^1.17.0",
