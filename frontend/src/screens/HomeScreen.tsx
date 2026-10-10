@@ -1,4 +1,5 @@
 import { ProductSummaryCard } from '../features/catalog/components/ProductSummaryCard';
+import { BenefitCardIllustration, CategoryCardIllustration } from './home/HomeCardIllustrations';
 import { StorefrontIcon } from '../components/StorefrontIcon';
 import { Link } from 'react-router-dom';
 import { StorefrontImage } from '../shared/ui/storefront/StorefrontImage';
@@ -105,21 +106,48 @@ export const HomeScreen: React.FC = () => {
         </div>
       </section>
 
-      <section className="w-full border-y border-[#E8E9E3]/80 bg-[#FFFDF5] py-8">
-        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 sm:grid-cols-2 sm:px-8 lg:grid-cols-4 lg:px-14">
+      <section className="w-full border-y border-[#E8E9E3]/80 bg-[#FFFDF5] py-10 md:py-12" aria-label="Điểm nổi bật khi mua sắm tại FIDO">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-4 sm:grid-cols-2 sm:px-8 lg:grid-cols-4 lg:gap-5 lg:px-14">
           {([
-            ['account_tree', 'Danh mục rõ ràng', 'Khám phá sản phẩm theo từng nhóm danh mục.'],
-            ['tune', 'Chọn đúng sản phẩm', 'Lựa chọn size và màu phù hợp cho từng sản phẩm.'],
-            ['inventory_2', 'Thông tin minh bạch', 'Giá và khả dụng được hiển thị ngay trong trải nghiệm mua sắm.'],
-            ['payments', 'Thanh toán COD', 'Đặt hàng sau khi đăng nhập và thanh toán khi nhận hàng.'],
-          ] as const).map(([icon, title, description]) => (
-            <div key={title} className="flex items-start gap-4">
-              <StorefrontIcon name={icon} className="mt-0.5 h-7 w-7 text-[#0B2419]" />
-              <div className="space-y-1">
-                <h3 className="text-[15px] font-bold text-[#0B2419]">{title}</h3>
-                <p className="text-[12px] leading-5 text-[#606863]">{description}</p>
+            {
+              kind: 'categories',
+              icon: 'account_tree',
+              title: 'Danh mục dễ khám phá',
+              description: 'Tìm nhóm trang phục và xem những sản phẩm phù hợp với lựa chọn của bạn.',
+            },
+            {
+              kind: 'fit',
+              icon: 'straighten',
+              title: 'Chọn size và màu',
+              description: 'Xem các biến thể size, màu và tình trạng khả dụng của từng sản phẩm.',
+            },
+            {
+              kind: 'details',
+              icon: 'price_check',
+              title: 'Thông tin rõ ràng',
+              description: 'Tham khảo giá và thông tin sản phẩm trước khi quyết định mua.',
+            },
+            {
+              kind: 'cod',
+              icon: 'payments',
+              title: 'Thanh toán COD',
+              description: 'Đặt hàng theo quy trình mua sắm và thanh toán khi nhận hàng.',
+            },
+          ] as const).map(({ kind, icon, title, description }) => (
+            <article key={kind} className="group overflow-hidden rounded-xl border border-[#E2E5DE] bg-white shadow-sm transition-shadow hover:shadow-md">
+              <div className="h-32 overflow-hidden border-b border-[#E8E9E3] bg-[#F4F3EB] px-4 pt-1">
+                <BenefitCardIllustration kind={kind} />
               </div>
-            </div>
+              <div className="flex items-start gap-3 p-5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#E7EDE6] text-[#0B2419]">
+                  <StorefrontIcon name={icon} className="h-5 w-5" />
+                </span>
+                <div className="min-w-0 space-y-2">
+                  <h3 className="text-[14px] font-bold leading-5 text-[#0B2419]">{title}</h3>
+                  <p className="text-[12px] leading-5 text-[#606863]">{description}</p>
+                </div>
+              </div>
+            </article>
           ))}
         </div>
       </section>
@@ -148,22 +176,24 @@ export const HomeScreen: React.FC = () => {
             <div className="py-8 text-sm text-[#687069]">Chưa có danh mục gốc để hiển thị.</div>
           )}
           {!metaQuery.loading && !metaError && rootCategories.length > 0 && (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {rootCategories.slice(0, 8).map((category, index) => (
-                <button
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
+              {rootCategories.slice(0, 8).map((category) => (
+                <Link
                   key={category.category_id}
-                  type="button"
-                  onClick={() => navigate(categoryProductsPath(category.category_id))}
-                  className="group relative min-h-36 overflow-hidden border border-[#E8E9E3] bg-[#FAF9F5] p-5 text-left transition-all hover:-translate-y-0.5 hover:border-[#0B2419] hover:shadow-md"
+                  to={categoryProductsPath(category.category_id)}
+                  className="group flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#E2E5DE] bg-[#FAF9F5] transition-all duration-300 hover:-translate-y-1 hover:border-[#1B5038] hover:shadow-lg"
                 >
-                  <span className="absolute right-4 top-3 font-serif text-5xl text-[#0B2419]/5">0{index + 1}</span>
-                  <StorefrontIcon name="category" className="h-5 w-5 text-[24px] text-[#1B5038]" />
-                  <h3 className="mt-7 font-serif text-xl font-bold text-[#0B2419]">{category.name}</h3>
-                  <span className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#687069] group-hover:text-[#0B2419]">
-                    Khám phá
-                    <StorefrontIcon name="arrow_outward" className="h-5 w-5 text-[14px]" />
-                  </span>
-                </button>
+                  <div className="h-40 overflow-hidden bg-[#F1F0E8] px-3 pt-2">
+                    <CategoryCardIllustration name={category.name} />
+                  </div>
+                  <div className="flex min-h-24 flex-1 items-end justify-between gap-3 border-t border-[#E8E9E3] bg-white p-5">
+                    <div className="min-w-0">
+                      <h3 className="line-clamp-2 font-serif text-xl font-bold leading-6 text-[#0B2419]">{category.name}</h3>
+                      <span className="mt-2 block text-[11px] font-semibold uppercase tracking-wider text-[#687069]">Khám phá danh mục</span>
+                    </div>
+                    <StorefrontIcon name="arrow_outward" className="h-5 w-5 shrink-0 self-center text-[#1B5038] transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </div>
+                </Link>
               ))}
             </div>
           )}
@@ -201,27 +231,38 @@ export const HomeScreen: React.FC = () => {
       </section>
 
       <section className="relative overflow-hidden bg-[#071A12] text-white">
-        <div className="absolute inset-0 opacity-20">
+        <div className="pointer-events-none absolute inset-0 opacity-20" aria-hidden="true">
           <div className="absolute -left-20 -top-24 h-80 w-80 rounded-full border border-[#E8C75B]/40" />
           <div className="absolute -bottom-40 right-10 h-[520px] w-[520px] rounded-full border border-white/10" />
         </div>
-        <div className="relative mx-auto flex max-w-7xl flex-col gap-8 px-4 py-16 sm:px-8 lg:flex-row lg:items-end lg:justify-between lg:px-14 lg:py-20">
+        <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-center gap-10 px-4 py-16 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(320px,440px)] lg:gap-14 lg:px-14 lg:py-20">
           <div className="max-w-2xl">
             <span className="text-[10px] font-bold uppercase tracking-[0.28em] text-[#E8C75B]">FIDO Editorial</span>
             <h2 className="mt-3 font-serif text-4xl leading-tight sm:text-5xl">Tối giản trong hình thức. Rõ ràng trong từng lựa chọn.</h2>
-            <p className="mt-4 max-w-xl text-sm leading-7 text-white/65">
+            <p className="mt-4 max-w-xl text-sm leading-7 text-white/80">
               Khám phá những thiết kế FIDO trong một không gian tinh gọn, nơi hình ảnh, phom dáng, màu sắc và trải nghiệm lựa chọn sản phẩm được đặt ở trung tâm.
             </p>
+            <button
+              type="button"
+              onClick={() => navigate('/products')}
+              className="mt-7 shrink-0 bg-[#E8C75B] px-6 py-3 text-xs font-bold uppercase tracking-wider text-[#071A12] transition-transform hover:-translate-y-0.5"
+            >
+              Mở bộ sưu tập
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => navigate('/products')}
-            className="shrink-0 bg-[#E8C75B] px-6 py-3 text-xs font-bold uppercase tracking-wider text-[#071A12] transition-transform hover:-translate-y-0.5"
-          >
-            Mở bộ sưu tập
-          </button>
+          <figure className="min-w-0 overflow-hidden rounded-xl border border-white/15 bg-[#F2EBDD] shadow-xl">
+            <StorefrontImage
+              src="/images/about/palette.svg"
+              alt="Minh họa phối trang phục xanh, trung tính và vàng theo phong cách FIDO"
+              className="aspect-[9/6.5] h-auto w-full object-cover"
+            />
+            <figcaption className="bg-[#123A29] px-4 py-3 text-[11px] leading-5 text-white/85">
+              Minh họa phong cách, không phải hình ảnh sản phẩm đang bán.
+            </figcaption>
+          </figure>
         </div>
       </section>
+
       <nav aria-label="Tìm hiểu FIDO" className="mx-auto flex max-w-7xl flex-wrap gap-4 px-4 py-8 text-sm sm:px-8"><Link className="min-h-11 p-3 underline" to="/about">Về FIDO</Link><Link className="min-h-11 p-3 underline" to="/policies">Chính sách mua hàng và sau bán</Link></nav>
     </div>
   );
