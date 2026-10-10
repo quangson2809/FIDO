@@ -301,3 +301,8 @@ assert.match(aboutHtml, /loading="lazy"/);
 assert.match(renderWithShell(<Header />, '/about'), /<a[^>]*aria-current="page"[^>]*href="\/about"/);
 assert.match(renderWithShell(<Footer />), /href="\/about"/);
 console.log('About render and navigation checks passed');
+
+const footerHtml = renderToStaticMarkup(<MemoryRouter><Footer /></MemoryRouter>);
+assert.match(footerHtml, /Chăm sóc khách hàng/);
+if (!import.meta.env.VITE_SUPPORT_EMAIL) assert.match(footerHtml, /Chưa cập nhật email CSKH/);
+if (!import.meta.env.VITE_SUPPORT_HOTLINE) assert.match(footerHtml, /Chưa cập nhật hotline CSKH/);

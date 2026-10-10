@@ -1,8 +1,8 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-import { StorefrontIcon } from './StorefrontIcon';
 import { APP_PATHS } from '../routes/paths';
+import { supportContact } from '../features/content/model/supportContact';
 
 export const Footer: React.FC = () => {
   const navigate = useNavigate();
@@ -97,31 +97,13 @@ export const Footer: React.FC = () => {
 
           <div>
             <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-white">
-              Trải nghiệm FIDO
+              Chăm sóc khách hàng
             </h4>
-            <div className="mt-4 space-y-3 text-xs leading-6 text-white/60">
-              <p className="flex items-start gap-2">
-                <StorefrontIcon
-                  name="payments"
-                  className="mt-0.5 h-4 w-4 text-[#E5C358]"
-                />
-                <span>Thanh toán COD trong luồng đặt hàng hiện tại.</span>
-              </p>
-              <p className="flex items-start gap-2">
-                <StorefrontIcon
-                  name="tune"
-                  className="mt-0.5 h-4 w-4 text-[#E5C358]"
-                />
-                <span>Chọn kích cỡ và màu sắc của sản phẩm.</span>
-              </p>
-              <p className="flex items-start gap-2">
-                <StorefrontIcon
-                  name="inventory_2"
-                  className="mt-0.5 h-4 w-4 text-[#E5C358]"
-                />
-                <span>Giá và khả dụng được lấy từ dữ liệu hệ thống.</span>
-              </p>
-            </div>
+            <dl className="mt-4 space-y-4 text-sm text-white/80">
+              <div><dt className="text-xs text-white/60">Email</dt><dd className="mt-1 break-all">{supportContact.email ? <a className="inline-flex min-h-11 items-center underline" href={`mailto:${supportContact.email}`}>{supportContact.email}</a> : 'Chưa cập nhật email CSKH'}</dd></div>
+              <div><dt className="text-xs text-white/60">Hotline</dt><dd className="mt-1">{supportContact.hotline ? <a className="inline-flex min-h-11 items-center underline" href={`tel:${supportContact.hotline.replace(/[\s().-]/g, '')}`}>{supportContact.hotline}</a> : 'Chưa cập nhật hotline CSKH'}</dd></div>
+            </dl>
+            <Link to="/policies" className="mt-4 inline-flex min-h-11 items-center text-sm underline">Chính sách mua hàng & sau bán</Link>
           </div>
         </div>
 

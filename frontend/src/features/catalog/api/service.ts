@@ -17,23 +17,11 @@ const imageOrEmpty = (value?: string | null): string => resolveImageUrl(value) ?
 const summaryToView = (product: ProductSummaryDto): CatalogProductView => ({
   id: String(product.product_id),
   product_id: product.product_id,
-  sku: '',
   name: product.name,
   category: product.category.name,
-  parentCategory: product.category.name,
   brand: product.brand?.name ?? '',
-  price: product.base_price,
   base_price: product.base_price,
   imageUrl: imageOrEmpty(product.thumbnail),
-  galleryImages: product.thumbnail ? [imageOrEmpty(product.thumbnail)] : [],
-  description: '',
-  fabric: '',
-  colors: [],
-  sizes: [],
-  variants: [],
-  rating: 0,
-  reviewsCount: 0,
-  inStockCount: 0,
   sale_status: product.sale_status,
 });
 

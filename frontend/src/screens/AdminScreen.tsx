@@ -1,3 +1,6 @@
+import { LogoutButton } from '../shared/ui/storefront/LogoutButton';
+import { useContext } from 'react';
+import { DirtyFormContext } from '../shared/admin/dirtyFormContext';
 import { AdminIcon } from '../shared/admin/AdminIcon';
 import '../shared/admin/admin.css';
 import React from 'react';
@@ -36,6 +39,7 @@ const navItems: NavItem[] = [
 const groups: NavItem['group'][] = ['Vận hành', 'Catalog', 'Kho', 'Tài khoản', 'Hệ thống'];
 
 export const AdminScreen: React.FC = () => {
+  const dirtyForms = useContext(DirtyFormContext);
   const location = useLocation();
   const navigate = useNavigate();
   const { profile, permissionCodes } = useAuthSession();
@@ -127,10 +131,11 @@ export const AdminScreen: React.FC = () => {
                 <h2 className="truncate font-serif text-lg text-[#0B2419]">{route.breadcrumb}</h2>
               </div>
             </div>
+            <div className="flex items-center gap-2"><LogoutButton admin beforeLogout={dirtyForms.confirmDiscard} className="border border-[#D9DDD6]" />
             <button type="button" aria-label="Về cửa hàng" onClick={() => navigate('/')} className="inline-flex items-center gap-2 border border-[#D9DDD6] bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider transition hover:border-[#0B2419]">
               <AdminIcon name="storefront" />
               <span className="hidden sm:inline">Cửa hàng</span>
-            </button>
+            </button></div>
           </div>
           <div className="border-t border-[#E8E9E3] bg-[#FFFDF5] px-4 py-2 lg:hidden">
             <select

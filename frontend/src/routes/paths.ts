@@ -1,6 +1,7 @@
 export const APP_PATHS = {
   home: '/',
   catalog: '/products',
+  categoryProducts: '/categories/:categoryId',
   productDetail: '/products/:productId',
   checkout: '/checkout',
   checkoutSuccess: '/checkout/success',
@@ -139,3 +140,6 @@ export const resolveAdminRoute = (pathname: string): AdminRouteResolution => {
   if (pathname === ADMIN_PATHS.settings) return { menuKey: 'settings', breadcrumb: 'Cài đặt nội dung' };
   return { menuKey: 'dashboard', breadcrumb: 'Tổng quan' };
 };
+
+export const categoryProductsPath = (categoryId: number): string =>
+  APP_PATHS.categoryProducts.replace(':categoryId', String(categoryId));

@@ -140,7 +140,7 @@ try {
       const trigger = page.getByRole('button', { name: 'Danh mục sản phẩm', exact: true });
       if (touch) await trigger.tap(); else await trigger.click();
       assert.equal(await trigger.getAttribute('aria-expanded'), 'true');
-      await page.locator('#storefront-category-menu').getByRole('button', { name: 'Tất cả sản phẩm', exact: true }).click();
+      await page.locator('#storefront-category-menu').getByRole('link', { name: 'Tất cả sản phẩm', exact: true }).click();
       await page.waitForURL('**/products');
       await page.getByText('25 sản phẩm', { exact: true }).waitFor();
       assert.equal(await trigger.getAttribute('aria-expanded'), 'false');
@@ -156,7 +156,7 @@ try {
     await page.route('**/api/v1/catalog/products?*', route => route.fulfill({ json: recommendations }));
     await page.route('**/api/v1/catalog/products/2', route => route.fulfill({ json: { data: secondProduct } }));
     await go('/');
-    await page.locator('#san-pham-noi-bat').getByRole('button', { name: /Áo FIDO/ }).click();
+    await page.locator('#san-pham-noi-bat').getByRole('button', { name: 'Xem chi tiết: Áo FIDO', exact: true }).click();
     await page.waitForURL('**/products/1');
     assert.notEqual(await page.evaluate(() => window.storefrontScrollCalls.at(-1)?.[0]?.behavior), 'smooth');
     await page.getByRole('region', { name: 'Sản phẩm khác', exact: true }).getByRole('button', { name: /Quần FIDO/ }).click();

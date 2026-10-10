@@ -1,4 +1,5 @@
 import { StorefrontIcon } from '../components/StorefrontIcon';
+import { LogoutButton } from '../shared/ui/storefront/LogoutButton';
 import { QueryFeedback } from '../shared/ui/storefront/QueryFeedback';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -146,6 +147,7 @@ export const ProfileScreen: React.FC = () => {
             </div>
           </div>
           <button type="button" onClick={() => navigate('/products')} className="flex w-full items-center justify-between border border-[#0B2419] bg-[#0B2419] px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-white"><span>Tiếp tục mua sắm</span><StorefrontIcon name="arrow_forward" className="h-5 w-5 text-[18px]" /></button>
+          <LogoutButton className="w-full border border-border-subtle bg-white text-left" />
         </aside>
 
         <div className="space-y-6">

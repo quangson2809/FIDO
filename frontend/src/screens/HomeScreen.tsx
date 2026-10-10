@@ -1,16 +1,16 @@
+import { ProductSummaryCard } from '../features/catalog/components/ProductSummaryCard';
 import { StorefrontIcon } from '../components/StorefrontIcon';
 import { Link } from 'react-router-dom';
 import { StorefrontImage } from '../shared/ui/storefront/StorefrontImage';
 import { QueryFeedback } from '../shared/ui/storefront/QueryFeedback';
 import React, { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { categoryProductsPath } from '../routes/paths';
 import { catalogService } from '../features/catalog/api/service';
 import { useRemoteQuery } from '../shared/hooks/useRemoteQuery';
 import { getStorefrontErrorMessage } from '../services/http/storefrontError';
 
 const HERO_IMAGE = '/images/about/wardrobe.svg';
-
-const money = (value: number): string => `${value.toLocaleString('vi-VN')}₫`;
 
 export const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -153,7 +153,7 @@ export const HomeScreen: React.FC = () => {
                 <button
                   key={category.category_id}
                   type="button"
-                  onClick={() => navigate(`/products?category_id=${category.category_id}`)}
+                  onClick={() => navigate(categoryProductsPath(category.category_id))}
                   className="group relative min-h-36 overflow-hidden border border-[#E8E9E3] bg-[#FAF9F5] p-5 text-left transition-all hover:-translate-y-0.5 hover:border-[#0B2419] hover:shadow-md"
                 >
                   <span className="absolute right-4 top-3 font-serif text-5xl text-[#0B2419]/5">0{index + 1}</span>
@@ -194,37 +194,7 @@ export const HomeScreen: React.FC = () => {
 
           {!productQuery.loading && !productError && products.length > 0 && (
             <div className="mt-7 grid grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
-              {products.map((product) => (
-                <button
-                  key={product.product_id}
-                  type="button"
-                  onClick={() => openProduct(product.id)}
-                  className="group text-left"
-                >
-                  <div className="relative aspect-[3/4] overflow-hidden bg-[#ECEDE8] ring-1 ring-[#E2E5DE]">
-                    {product.imageUrl ? (
-                      <StorefrontImage
-                        src={product.imageUrl}
-                        alt={product.name}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]"
-                      />
-                    ) : (
-                      <span className="flex h-full items-center justify-center text-sm text-[#606863]">Chưa có ảnh</span>
-                    )}
-                    <div className="absolute inset-x-0 bottom-0 translate-y-full bg-[#071A12]/88 px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-white transition-transform duration-300 group-hover:translate-y-0">
-                      Xem chi tiết sản phẩm
-                    </div>
-                  </div>
-                  <div className="space-y-1.5 pt-4">
-                    <div className="flex items-center justify-between gap-3 text-[10px] uppercase tracking-wider text-[#687069]">
-                      <span>{product.category}</span>
-                      <span>{product.brand || 'FIDO'}</span>
-                    </div>
-                    <h3 className="line-clamp-2 text-[14px] font-semibold leading-5 text-[#0B2419]">{product.name}</h3>
-                    <p className="font-mono text-sm font-bold text-[#0B2419]">{money(product.base_price)}</p>
-                  </div>
-                </button>
-              ))}
+              {products.map(product => <ProductSummaryCard key={product.product_id} product={product} onOpenProduct={openProduct} />)}
             </div>
           )}
         </div>

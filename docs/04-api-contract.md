@@ -257,3 +257,12 @@ Dates are inclusive Vietnam calendar dates. Invalid/missing dates, reversed rang
 Week labels are Monday; month labels are day 1. A partial first bucket can have a canonical period_start before `from`,
 but its data is strictly restricted to the requested inclusive range. Empty intersecting periods are included as zero buckets.
 Orders use created_at and current status; sales/products use completed_at. Neither reconstructs state transition history.
+
+### Storefront audit refinement — category browsing (2026-10-10)
+
+API #11 reuses `category_id` for category navigation. A selected parent includes
+products assigned to any descendant category; a leaf still selects that leaf.
+An unknown category returns an empty paginated result. Existing response fields,
+sale-state/variant predicates, effective-price filtering and pagination remain
+unchanged. The frontend category route uses this existing endpoint and does not
+add a separate category API.

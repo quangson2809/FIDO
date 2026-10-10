@@ -1,3 +1,4 @@
+import { ListSearch } from '../../../shared/admin/ListSearch';
 import { useDirtyForm } from '../../../shared/admin/dirtyFormContext';
 import { Modal } from '../../../shared/admin/Modal';
 import React, { useState } from 'react';
@@ -20,6 +21,7 @@ export const PermissionManagementPanel: React.FC<{
   refreshAccess: () => Promise<void>;
   showToast: (message: string) => void;
 }> = ({ access, busy, onBusyChange, refreshAccess, showToast }) => {
+  const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<PermissionDraft>(emptyPermission);
   const [editingPermission, setEditingPermission] = useState<PermissionDto | null>(null);
@@ -96,6 +98,8 @@ export const PermissionManagementPanel: React.FC<{
     }
   };
 
+  const filtered = access.permissions.filter(permission => [permission.code, permission.name].join(' ').toLocaleLowerCase('vi-VN').includes(search.trim().toLocaleLowerCase('vi-VN')));
+
   return (
     <div className="border border-[#E8E9E3] bg-white p-5">
       <h2 className="font-serif text-xl">Danh mục quyền</h2>
@@ -132,8 +136,10 @@ export const PermissionManagementPanel: React.FC<{
         </button>
       </fieldset></form>
 
+      <ListSearch label="Tìm quyền" value={search} onChange={setSearch} count={filtered.length} />
+      {filtered.length === 0 && <p role="status" className="admin-state">Không có quyền khớp tìm kiếm.</p>}
       <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {access.permissions.map((permission) => (
+        {filtered.map((permission) => (
           <div key={permission.permission_id} className="border border-[#E8E9E3] p-3">
             <p className="font-mono text-xs font-bold">{permission.code}</p>
             <p className="mt-1 text-xs text-[#687069]">{permission.name}</p>

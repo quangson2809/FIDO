@@ -1,4 +1,5 @@
 import { AccessChangePreview } from './AccessChangePreview';
+import { ListSearch } from '../../../shared/admin/ListSearch';
 import { useDirtyForm } from '../../../shared/admin/dirtyFormContext';
 import { Modal } from '../../../shared/admin/Modal';
 import React, { useState } from 'react';
@@ -34,6 +35,7 @@ export const RoleManagementPanel: React.FC<{
   refreshAccess: () => Promise<void>;
   showToast: (message: string) => void;
 }> = ({ access, busy, onBusyChange, refreshAccess, showToast }) => {
+  const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [roleDraft, setRoleDraft] = useState<RoleDraft>(emptyRole);
   const [editingRole, setEditingRole] = useState<RoleDetailDto | null>(null);
@@ -114,6 +116,8 @@ export const RoleManagementPanel: React.FC<{
     }
   };
 
+  const filtered = access.roles.filter(role => [role.code, role.name, role.description ?? '', ...role.permissions.map(permission => `${permission.code} ${permission.name}`)].join(' ').toLocaleLowerCase('vi-VN').includes(search.trim().toLocaleLowerCase('vi-VN')));
+
   return (
     <div className="space-y-4">
       {error && (
@@ -179,8 +183,10 @@ export const RoleManagementPanel: React.FC<{
         </button>
       </fieldset></form>
 
+      <ListSearch label="Tìm vai trò" value={search} onChange={setSearch} count={filtered.length} />
+      {filtered.length === 0 && <p role="status" className="admin-state">Không có vai trò khớp tìm kiếm.</p>}
       <div className="grid gap-4 lg:grid-cols-2">
-        {access.roles.map((role) => (
+        {filtered.map((role) => (
           <article key={role.role_id} className="border border-[#E8E9E3] bg-white p-5">
             <div className="flex items-start justify-between gap-4">
               <div>

@@ -6,6 +6,8 @@ import { useAuthSession } from '../features/auth/session/useAuthSession';
 
 import { StorefrontIcon } from './StorefrontIcon';
 import { APP_PATHS } from '../routes/paths';
+import { CategoryNavigation } from '../features/catalog/components/CategoryNavigation';
+import { LogoutButton } from '../shared/ui/storefront/LogoutButton';
 
 const navItems = [
   {
@@ -41,9 +43,7 @@ export const Header: React.FC = () => {
   const { isAuthenticated } = useAuthSession();
   const navigate = useNavigate();
   const location = useLocation();
-  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const categoryButtonRef = useRef<HTMLButtonElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const totalCartCount = cartItems.reduce(
     (total, item) => total + item.quantity,
@@ -51,7 +51,6 @@ export const Header: React.FC = () => {
   );
 
   const navigateTo = (path: string) => {
-    setIsCategoryOpen(false);
     setIsMenuOpen(false);
     navigate(path);
     window.scrollTo({
@@ -64,7 +63,6 @@ export const Header: React.FC = () => {
 
   const closeNavigation = () => {
     setIsMenuOpen(false);
-    setIsCategoryOpen(false);
     window.scrollTo(0, 0);
   };
 
@@ -110,42 +108,7 @@ export const Header: React.FC = () => {
               </span>
             </button>
 
-            <div className="relative" onKeyDown={event => { if (event.key === 'Escape' && isCategoryOpen) { setIsCategoryOpen(false); categoryButtonRef.current?.focus(); } }}>
-              <button
-                type="button"
-                ref={categoryButtonRef} aria-label="Danh mục sản phẩm" aria-expanded={isCategoryOpen} aria-controls="storefront-category-menu"
-                onClick={() => setIsCategoryOpen((value) => !value)}
-                className="flex items-center gap-1.5 py-2 text-[13px] font-semibold tracking-wide text-[#0B2419] transition-colors hover:text-[#1B5038]"
-              >
-                <StorefrontIcon name="grid_view" className="h-5 w-5" />
-                <span className="hidden whitespace-nowrap sm:inline">Danh mục</span>
-                <StorefrontIcon
-                  name="expand_more"
-                  className={`h-4 w-4 transition-transform ${isCategoryOpen ? 'rotate-180' : ''}`}
-                />
-              </button>
-
-              {isCategoryOpen && (
-                <div
-                  id="storefront-category-menu"
-                  onMouseLeave={() => setIsCategoryOpen(false)}
-                  className="absolute left-0 top-full w-64 border border-[#E2E5DE] bg-white p-2 shadow-2xl"
-                >
-                  <button
-                    type="button"
-                    onClick={() => navigateTo('/products')}
-                    className="flex w-full items-center justify-between px-4 py-3 text-left text-[13px] font-semibold text-[#0B2419] transition-colors hover:bg-[#F5F6F2]"
-                  >
-                    <span>Tất cả sản phẩm</span>
-                    <StorefrontIcon name="arrow_forward" className="h-5 w-5" />
-                  </button>
-                  <div className="my-1 h-px bg-[#E8E9E3]" />
-                  <p className="px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#687069]">
-                    Xem các danh mục trên trang sản phẩm
-                  </p>
-                </div>
-              )}
-            </div>
+            <CategoryNavigation onNavigate={closeNavigation} />
 
             <nav
               aria-label="Điều hướng chính"
@@ -171,7 +134,8 @@ export const Header: React.FC = () => {
             </nav>
           </div>
 
-          <div className="flex items-center gap-1 sm:gap-4">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <LogoutButton className="hidden xl:inline-flex xl:items-center" />
             <button
               ref={menuButtonRef}
               type="button"
@@ -222,6 +186,7 @@ export const Header: React.FC = () => {
             }}
             className="absolute inset-x-0 top-full border-b border-[#E2E5DE] bg-white p-4 shadow-lg xl:hidden"
           >
+            <LogoutButton className="w-full text-left" />
             {navItems.map((item) => (
               <Link
                 key={item.path}

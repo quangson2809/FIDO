@@ -201,7 +201,7 @@ try {
   fixture.state.quantity = 0;
   const ordersBeforeJourney = fixture.state.orders;
   await go('/products?category_id=1');
-  await page.getByRole('button', { name:/Áo FIDO/ }).click(); await page.waitForURL('**/products/1');
+  await page.getByRole('button', { name:'Xem chi tiết: Áo FIDO', exact:true }).click(); await page.waitForURL('**/products/1');
   await page.getByRole('button', { name:'Thêm vào giỏ hàng', exact:true }).click();
   await cartDialog.getByRole('button', { name:'Tiếp tục đặt hàng', exact:true }).click(); await page.waitForURL('**/checkout');
   const addRequest = fixture.state.requests.filter(request => request.path === '/cart/items' && request.method === 'POST').at(-1);

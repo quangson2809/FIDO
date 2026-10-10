@@ -1,5 +1,4 @@
-import { StorefrontIcon } from '../../../components/StorefrontIcon';
-import { StorefrontImage } from '../../../shared/ui/storefront/StorefrontImage';
+import { ProductSummaryCard } from './ProductSummaryCard';
 import React from 'react';
 import type { CatalogMetaDto, CatalogProductView } from '../types';
 import type { PaginationMeta } from '../../../types/api';
@@ -206,7 +205,8 @@ export const CatalogProductGrid: React.FC<{
   onOpenProduct: (productId: string) => void;
   onPageChange: (page: number) => void;
   onRetry: () => void;
-  onClear: () => void;
+  onClear?: () => void;
+  emptyMessage?: string;
 }> = ({
   products,
   loading,
@@ -219,6 +219,7 @@ export const CatalogProductGrid: React.FC<{
   onPageChange,
   onRetry,
   onClear,
+  emptyMessage = "Không có sản phẩm phù hợp với bộ lọc hiện tại.",
 }) => (
   <section aria-label="Kết quả sản phẩm" aria-busy={loading} className="min-w-0 flex-1">
     {loading && <div role="status" className="py-24 text-center text-sm text-[#687069]">Đang tải sản phẩm...</div>}
@@ -227,51 +228,15 @@ export const CatalogProductGrid: React.FC<{
     )}
     {!loading && !error && products.length === 0 && (
       <div className="border border-[#E8E9E3] bg-[#FFFDF5] py-20 text-center text-sm text-[#687069]">
-        Không có sản phẩm phù hợp với bộ lọc hiện tại.
-        <button type="button" onClick={onClear} className="mx-auto mt-4 block min-h-11 border border-[#0B2419] px-5">Xóa tất cả bộ lọc</button>
+        {emptyMessage}
+        {onClear && <button type="button" onClick={onClear} className="mx-auto mt-4 block min-h-11 border border-[#0B2419] px-5">Xóa tất cả bộ lọc</button>}
       </div>
     )}
 
     {!loading && !error && products.length > 0 && (
       <>
         <div className={'grid gap-x-4 gap-y-8 ' + gridClass}>
-          {products.map((product) => (
-            <article key={product.id} className="group">
-              <button
-                type="button"
-                onClick={() => onOpenProduct(product.id)}
-                className="block w-full text-left"
-              >
-                <div className="relative aspect-[3/4] overflow-hidden bg-[#F3F4EF] ring-1 ring-[#E8E9E3]">
-                  {product.imageUrl ? (
-                    <StorefrontImage
-                      loading="lazy" src={product.imageUrl}
-                      alt={product.name}
-                      className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.035]"
-                    />
-                  ) : (
-                    <span className="flex h-full items-center justify-center text-sm text-[#606863]">Chưa có ảnh</span>
-                  )}
-                  <div className="absolute inset-x-0 bottom-0 translate-y-full bg-[#071A12]/90 px-4 py-3 text-center text-[10px] font-bold uppercase tracking-[0.18em] text-white backdrop-blur transition duration-300 group-hover:translate-y-0">
-                    Xem chi tiết
-                  </div>
-                </div>
-                <div className="pt-4">
-                  <div className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-wider text-[#687069]">
-                    <span className="truncate">{product.category}</span>
-                    {product.brand && <span className="truncate text-[#1B5038]">{product.brand}</span>}
-                  </div>
-                  <h2 className="mt-1 line-clamp-2 min-h-12 font-serif text-[17px] leading-6 text-[#0B2419]">
-                    {product.name}
-                  </h2>
-                  <div className="mt-2 flex items-center justify-between border-t border-[#E8E9E3] pt-2">
-                    <p className="font-mono text-sm font-bold">{product.base_price.toLocaleString('vi-VN')}₫</p>
-                    <StorefrontIcon name="arrow_forward" className="h-5 w-5 text-[18px] text-[#687069] transition group-hover:translate-x-1 group-hover:text-[#0B2419]" />
-                  </div>
-                </div>
-              </button>
-            </article>
-          ))}
+          {products.map(product => <ProductSummaryCard key={product.id} product={product} onOpenProduct={onOpenProduct} />)}
         </div>
 
         {pagination && totalPages > 1 && (

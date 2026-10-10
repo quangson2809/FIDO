@@ -78,7 +78,11 @@ public class PublicCatalogQueryService {
         );
 
         Specification<Product> specification =
-                CatalogSpecifications.publicProducts(filter);
+                CatalogSpecifications.publicProducts(
+                        filter,
+                        filter.categoryId() == null ? List.of()
+                                : references.categoryIdsIncludingDescendants(filter.categoryId())
+                );
 
         var result = products.findAll(
                 specification,

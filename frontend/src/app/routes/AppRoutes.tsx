@@ -15,6 +15,7 @@ import { ADMIN_DETAIL_PATHS, ADMIN_PATHS, APP_PATHS, toAdminChildPath } from '..
 
 const HomeScreen = lazy(() => import('../../screens/HomeScreen').then((module) => ({ default: module.HomeScreen })));
 const CatalogScreen = lazy(() => import('../../screens/CatalogScreen').then((module) => ({ default: module.CatalogScreen })));
+const CategoryProductsScreen = lazy(() => import('../../screens/CategoryProductsScreen').then(module => ({ default: module.CategoryProductsScreen })));
 const ProductDetailScreen = lazy(() => import('../../screens/ProductDetailScreen').then((module) => ({ default: module.ProductDetailScreen })));
 const CheckoutScreen = lazy(() => import('../../screens/CheckoutScreen').then((module) => ({ default: module.CheckoutScreen })));
 const OrderSuccessScreen = lazy(() => import('../../screens/OrderSuccessScreen').then((module) => ({ default: module.OrderSuccessScreen })));
@@ -121,6 +122,7 @@ export const AppRoutes: React.FC = () => (
       <Route element={<StorefrontLayout />}>
         <Route path={APP_PATHS.home} element={<HomeScreen />} />
         <Route path={APP_PATHS.catalog} element={<CatalogScreen />} />
+        <Route path={APP_PATHS.categoryProducts} element={<CategoryProductsScreen />} />
         <Route path={APP_PATHS.productDetail} element={<ProductDetailScreen />} />
         <Route path={APP_PATHS.about} element={<AboutScreen />} />
         <Route path={APP_PATHS.policy} element={<PolicyScreen />} />

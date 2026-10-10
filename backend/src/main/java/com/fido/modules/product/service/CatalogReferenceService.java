@@ -12,7 +12,13 @@ import com.fido.modules.product.repository.ColorRepository;
 import com.fido.modules.product.repository.ProductRepository;
 import com.fido.modules.product.repository.SizeSystemRepository;
 import com.fido.modules.product.repository.SizeValueRepository;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -66,6 +72,27 @@ public class CatalogReferenceService {
     public Category category(Long categoryId) {
         return categories.findById(categoryId)
                 .orElseThrow(CatalogReferenceService::notFound);
+    }
+
+    public Set<Long> categoryIdsIncludingDescendants(Long categoryId) {
+        // Resolve the hierarchy once; product filtering and pagination remain in SQL.
+        Map<Long, List<Long>> children = new HashMap<>();
+        for (Category category : categories.findAllByOrderByCategoryIdAsc()) {
+            if (category.getParentCategoryId() != null) {
+                children.computeIfAbsent(category.getParentCategoryId(), ignored -> new ArrayList<>())
+                        .add(category.getCategoryId());
+            }
+        }
+        Set<Long> result = new HashSet<>();
+        var pending = new ArrayDeque<Long>();
+        pending.add(categoryId);
+        while (!pending.isEmpty()) {
+            Long id = pending.removeFirst();
+            if (result.add(id)) {
+                pending.addAll(children.getOrDefault(id, List.of()));
+            }
+        }
+        return Set.copyOf(result);
     }
 
     public Brand brand(Long brandId) {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useBlocker } from 'react-router-dom';
 import { DirtyFormContext, discardChanges } from './dirtyFormContext';
 export function DirtyFormProvider({ children }: { children: ReactNode }) {
@@ -19,5 +19,10 @@ export function DirtyFormProvider({ children }: { children: ReactNode }) {
     window.addEventListener('beforeunload', beforeUnload);
     return () => window.removeEventListener('beforeunload', beforeUnload);
   }, []);
-  return <DirtyFormContext.Provider value={register}>{children}</DirtyFormContext.Provider>;
+  const value = useMemo(() => ({ register, confirmDiscard: () => {
+    if (forms.current.size > 0 && !discardChanges()) return false;
+    forms.current.clear();
+    return true;
+  } }), [register]);
+  return <DirtyFormContext.Provider value={value}>{children}</DirtyFormContext.Provider>;
 }

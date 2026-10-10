@@ -6,6 +6,7 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Subquery;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Locale;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -18,7 +19,8 @@ public final class CatalogSpecifications {
     }
 
     public static Specification<Product> publicProducts(
-            CatalogProductFilter filter
+            CatalogProductFilter filter,
+            Collection<Long> categoryIds
     ) {
         return (root, query, cb) -> {
             var predicates = new ArrayList<Predicate>();
@@ -45,12 +47,7 @@ public final class CatalogSpecifications {
             }
 
             if (filter.categoryId() != null) {
-                predicates.add(
-                        cb.equal(
-                                root.get("categoryId"),
-                                filter.categoryId()
-                        )
-                );
+                predicates.add(root.get("categoryId").in(categoryIds));
             }
 
             if (filter.brandId() != null) {

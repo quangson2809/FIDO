@@ -416,3 +416,11 @@ Reviewed behavior: shared Overview/sales formula, completion-cohort returns, cre
 product variant totals and deterministic ranking, permission-aware navigation, stale request suppression and inclusive UTC drill-down.
 MySQL EXPLAIN on the CI fixture uses PK/FK lookups for joins and scans the small Orders cohort; no representative load or timing evidence
 justifies a new index. Assess production-volume execution plans separately before performance tuning.
+
+## Audit follow-up — 2026-10-10
+
+- The requested category browsing fix uses API #11 with `category_id` including the selected category and all descendants. Leaf queries, DTOs, paging, sale-state and effective-price rules remain unchanged. Category adjacency is loaded once per scoped query; products/count/pagination remain database predicates. Admin category filtering is unchanged.
+- The customer category route is `/categories/:categoryId`; Home and menu links use it. It offers navigation and paging without Catalog search/filter controls. Existing `/products` filter URLs remain supported and synchronize from URL state.
+- Product summary uses only API #11 fields. Size/color/material information is retrieved via existing API #12 only when opening a card's information dialog; no per-card eager requests, fabricated ratings/stock, wishlist, new schema or DTO fields.
+- Footer contact comes from public build configuration `VITE_SUPPORT_EMAIL` and `VITE_SUPPORT_HOTLINE`. No confirmed store contact exists in repo/audit; blank configuration displays explicit unavailable copy. The reference image's hotline is not adopted as real store data.
+- Admin searches operate on already-complete metadata/access-control/content responses, without inventing server filters. Existing service writes, size IDs in payloads and permission controls remain intact. Logout uses the existing AuthSession context; Admin checks existing dirty-form ownership before clearing the session.
