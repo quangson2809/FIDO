@@ -16,8 +16,7 @@ export type CategoryArtworkKind =
 const normalizeCategoryName = (name: string): string =>
   name.toLowerCase().normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-;
+    .replace(/đ/g, 'd');
 
 export const resolveCategoryArtwork = (name: string): CategoryArtworkKind => {
   const value = normalizeCategoryName(name);
