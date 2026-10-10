@@ -279,6 +279,7 @@ for (const [name, expected] of [
   ['Áo sơ mi', 'tops'],
   ['Quần jeans', 'bottoms'],
   ['Váy', 'dresses'],
+  ['ĐẦM DỰ TIỆC', 'dresses'],
   ['Phụ kiện', 'accessories'],
   ['Giày thể thao', 'shoes'],
   ['Thời trang nam', 'menswear'],
