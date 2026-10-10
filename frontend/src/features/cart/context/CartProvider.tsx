@@ -8,6 +8,7 @@ import {
 } from '../../../services/http/apiClient';
 import { resolveImageUrl } from '../../../services/media/imageUrl';
 import { useToast } from '../../../shared/ui/toast/useToast';
+import { getStorefrontErrorMessage } from '../../../services/http/storefrontError';
 import { CartContext, type CartContextValue } from './cartContext';
 
 const toCartItems = (cart: CartDto): CartViewItem[] => cart.items.map((item) => ({
@@ -28,6 +29,9 @@ interface CartViewState {
 
 export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { showToast } = useToast();
+  const [cartLoading, setCartLoading] = useState(true);
+  const [cartError, setCartError] = useState<string | null>(null);
+  const confirmedViewRef = useRef<CartViewState>({ items: [], subtotal: 0 });
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [cartItems, setCartItems] = useState<CartViewItem[]>([]);
   const [cartSubtotal, setCartSubtotal] = useState(0);
@@ -49,10 +53,15 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const applyCart = useCallback((cart: CartDto): void => {
-    applyLocalCart(toCartItems(cart), cart.subtotal);
+    const items = toCartItems(cart);
+    confirmedViewRef.current = { items, subtotal: cart.subtotal };
+    setCartError(null);
+    applyLocalCart(items, cart.subtotal);
   }, [applyLocalCart]);
 
   const clearCartState = useCallback((): void => {
+    confirmedViewRef.current = { items: [], subtotal: 0 };
+    setCartError(null);
     applyLocalCart([], 0);
   }, [applyLocalCart]);
 
@@ -63,8 +72,14 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     const version = viewVersionRef.current;
-    const cart = await cartService.getCart();
-    if (version === viewVersionRef.current) applyCart(cart);
+    setCartLoading(true);
+    try {
+      const cart = await cartService.getCart();
+      if (version === viewVersionRef.current) applyCart(cart);
+    } catch (cause: unknown) {
+      if (version === viewVersionRef.current) setCartError(getStorefrontErrorMessage(cause, 'Chưa thể tải giỏ hàng. Vui lòng thử lại.'));
+      throw cause;
+    } finally { setCartLoading(false); }
   }, [applyCart, clearCartState]);
 
   const reconcileAfterMutationFailure = useCallback(async (message: string): Promise<void> => {
@@ -72,9 +87,11 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await refreshCart();
     } catch {
-      clearCartState();
+      // Restore the last confirmed view if reconciliation also fails; never show an empty cart as a successful read.
+      applyLocalCart(confirmedViewRef.current.items, confirmedViewRef.current.subtotal);
+      setCartError('Chưa thể xác nhận thay đổi giỏ hàng. Vui lòng tải lại trước khi thanh toán.');
     }
-  }, [clearCartState, refreshCart, showToast]);
+  }, [applyLocalCart, refreshCart, showToast]);
 
   const enqueueCartMutation = useCallback((
     operation: () => Promise<CartDto>,
@@ -84,13 +101,13 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setMutationPending(true);
     setCartRevision((current) => current + 1);
     mutationQueueRef.current.enqueue(operation, {
-      onLatestSuccess: (cart) => { applyCart(cart); setMutationPending(false); },
+      onLatestSuccess: (cart) => { applyCart(cart); setMutationPending(false); showToast('Đã cập nhật giỏ hàng.'); },
       onLatestError: async () => {
         await reconcileAfterMutationFailure(errorMessage);
         setMutationPending(false);
       },
     });
-  }, [applyCart, reconcileAfterMutationFailure]);
+  }, [applyCart, reconcileAfterMutationFailure, showToast]);
 
   useEffect(() => {
     let active = true;
@@ -98,6 +115,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const loadCart = async () => {
       if (!hasApiAccessToken()) {
         clearCartState();
+        setCartLoading(false);
         return;
       }
 
@@ -106,8 +124,8 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const cart = await cartService.getCart();
         if (active && version === viewVersionRef.current) applyCart(cart);
       } catch {
-        if (active && version === viewVersionRef.current) clearCartState();
-      }
+        if (active && version === viewVersionRef.current) setCartError('Chưa thể tải giỏ hàng. Vui lòng thử lại.');
+      } finally { if (active) setCartLoading(false); }
     };
 
     void loadCart();
@@ -197,10 +215,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!item) return;
 
     const normalizedQuantity = Math.trunc(quantity);
-    if (normalizedQuantity <= 0) {
-      removeFromCart(itemId);
-      return;
-    }
+    if (!Number.isFinite(normalizedQuantity) || normalizedQuantity < 1) return;
     if (normalizedQuantity === item.quantity) return;
 
     const nextItems = cartViewRef.current.items.map((candidate) =>
@@ -236,7 +251,8 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     cartItems,
     cartSubtotal,
     cartRevision,
-    isCartBusy: mutationPending || checkoutPending,
+    isCartBusy: mutationPending || checkoutPending || cartLoading,
+    cartLoading, cartError,
     withCartLock,
     synchronizePurchasedCart,
     refreshCart,

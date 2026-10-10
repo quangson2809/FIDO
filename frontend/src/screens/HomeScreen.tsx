@@ -1,11 +1,14 @@
+import { StorefrontIcon } from '../components/StorefrontIcon';
+import { Link } from 'react-router-dom';
+import { StorefrontImage } from '../shared/ui/storefront/StorefrontImage';
+import { QueryFeedback } from '../shared/ui/storefront/QueryFeedback';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { catalogService } from '../features/catalog/api/service';
 import type { CatalogMetaDto, CatalogProductView } from '../features/catalog/types';
-import { getApiErrorMessage } from '../services/http/apiError';
+import { getStorefrontErrorMessage } from '../services/http/storefrontError';
 
-const HERO_IMAGE =
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuB43j3U0QGfklvPCyrYdm_4uqdh7U1m_789gJgb9dh6wEkBdhY0mzlP7RRDQrhmLsrOknJ0jGRSmcq2PpIVgOXBQ4oZv3lNU8bndQhMe1NvknIqzt4CKSagNfZxwQWAon2oy6ggXrwuqZITn4oBz_g9S47_4eVaQuBi8oxwXP7nih4Pze-AjnEh0sTWqBN0FpTQKswUiZsjLo6Gn8-32F9v9d7VMDcwjWJJ1bBVwriGH43Q4012h51B1A';
+const HERO_IMAGE = '/images/about/wardrobe.svg';
 
 const money = (value: number): string => `${value.toLocaleString('vi-VN')}₫`;
 
@@ -13,6 +16,7 @@ export const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState<CatalogProductView[]>([]);
   const [meta, setMeta] = useState<CatalogMetaDto | null>(null);
+  const [retry, setRetry] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,6 +24,7 @@ export const HomeScreen: React.FC = () => {
     let active = true;
 
     const load = async () => {
+      setLoading(true);
       try {
         const [productPage, catalogMeta] = await Promise.all([
           catalogService.listProducts({ page: 1, page_size: 8 }),
@@ -30,7 +35,7 @@ export const HomeScreen: React.FC = () => {
         setMeta(catalogMeta);
         setError(null);
       } catch (requestError: unknown) {
-        if (active) setError(getApiErrorMessage(requestError, 'Không thể tải dữ liệu catalog.'));
+        if (active) setError(getStorefrontErrorMessage(requestError, 'Không thể tải sản phẩm và danh mục. Vui lòng thử lại.'));
       } finally {
         if (active) setLoading(false);
       }
@@ -40,7 +45,7 @@ export const HomeScreen: React.FC = () => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [retry]);
 
   const openProduct = (productId: string) => {
     navigate(`/products/${encodeURIComponent(productId)}`);
@@ -75,7 +80,7 @@ export const HomeScreen: React.FC = () => {
                 <span className="italic text-[#123A29]">TỐI GIẢN.</span>
               </h1>
               <p className="max-w-md pt-2 text-[15px] font-light leading-7 text-[#424844] sm:text-[16px]">
-                Không gian mua sắm FIDO giữ tinh thần thời trang tối giản, tập trung vào sản phẩm, phom dáng và trải nghiệm chọn biến thể rõ ràng.
+                Khám phá thiết kế tối giản, chọn phom dáng và màu sắc thể hiện phong cách của bạn.
               </p>
               <div className="flex flex-col items-stretch gap-3 pt-6 sm:flex-row sm:items-center">
                 <button
@@ -84,7 +89,7 @@ export const HomeScreen: React.FC = () => {
                   className="inline-flex items-center justify-center gap-2 bg-[#0B2419] px-7 py-4 text-[12px] font-bold uppercase tracking-widest text-white shadow-md transition-all duration-300 hover:bg-[#1B5038]"
                 >
                   <span>Khám phá bộ sưu tập</span>
-                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                  <StorefrontIcon name="arrow_forward" className="h-5 w-5 text-[18px]" />
                 </button>
                 <a
                   href="#san-pham-noi-bat"
@@ -97,12 +102,12 @@ export const HomeScreen: React.FC = () => {
 
             <div className="grid grid-cols-3 gap-4 border-t border-[#E8E9E3]/80 pb-2 pt-10 text-[#0B2419]">
               <div>
-                <span className="block font-serif text-xl font-bold sm:text-2xl">CATALOG</span>
+                <span className="block font-serif text-xl font-bold sm:text-2xl">SẢN PHẨM</span>
                 <span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863] sm:text-[10px]">Bộ sưu tập FIDO</span>
               </div>
               <div>
                 <span className="block font-serif text-xl font-bold sm:text-2xl">SIZE + MÀU</span>
-                <span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863] sm:text-[10px]">Lựa chọn biến thể</span>
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863] sm:text-[10px]">Chọn kích cỡ và màu</span>
               </div>
               <div>
                 <span className="block font-serif text-xl font-bold sm:text-2xl">COD</span>
@@ -112,15 +117,15 @@ export const HomeScreen: React.FC = () => {
           </div>
 
           <div className="relative min-h-[460px] overflow-hidden lg:col-span-7 lg:min-h-full">
-            <img
-              alt="FIDO Ready-to-Wear editorial"
+            <StorefrontImage
+              loading="eager" alt="Minh họa tủ đồ theo phong cách FIDO"
               className="h-full w-full scale-[1.02] object-cover object-center transition-transform duration-700 hover:scale-100"
               src={HERO_IMAGE}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#071A12]/45 via-transparent to-transparent" />
             <div className="absolute bottom-6 right-6 flex items-center gap-3 bg-[#071A12]/85 px-4 py-2.5 text-[#FFFDF5] shadow-lg backdrop-blur-md lg:bottom-10 lg:right-10">
               <span className="h-1.5 w-1.5 rounded-full bg-[#E8C75B]" />
-              <span className="text-[10px] font-bold uppercase tracking-widest">FIDO Editorial • Minimal Wardrobe</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest">Minh họa phong cách · FIDO</span>
             </div>
           </div>
         </div>
@@ -128,14 +133,14 @@ export const HomeScreen: React.FC = () => {
 
       <section className="w-full border-y border-[#E8E9E3]/80 bg-[#FFFDF5] py-8">
         <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 sm:grid-cols-2 sm:px-8 lg:grid-cols-4 lg:px-14">
-          {[
+          {([
             ['account_tree', 'Danh mục rõ ràng', 'Khám phá sản phẩm theo từng nhóm danh mục.'],
-            ['tune', 'Chọn đúng biến thể', 'Lựa chọn size và màu phù hợp cho từng sản phẩm.'],
+            ['tune', 'Chọn đúng sản phẩm', 'Lựa chọn size và màu phù hợp cho từng sản phẩm.'],
             ['inventory_2', 'Thông tin minh bạch', 'Giá và khả dụng được hiển thị ngay trong trải nghiệm mua sắm.'],
             ['payments', 'Thanh toán COD', 'Đặt hàng sau khi đăng nhập và thanh toán khi nhận hàng.'],
-          ].map(([icon, title, description]) => (
+          ] as const).map(([icon, title, description]) => (
             <div key={title} className="flex items-start gap-4">
-              <span className="material-symbols-outlined mt-0.5 text-[28px] text-[#0B2419]">{icon}</span>
+              <StorefrontIcon name={icon} className="mt-0.5 h-7 w-7 text-[#0B2419]" />
               <div className="space-y-1">
                 <h3 className="text-[15px] font-bold text-[#0B2419]">{title}</h3>
                 <p className="text-[12px] leading-5 text-[#606863]">{description}</p>
@@ -159,12 +164,12 @@ export const HomeScreen: React.FC = () => {
               className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#0B2419]"
             >
               Xem toàn bộ
-              <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+              <StorefrontIcon name="arrow_forward" className="h-5 w-5 text-[16px]" />
             </button>
           </div>
 
-          {loading && <div className="py-8 text-sm text-[#687069]">Đang tải danh mục...</div>}
-          {!loading && error && <div className="py-8 text-sm text-red-700">{error}</div>}
+          {loading && <div role="status" className="py-8 text-sm text-[#687069]">Đang tải danh mục...</div>}
+          {!loading && error && <QueryFeedback error={error} onRetry={() => setRetry(value => value + 1)} />}
           {!loading && !error && rootCategories.length === 0 && (
             <div className="py-8 text-sm text-[#687069]">Chưa có danh mục gốc để hiển thị.</div>
           )}
@@ -178,11 +183,11 @@ export const HomeScreen: React.FC = () => {
                   className="group relative min-h-36 overflow-hidden border border-[#E8E9E3] bg-[#FAF9F5] p-5 text-left transition-all hover:-translate-y-0.5 hover:border-[#0B2419] hover:shadow-md"
                 >
                   <span className="absolute right-4 top-3 font-serif text-5xl text-[#0B2419]/5">0{index + 1}</span>
-                  <span className="material-symbols-outlined text-[24px] text-[#1B5038]">category</span>
+                  <StorefrontIcon name="category" className="h-5 w-5 text-[24px] text-[#1B5038]" />
                   <h3 className="mt-7 font-serif text-xl font-bold text-[#0B2419]">{category.name}</h3>
                   <span className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#687069] group-hover:text-[#0B2419]">
                     Khám phá
-                    <span className="material-symbols-outlined text-[14px]">arrow_outward</span>
+                    <StorefrontIcon name="arrow_outward" className="h-5 w-5 text-[14px]" />
                   </span>
                 </button>
               ))}
@@ -197,19 +202,20 @@ export const HomeScreen: React.FC = () => {
             <div>
               <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.2em] text-[#1B5038]">FIDO Selection</span>
               <h2 className="font-serif text-3xl text-[#0B2419] sm:text-4xl">SẢN PHẨM NỔI BẬT</h2>
-              <p className="mt-2 text-[13px] text-[#606863]">Một số thiết kế đang có trong catalog FIDO.</p>
+              <p className="mt-2 text-[13px] text-[#606863]">Một số thiết kế đang có trong bộ sưu tập FIDO.</p>
             </div>
             <button
               type="button"
               onClick={() => navigate('/products')}
               className="border border-[#0B2419] px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors hover:bg-[#0B2419] hover:text-white"
             >
-              Xem catalog
+              Xem sản phẩm
             </button>
           </div>
 
+          <QueryFeedback loading={loading} error={error} onRetry={() => setRetry(value => value + 1)} />
           {!loading && !error && products.length === 0 && (
-            <div className="py-12 text-center text-sm text-[#687069]">Catalog chưa có sản phẩm để hiển thị.</div>
+            <div className="py-12 text-center text-sm text-[#687069]">Chưa có sản phẩm để hiển thị. Bạn có thể xem bộ sưu tập để khám phá thêm.</div>
           )}
 
           {!loading && !error && products.length > 0 && (
@@ -223,13 +229,13 @@ export const HomeScreen: React.FC = () => {
                 >
                   <div className="relative aspect-[3/4] overflow-hidden bg-[#ECEDE8] ring-1 ring-[#E2E5DE]">
                     {product.imageUrl ? (
-                      <img
+                      <StorefrontImage
                         src={product.imageUrl}
                         alt={product.name}
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]"
                       />
                     ) : (
-                      <span className="flex h-full items-center justify-center text-sm text-[#8A918B]">Chưa có ảnh</span>
+                      <span className="flex h-full items-center justify-center text-sm text-[#606863]">Chưa có ảnh</span>
                     )}
                     <div className="absolute inset-x-0 bottom-0 translate-y-full bg-[#071A12]/88 px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-white transition-transform duration-300 group-hover:translate-y-0">
                       Xem chi tiết sản phẩm
@@ -268,10 +274,11 @@ export const HomeScreen: React.FC = () => {
             onClick={() => navigate('/products')}
             className="shrink-0 bg-[#E8C75B] px-6 py-3 text-xs font-bold uppercase tracking-wider text-[#071A12] transition-transform hover:-translate-y-0.5"
           >
-            Mở catalog
+            Mở bộ sưu tập
           </button>
         </div>
       </section>
+      <nav aria-label="Tìm hiểu FIDO" className="mx-auto flex max-w-7xl flex-wrap gap-4 px-4 py-8 text-sm sm:px-8"><Link className="min-h-11 p-3 underline" to="/about">Về FIDO</Link><Link className="min-h-11 p-3 underline" to="/policies">Chính sách mua hàng và sau bán</Link></nav>
     </div>
   );
 };

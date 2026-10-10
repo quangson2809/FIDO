@@ -1,4 +1,6 @@
+import { StorefrontIcon } from '../../../components/StorefrontIcon';
 import React from 'react';
+import { StorefrontImage } from '../../../shared/ui/storefront/StorefrontImage';
 import type {
   CatalogProductView,
   ProductDetailDto,
@@ -11,24 +13,27 @@ export const ProductGallerySection: React.FC<{
   activeImageIndex: number;
   onSelectImage: (index: number) => void;
   onMoveImage: (offset: -1 | 1) => void;
+  onZoom?: () => void;
 }> = ({
   product,
   gallery,
   activeImageIndex,
   onSelectImage,
   onMoveImage,
+  onZoom,
 }) => (
-  <div className="flex flex-col-reverse gap-4 md:flex-row md:items-start">
+  <div className="min-w-0 flex flex-col-reverse gap-4 md:flex-row md:items-start">
     {gallery.length > 1 && (
       <div className="flex gap-3 overflow-x-auto pb-1 md:w-24 md:flex-col md:overflow-visible">
         {gallery.map((image, index) => (
           <button
             key={image + '-' + index}
             type="button"
+            aria-label={`Xem ảnh ${index + 1}`} aria-pressed={activeImageIndex === index}
             onClick={() => onSelectImage(index)}
             className={'group h-28 w-20 shrink-0 overflow-hidden bg-[#F3F4EF] transition md:w-24 ' + (activeImageIndex === index ? 'ring-2 ring-[#0B2419] ring-offset-2' : 'ring-1 ring-[#E8E9E3] hover:ring-[#687069]')}
           >
-            <img
+            <StorefrontImage
               src={image}
               alt={product.images[index]?.alt_text ?? product.name + ' ' + (index + 1)}
               className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
@@ -38,16 +43,17 @@ export const ProductGallerySection: React.FC<{
       </div>
     )}
 
-    <div className="group relative aspect-[4/5] flex-1 overflow-hidden bg-[#F3F4EF] shadow-sm">
+    <div className="group relative aspect-[4/5] min-w-0 flex-1 overflow-hidden bg-[#F3F4EF] shadow-sm">
       {gallery.length > 0 ? (
-        <img
-          src={gallery[activeImageIndex] ?? gallery[0]}
+        <StorefrontImage
+          loading="eager" src={gallery[activeImageIndex] ?? gallery[0]}
           alt={product.images[activeImageIndex]?.alt_text ?? product.name}
           className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.02]"
         />
       ) : (
-        <div className="flex h-full items-center justify-center text-sm text-[#8A918B]">Chưa có ảnh</div>
+        <div className="flex h-full items-center justify-center text-sm text-[#606863]">Chưa có ảnh</div>
       )}
+      {gallery.length > 0 && onZoom && <button type="button" onClick={onZoom} className="absolute bottom-4 right-4 min-h-11 bg-white px-4 text-sm shadow-sm">Phóng to ảnh</button>}
       {gallery.length > 1 && (
         <>
           <button
@@ -56,7 +62,7 @@ export const ProductGallerySection: React.FC<{
             onClick={() => onMoveImage(-1)}
             className="absolute left-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-[#0B2419] shadow-md backdrop-blur transition hover:bg-white"
           >
-            <span className="material-symbols-outlined">chevron_left</span>
+            <StorefrontIcon name="chevron_left" className="h-5 w-5 " />
           </button>
           <button
             type="button"
@@ -64,7 +70,7 @@ export const ProductGallerySection: React.FC<{
             onClick={() => onMoveImage(1)}
             className="absolute right-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-[#0B2419] shadow-md backdrop-blur transition hover:bg-white"
           >
-            <span className="material-symbols-outlined">chevron_right</span>
+            <StorefrontIcon name="chevron_right" className="h-5 w-5 " />
           </button>
         </>
       )}
@@ -95,7 +101,7 @@ export const ProductSpecsSection: React.FC<{
       <div className="border border-[#E8E9E3] bg-[#071A12] p-6 text-white sm:p-7">
         <div className="flex items-start gap-4">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#E8C75B] text-[#071A12]">
-            <span className="material-symbols-outlined">checkroom</span>
+            <StorefrontIcon name="checkroom" className="h-5 w-5 " />
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#E8C75B]">Chất liệu & bảo quản</p>
@@ -163,7 +169,7 @@ export const ProductPurchasePanel: React.FC<{
       </div>
       {selectedVariant && (
         <div className={'px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ' + (selectedVariant.available_quantity > 0 ? 'bg-[#E8C75B] text-[#071A12]' : 'bg-[#E8E9E3] text-[#687069]')}>
-          {selectedVariant.sale_status === 'STOPPED' ? 'Biến thể ngừng bán' : selectedVariant.available_quantity > 0 ? 'Còn ' + selectedVariant.available_quantity : 'Hết hàng'}
+          {selectedVariant.sale_status === 'STOPPED' ? 'Lựa chọn ngừng bán' : selectedVariant.available_quantity > 0 ? 'Còn ' + selectedVariant.available_quantity : 'Hết hàng'}
         </div>
       )}
     </div>
@@ -188,8 +194,9 @@ export const ProductPurchasePanel: React.FC<{
                 key={size.size_value_id}
                 type="button"
                 aria-pressed={selectedSizeValueId === size.size_value_id}
+                title={available ? size.display_name : `${size.display_name}: hết hàng`}
                 onClick={() => onSelectSize(size.size_value_id)}
-                className={'relative border px-2 py-2.5 text-sm font-semibold transition ' + (selectedSizeValueId === size.size_value_id ? 'border-[#0B2419] bg-[#0B2419] text-white' : 'border-[#D9DDD6] bg-white hover:border-[#0B2419]') + (available ? '' : ' opacity-45')}
+                className={'relative border px-2 py-2.5 text-sm font-semibold transition ' + (selectedSizeValueId === size.size_value_id ? 'border-[#0B2419] bg-[#0B2419] text-white' : 'border-[#D9DDD6] bg-white hover:border-[#0B2419]' + (available ? '' : ' text-[#606863]'))}
               >
                 {size.display_name}
                 {!available && <span className="absolute inset-x-1 top-1/2 h-px -rotate-12 bg-current opacity-60" />}
@@ -213,8 +220,9 @@ export const ProductPurchasePanel: React.FC<{
                 type="button"
                 disabled={!compatible}
                 aria-pressed={selectedColorId === color.color_id}
+                title={!compatible ? "Màu này không được bán ở kích cỡ đã chọn" : !available ? "Hết hàng ở kích cỡ đã chọn" : color.name}
                 onClick={() => onSelectColor(color.color_id)}
-                className={'inline-flex items-center gap-2 border px-3 py-2.5 text-sm transition disabled:cursor-not-allowed ' + (selectedColorId === color.color_id ? 'border-[#0B2419] bg-[#0B2419] text-white' : 'border-[#D9DDD6] bg-white hover:border-[#0B2419]') + (available ? '' : ' opacity-45')}
+                className={'inline-flex items-center gap-2 border px-3 py-2.5 text-sm transition disabled:cursor-not-allowed ' + (selectedColorId === color.color_id ? 'border-[#0B2419] bg-[#0B2419] text-white' : 'border-[#D9DDD6] bg-white hover:border-[#0B2419]' + (available ? '' : ' text-[#606863]'))}
               >
                 <span className={'h-2.5 w-2.5 rounded-full border ' + (selectedColorId === color.color_id ? 'border-white bg-[#E8C75B]' : 'border-[#687069] bg-[#F3F4EF]')} />
                 {color.name}
@@ -239,7 +247,7 @@ export const ProductPurchasePanel: React.FC<{
 
     {product.sale_status === 'ON_SALE' && onSaleVariants.length === 0 && (
       <div className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        Sản phẩm chưa có biến thể đang bán.
+        Sản phẩm chưa có lựa chọn đang bán.
       </div>
     )}
 
@@ -248,7 +256,7 @@ export const ProductPurchasePanel: React.FC<{
         <div className="flex h-12 items-center border border-[#D9DDD6] bg-white">
           <button
             type="button"
-            aria-label="Giảm số lượng"
+            aria-label="Giảm số lượng" disabled={quantity <= 1}
             onClick={() => onQuantityChange(Math.max(1, quantity - 1))}
             className="h-full w-10 transition hover:bg-[#F3F4EF]"
           >
@@ -275,7 +283,7 @@ export const ProductPurchasePanel: React.FC<{
         </button>
       </div>
       <p className="mt-3 text-[10px] leading-5 text-[#687069]">
-        {selectedVariant ? 'Giá và số lượng khả dụng theo kích cỡ, màu sắc đã chọn.' : 'Giá tham khảo có thể khác giá của biến thể bạn chọn.'}
+        {selectedVariant ? 'Giá và số lượng khả dụng theo kích cỡ, màu sắc đã chọn.' : 'Giá tham khảo có thể khác giá theo kích cỡ và màu bạn chọn.'}
       </p>
     </div>
   </aside>
@@ -293,7 +301,7 @@ export const ProductRecommendationsSection: React.FC<{
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-8 lg:px-14">
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#1B5038]">Curated selection</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#1B5038]">Có thể bạn quan tâm</p>
             <h2 className="mt-1 font-serif text-3xl">Sản phẩm khác</h2>
           </div>
           <button
@@ -301,7 +309,7 @@ export const ProductRecommendationsSection: React.FC<{
             onClick={onOpenCatalog}
             className="text-xs font-bold uppercase tracking-wider underline underline-offset-4"
           >
-            Xem catalog
+            Xem sản phẩm
           </button>
         </div>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -314,13 +322,13 @@ export const ProductRecommendationsSection: React.FC<{
             >
               <div className="aspect-[3/4] overflow-hidden bg-[#F3F4EF] ring-1 ring-[#E8E9E3]">
                 {item.imageUrl ? (
-                  <img
+                  <StorefrontImage
                     src={item.imageUrl}
                     alt={item.name}
                     className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                   />
                 ) : (
-                  <span className="flex h-full items-center justify-center text-xs text-[#8A918B]">Chưa có ảnh</span>
+                  <span className="flex h-full items-center justify-center text-xs text-[#606863]">Chưa có ảnh</span>
                 )}
               </div>
               <div className="p-3">

@@ -1,8 +1,9 @@
+import { QueryFeedback } from '../shared/ui/storefront/QueryFeedback';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { contentService } from '../features/content/api/service';
 import type { PublicContentPageDto } from '../features/content/types';
-import { getApiErrorMessage } from '../services/http/apiError';
+import { getStorefrontErrorMessage } from '../services/http/storefrontError';
 
 const POLICY_PAGE_CODES = [
   'shipping-policy',
@@ -13,6 +14,7 @@ const POLICY_PAGE_CODES = [
 export const PolicyScreen: React.FC = () => {
   const navigate = useNavigate();
   const [pages, setPages] = useState<PublicContentPageDto[]>([]);
+  const [retry, setRetry] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,6 +22,7 @@ export const PolicyScreen: React.FC = () => {
     let active = true;
 
     const loadPolicies = async () => {
+      setLoading(true);
       try {
         const results = await Promise.allSettled(
           POLICY_PAGE_CODES.map((pageCode) => contentService.getPublicPage(pageCode)),
@@ -32,13 +35,13 @@ export const PolicyScreen: React.FC = () => {
 
         setPages(loaded);
         setError(
-          loaded.length === 0
-            ? 'Không thể tải nội dung chính sách từ backend.'
+          results.some(result => result.status === 'rejected')
+            ? 'Một số chính sách chưa tải được. Vui lòng thử lại để xem đầy đủ nội dung.'
             : null,
         );
       } catch (requestError: unknown) {
         if (active) {
-          setError(getApiErrorMessage(requestError, 'Không thể tải nội dung chính sách.'));
+          setError(getStorefrontErrorMessage(requestError, 'Không thể tải nội dung chính sách.'));
         }
       } finally {
         if (active) setLoading(false);
@@ -47,36 +50,24 @@ export const PolicyScreen: React.FC = () => {
 
     void loadPolicies();
     return () => { active = false; };
-  }, []);
+  }, [retry]);
 
   return (
     <div className="min-h-[60vh] bg-[#FAF9F5] px-4 py-12 text-[#0B2419]">
       <div className="mx-auto max-w-3xl space-y-5">
         <div className="border border-[#E8E9E3] bg-white p-8">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#687069]">FIDO content</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#687069]">Thông tin mua hàng</p>
           <h1 className="mt-2 font-serif text-3xl">Chính sách</h1>
           <p className="mt-4 text-sm leading-6 text-[#606863]">
-            Nội dung bên dưới được tải từ content API của backend.
+            Tìm hiểu chính sách giao hàng, trả hàng và quyền riêng tư trước khi đặt hàng.
           </p>
         </div>
 
-        {loading && (
-          <div className="border border-[#E8E9E3] bg-white p-8 text-sm text-[#687069]">
-            Đang tải chính sách...
-          </div>
-        )}
+        <QueryFeedback loading={loading} error={error} onRetry={() => setRetry(value => value + 1)} />
 
-        {!loading && error && (
-          <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
+        {pages.length > 0 && <nav aria-label="Mục lục chính sách" className="flex flex-wrap gap-3 text-sm">{pages.map(page => <a key={page.page_code} className="min-h-11 border bg-white px-4 py-3 underline" href={`#${page.page_code}`}>{page.title}</a>)}</nav>}
         {!loading && pages.map((page) => (
-          <article key={page.page_code} className="border border-[#E8E9E3] bg-white p-8">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#687069]">
-              {page.page_code}
-            </p>
+          <article id={page.page_code} key={page.page_code} className="scroll-mt-24 border border-[#E8E9E3] bg-white p-5 sm:p-8">
             <h2 className="mt-2 font-serif text-2xl">{page.title}</h2>
             <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-[#424844]">
               {page.content}

@@ -112,7 +112,7 @@ export const Footer: React.FC = () => {
                   name="tune"
                   className="mt-0.5 h-4 w-4 text-[#E5C358]"
                 />
-                <span>Chọn size và màu theo biến thể sản phẩm.</span>
+                <span>Chọn kích cỡ và màu sắc của sản phẩm.</span>
               </p>
               <p className="flex items-start gap-2">
                 <StorefrontIcon

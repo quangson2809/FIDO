@@ -47,7 +47,7 @@ await page.route('**/api/v1/**', async route => {
     quantity = 0;
     return send({ data: { order_id: orders, order_code: `ORD-${orders}`, order_status: 'PENDING' } }, 201);
   }
-  if (/^\/me\/orders\/\d+$/.test(path)) return send({ data: { order_id: orders, order_code: `ORD-${orders}`, order_status: 'PENDING' } });
+  if (/^\/me\/orders\/\d+$/.test(path)) return send({ data: { order_id: orders, order_code: `ORD-${orders}`, order_status: 'PENDING', recipient: { phone: me.account.phone, email: me.account.email, address: 'Hà Nội' }, items: [], subtotal: 0, discount: 0, shipping_fee: 0, total: 0, payment: { payment_status: 'UNPAID', amount_due: 0, amount_received: 0, amount_refunded: 0 }, shipping_info: null, created_at: me.account.created_at, updated_at: me.account.updated_at, completed_at: null, returned_at: null } });
   return send({ data: [], meta: { page: 1, page_size: 20, total: 0, total_pages: 0 } });
 });
 const loadQuote = async () => {
@@ -58,6 +58,7 @@ const openDialog = () => page.getByRole('button', { name: /^Đặt hàng COD/ })
 const confirm = () => page.getByRole('button', { name: 'Xác nhận đặt hàng COD', exact: true });
 try {
   await page.goto('http://localhost:5181/checkout');
+  await page.getByLabel('Chọn địa chỉ nhận hàng').selectOption('1');
   await loadQuote();
   await openDialog();
   const dialog = page.getByRole('dialog', { name: 'Xác nhận đặt hàng', exact: true });
@@ -90,20 +91,21 @@ try {
 
   rejectOrder = false;
   await loadQuote();
+  await page.getByLabel('Chọn địa chỉ nhận hàng').selectOption('new');
   await page.getByLabel('Địa chỉ nhận hàng *').fill('Địa chỉ mới');
   assert.equal(await page.getByRole('button', { name: /^Đặt hàng COD/ }).count(), 0, 'editing invalidates quote');
   await loadQuote();
   await openDialog();
-  await mkdir('/tmp/fido-checkout-qa', { recursive: true });
+  await mkdir('.browser-evidence', { recursive: true });
   for (const width of [375, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     assert.equal(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth), true);
-    await page.screenshot({ path: `/tmp/fido-checkout-qa/confirmation-${width}.png` });
+    await page.screenshot({ animations: 'disabled', path: `.browser-evidence/after-confirmation-${width}.png` });
   }
   await page.getByRole('button', { name: 'Quay lại chỉnh sửa' }).click();
 
   // Pending cart writes disable quotation; their response invalidates an older quote.
-  await page.locator('header').getByRole('button').filter({ hasText: 'shopping_bag' }).click();
+  await page.getByRole('button', { name: /^Giỏ hàng \(/ }).click();
   delayMutation = true;
   await page.getByLabel('Tăng số lượng').click();
   await page.getByRole('button', { name: 'Đóng giỏ hàng', exact: true }).last().click();
@@ -115,7 +117,7 @@ try {
   await openDialog();
   delayOrder = true;
   await confirm().evaluate(el => { el.click(); el.click(); });
-  await page.getByRole('button', { name: 'Đang tạo đơn...', exact: true }).waitFor();
+  await dialog.getByRole('button', { name: 'Đang tạo đơn...', exact: true }).waitFor();
   await page.waitForTimeout(100);
   assert.equal(orders, 2, 'synchronous double click sends only one additional order');
   await page.keyboard.press('Escape');
@@ -123,21 +125,22 @@ try {
   releaseOrder();
   await page.waitForURL('**/checkout/success/2');
   assert.equal(quantity, 0);
-  assert.match(await page.locator('header').getByRole('button').filter({ hasText: 'shopping_bag' }).innerText(), /0$/);
+  assert.match(await page.getByRole('button', { name: /^Giỏ hàng \(/ }).innerText(), /0$/);
   await page.goto('http://localhost:5181/checkout');
-  await page.getByText('Giỏ hàng trống. Hãy quay lại catalog trước khi checkout.').waitFor();
+  await page.getByText('Giỏ hàng trống.', { exact: false }).waitFor();
   assert.equal(await page.getByRole('button', { name: /Kiểm tra & báo giá/ }).isDisabled(), true);
   // A failed reconciliation read must not turn a successful order into an error or a retry.
   quantity = 1;
   delayOrder = false;
   failCartRefresh = true;
   await page.reload();
+  await page.getByLabel('Chọn địa chỉ nhận hàng').selectOption('1');
   await loadQuote();
   await openDialog();
   await confirm().click();
   await page.waitForURL('**/checkout/success/3');
   assert.equal(orders, 3);
-  assert.match(await page.locator('header').getByRole('button').filter({ hasText: 'shopping_bag' }).innerText(), /0$/);
+  assert.match(await page.getByRole('button', { name: /^Giỏ hàng \(/ }).innerText(), /0$/);
   await page.getByText('Đơn đã được tạo. Chưa thể tải lại giỏ hàng; vui lòng tải lại trang khi có kết nối.').waitFor();
   assert.deepEqual(errors, []);
   console.log('Checkout browser flow: PASS (confirmation/cancel/price change/rejection/stale quote/pending mutation/double click/refresh/375,768,1440)');

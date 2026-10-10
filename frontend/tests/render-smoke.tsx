@@ -40,6 +40,7 @@ const profile: MeDto = {
 
 const authValue: AuthSessionContextValue = {
   status: 'authenticated',
+  sessionError: null,
   profile,
   isAuthenticated: true,
   isAdmin: true,
@@ -65,6 +66,7 @@ const cartValue: CartContextValue = {
   cartSubtotal: 398000,
   cartRevision: 1,
   isCartBusy: false,
+  cartLoading: false, cartError: null,
   withCartLock: async (operation) => operation(),
   synchronizePurchasedCart: asyncNoOp,
   refreshCart: asyncNoOp,

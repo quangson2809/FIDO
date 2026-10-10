@@ -8,6 +8,8 @@ export interface CartContextValue {
   cartSubtotal: number;
   cartRevision: number;
   isCartBusy: boolean;
+  cartLoading: boolean;
+  cartError: string | null;
   withCartLock: <T>(operation: () => Promise<T>) => Promise<T>;
   synchronizePurchasedCart: () => void;
   refreshCart: () => Promise<void>;

@@ -10,6 +10,7 @@ import {
 import { Footer } from '../../components/Footer';
 import { Header } from '../../components/Header';
 import { useAuthSession } from '../../features/auth/session/useAuthSession';
+import { QueryFeedback } from '../../shared/ui/storefront/QueryFeedback';
 import { ADMIN_DETAIL_PATHS, ADMIN_PATHS, APP_PATHS, toAdminChildPath } from '../../routes/paths';
 
 const HomeScreen = lazy(() => import('../../screens/HomeScreen').then((module) => ({ default: module.HomeScreen })));
@@ -54,19 +55,22 @@ export const RouteFallback = () => (
 );
 
 const StorefrontLayout: React.FC = () => (
-  <div className="flex min-h-screen flex-col bg-[#FAF9F5] text-[#0B2419]">
+  <div className="storefront flex min-h-screen flex-col bg-[#FAF9F5] text-[#0B2419]">
+    <a href="#storefront-main" className="sr-only focus:not-sr-only focus:bg-white focus:p-4">Đến nội dung chính</a>
     <Header />
-    <main className="flex-1 pb-8"><Outlet /></main>
+    <main id="storefront-main" tabIndex={-1} className="flex-1 pb-8"><Outlet /></main>
     <CartDrawer />
     <Footer />
   </div>
 );
 
 const RequireAuthenticated: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { status, isAuthenticated } = useAuthSession();
+  const { status, sessionError, refreshProfile, isAuthenticated } = useAuthSession();
   const location = useLocation();
 
-  if (status === 'checking') return <RouteFallback />;
+  if (status === 'checking') return sessionError
+    ? <div className="mx-auto max-w-xl p-6"><QueryFeedback error={sessionError} onRetry={() => { void refreshProfile().catch(() => undefined); }} /></div>
+    : <RouteFallback />;
 
   if (!isAuthenticated) {
     return (
@@ -82,9 +86,10 @@ const RequireAuthenticated: React.FC<{ children: ReactNode }> = ({ children }) =
 };
 
 const RequireAdmin: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { status, isAuthenticated, isAdmin } = useAuthSession();
+  const { status, sessionError, refreshProfile, isAuthenticated, isAdmin } = useAuthSession();
 
   if (status === 'checking') {
+    if (sessionError) return <div className="mx-auto max-w-xl p-6"><QueryFeedback error={sessionError} onRetry={() => { void refreshProfile().catch(() => undefined); }} /></div>;
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#071A12] text-sm text-white/70">
         Đang kiểm tra quyền quản trị...

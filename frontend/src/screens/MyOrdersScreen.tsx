@@ -1,15 +1,14 @@
+import { StorefrontIcon } from '../components/StorefrontIcon';
+import { QueryFeedback } from '../shared/ui/storefront/QueryFeedback';
+import { customerOrderLabels, customerPaymentLabels } from '../features/orders/model/orderLabels';
+import { formatVietnamDateTime } from '../shared/time/formatVietnamDateTime';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { orderService } from '../features/orders/api/service';
 import type { OrderPage, OrderStatus } from '../features/orders/types';
-import { getApiErrorMessage } from '../services/http/apiError';
+import { getStorefrontErrorMessage } from '../services/http/storefrontError';
 
 const statuses: OrderStatus[] = ['PENDING', 'CONFIRMED', 'PREPARING', 'SHIPPING', 'COMPLETED', 'DELIVERY_FAILED', 'CANCELLED', 'RETURNED'];
-const statusLabel: Record<OrderStatus, string> = {
-  PENDING: 'Chờ xác nhận', CONFIRMED: 'Đã xác nhận', PREPARING: 'Đang chuẩn bị', SHIPPING: 'Đang giao',
-  COMPLETED: 'Hoàn tất', DELIVERY_FAILED: 'Giao thất bại', CANCELLED: 'Đã hủy', RETURNED: 'Đã trả hàng',
-};
-
 const statusClass: Record<OrderStatus, string> = {
   PENDING: 'bg-[#FAF4DF] text-[#725C00]',
   CONFIRMED: 'bg-[#E8F1EC] text-[#1B5038]',
@@ -27,6 +26,7 @@ export const MyOrdersScreen: React.FC = () => {
   const [page, setPage] = useState(1);
   const [orders, setOrders] = useState<OrderPage | null>(null);
   const [loading, setLoading] = useState(true);
+  const [retry, setRetry] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -37,14 +37,14 @@ export const MyOrdersScreen: React.FC = () => {
         const result = await orderService.getOrders({ ...(status === 'ALL' ? {} : { order_status: status }), page, page_size: 10 });
         if (active) { setOrders(result); setError(null); }
       } catch (requestError: unknown) {
-        if (active) { setOrders(null); setError(getApiErrorMessage(requestError, 'Không thể tải danh sách đơn hàng.')); }
+        if (active) { setOrders(null); setError(getStorefrontErrorMessage(requestError, 'Không thể tải danh sách đơn hàng.')); }
       } finally {
         if (active) setLoading(false);
       }
     };
     void load();
     return () => { active = false; };
-  }, [page, status]);
+  }, [page, status, retry]);
 
   const changeStatus = (value: OrderStatus | 'ALL') => { setStatus(value); setPage(1); };
 
@@ -59,34 +59,34 @@ export const MyOrdersScreen: React.FC = () => {
         </div>
       </section>
 
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-6 overflow-x-auto border-b border-[#D9DDD6]">
           <div className="flex min-w-max gap-1 pb-3">
-            <button type="button" onClick={() => changeStatus('ALL')} className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition ${status === 'ALL' ? 'bg-[#0B2419] text-white' : 'bg-white text-[#606863] hover:text-[#0B2419]'}`}>Tất cả</button>
-            {statuses.map((item) => <button key={item} type="button" onClick={() => changeStatus(item)} className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition ${status === item ? 'bg-[#0B2419] text-white' : 'bg-white text-[#606863] hover:text-[#0B2419]'}`}>{statusLabel[item]}</button>)}
+            <button type="button" aria-pressed={status === 'ALL'} onClick={() => changeStatus('ALL')} className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition ${status === 'ALL' ? 'bg-[#0B2419] text-white' : 'bg-white text-[#606863] hover:text-[#0B2419]'}`}>Tất cả</button>
+            {statuses.map((item) => <button key={item} type="button" aria-pressed={status === item} onClick={() => changeStatus(item)} className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition ${status === item ? 'bg-[#0B2419] text-white' : 'bg-white text-[#606863] hover:text-[#0B2419]'}`}>{customerOrderLabels[item]}</button>)}
           </div>
         </div>
 
         {loading ? (
-          <div className="border border-[#E8E9E3] bg-white p-12 text-center text-sm text-[#687069]">Đang tải đơn hàng...</div>
+          <div role="status" className="border border-[#E8E9E3] bg-white p-12 text-center text-sm text-[#687069]">Đang tải đơn hàng...</div>
         ) : error ? (
-          <div className="border border-red-200 bg-red-50 p-5 text-sm text-red-700">{error}</div>
+          <QueryFeedback error={error} onRetry={() => setRetry(value => value + 1)} />
         ) : !orders || orders.items.length === 0 ? (
-          <div className="border border-[#E8E9E3] bg-white px-6 py-16 text-center"><span className="material-symbols-outlined text-4xl text-[#687069]">receipt_long</span><p className="mt-3 font-serif text-xl">Không có đơn hàng</p><p className="mt-1 text-sm text-[#687069]">Bộ lọc hiện tại chưa có dữ liệu.</p></div>
+          <div className="border border-[#E8E9E3] bg-white px-6 py-16 text-center"><StorefrontIcon name="receipt_long" className="h-8 w-8 text-4xl text-[#687069]" /><p className="mt-3 font-serif text-xl">Không có đơn hàng</p><p className="mt-1 text-sm text-[#687069]">Bộ lọc hiện tại chưa có dữ liệu.</p><button type="button" onClick={() => status === 'ALL' ? navigate('/products') : changeStatus('ALL')} className="mt-4 border px-5 py-3 text-sm">{status === 'ALL' ? 'Khám phá sản phẩm' : 'Xem tất cả đơn'}</button></div>
         ) : (
           <div className="grid gap-4">
             {orders.items.map((order) => (
               <article key={order.order_id} className="group overflow-hidden border border-[#E8E9E3] bg-white shadow-sm transition hover:border-[#BFC5BC] hover:shadow-md">
                 <div className="flex flex-col gap-4 border-b border-[#E8E9E3] bg-[#FFFDF5] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex flex-wrap items-center gap-3"><span className="font-mono text-sm font-bold">{order.order_code}</span><span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${statusClass[order.order_status]}`}>{statusLabel[order.order_status]}</span></div>
-                  <p className="text-xs text-[#687069]">{order.created_at}</p>
+                  <div className="flex flex-wrap items-center gap-3"><span className="font-mono text-sm font-bold">{order.order_code}</span><span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${statusClass[order.order_status]}`}>{customerOrderLabels[order.order_status]}</span></div>
+                  <p className="text-xs text-[#687069]">{formatVietnamDateTime(order.created_at)}</p>
                 </div>
                 <div className="flex flex-col gap-5 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
                   <div className="grid gap-3 text-sm sm:grid-cols-2 sm:gap-x-10">
-                    <div><p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">Thanh toán</p><p className="mt-1 font-semibold">{order.payment_status}</p></div>
+                    <div><p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">Thanh toán</p><p className="mt-1 font-semibold">{customerPaymentLabels[order.payment_status]}</p></div>
                     <div><p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">Giá trị đơn</p><p className="mt-1 font-serif text-xl font-bold">{order.total.toLocaleString('vi-VN')}₫</p></div>
                   </div>
-                  <button type="button" onClick={() => navigate(`/orders/${order.order_id}`)} className="flex items-center justify-center gap-2 border border-[#0B2419] px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition hover:bg-[#0B2419] hover:text-white"><span>Chi tiết</span><span className="material-symbols-outlined text-[18px] transition group-hover:translate-x-0.5">arrow_forward</span></button>
+                  <button type="button" onClick={() => navigate(`/orders/${order.order_id}`)} className="flex items-center justify-center gap-2 border border-[#0B2419] px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition hover:bg-[#0B2419] hover:text-white"><span>Chi tiết</span><StorefrontIcon name="arrow_forward" className="h-5 w-5 text-[18px] transition group-hover:translate-x-0.5" /></button>
                 </div>
               </article>
             ))}
@@ -100,7 +100,7 @@ export const MyOrdersScreen: React.FC = () => {
             <button type="button" disabled={page >= orders.meta.total_pages || loading} onClick={() => setPage((value) => value + 1)} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang sau</button>
           </div>
         )}
-      </main>
+      </section>
     </div>
   );
 };

@@ -1,224 +1,50 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { catalogService } from '../api/service';
-import type { CatalogMetaDto, CatalogProductView } from '../types';
-import type { PaginationMeta } from '../../../types/api';
-import { getApiErrorMessage } from '../../../services/http/apiError';
+import { useRemoteQuery } from '../../../shared/hooks/useRemoteQuery';
+import { getStorefrontErrorMessage } from '../../../services/http/storefrontError';
+import type { CatalogProductQuery } from '../types';
+import { catalogQueryParams, readCatalogQuery, type CatalogFilters, type CatalogFilterKey } from '../model/catalogQuery';
 
-const PAGE_SIZE = 12;
+const toFilters = (query: CatalogProductQuery): CatalogFilters => ({ category_id: query.category_id, brand_id: query.brand_id, size_value_id: query.size_value_id, color_id: query.color_id, gender: query.gender, season: query.season, style: query.style });
 
-const toOptionalNumber = (value: string): number | undefined => {
-  const normalized = value.trim();
-  if (!normalized) return undefined;
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
-};
+export const useCatalogBrowse = () => {
+  const [params, setParams] = useSearchParams();
+  const metadata = useRemoteQuery(useCallback(() => catalogService.getMeta(), []));
+  const meta = metadata.data;
+  const query = readCatalogQuery(params, meta);
+  const queryKey = catalogQueryParams(query).toString();
+  const [draft, setDraft] = useState({ key: queryKey, filters: toFilters(query), min: String(query.min_price ?? ''), max: String(query.max_price ?? ''), search: query.q ?? '' });
+  if (draft.key !== queryKey) setDraft({ key: queryKey, filters: toFilters(query), min: String(query.min_price ?? ''), max: String(query.max_price ?? ''), search: query.q ?? '' });
+  const [priceError, setPriceError] = useState<string | null>(null);
 
-export const useCatalogBrowse = (requestedCategoryId?: number) => {
-  const [products, setProducts] = useState<CatalogProductView[]>([]);
-  const [meta, setMeta] = useState<CatalogMetaDto | null>(null);
-  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
-  const [searchInput, setSearchInput] = useState('');
-  const [query, setQuery] = useState('');
-  const [categoryId, setCategoryId] = useState<number | undefined>(requestedCategoryId);
-  const [brandId, setBrandId] = useState<number | undefined>();
-  const [sizeValueId, setSizeValueId] = useState<number | undefined>();
-  const [colorId, setColorId] = useState<number | undefined>();
-  const [gender, setGender] = useState<string | undefined>();
-  const [season, setSeason] = useState<string | undefined>();
-  const [style, setStyle] = useState<string | undefined>();
-  const [minPriceInput, setMinPriceInput] = useState('');
-  const [maxPriceInput, setMaxPriceInput] = useState('');
-  const [minPrice, setMinPrice] = useState<number | undefined>();
-  const [maxPrice, setMaxPrice] = useState<number | undefined>();
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [metaLoading, setMetaLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-
-    void catalogService.getMeta()
-      .then((data) => {
-        if (active) setMeta(data);
-      })
-      .catch((requestError: unknown) => {
-        if (active) {
-          setError(getApiErrorMessage(requestError, 'Không thể tải metadata catalog.'));
-        }
-      })
-      .finally(() => {
-        if (active) setMetaLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-
-    const loadProducts = async () => {
-      setLoading(true);
-      try {
-        const result = await catalogService.listProducts({
-          ...(query ? { q: query } : {}),
-          ...(categoryId !== undefined ? { category_id: categoryId } : {}),
-          ...(brandId !== undefined ? { brand_id: brandId } : {}),
-          ...(sizeValueId !== undefined ? { size_value_id: sizeValueId } : {}),
-          ...(colorId !== undefined ? { color_id: colorId } : {}),
-          ...(gender ? { gender } : {}),
-          ...(season ? { season } : {}),
-          ...(style ? { style } : {}),
-          ...(minPrice !== undefined ? { min_price: minPrice } : {}),
-          ...(maxPrice !== undefined ? { max_price: maxPrice } : {}),
-          page,
-          page_size: PAGE_SIZE,
-        });
-
-        if (!active) return;
-        setProducts(result.items);
-        setPagination(result.meta);
-        setError(null);
-      } catch (requestError: unknown) {
-        if (active) {
-          setError(getApiErrorMessage(requestError, 'Không thể tải danh sách sản phẩm.'));
-        }
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-
-    void loadProducts();
-    return () => {
-      active = false;
-    };
-  }, [
-    brandId,
-    categoryId,
-    colorId,
-    gender,
-    maxPrice,
-    minPrice,
-    page,
-    query,
-    season,
-    sizeValueId,
-    style,
-  ]);
-
-  const resetPage = () => setPage(1);
-
-  const submitSearch = () => {
-    resetPage();
-    setQuery(searchInput.trim());
+  const results = useRemoteQuery(useCallback(() => catalogService.listProducts({ ...readCatalogQuery(new URLSearchParams(queryKey)), page_size: 12 }), [queryKey]));
+  // Canonicalize malformed or unsupported URL parameters without creating a history entry.
+  useEffect(() => { if (params.toString() !== queryKey) setParams(queryKey, { replace: true }); }, [params, queryKey, setParams]);
+  const updateFilter = <K extends CatalogFilterKey>(key: K, value: CatalogFilters[K]) => setDraft(current => ({ ...current, filters: { ...current.filters, [key]: value } }));
+  const applyFilters = (): boolean => {
+    const validPrice = (value: string) => !value.trim() || /^\d+(?:\.\d{1,2})?$/.test(value.trim()) && Number(value) <= Number.MAX_SAFE_INTEGER;
+    if (!validPrice(draft.min) || !validPrice(draft.max) || (draft.min.trim() && draft.max.trim() && Number(draft.min) > Number(draft.max))) {
+      setPriceError('Nhập giá không âm; giá từ phải nhỏ hơn hoặc bằng giá đến.'); return false;
+    }
+    setPriceError(null);
+    setParams(catalogQueryParams({ ...query, ...draft.filters, min_price: draft.min.trim() ? Number(draft.min) : undefined, max_price: draft.max.trim() ? Number(draft.max) : undefined, page: 1 }));
+    return true;
   };
-
-  const applyPriceRange = () => {
-    resetPage();
-    setMinPrice(toOptionalNumber(minPriceInput));
-    setMaxPrice(toOptionalNumber(maxPriceInput));
-  };
-
-  const clearFilters = () => {
-    setSearchInput('');
-    setQuery('');
-    setCategoryId(undefined);
-    setBrandId(undefined);
-    setSizeValueId(undefined);
-    setColorId(undefined);
-    setGender(undefined);
-    setSeason(undefined);
-    setStyle(undefined);
-    setMinPriceInput('');
-    setMaxPriceInput('');
-    setMinPrice(undefined);
-    setMaxPrice(undefined);
-    setPage(1);
-  };
-
-  const activeFilterCount = useMemo(
-    () => [
-      query,
-      categoryId,
-      brandId,
-      sizeValueId,
-      colorId,
-      gender,
-      season,
-      style,
-      minPrice,
-      maxPrice,
-    ].filter((value) => value !== undefined && value !== '').length,
-    [
-      brandId,
-      categoryId,
-      colorId,
-      gender,
-      maxPrice,
-      minPrice,
-      query,
-      season,
-      sizeValueId,
-      style,
-    ],
-  );
-
   return {
-    products,
-    meta,
-    pagination,
-    searchInput,
-    setSearchInput,
-    categoryId,
-    setCategoryId: (value: number | undefined) => {
-      setCategoryId(value);
-      resetPage();
-    },
-    brandId,
-    setBrandId: (value: number | undefined) => {
-      setBrandId(value);
-      resetPage();
-    },
-    sizeValueId,
-    setSizeValueId: (value: number | undefined) => {
-      setSizeValueId(value);
-      resetPage();
-    },
-    colorId,
-    setColorId: (value: number | undefined) => {
-      setColorId(value);
-      resetPage();
-    },
-    gender,
-    setGender: (value: string | undefined) => {
-      setGender(value);
-      resetPage();
-    },
-    season,
-    setSeason: (value: string | undefined) => {
-      setSeason(value);
-      resetPage();
-    },
-    style,
-    setStyle: (value: string | undefined) => {
-      setStyle(value);
-      resetPage();
-    },
-    minPriceInput,
-    setMinPriceInput,
-    maxPriceInput,
-    setMaxPriceInput,
-    page,
-    setPage,
-    loading,
-    metaLoading,
-    error,
-    activeFilterCount,
-    totalPages: pagination?.total_pages ?? 0,
-    submitSearch,
-    applyPriceRange,
-    clearFilters,
+    products: results.data?.items ?? [], meta, pagination: results.data?.meta ?? null, loading: results.loading, metaLoading: metadata.loading,
+    error: results.error ? getStorefrontErrorMessage(results.error, 'Không thể tải sản phẩm. Vui lòng thử lại.') : null,
+    metaError: metadata.error ? getStorefrontErrorMessage(metadata.error, 'Không thể tải bộ lọc. Vui lòng thử lại.') : null, query, draft, priceError,
+    activeFilterCount: Object.entries(query).filter(([key, value]) => key !== 'page' && value !== undefined && value !== '').length,
+    totalPages: results.data?.meta.total_pages ?? 0,
+    updateFilter, applyFilters,
+    setSearchInput: (search: string) => setDraft(current => ({ ...current, search })),
+    setMinPriceInput: (min: string) => setDraft(current => ({ ...current, min })),
+    setMaxPriceInput: (max: string) => setDraft(current => ({ ...current, max })),
+    submitSearch: () => setParams(catalogQueryParams({ ...query, q: draft.search.trim() || undefined, page: 1 })),
+    clearFilters: () => { setPriceError(null); setParams({}); setDraft({ key: '', filters: {}, min: '', max: '', search: '' }); },
+    removeFilter: (key: CatalogFilterKey | 'q') => setParams(catalogQueryParams({ ...query, [key]: undefined, page: 1 })),
+    setPage: (page: number) => setParams(catalogQueryParams({ ...query, page })),
+    reload: () => { results.reload(); metadata.reload(); },
   };
 };

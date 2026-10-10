@@ -5,7 +5,8 @@ import { useToast } from '../shared/ui/toast/useToast';
 import { authService } from '../features/auth/api/service';
 import { useAuthSession } from '../features/auth/session/useAuthSession';
 import { isAdminProfile } from '../features/auth/session/sessionAccess';
-import { getApiErrorMessage } from '../services/http/apiError';
+import { getStorefrontErrorMessage } from '../services/http/storefrontError';
+import { getApiErrorMessage, normalizeApiError } from '../services/http/apiError';
 
 type AuthMode = 'login' | 'register';
 
@@ -23,6 +24,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ adminOnly = false }) => 
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -33,6 +35,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ adminOnly = false }) => 
       return;
     }
 
+    if (submitting) return;
+    setError(null);
     setSubmitting(true);
     try {
       if (!adminOnly && mode === 'register') {
@@ -68,14 +72,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ adminOnly = false }) => 
         : '/account';
       navigate(isInternalUser ? '/admin/dashboard' : customerDestination, { replace: true });
     } catch (requestError: unknown) {
-      showToast(
-        getApiErrorMessage(
-          requestError,
-          !adminOnly && mode === 'register'
-            ? 'Đăng ký thất bại. Kiểm tra dữ liệu tài khoản.'
-            : 'Đăng nhập thất bại. Kiểm tra số điện thoại hoặc mật khẩu.',
-        ),
-      );
+      const message = !adminOnly && mode === 'login' && normalizeApiError(requestError).status === 401
+        ? 'Số điện thoại hoặc mật khẩu chưa đúng. Vui lòng kiểm tra lại.'
+        : (adminOnly ? getApiErrorMessage : getStorefrontErrorMessage)(requestError,
+        !adminOnly && mode === 'register' ? 'Đăng ký thất bại. Kiểm tra dữ liệu tài khoản.' : 'Đăng nhập thất bại. Kiểm tra số điện thoại hoặc mật khẩu.');
+      setError(message);
+      showToast(message);
     } finally {
       setSubmitting(false);
     }
@@ -105,6 +107,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ adminOnly = false }) => 
           </div>
         )}
 
+        {!adminOnly && error && <p role="alert" className="mb-4 text-sm text-red-700">{error}</p>}
         <form onSubmit={handleSubmit} className="space-y-5">
           <label className="block space-y-1">
             <span className="text-xs font-medium">Số điện thoại *</span>

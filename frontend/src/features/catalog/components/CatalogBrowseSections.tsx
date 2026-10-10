@@ -1,3 +1,5 @@
+import { StorefrontIcon } from '../../../components/StorefrontIcon';
+import { StorefrontImage } from '../../../shared/ui/storefront/StorefrontImage';
 import React from 'react';
 import type { CatalogMetaDto, CatalogProductView } from '../types';
 import type { PaginationMeta } from '../../../types/api';
@@ -17,6 +19,7 @@ const FilterSelect: React.FC<{
   <label className="block">
     <span className="mb-2 block text-[11px] font-bold uppercase tracking-wider">{label}</span>
     <select
+      aria-label={label}
       disabled={disabled}
       value={value}
       onChange={(event) => onChange(event.target.value)}
@@ -54,6 +57,8 @@ export const CatalogFiltersPanel: React.FC<{
   onMaxPriceInputChange: (value: string) => void;
   onApplyPriceRange: () => void;
   onClear: () => void;
+  priceErrorId?: string;
+  priceInvalid?: boolean;
 }> = ({
   meta,
   metaLoading,
@@ -78,14 +83,14 @@ export const CatalogFiltersPanel: React.FC<{
   onMaxPriceInputChange,
   onApplyPriceRange,
   onClear,
+  priceErrorId, priceInvalid,
 }) => (
-  <aside className="hidden w-[286px] shrink-0 border border-[#E8E9E3] bg-[#FFFDF5] p-5 lg:block">
+  <section aria-label="Lọc sản phẩm" className="w-full border border-[#E8E9E3] bg-[#FFFDF5] p-5">
     <div className="flex items-center justify-between border-b border-[#E8E9E3] pb-3">
       <div>
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#687069]">Refine</p>
-        <h2 className="font-serif text-xl">Bộ lọc</h2>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#687069]">Lựa chọn của bạn</p>
+        <h2 className="font-serif text-xl">Bộ lọc{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''}</h2>
       </div>
-      {activeFilterCount > 0 && (
         <button
           type="button"
           onClick={onClear}
@@ -93,7 +98,6 @@ export const CatalogFiltersPanel: React.FC<{
         >
           Đặt lại
         </button>
-      )}
     </div>
 
     <div className="space-y-5 pt-5">
@@ -165,17 +169,17 @@ export const CatalogFiltersPanel: React.FC<{
         <p className="mb-2 text-[11px] font-bold uppercase tracking-wider">Khoảng giá</p>
         <div className="grid grid-cols-2 gap-2">
           <input
-            inputMode="numeric"
+            inputMode="decimal"
             value={minPriceInput}
             onChange={(event) => onMinPriceInputChange(event.target.value)}
-            placeholder="Từ"
+            aria-label="Giá từ" aria-describedby={priceErrorId} aria-invalid={priceInvalid} placeholder="Từ"
             className="min-w-0 border border-[#D9DDD6] bg-white px-3 py-2 text-sm outline-none focus:border-[#0B2419]"
           />
           <input
-            inputMode="numeric"
+            inputMode="decimal"
             value={maxPriceInput}
             onChange={(event) => onMaxPriceInputChange(event.target.value)}
-            placeholder="Đến"
+            aria-label="Giá đến" aria-describedby={priceErrorId} aria-invalid={priceInvalid} placeholder="Đến"
             className="min-w-0 border border-[#D9DDD6] bg-white px-3 py-2 text-sm outline-none focus:border-[#0B2419]"
           />
         </div>
@@ -184,11 +188,11 @@ export const CatalogFiltersPanel: React.FC<{
           onClick={onApplyPriceRange}
           className="mt-2 w-full border border-[#0B2419] bg-white py-2 text-[11px] font-bold uppercase tracking-wider transition hover:bg-[#0B2419] hover:text-white"
         >
-          Áp dụng giá
+          Áp dụng bộ lọc
         </button>
       </div>
     </div>
-  </aside>
+  </section>
 );
 
 export const CatalogProductGrid: React.FC<{
@@ -201,6 +205,8 @@ export const CatalogProductGrid: React.FC<{
   totalPages: number;
   onOpenProduct: (productId: string) => void;
   onPageChange: (page: number) => void;
+  onRetry: () => void;
+  onClear: () => void;
 }> = ({
   products,
   loading,
@@ -211,15 +217,18 @@ export const CatalogProductGrid: React.FC<{
   totalPages,
   onOpenProduct,
   onPageChange,
+  onRetry,
+  onClear,
 }) => (
-  <main className="min-w-0 flex-1">
-    {loading && <div className="py-24 text-center text-sm text-[#687069]">Đang tải sản phẩm...</div>}
+  <section aria-label="Kết quả sản phẩm" aria-busy={loading} className="min-w-0 flex-1">
+    {loading && <div role="status" className="py-24 text-center text-sm text-[#687069]">Đang tải sản phẩm...</div>}
     {!loading && error && (
-      <div className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+      <div role="alert" className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}<button type="button" onClick={onRetry} className="ml-3 min-h-11 underline">Thử lại</button></div>
     )}
     {!loading && !error && products.length === 0 && (
       <div className="border border-[#E8E9E3] bg-[#FFFDF5] py-20 text-center text-sm text-[#687069]">
         Không có sản phẩm phù hợp với bộ lọc hiện tại.
+        <button type="button" onClick={onClear} className="mx-auto mt-4 block min-h-11 border border-[#0B2419] px-5">Xóa tất cả bộ lọc</button>
       </div>
     )}
 
@@ -235,13 +244,13 @@ export const CatalogProductGrid: React.FC<{
               >
                 <div className="relative aspect-[3/4] overflow-hidden bg-[#F3F4EF] ring-1 ring-[#E8E9E3]">
                   {product.imageUrl ? (
-                    <img
-                      src={product.imageUrl}
+                    <StorefrontImage
+                      loading="lazy" src={product.imageUrl}
                       alt={product.name}
                       className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.035]"
                     />
                   ) : (
-                    <span className="flex h-full items-center justify-center text-sm text-[#8A918B]">Chưa có ảnh</span>
+                    <span className="flex h-full items-center justify-center text-sm text-[#606863]">Chưa có ảnh</span>
                   )}
                   <div className="absolute inset-x-0 bottom-0 translate-y-full bg-[#071A12]/90 px-4 py-3 text-center text-[10px] font-bold uppercase tracking-[0.18em] text-white backdrop-blur transition duration-300 group-hover:translate-y-0">
                     Xem chi tiết
@@ -257,9 +266,7 @@ export const CatalogProductGrid: React.FC<{
                   </h2>
                   <div className="mt-2 flex items-center justify-between border-t border-[#E8E9E3] pt-2">
                     <p className="font-mono text-sm font-bold">{product.base_price.toLocaleString('vi-VN')}₫</p>
-                    <span className="material-symbols-outlined text-[18px] text-[#687069] transition group-hover:translate-x-1 group-hover:text-[#0B2419]">
-                      arrow_forward
-                    </span>
+                    <StorefrontIcon name="arrow_forward" className="h-5 w-5 text-[18px] text-[#687069] transition group-hover:translate-x-1 group-hover:text-[#0B2419]" />
                   </div>
                 </div>
               </button>
@@ -290,5 +297,5 @@ export const CatalogProductGrid: React.FC<{
         )}
       </>
     )}
-  </main>
+  </section>
 );

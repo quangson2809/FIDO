@@ -5,6 +5,7 @@ export type AuthSessionStatus = 'checking' | 'authenticated' | 'unauthenticated'
 
 export interface AuthSessionContextValue {
   status: AuthSessionStatus;
+  sessionError: string | null;
   profile: MeDto | null;
   isAuthenticated: boolean;
   isAdmin: boolean;

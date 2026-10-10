@@ -262,31 +262,6 @@ main textarea:focus {
   box-shadow: 0 0 0 4px var(--visual-ring), var(--shadow-sm);
 }
 
-#cart-drawer-container > button {
-  background: rgba(7, 26, 18, 0.62);
-  -webkit-backdrop-filter: blur(8px) saturate(1.05);
-  backdrop-filter: blur(8px) saturate(1.05);
-}
-
-#cart-drawer-container aside {
-  background: rgba(253, 253, 251, 0.94);
-  box-shadow: var(--shadow-2xl);
-  -webkit-backdrop-filter: blur(24px) saturate(1.12);
-  backdrop-filter: blur(24px) saturate(1.12);
-}
-
-#cart-drawer-container aside > header,
-#cart-drawer-container aside > footer {
-  background: rgba(255, 255, 255, 0.9);
-  -webkit-backdrop-filter: blur(18px) saturate(1.08);
-  backdrop-filter: blur(18px) saturate(1.08);
-}
-
-#cart-drawer-container article.group > div:first-child {
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
-
 .material-symbols-outlined {
   font-family: 'Material Symbols Outlined';
   font-weight: normal;
@@ -365,3 +340,27 @@ a:hover > .material-symbols-outlined {
 .admin-ui .report-ranking th { white-space: normal; }
 .report-plot svg text { font-size: 12px; }
 @media (max-width: 600px) { .report-plot svg text { font-size: 24px; } }
+
+/* Storefront primitives are scoped to the customer layout. */
+.storefront { min-width: 0; }
+.storefront main { min-width: 0; }
+.storefront :is(button, a, input, select, textarea):focus-visible { outline: 2px solid var(--color-forest-light); outline-offset: 3px; box-shadow: 0 0 0 3px var(--color-surface-ivory); }
+.storefront :is(button, input, select, textarea) { min-height: 44px; }
+.storefront button { min-width: 44px; }
+.storefront p, .storefront dd { overflow-wrap: anywhere; }
+.storefront [class*="text-[9px]"], .storefront [class*="text-[10px]"], .storefront [class*="text-[11px]"] { font-size: 12px; }
+.storefront [class*="text-white/"] { color: rgb(255 255 255 / 80%); }
+.storefront :is(input,select,textarea) { max-width: 100%; }
+.storefront-dialog { color: var(--color-forest-deep); background: white; border: 1px solid var(--color-border-subtle); box-shadow: var(--shadow-2xl); padding: 0; }
+.storefront-dialog::backdrop { background: rgb(7 26 18 / 65%); }
+.filter-dialog { margin: auto; width: min(100% - 24px, 440px); max-height: 92dvh; overflow-y: auto; }
+.filter-dialog :is(button, input, select) { min-height: 44px; }
+.filter-dialog:focus-visible { outline: none; }
+.filter-chip { min-height: 44px; border: 1px solid var(--color-border-subtle); background: var(--color-surface-ivory); padding: 8px 12px; font-size: 13px; }
+.cart-dialog { margin: 0 0 0 auto; height: 100dvh; max-height: 100dvh; width: min(100%, 500px); max-width: 100%; overflow: hidden; }
+.cart-dialog > aside { height: 100%; }
+.storefront .order-steps { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); }
+.storefront .order-steps li { padding: 12px; background: var(--color-surface-ivory); border: 1px solid var(--color-border-subtle); font-size: 14px; }
+.storefront .order-steps [aria-current="step"] { background: var(--color-forest-deep); color: white; }
+@media (max-width: 767px) { .storefront :is(input, select, textarea), .filter-dialog :is(input, select) { font-size: 16px; } }
+@media (prefers-reduced-motion: reduce) { .storefront * { transform: none !important; } }

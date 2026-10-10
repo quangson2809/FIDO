@@ -1,5 +1,6 @@
 import type { ApiListResponse, ApiResponse } from '../../../types/api';
 import { apiClient } from '../../../services/http/apiClient';
+import { sortProductImages } from '../model/productImageOrder';
 import { resolveImageUrl } from '../../../services/media/imageUrl';
 import type {
   CatalogMetaDto,
@@ -38,7 +39,7 @@ const summaryToView = (product: ProductSummaryDto): CatalogProductView => ({
 
 const normalizeDetailImages = (product: ProductDetailDto): ProductDetailDto => ({
   ...product,
-  images: product.images.map((image) => ({
+  images: sortProductImages(product.images).map((image) => ({
     ...image,
     image_url: resolveImageUrl(image.image_url) ?? image.image_url,
   })),

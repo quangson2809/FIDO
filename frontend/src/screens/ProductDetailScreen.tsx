@@ -15,7 +15,9 @@ import type {
 } from '../features/catalog/types';
 import { useAuthSession } from '../features/auth/session/useAuthSession';
 import { useToast } from '../shared/ui/toast/useToast';
-import { getApiErrorMessage } from '../services/http/apiError';
+import { getStorefrontErrorMessage } from '../services/http/storefrontError';
+import { StorefrontDialog } from '../shared/ui/storefront/StorefrontDialog';
+import { StorefrontImage } from '../shared/ui/storefront/StorefrontImage';
 import { canPurchaseProductVariant } from '../features/catalog/model/purchaseAvailability';
 
 export const ProductDetailScreen: React.FC = () => {
@@ -30,7 +32,9 @@ export const ProductDetailScreen: React.FC = () => {
   const [selectedSizeValueId, setSelectedSizeValueId] = useState<number | null>(null);
   const [selectedColorId, setSelectedColorId] = useState<number | null>(null);
   const [quantity, setQuantity] = useState(1);
-  const [colorClearedBySizeChange, setColorClearedBySizeChange] = useState(false);
+  const [colorSelectionNotice, setColorSelectionNotice] = useState<string | null>(null);
+  const [zoomOpen, setZoomOpen] = useState(false);
+  const [retry, setRetry] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,7 +64,7 @@ export const ProductDetailScreen: React.FC = () => {
             .slice(0, 4) ?? [],
         );
         setActiveImageIndex(0);
-        setColorClearedBySizeChange(false);
+        setColorSelectionNotice(null);
         setSelectedSizeValueId(initialVariant?.size.size_value_id ?? null);
         setSelectedColorId(initialVariant?.color.color_id ?? null);
         setQuantity(1);
@@ -68,7 +72,7 @@ export const ProductDetailScreen: React.FC = () => {
       } catch (requestError: unknown) {
         if (active) {
           setProduct(null);
-          setError(getApiErrorMessage(requestError, 'Không thể tải chi tiết sản phẩm.'));
+          setError(getStorefrontErrorMessage(requestError, 'Không thể tải chi tiết sản phẩm.'));
         }
       } finally {
         if (active) setLoading(false);
@@ -79,7 +83,7 @@ export const ProductDetailScreen: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [productId]);
+  }, [productId, retry]);
 
   const gallery = useMemo(
     () => product?.images.map((image) => image.image_url) ?? [],
@@ -119,12 +123,16 @@ export const ProductDetailScreen: React.FC = () => {
 
   const selectSize = (sizeValueId: number) => {
     setSelectedSizeValueId(sizeValueId);
-    const currentColorStillValid = product?.variants.some(
+    const currentColorStillValid = onSaleVariants.some(
       (variant) => variant.size.size_value_id === sizeValueId
         && variant.color.color_id === selectedColorId,
     );
     const colorWasCleared = selectedColorId !== null && !currentColorStillValid;
-    setColorClearedBySizeChange(colorWasCleared);
+    const stopped = product?.variants.some(variant => variant.size.size_value_id === sizeValueId && variant.color.color_id === selectedColorId && variant.sale_status === 'STOPPED');
+    const sizeName = sizeOptions.find(size => size.size_value_id === sizeValueId)?.display_name ?? '';
+    setColorSelectionNotice(colorWasCleared ? stopped
+      ? `Màu đã chọn ngừng bán ở size ${sizeName}. Vui lòng chọn màu khác.`
+      : `Màu đã chọn không có ở size ${sizeName}. Vui lòng chọn màu khác.` : null);
     if (colorWasCleared) setSelectedColorId(null);
     setQuantity(1);
   };
@@ -132,7 +140,7 @@ export const ProductDetailScreen: React.FC = () => {
   const selectColor = (colorId: number) => {
     if (!colorCompatibility(colorId)) return;
     setSelectedColorId(colorId);
-    setColorClearedBySizeChange(false);
+    setColorSelectionNotice(null);
     setQuantity(1);
   };
 
@@ -163,7 +171,7 @@ export const ProductDetailScreen: React.FC = () => {
 
     if (!isAuthenticated) {
       showToast('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.');
-      navigate('/login');
+      navigate('/login', { state: { from: `/products/${encodeURIComponent(productId)}` } });
       return;
     }
 
@@ -192,7 +200,7 @@ export const ProductDetailScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] bg-[#FFFDF5] p-14 text-center text-sm text-[#687069]">
+      <div role="status" className="min-h-[60vh] bg-[#FFFDF5] p-14 text-center text-sm text-[#687069]">
         Đang tải sản phẩm...
       </div>
     );
@@ -201,13 +209,14 @@ export const ProductDetailScreen: React.FC = () => {
   if (error || !product) {
     return (
       <div className="min-h-[60vh] bg-[#FFFDF5] p-14 text-center">
-        <p className="text-sm text-red-700">{error ?? 'Không tìm thấy sản phẩm.'}</p>
+        <p role="alert" className="text-sm text-red-700">{error ?? 'Không tìm thấy sản phẩm.'}</p>
+        <button type="button" onClick={() => setRetry(value => value + 1)} className="mt-5 mr-3 border px-5 py-3 text-sm">Thử lại</button>
         <button
           type="button"
           onClick={() => navigate('/products')}
           className="mt-5 border border-[#0B2419] bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider"
         >
-          Quay lại catalog
+          Quay lại sản phẩm
         </button>
       </div>
     );
@@ -248,6 +257,7 @@ export const ProductDetailScreen: React.FC = () => {
             activeImageIndex={activeImageIndex}
             onSelectImage={setActiveImageIndex}
             onMoveImage={moveImage}
+            onZoom={() => setZoomOpen(true)}
           />
           <ProductSpecsSection items={specItems} materialCare={product.material_care} />
         </div>
@@ -266,9 +276,7 @@ export const ProductDetailScreen: React.FC = () => {
           sizeAvailability={sizeAvailability}
           colorAvailability={colorAvailability}
           colorCompatibility={colorCompatibility}
-          colorSelectionNotice={colorClearedBySizeChange
-            ? `Màu đã chọn không có ở size ${sizeOptions.find((size) => size.size_value_id === selectedSizeValueId)?.display_name ?? ''}. Vui lòng chọn màu khác.`
-            : null}
+          colorSelectionNotice={colorSelectionNotice}
           onSelectSize={selectSize}
           onSelectColor={selectColor}
           onQuantityChange={setQuantity}
@@ -276,6 +284,7 @@ export const ProductDetailScreen: React.FC = () => {
         />
       </section>
 
+      {zoomOpen && <StorefrontDialog name="Ảnh sản phẩm" onClose={() => setZoomOpen(false)} className="m-auto max-h-[92dvh] w-[calc(100%-24px)] max-w-4xl overflow-auto p-4"><div className="p-4"><button autoFocus type="button" onClick={() => setZoomOpen(false)} className="mb-4 min-h-11 border px-4">Đóng ảnh</button><StorefrontImage src={gallery[activeImageIndex]} alt={product.name} loading="eager" className="max-h-[75dvh] w-full object-contain" /></div></StorefrontDialog>}
       <ProductRecommendationsSection
         recommendations={recommendations}
         onOpenProduct={openRecommendation}

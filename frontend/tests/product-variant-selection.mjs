@@ -144,9 +144,9 @@ try {
   await button('L').click();
   await button('Trắng').click();
   await button('XXL').click();
-  await selected('Trắng');
+  assert.equal(await button('Trắng').getAttribute('aria-pressed'), 'false');
   assert.equal(await button('Trắng').isDisabled(), true, 'stopped combination cannot be clicked');
-  await textIncludes('Biến thể ngừng bán');
+  await textIncludes('Màu đã chọn ngừng bán ở size XXL. Vui lòng chọn màu khác.');
   await assertNoCartRequest();
 
   detail = { ...product, variants: product.variants.filter((item) => item.sale_status === 'STOPPED') };

@@ -43,6 +43,7 @@ export const Header: React.FC = () => {
   const location = useLocation();
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const categoryButtonRef = useRef<HTMLButtonElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const totalCartCount = cartItems.reduce(
     (total, item) => total + item.quantity,
@@ -112,12 +113,13 @@ export const Header: React.FC = () => {
             <div className="relative">
               <button
                 type="button"
+                ref={categoryButtonRef} aria-label="Danh mục sản phẩm" aria-expanded={isCategoryOpen} aria-controls="storefront-category-menu"
                 onClick={() => setIsCategoryOpen((value) => !value)}
                 onMouseEnter={() => setIsCategoryOpen(true)}
                 className="flex items-center gap-1.5 py-2 text-[13px] font-semibold tracking-wide text-[#0B2419] transition-colors hover:text-[#1B5038]"
               >
                 <StorefrontIcon name="grid_view" className="h-5 w-5" />
-                <span>Danh mục</span>
+                <span className="hidden whitespace-nowrap sm:inline">Danh mục</span>
                 <StorefrontIcon
                   name="expand_more"
                   className={`h-4 w-4 transition-transform ${isCategoryOpen ? 'rotate-180' : ''}`}
@@ -126,6 +128,8 @@ export const Header: React.FC = () => {
 
               {isCategoryOpen && (
                 <div
+                  id="storefront-category-menu"
+                  onKeyDown={event => { if (event.key === 'Escape') { setIsCategoryOpen(false); categoryButtonRef.current?.focus(); } }}
                   onMouseLeave={() => setIsCategoryOpen(false)}
                   className="absolute left-0 top-full w-64 border border-[#E2E5DE] bg-white p-2 shadow-2xl"
                 >
@@ -138,8 +142,8 @@ export const Header: React.FC = () => {
                     <StorefrontIcon name="arrow_forward" className="h-5 w-5" />
                   </button>
                   <div className="my-1 h-px bg-[#E8E9E3]" />
-                  <p className="px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8A918B]">
-                    Danh mục chi tiết được tải trong catalog
+                  <p className="px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#687069]">
+                    Xem các danh mục trên trang sản phẩm
                   </p>
                 </div>
               )}
