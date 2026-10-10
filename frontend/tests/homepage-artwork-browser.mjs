@@ -38,11 +38,10 @@ try {
     ),
     ['categories', 'fit', 'details', 'cod'],
   );
-  assert.equal(
-    await page.locator('img[src="/images/about/palette.svg"]').evaluate((img) => img.complete && img.naturalWidth > 0),
-    true,
-    'editorial illustration should be loaded',
-  );
+  await page.waitForFunction(() => {
+    const image = document.querySelector('img[src="/images/about/palette.svg"]');
+    return image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0;
+  });
   for (const width of [390, 768, 1280]) {
     await page.setViewportSize({ width, height: 844 });
     const geometry = await page.evaluate(() => ({
