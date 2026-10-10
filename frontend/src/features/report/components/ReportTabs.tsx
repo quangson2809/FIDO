@@ -56,7 +56,7 @@ export function OrdersReport({
           </article>
           <OrderStatusDonut
             counts={result.data.overview.orders_by_status}
-            onSelectStatus={canReadOrders ? (status) => navigate(orderDrilldown(query, status)) : undefined}
+            getLink={canReadOrders ? (status) => orderDrilldown(query, status) : undefined}
           />
           <OrdersSection
             report={result.data.trend}
@@ -103,7 +103,6 @@ export function DashboardAnalytics({
   canReadOrders: boolean;
 }) {
   const result = useDashboardReport(query);
-  const navigate = useNavigate();
   return (
     <section aria-label="Phân tích kinh doanh" className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -131,7 +130,7 @@ export function DashboardAnalytics({
             <div className="min-w-0 lg:col-span-4">
               <OrderStatusDonut
                 counts={result.data.overview.orders_by_status}
-                onSelectStatus={canReadOrders ? (status) => navigate(orderDrilldown(query, status)) : undefined}
+                getLink={canReadOrders ? (status) => orderDrilldown(query, status) : undefined}
               />
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import type { OrderStatus } from "../../orders/types";
 import type { StatusCounts } from "../types";
 import { reportStatuses } from "../types";
@@ -6,7 +7,7 @@ import { statusLabel } from "../../../shared/admin/statusLabels";
 
 interface OrderStatusDonutProps {
   counts: StatusCounts;
-  onSelectStatus?: (status: OrderStatus) => void;
+  getLink?: (status: OrderStatus) => string;
 }
 
 const palette: Record<OrderStatus, string> = {
@@ -27,8 +28,9 @@ function percentage(count: number, total: number): string {
   return total === 0 ? "0%" : `${(count / total * 100).toLocaleString("vi-VN", { maximumFractionDigits: 1 })}%`;
 }
 
-export function OrderStatusDonut({ counts, onSelectStatus }: OrderStatusDonutProps) {
+export function OrderStatusDonut({ counts, getLink }: OrderStatusDonutProps) {
   const [focused, setFocused] = useState<OrderStatus | null>(null);
+  const navigate = useNavigate();
   const total = reportStatuses.reduce((sum, status) => sum + counts[status], 0);
   const segments = reportStatuses.reduce<Array<{
     status: OrderStatus; count: number; length: number; offset: number;
@@ -55,17 +57,17 @@ export function OrderStatusDonut({ counts, onSelectStatus }: OrderStatusDonutPro
               transform="rotate(-90 90 90)" fill="none"
               stroke={palette[status]} strokeWidth={focused === status ? 27 : 22}
               strokeDasharray={`${length} ${CIRCUMFERENCE - length}`}
-              strokeDashoffset={-offset} className={onSelectStatus ? "cursor-pointer" : ""}
-              tabIndex={onSelectStatus ? 0 : undefined}
-              role={onSelectStatus ? "button" : "img"}
+              strokeDashoffset={-offset} className={getLink ? "cursor-pointer" : ""}
+              tabIndex={getLink ? 0 : undefined}
+              role={getLink ? "button" : "img"}
               aria-label={`${statusLabel(status)}: ${count} đơn, ${percentage(count, total)}`}
               onMouseEnter={() => setFocused(status)} onMouseLeave={() => setFocused(null)}
               onFocus={() => setFocused(status)} onBlur={() => setFocused(null)}
-              onClick={() => onSelectStatus?.(status)}
+              onClick={() => { if (getLink) navigate(getLink(status)); }}
               onKeyDown={(event) => {
-                if (onSelectStatus && (event.key === "Enter" || event.key === " ")) {
+                if (getLink && (event.key === "Enter" || event.key === " ")) {
                   event.preventDefault();
-                  onSelectStatus(status);
+                  navigate(getLink(status));
                 }
               }}>
               <title>{`${statusLabel(status)}: ${count} đơn (${percentage(count, total)})`}</title>
@@ -88,10 +90,10 @@ export function OrderStatusDonut({ counts, onSelectStatus }: OrderStatusDonutPro
             </span>
           </>;
           const className = "flex w-full items-center gap-2 rounded-md bg-[#F7F8F3] px-2.5 py-2";
-          return onSelectStatus
-            ? <button key={status} type="button" className={`${className} hover:bg-[#ECF2E9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5038]`}
-                onClick={() => onSelectStatus(status)} onFocus={() => setFocused(status)} onBlur={() => setFocused(null)}
-                onMouseEnter={() => setFocused(status)} onMouseLeave={() => setFocused(null)}>{content}</button>
+          return getLink
+            ? <Link key={status} to={getLink(status)} className={`${className} hover:bg-[#ECF2E9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5038]`}
+                onFocus={() => setFocused(status)} onBlur={() => setFocused(null)}
+                onMouseEnter={() => setFocused(status)} onMouseLeave={() => setFocused(null)}>{content}</Link>
             : <div key={status} className={className} onMouseEnter={() => setFocused(status)}
                 onMouseLeave={() => setFocused(null)}>{content}</div>;
         })}
