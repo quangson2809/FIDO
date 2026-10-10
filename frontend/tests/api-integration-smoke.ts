@@ -278,9 +278,26 @@ const server = createServer((request, response) => {
         completed_sales: 100000,
         returned_adjustment: 0,
         net_sales: 100000,
-        orders_by_status: { COMPLETED: 1 },
+        orders_by_status: { PENDING: 0, CONFIRMED: 0, PREPARING: 0, SHIPPING: 0, COMPLETED: 1, DELIVERY_FAILED: 0, CANCELLED: 0, RETURNED: 0 },
       },
     });
+    return;
+  }
+
+  if (request.method === 'GET' && ['/api/v1/admin/reports/sales-trend', '/api/v1/admin/reports/orders-trend', '/api/v1/admin/reports/product-performance'].includes(url.pathname)) {
+    requireBearer(request);
+    assert.equal(url.searchParams.get('from'), '2026-10-01');
+    assert.equal(url.searchParams.get('to'), '2026-10-07');
+    const base = { from: '2026-10-01', to: '2026-10-07' };
+    if (url.pathname.endsWith('product-performance')) {
+      assert.equal(url.searchParams.get('limit'), '5');
+      writeJson(response, 200, { data: { ...base, items: [{ product_id: 1, product_name: 'Test', thumbnail: null, completed_units: 3, returned_units: 1, net_units: 2 }] } });
+    } else {
+      assert.equal(url.searchParams.get('granularity'), 'WEEK');
+      const point = url.pathname.endsWith('sales-trend') ? { period_start: '2026-09-28', completed_sales: 100, returned_adjustment: 30, net_sales: 70 }
+        : { period_start: '2026-09-28', total_orders: 1, orders_by_status: { PENDING: 0, CONFIRMED: 0, PREPARING: 0, SHIPPING: 0, COMPLETED: 1, DELIVERY_FAILED: 0, CANCELLED: 0, RETURNED: 0 } };
+      writeJson(response, 200, { data: { ...base, granularity: 'WEEK', timezone: 'Asia/Ho_Chi_Minh', points: [point] } });
+    }
     return;
   }
 
@@ -375,6 +392,10 @@ try {
   const policy = await contentService.getPublicPage('shipping-policy');
   assert.equal(policy.page_code, 'shipping-policy');
 
+  const trendQuery = { from: '2026-10-01', to: '2026-10-07', granularity: 'WEEK' } as const;
+  assert.equal((await reportService.getSalesTrend(trendQuery)).points[0]?.net_sales, 70);
+  assert.equal((await reportService.getOrdersTrend(trendQuery)).points[0]?.total_orders, 1);
+  assert.equal((await reportService.getProductPerformance(trendQuery, 5)).items[0]?.net_units, 2);
   const report = await reportService.getOverview('2026-10-01', '2026-10-07');
   assert.equal(report.net_sales, 100000);
 

@@ -21,6 +21,7 @@ export type AdminModuleKey =
   | 'content';
 
 type AdminPermissionCode =
+  | 'REPORT_READ'
   | 'VOUCHER_READ'
   | 'CATALOG_READ'
   | 'INVENTORY_READ'
@@ -36,6 +37,7 @@ type AdminWritePermissionCode =
   | 'CONTENT_WRITE';
 
 const readPermissionByModule: Partial<Record<AdminModuleKey, AdminPermissionCode>> = {
+  reports: 'REPORT_READ',
   vouchers: 'VOUCHER_READ',
   orders: 'ORDER_READ',
   products: 'CATALOG_READ',
@@ -64,7 +66,7 @@ const writePermissionByModule: Partial<Record<AdminModuleKey, AdminWritePermissi
   content: 'CONTENT_WRITE',
 };
 
-const superadminOnlyModules = new Set<AdminModuleKey>(['staff', 'roles', 'reports']);
+const superadminOnlyModules = new Set<AdminModuleKey>(['staff', 'roles']);
 
 export const canAccessAdminModule = (
   moduleKey: AdminModuleKey,

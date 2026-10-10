@@ -9,6 +9,7 @@ on:
       - fix/frontend-product-variant-selection
       - feature/admin-ui-ux-improvements
       - feature/cart-checkout-voucher-improvements
+      - feature/admin-dashboard-analytics
   pull_request:
     branches:
       - main

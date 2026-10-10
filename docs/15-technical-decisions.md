@@ -380,3 +380,23 @@ discount_value, maximum_discount, minimum_amount, starts_at, ends_at, scope,
 product_ids, category_ids, global_limit, customer_limit, enabled. Detail adds
 voucher_id, active_usage, ever_used. No public wallet/list/allocation API.
 Only authored rejection reasons from these endpoints are exposed to clients.
+
+## Dashboard Analytics — approved scope, 2026-10-10
+
+- Supersedes only the SUPERADMIN-only report authorization from Phase 7: all four ReportService entry points now use
+  `ROLE_SUPERADMIN OR (ROLE_ADMIN AND PERMISSION_REPORT_READ)`. CUSTOMER with that permission remains denied.
+- Flyway V6 inserts REPORT_READ (Xem báo cáo và phân tích kinh doanh); it grants no role. Use existing RBAC role permission editing.
+  JWT authentication re-reads effective roles/permissions on every request, including revocation with an unchanged token.
+- Overview and daily sales aggregation share the original SQL formula and completion cohort. No payment/order mutations.
+- JDBC aggregates by Vietnam date using TIMESTAMPADD(HOUR,7,UTC timestamp), portable to H2/MySQL. Vietnam has a fixed UTC+07 offset
+  over the supported business timeline. Java assembles daily aggregates into canonical Monday/week or day-1/month buckets and fills zero periods.
+  UTC range predicates restrict partial buckets. Read-only REPEATABLE_READ remains at the service boundary.
+- Product totals aggregate all variants before the one-row thumbnail join. Existing restrictive OrderItem→Variant→Product FKs
+  preserve historical identity; report applies no sale-status filter. Name/thumbnail are current catalog metadata (not a historical name snapshot).
+  Completed units include COMPLETED and RETURNED cohorts; returned units subtract full order quantities. Ranking has explicit deterministic tie-breakers.
+- No new chart dependency: feature-owned SVG displays server values; VND arithmetic stays in backend BigDecimal.
+  Reports uses URL-owned tab/from/to/granularity and existing useRemoteQuery to suppress stale requests. Only the active tab loads its data.
+- Dashboard report requests mount only for report-authorized users; existing work queues retain their own module permissions.
+  Order drill-down uses UTC instants and the inclusive upper boundary `16:59:59.999999Z` for the last Vietnam day.
+  Product links require CATALOG_READ; order links require ORDER_READ.
+- Deferred: Category/Brand, profit/cost, traffic/conversion/ROAS, cache/aggregate tables. No new performance index without measured evidence.

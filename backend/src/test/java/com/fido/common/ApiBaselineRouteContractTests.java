@@ -29,6 +29,9 @@ class ApiBaselineRouteContractTests {
     private static final Route PRODUCT_IMAGE_UPLOAD =
             new Route("POST", "/api/v1/admin/products/{productId}/images");
     private static final Set<Route> APPROVED_REFINEMENT_ROUTES = Set.of(
+            new Route("GET", "/api/v1/admin/reports/sales-trend"),
+            new Route("GET", "/api/v1/admin/reports/orders-trend"),
+            new Route("GET", "/api/v1/admin/reports/product-performance"),
             PRODUCT_IMAGE_UPLOAD,
             new Route(
                     "DELETE",

@@ -1,6 +1,8 @@
 import { AdminIcon } from '../../shared/admin/AdminIcon';
 import { AdminWorkQueue } from '../../features/adminAccess/components/AdminWorkQueue';
 import React from 'react';
+import { DashboardAnalytics } from '../../features/report/components/ReportTabs';
+import { defaultReportRange } from '../../features/report/model/reportFilters';
 
 const modules = [
   ['orders', 'Đơn hàng', 'Xác nhận, chuẩn bị và giao đơn hàng', 'receipt_long'],
@@ -37,7 +39,8 @@ export const AdminDashboardView: React.FC<{
       </div>
     </div>
 
-    <AdminWorkQueue modules={visibleModuleKeys} />
+    {visibleModuleKeys.includes('reports') && <DashboardAnalytics query={defaultReportRange()} canReadCatalog={visibleModuleKeys.includes('products')} />}
+    <AdminWorkQueue modules={visibleModuleKeys} showOrderAmounts={visibleModuleKeys.includes('reports')} />
     <div className="flex items-end justify-between border-b border-[#D9DDD6] pb-4">
       <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#687069]">Modules</p><h2 className="font-serif text-2xl">Không gian vận hành</h2></div>
       <span className="hidden text-[10px] font-bold uppercase tracking-wider text-[#687069] sm:inline">{visibleModules.length} module khả dụng</span>

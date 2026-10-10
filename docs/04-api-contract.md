@@ -241,3 +241,19 @@ See `15-technical-decisions.md` (2026-10-09) for voucher management request fiel
 capabilities, persisted checkout quote IDs and compatibility semantics. Voucher
 management is now implemented rather than deferred. This extension preserves
 existing response envelopes and snake_case contracts.
+
+## Approved Dashboard Analytics extension — 2026-10-10
+
+These endpoints extend Report beyond the historic 77-route baseline. All use `{ "data": ... }` and require
+`ROLE_SUPERADMIN OR (ROLE_ADMIN AND PERMISSION_REPORT_READ)`. Overview retains all six fields and monetary semantics.
+
+| GET path under `/api/v1/admin/reports` | Query | Data |
+| --- | --- | --- |
+| `/sales-trend` | required ISO `from`, `to`; `granularity=DAY` (`DAY/WEEK/MONTH`) | from, to, granularity, timezone, points: period_start, completed_sales, returned_adjustment, net_sales |
+| `/orders-trend` | same date/granularity query | from, to, granularity, timezone, points: period_start, total_orders, orders_by_status (all 8 statuses) |
+| `/product-performance` | required ISO `from`, `to`; `limit=10` (1–100) | from, to, items: product_id, product_name, thumbnail (nullable), completed_units, returned_units, net_units |
+
+Dates are inclusive Vietnam calendar dates. Invalid/missing dates, reversed ranges, invalid granularity and out-of-range limit return 400.
+Week labels are Monday; month labels are day 1. A partial first bucket can have a canonical period_start before `from`,
+but its data is strictly restricted to the requested inclusive range. Empty intersecting periods are included as zero buckets.
+Orders use created_at and current status; sales/products use completed_at. Neither reconstructs state transition history.

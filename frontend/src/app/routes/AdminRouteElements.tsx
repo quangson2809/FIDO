@@ -197,10 +197,7 @@ export const AdminAuditRoute = () => {
   return <AdminAuditView showToast={showToast} />;
 };
 
-export const AdminReportsRoute = () => {
-  const { showToast } = useAdminRouteDeps();
-  return <AdminReportsView showToast={showToast} />;
-};
+export const AdminReportsRoute = () => <AdminReportsView />;
 
 export const AdminContentRoute = () => {
   const { showToast } = useAdminRouteDeps();

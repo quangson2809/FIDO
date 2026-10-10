@@ -290,3 +290,7 @@ await waitForDrain;
 assert.deepEqual(drainedValues, [1]);
 assert.equal(drained, true);
 process.stdout.write('Checkout quote comparison and cart drain: PASS\n');
+
+assert.equal(canAccessAdminModule('reports', profileWithRole('ADMIN'), ['REPORT_READ']), true);
+assert.equal(canAccessAdminModule('reports', profileWithRole('ADMIN'), []), false);
+assert.equal(canAccessAdminModule('reports', profileWithRole('CUSTOMER'), ['REPORT_READ']), false);

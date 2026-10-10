@@ -130,4 +130,113 @@ class ReportApiTest extends OperationsHttpSupport {
         money(empty, "net_sales", "0");
         empty.get("orders_by_status").forEach(count -> assertEquals(0, count.asLong()));
     }
+
+    private JsonNode analytics(String token, String endpoint, String query) throws Exception {
+        var result = call("GET", "/api/v1/admin/reports/" + endpoint + query, token, null);
+        assertEquals(200, result.status(), String.valueOf(result.body()));
+        assertEquals(1, result.body().size());
+        return result.body().get("data");
+    }
+
+    @Test
+    void allEndpointsRequireAdminAndCapabilityAndObserveRevocationOnSameToken() throws Exception {
+        var root = user("SUPERADMIN");
+        var staff = user("ADMIN");
+        var customer = user("CUSTOMER");
+        capability(customer, "REPORT_READ");
+        String dates = "?from=2024-01-01&to=2024-01-02";
+        for (String endpoint : List.of("overview", "sales-trend", "orders-trend", "product-performance")) {
+            String path = "/api/v1/admin/reports/" + endpoint + dates;
+            assertEquals(401, call("GET", path, null, null).status());
+            assertEquals(403, call("GET", path, staff.token(), null).status());
+            assertEquals(403, call("GET", path, customer.token(), null).status());
+            assertEquals(200, call("GET", path, root.token(), null).status());
+        }
+        capability(staff, "REPORT_READ");
+        for (String endpoint : List.of("overview", "sales-trend", "orders-trend", "product-performance")) {
+            assertEquals(200, call("GET", "/api/v1/admin/reports/" + endpoint + dates, staff.token(), null).status());
+        }
+        db.update("""
+                DELETE FROM role_permissions WHERE permission_id=(SELECT permission_id FROM permissions WHERE code='REPORT_READ')
+                AND role_id IN (SELECT role_id FROM account_roles WHERE account_id=?)
+                """, staff.id());
+        for (String endpoint : List.of("overview", "sales-trend", "orders-trend", "product-performance")) {
+            assertEquals(403, call("GET", "/api/v1/admin/reports/" + endpoint + dates, staff.token(), null).status());
+        }
+    }
+
+    @Test
+    void dailyWeeklyMonthlySalesReconcileWithOverviewAndClampPartialBuckets() throws Exception {
+        var root = user("SUPERADMIN");
+        order("COMPLETED", "2023-01-31 17:00:00", "2023-01-31 17:00:00", "100", "10", "20", true);
+        long returned = order("RETURNED", "2023-02-05 00:00:00", "2023-02-05 17:00:00", "200", "20", "15.50", true);
+        db.update("UPDATE orders SET returned_at='2023-03-01 00:00:00' WHERE order_id=?", returned);
+        order("SHIPPING", "2023-02-06 00:00:00", null, "999", "0", "0", true);
+        order("COMPLETED", "2023-02-10 17:00:00", "2023-02-10 17:00:00", "900", "0", "0", true);
+        var overview = report(root.token(), "2023-02-01", "2023-02-10");
+        for (String granularity : List.of("DAY", "WEEK", "MONTH")) {
+            var result = analytics(root.token(), "sales-trend", "?from=2023-02-01&to=2023-02-10&granularity=" + granularity);
+            assertEquals("Asia/Ho_Chi_Minh", result.get("timezone").asText());
+            assertEquals(granularity, result.get("granularity").asText());
+            for (String field : List.of("completed_sales", "returned_adjustment", "net_sales")) {
+                BigDecimal sum = BigDecimal.ZERO;
+                for (var point : result.get("points")) sum = sum.add(point.get(field).decimalValue());
+                assertEquals(0, sum.compareTo(overview.get(field).decimalValue()), field);
+            }
+            assertEquals(granularity.equals("DAY") ? 10 : granularity.equals("WEEK") ? 2 : 1, result.get("points").size());
+            if (granularity.equals("WEEK")) assertEquals("2023-01-30", result.get("points").get(0).get("period_start").asText());
+            if (granularity.equals("DAY")) money(result.get("points").get(1), "net_sales", "0");
+        }
+        var defaultDay = analytics(root.token(), "sales-trend", "?from=2023-02-01&to=2023-02-01");
+        assertEquals("DAY", defaultDay.get("granularity").asText());
+        money(defaultDay.get("points").get(0), "net_sales", "110");
+    }
+
+    @Test
+    void orderTrendsUseCreationDateCurrentStateAndAllEightZeroFilledCounts() throws Exception {
+        var root = user("SUPERADMIN");
+        for (String status : List.of("PENDING", "CONFIRMED", "PREPARING", "SHIPPING", "COMPLETED", "DELIVERY_FAILED", "CANCELLED", "RETURNED")) {
+            order(status, "2022-12-31 17:00:00", "2023-04-01 00:00:00", "10", "0", "0", true);
+        }
+        order("PENDING", "2023-01-01 17:00:00", null, "10", "0", "0", false);
+        order("PENDING", "2022-12-31 16:59:59.999999", null, "10", "0", "0", false);
+        var overview = report(root.token(), "2023-01-01", "2023-01-02");
+        for (String granularity : List.of("DAY", "WEEK", "MONTH")) {
+            var points = analytics(root.token(), "orders-trend", "?from=2023-01-01&to=2023-01-02&granularity=" + granularity).get("points");
+            long total = 0;
+            var counts = new java.util.HashMap<String, Long>();
+            for (var point : points) {
+                assertEquals(8, point.get("orders_by_status").size());
+                long bucketTotal = 0;
+                var fields = point.get("orders_by_status").properties();
+                for (var entry : fields) {
+                    bucketTotal += entry.getValue().asLong();
+                    counts.merge(entry.getKey(), entry.getValue().asLong(), Long::sum);
+                }
+                assertEquals(bucketTotal, point.get("total_orders").asLong());
+                total += bucketTotal;
+            }
+            assertEquals(9, total);
+            for (var entry : counts.entrySet()) assertEquals(overview.get("orders_by_status").get(entry.getKey()).asLong(), entry.getValue());
+        }
+        var empty = analytics(root.token(), "orders-trend", "?from=2021-02-01&to=2021-02-03");
+        assertEquals(3, empty.get("points").size());
+        empty.get("points").forEach(point -> assertEquals(0, point.get("total_orders").asLong()));
+    }
+
+    @Test
+    void analyticsRejectInvalidDatesGranularityAndLimit() throws Exception {
+        var root = user("SUPERADMIN");
+        for (String endpoint : List.of("sales-trend", "orders-trend", "product-performance")) {
+            for (String dates : List.of("", "?from=2024-01-01", "?from=bad&to=2024-01-02", "?from=2024-02-30&to=2024-03-01", "?from=2024-02-01&to=2024-01-01")) {
+                assertEquals(400, call("GET", "/api/v1/admin/reports/" + endpoint + dates, root.token(), null).status());
+            }
+        }
+        for (String endpoint : List.of("sales-trend", "orders-trend")) {
+            assertEquals(400, call("GET", "/api/v1/admin/reports/" + endpoint + "?from=2024-01-01&to=2024-01-02&granularity=YEAR", root.token(), null).status());
+        }
+        for (String limit : List.of("0", "101", "bad")) {
+            assertEquals(400, call("GET", "/api/v1/admin/reports/product-performance?from=2024-01-01&to=2024-01-02&limit=" + limit, root.token(), null).status());
+        }
+    }
 }

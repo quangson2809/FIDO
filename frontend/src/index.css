@@ -341,3 +341,22 @@ a:hover > .material-symbols-outlined {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Report feature: follow the existing admin surfaces without global UI overrides. */
+.report-card { min-width: 0; border: 1px solid #E2E5DE; background: white; padding: clamp(1rem, 2vw, 1.5rem); border-radius: .5rem; }
+.report-card h2 { font-family: Georgia, serif; font-size: 1.25rem; color: #071A12; }
+.report-description { margin-top: .35rem; color: #606863; font-size: .8rem; line-height: 1.6; }
+.report-filters { display: grid; gap: 1rem; border: 1px solid #E2E5DE; background: #F6F7F2; padding: 1rem; border-radius: .5rem; }
+.report-filters label { display: grid; gap: .4rem; font-size: .8rem; font-weight: 600; min-width: 0; }
+.report-filters input, .report-filters select { min-width: 0; max-width: 100%; border: 1px solid #D9DDD6; background: white; padding: .6rem; border-radius: .25rem; }
+.report-link { color: #1B5038; text-decoration: underline; text-underline-offset: 3px; }
+.report-table-scroll { max-width: 100%; overflow-x: auto; margin-top: 1rem; }
+.report-table { width: 100%; text-align: left; font-size: .8rem; }
+.report-table th, .report-table td { padding: .75rem; border-bottom: 1px solid #E2E5DE; vertical-align: middle; }
+.report-table thead { background: #F6F7F2; }
+.report-table td { font-variant-numeric: tabular-nums; }
+.report-empty { background: #F6F7F2; padding: .8rem; margin-top: 1rem; font-size: .85rem; }
+.report-plot { margin-top: 1.25rem; min-width: 0; }
+.report-tooltip { min-height: 3rem; display: flex; flex-wrap: wrap; gap: .5rem 1rem; padding: .75rem; background: #F6F7F2; font-size: .8rem; }
+.report-plot svg rect:focus { outline: 2px solid #9C6519; fill: #E8C75B33; }
+@media (max-width: 480px) { .report-filters form { display: grid; grid-template-columns: 1fr; } .report-filters label { width: 100%; } }
