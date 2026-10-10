@@ -43,7 +43,7 @@ try {
   await page.waitForURL('**/products?category_id=1&brand_id=1&size_value_id=1&color_id=1&gender=UNISEX&season=ALL&style=MINIMAL&min_price=100&max_price=300000');
   await page.getByText('25 sản phẩm', { exact: true }).waitFor();
   // Route update and the mobile badge render asynchronously; assert the same contract after it settles.
-  await page.getByRole('button', { name: /Bộ lọc \\(9\\)/ }).waitFor();
+  await page.getByRole('button', { name: /Bộ lọc [(]9[)]/ }).waitFor();
   assert.match(await open.innerText(), /9/);
   await page.reload();
   await page.getByText('25 sản phẩm', { exact: true }).waitFor();
