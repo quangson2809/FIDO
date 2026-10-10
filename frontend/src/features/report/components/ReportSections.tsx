@@ -74,7 +74,7 @@ export function RevenueKpis({
     </div>
   );
 }
-export function SalesSection({ report, previous }: { report: SalesTrendDto; previous?: SalesTrendDto }) {
+export function SalesSection({ report, previous }: { report: SalesTrendDto; previous?: SalesTrendDto | null }) {
   const empty = report.points.every(
     (point) => point.completed_sales === 0 && point.returned_adjustment === 0,
   );
@@ -91,6 +91,7 @@ export function SalesSection({ report, previous }: { report: SalesTrendDto; prev
         </p>
       )}
       <RevenueAreaChart points={report.points} previousPoints={previous?.points} />
+      {previous === null ? <p role="status" className="mt-2 text-xs text-[#687069]">Không tải được kỳ trước; số liệu kỳ hiện tại vẫn hiển thị bình thường.</p> : null}
       <details className="mt-4">
         <summary className="cursor-pointer font-semibold">
           Bảng doanh số chính xác
