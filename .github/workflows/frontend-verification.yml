@@ -75,6 +75,7 @@ jobs:
         with:
           name: storefront-browser-evidence
           path: frontend/.browser-evidence
+          include-hidden-files: true
           if-no-files-found: warn
 
       - name: Keep production build
