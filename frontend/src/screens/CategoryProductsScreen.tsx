@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { catalogService } from '../features/catalog/api/service';
 import { CatalogProductGrid } from '../features/catalog/components/CatalogBrowseSections';
 import type { CategoryDto } from '../features/catalog/types';
+import { getCategoryAncestors } from '../features/catalog/model/categoryTree';
 import { categoryProductsPath } from '../routes/paths';
 import { useRemoteQuery } from '../shared/hooks/useRemoteQuery';
 import { QueryFeedback } from '../shared/ui/storefront/QueryFeedback';
@@ -27,12 +28,12 @@ export function CategoryProductsScreen() {
   const metadata = useRemoteQuery(useCallback(() => catalogService.getMeta(), []));
   const id = categoryId && /^\d+$/.test(categoryId) ? Number(categoryId) : NaN;
   const category = Number.isSafeInteger(id) && id > 0 ? metadata.data?.categories.find(item => item.category_id === id) : undefined;
-  const parent = metadata.data?.categories.find(item => item.category_id === category?.parent_category_id);
+  const ancestors = category ? getCategoryAncestors(metadata.data?.categories ?? [], category.category_id) : [];
   const children = metadata.data?.categories.filter(item => item.parent_category_id === id) ?? [];
   return <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
     <nav aria-label="Đường dẫn danh mục" className="mb-6 flex flex-wrap items-center gap-2 text-sm">
       <Link to="/">Trang chủ</Link><span aria-hidden="true">/</span><Link to="/products">Sản phẩm</Link>
-      {parent && <><span aria-hidden="true">/</span><Link to={categoryProductsPath(parent.category_id)}>{parent.name}</Link></>}
+      {ancestors.map(ancestor => <span key={ancestor.category_id} className="contents"><span aria-hidden="true">/</span><Link to={categoryProductsPath(ancestor.category_id)}>{ancestor.name}</Link></span>)}
       {category && <><span aria-hidden="true">/</span><span aria-current="page">{category.name}</span></>}
     </nav>
     <QueryFeedback loading={metadata.loading} error={metadata.error ? getStorefrontErrorMessage(metadata.error, 'Không thể tải danh mục.') : null} onRetry={metadata.reload} />

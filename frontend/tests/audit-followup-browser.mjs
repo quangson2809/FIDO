@@ -90,6 +90,43 @@ try {
   await page.waitForURL('**/categories/3?page=2');
   await page.goBack();
   await page.waitForURL('**/categories/3');
+
+  // Acceptance AUD-06: full ancestry, links, history and malformed metadata.
+  const breadcrumb = page.getByRole('navigation', { name: 'Đường dẫn danh mục' });
+  const checkBreadcrumb = async (path, hierarchy) => {
+    await go(path);
+    await main.getByRole('heading', { name: hierarchy.at(-1), exact: true, level: 1 }).waitFor();
+    assert.deepEqual(await breadcrumb.getByRole('link').allTextContents(),
+      ['Trang chủ', 'Sản phẩm', ...hierarchy.slice(0, -1)], `breadcrumb for ${path}`);
+    assert.equal(await breadcrumb.locator('[aria-current="page"]').innerText(), hierarchy.at(-1));
+  };
+  await checkBreadcrumb('/categories/1', ['Áo']);
+  await checkBreadcrumb('/categories/3', ['Áo', 'Áo sơ mi']);
+  await checkBreadcrumb('/categories/4', ['Áo', 'Áo sơ mi', 'Áo công sở']);
+  assert.equal(await breadcrumb.getByRole('link', { name: 'Áo sơ mi', exact: true }).getAttribute('href'), '/categories/3');
+  await breadcrumb.getByRole('link', { name: 'Áo sơ mi', exact: true }).click();
+  await page.waitForURL('**/categories/3');
+  await page.goBack();
+  await page.waitForURL('**/categories/4');
+  assert.equal(await breadcrumb.locator('[aria-current="page"]').innerText(), 'Áo công sở');
+
+  const originalCategoryCount = metadata.categories.length;
+  try {
+    metadata.categories.push(
+      { category_id: 5, parent_category_id: 999, name: 'Thiếu danh mục cha' },
+      { category_id: 6, parent_category_id: 5, name: 'Nhánh không đầy đủ' },
+      { category_id: 7, parent_category_id: 8, name: 'Vòng A' },
+      { category_id: 8, parent_category_id: 7, name: 'Vòng B' },
+    );
+    await checkBreadcrumb('/categories/5', ['Thiếu danh mục cha']);
+    await checkBreadcrumb('/categories/6', ['Nhánh không đầy đủ']);
+    await checkBreadcrumb('/categories/7', ['Vòng A']);
+    await checkBreadcrumb('/categories/8', ['Vòng B']);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
+  } finally {
+    metadata.categories.splice(originalCategoryCount);
+  }
+
   metadataFailure = true;
   await go('/categories/1');
   await main.getByRole('alert').waitFor();
