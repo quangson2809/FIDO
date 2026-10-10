@@ -30,14 +30,15 @@ function percentage(count: number, total: number): string {
 export function OrderStatusDonut({ counts, onSelectStatus }: OrderStatusDonutProps) {
   const [focused, setFocused] = useState<OrderStatus | null>(null);
   const total = reportStatuses.reduce((sum, status) => sum + counts[status], 0);
-  let consumed = 0;
-  const segments = reportStatuses.map((status) => {
+  const segments = reportStatuses.reduce<Array<{
+    status: OrderStatus; count: number; length: number; offset: number;
+  }>>((segments, status) => {
     const count = counts[status];
     const length = total ? (count / total) * CIRCUMFERENCE : 0;
-    const offset = consumed;
-    consumed += length;
-    return { status, count, length, offset };
-  });
+    const previous = segments.at(-1);
+    const offset = previous ? previous.offset + previous.length : 0;
+    return [...segments, { status, count, length, offset }];
+  }, []);
   const selected = focused ?? "COMPLETED";
   const selectedCount = counts[selected];
 
