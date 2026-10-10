@@ -47,7 +47,7 @@ export const AdminDashboardView: React.FC<{
       </div>
     </div>
 
-    {visibleModuleKeys.includes('reports') && <DashboardAnalytics query={defaultReportRange()} canReadCatalog={visibleModuleKeys.includes('products')} />}
+    {visibleModuleKeys.includes('reports') && <DashboardAnalytics query={defaultReportRange()} canReadCatalog={visibleModuleKeys.includes('products')} canReadOrders={visibleModuleKeys.includes('orders')} />}
     <AdminWorkQueue modules={visibleModuleKeys} showOrderAmounts={visibleModuleKeys.includes('reports')} />
     <div className="flex items-end justify-between border-b border-[#D9DDD6] pb-4">
       <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#687069]">Modules</p><h2 className="font-serif text-2xl">Không gian vận hành</h2></div>

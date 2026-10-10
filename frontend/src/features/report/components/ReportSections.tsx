@@ -7,10 +7,10 @@ import type {
   SalesTrendDto,
   OrdersTrendDto,
   ProductPerformanceDto,
-  StatusCounts,
 } from "../types";
 import { reportStatuses } from "../types";
-import { SalesChart, OrdersChart } from "./ReportCharts";
+import { OrdersChart } from "./ReportCharts";
+import { RevenueAreaChart } from "./RevenueAreaChart";
 import { formatReportMoney } from "../model/formatReportMoney";
 
 export function ReportFeedback({
@@ -74,7 +74,7 @@ export function RevenueKpis({
     </div>
   );
 }
-export function SalesSection({ report }: { report: SalesTrendDto }) {
+export function SalesSection({ report, previous }: { report: SalesTrendDto; previous?: SalesTrendDto }) {
   const empty = report.points.every(
     (point) => point.completed_sales === 0 && point.returned_adjustment === 0,
   );
@@ -90,7 +90,7 @@ export function SalesSection({ report }: { report: SalesTrendDto }) {
           Chưa có doanh số trong khoảng này. Các kỳ được hiển thị với giá trị 0.
         </p>
       )}
-      <SalesChart points={report.points} />
+      <RevenueAreaChart points={report.points} previousPoints={previous?.points} />
       <details className="mt-4">
         <summary className="cursor-pointer font-semibold">
           Bảng doanh số chính xác
@@ -119,45 +119,6 @@ export function SalesSection({ report }: { report: SalesTrendDto }) {
           </table>
         </div>
       </details>
-    </article>
-  );
-}
-export function StatusDistribution({
-  counts,
-  getLink,
-}: {
-  counts: StatusCounts;
-  getLink?: (status: string) => string;
-}) {
-  const max = Math.max(1, ...Object.values(counts));
-  return (
-    <article className="report-card">
-      <h2>Phân bố trạng thái hiện tại</h2>
-      <p className="report-description">
-        Đơn được chọn theo ngày tạo; không phải lịch sử chuyển trạng thái.
-      </p>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        {reportStatuses.map((status) => (
-          <div key={status}>
-            <div className="flex justify-between gap-2 text-sm">
-              {getLink ? (
-                <Link className="report-link" to={getLink(status)}>
-                  {statusLabel(status)}
-                </Link>
-              ) : (
-                <span>{statusLabel(status)}</span>
-              )}
-              <strong>{counts[status]} đơn</strong>
-            </div>
-            <div className="mt-2 h-2 bg-[#E8E9E3]" aria-hidden="true">
-              <div
-                className="h-2 bg-[#1B5038]"
-                style={{ width: `${(counts[status] / max) * 100}%` }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
     </article>
   );
 }

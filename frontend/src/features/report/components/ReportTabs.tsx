@@ -11,11 +11,11 @@ import {
   ReportFeedback,
   RevenueKpis,
   SalesSection,
-  StatusDistribution,
   OrdersSection,
   ProductsSection,
 } from "./ReportSections";
 import { Link } from "react-router-dom";
+import { OrderStatusDonut } from "./OrderStatusDonut";
 
 export function SalesReport({ query }: { query: TrendQuery }) {
   const result = useSalesReport(query);
@@ -25,7 +25,7 @@ export function SalesReport({ query }: { query: TrendQuery }) {
       {result.data && (
         <>
           <RevenueKpis overview={result.data.overview} />
-          <SalesSection report={result.data.trend} />
+          <SalesSection report={result.data.trend} previous={result.data.previousTrend} />
         </>
       )}
     </>
@@ -54,13 +54,9 @@ export function OrdersReport({
               )}
             </p>
           </article>
-          <StatusDistribution
+          <OrderStatusDonut
             counts={result.data.overview.orders_by_status}
-            getLink={
-              canReadOrders
-                ? (status) => orderDrilldown(query, status)
-                : undefined
-            }
+            onSelectStatus={canReadOrders ? (status) => navigate(orderDrilldown(query, status)) : undefined}
           />
           <OrdersSection
             report={result.data.trend}
@@ -100,11 +96,14 @@ export function ProductsReport({
 export function DashboardAnalytics({
   query,
   canReadCatalog,
+  canReadOrders,
 }: {
   query: TrendQuery;
   canReadCatalog: boolean;
+  canReadOrders: boolean;
 }) {
   const result = useDashboardReport(query);
+  const navigate = useNavigate();
   return (
     <section aria-label="Phân tích kinh doanh" className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -125,7 +124,17 @@ export function DashboardAnalytics({
       {result.data && (
         <>
           <RevenueKpis overview={result.data.overview} showOrders />
-          <SalesSection report={result.data.trend} />
+          <div className="grid gap-5 lg:grid-cols-12">
+            <div className="min-w-0 lg:col-span-8">
+              <SalesSection report={result.data.trend} previous={result.data.previousTrend} />
+            </div>
+            <div className="min-w-0 lg:col-span-4">
+              <OrderStatusDonut
+                counts={result.data.overview.orders_by_status}
+                onSelectStatus={canReadOrders ? (status) => navigate(orderDrilldown(query, status)) : undefined}
+              />
+            </div>
+          </div>
           <ProductsSection
             report={result.data.products}
             canReadCatalog={canReadCatalog}

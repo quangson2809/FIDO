@@ -169,6 +169,12 @@ try {
   const { page } = app;
   await page.goto(base + path);
   await page.getByText("Doanh số theo kỳ hoàn tất", { exact: true }).waitFor();
+  assert.equal(await page.locator('[data-chart="revenue-area"] path[data-series="current"]').count(), 1);
+  assert.equal(await page.locator('[data-chart="revenue-area"] path[data-series="previous"]').count(), 1);
+  await page.getByRole("button", { name: "Doanh số hoàn tất" }).click();
+  assert.equal(await page.getByRole("button", { name: "Doanh số hoàn tất" }).getAttribute("aria-pressed"), "true");
+  await page.getByRole("button", { name: "Doanh số thuần" }).click();
+  assert.equal(await page.getByRole("button", { name: "Doanh số thuần" }).getAttribute("aria-pressed"), "true");
   for (const width of [375, 768, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     assert.equal(
@@ -198,6 +204,8 @@ try {
   await page
     .getByText("Phân bố trạng thái hiện tại", { exact: true })
     .waitFor();
+  assert.equal(await page.locator('[data-chart="order-status-donut"]').count(), 1);
+  assert.equal(await page.locator('[data-chart="order-status-donut"] [data-status="PENDING"]').count(), 1);
   for (const width of [375, 768, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     assert.equal(
@@ -287,6 +295,8 @@ try {
   assert.deepEqual(app.errors, []);
   await page.goto(base + "/admin/dashboard");
   await page.getByText("Top 5 sản phẩm", { exact: true }).waitFor();
+  assert.equal(await page.locator('[data-chart="revenue-area"]').count(), 1);
+  assert.equal(await page.locator('[data-chart="order-status-donut"]').count(), 1);
   for (const width of [375, 768, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     assert.equal(

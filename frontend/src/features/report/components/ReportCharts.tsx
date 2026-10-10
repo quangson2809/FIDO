@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { SalesPoint, OrdersPoint } from "../types";
+import type { OrdersPoint } from "../types";
 import { reportStatuses } from "../types";
 import { statusLabel } from "../../../shared/admin/statusLabels";
 
@@ -171,31 +171,6 @@ function TrendPlot({
         )}
       </div>
     </div>
-  );
-}
-export function SalesChart({ points }: { points: SalesPoint[] }) {
-  return (
-    <TrendPlot
-      dates={points.map((point) => point.period_start)}
-      unit="VND"
-      series={[
-        {
-          label: "Doanh số hoàn tất",
-          color: colors[0],
-          values: points.map((point) => point.completed_sales),
-        },
-        {
-          label: "Điều chỉnh trả hàng",
-          color: colors[1],
-          values: points.map((point) => point.returned_adjustment),
-        },
-        {
-          label: "Doanh số thuần",
-          color: colors[2],
-          values: points.map((point) => point.net_sales),
-        },
-      ]}
-    />
   );
 }
 export function OrdersChart({

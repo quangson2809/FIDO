@@ -17,6 +17,17 @@ export function defaultReportRange(days = 30): TrendQuery {
   const to = getVietnamToday();
   return { from: shiftDate(to, 1 - days), to, granularity: "DAY" };
 }
+/** Equal-length, immediately preceding Vietnam-calendar interval. */
+export function precedingReportRange(query: TrendQuery): TrendQuery {
+  const day = 24 * 60 * 60 * 1000;
+  const length = Math.round((Date.parse(`${query.to}T00:00:00Z`) - Date.parse(`${query.from}T00:00:00Z`)) / day) + 1;
+  return {
+    from: shiftDate(query.from, -length),
+    to: shiftDate(query.from, -1),
+    granularity: query.granularity,
+  };
+}
+
 export function readReportFilters(
   params: URLSearchParams,
 ): TrendQuery & { tab: ReportTab; valid: boolean } {

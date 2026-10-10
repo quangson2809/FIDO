@@ -339,7 +339,7 @@ a:hover > .material-symbols-outlined {
 .admin-ui .report-ranking { min-width: 0; }
 .admin-ui .report-ranking th { white-space: normal; }
 .report-plot svg text { font-size: 12px; }
-@media (max-width: 600px) { .report-plot svg text { font-size: 24px; } }
+@media (max-width: 600px) { .report-plot svg text { font-size: 12px; } }
 
 /* Storefront primitives are scoped to the customer layout. */
 .storefront { min-width: 0; overflow-wrap: anywhere; }
