@@ -331,15 +331,15 @@ a:hover > .material-symbols-outlined {
 .report-table thead { background: #F6F7F2; }
 .report-table td { font-variant-numeric: tabular-nums; }
 .report-empty { background: #F6F7F2; padding: .8rem; margin-top: 1rem; font-size: .85rem; }
-.report-plot { margin-top: 1.25rem; min-width: 0; }
+.orders-plot { margin-top: 1.25rem; min-width: 0; }
 .report-tooltip { min-height: 3rem; display: flex; flex-wrap: wrap; gap: .5rem 1rem; padding: .75rem; background: #F6F7F2; font-size: .8rem; }
-.report-plot svg rect:focus { outline: 2px solid #9C6519; fill: #E8C75B33; }
+.orders-plot svg rect:focus { outline: 2px solid #9C6519; fill: #E8C75B33; }
 @media (max-width: 480px) { .report-filters form { display: grid; grid-template-columns: 1fr; } .report-filters label { width: 100%; } }
 
 .admin-ui .report-ranking { min-width: 0; }
 .admin-ui .report-ranking th { white-space: normal; }
-.report-plot svg text { font-size: 12px; }
-@media (max-width: 600px) { .report-plot svg text { font-size: 12px; } }
+.orders-plot svg text { font-size: 12px; }
+@media (max-width: 600px) { .orders-plot svg text { font-size: 12px; } }
 
 /* Storefront primitives are scoped to the customer layout. */
 .storefront { min-width: 0; overflow-wrap: anywhere; }

@@ -3,7 +3,6 @@ import type { OrdersPoint } from "../types";
 import { reportStatuses } from "../types";
 import { statusLabel } from "../../../shared/admin/statusLabels";
 
-import { formatReportMoney } from "../model/formatReportMoney";
 const colors = [
   "#1B5038",
   "#9C6519",
@@ -21,15 +20,13 @@ interface Series {
 }
 
 // Coordinates and tooltip state only; metrics are supplied by the backend.
-function TrendPlot({
+function OrderTrendPlot({
   dates,
   series,
-  unit,
   onPeriod,
 }: {
   dates: string[];
   series: Series[];
-  unit: "VND" | "đơn";
   onPeriod?: (date: string) => void;
 }) {
   const [active, setActive] = useState<number | null>(null);
@@ -39,10 +36,9 @@ function TrendPlot({
   const x = (index: number) =>
     90 + (index * 620) / Math.max(1, dates.length - 1);
   const y = (value: number) => 240 - ((value - min) * 200) / (max - min);
-  const format = (value: number) =>
-    unit === "VND" ? formatReportMoney(value) : `${value} đơn`;
+  const format = (value: number) => `${value} đơn`;
   return (
-    <div className="report-plot">
+    <div className="orders-plot">
       <div
         className="flex flex-wrap gap-x-4 gap-y-2 text-xs"
         aria-label="Chú giải"
@@ -57,12 +53,12 @@ function TrendPlot({
         ))}
       </div>
       <p className="mt-3 text-xs text-[#606863]">
-        Đơn vị: {unit} · Di chuyển bằng Tab để đọc từng kỳ.
+        Đơn vị: đơn · Di chuyển bằng Tab để đọc từng kỳ.
       </p>
       <svg
         viewBox="0 0 800 300"
         role="group"
-        aria-label={`Biểu đồ theo thời gian, đơn vị ${unit}`}
+        aria-label="Biểu đồ số đơn theo thời gian"
         className="w-full min-w-0"
       >
         {[0, 1, 2, 3, 4].map((tick) => {
@@ -181,9 +177,8 @@ export function OrdersChart({
   onPeriod?: (period: string) => void;
 }) {
   return (
-    <TrendPlot
+    <OrderTrendPlot
       dates={points.map((point) => point.period_start)}
-      unit="đơn"
       onPeriod={onPeriod}
       series={reportStatuses.map((status, index) => ({
         label: statusLabel(status),

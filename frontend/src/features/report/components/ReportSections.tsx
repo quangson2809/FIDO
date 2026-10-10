@@ -9,7 +9,7 @@ import type {
   ProductPerformanceDto,
 } from "../types";
 import { reportStatuses } from "../types";
-import { OrdersChart } from "./ReportCharts";
+import { OrdersChart } from "./OrdersTrendChart";
 import { RevenueAreaChart } from "./RevenueAreaChart";
 import { formatReportMoney } from "../model/formatReportMoney";
 
