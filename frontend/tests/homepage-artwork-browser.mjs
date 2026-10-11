@@ -14,6 +14,7 @@ const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
 const pageErrors = [];
 page.on('pageerror', (error) => pageErrors.push(error.message));
 await page.route('**/api/v1/**', storefrontFixture().handler);
+await page.clock.install();
 
 try {
   await mkdir('.browser-evidence', { recursive: true });
@@ -33,13 +34,38 @@ try {
   assert.equal(await categoryCards.nth(1).getAttribute('href'), '/categories/2');
 
   const banner = page.getByRole('region', { name: 'Bộ ảnh thời trang FIDO' });
-  assert.equal(await banner.locator('[data-slide-active="true"] img').getAttribute('src'), '/images/about/wardrobe.svg');
+  const activeBannerImage = () => banner.locator('[data-slide-active="true"] img').getAttribute('src');
+  assert.equal(await activeBannerImage(), '/images/about/wardrobe.svg');
+
+  // A resting pointer must not disable autoplay.
+  await banner.hover();
+  await page.clock.fastForward(6100);
+  await page.waitForFunction(() =>
+    document.querySelector('[data-slide-active="true"] img')?.getAttribute('src') === '/images/about/palette.svg');
+  assert.equal(await activeBannerImage(), '/images/about/palette.svg', 'autoplay advances without user click, including on hover');
+
+  // Manual navigation retains autoplay even while its button has keyboard focus.
   await banner.getByRole('button', { name: 'Ảnh tiếp theo' }).click();
-  assert.equal(await banner.locator('[data-slide-active="true"] img').getAttribute('src'), '/images/about/palette.svg');
+  assert.equal(await activeBannerImage(), '/images/about/details.svg');
+  await page.clock.fastForward(6100);
+  await page.waitForFunction(() =>
+    document.querySelector('[data-slide-active="true"] img')?.getAttribute('src') === '/images/about/wardrobe.svg');
+  assert.equal(await activeBannerImage(), '/images/about/wardrobe.svg', 'autoplay resumes after manual navigation with button focused');
+
+  await banner.getByRole('button', { name: 'Tạm dừng tự động chuyển ảnh' }).click();
+  await page.clock.fastForward(13000);
+  assert.equal(await activeBannerImage(), '/images/about/wardrobe.svg', 'pause prevents automatic advancement');
+  await banner.getByRole('button', { name: 'Tiếp tục tự động chuyển ảnh' }).click();
+  await page.clock.fastForward(6100);
+  await page.waitForFunction(() =>
+    document.querySelector('[data-slide-active="true"] img')?.getAttribute('src') === '/images/about/palette.svg');
+
+  await banner.getByRole('button', { name: 'Ảnh tiếp theo' }).click();
+  assert.equal(await activeBannerImage(), '/images/about/details.svg');
   await banner.getByRole('button', { name: 'Hiển thị ảnh 3: Chú trọng từng chi tiết' }).click();
-  assert.equal(await banner.locator('[data-slide-active="true"] img').getAttribute('src'), '/images/about/details.svg');
+  assert.equal(await activeBannerImage(), '/images/about/details.svg');
   await banner.getByRole('button', { name: 'Ảnh trước' }).click();
-  assert.equal(await banner.locator('[data-slide-active="true"] img').getAttribute('src'), '/images/about/palette.svg');
+  assert.equal(await activeBannerImage(), '/images/about/palette.svg');
 
   assert.deepEqual(
     await page.locator('svg[data-benefit-artwork]').evaluateAll(
@@ -66,6 +92,24 @@ try {
       fullPage: true,
     });
   }
+
+  const reducedMotionPage = await browser.newPage({
+    viewport: { width: 390, height: 844 },
+    reducedMotion: 'reduce',
+  });
+  await reducedMotionPage.route('**/api/v1/**', storefrontFixture().handler);
+  await reducedMotionPage.clock.install();
+  await reducedMotionPage.goto('http://localhost:5196/');
+  const reducedBanner = reducedMotionPage.getByRole('region', { name: 'Bộ ảnh thời trang FIDO' });
+  await reducedBanner.getByRole('button', { name: 'Tiếp tục tự động chuyển ảnh' }).waitFor();
+  await reducedMotionPage.clock.fastForward(13000);
+  assert.equal(await reducedBanner.locator('[data-slide-active="true"] img').getAttribute('src'),
+    '/images/about/wardrobe.svg', 'autoplay defaults to paused for reduced-motion preference');
+  await reducedBanner.getByRole('button', { name: 'Tiếp tục tự động chuyển ảnh' }).click();
+  await reducedMotionPage.clock.fastForward(6100);
+  await reducedMotionPage.waitForFunction(() =>
+    document.querySelector('[data-slide-active="true"] img')?.getAttribute('src') === '/images/about/palette.svg');
+  await reducedMotionPage.close();
 
   const nestedPage = await browser.newPage({ viewport: { width: 1280, height: 844 } });
   const nestedFixture = storefrontFixture();
@@ -97,7 +141,7 @@ try {
   await categoryCards.first().click();
   await page.waitForURL('**/categories/1');
   assert.deepEqual(pageErrors, []);
-  console.log('Homepage artwork browser: PASS — nested API categories, carousel controls, contextual art, routes and responsive widths.');
+  console.log('Homepage artwork browser: PASS — autoplay, pause/resume, reduced-motion, nested categories, routes and responsive widths.');
 } finally {
   await browser.close();
   await server.close();
