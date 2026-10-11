@@ -144,10 +144,12 @@ export function HomeHero() {
             {slides.map((slide, index) => (
               <button key={slide.src} type="button" aria-label={'Hiển thị ảnh ' + (index + 1) + ': ' + slide.label}
                 aria-pressed={index === activeIndex} onClick={() => setActiveIndex(index)}
-                className={index === activeIndex
-                  ? 'h-2.5 w-8 rounded-full bg-[#0B2419] shadow-sm'
-                  : 'h-2.5 w-4 rounded-full bg-white/80 shadow-sm hover:bg-white'}
-              />
+                className="flex h-11 w-11 items-center justify-center rounded-full"
+              >
+                <span aria-hidden="true" className={index === activeIndex
+                  ? 'h-2.5 w-7 rounded-full bg-[#0B2419] shadow-sm'
+                  : 'h-2.5 w-4 rounded-full bg-white/80 shadow-sm transition-colors hover:bg-white'} />
+              </button>
             ))}
           </div>
         </div>
