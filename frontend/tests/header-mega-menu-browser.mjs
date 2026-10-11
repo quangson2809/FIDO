@@ -76,7 +76,7 @@ async function noOverflow(page) {
 try {
   await check('Pointer crosses the Header boundary without flicker, layout shift or extra metadata requests', async ({ page, state, go, panel, link, toggle, closed }) => {
     await go('/');
-    await page.getByText('Áo FIDO', { exact: true }).waitFor();
+    await page.locator('#san-pham-noi-bat .product-summary-card').first().waitFor();
     await closed();
     const before = await page.locator('header').boundingBox();
     const mainBefore = await page.locator('main').boundingBox();
@@ -160,7 +160,7 @@ try {
   });
   for (const width of [375, 768, 1024, 1440]) {
     await check(`Responsive ${width}px: readable hierarchy, valid visuals and no horizontal overflow`, async ({ page, go, panel, link, toggle }) => {
-      await go('/'); await page.getByText('Áo FIDO', { exact: true }).waitFor();
+      await go('/'); await page.locator('#san-pham-noi-bat .product-summary-card').first().waitFor();
       if (width < 1024) await toggle.tap(); else await link.hover();
       await panel.getByRole('link', { name: 'Áo công sở', exact: true }).waitFor();
       await noOverflow(page);
