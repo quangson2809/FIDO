@@ -37,3 +37,25 @@ export function getCategoryAncestors(categories: readonly CategoryDto[], categor
 
   return ancestors.reverse();
 }
+
+
+/**
+ * Present real catalog categories in breadth-first order: parent navigation first,
+ * then available subcategories. A store with one broad root can still show its
+ * actual child categories without inventing categories or additional API calls.
+ */
+export function selectHomepageCategories(categories: readonly CategoryDto[], limit = 8): CategoryDto[] {
+  const queue: CategoryNode[] = buildCategoryTree(categories);
+  const selected: CategoryDto[] = [];
+  const visited = new Set<number>();
+
+  for (let index = 0; index < queue.length && selected.length < limit; index++) {
+    const category = queue[index];
+    if (visited.has(category.category_id)) continue;
+    visited.add(category.category_id);
+    selected.push(category);
+    queue.push(...category.children);
+  }
+
+  return selected;
+}
