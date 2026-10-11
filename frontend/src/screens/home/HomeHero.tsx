@@ -25,9 +25,10 @@ const ROTATION_INTERVAL_MS = 6000;
 
 export function HomeHero() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [hovered, setHovered] = useState(false);
-  const [focused, setFocused] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [pageVisible, setPageVisible] = useState(true);
+  const [playbackOverride, setPlaybackOverride] = useState<boolean | null>(null);
+  const isPlaying = playbackOverride ?? !reducedMotion;
 
   useEffect(() => {
     const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -38,12 +39,21 @@ export function HomeHero() {
   }, []);
 
   useEffect(() => {
-    if (hovered || focused || reducedMotion) return;
-    const interval = window.setInterval(() => {
+    const updateVisibility = () => setPageVisible(document.visibilityState === 'visible');
+    updateVisibility();
+    document.addEventListener('visibilitychange', updateVisibility);
+    return () => document.removeEventListener('visibilitychange', updateVisibility);
+  }, []);
+
+  // Reschedule after every slide change, including manual navigation, so a
+  // pending rotation cannot immediately override the shopper's selection.
+  useEffect(() => {
+    if (!isPlaying || !pageVisible) return;
+    const timeout = window.setTimeout(() => {
       setActiveIndex((current) => (current + 1) % slides.length);
     }, ROTATION_INTERVAL_MS);
-    return () => window.clearInterval(interval);
-  }, [hovered, focused, reducedMotion]);
+    return () => window.clearTimeout(timeout);
+  }, [activeIndex, isPlaying, pageVisible]);
 
   const moveSlide = (direction: -1 | 1) => {
     setActiveIndex((current) => (current + direction + slides.length) % slides.length);
@@ -94,12 +104,6 @@ export function HomeHero() {
           aria-roledescription="carousel"
           aria-label="Bộ ảnh thời trang FIDO"
           className="relative min-h-[290px] overflow-hidden bg-[#E8E6DC] sm:min-h-[410px] lg:col-span-7 lg:min-h-0"
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
-          onFocusCapture={() => setFocused(true)}
-          onBlurCapture={(event) => {
-            if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false);
-          }}
         >
           <div className="pointer-events-none absolute -right-14 top-0 h-64 w-64 rounded-full bg-[#E8C75B]/25 blur-2xl" aria-hidden="true" />
           {slides.map((slide, index) => {
@@ -124,12 +128,20 @@ export function HomeHero() {
           })}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#071A12]/65 to-transparent" aria-hidden="true" />
           <div className="absolute inset-x-4 bottom-4 flex items-end justify-between gap-3 text-white sm:inset-x-7 sm:bottom-7">
-            <div aria-live="polite" aria-atomic="true" className="min-w-0">
+            <div aria-live={isPlaying ? 'off' : 'polite'} aria-atomic="true" className="min-w-0">
               <span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#E8C75B]">FIDO EDITORIAL</span>
               <p className="mt-1 text-sm font-semibold sm:text-base">{slides[activeIndex].label}</p>
               <span className="mt-1 block text-[10px] text-white/80">Minh họa phong cách · {activeIndex + 1} / {slides.length}</span>
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                aria-label={isPlaying ? 'Tạm dừng tự động chuyển ảnh' : 'Tiếp tục tự động chuyển ảnh'}
+                onClick={() => setPlaybackOverride(!isPlaying)}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/50 bg-[#071A12]/60 text-white transition-colors hover:bg-[#071A12]"
+              >
+                <StorefrontIcon name={isPlaying ? 'pause' : 'play_arrow'} className="h-5 w-5" />
+              </button>
               <button type="button" aria-label="Ảnh trước" onClick={() => moveSlide(-1)}
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-white/50 bg-[#071A12]/60 text-white transition-colors hover:bg-[#071A12]">
                 <StorefrontIcon name="chevron_left" className="h-5 w-5" />
