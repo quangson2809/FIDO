@@ -23,7 +23,9 @@ public class DevSeedInventoryData {
                 (970002,25,'2026-09-20 03:00:00'),
                 (970003,23,'2026-09-20 03:00:00'),
                 (970004,14,'2026-09-20 03:00:00'),
-                (970005,0,'2026-09-20 03:00:00')
+                (970005,0,'2026-09-20 03:00:00'),
+                (970006,12,'2026-09-20 03:00:00'),
+                (970007,8,'2026-09-20 03:00:00')
                 """);
     }
 
@@ -105,7 +107,11 @@ public class DevSeedInventoryData {
                 (1040015,970002,-2,'ORDER_CONFIRM_OUT',1001101,NULL,900005,
                     'Seed report completed','2026-09-10 01:10:00'),
                 (1040016,970003,-1,'ORDER_CONFIRM_OUT',1001102,NULL,900005,
-                    'Seed report returned','2026-09-11 01:10:00')
+                    'Seed report returned','2026-09-11 01:10:00'),
+                (1040017,970006,12,'ADJUSTMENT_IN',NULL,NULL,900004,
+                    'Seed opening stock for dress','2026-09-01 01:00:00'),
+                (1040018,970007,8,'ADJUSTMENT_IN',NULL,NULL,900004,
+                    'Seed opening stock for jacket','2026-09-01 01:00:00')
                 """);
     }
 }

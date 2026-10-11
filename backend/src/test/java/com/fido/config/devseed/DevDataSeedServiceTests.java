@@ -68,7 +68,8 @@ class DevDataSeedServiceTests {
         delete("DELETE FROM audit_logs WHERE audit_id BETWEEN 1050001 AND 1050003");
         delete("DELETE FROM inventory_transactions WHERE txn_id IN "
                 + "(1040001,1040002,1040003,1040004,1040005,"
-                + "1040010,1040011,1040012,1040013,1040014,1040015,1040016)");
+                + "1040010,1040011,1040012,1040013,1040014,1040015,1040016,"
+                + "1040017,1040018)");
         delete("DELETE FROM goods_receipt_items "
                 + "WHERE receipt_item_id BETWEEN 1030001 AND 1030003");
         delete("DELETE FROM goods_receipts "
@@ -86,10 +87,10 @@ class DevDataSeedServiceTests {
                 + "1001006,1001101,1001102,1001103)");
         delete("DELETE FROM cart_items WHERE cart_item_id BETWEEN 981001 AND 981002");
         delete("DELETE FROM carts WHERE cart_id BETWEEN 980001 AND 980002");
-        delete("DELETE FROM inventories WHERE variant_id BETWEEN 970001 AND 970005");
-        delete("DELETE FROM product_images WHERE image_id BETWEEN 961001 AND 961003");
-        delete("DELETE FROM product_variants WHERE variant_id BETWEEN 970001 AND 970005");
-        delete("DELETE FROM products WHERE product_id BETWEEN 960001 AND 960003");
+        delete("DELETE FROM inventories WHERE variant_id BETWEEN 970001 AND 970007");
+        delete("DELETE FROM product_images WHERE image_id BETWEEN 961001 AND 961005");
+        delete("DELETE FROM product_variants WHERE variant_id BETWEEN 970001 AND 970007");
+        delete("DELETE FROM products WHERE product_id BETWEEN 960001 AND 960005");
         delete("DELETE FROM suppliers WHERE supplier_id BETWEEN 1020001 AND 1020002");
         delete("DELETE FROM vouchers WHERE voucher_id = 990001");
         delete("DELETE FROM content_pages WHERE page_id BETWEEN 1060001 AND 1060003");
@@ -103,9 +104,8 @@ class DevDataSeedServiceTests {
         delete("DELETE FROM size_values WHERE size_value_id BETWEEN 941001 AND 941006");
         delete("DELETE FROM size_systems WHERE size_system_id BETWEEN 940001 AND 940002");
         delete("DELETE FROM brands WHERE brand_id BETWEEN 930001 AND 930002");
-        delete("DELETE FROM categories WHERE category_id IN (920003,920005)");
-        delete("DELETE FROM categories WHERE category_id IN (920002,920004)");
-        delete("DELETE FROM categories WHERE category_id = 920001");
+        delete("DELETE FROM categories WHERE category_id BETWEEN 920005 AND 920008");
+        delete("DELETE FROM categories WHERE category_id BETWEEN 920001 AND 920004");
         delete("DELETE FROM accounts WHERE account_id = 899001");
         delete("DELETE FROM permissions WHERE permission_id = 899201");
     }
@@ -140,6 +140,54 @@ class DevDataSeedServiceTests {
                         DevDataSeedService.DEFAULT_PASSWORD,
                         passwordHash
                 )
+        );
+
+        assertEquals(
+                List.of("Áo", "Quần", "Váy & Đầm", "Áo khoác"),
+                jdbc.queryForList("""
+                        SELECT name
+                        FROM categories
+                        WHERE category_id BETWEEN 920001 AND 920004
+                          AND parent_category_id IS NULL
+                        ORDER BY category_id
+                        """, String.class),
+                "seeded apparel groups must be independent root categories"
+        );
+        assertEquals(
+                "Áo thun",
+                jdbc.queryForObject("""
+                        SELECT c.name
+                        FROM products p
+                        JOIN categories c ON c.category_id = p.category_id
+                        WHERE p.product_id = 960001
+                        """, String.class)
+        );
+        assertEquals(
+                "Quần Jeans",
+                jdbc.queryForObject("""
+                        SELECT c.name
+                        FROM products p
+                        JOIN categories c ON c.category_id = p.category_id
+                        WHERE p.product_id = 960002
+                        """, String.class)
+        );
+        assertEquals(
+                "Đầm liền",
+                jdbc.queryForObject("""
+                        SELECT c.name
+                        FROM products p
+                        JOIN categories c ON c.category_id = p.category_id
+                        WHERE p.product_id = 960004
+                        """, String.class)
+        );
+        assertEquals(
+                "Áo khoác nhẹ",
+                jdbc.queryForObject("""
+                        SELECT c.name
+                        FROM products p
+                        JOIN categories c ON c.category_id = p.category_id
+                        WHERE p.product_id = 960005
+                        """, String.class)
         );
 
         assertEquals(

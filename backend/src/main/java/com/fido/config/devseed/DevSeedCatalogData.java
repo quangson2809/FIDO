@@ -27,11 +27,14 @@ public class DevSeedCatalogData {
     private void seedCategories() {
         jdbc.update("""
                 INSERT INTO categories(category_id,parent_category_id,name) VALUES
-                (920001,NULL,'Thời trang'),
-                (920002,920001,'Áo'),
-                (920003,920002,'Áo thun'),
-                (920004,920001,'Quần'),
-                (920005,920004,'Quần Jeans')
+                (920001,NULL,'Áo'),
+                (920002,NULL,'Quần'),
+                (920003,NULL,'Váy & Đầm'),
+                (920004,NULL,'Áo khoác'),
+                (920005,920001,'Áo thun'),
+                (920006,920002,'Quần Jeans'),
+                (920007,920003,'Đầm liền'),
+                (920008,920004,'Áo khoác nhẹ')
                 """);
     }
 
@@ -80,17 +83,25 @@ public class DevSeedCatalogData {
                     gender,season,style,material_care,base_price,sale_status,
                     created_at,updated_at
                 ) VALUES
-                (960001,920003,930001,940001,'FIDO Essential Tee',
+                (960001,920005,930001,940001,'FIDO Essential Tee',
                     'Áo thun cotton cơ bản','UNISEX','ALL_SEASON','BASIC',
                     'Cotton; giặt nhẹ.',199000.00,'ON_SALE',
                     '2026-09-01 00:00:00','2026-09-01 00:00:00'),
-                (960002,920005,930002,940002,'FIDO Denim Straight',
+                (960002,920006,930002,940002,'FIDO Denim Straight',
                     'Quần jeans straight fit','UNISEX','ALL_SEASON','DENIM',
                     'Giặt mặt trái.',499000.00,'ON_SALE',
                     '2026-09-01 00:00:00','2026-09-01 00:00:00'),
-                (960003,920003,930001,940001,'FIDO Archive Tee',
+                (960003,920005,930001,940001,'FIDO Archive Tee',
                     'Sản phẩm ngừng bán','UNISEX','ALL_SEASON','BASIC',
                     NULL,179000.00,'STOPPED',
+                    '2026-09-01 00:00:00','2026-09-01 00:00:00'),
+                (960004,920007,930001,940001,'FIDO Linen Midi Dress',
+                    'Đầm midi linen tối giản','UNISEX','ALL_SEASON','MINIMAL',
+                    'Linen; giặt nhẹ.',459000.00,'ON_SALE',
+                    '2026-09-01 00:00:00','2026-09-01 00:00:00'),
+                (960005,920008,930001,940001,'FIDO Utility Jacket',
+                    'Áo khoác nhẹ dáng utility','UNISEX','ALL_SEASON','UTILITY',
+                    'Cotton blend; giặt nhẹ.',699000.00,'ON_SALE',
                     '2026-09-01 00:00:00','2026-09-01 00:00:00')
                 """);
     }
@@ -105,7 +116,11 @@ public class DevSeedCatalogData {
                 (961002,960002,'https://example.com/fido/denim-blue.jpg',
                     'FIDO Denim Straight',0),
                 (961003,960003,'https://example.com/fido/archive.jpg',
-                    'FIDO Archive Tee',0)
+                    'FIDO Archive Tee',0),
+                (961004,960004,'https://example.com/fido/dress-midi.jpg',
+                    'FIDO Linen Midi Dress',0),
+                (961005,960005,'https://example.com/fido/jacket-utility.jpg',
+                    'FIDO Utility Jacket',0)
                 """);
     }
 
@@ -124,6 +139,10 @@ public class DevSeedCatalogData {
                 (970004,960002,941006,950003,'DENIM-32-NVY',NULL,'ON_SALE',
                     '2026-09-01 00:00:00','2026-09-01 00:00:00'),
                 (970005,960003,941002,950001,'ARCHIVE-M-BLK',NULL,'STOPPED',
+                    '2026-09-01 00:00:00','2026-09-01 00:00:00'),
+                (970006,960004,941002,950002,'DRESS-M-WHT',NULL,'ON_SALE',
+                    '2026-09-01 00:00:00','2026-09-01 00:00:00'),
+                (970007,960005,941003,950001,'JACKET-L-BLK',NULL,'ON_SALE',
                     '2026-09-01 00:00:00','2026-09-01 00:00:00')
                 """);
     }
