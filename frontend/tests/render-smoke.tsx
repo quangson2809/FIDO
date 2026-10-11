@@ -207,6 +207,7 @@ const purchasePanelHtml = renderToStaticMarkup(
     sizeAvailability={() => true}
     colorAvailability={() => true}
     colorCompatibility={() => true}
+    colorUnavailableReason={() => 'Tổ hợp size và màu này đã hết hàng'}
     onSelectSize={noOp}
     onSelectColor={noOp}
     onQuantityChange={noOp}
@@ -265,6 +266,7 @@ const stoppedProductPanelHtml = renderToStaticMarkup(
     sizeAvailability={() => true}
     colorAvailability={() => true}
     colorCompatibility={() => true}
+    colorUnavailableReason={() => 'Tổ hợp size và màu này đã hết hàng'}
     onSelectSize={noOp}
     onSelectColor={noOp}
     onQuantityChange={noOp}

@@ -159,7 +159,7 @@ try {
     await page.locator('#san-pham-noi-bat').getByRole('button', { name: 'Xem chi tiết: Áo FIDO', exact: true }).click();
     await page.waitForURL('**/products/1');
     assert.notEqual(await page.evaluate(() => window.storefrontScrollCalls.at(-1)?.[0]?.behavior), 'smooth');
-    await page.getByRole('region', { name: 'Sản phẩm khác', exact: true }).getByRole('button', { name: /Quần FIDO/ }).click();
+    await page.getByRole('region', { name: 'Sản phẩm khác', exact: true }).getByRole('button', { name: 'Xem chi tiết: Quần FIDO', exact: true }).click();
     await page.waitForURL('**/products/2');
     assert.notEqual(await page.evaluate(() => window.storefrontScrollCalls.at(-1)?.[0]?.behavior), 'smooth');
   });

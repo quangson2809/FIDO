@@ -25,7 +25,12 @@ export function CategoryNavigation({ open, active, onOpenChange, onNavigate }: P
         onOpenChange(true);
       }
     }}
-    onPointerLeave={event => { if (event.pointerType === 'mouse') onOpenChange(false); }}
+    onPointerLeave={event => {
+      if (event.pointerType !== 'mouse') return;
+      // The search row belongs to the Header bridge between trigger and panel.
+      const target = event.relatedTarget;
+      if (!(target instanceof Element) || target.closest('header') !== event.currentTarget.closest('header')) onOpenChange(false);
+    }}
     onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) onOpenChange(false); }}
     onKeyDown={event => {
       if (event.key === 'Escape' && open) {
@@ -43,7 +48,7 @@ export function CategoryNavigation({ open, active, onOpenChange, onNavigate }: P
     <button ref={button} type="button" aria-label="Danh mục sản phẩm" aria-expanded={open} aria-controls="storefront-category-menu"
       onClick={() => { trigger.current = button.current; onOpenChange(!open); }} className="category-navigation-toggle">
       <StorefrontIcon name="grid_view" className="category-navigation-mobile-icon h-5 w-5" />
-      <span className="category-navigation-mobile-label">Sản phẩm</span>
+      <span className="category-navigation-mobile-label">Danh mục</span>
       <StorefrontIcon name="expand_more" className={`h-4 w-4 ${open ? 'rotate-180' : ''}`} />
     </button>
     <nav id="storefront-category-menu" aria-label="Danh mục phân cấp" aria-hidden={!open} inert={!open} className="category-mega-panel" data-open={open}>

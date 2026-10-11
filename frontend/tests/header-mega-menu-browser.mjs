@@ -260,7 +260,9 @@ try {
     assert.equal(state.pointer, 'auto'); assert.equal(state.inert, false);
     assert.equal(state.duration, '0.18s, 0.18s, 0s');
     // Raw pointer input avoids Playwright's wait for a transition-stable target.
-    await page.mouse.click(85, 150);
+    const target = await page.locator('#storefront-category-menu a').first().boundingBox();
+    assert.ok(target, 'navigation target has geometry during the opening transition');
+    await page.mouse.click(target.x + target.width / 2, target.y + target.height / 2);
     await page.waitForURL('**/products'); await closed();
   });
   await writeFile(`${evidence}/mega-test-results.json`, JSON.stringify({ status: 'PASS', cases: results, source: 'controlled HTTP fixtures; separate live API evidence required' }, null, 2));

@@ -10,7 +10,7 @@ const summaries = [
   { ...product, name: 'Áo cotton FIDO', thumbnail: '/images/about/wardrobe.svg', material_care: 'Cotton; giặt nhẹ.', sizes: [size('29', 1), size('30', 2), size('31', 3)] },
   { ...product, product_id: 2, name: 'Quần FIDO', category: meta.categories[1], brand: null, thumbnail: null, material_care: null, base_price: 499000, sizes: [size('29', 1), size('31', 3), size('34', 6)] },
   { ...product, product_id: 3, name: 'Tên sản phẩm rất dài để kiểm tra hai dòng và sự thẳng hàng của giá trong cùng một lưới '.repeat(3), thumbnail: '/broken-summary.jpg', material_care: 'Giặt mặt trái. Không sấy.', sizes: [{ ...size('S', 1), display_name: 'Small' }, { ...size('M', 2), display_name: 'Medium' }, { ...size('L', 3), display_name: 'Large' }] },
-  { ...product, product_id: 4, name: 'Sản phẩm nhiều kích cỡ', thumbnail: '/images/about/details.svg', material_care: null, sizes: Array.from({ length: 12 }, (_, index) => size(`Size ${index * 2 + 28}`, index + 1)) },
+  { ...product, product_id: 4, name: 'Sản phẩm nhiều kích cỡ', base_price: 999999999999.99, thumbnail: '/images/about/details.svg', material_care: null, sizes: Array.from({ length: 12 }, (_, index) => size(`Size ${index * 2 + 28}`, index + 1)) },
 ];
 const fixture = storefrontFixture();
 const requests = [];
@@ -72,7 +72,7 @@ try {
     assert.equal(await first.locator('button button').count(), 0);
     await cards.nth(2).getByRole('img', { name: /ảnh chưa khả dụng/ }).waitFor();
 
-    for (const width of [375, 768, 1024, 1440]) {
+    for (const width of [320, 375, 390, 430, 768, 1024, 1280, 1440]) {
       await page.setViewportSize({ width, height: 1000 });
       await page.mouse.move(0, 0);
       await page.screenshot({ animations: 'disabled', path: `.browser-evidence/summary-after-fixture-${width}.png`, fullPage: true });
@@ -156,6 +156,6 @@ try {
     await touch.getByRole('heading', { name: 'Áo cotton FIDO', exact: true }).waitFor();
     await touch.close();
     assert.deepEqual(errors, []);
-    console.log('Product summary browser: PASS — real service mapping with HTTP fixtures, no per-card fetch, 4 viewports, ratio/alignment/overflow, missing/broken image, long name, material labels, sizes with gaps, hover/layout, keyboard/touch/dialog/retry/navigation and reduced motion.');
+    console.log('Product summary browser: PASS — real service mapping with HTTP fixtures, no per-card fetch, 8 viewports, ratio/alignment/overflow, missing/broken image, long name, material labels, sizes with gaps, hover/layout, keyboard/touch/dialog/retry/navigation and reduced motion.');
   }
 } finally { await browser.close(); await server.close(); }

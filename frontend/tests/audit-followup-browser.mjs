@@ -82,8 +82,9 @@ try {
   await menu.getByRole('link', { name: 'Áo', exact: true }).click();
   await main.getByRole('heading', { name: 'Áo', exact: true, level: 1 }).waitFor();
   await main.getByRole('button', { name: /Xem size & chất liệu/ }).waitFor();
-  assert.equal(await main.getByRole('searchbox').count(), 0);
-  assert.equal(await main.getByRole('region', { name: 'Lọc sản phẩm' }).count(), 0);
+  assert.equal(await main.getByRole('searchbox').count(), 1, 'category products share catalog search');
+  assert.equal(await main.getByRole('region', { name: 'Lọc sản phẩm', exact: true }).count(), 1, 'category products share catalog filters');
+  assert.equal(await main.getByLabel('Danh mục', { exact: true }).count(), 0, 'category route keeps its scope fixed');
   assert.equal(requests.filter(r => r.path === '/catalog/products').at(-1).query.get('category_id'), '1');
   await main.getByRole('link', { name: 'Áo sơ mi', exact: true }).click();
   await main.getByRole('heading', { name: 'Áo sơ mi', exact: true, level: 1 }).waitFor();

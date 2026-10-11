@@ -338,7 +338,7 @@ assert.throws(() => parseSales({ from: '2026-01-01', to: '2026-01-01', granulari
 assert.throws(() => parseProducts({ from: '2026-01-01', to: '2026-01-01', items: [{ product_id: 1, product_name: 'Test', thumbnail: null, completed_units: 'bad', returned_units: 0, net_units: 0 }] }));
 assert.throws(() => parseOrders({ from: '2026-01-01', to: '2026-01-01', granularity: 'DAY', timezone: 'Asia/Ho_Chi_Minh', points: [{ period_start: '2026-01-01', total_orders: 3, orders_by_status: {} }] }));
 
-import { readCatalogQuery, catalogQueryParams } from '../src/features/catalog/model/catalogQuery';
+import { readCatalogQuery, catalogQueryParams, catalogUrlParams } from '../src/features/catalog/model/catalogQuery';
 import { recipientErrors, quoteHasExpired } from '../src/features/orders/model/recipientValidation';
 import { getStorefrontErrorMessage } from '../src/services/http/storefrontError';
 import { ApiClientError } from '../src/services/http/apiError';
@@ -348,6 +348,10 @@ assert.deepEqual(readCatalogQuery(new URLSearchParams('page=2147483648&category_
 assert.equal(readCatalogQuery(new URLSearchParams('page=2147483647')).page, 2147483647, 'do not invent a smaller pagination limit');
 const sharedCatalogQuery = readCatalogQuery(new URLSearchParams('q=shirt&category_id=2&color_id=3&min_price=0&page=2'));
 assert.equal(catalogQueryParams(sharedCatalogQuery).toString(), 'q=shirt&category_id=2&color_id=3&min_price=0&page=2');
+const scopedCatalogQuery = readCatalogQuery(new URLSearchParams('q=shirt&category_id=999&brand_id=2&page=3'), null, 4);
+assert.deepEqual(scopedCatalogQuery, { page: 3, q: 'shirt', category_id: 4, brand_id: 2 }, 'route category cannot be replaced by a URL category');
+assert.equal(catalogQueryParams(scopedCatalogQuery).get('category_id'), '4', 'API still receives the route category');
+assert.equal(catalogUrlParams(scopedCatalogQuery, 4).toString(), 'q=shirt&brand_id=2&page=3', 'category URL preserves filters and pagination without duplicate scope');
 assert.deepEqual(recipientErrors({ recipient_phone: '+84 90-000-0000', recipient_email: 'user@example.test', recipient_address: 'Hà Nội' }), { phone: null, email: null, address: null });
 assert.ok(recipientErrors({ recipient_phone: 'bad', recipient_email: 'bad', recipient_address: ' ' }).phone);
 assert.ok(recipientErrors({ recipient_phone: '0900000000', recipient_email: null, recipient_address: ' ' }).address);

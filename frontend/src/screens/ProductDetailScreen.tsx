@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useCart } from '../features/cart/hooks/useCart';
 import { catalogService } from '../features/catalog/api/service';
 import {
@@ -19,6 +19,7 @@ import { StorefrontDialog } from '../shared/ui/storefront/StorefrontDialog';
 import { StorefrontImage } from '../shared/ui/storefront/StorefrontImage';
 import { canPurchaseProductVariant } from '../features/catalog/model/purchaseAvailability';
 import { useRemoteQuery } from '../shared/hooks/useRemoteQuery';
+import { categoryProductsPath } from '../routes/paths';
 
 export const ProductDetailScreen: React.FC = () => {
   const { addToCart } = useCart();
@@ -46,6 +47,7 @@ export const ProductDetailScreen: React.FC = () => {
     let active = true;
     const load = async () => {
       setLoading(true);
+      setZoomOpen(false);
       try {
         const detail = await catalogService.getProductDetail(productId);
         if (!active) return;
@@ -160,6 +162,13 @@ export const ProductDetailScreen: React.FC = () => {
         && variant.available_quantity > 0,
     );
 
+  const colorUnavailableReason = (colorId: number): string => {
+    const variant = product?.variants.find(item => item.size.size_value_id === selectedSizeValueId && item.color.color_id === colorId);
+    if (!variant) return 'Tổ hợp size và màu này không tồn tại';
+    if (variant.sale_status === 'STOPPED') return 'Tổ hợp size và màu này đã ngừng bán';
+    return variant.available_quantity === 0 ? 'Tổ hợp size và màu này đã hết hàng' : variant.color.name;
+  };
+
   const addCurrentVariantToCart = () => {
     if (!product || !selectedVariant || !variantCanBePurchased) return;
 
@@ -228,16 +237,17 @@ export const ProductDetailScreen: React.FC = () => {
   return (
     <div className="w-full bg-white text-[#0B2419]">
       <div className="border-b border-[#E2E5DE] bg-[#F5F6F2] px-4 py-3 sm:px-8">
-        <nav className="mx-auto flex max-w-7xl items-center gap-2 text-[13px] font-medium text-[#606863]">
-          <button type="button" onClick={() => navigate('/')} className="hover:text-[#0B2419]">
+        <nav aria-label="Đường dẫn sản phẩm" className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 text-[13px] font-medium text-[#606863]">
+          <Link to="/" className="hover:text-[#0B2419]">
             Trang chủ
-          </button>
-          <span className="text-[#A0A69F]">/</span>
-          <button type="button" onClick={() => navigate('/products')} className="hover:text-[#0B2419]">
+          </Link>
+          <span aria-hidden="true">/</span><Link to="/products">Sản phẩm</Link>
+          <span aria-hidden="true">/</span>
+          <Link to={categoryProductsPath(product.category.category_id)} className="hover:text-[#0B2419]">
             {product.category.name}
-          </button>
-          <span className="text-[#A0A69F]">/</span>
-          <span className="max-w-[45vw] truncate font-semibold text-[#0B2419]">
+          </Link>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page" className="min-w-0 font-semibold text-[#0B2419]">
             {product.name}
           </span>
         </nav>
@@ -270,6 +280,7 @@ export const ProductDetailScreen: React.FC = () => {
           sizeAvailability={sizeAvailability}
           colorAvailability={colorAvailability}
           colorCompatibility={colorCompatibility}
+          colorUnavailableReason={colorUnavailableReason}
           colorSelectionNotice={colorSelectionNotice}
           onSelectSize={selectSize}
           onSelectColor={selectColor}
@@ -278,7 +289,15 @@ export const ProductDetailScreen: React.FC = () => {
         />
       </section>
 
-      {zoomOpen && <StorefrontDialog name="Ảnh sản phẩm" onClose={() => setZoomOpen(false)} className="m-auto max-h-[92dvh] w-[calc(100%-24px)] max-w-4xl overflow-auto p-4"><div className="p-4"><button autoFocus type="button" onClick={() => setZoomOpen(false)} className="mb-4 min-h-11 border px-4">Đóng ảnh</button><StorefrontImage src={gallery[activeImageIndex]} alt={product.name} loading="eager" className="max-h-[75dvh] w-full object-contain" /></div></StorefrontDialog>}
+      {zoomOpen && <StorefrontDialog name="Ảnh sản phẩm" onClose={() => setZoomOpen(false)} className="product-zoom-dialog">
+        <div className="p-4" onKeyDown={event => {
+          if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); moveImage(event.key === 'ArrowLeft' ? -1 : 1); }
+        }}>
+          <header className="mb-3 flex items-center justify-between gap-3"><p role="status" className="text-sm">Ảnh {activeImageIndex + 1} / {gallery.length}</p><button autoFocus type="button" onClick={() => setZoomOpen(false)} className="min-h-11 border px-4">Đóng ảnh</button></header>
+          <StorefrontImage src={gallery[activeImageIndex]} alt={product.images[activeImageIndex]?.alt_text ?? product.name} loading="eager" className="max-h-[66dvh] w-full object-contain" />
+          {gallery.length > 1 && <nav aria-label="Chuyển ảnh phóng to" className="mt-3 flex justify-between gap-3"><button type="button" onClick={() => moveImage(-1)} className="min-h-11 border px-4">Ảnh trước</button><button type="button" onClick={() => moveImage(1)} className="min-h-11 border px-4">Ảnh tiếp theo</button></nav>}
+        </div>
+      </StorefrontDialog>}
       <ProductRecommendationsSection
         recommendations={recommendations}
         loading={recommendationQuery.loading}
