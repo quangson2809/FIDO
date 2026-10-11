@@ -69,7 +69,8 @@ class DevDataSeedServiceTests {
         delete("DELETE FROM inventory_transactions WHERE txn_id IN "
                 + "(1040001,1040002,1040003,1040004,1040005,"
                 + "1040010,1040011,1040012,1040013,1040014,1040015,1040016,"
-                + "1040017,1040018)");
+                + "1040017,1040018,1040019,1040020,1040021,1040022,1040023,"
+                + "1040024,1040025,1040026,1040027,1040028,1040029,1040030)");
         delete("DELETE FROM goods_receipt_items "
                 + "WHERE receipt_item_id BETWEEN 1030001 AND 1030003");
         delete("DELETE FROM goods_receipts "
@@ -87,10 +88,10 @@ class DevDataSeedServiceTests {
                 + "1001006,1001101,1001102,1001103)");
         delete("DELETE FROM cart_items WHERE cart_item_id BETWEEN 981001 AND 981002");
         delete("DELETE FROM carts WHERE cart_id BETWEEN 980001 AND 980002");
-        delete("DELETE FROM inventories WHERE variant_id BETWEEN 970001 AND 970007");
-        delete("DELETE FROM product_images WHERE image_id BETWEEN 961001 AND 961005");
-        delete("DELETE FROM product_variants WHERE variant_id BETWEEN 970001 AND 970007");
-        delete("DELETE FROM products WHERE product_id BETWEEN 960001 AND 960005");
+        delete("DELETE FROM inventories WHERE variant_id BETWEEN 970001 AND 970019");
+        delete("DELETE FROM product_images WHERE image_id BETWEEN 961001 AND 961017");
+        delete("DELETE FROM product_variants WHERE variant_id BETWEEN 970001 AND 970019");
+        delete("DELETE FROM products WHERE product_id BETWEEN 960001 AND 960017");
         delete("DELETE FROM suppliers WHERE supplier_id BETWEEN 1020001 AND 1020002");
         delete("DELETE FROM vouchers WHERE voucher_id = 990001");
         delete("DELETE FROM content_pages WHERE page_id BETWEEN 1060001 AND 1060003");
@@ -189,6 +190,21 @@ class DevDataSeedServiceTests {
                         WHERE p.product_id = 960005
                         """, String.class)
         );
+
+        for (long leafCategoryId = 920005; leafCategoryId <= 920008; leafCategoryId++) {
+            assertEquals(
+                    4,
+                    jdbc.queryForObject("""
+                            SELECT COUNT(DISTINCT p.product_id)
+                            FROM products p
+                            JOIN product_variants v ON v.product_id = p.product_id
+                            WHERE p.category_id = ?
+                              AND p.sale_status = 'ON_SALE'
+                              AND v.sale_status = 'ON_SALE'
+                            """, Integer.class, leafCategoryId),
+                    "each homepage category must have four sellable products"
+            );
+        }
 
         assertEquals(
                 1,
