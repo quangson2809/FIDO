@@ -1,6 +1,8 @@
 const paths = {
   chevron_left: 'm15 6-6 6 6 6',
   chevron_right: 'm9 6 6 6-6 6',
+  pause: 'M9 5v14 M15 5v14',
+  play_arrow: 'M8 5v14l11-7Z',
   checkroom: 'm6 3 6 3 6-3 5 6-4 3v10H5V12l-4-3z',
   local_shipping: 'M1 4h13v13H1z M14 9h4l4 5v3h-8 M8 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0 M20 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0',
   price_check: 'M3 3h10l8 8-10 10-8-8z M7 7h.01 m3 5 2 2 4-4',
