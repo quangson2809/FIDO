@@ -64,10 +64,13 @@ const main = page.locator('main');
 try {
   await mkdir('.browser-evidence', { recursive: true });
   await go('/');
-  await main.locator('#danh-muc a[href="/categories/1"]').waitFor();
+  const homepageParents = main.locator('[data-home-parent-category]');
+  await main.locator('[data-home-parent-category="1"] a[href="/categories/1"]').first().waitFor();
+  assert.deepEqual(await homepageParents.evaluateAll(nodes => nodes.map(node => Number(node.dataset.homeParentCategory))),
+    [1, 3], 'homepage showcases parent categories, never root leaves or nested leaves');
+  assert.equal(await main.locator('[data-home-parent-category="2"], [data-home-parent-category="4"]').count(), 0);
   assert.equal(await page.locator('footer a[href="mailto:cskh@example.test"]').count(), 1);
   assert.equal(await page.locator('footer a[href="tel:0900111222"]').count(), 1);
-  assert.ok(await main.locator('#danh-muc a[href^="/categories/"]').count() >= 2, 'multiple dynamic category links');
   const menuButton = page.getByRole('button', { name: 'Danh mục sản phẩm', exact: true });
   const productLink = page.getByRole('navigation', { name: 'Điều hướng chính', exact: true }).getByRole('link', { name: 'Sản phẩm', exact: true });
   await productLink.hover();
