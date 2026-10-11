@@ -67,8 +67,12 @@ try {
   const homepageParents = main.locator('[data-home-parent-category]');
   await main.locator('[data-home-parent-category="1"] a[href="/categories/1"]').first().waitFor();
   assert.deepEqual(await homepageParents.evaluateAll(nodes => nodes.map(node => Number(node.dataset.homeParentCategory))),
-    [1, 3], 'homepage showcases parent categories, never root leaves or nested leaves');
-  assert.equal(await main.locator('[data-home-parent-category="2"], [data-home-parent-category="4"]').count(), 0);
+    [1], 'homepage showcases only top-level parent categories');
+  assert.equal(await main.locator('[data-home-parent-category="2"], [data-home-parent-category="3"], [data-home-parent-category="4"]').count(), 0,
+    'root leaves, nested parents and nested leaves do not own independent showcases');
+  assert.deepEqual(requests.filter(request => request.path === '/catalog/products')
+    .map(request => request.query.get('category_id')).filter(Boolean), ['1'],
+    'homepage product request uses the root category and relies on the API for its descendants');
   assert.equal(await page.locator('footer a[href="mailto:cskh@example.test"]').count(), 1);
   assert.equal(await page.locator('footer a[href="tel:0900111222"]').count(), 1);
   const menuButton = page.getByRole('button', { name: 'Danh mục sản phẩm', exact: true });

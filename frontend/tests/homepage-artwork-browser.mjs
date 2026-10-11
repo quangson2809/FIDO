@@ -51,23 +51,23 @@ try {
   await page.getByRole('heading', { name: 'DANH MỤC SẢN PHẨM' }).waitFor();
 
   const showcases = page.locator('[data-home-parent-category]');
-  await page.waitForFunction(() => document.querySelectorAll('[data-home-parent-category]').length === 3);
+  await page.waitForFunction(() => document.querySelectorAll('[data-home-parent-category]').length === 2);
   assert.deepEqual(await showcases.evaluateAll(nodes => nodes.map(node => Number(node.getAttribute('data-home-parent-category')))),
-    [1, 2, 3], 'only categories with children, including nested parent categories; never leaf 4/5');
+    [1, 2], 'only top-level categories with children; nested parents and leaves are excluded');
   assert.deepEqual(await showcases.locator('svg[data-artwork]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-artwork'))),
-    ['tops', 'bottoms', 'tops'], 'parent artwork tracks API category names');
+    ['tops', 'bottoms'], 'root category artwork tracks API category names');
   assert.deepEqual(await showcases.locator('a[href^="/categories/"]').evaluateAll(nodes => nodes.map(node => node.getAttribute('href'))),
-    ['/categories/1', '/categories/1', '/categories/2', '/categories/2', '/categories/3', '/categories/3']);
+    ['/categories/1', '/categories/1', '/categories/2', '/categories/2']);
   await page.waitForFunction(() => [...document.querySelectorAll('[data-home-parent-category]')].every(section => section.querySelectorAll('.product-summary-card').length === 4));
-  assert.equal(showcaseReads.every(read => read.pageSize === '4'), true, 'exactly four products requested per parent');
-  assert.equal(new Set(showcaseReads.map(read => read.categoryId)).size, 3);
+  assert.equal(showcaseReads.every(read => read.pageSize === '4'), true, 'each root requests at most four products');
+  assert.deepEqual([...new Set(showcaseReads.map(read => read.categoryId))], [1, 2], 'product requests are scoped to root categories only');
   for (const section of await showcases.all()) {
     assert.equal(await section.locator('.product-summary-card').count(), 4, 'each parent category owns four cards');
     const banner = section.locator('a[href^="/categories/"]').first();
     assert.ok((await banner.getAttribute('class')).includes('sm:min-h-52'), 'category banner fills its own row');
   }
   assert.equal((await showcases.nth(1).locator('a[href^="/categories/"]').first().getAttribute('class')).includes('sm:flex-row-reverse'), true, 'successive category banners alternate');
-  assert.equal(await page.locator('[data-home-parent-category="4"], [data-home-parent-category="5"]').count(), 0, 'leaf category never has a showcase');
+  assert.equal(await page.locator('[data-home-parent-category="3"], [data-home-parent-category="4"], [data-home-parent-category="5"]').count(), 0, 'nested parent and leaf categories never own a homepage showcase');
 
   const banner = page.getByRole('region', { name: 'Bộ ảnh thời trang FIDO' });
   const activeBannerImage = () => banner.locator('[data-slide-active="true"] img').getAttribute('src');
@@ -158,6 +158,7 @@ try {
     ...meta.categories,
     { category_id: 3, parent_category_id: 1, name: 'Áo thun' },
     { category_id: 4, parent_category_id: 2, name: 'Quần jeans' },
+    { category_id: 5, parent_category_id: 3, name: 'Áo polo' },
   ];
   await nestedPage.route('**/api/v1/**', (route) => {
     if (new URL(route.request().url()).pathname === '/api/v1/catalog/meta') {
@@ -170,7 +171,8 @@ try {
   const nestedLinks = nestedPage.locator('[data-home-parent-category] a[href^="/categories/"]');
   await nestedPage.waitForFunction(() => document.querySelectorAll('[data-home-parent-category]').length === 2);
   assert.deepEqual(await nestedPage.locator('[data-home-parent-category]').evaluateAll(nodes => nodes.map(node => Number(node.dataset.homeParentCategory))),
-    [1, 2], 'homepage only promotes parent category cards');
+    [1, 2], 'homepage promotes root parent categories only, not nested parents');
+  assert.equal(await nestedPage.locator('[data-home-parent-category="3"], [data-home-parent-category="4"], [data-home-parent-category="5"]').count(), 0);
   await nestedLinks.first().click();
   await nestedPage.waitForURL('**/categories/1');
   await nestedPage.getByRole('navigation', { name: 'Danh mục con' }).getByRole('link', { name: 'Áo thun', exact: true }).click();

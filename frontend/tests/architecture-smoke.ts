@@ -3,6 +3,7 @@ import { productSummaryMetadata, productSummarySizes } from '../src/features/cat
 import { summaryMaterialCare, summarySizes } from '../src/features/catalog/api/summaryFields';
 import { LatestMutationQueue } from '../src/features/cart/model/LatestMutationQueue';
 import { buildMovedImageOrder, sortProductImages } from '../src/features/catalog/model/productImageOrder';
+import { selectHomepageParentCategories } from '../src/features/catalog/model/categoryTree';
 import { canAccessAdminModule, canWriteAdminModule } from '../src/features/auth/session/adminAccessPolicy';
 import { canPurchaseProductVariant } from '../src/features/catalog/model/purchaseAvailability';
 import { buildCheckoutQuoteKey } from '../src/features/orders/model/checkoutQuoteKey';
@@ -25,6 +26,20 @@ import {
   subscribeToApiAccessToken,
 } from '../src/services/http/apiClient';
 import type { MeDto } from '../src/features/auth/types';
+
+const homepageCategoryFixture = [
+  { category_id: 1, parent_category_id: null, name: 'Root parent' },
+  { category_id: 2, parent_category_id: null, name: 'Root leaf' },
+  { category_id: 3, parent_category_id: 1, name: 'Nested parent' },
+  { category_id: 4, parent_category_id: 3, name: 'Nested leaf' },
+  { category_id: 5, parent_category_id: 999, name: 'Orphan parent' },
+  { category_id: 6, parent_category_id: 5, name: 'Orphan child' },
+];
+assert.deepEqual(
+  selectHomepageParentCategories(homepageCategoryFixture),
+  [homepageCategoryFixture[0]],
+  'only explicit top-level categories with descendants own home showcases',
+);
 
 const numericSizes = [29, 30, 31].map((value, index) => ({
   size_value_id: index + 1, size_system_id: 1, code: String(value), display_name: String(value), sort_order: index,
