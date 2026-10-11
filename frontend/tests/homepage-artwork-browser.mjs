@@ -175,7 +175,7 @@ try {
   await nestedPage.waitForURL('**/categories/1');
   await nestedPage.getByRole('navigation', { name: 'Danh mục con' }).getByRole('link', { name: 'Áo thun', exact: true }).click();
   await nestedPage.waitForURL('**/categories/3');
-  assert.equal(await nestedPage.getByRole('heading', { name: 'Áo thun', exact: true }).count(), 1);
+  await nestedPage.getByRole('heading', { name: 'Áo thun', exact: true, level: 1 }).waitFor();
   await nestedPage.close();
 
   await showcases.first().locator('a[href^="/categories/"]').first().click();
