@@ -1,5 +1,7 @@
 import { ProductSummaryCard } from '../features/catalog/components/ProductSummaryCard';
 import { BenefitCardIllustration, CategoryCardIllustration } from './home/HomeCardIllustrations';
+import { HomeHero } from './home/HomeHero';
+import { selectHomepageCategories } from '../features/catalog/model/categoryTree';
 import { StorefrontIcon } from '../components/StorefrontIcon';
 import { Link } from 'react-router-dom';
 import { StorefrontImage } from '../shared/ui/storefront/StorefrontImage';
@@ -10,8 +12,6 @@ import { categoryProductsPath } from '../routes/paths';
 import { catalogService } from '../features/catalog/api/service';
 import { useRemoteQuery } from '../shared/hooks/useRemoteQuery';
 import { getStorefrontErrorMessage } from '../services/http/storefrontError';
-
-const HERO_IMAGE = '/images/about/wardrobe.svg';
 
 export const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -27,7 +27,7 @@ export const HomeScreen: React.FC = () => {
     window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   };
 
-  const rootCategories = meta?.categories.filter((category) => category.parent_category_id === null) ?? [];
+  const homepageCategories = selectHomepageCategories(meta?.categories ?? []);
 
   return (
     <div className="w-full bg-white text-[#0B2419]" id="trang-chu">
@@ -39,72 +39,7 @@ export const HomeScreen: React.FC = () => {
         </div>
       </div>
 
-      <section className="relative w-full overflow-hidden bg-[#FFFDF5]">
-        <div className="grid min-h-[650px] w-full grid-cols-1 lg:min-h-[760px] lg:grid-cols-12">
-          <div className="relative z-10 flex flex-col justify-between p-6 sm:p-10 lg:col-span-5 lg:p-14">
-            <div className="space-y-4 pt-2 lg:pt-8">
-              <div className="inline-flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-[#E8C75B]" />
-                <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#0B2419]">
-                  FIDO • READY-TO-WEAR
-                </span>
-              </div>
-              <h1 className="font-serif text-5xl font-normal leading-[1.02] tracking-tight text-[#0B2419] sm:text-6xl lg:text-[68px]">
-                BẢN THỂ
-                <br />
-                <span className="italic text-[#123A29]">TỐI GIẢN.</span>
-              </h1>
-              <p className="max-w-md pt-2 text-[15px] font-light leading-7 text-[#424844] sm:text-[16px]">
-                Khám phá thiết kế tối giản, chọn phom dáng và màu sắc thể hiện phong cách của bạn.
-              </p>
-              <div className="flex flex-col items-stretch gap-3 pt-6 sm:flex-row sm:items-center">
-                <button
-                  type="button"
-                  onClick={() => navigate('/products')}
-                  className="inline-flex items-center justify-center gap-2 bg-[#0B2419] px-7 py-4 text-[12px] font-bold uppercase tracking-widest text-white shadow-md transition-all duration-300 hover:bg-[#1B5038]"
-                >
-                  <span>Khám phá bộ sưu tập</span>
-                  <StorefrontIcon name="arrow_forward" className="h-5 w-5 text-[18px]" />
-                </button>
-                <a
-                  href="#san-pham-noi-bat"
-                  className="inline-flex items-center justify-center border border-[#0B2419]/30 bg-transparent px-7 py-4 text-[12px] font-bold uppercase tracking-widest text-[#0B2419] transition-all duration-300 hover:bg-[#FAF4DF]"
-                >
-                  Xem sản phẩm nổi bật
-                </a>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4 border-t border-[#E8E9E3]/80 pb-2 pt-10 text-[#0B2419]">
-              <div>
-                <span className="block font-serif text-xl font-bold sm:text-2xl">SẢN PHẨM</span>
-                <span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863] sm:text-[10px]">Bộ sưu tập FIDO</span>
-              </div>
-              <div>
-                <span className="block font-serif text-xl font-bold sm:text-2xl">SIZE + MÀU</span>
-                <span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863] sm:text-[10px]">Chọn kích cỡ và màu</span>
-              </div>
-              <div>
-                <span className="block font-serif text-xl font-bold sm:text-2xl">COD</span>
-                <span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863] sm:text-[10px]">Thanh toán khi nhận</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative min-h-[460px] overflow-hidden lg:col-span-7 lg:min-h-full">
-            <StorefrontImage
-              loading="eager" alt="Minh họa tủ đồ theo phong cách FIDO"
-              className="h-full w-full scale-[1.02] object-cover object-center transition-transform duration-700 hover:scale-100"
-              src={HERO_IMAGE}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#071A12]/45 via-transparent to-transparent" />
-            <div className="absolute bottom-6 right-6 flex items-center gap-3 bg-[#071A12]/85 px-4 py-2.5 text-[#FFFDF5] shadow-lg backdrop-blur-md lg:bottom-10 lg:right-10">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#E8C75B]" />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Minh họa phong cách · FIDO</span>
-            </div>
-          </div>
-        </div>
-      </section>
+      <HomeHero />
 
       <section className="w-full border-y border-[#E8E9E3]/80 bg-[#FFFDF5] py-10 md:py-12" aria-label="Điểm nổi bật khi mua sắm tại FIDO">
         <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-4 sm:grid-cols-2 sm:px-8 lg:grid-cols-4 lg:gap-5 lg:px-14">
@@ -172,12 +107,12 @@ export const HomeScreen: React.FC = () => {
 
           {metaQuery.loading && <div role="status" className="py-8 text-sm text-[#687069]">Đang tải danh mục...</div>}
           {!metaQuery.loading && metaError && <QueryFeedback error={metaError} onRetry={metaQuery.reload} />}
-          {!metaQuery.loading && !metaError && rootCategories.length === 0 && (
+          {!metaQuery.loading && !metaError && homepageCategories.length === 0 && (
             <div className="py-8 text-sm text-[#687069]">Chưa có danh mục gốc để hiển thị.</div>
           )}
-          {!metaQuery.loading && !metaError && rootCategories.length > 0 && (
+          {!metaQuery.loading && !metaError && homepageCategories.length > 0 && (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
-              {rootCategories.slice(0, 8).map((category) => (
+              {homepageCategories.map((category) => (
                 <Link
                   key={category.category_id}
                   to={categoryProductsPath(category.category_id)}
