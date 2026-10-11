@@ -36,8 +36,8 @@ const homepageCategoryFixture = [
   { category_id: 6, parent_category_id: 5, name: 'Orphan child' },
 ];
 assert.deepEqual(
-  selectHomepageParentCategories(homepageCategoryFixture),
-  [homepageCategoryFixture[0]],
+  selectHomepageParentCategories(homepageCategoryFixture).map(category => category.category_id),
+  [1],
   'only explicit top-level categories with descendants own home showcases',
 );
 
