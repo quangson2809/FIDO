@@ -59,3 +59,22 @@ export function selectHomepageCategories(categories: readonly CategoryDto[], lim
 
   return selected;
 }
+
+/**
+ * Only categories with descendants own a homepage showcase. Leaf categories
+ * remain discoverable through the existing catalog navigation.
+ * Breadth-first traversal keeps parent collections ahead of nested collections.
+ */
+export function selectHomepageParentCategories(categories: readonly CategoryDto[]): CategoryDto[] {
+  const queue = [...buildCategoryTree(categories)];
+  const parents: CategoryDto[] = [];
+  const visited = new Set<number>();
+  for (let index = 0; index < queue.length; index++) {
+    const node = queue[index];
+    if (visited.has(node.category_id)) continue;
+    visited.add(node.category_id);
+    if (node.children.length > 0) parents.push(node);
+    queue.push(...node.children);
+  }
+  return parents;
+}

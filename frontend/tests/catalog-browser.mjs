@@ -62,8 +62,9 @@ try {
   await page.waitForURL('**/products?page=2');
   await page.reload(); await page.getByText('25 sản phẩm', { exact: true }).waitFor();
   assert.match(await page.getByRole('region', { name: 'Kết quả sản phẩm' }).innerText(), /2 \/ 3/);
-  await page.getByLabel('Tìm sản phẩm').fill('missing');
-  await page.getByRole('button', { name: 'Tìm kiếm', exact: true }).click();
+  assert.equal(await page.locator('.catalog-browse form[role="search"]').count(), 0, 'all-products page has no duplicate search form');
+  await page.getByLabel('Từ khóa tìm kiếm toàn cửa hàng').fill('missing');
+  await page.getByLabel('Từ khóa tìm kiếm toàn cửa hàng').press('Enter');
   await page.getByRole('button', { name: 'Xóa tất cả bộ lọc' }).click();
   await page.waitForURL('**/products');
   await page.goto('http://localhost:5183/products?category_id=-2&page=NaN&color_id=999&min_price=bad&gender=bad');

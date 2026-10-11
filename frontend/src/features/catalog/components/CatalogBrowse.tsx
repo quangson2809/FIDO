@@ -34,10 +34,12 @@ export function CatalogBrowse({ categoryId, metadata }: { categoryId?: number; m
     {!mobile && <p role="status" className="mt-3 text-sm text-muted-grey">{catalog.hasDraftChanges ? 'Lựa chọn chưa áp dụng. Bấm áp dụng để cập nhật kết quả.' : 'Kết quả phản ánh bộ lọc đang áp dụng.'}</p>}
   </>;
   return <section aria-label="Khám phá và lọc sản phẩm" className="catalog-browse">
-    <form role="search" aria-label="Tìm trong kết quả sản phẩm" onSubmit={event => { event.preventDefault(); catalog.submitSearch(); }} className="mb-6 flex gap-2">
-      <label className="min-w-0 flex-1"><span className="sr-only">Tìm sản phẩm</span><input value={catalog.draft.search} onChange={event => catalog.setSearchInput(event.target.value)} placeholder={categoryId === undefined ? 'Tìm theo tên sản phẩm' : 'Tìm trong danh mục này'} className="field-input bg-white" type="search" /></label>
-      <button type="submit" className="bg-forest-deep px-4 text-sm font-semibold text-white">Tìm kiếm</button>
-    </form>
+    {categoryId !== undefined && (
+      <form role="search" aria-label="Tìm trong kết quả sản phẩm" onSubmit={event => { event.preventDefault(); catalog.submitSearch(); }} className="mb-6 flex gap-2">
+        <label className="min-w-0 flex-1"><span className="sr-only">Tìm sản phẩm</span><input value={catalog.draft.search} onChange={event => catalog.setSearchInput(event.target.value)} placeholder={categoryId === undefined ? 'Tìm theo tên sản phẩm' : 'Tìm trong danh mục này'} className="field-input bg-white" type="search" /></label>
+        <button type="submit" className="bg-forest-deep px-4 text-sm font-semibold text-white">Tìm kiếm</button>
+      </form>
+    )}
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle pb-4">
       <button type="button" aria-haspopup="dialog" onClick={() => setFiltersOpen(true)} className="inline-flex min-h-11 items-center gap-2 border border-forest-deep px-4 text-sm font-semibold lg:hidden"><StorefrontIcon name="tune" className="h-5 w-5" />Bộ lọc {catalog.activeFilterCount > 0 ? `(${catalog.activeFilterCount})` : ''}</button>
       <p role="status" className="text-sm text-muted-grey">{catalog.loading ? 'Đang tìm sản phẩm...' : catalog.error ? 'Chưa tải được kết quả' : `${catalog.pagination?.total ?? 0} sản phẩm`}</p>

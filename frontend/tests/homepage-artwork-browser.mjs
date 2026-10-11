@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
-import { meta, storefrontFixture } from './helpers/storefrontFixture.mjs';
+import { meta, product, storefrontFixture } from './helpers/storefrontFixture.mjs';
 
 const server = await createServer({ server: { port: 5196, strictPort: true } });
 await server.listen();
@@ -13,7 +13,36 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
 const pageErrors = [];
 page.on('pageerror', (error) => pageErrors.push(error.message));
-await page.route('**/api/v1/**', storefrontFixture().handler);
+const fixture = storefrontFixture();
+const parentCategories = [
+  ...meta.categories,
+  { category_id: 3, parent_category_id: 1, name: 'Áo thun' },
+  { category_id: 4, parent_category_id: 2, name: 'Quần jeans' },
+  { category_id: 5, parent_category_id: 3, name: 'Áo polo' },
+];
+const showcaseReads = [];
+await page.route('**/api/v1/**', route => {
+  const url = new URL(route.request().url());
+  if (url.pathname === '/api/v1/catalog/meta') {
+    return route.fulfill({ json: { data: { ...meta, categories: parentCategories } } });
+  }
+  if (url.pathname === '/api/v1/catalog/products' && url.searchParams.has('category_id')) {
+    const id = Number(url.searchParams.get('category_id'));
+    showcaseReads.push({ categoryId: id, pageSize: url.searchParams.get('page_size') });
+    const products = [1, 2, 3].includes(id) ? Array.from({ length: 4 }, (_, index) => ({
+      ...product,
+      product_id: id * 10 + index,
+      name: `${id === 2 ? 'Quần' : 'Áo'} FIDO ${id}-${index + 1}`,
+      thumbnail: '/images/about/wardrobe.svg',
+      category: parentCategories.find(item => item.category_id === id),
+    })) : [];
+    return route.fulfill({ json: {
+      data: products,
+      meta: { page: 1, page_size: 4, total: products.length, total_pages: products.length ? 1 : 0 },
+    } });
+  }
+  return fixture.handler(route);
+});
 await page.clock.install();
 
 try {
@@ -21,17 +50,24 @@ try {
   await page.goto('http://localhost:5196/');
   await page.getByRole('heading', { name: 'DANH MỤC SẢN PHẨM' }).waitFor();
 
-  const categoryCards = page.locator('#danh-muc a[href^="/categories/"]');
-  assert.equal(await categoryCards.count(), 2, 'only categories from the API should render');
-  assert.deepEqual(
-    await categoryCards.locator('svg[data-artwork]').evaluateAll(
-      (nodes) => nodes.map((node) => node.getAttribute('data-artwork')),
-    ),
-    ['tops', 'bottoms'],
-    'category art should reflect the API category name rather than card position',
-  );
-  assert.equal(await categoryCards.nth(0).getAttribute('href'), '/categories/1');
-  assert.equal(await categoryCards.nth(1).getAttribute('href'), '/categories/2');
+  const showcases = page.locator('[data-home-parent-category]');
+  await page.waitForFunction(() => document.querySelectorAll('[data-home-parent-category]').length === 3);
+  assert.deepEqual(await showcases.evaluateAll(nodes => nodes.map(node => Number(node.getAttribute('data-home-parent-category')))),
+    [1, 2, 3], 'only categories with children, including nested parent categories; never leaf 4/5');
+  assert.deepEqual(await showcases.locator('svg[data-artwork]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-artwork'))),
+    ['tops', 'bottoms', 'tops'], 'parent artwork tracks API category names');
+  assert.deepEqual(await showcases.locator('a[href^="/categories/"]').evaluateAll(nodes => nodes.map(node => node.getAttribute('href'))),
+    ['/categories/1', '/categories/1', '/categories/2', '/categories/2', '/categories/3', '/categories/3']);
+  await page.waitForFunction(() => [...document.querySelectorAll('[data-home-parent-category]')].every(section => section.querySelectorAll('.product-summary-card').length === 4));
+  assert.equal(showcaseReads.every(read => read.pageSize === '4'), true, 'exactly four products requested per parent');
+  assert.equal(new Set(showcaseReads.map(read => read.categoryId)).size, 3);
+  for (const section of await showcases.all()) {
+    assert.equal(await section.locator('.product-summary-card').count(), 4, 'each parent category owns four cards');
+    const banner = section.locator('a[href^="/categories/"]').first();
+    assert.ok((await banner.getAttribute('class')).includes('sm:min-h-52'), 'category banner fills its own row');
+  }
+  assert.equal((await showcases.nth(1).locator('a[href^="/categories/"]').first().getAttribute('class')).includes('sm:flex-row-reverse'), true, 'successive category banners alternate');
+  assert.equal(await page.locator('[data-home-parent-category="4"], [data-home-parent-category="5"]').count(), 0, 'leaf category never has a showcase');
 
   const banner = page.getByRole('region', { name: 'Bộ ảnh thời trang FIDO' });
   const activeBannerImage = () => banner.locator('[data-slide-active="true"] img').getAttribute('src');
@@ -87,6 +123,11 @@ try {
       geometry.contentWidth <= geometry.viewportWidth + 2,
       `homepage overflows horizontally at ${width}px: ${JSON.stringify(geometry)}`,
     );
+    for (const section of await page.locator('[data-home-parent-category]').all()) {
+      const box = await section.boundingBox();
+      assert.ok(box.x >= 0 && box.x + box.width <= width + 2, 'parent section spans available width without overflow');
+      assert.equal(await section.locator('.product-summary-card').count(), 4);
+    }
     await page.screenshot({
       path: `.browser-evidence/homepage-illustrations-${width}.png`,
       fullPage: true,
@@ -126,19 +167,18 @@ try {
   });
   await nestedPage.goto('http://localhost:5196/');
   await nestedPage.getByRole('heading', { name: 'DANH MỤC SẢN PHẨM' }).waitFor();
-  const nestedLinks = nestedPage.locator('#danh-muc a[href^="/categories/"]');
-  await nestedPage.waitForFunction(() => document.querySelectorAll('#danh-muc a[href^="/categories/"]').length === 4);
-  assert.deepEqual(
-    await nestedLinks.evaluateAll((links) => links.map((link) => link.getAttribute('href'))),
-    ['/categories/1', '/categories/2', '/categories/3', '/categories/4'],
-    'homepage should link both root categories and actual child categories',
-  );
-  await nestedLinks.nth(2).click();
+  const nestedLinks = nestedPage.locator('[data-home-parent-category] a[href^="/categories/"]');
+  await nestedPage.waitForFunction(() => document.querySelectorAll('[data-home-parent-category]').length === 2);
+  assert.deepEqual(await nestedPage.locator('[data-home-parent-category]').evaluateAll(nodes => nodes.map(node => Number(node.dataset.homeParentCategory))),
+    [1, 2], 'homepage only promotes parent category cards');
+  await nestedLinks.first().click();
+  await nestedPage.waitForURL('**/categories/1');
+  await nestedPage.getByRole('navigation', { name: 'Danh mục con' }).getByRole('link', { name: 'Áo thun', exact: true }).click();
   await nestedPage.waitForURL('**/categories/3');
-  assert.equal(await nestedPage.getByRole('heading', { name: 'Áo thun' }).count(), 1);
+  assert.equal(await nestedPage.getByRole('heading', { name: 'Áo thun', exact: true }).count(), 1);
   await nestedPage.close();
 
-  await categoryCards.first().click();
+  await showcases.first().locator('a[href^="/categories/"]').first().click();
   await page.waitForURL('**/categories/1');
   assert.deepEqual(pageErrors, []);
   console.log('Homepage artwork browser: PASS — autoplay, pause/resume, reduced-motion, nested categories, routes and responsive widths.');

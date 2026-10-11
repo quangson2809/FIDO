@@ -33,27 +33,33 @@ try {
   await mkdir('.browser-evidence', { recursive: true });
   await check('Home preserves products when metadata fails, with independent retry', async (page, fixture, go) => {
     fixture.state.failures.set('/catalog/meta', 500);
+    await page.route('**/api/v1/catalog/meta', route => fixture.state.failures.has('/catalog/meta')
+      ? fixture.handler(route)
+      : route.fulfill({ json: { data: { ...meta, categories: [...meta.categories, { category_id: 3, parent_category_id: 1, name: 'Áo thun' }] } } }));
     await go('/');
     await page.getByText('Áo FIDO', { exact: true }).waitFor();
     const categories = page.locator('#danh-muc');
     await categories.getByRole('alert').waitFor();
     assert.ok(!(await categories.innerText()).includes('Chưa có danh mục'));
-    const productReads = fixture.state.requests.filter(request => request.path === '/catalog/products').length;
     await page.screenshot({ animations: 'disabled', path: '.browser-evidence/review-home-partial-375.png', fullPage: true });
     fixture.state.failures.clear();
     await categories.getByRole('button', { name: 'Thử lại', exact: true }).click();
-    await categories.getByRole('heading', { name: 'Áo', exact: true }).waitFor();
-    assert.equal(fixture.state.requests.filter(request => request.path === '/catalog/products').length, productReads, 'metadata retry must not discard/refetch valid products');
+    const grouped = page.locator('[data-home-parent-category="1"]');
+    await grouped.getByRole('heading', { name: 'Áo', exact: true }).waitFor();
+    await grouped.getByText('Áo FIDO', { exact: true }).waitFor();
+    assert.ok(fixture.state.requests.some(request => request.path === '/catalog/products' && new URLSearchParams(request.query).get('category_id') === '1'),
+      'metadata recovery loads products by parent category');
   });
   await check('Home preserves categories when products fail', async (page, fixture, go) => {
     fixture.state.failures.set('/catalog/products', 500);
+    await page.route('**/api/v1/catalog/meta', route => route.fulfill({ json: { data: { ...meta, categories: [...meta.categories, { category_id: 3, parent_category_id: 1, name: 'Áo thun' }] } } }));
     await go('/');
-    await page.locator('#danh-muc').getByRole('heading', { name: 'Áo', exact: true }).waitFor();
-    await page.locator('#san-pham-noi-bat').getByRole('alert').waitFor();
+    await page.locator('[data-home-parent-category="1"]').getByRole('heading', { name: 'Áo', exact: true }).waitFor();
+    await page.locator('[data-home-parent-category="1"]').getByRole('alert').waitFor();
     const metaReads = fixture.state.requests.filter(request => request.path === '/catalog/meta').length;
     fixture.state.failures.clear();
-    await page.locator('#san-pham-noi-bat').getByRole('button', { name: 'Thử lại', exact: true }).click();
-    await page.getByText('Áo FIDO', { exact: true }).waitFor();
+    await page.locator('[data-home-parent-category="1"]').getByRole('button', { name: 'Thử lại', exact: true }).click();
+    await page.locator('[data-home-parent-category="1"]').getByText('Áo FIDO', { exact: true }).waitFor();
     assert.equal(fixture.state.requests.filter(request => request.path === '/catalog/meta').length, metaReads);
   });
   await check('Recommendations recover without resetting the selected product or quantity', async (page, fixture, go) => {

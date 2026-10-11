@@ -1,25 +1,21 @@
-import { ProductSummaryCard } from '../features/catalog/components/ProductSummaryCard';
-import { BenefitCardIllustration, CategoryCardIllustration } from './home/HomeCardIllustrations';
+import { BenefitCardIllustration } from './home/HomeCardIllustrations';
 import { HomeHero } from './home/HomeHero';
-import { selectHomepageCategories } from '../features/catalog/model/categoryTree';
+import { selectHomepageParentCategories } from '../features/catalog/model/categoryTree';
+import { HomeCategoryShowcase, HomeProductsFallback } from './home/HomeCategoryShowcase';
 import { StorefrontIcon } from '../components/StorefrontIcon';
 import { Link } from 'react-router-dom';
 import { StorefrontImage } from '../shared/ui/storefront/StorefrontImage';
 import { QueryFeedback } from '../shared/ui/storefront/QueryFeedback';
 import React, { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { categoryProductsPath } from '../routes/paths';
 import { catalogService } from '../features/catalog/api/service';
 import { useRemoteQuery } from '../shared/hooks/useRemoteQuery';
 import { getStorefrontErrorMessage } from '../services/http/storefrontError';
 
 export const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
-  const productQuery = useRemoteQuery(useCallback(() => catalogService.listProducts({ page: 1, page_size: 8 }), []));
   const metaQuery = useRemoteQuery(useCallback(() => catalogService.getMeta(), []));
-  const products = productQuery.data?.items ?? [];
   const meta = metaQuery.data;
-  const productError = productQuery.error ? getStorefrontErrorMessage(productQuery.error, 'Không thể tải sản phẩm. Vui lòng thử lại.') : null;
   const metaError = metaQuery.error ? getStorefrontErrorMessage(metaQuery.error, 'Không thể tải danh mục. Vui lòng thử lại.') : null;
 
   const openProduct = (productId: string) => {
@@ -27,7 +23,7 @@ export const HomeScreen: React.FC = () => {
     window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   };
 
-  const homepageCategories = selectHomepageCategories(meta?.categories ?? []);
+  const parentCategories = selectHomepageParentCategories(meta?.categories ?? []);
 
   return (
     <div className="w-full bg-white text-[#0B2419]" id="trang-chu">
@@ -41,80 +37,30 @@ export const HomeScreen: React.FC = () => {
 
       <HomeHero />
 
-      <section className="w-full bg-white py-7 sm:py-10" id="danh-muc">
-        <div className="mx-auto max-w-7xl space-y-6 px-4 sm:px-8 lg:px-14">
-          <div className="flex flex-col gap-3 border-b border-[#E8E9E3] pb-4 md:flex-row md:items-end md:justify-between">
+      <section className="w-full bg-white pt-8 pb-4 sm:pt-10" id="danh-muc">
+        <div className="mx-auto w-full max-w-[1600px] px-3 sm:px-6 lg:px-10">
+          <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.2em] text-[#1B5038]">Khám phá theo nhóm</span>
-              <h2 className="font-serif text-2xl text-[#0B2419] sm:text-3xl">DANH MỤC SẢN PHẨM</h2>
-              <p className="mt-2 text-[13px] text-[#606863]">Chọn nhóm sản phẩm phù hợp với phong cách của bạn.</p>
+              <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#1B5038]">Khám phá theo danh mục</span>
+              <h2 className="mt-2 font-serif text-2xl sm:text-3xl">DANH MỤC SẢN PHẨM</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#606863]">Mỗi bộ sưu tập có những lựa chọn riêng để bạn khám phá.</p>
             </div>
-            <button
-              type="button"
-              onClick={() => navigate('/products')}
-              className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#0B2419]"
-            >
-              Xem toàn bộ
-              <StorefrontIcon name="arrow_forward" className="h-5 w-5 text-[16px]" />
-            </button>
+            <Link to="/products" className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline underline-offset-4">
+              Tất cả sản phẩm <StorefrontIcon name="arrow_forward" className="h-5 w-5" />
+            </Link>
           </div>
-
-          {metaQuery.loading && <div role="status" className="py-8 text-sm text-[#687069]">Đang tải danh mục...</div>}
+          {metaQuery.loading && <p role="status" className="py-6 text-sm text-[#687069]">Đang tải danh mục...</p>}
           {!metaQuery.loading && metaError && <QueryFeedback error={metaError} onRetry={metaQuery.reload} />}
-          {!metaQuery.loading && !metaError && homepageCategories.length === 0 && (
-            <div className="py-8 text-sm text-[#687069]">Chưa có danh mục gốc để hiển thị.</div>
-          )}
-          {!metaQuery.loading && !metaError && homepageCategories.length > 0 && (
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-5">
-              {homepageCategories.map((category) => (
-                <Link
-                  key={category.category_id}
-                  to={categoryProductsPath(category.category_id)}
-                  className="group flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#E2E5DE] bg-[#FAF9F5] transition-all duration-300 hover:-translate-y-1 hover:border-[#1B5038] hover:shadow-lg"
-                >
-                  <div className="h-20 overflow-hidden sm:h-32 bg-[#F1F0E8] px-3 pt-2">
-                    <CategoryCardIllustration name={category.name} />
-                  </div>
-                  <div className="flex min-h-20 flex-1 items-center justify-between gap-3 border-t border-[#E8E9E3] bg-white p-3 sm:p-4">
-                    <div className="min-w-0">
-                      <h3 className="line-clamp-2 font-serif text-lg font-bold leading-6 sm:text-xl text-[#0B2419]">{category.name}</h3>
-                      <span className="mt-1 block text-[10px] font-semibold uppercase tracking-wider text-[#687069]">Khám phá danh mục</span>
-                    </div>
-                    <StorefrontIcon name="arrow_outward" className="h-5 w-5 shrink-0 self-center text-[#1B5038] transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
         </div>
       </section>
 
-      <section className="w-full bg-[#FAF9F5] py-7 sm:py-10" id="san-pham-noi-bat">
-        <div className="mx-auto max-w-7xl px-4 sm:px-8 lg:px-14">
-          <div className="flex flex-col gap-3 border-b border-[#D9DDD6] pb-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.2em] text-[#1B5038]">Bộ sưu tập FIDO</span>
-              <h2 className="font-serif text-2xl text-[#0B2419] sm:text-3xl">KHÁM PHÁ SẢN PHẨM</h2>
-              <p className="mt-2 text-[13px] text-[#606863]">Một số thiết kế đang có trong bộ sưu tập FIDO.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => navigate('/products')}
-              className="border border-[#0B2419] px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors hover:bg-[#0B2419] hover:text-white"
-            >
-              Xem sản phẩm
-            </button>
-          </div>
-
-          <QueryFeedback loading={productQuery.loading} error={productError} onRetry={productQuery.reload} />
-          {!productQuery.loading && !productError && products.length === 0 && (
-            <div className="py-12 text-center text-sm text-[#687069]">Chưa có sản phẩm để hiển thị. Bạn có thể xem bộ sưu tập để khám phá thêm.</div>
-          )}
-
-          {!productQuery.loading && !productError && products.length > 0 && (
-            <div className="mt-5 grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-x-5 lg:grid-cols-4">
-              {products.map(product => <ProductSummaryCard key={product.product_id} product={product} onOpenProduct={openProduct} />)}
-            </div>
+      <section className="w-full bg-[#FAF9F5] pb-10 pt-2 sm:pb-12" id="san-pham-noi-bat" aria-label="Bộ sưu tập theo danh mục">
+        <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-10 px-3 sm:gap-14 sm:px-6 lg:px-10">
+          {!metaQuery.loading && !metaError && parentCategories.map((category, index) => (
+            <HomeCategoryShowcase key={category.category_id} category={category} index={index} onOpenProduct={openProduct} />
+          ))}
+          {!metaQuery.loading && (metaError !== null || parentCategories.length === 0) && (
+            <HomeProductsFallback onOpenProduct={openProduct} />
           )}
         </div>
       </section>
