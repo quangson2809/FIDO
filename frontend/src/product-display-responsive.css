@@ -1,0 +1,70 @@
+/* Responsive horizontal product rails outside the all-products catalog. */
+.storefront section[data-home-parent-category] > div.grid,
+.storefront section[aria-label="Khám phá sản phẩm"] > div.grid,
+.storefront section[aria-label="Sản phẩm khác"] div.grid {
+  display: flex;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 12px;
+  padding: 2px 2px 12px;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+.storefront section[data-home-parent-category] > div.grid > *,
+.storefront section[aria-label="Khám phá sản phẩm"] > div.grid > *,
+.storefront section[aria-label="Sản phẩm khác"] div.grid > * {
+  flex: 0 0 calc((100% - 12px) / 2);
+  min-width: 0;
+  scroll-snap-align: start;
+}
+@media (min-width: 768px) {
+  .storefront section[data-home-parent-category] > div.grid > *,
+  .storefront section[aria-label="Khám phá sản phẩm"] > div.grid > *,
+  .storefront section[aria-label="Sản phẩm khác"] div.grid > * {
+    flex-basis: calc((100% - 24px) / 3);
+  }
+}
+@media (min-width: 1024px) {
+  .storefront section[data-home-parent-category] > div.grid > *,
+  .storefront section[aria-label="Khám phá sản phẩm"] > div.grid > *,
+  .storefront section[aria-label="Sản phẩm khác"] div.grid > * {
+    flex-basis: calc((100% - 48px) / 5);
+  }
+}
+
+/* Keep the selected product image inside the available viewport height. */
+.storefront .product-gallery-main-image {
+  width: 100%;
+  max-height: min(68dvh, 640px);
+  object-fit: contain;
+}
+.storefront .product-gallery-main-frame {
+  width: 100%;
+  max-height: min(68dvh, 640px);
+  min-height: 280px;
+  overflow: hidden;
+}
+.storefront .product-gallery-thumbnails {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+.storefront .product-gallery-thumbnails > button {
+  flex: 0 0 calc((100% - 48px) / 5);
+  min-width: 0;
+}
+@media (min-width: 768px) {
+  .storefront .product-gallery-thumbnails {
+    max-height: 600px;
+    overflow-y: auto;
+  }
+  .storefront .product-gallery-thumbnails > button {
+    flex-basis: 96px;
+  }
+}
