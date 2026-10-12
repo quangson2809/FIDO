@@ -11,6 +11,7 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.Paths;
+
 import org.junit.jupiter.api.Test;
 
 class OpenApiConfigTest {
@@ -36,14 +37,25 @@ class OpenApiConfigTest {
         Operation quote = new Operation();
         Operation createOrder = new Operation();
 
-        OpenAPI openApi = new OpenAPI().paths(new Paths()
-                .addPathItem("/api/v1/auth/login", new PathItem().post(login))
-                .addPathItem("/api/v1/catalog/products", new PathItem().get(catalog))
-                .addPathItem("/api/v1/me", new PathItem().get(profile))
-                .addPathItem("/api/v1/admin/orders", new PathItem().get(admin))
-                .addPathItem("/api/v1/cart", new PathItem().get(cart))
-                .addPathItem("/api/v1/checkout/quote", new PathItem().post(quote))
-                .addPathItem("/api/v1/orders", new PathItem().post(createOrder)));
+        OpenAPI openApi =
+                new OpenAPI()
+                        .paths(
+                                new Paths()
+                                        .addPathItem(
+                                                "/api/v1/auth/login", new PathItem().post(login))
+                                        .addPathItem(
+                                                "/api/v1/catalog/products",
+                                                new PathItem().get(catalog))
+                                        .addPathItem("/api/v1/me", new PathItem().get(profile))
+                                        .addPathItem(
+                                                "/api/v1/admin/orders", new PathItem().get(admin))
+                                        .addPathItem("/api/v1/cart", new PathItem().get(cart))
+                                        .addPathItem(
+                                                "/api/v1/checkout/quote",
+                                                new PathItem().post(quote))
+                                        .addPathItem(
+                                                "/api/v1/orders",
+                                                new PathItem().post(createOrder)));
 
         new OpenApiConfig().jwtSecurityRequirements().customise(openApi);
 

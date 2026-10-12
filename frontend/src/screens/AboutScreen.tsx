@@ -90,25 +90,17 @@ const scrollToTop = () => window.scrollTo(0, 0);
 
 export const AboutScreen = () => (
   <div className="fido-about">
-    <section
-      className="about-hero about-container"
-      aria-labelledby="about-title"
-    >
+    <section className="about-hero about-container" aria-labelledby="about-title">
       <div className="about-hero-copy">
         <p className="about-eyebrow">FIDO Fashion / Ready-to-Wear</p>
         <h1 id="about-title">
           FIDO — Thời trang dành cho <em>phong cách của bạn</em>
         </h1>
         <p className="about-intro">
-          Tinh thần tối giản. Trang phục có tính ứng dụng. Một không gian để bạn
-          khám phá những lựa chọn phù hợp với nhịp sống và cách thể hiện bản
-          thân.
+          Tinh thần tối giản. Trang phục có tính ứng dụng. Một không gian để bạn khám phá những lựa
+          chọn phù hợp với nhịp sống và cách thể hiện bản thân.
         </p>
-        <Link
-          onClick={scrollToTop}
-          className="about-button"
-          to={APP_PATHS.catalog}
-        >
+        <Link onClick={scrollToTop} className="about-button" to={APP_PATHS.catalog}>
           Khám phá sản phẩm <span aria-hidden="true">↗</span>
         </Link>
         <p className="about-signature">Fit • Innovate • Devote • Open</p>
@@ -123,33 +115,26 @@ export const AboutScreen = () => (
       </figure>
     </section>
 
-    <section
-      className="about-story about-container"
-      aria-labelledby="about-story-title"
-    >
+    <section className="about-story about-container" aria-labelledby="about-story-title">
       <figure className="about-story-art">
-        <Art
-          name="details"
-          alt="Minh họa chi tiết cổ áo, đường nét và bảng màu xanh, kem, vàng"
-        />
+        <Art name="details" alt="Minh họa chi tiết cổ áo, đường nét và bảng màu xanh, kem, vàng" />
         <figcaption>Đường nét giản dị. Lựa chọn có chủ đích.</figcaption>
       </figure>
       <div>
         <p className="about-eyebrow">Về FIDO</p>
         <h2 id="about-story-title">Câu chuyện FIDO</h2>
         <p>
-          FIDO Fashion mang tinh thần Ready-to-Wear: trang phục để bạn lựa chọn,
-          kết hợp và đưa vào cuộc sống thường ngày.
+          FIDO Fashion mang tinh thần Ready-to-Wear: trang phục để bạn lựa chọn, kết hợp và đưa vào
+          cuộc sống thường ngày.
         </p>
         <p>
-          Chúng tôi hướng tới ngôn ngữ thời trang tối giản, hiện đại — để phom
-          dáng, màu sắc và cá tính của người mặc có không gian lên tiếng.
+          Chúng tôi hướng tới ngôn ngữ thời trang tối giản, hiện đại — để phom dáng, màu sắc và cá
+          tính của người mặc có không gian lên tiếng.
         </p>
         <p>
-          Bốn từ khóa <strong>Fit, Innovate, Devote, Open</strong> là cách FIDO
-          diễn đạt định hướng ấy: phù hợp, đổi mới, chỉn chu và cởi mở. Không
-          cần một phong cách cố định, chỉ cần những lựa chọn mang dấu ấn của
-          bạn.
+          Bốn từ khóa <strong>Fit, Innovate, Devote, Open</strong> là cách FIDO diễn đạt định hướng
+          ấy: phù hợp, đổi mới, chỉn chu và cởi mở. Không cần một phong cách cố định, chỉ cần những
+          lựa chọn mang dấu ấn của bạn.
         </p>
       </div>
     </section>
@@ -174,10 +159,7 @@ export const AboutScreen = () => (
       </div>
     </section>
 
-    <section
-      className="about-experience about-container"
-      aria-labelledby="about-experience-title"
-    >
+    <section className="about-experience about-container" aria-labelledby="about-experience-title">
       <div>
         <p className="about-eyebrow">Trải nghiệm mua sắm</p>
         <h2 id="about-experience-title">
@@ -186,14 +168,9 @@ export const AboutScreen = () => (
           đến lựa chọn của bạn.
         </h2>
         <p>
-          Khám phá theo nhịp của riêng mình, với thông tin sản phẩm và các bước
-          mua sắm rõ ràng.
+          Khám phá theo nhịp của riêng mình, với thông tin sản phẩm và các bước mua sắm rõ ràng.
         </p>
-        <Link
-          onClick={scrollToTop}
-          className="about-text-link"
-          to={APP_PATHS.catalog}
-        >
+        <Link onClick={scrollToTop} className="about-text-link" to={APP_PATHS.catalog}>
           Mở catalog <span aria-hidden="true">→</span>
         </Link>
       </div>
@@ -212,10 +189,7 @@ export const AboutScreen = () => (
       </ol>
     </section>
 
-    <section
-      className="about-editorial about-container"
-      aria-labelledby="about-editorial-title"
-    >
+    <section className="about-editorial about-container" aria-labelledby="about-editorial-title">
       <div className="about-editorial-heading">
         <p className="about-eyebrow">FIDO Editorial</p>
         <h2 id="about-editorial-title">
@@ -225,17 +199,12 @@ export const AboutScreen = () => (
         </h2>
       </div>
       <figure>
-        <Art
-          name="palette"
-          alt="Minh họa phối trang phục xanh và trung tính cùng điểm nhấn vàng"
-        />
-        <figcaption>
-          Minh họa phong cách, không phải hình ảnh sản phẩm đang bán.
-        </figcaption>
+        <Art name="palette" alt="Minh họa phối trang phục xanh và trung tính cùng điểm nhấn vàng" />
+        <figcaption>Minh họa phong cách, không phải hình ảnh sản phẩm đang bán.</figcaption>
       </figure>
       <p className="about-editorial-note">
-        Một bảng màu hài hòa. Một phom dáng bạn yêu thích. Những cách kết hợp
-        nhỏ để tạo nên phong cách của riêng bạn.
+        Một bảng màu hài hòa. Một phom dáng bạn yêu thích. Những cách kết hợp nhỏ để tạo nên phong
+        cách của riêng bạn.
       </p>
     </section>
 
@@ -248,11 +217,7 @@ export const AboutScreen = () => (
           Tìm cảm hứng cho mỗi ngày.
         </h2>
         <div className="about-actions">
-          <Link
-            onClick={scrollToTop}
-            className="about-button"
-            to={APP_PATHS.catalog}
-          >
+          <Link onClick={scrollToTop} className="about-button" to={APP_PATHS.catalog}>
             Mua sắm ngay <span aria-hidden="true">↗</span>
           </Link>
           <Link

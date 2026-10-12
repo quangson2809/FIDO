@@ -214,7 +214,10 @@ export interface AfterSalesReturnInput {
 export interface OrderService {
   getOrders(query?: OrderListQuery): Promise<OrderPage>;
   getOrder(orderId: number | string): Promise<OrderCustomerDetailDto>;
-  updateRecipient(orderId: number | string, input: RecipientPatchInput): Promise<OrderCustomerDetailDto>;
+  updateRecipient(
+    orderId: number | string,
+    input: RecipientPatchInput,
+  ): Promise<OrderCustomerDetailDto>;
 }
 
 export interface CheckoutService {

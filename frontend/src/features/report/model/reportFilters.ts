@@ -1,5 +1,5 @@
-import { getVietnamToday } from "../../../shared/time/vietnamCalendar";
-import type { ReportGranularity, ReportTab, TrendQuery } from "../types";
+import { getVietnamToday } from '../../../shared/time/vietnamCalendar';
+import type { ReportGranularity, ReportTab, TrendQuery } from '../types';
 
 export function shiftDate(date: string, days: number): string {
   const value = new Date(`${date}T00:00:00Z`);
@@ -15,12 +15,15 @@ export function isCalendarDate(value: string): boolean {
 }
 export function defaultReportRange(days = 30): TrendQuery {
   const to = getVietnamToday();
-  return { from: shiftDate(to, 1 - days), to, granularity: "DAY" };
+  return { from: shiftDate(to, 1 - days), to, granularity: 'DAY' };
 }
 /** Equal-length, immediately preceding Vietnam-calendar interval. */
 export function precedingReportRange(query: TrendQuery): TrendQuery {
   const day = 24 * 60 * 60 * 1000;
-  const length = Math.round((Date.parse(`${query.to}T00:00:00Z`) - Date.parse(`${query.from}T00:00:00Z`)) / day) + 1;
+  const length =
+    Math.round(
+      (Date.parse(`${query.to}T00:00:00Z`) - Date.parse(`${query.from}T00:00:00Z`)) / day,
+    ) + 1;
   return {
     from: shiftDate(query.from, -length),
     to: shiftDate(query.from, -1),
@@ -32,14 +35,12 @@ export function readReportFilters(
   params: URLSearchParams,
 ): TrendQuery & { tab: ReportTab; valid: boolean } {
   const defaults = defaultReportRange();
-  const from = params.get("from") ?? defaults.from;
-  const to = params.get("to") ?? defaults.to;
-  const raw = params.get("granularity") ?? "DAY";
-  const granularity: ReportGranularity =
-    raw === "WEEK" || raw === "MONTH" ? raw : "DAY";
-  const rawTab = params.get("tab");
-  const tab: ReportTab =
-    rawTab === "orders" || rawTab === "products" ? rawTab : "sales";
+  const from = params.get('from') ?? defaults.from;
+  const to = params.get('to') ?? defaults.to;
+  const raw = params.get('granularity') ?? 'DAY';
+  const granularity: ReportGranularity = raw === 'WEEK' || raw === 'MONTH' ? raw : 'DAY';
+  const rawTab = params.get('tab');
+  const tab: ReportTab = rawTab === 'orders' || rawTab === 'products' ? rawTab : 'sales';
   return {
     from,
     to,
@@ -49,7 +50,7 @@ export function readReportFilters(
       isCalendarDate(from) &&
       isCalendarDate(to) &&
       from <= to &&
-      ["DAY", "WEEK", "MONTH"].includes(raw),
+      ['DAY', 'WEEK', 'MONTH'].includes(raw),
   };
 }
 export function reportSearch(query: TrendQuery, tab: ReportTab): string {
@@ -60,18 +61,14 @@ export function reportSearch(query: TrendQuery, tab: ReportTab): string {
     granularity: query.granularity,
   }).toString();
 }
-export function orderDrilldown(
-  query: TrendQuery,
-  status?: string,
-  periodStart?: string,
-): string {
+export function orderDrilldown(query: TrendQuery, status?: string, periodStart?: string): string {
   let from = query.from;
   let to = query.to;
   if (periodStart) {
     from = periodStart > from ? periodStart : from;
     let end = periodStart;
-    if (query.granularity === "WEEK") end = shiftDate(periodStart, 6);
-    if (query.granularity === "MONTH") {
+    if (query.granularity === 'WEEK') end = shiftDate(periodStart, 6);
+    if (query.granularity === 'MONTH') {
       const next = new Date(`${periodStart}T00:00:00Z`);
       next.setUTCMonth(next.getUTCMonth() + 1);
       end = shiftDate(next.toISOString().slice(0, 10), -1);
@@ -79,18 +76,14 @@ export function orderDrilldown(
     to = end < to ? end : to;
   }
   // API upper bound is inclusive; retain microsecond precision (not JS millisecond endOfDay).
-  const midnight = new Date(`${from}T00:00:00+07:00`)
+  const midnight = new Date(`${from}T00:00:00+07:00`).toISOString().replace('.000Z', 'Z');
+  const endSecond = new Date(new Date(`${shiftDate(to, 1)}T00:00:00+07:00`).getTime() - 1000)
     .toISOString()
-    .replace(".000Z", "Z");
-  const endSecond = new Date(
-    new Date(`${shiftDate(to, 1)}T00:00:00+07:00`).getTime() - 1000,
-  )
-    .toISOString()
-    .replace(".000Z", ".999999Z");
+    .replace('.000Z', '.999999Z');
   const params = new URLSearchParams({
     created_from: midnight,
     created_to: endSecond,
   });
-  if (status) params.set("status", status);
+  if (status) params.set('status', status);
   return `/admin/orders?${params}`;
 }

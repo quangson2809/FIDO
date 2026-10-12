@@ -17,7 +17,10 @@ export const buildMovedImageOrder = (
   }
 
   const nextImages = [...orderedImages];
-  [nextImages[currentIndex], nextImages[targetIndex]] = [nextImages[targetIndex], nextImages[currentIndex]];
+  [nextImages[currentIndex], nextImages[targetIndex]] = [
+    nextImages[targetIndex],
+    nextImages[currentIndex],
+  ];
 
   return nextImages.map((image, index) => ({
     image_id: image.image_id,

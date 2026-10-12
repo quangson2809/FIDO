@@ -6,6 +6,6 @@ export const canPurchaseProductVariant = (
   productSaleStatus: SaleStatus | undefined,
   variant: PurchasableVariant | null,
 ): boolean =>
-  productSaleStatus === 'ON_SALE'
-  && variant?.sale_status === 'ON_SALE'
-  && variant.available_quantity > 0;
+  productSaleStatus === 'ON_SALE' &&
+  variant?.sale_status === 'ON_SALE' &&
+  variant.available_quantity > 0;

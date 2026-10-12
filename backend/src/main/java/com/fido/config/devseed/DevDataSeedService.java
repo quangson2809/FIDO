@@ -26,8 +26,7 @@ public class DevDataSeedService {
             DevSeedCatalogData catalog,
             DevSeedOrderData orders,
             DevSeedInventoryData inventory,
-            DevSeedOperationsData operations
-    ) {
+            DevSeedOperationsData operations) {
         this.passwords = passwords;
         this.state = state;
         this.identity = identity;
@@ -49,8 +48,7 @@ public class DevDataSeedService {
             throw new IllegalStateException(
                     "Partial FIDO development seed detected. "
                             + "Refusing to overwrite existing local data. "
-                            + initial.mismatchSummary()
-            );
+                            + initial.mismatchSummary());
         }
 
         String passwordHash = passwords.encode(DEFAULT_PASSWORD);
@@ -67,8 +65,7 @@ public class DevDataSeedService {
         if (!completed.complete()) {
             throw new IllegalStateException(
                     "Development seed finished with incomplete data. "
-                            + completed.mismatchSummary()
-            );
+                            + completed.mismatchSummary());
         }
     }
 }

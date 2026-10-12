@@ -7,13 +7,15 @@ import com.fido.modules.account.dto.response.LoginResponse;
 import com.fido.modules.account.entity.Account;
 import com.fido.modules.account.mapper.AccountMapper;
 import com.fido.modules.account.repository.AccountRepository;
-import java.nio.charset.StandardCharsets;
-import java.util.UUID;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 @Service
 public class AuthenticationService {
@@ -24,10 +26,7 @@ public class AuthenticationService {
     private final String dummyHash;
 
     public AuthenticationService(
-            AccountRepository accounts,
-            PasswordEncoder passwords,
-            TokenService tokens
-    ) {
+            AccountRepository accounts, PasswordEncoder passwords, TokenService tokens) {
         this.accounts = accounts;
         this.passwords = passwords;
         this.tokens = tokens;
@@ -45,16 +44,12 @@ public class AuthenticationService {
         account.setEmail(request.email());
         account.setPasswordHash(hashPassword(request.password()));
 
-        return AccountMapper.account(
-                accounts.save(account)
-        );
+        return AccountMapper.account(accounts.save(account));
     }
 
     public String hashPassword(String raw) {
         // BCrypt has a 72-byte limit; do not silently truncate passwords.
-        if (raw == null
-                || raw.isBlank()
-                || raw.getBytes(StandardCharsets.UTF_8).length > 72) {
+        if (raw == null || raw.isBlank() || raw.getBytes(StandardCharsets.UTF_8).length > 72) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         }
 
@@ -68,10 +63,10 @@ public class AuthenticationService {
         boolean matches = false;
 
         try {
-            matches = passwords.matches(
-                    request.password(),
-                    account.map(Account::getPasswordHash).orElse(dummyHash)
-            );
+            matches =
+                    passwords.matches(
+                            request.password(),
+                            account.map(Account::getPasswordHash).orElse(dummyHash));
         } catch (IllegalArgumentException ignored) {
             // Invalid encoded password is handled as an unauthorized login below.
         }
@@ -80,8 +75,6 @@ public class AuthenticationService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
 
-        return tokens.issue(
-                AccountMapper.account(account.get())
-        );
+        return tokens.issue(AccountMapper.account(account.get()));
     }
 }

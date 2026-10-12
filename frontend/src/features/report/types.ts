@@ -1,7 +1,7 @@
-import type { OrderStatus } from "../orders/types";
+import type { OrderStatus } from '../orders/types';
 
-export type ReportGranularity = "DAY" | "WEEK" | "MONTH";
-export type ReportTab = "sales" | "orders" | "products";
+export type ReportGranularity = 'DAY' | 'WEEK' | 'MONTH';
+export type ReportTab = 'sales' | 'orders' | 'products';
 export interface ReportRange {
   from: string;
   to: string;
@@ -47,12 +47,12 @@ export interface ProductPerformanceDto extends ReportRange {
   items: ProductPerformanceItem[];
 }
 export const reportStatuses: readonly OrderStatus[] = [
-  "PENDING",
-  "CONFIRMED",
-  "PREPARING",
-  "SHIPPING",
-  "COMPLETED",
-  "DELIVERY_FAILED",
-  "CANCELLED",
-  "RETURNED",
+  'PENDING',
+  'CONFIRMED',
+  'PREPARING',
+  'SHIPPING',
+  'COMPLETED',
+  'DELIVERY_FAILED',
+  'CANCELLED',
+  'RETURNED',
 ];

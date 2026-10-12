@@ -1,12 +1,5 @@
 package com.fido.config.security;
 
-import java.time.Instant;
-import java.util.Base64;
-import java.util.HexFormat;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,6 +14,15 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
+import java.util.Base64;
+import java.util.HexFormat;
+
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 @Configuration
 public class JwtConfig {
@@ -49,10 +51,12 @@ public class JwtConfig {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(bytes);
             if (HexFormat.of().formatHex(digest).equals(REVOKED_PUBLIC_KEY_SHA256)) {
-                throw new IllegalStateException("Previously published development JWT key is not permitted");
+                throw new IllegalStateException(
+                        "Previously published development JWT key is not permitted");
             }
         } catch (NoSuchAlgorithmException ex) {
-            throw new IllegalStateException("SHA-256 is required for JWT signing-key validation", ex);
+            throw new IllegalStateException(
+                    "SHA-256 is required for JWT signing-key validation", ex);
         }
 
         return new SecretKeySpec(bytes, "HmacSHA256");
@@ -60,51 +64,40 @@ public class JwtConfig {
 
     @Bean
     JwtEncoder jwtEncoder(SecretKey key) {
-        return NimbusJwtEncoder
-                .withSecretKey(key)
-                .algorithm(MacAlgorithm.HS256)
-                .build();
+        return NimbusJwtEncoder.withSecretKey(key).algorithm(MacAlgorithm.HS256).build();
     }
 
     @Bean
-    JwtDecoder jwtDecoder(
-            SecretKey key,
-            @Value("${app.jwt.issuer}") String issuer
-    ) {
-        NimbusJwtDecoder decoder = NimbusJwtDecoder
-                .withSecretKey(key)
-                .macAlgorithm(MacAlgorithm.HS256)
-                .build();
+    JwtDecoder jwtDecoder(SecretKey key, @Value("${app.jwt.issuer}") String issuer) {
+        NimbusJwtDecoder decoder =
+                NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build();
 
-        OAuth2TokenValidator<Jwt> claims = jwt -> {
-            try {
-                boolean validSubject = Long.parseLong(jwt.getSubject()) > 0;
-                boolean hasIssuedAt = jwt.getIssuedAt() != null;
-                boolean hasExpiresAt = jwt.getExpiresAt() != null;
+        OAuth2TokenValidator<Jwt> claims =
+                jwt -> {
+                    try {
+                        boolean validSubject = Long.parseLong(jwt.getSubject()) > 0;
+                        boolean hasIssuedAt = jwt.getIssuedAt() != null;
+                        boolean hasExpiresAt = jwt.getExpiresAt() != null;
 
-                boolean validTimeline = hasIssuedAt
-                        && hasExpiresAt
-                        && jwt.getExpiresAt().isAfter(jwt.getIssuedAt())
-                        && !jwt.getIssuedAt().isAfter(Instant.now());
+                        boolean validTimeline =
+                                hasIssuedAt
+                                        && hasExpiresAt
+                                        && jwt.getExpiresAt().isAfter(jwt.getIssuedAt())
+                                        && !jwt.getIssuedAt().isAfter(Instant.now());
 
-                if (validSubject && validTimeline) {
-                    return OAuth2TokenValidatorResult.success();
-                }
-            } catch (RuntimeException ignored) {
-                // Invalid subject or malformed claims are handled as invalid_token below.
-            }
+                        if (validSubject && validTimeline) {
+                            return OAuth2TokenValidatorResult.success();
+                        }
+                    } catch (RuntimeException ignored) {
+                        // Invalid subject or malformed claims are handled as invalid_token below.
+                    }
 
-            return OAuth2TokenValidatorResult.failure(
-                    new OAuth2Error("invalid_token")
-            );
-        };
+                    return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token"));
+                };
 
         decoder.setJwtValidator(
                 new DelegatingOAuth2TokenValidator<>(
-                        JwtValidators.createDefaultWithIssuer(issuer),
-                        claims
-                )
-        );
+                        JwtValidators.createDefaultWithIssuer(issuer), claims));
 
         return decoder;
     }

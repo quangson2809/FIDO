@@ -12,6 +12,4 @@ public record ProductSummaryDto(
         BigDecimal base_price,
         String sale_status,
         String material_care,
-        List<SizeValueDto> sizes
-) {
-}
+        List<SizeValueDto> sizes) {}

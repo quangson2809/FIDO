@@ -1,10 +1,7 @@
 package com.fido.modules.product.service;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import java.net.SocketTimeoutException;
-import java.net.http.HttpTimeoutException;
-import java.time.Duration;
-import java.util.concurrent.TimeUnit;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +18,11 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.net.SocketTimeoutException;
+import java.net.http.HttpTimeoutException;
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
+
 @Service
 public class ImgBbImageStorageClient implements ImageStorageGateway {
 
@@ -34,8 +36,7 @@ public class ImgBbImageStorageClient implements ImageStorageGateway {
             @Value("${app.image-storage.imgbb.base-url}") String baseUrl,
             @Value("${app.image-storage.imgbb.api-key:}") String apiKey,
             @Value("${app.image-storage.imgbb.connect-timeout}") Duration connectTimeout,
-            @Value("${app.image-storage.imgbb.read-timeout}") Duration readTimeout
-    ) {
+            @Value("${app.image-storage.imgbb.read-timeout}") Duration readTimeout) {
         this(createClient(baseUrl, connectTimeout, readTimeout), apiKey);
     }
 
@@ -53,15 +54,19 @@ public class ImgBbImageStorageClient implements ImageStorageGateway {
         body.add("image", image.getResource());
 
         try {
-            ImgBbUploadResponse response = restClient.post()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/1/upload")
-                            .queryParam("key", apiKey)
-                            .build())
-                    .contentType(MediaType.MULTIPART_FORM_DATA)
-                    .body(body)
-                    .retrieve()
-                    .body(ImgBbUploadResponse.class);
+            ImgBbUploadResponse response =
+                    restClient
+                            .post()
+                            .uri(
+                                    uriBuilder ->
+                                            uriBuilder
+                                                    .path("/1/upload")
+                                                    .queryParam("key", apiKey)
+                                                    .build())
+                            .contentType(MediaType.MULTIPART_FORM_DATA)
+                            .body(body)
+                            .retrieve()
+                            .body(ImgBbUploadResponse.class);
 
             if (response == null
                     || !Boolean.TRUE.equals(response.success())
@@ -70,8 +75,7 @@ public class ImgBbImageStorageClient implements ImageStorageGateway {
                 logProviderResult("invalid_response", startedAt);
                 throw integrationFailure(
                         HttpStatus.BAD_GATEWAY,
-                        "Image storage returned an invalid upload response"
-                );
+                        "Image storage returned an invalid upload response");
             }
 
             logProviderResult("success", startedAt);
@@ -80,59 +84,42 @@ public class ImgBbImageStorageClient implements ImageStorageGateway {
             throw exception;
         } catch (RestClientResponseException exception) {
             log.warn(
-                    "Image storage request completed result=http_error providerStatus={} durationMs={}",
+                    "Image storage request completed result=http_error providerStatus={}"
+                        + " durationMs={}",
                     exception.getStatusCode().value(),
-                    elapsedMillis(startedAt)
-            );
+                    elapsedMillis(startedAt));
             throw integrationFailure(
                     HttpStatus.BAD_GATEWAY,
                     "Image storage rejected the upload with HTTP "
-                            + exception.getStatusCode().value()
-            );
+                            + exception.getStatusCode().value());
         } catch (ResourceAccessException exception) {
             if (causedByTimeout(exception)) {
                 logProviderResult("timeout", startedAt);
                 throw integrationFailure(
-                        HttpStatus.GATEWAY_TIMEOUT,
-                        "Image storage request timed out"
-                );
+                        HttpStatus.GATEWAY_TIMEOUT, "Image storage request timed out");
             }
 
             logProviderResult("unavailable", startedAt);
-            throw integrationFailure(
-                    HttpStatus.BAD_GATEWAY,
-                    "Image storage is unavailable"
-            );
+            throw integrationFailure(HttpStatus.BAD_GATEWAY, "Image storage is unavailable");
         } catch (RestClientException exception) {
             logProviderResult("client_error", startedAt);
-            throw integrationFailure(
-                    HttpStatus.BAD_GATEWAY,
-                    "Image storage request failed"
-            );
+            throw integrationFailure(HttpStatus.BAD_GATEWAY, "Image storage request failed");
         }
     }
 
     private static RestClient createClient(
-            String baseUrl,
-            Duration connectTimeout,
-            Duration readTimeout
-    ) {
+            String baseUrl, Duration connectTimeout, Duration readTimeout) {
         var requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(connectTimeout);
         requestFactory.setReadTimeout(readTimeout);
 
-        return RestClient.builder()
-                .baseUrl(baseUrl)
-                .requestFactory(requestFactory)
-                .build();
+        return RestClient.builder().baseUrl(baseUrl).requestFactory(requestFactory).build();
     }
 
     private void requireConfigured() {
         if (apiKey == null || apiKey.isBlank()) {
             throw integrationFailure(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "Image storage is not configured"
-            );
+                    HttpStatus.SERVICE_UNAVAILABLE, "Image storage is not configured");
         }
     }
 
@@ -153,39 +140,27 @@ public class ImgBbImageStorageClient implements ImageStorageGateway {
             log.info(
                     "Image storage request completed result={} durationMs={}",
                     result,
-                    elapsedMillis(startedAt)
-            );
+                    elapsedMillis(startedAt));
             return;
         }
 
         log.warn(
                 "Image storage request completed result={} durationMs={}",
                 result,
-                elapsedMillis(startedAt)
-        );
+                elapsedMillis(startedAt));
     }
 
     private long elapsedMillis(long startedAt) {
         return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
     }
 
-    private ProductImageStorageException integrationFailure(
-            HttpStatus status,
-            String reason
-    ) {
+    private ProductImageStorageException integrationFailure(HttpStatus status, String reason) {
         return new ProductImageStorageException(status, reason);
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record ImgBbUploadResponse(
-            ImgBbUploadData data,
-            Boolean success
-    ) {
-    }
+    private record ImgBbUploadResponse(ImgBbUploadData data, Boolean success) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record ImgBbUploadData(
-            String url
-    ) {
-    }
+    private record ImgBbUploadData(String url) {}
 }

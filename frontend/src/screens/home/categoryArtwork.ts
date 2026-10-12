@@ -9,7 +9,9 @@ export type CategoryArtworkKind =
   | 'essentials';
 
 const normalizeCategoryName = (name: string): string =>
-  name.toLowerCase().normalize('NFD')
+  name
+    .toLowerCase()
+    .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/đ/g, 'd');
 

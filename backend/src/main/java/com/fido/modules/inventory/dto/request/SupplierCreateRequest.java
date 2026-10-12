@@ -11,6 +11,4 @@ public record SupplierCreateRequest(
         @Email @Size(max = 254) String email,
         @Size(max = 500) String address,
         @NotBlank @Pattern(regexp = "ACTIVE|INACTIVE") String usage_status,
-        @Size(max = 500) String note
-) {
-}
+        @Size(max = 500) String note) {}

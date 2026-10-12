@@ -1,11 +1,10 @@
 package com.fido.common;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.fido.common.response.ApiResponse;
 import com.fido.common.response.Pagination;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -18,7 +17,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import static org.junit.jupiter.api.Assertions.*;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -28,8 +30,12 @@ class ApiFoundationHttpTests {
     private final HttpClient client = HttpClient.newHttpClient();
 
     private HttpResponse<String> get(String path) throws Exception {
-        return client.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
-                .header("Accept", "application/json").GET().build(), HttpResponse.BodyHandlers.ofString());
+        return client.send(
+                HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
+                        .header("Accept", "application/json")
+                        .GET()
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
     }
 
     @Test
@@ -41,7 +47,7 @@ class ApiFoundationHttpTests {
 
     @Test
     void centralizedErrorsKeepFrameworkStatusAndHideInternals() throws Exception {
-        for (String route : new String[]{"failure", "missing"}) {
+        for (String route : new String[] {"failure", "missing"}) {
             var response = get("/api/v1/catalog/__test/" + route + "?trace=true&message=true");
             assertEquals(route.equals("failure") ? 500 : 404, response.statusCode());
             assertFalse(response.body().contains("PRIVATE_SQL_DETAIL"));
@@ -61,7 +67,10 @@ class ApiFoundationHttpTests {
 
     @TestConfiguration(proxyBeanMethods = false)
     static class Fixture {
-        @Bean SampleController sampleController() { return new SampleController(); }
+        @Bean
+        SampleController sampleController() {
+            return new SampleController();
+        }
     }
 
     @RestController
@@ -69,19 +78,28 @@ class ApiFoundationHttpTests {
         record Sample(long accountId) {}
 
         @GetMapping("/api/v1/catalog/__test/object")
-        ApiResponse<Sample> object() { return ApiResponse.of(new Sample(7)); }
+        ApiResponse<Sample> object() {
+            return ApiResponse.of(new Sample(7));
+        }
 
         @GetMapping("/api/v1/catalog/__test/failure")
-        void failure() { throw new IllegalStateException("PRIVATE_SQL_DETAIL"); }
+        void failure() {
+            throw new IllegalStateException("PRIVATE_SQL_DETAIL");
+        }
 
         @GetMapping("/api/v1/catalog/__test/pagination")
-        void pagination() { Pagination.of(0, 20); }
+        void pagination() {
+            Pagination.of(0, 20);
+        }
 
         @GetMapping("/api/v1/catalog/__test/illegal-argument")
-        void illegalArgument() { throw new IllegalArgumentException("PRIVATE_SQL_DETAIL"); }
+        void illegalArgument() {
+            throw new IllegalArgumentException("PRIVATE_SQL_DETAIL");
+        }
 
         @GetMapping("/api/v1/catalog/__test/missing")
-        void missing() { throw new ResponseStatusException(HttpStatus.NOT_FOUND, "PRIVATE_SQL_DETAIL"); }
+        void missing() {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "PRIVATE_SQL_DETAIL");
+        }
     }
 }
-

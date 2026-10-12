@@ -14,8 +14,9 @@ import com.fido.modules.order.service.OrderAfterSalesService;
 import com.fido.modules.order.service.OrderEditService;
 import com.fido.modules.order.service.OrderPaymentService;
 import com.fido.modules.order.service.OrderQueryService;
+
 import jakarta.validation.Valid;
-import java.time.LocalDateTime;
+
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -28,6 +29,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/v1/admin/orders")
@@ -44,8 +47,7 @@ public class AdminOrderController {
             OrderEditService edit,
             OrderActionService actions,
             OrderPaymentService payments,
-            OrderAfterSalesService afterSales
-    ) {
+            OrderAfterSalesService afterSales) {
         this.query = query;
         this.edit = edit;
         this.actions = actions;
@@ -55,44 +57,25 @@ public class AdminOrderController {
 
     @GetMapping
     public ApiListResponse<OrderSummaryDto> list(
-            @RequestParam(name = "order_code", required = false)
-                    String orderCode,
-            @RequestParam(name = "order_status", required = false)
-                    String orderStatus,
-            @RequestParam(name = "payment_status", required = false)
-                    String paymentStatus,
+            @RequestParam(name = "order_code", required = false) String orderCode,
+            @RequestParam(name = "order_status", required = false) String orderStatus,
+            @RequestParam(name = "payment_status", required = false) String paymentStatus,
             @RequestParam(name = "created_from", required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+                    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
                     LocalDateTime createdFrom,
             @RequestParam(name = "created_to", required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+                    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
                     LocalDateTime createdTo,
             @RequestParam(required = false) Integer page,
-            @RequestParam(name = "page_size", required = false)
-                    Integer pageSize
-    ) {
+            @RequestParam(name = "page_size", required = false) Integer pageSize) {
         return query.adminOrders(
-                orderCode,
-                orderStatus,
-                paymentStatus,
-                createdFrom,
-                createdTo,
-                page,
-                pageSize
-        );
+                orderCode, orderStatus, paymentStatus, createdFrom, createdTo, page, pageSize);
     }
 
     @GetMapping("/{orderId}")
     public ApiResponse<OrderAdminDetailDto> detail(
-            Authentication authentication,
-            @PathVariable Long orderId
-    ) {
-        return ApiResponse.of(
-                query.adminDetail(
-                        orderId,
-                        authentication
-                )
-        );
+            Authentication authentication, @PathVariable Long orderId) {
+        return ApiResponse.of(query.adminDetail(orderId, authentication));
     }
 
     @PatchMapping("/{orderId}")
@@ -100,16 +83,8 @@ public class AdminOrderController {
             @AuthenticationPrincipal Jwt jwt,
             Authentication authentication,
             @PathVariable Long orderId,
-            @Valid @RequestBody AdminOrderPatchRequest request
-    ) {
-        return ApiResponse.of(
-                edit.updateAdmin(
-                        actor(jwt),
-                        orderId,
-                        request,
-                        authentication
-                )
-        );
+            @Valid @RequestBody AdminOrderPatchRequest request) {
+        return ApiResponse.of(edit.updateAdmin(actor(jwt), orderId, request, authentication));
     }
 
     @PostMapping("/{orderId}/actions")
@@ -117,31 +92,16 @@ public class AdminOrderController {
             @AuthenticationPrincipal Jwt jwt,
             Authentication authentication,
             @PathVariable Long orderId,
-            @Valid @RequestBody OrderActionRequest request
-    ) {
-        return ApiResponse.of(
-                actions.action(
-                        actor(jwt),
-                        orderId,
-                        request,
-                        authentication
-                )
-        );
+            @Valid @RequestBody OrderActionRequest request) {
+        return ApiResponse.of(actions.action(actor(jwt), orderId, request, authentication));
     }
 
     @PostMapping("/{orderId}/payment-actions")
     public ApiResponse<PaymentAdminDto> payment(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long orderId,
-            @Valid @RequestBody PaymentActionRequest request
-    ) {
-        return ApiResponse.of(
-                payments.action(
-                        actor(jwt),
-                        orderId,
-                        request
-                )
-        );
+            @Valid @RequestBody PaymentActionRequest request) {
+        return ApiResponse.of(payments.action(actor(jwt), orderId, request));
     }
 
     @PostMapping("/{orderId}/after-sales")
@@ -149,16 +109,8 @@ public class AdminOrderController {
             @AuthenticationPrincipal Jwt jwt,
             Authentication authentication,
             @PathVariable Long orderId,
-            @Valid @RequestBody AfterSalesRequest request
-    ) {
-        return ApiResponse.of(
-                afterSales.process(
-                        actor(jwt),
-                        orderId,
-                        request,
-                        authentication
-                )
-        );
+            @Valid @RequestBody AfterSalesRequest request) {
+        return ApiResponse.of(afterSales.process(actor(jwt), orderId, request, authentication));
     }
 
     private Long actor(Jwt jwt) {

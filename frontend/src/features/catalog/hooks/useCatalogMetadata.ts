@@ -5,5 +5,13 @@ import { getStorefrontErrorMessage } from '../../../services/http/storefrontErro
 
 export function useCatalogMetadata() {
   const query = useRemoteQuery(useCallback(() => catalogService.getMeta(), []));
-  return { ...query, error: query.error ? getStorefrontErrorMessage(query.error, 'Không thể tải danh mục và bộ lọc. Vui lòng thử lại.') : null };
+  return {
+    ...query,
+    error: query.error
+      ? getStorefrontErrorMessage(
+          query.error,
+          'Không thể tải danh mục và bộ lọc. Vui lòng thử lại.',
+        )
+      : null,
+  };
 }

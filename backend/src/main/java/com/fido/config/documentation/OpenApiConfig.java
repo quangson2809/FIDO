@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
+
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,8 +17,9 @@ import org.springframework.context.annotation.Configuration;
         type = SecuritySchemeType.HTTP,
         scheme = "bearer",
         bearerFormat = "JWT",
-        description = "Enter the raw access token returned by /api/v1/auth/login; Swagger UI adds the Bearer prefix."
-)
+        description =
+                "Enter the raw access token returned by /api/v1/auth/login; Swagger UI adds the"
+                    + " Bearer prefix.")
 public class OpenApiConfig {
 
     static final String BEARER_AUTH = "bearerAuth";
@@ -29,17 +31,20 @@ public class OpenApiConfig {
                 return;
             }
 
-            openApi.getPaths().forEach((path, pathItem) -> {
-                if (!requiresBearerJwt(path)) {
-                    return;
-                }
+            openApi.getPaths()
+                    .forEach(
+                            (path, pathItem) -> {
+                                if (!requiresBearerJwt(path)) {
+                                    return;
+                                }
 
-                pathItem.readOperations().forEach(operation ->
-                        operation.addSecurityItem(
-                                new SecurityRequirement().addList(BEARER_AUTH)
-                        )
-                );
-            });
+                                pathItem.readOperations()
+                                        .forEach(
+                                                operation ->
+                                                        operation.addSecurityItem(
+                                                                new SecurityRequirement()
+                                                                        .addList(BEARER_AUTH)));
+                            });
         };
     }
 

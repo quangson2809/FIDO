@@ -25,7 +25,8 @@ public class DevSeedCatalogData {
     }
 
     private void seedCategories() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO categories(category_id,parent_category_id,name) VALUES
                 (920001,NULL,'Áo'),
                 (920002,NULL,'Quần'),
@@ -39,7 +40,8 @@ public class DevSeedCatalogData {
     }
 
     private void seedBrands() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO brands(brand_id,name) VALUES
                 (930001,'FIDO Basics'),
                 (930002,'FIDO Denim')
@@ -47,13 +49,15 @@ public class DevSeedCatalogData {
     }
 
     private void seedSizes() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO size_systems(size_system_id,code,name) VALUES
                 (940001,'CLOTHING_ALPHA','Alpha S/M/L'),
                 (940002,'DENIM_WAIST','Denim waist')
                 """);
 
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO size_values(
                     size_value_id,size_system_id,code,display_name,sort_order
                 ) VALUES
@@ -67,7 +71,8 @@ public class DevSeedCatalogData {
     }
 
     private void seedColors() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO colors(color_id,code,name) VALUES
                 (950001,'BLACK','Đen'),
                 (950002,'WHITE','Trắng'),
@@ -77,7 +82,8 @@ public class DevSeedCatalogData {
     }
 
     private void seedProducts() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO products(
                     product_id,category_id,brand_id,size_system_id,name,description,
                     gender,season,style,material_care,base_price,sale_status,
@@ -155,7 +161,8 @@ public class DevSeedCatalogData {
     }
 
     private void seedImages() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO product_images(
                     image_id,product_id,image_url,alt_text,sort_order
                 ) VALUES
@@ -185,7 +192,8 @@ public class DevSeedCatalogData {
     }
 
     private void seedVariants() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO product_variants(
                     variant_id,product_id,size_value_id,color_id,sku,override_price,
                     sale_status,created_at,updated_at

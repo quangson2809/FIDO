@@ -9,6 +9,4 @@ public record AfterSalesRequest(
         @NotBlank @Size(max = 500) String reason,
         @Positive Long source_variant_id,
         @Positive Long target_variant_id,
-        @Positive Integer quantity
-) {
-}
+        @Positive Integer quantity) {}

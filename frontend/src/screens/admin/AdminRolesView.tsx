@@ -22,7 +22,8 @@ export const AdminRolesView: React.FC<{ showToast: (msg: string) => void }> = ({
   useEffect(() => {
     let active = true;
 
-    void adminAccessService.getAccessControl()
+    void adminAccessService
+      .getAccessControl()
       .then((result) => {
         if (!active) return;
         setAccess(result);
@@ -42,7 +43,10 @@ export const AdminRolesView: React.FC<{ showToast: (msg: string) => void }> = ({
   if (error && !access) {
     return (
       <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-        {error}<button type="button" onClick={() => void loadAccess()}>Thử lại</button>
+        {error}
+        <button type="button" onClick={() => void loadAccess()}>
+          Thử lại
+        </button>
       </div>
     );
   }
@@ -57,32 +61,36 @@ export const AdminRolesView: React.FC<{ showToast: (msg: string) => void }> = ({
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">RBAC</p>
         <h1 className="mt-1 font-serif text-3xl">Vai trò & quyền</h1>
         <p className="mt-2 max-w-3xl text-sm text-[#606863]">
-          Quản lý vai trò và các quyền được gán. Kiểm tra kỹ thay đổi vì chúng ảnh hưởng đến tài khoản đang sử dụng.
+          Quản lý vai trò và các quyền được gán. Kiểm tra kỹ thay đổi vì chúng ảnh hưởng đến tài
+          khoản đang sử dụng.
         </p>
       </header>
 
       {error && (
         <div className="border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          {error}<button type="button" onClick={() => void loadAccess()}>Thử lại</button>
+          {error}
+          <button type="button" onClick={() => void loadAccess()}>
+            Thử lại
+          </button>
         </div>
       )}
 
       <fieldset disabled={Boolean(error)} className="space-y-6">
-      <RoleManagementPanel
-        access={access}
-        busy={busy}
-        onBusyChange={setBusy}
-        refreshAccess={loadAccess}
-        showToast={showToast}
-      />
+        <RoleManagementPanel
+          access={access}
+          busy={busy}
+          onBusyChange={setBusy}
+          refreshAccess={loadAccess}
+          showToast={showToast}
+        />
 
-      <PermissionManagementPanel
-        access={access}
-        busy={busy}
-        onBusyChange={setBusy}
-        refreshAccess={loadAccess}
-        showToast={showToast}
-      />
+        <PermissionManagementPanel
+          access={access}
+          busy={busy}
+          onBusyChange={setBusy}
+          refreshAccess={loadAccess}
+          showToast={showToast}
+        />
       </fieldset>
     </section>
   );

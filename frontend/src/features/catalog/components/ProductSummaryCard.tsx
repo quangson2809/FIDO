@@ -9,22 +9,71 @@ import { getStorefrontErrorMessage } from '../../../services/http/storefrontErro
 import { productSummaryMetadata, productSummarySizes } from '../model/productSummary';
 
 function ProductSummaryDetails({ productId }: { productId: number }) {
-  const detail = useRemoteQuery(useCallback(() => catalogService.getProductDetail(productId), [productId]));
+  const detail = useRemoteQuery(
+    useCallback(() => catalogService.getProductDetail(productId), [productId]),
+  );
   const product = detail.data;
-  const sizes = [...new Map(product?.variants.filter(variant => variant.sale_status === 'ON_SALE').map(variant => [variant.size.size_value_id, variant.size]) ?? []).values()].sort((a, b) => a.sort_order - b.sort_order);
-  const colors = [...new Set(product?.variants.filter(variant => variant.sale_status === 'ON_SALE').map(variant => variant.color.name) ?? [])];
-  return <>
-    <QueryFeedback loading={detail.loading} error={detail.error ? getStorefrontErrorMessage(detail.error, 'Không thể tải thông tin sản phẩm.') : null} onRetry={detail.reload} />
-    {product && <><dl className="space-y-4 text-sm">
-      <div><dt className="font-semibold">Kích cỡ đang bán</dt><dd className="mt-1">{sizes.map(size => size.display_name).join(' · ') || 'Chưa có kích cỡ đang bán'}</dd></div>
-      <div><dt className="font-semibold">Màu sắc đang bán</dt><dd className="mt-1">{colors.join(' · ') || 'Chưa có màu đang bán'}</dd></div>
-      <div><dt className="font-semibold">Chất liệu & chăm sóc</dt><dd className="mt-1 whitespace-pre-wrap">{product.material_care || 'Chưa có thông tin chất liệu và chăm sóc'}</dd></div>
-    </dl><p className="mt-4 text-sm text-muted-grey">Xem chi tiết để chọn size, màu và kiểm tra giá, số lượng khả dụng.</p>
-    </>}
-  </>;
+  const sizes = [
+    ...new Map(
+      product?.variants
+        .filter((variant) => variant.sale_status === 'ON_SALE')
+        .map((variant) => [variant.size.size_value_id, variant.size]) ?? [],
+    ).values(),
+  ].sort((a, b) => a.sort_order - b.sort_order);
+  const colors = [
+    ...new Set(
+      product?.variants
+        .filter((variant) => variant.sale_status === 'ON_SALE')
+        .map((variant) => variant.color.name) ?? [],
+    ),
+  ];
+  return (
+    <>
+      <QueryFeedback
+        loading={detail.loading}
+        error={
+          detail.error
+            ? getStorefrontErrorMessage(detail.error, 'Không thể tải thông tin sản phẩm.')
+            : null
+        }
+        onRetry={detail.reload}
+      />
+      {product && (
+        <>
+          <dl className="space-y-4 text-sm">
+            <div>
+              <dt className="font-semibold">Kích cỡ đang bán</dt>
+              <dd className="mt-1">
+                {sizes.map((size) => size.display_name).join(' · ') || 'Chưa có kích cỡ đang bán'}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-semibold">Màu sắc đang bán</dt>
+              <dd className="mt-1">{colors.join(' · ') || 'Chưa có màu đang bán'}</dd>
+            </div>
+            <div>
+              <dt className="font-semibold">Chất liệu & chăm sóc</dt>
+              <dd className="mt-1 whitespace-pre-wrap">
+                {product.material_care || 'Chưa có thông tin chất liệu và chăm sóc'}
+              </dd>
+            </div>
+          </dl>
+          <p className="mt-4 text-sm text-muted-grey">
+            Xem chi tiết để chọn size, màu và kiểm tra giá, số lượng khả dụng.
+          </p>
+        </>
+      )}
+    </>
+  );
 }
 
-export function ProductSummaryCard({ product, onOpenProduct }: { product: CatalogProductView; onOpenProduct: (id: string) => void }) {
+export function ProductSummaryCard({
+  product,
+  onOpenProduct,
+}: {
+  product: CatalogProductView;
+  onOpenProduct: (id: string) => void;
+}) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const metadata = productSummaryMetadata(product);
   const sizes = productSummarySizes(product.sizes);
@@ -47,16 +96,31 @@ export function ProductSummaryCard({ product, onOpenProduct }: { product: Catalo
         </span>
       </button>
       <div className="product-summary-content">
-        <span className="product-summary-metadata" title={metadata?.label} aria-label={metadata?.label}>{metadata?.text || '\u00a0'}</span>
-        <h2 className="product-summary-title" title={product.name}>{product.name}</h2>
+        <span
+          className="product-summary-metadata"
+          title={metadata?.label}
+          aria-label={metadata?.label}
+        >
+          {metadata?.text || '\u00a0'}
+        </span>
+        <h2 className="product-summary-title" title={product.name}>
+          {product.name}
+        </h2>
         <span className="product-summary-footer">
-          <span className="product-summary-price" title="Giá cơ bản. Giá từng biến thể được xác nhận khi chọn size và màu.">
+          <span
+            className="product-summary-price"
+            title="Giá cơ bản. Giá từng biến thể được xác nhận khi chọn size và màu."
+          >
             <span>{product.base_price.toLocaleString('vi-VN')} đ</span>
             <span className="product-summary-price-label">cơ bản</span>
           </span>
-          <span className="product-summary-sizes" title={sizes}>{sizes}</span>
+          <span className="product-summary-sizes" title={sizes}>
+            {sizes}
+          </span>
         </span>
-        <span className="product-summary-cta" aria-hidden="true">Chọn size & màu <span>→</span></span>
+        <span className="product-summary-cta" aria-hidden="true">
+          Chọn size & màu <span>→</span>
+        </span>
       </div>
       <button
         type="button"
@@ -67,17 +131,37 @@ export function ProductSummaryCard({ product, onOpenProduct }: { product: Catalo
         onClick={() => setDetailsOpen(true)}
         className="product-summary-info"
       >
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          width="20"
+          height="20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          aria-hidden="true"
+        >
           <circle cx="12" cy="12" r="9" />
           <path d="M12 11v6" />
           <circle cx="12" cy="7.5" r=".8" fill="currentColor" stroke="none" />
         </svg>
       </button>
       {detailsOpen && (
-        <StorefrontDialog name={`Thông tin ${product.name}`} onClose={() => setDetailsOpen(false)} className="product-summary-dialog">
+        <StorefrontDialog
+          name={`Thông tin ${product.name}`}
+          onClose={() => setDetailsOpen(false)}
+          className="product-summary-dialog"
+        >
           <header className="mb-5 flex items-start justify-between gap-4">
             <h2 className="font-serif text-2xl">{product.name}</h2>
-            <button autoFocus type="button" aria-label="Đóng thông tin sản phẩm" onClick={() => setDetailsOpen(false)} className="h-11 w-11 shrink-0">×</button>
+            <button
+              autoFocus
+              type="button"
+              aria-label="Đóng thông tin sản phẩm"
+              onClick={() => setDetailsOpen(false)}
+              className="h-11 w-11 shrink-0"
+            >
+              ×
+            </button>
           </header>
           <ProductSummaryDetails productId={product.product_id} />
         </StorefrontDialog>

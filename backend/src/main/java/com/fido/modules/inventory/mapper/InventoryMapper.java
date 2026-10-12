@@ -11,12 +11,12 @@ import com.fido.modules.inventory.entity.GoodsReceiptItem;
 import com.fido.modules.inventory.entity.InventoryTransaction;
 import com.fido.modules.inventory.entity.Supplier;
 import com.fido.modules.inventory.repository.InventoryRowView;
+
 import java.util.List;
 
 public final class InventoryMapper {
 
-    private InventoryMapper() {
-    }
+    private InventoryMapper() {}
 
     public static SupplierDto supplier(Supplier supplier) {
         return new SupplierDto(
@@ -26,23 +26,15 @@ public final class InventoryMapper {
                 supplier.getEmail(),
                 supplier.getAddress(),
                 supplier.getUsageStatus(),
-                supplier.getNote()
-        );
+                supplier.getNote());
     }
 
-    public static GoodsReceiptItemDto receiptItem(
-            GoodsReceiptItem item
-    ) {
+    public static GoodsReceiptItemDto receiptItem(GoodsReceiptItem item) {
         return new GoodsReceiptItemDto(
-                item.getReceiptItemId(),
-                item.getVariantId(),
-                item.getQuantity()
-        );
+                item.getReceiptItemId(), item.getVariantId(), item.getQuantity());
     }
 
-    public static GoodsReceiptSummaryDto receiptSummary(
-            GoodsReceipt receipt
-    ) {
+    public static GoodsReceiptSummaryDto receiptSummary(GoodsReceipt receipt) {
         return new GoodsReceiptSummaryDto(
                 receipt.getReceiptId(),
                 receipt.getReceiptCode(),
@@ -50,14 +42,11 @@ public final class InventoryMapper {
                 receipt.getReceiptStatus(),
                 receipt.getReceiptDate(),
                 receipt.getConfirmedAt(),
-                receipt.getCreatedAt()
-        );
+                receipt.getCreatedAt());
     }
 
     public static GoodsReceiptDetailDto receiptDetail(
-            GoodsReceipt receipt,
-            List<GoodsReceiptItemDto> items
-    ) {
+            GoodsReceipt receipt, List<GoodsReceiptItemDto> items) {
         return new GoodsReceiptDetailDto(
                 receipt.getReceiptId(),
                 receipt.getReceiptCode(),
@@ -70,13 +59,10 @@ public final class InventoryMapper {
                 receipt.getConfirmedByAccountId(),
                 receipt.getNote(),
                 items,
-                receipt.getUpdatedAt()
-        );
+                receipt.getUpdatedAt());
     }
 
-    public static InventoryRowDto inventoryRow(
-            InventoryRowView row
-    ) {
+    public static InventoryRowDto inventoryRow(InventoryRowView row) {
         return new InventoryRowDto(
                 row.getVariantId(),
                 row.getSku(),
@@ -86,13 +72,10 @@ public final class InventoryMapper {
                 row.getColor(),
                 row.getSaleStatus(),
                 row.getAvailableQuantity(),
-                row.getUpdatedAt()
-        );
+                row.getUpdatedAt());
     }
 
-    public static InventoryTransactionDto transaction(
-            InventoryTransaction transaction
-    ) {
+    public static InventoryTransactionDto transaction(InventoryTransaction transaction) {
         return new InventoryTransactionDto(
                 transaction.getTxnId(),
                 transaction.getVariantId(),
@@ -102,7 +85,6 @@ public final class InventoryMapper {
                 transaction.getGoodsReceiptId(),
                 transaction.getActorAccountId(),
                 transaction.getReason(),
-                transaction.getCreatedAt()
-        );
+                transaction.getCreatedAt());
     }
 }

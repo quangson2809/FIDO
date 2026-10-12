@@ -2,9 +2,7 @@ package com.fido.common.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.Map;
-import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.TypeMismatchException;
@@ -19,20 +17,31 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.servlet.HandlerMapping;
 
+import java.io.IOException;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 /** Uses Boot's existing /error renderer; diagnostic details remain internal. */
 @ControllerAdvice
 public class ApiExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
     @ExceptionHandler(Exception.class)
-    public void handle(Exception exception, HttpServletRequest request, HttpServletResponse response)
+    public void handle(
+            Exception exception, HttpServletRequest request, HttpServletResponse response)
             throws IOException {
         int status = status(exception);
         String message = message(exception, status);
         Object route = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
-        String context = "method=" + request.getMethod() + " route="
-                + (route == null ? "unmapped" : route) + " ids=" + numericPathIds(request)
-                + " status=" + status;
+        String context =
+                "method="
+                        + request.getMethod()
+                        + " route="
+                        + (route == null ? "unmapped" : route)
+                        + " ids="
+                        + numericPathIds(request)
+                        + " status="
+                        + status;
         if (status >= 500) {
             log.error("{}; {}", message, context, diagnosticTrace(exception, 0));
         } else if (exception instanceof ConcurrencyFailureException
@@ -60,14 +69,16 @@ public class ApiExceptionHandler {
         if (exception instanceof ErrorResponse error) {
             return error.getStatusCode().value();
         }
-        ResponseStatus annotation = AnnotatedElementUtils.findMergedAnnotation(
-                exception.getClass(), ResponseStatus.class);
+        ResponseStatus annotation =
+                AnnotatedElementUtils.findMergedAnnotation(
+                        exception.getClass(), ResponseStatus.class);
         return annotation == null ? 500 : annotation.code().value();
     }
 
     private String message(Exception exception, int status) {
         if (exception instanceof ConcurrencyFailureException) {
-            return "Database concurrency conflict: transaction could not acquire or retain its lock";
+            return "Database concurrency conflict: transaction could not acquire or retain its"
+                       + " lock";
         }
         if (exception instanceof DataIntegrityViolationException) {
             return "Database write rejected by an integrity constraint";
@@ -81,8 +92,10 @@ public class ApiExceptionHandler {
             case 502 -> "Upstream service rejected the request or returned invalid data";
             case 503 -> "Required service is unavailable or not configured";
             case 504 -> "Upstream service request timed out";
-            default -> status >= 500 ? "Unexpected server failure while processing request"
-                    : "Request was rejected";
+            default ->
+                    status >= 500
+                            ? "Unexpected server failure while processing request"
+                            : "Request was rejected";
         };
     }
 
@@ -92,7 +105,10 @@ public class ApiExceptionHandler {
             return "{}";
         }
         return paths.entrySet().stream()
-                .filter(entry -> entry.getValue() instanceof String value && value.matches("[0-9]{1,19}"))
+                .filter(
+                        entry ->
+                                entry.getValue() instanceof String value
+                                        && value.matches("[0-9]{1,19}"))
                 .map(entry -> entry.getKey() + "=" + entry.getValue())
                 .collect(Collectors.joining(",", "{", "}"));
     }

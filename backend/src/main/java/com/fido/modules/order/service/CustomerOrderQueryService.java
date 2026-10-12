@@ -3,11 +3,13 @@ package com.fido.modules.order.service;
 import com.fido.modules.order.dto.response.CustomerOrderStats;
 import com.fido.modules.order.dto.response.OrderSummaryDto;
 import com.fido.modules.order.repository.OrderRepository;
-import java.util.Collection;
-import java.util.List;
+
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Collection;
+import java.util.List;
 
 @Service
 @Transactional(readOnly = true)
@@ -18,9 +20,7 @@ public class CustomerOrderQueryService {
     private final OrderSummaryReadService summaryReader;
 
     public CustomerOrderQueryService(
-            OrderRepository orders,
-            OrderSummaryReadService summaryReader
-    ) {
+            OrderRepository orders, OrderSummaryReadService summaryReader) {
         this.orders = orders;
         this.summaryReader = summaryReader;
     }
@@ -31,7 +31,6 @@ public class CustomerOrderQueryService {
 
     public List<OrderSummaryDto> summaries(Long accountId) {
         return summaryReader.summaries(
-                orders.findAllByCustomerAccountIdOrderByCreatedAtDescOrderIdDesc(accountId)
-        );
+                orders.findAllByCustomerAccountIdOrderByCreatedAtDescOrderIdDesc(accountId));
     }
 }

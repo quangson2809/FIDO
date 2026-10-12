@@ -1,6 +1,7 @@
 package com.fido.modules.inventory.entity;
 
 import jakarta.persistence.*;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

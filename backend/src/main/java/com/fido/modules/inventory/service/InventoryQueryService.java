@@ -8,14 +8,17 @@ import com.fido.modules.inventory.entity.InventoryTransaction;
 import com.fido.modules.inventory.mapper.InventoryMapper;
 import com.fido.modules.inventory.repository.InventoryRepository;
 import com.fido.modules.inventory.repository.InventoryTransactionRepository;
+
 import jakarta.persistence.criteria.Predicate;
-import java.util.ArrayList;
+
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.ArrayList;
 
 @Service
 @Transactional(readOnly = true)
@@ -25,8 +28,8 @@ public class InventoryQueryService {
     private final InventoryRepository inventories;
     private final InventoryTransactionRepository transactions;
 
-    public InventoryQueryService(InventoryRepository inventories,
-                                 InventoryTransactionRepository transactions) {
+    public InventoryQueryService(
+            InventoryRepository inventories, InventoryTransactionRepository transactions) {
         this.inventories = inventories;
         this.transactions = transactions;
     }
@@ -39,134 +42,73 @@ public class InventoryQueryService {
             Long sizeValueId,
             Long colorId,
             Integer page,
-            Integer pageSize
-    ) {
+            Integer pageSize) {
         Pagination pagination = Pagination.of(page, pageSize);
 
-        var result = inventories.search(
-                variantId,
-                normalize(sku),
-                productId,
-                sizeValueId,
-                colorId,
-                pagination.toPageable()
-        );
+        var result =
+                inventories.search(
+                        variantId,
+                        normalize(sku),
+                        productId,
+                        sizeValueId,
+                        colorId,
+                        pagination.toPageable());
 
-        var data = result.getContent()
-                .stream()
-                .map(InventoryMapper::inventoryRow)
-                .toList();
+        var data = result.getContent().stream().map(InventoryMapper::inventoryRow).toList();
 
-        return ApiListResponse.of(
-                data,
-                pagination.meta(result.getTotalElements())
-        );
+        return ApiListResponse.of(data, pagination.meta(result.getTotalElements()));
     }
 
     @PreAuthorize(READ)
     public ApiListResponse<InventoryTransactionDto> transactions(
-            InventoryTransactionFilter filter
-    ) {
-        if (filter.from() != null
-                && filter.to() != null
-                && filter.from().isAfter(filter.to())) {
+            InventoryTransactionFilter filter) {
+        if (filter.from() != null && filter.to() != null && filter.from().isAfter(filter.to())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         }
 
-        Pagination pagination = Pagination.of(
-                filter.page(),
-                filter.pageSize()
-        );
+        Pagination pagination = Pagination.of(filter.page(), filter.pageSize());
 
-        var result = transactions.findAll(
-                transactionSpec(filter),
-                pagination.toPageable()
-        );
+        var result = transactions.findAll(transactionSpec(filter), pagination.toPageable());
 
-        var data = result.getContent()
-                .stream()
-                .map(InventoryMapper::transaction)
-                .toList();
+        var data = result.getContent().stream().map(InventoryMapper::transaction).toList();
 
-        return ApiListResponse.of(
-                data,
-                pagination.meta(result.getTotalElements())
-        );
+        return ApiListResponse.of(data, pagination.meta(result.getTotalElements()));
     }
 
-    private Specification<InventoryTransaction> transactionSpec(
-            InventoryTransactionFilter filter
-    ) {
+    private Specification<InventoryTransaction> transactionSpec(InventoryTransactionFilter filter) {
         return (root, query, cb) -> {
             var predicates = new ArrayList<Predicate>();
 
             if (filter.variantId() != null) {
-                predicates.add(
-                        cb.equal(
-                                root.get("variantId"),
-                                filter.variantId()
-                        )
-                );
+                predicates.add(cb.equal(root.get("variantId"), filter.variantId()));
             }
 
-            if (filter.transactionType() != null
-                    && !filter.transactionType().isBlank()) {
+            if (filter.transactionType() != null && !filter.transactionType().isBlank()) {
                 predicates.add(
-                        cb.equal(
-                                root.get("transactionType"),
-                                filter.transactionType().trim()
-                        )
-                );
+                        cb.equal(root.get("transactionType"), filter.transactionType().trim()));
             }
 
             if (filter.orderId() != null) {
-                predicates.add(
-                        cb.equal(
-                                root.get("orderId"),
-                                filter.orderId()
-                        )
-                );
+                predicates.add(cb.equal(root.get("orderId"), filter.orderId()));
             }
 
             if (filter.goodsReceiptId() != null) {
-                predicates.add(
-                        cb.equal(
-                                root.get("goodsReceiptId"),
-                                filter.goodsReceiptId()
-                        )
-                );
+                predicates.add(cb.equal(root.get("goodsReceiptId"), filter.goodsReceiptId()));
             }
 
             if (filter.actorAccountId() != null) {
-                predicates.add(
-                        cb.equal(
-                                root.get("actorAccountId"),
-                                filter.actorAccountId()
-                        )
-                );
+                predicates.add(cb.equal(root.get("actorAccountId"), filter.actorAccountId()));
             }
 
             if (filter.from() != null) {
-                predicates.add(
-                        cb.greaterThanOrEqualTo(
-                                root.get("createdAt"),
-                                filter.from()
-                        )
-                );
+                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), filter.from()));
             }
 
             if (filter.to() != null) {
-                predicates.add(
-                        cb.lessThanOrEqualTo(
-                                root.get("createdAt"),
-                                filter.to()
-                        )
-                );
+                predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), filter.to()));
             }
 
-            return cb.and(
-                    predicates.toArray(Predicate[]::new)
-            );
+            return cb.and(predicates.toArray(Predicate[]::new));
         };
     }
 

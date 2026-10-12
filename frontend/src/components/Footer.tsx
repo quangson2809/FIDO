@@ -13,9 +13,7 @@ export const Footer: React.FC = () => {
         <div className="grid grid-cols-1 gap-10 border-b border-white/10 pb-12 md:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-2xl font-black tracking-[0.16em] text-white">
-                FIDO
-              </span>
+              <span className="text-2xl font-black tracking-[0.16em] text-white">FIDO</span>
               <span className="h-1.5 w-1.5 rounded-full bg-[#E5C358]" />
               <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#E5C358]">
                 Fashion
@@ -25,15 +23,13 @@ export const Footer: React.FC = () => {
               Fit • Innovate • Devote • Open
             </p>
             <p className="mt-4 max-w-xs text-xs leading-6 text-white/55">
-              Không gian thời trang FIDO với ngôn ngữ thị giác tối giản, tập
-              trung vào sản phẩm và trải nghiệm mua sắm rõ ràng.
+              Không gian thời trang FIDO với ngôn ngữ thị giác tối giản, tập trung vào sản phẩm và
+              trải nghiệm mua sắm rõ ràng.
             </p>
           </div>
 
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-white">
-              Khám phá
-            </h4>
+            <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-white">Khám phá</h4>
             <div className="mt-4 flex flex-col items-start gap-2.5 text-xs text-white/60">
               <button
                 type="button"
@@ -67,9 +63,7 @@ export const Footer: React.FC = () => {
           </div>
 
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-white">
-              Tài khoản
-            </h4>
+            <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-white">Tài khoản</h4>
             <div className="mt-4 flex flex-col items-start gap-2.5 text-xs text-white/60">
               <button
                 type="button"
@@ -100,10 +94,43 @@ export const Footer: React.FC = () => {
               Chăm sóc khách hàng
             </h4>
             <dl className="mt-4 space-y-4 text-sm text-white/80">
-              <div><dt className="text-xs text-white/60">Email</dt><dd className="mt-1 break-all">{supportContact.email ? <a className="inline-flex min-h-11 items-center underline" href={`mailto:${supportContact.email}`}>{supportContact.email}</a> : 'Chưa cập nhật email CSKH'}</dd></div>
-              <div><dt className="text-xs text-white/60">Hotline</dt><dd className="mt-1">{supportContact.hotline ? <a className="inline-flex min-h-11 items-center underline" href={`tel:${supportContact.hotline.replace(/[\s().-]/g, '')}`}>{supportContact.hotline}</a> : 'Chưa cập nhật hotline CSKH'}</dd></div>
+              <div>
+                <dt className="text-xs text-white/60">Email</dt>
+                <dd className="mt-1 break-all">
+                  {supportContact.email ? (
+                    <a
+                      className="inline-flex min-h-11 items-center underline"
+                      href={`mailto:${supportContact.email}`}
+                    >
+                      {supportContact.email}
+                    </a>
+                  ) : (
+                    'Chưa cập nhật email CSKH'
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-white/60">Hotline</dt>
+                <dd className="mt-1">
+                  {supportContact.hotline ? (
+                    <a
+                      className="inline-flex min-h-11 items-center underline"
+                      href={`tel:${supportContact.hotline.replace(/[\s().-]/g, '')}`}
+                    >
+                      {supportContact.hotline}
+                    </a>
+                  ) : (
+                    'Chưa cập nhật hotline CSKH'
+                  )}
+                </dd>
+              </div>
             </dl>
-            <Link to="/policies" className="mt-4 inline-flex min-h-11 items-center text-sm underline">Chính sách mua hàng & sau bán</Link>
+            <Link
+              to="/policies"
+              className="mt-4 inline-flex min-h-11 items-center text-sm underline"
+            >
+              Chính sách mua hàng & sau bán
+            </Link>
           </div>
         </div>
 

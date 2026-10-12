@@ -12,6 +12,4 @@ public record OrderSummaryDto(
         BigDecimal total,
         LocalDateTime created_at,
         LocalDateTime completed_at,
-        LocalDateTime returned_at
-) {
-}
+        LocalDateTime returned_at) {}

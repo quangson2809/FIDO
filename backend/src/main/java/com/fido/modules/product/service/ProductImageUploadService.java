@@ -1,14 +1,7 @@
 package com.fido.modules.product.service;
 
 import com.fido.modules.product.dto.response.AdminProductDetailDto;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,6 +12,15 @@ import org.springframework.util.unit.DataSize;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+
 @Service
 public class ProductImageUploadService {
 
@@ -27,11 +29,8 @@ public class ProductImageUploadService {
     private static final String WRITE =
             "hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_CATALOG_WRITE')";
 
-    private static final Set<String> SUPPORTED_CONTENT_TYPES = Set.of(
-            "image/jpeg",
-            "image/png",
-            "image/webp"
-    );
+    private static final Set<String> SUPPORTED_CONTENT_TYPES =
+            Set.of("image/jpeg", "image/png", "image/webp");
 
     private static final int SIGNATURE_BYTES = 12;
 
@@ -46,8 +45,7 @@ public class ProductImageUploadService {
             CatalogReferenceService references,
             ProductImageAdminService productImages,
             @Value("${app.image-storage.max-upload-size}") DataSize maxUploadSize,
-            @Value("${app.image-storage.max-files-per-request}") int maxFilesPerRequest
-    ) {
+            @Value("${app.image-storage.max-files-per-request}") int maxFilesPerRequest) {
         if (maxUploadSize.toBytes() <= 0) {
             throw new IllegalArgumentException("Image upload size limit must be positive");
         }
@@ -63,17 +61,11 @@ public class ProductImageUploadService {
     }
 
     @PreAuthorize(WRITE)
-    public AdminProductDetailDto upload(
-            Long actor,
-            Long productId,
-            MultipartFile[] imageFiles
-    ) {
+    public AdminProductDetailDto upload(Long actor, Long productId, MultipartFile[] imageFiles) {
         long startedAt = System.nanoTime();
         references.product(productId);
 
-        List<MultipartFile> files = imageFiles == null
-                ? List.of()
-                : Arrays.asList(imageFiles);
+        List<MultipartFile> files = imageFiles == null ? List.of() : Arrays.asList(imageFiles);
 
         if (files.isEmpty()) {
             throw badRequest("At least one image file is required");
@@ -91,17 +83,13 @@ public class ProductImageUploadService {
             uploaded.add(storage.upload(file));
         }
 
-        AdminProductDetailDto result = productImages.appendUploadedImages(
-                actor,
-                productId,
-                List.copyOf(uploaded)
-        );
+        AdminProductDetailDto result =
+                productImages.appendUploadedImages(actor, productId, List.copyOf(uploaded));
 
         log.info(
                 "Product image upload completed productId={} result=success durationMs={}",
                 productId,
-                elapsedMillis(startedAt)
-        );
+                elapsedMillis(startedAt));
         return result;
     }
 
@@ -131,9 +119,7 @@ public class ProductImageUploadService {
         }
 
         int separator = contentType.indexOf(';');
-        String mediaType = separator >= 0
-                ? contentType.substring(0, separator)
-                : contentType;
+        String mediaType = separator >= 0 ? contentType.substring(0, separator) : contentType;
         return mediaType.trim().toLowerCase(Locale.ROOT);
     }
 

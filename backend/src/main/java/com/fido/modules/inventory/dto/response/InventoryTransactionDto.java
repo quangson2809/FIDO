@@ -11,6 +11,4 @@ public record InventoryTransactionDto(
         Long goods_receipt_id,
         Long actor_account_id,
         String reason,
-        LocalDateTime created_at
-) {
-}
+        LocalDateTime created_at) {}

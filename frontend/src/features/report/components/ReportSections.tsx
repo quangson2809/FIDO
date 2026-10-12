@@ -1,17 +1,17 @@
-import { Link } from "react-router-dom";
-import { QueryFeedback } from "../../../shared/admin/QueryFeedback";
-import type { ApiClientError } from "../../../services/http/apiError";
-import { statusLabel } from "../../../shared/admin/statusLabels";
+import { Link } from 'react-router-dom';
+import { QueryFeedback } from '../../../shared/admin/QueryFeedback';
+import type { ApiClientError } from '../../../services/http/apiError';
+import { statusLabel } from '../../../shared/admin/statusLabels';
 import type {
   ReportOverviewDto,
   SalesTrendDto,
   OrdersTrendDto,
   ProductPerformanceDto,
-} from "../types";
-import { reportStatuses } from "../types";
-import { OrdersChart } from "./OrdersTrendChart";
-import { RevenueAreaChart } from "./RevenueAreaChart";
-import { formatReportMoney } from "../model/formatReportMoney";
+} from '../types';
+import { reportStatuses } from '../types';
+import { OrdersChart } from './OrdersTrendChart';
+import { RevenueAreaChart } from './RevenueAreaChart';
+import { formatReportMoney } from '../model/formatReportMoney';
 
 export function ReportFeedback({
   loading,
@@ -45,36 +45,35 @@ export function RevenueKpis({
   showOrders?: boolean;
 }) {
   const metrics = [
-    ["Doanh số hoàn tất", formatReportMoney(overview.completed_sales)],
-    ["Điều chỉnh trả hàng", formatReportMoney(overview.returned_adjustment)],
-    ["Doanh số thuần", formatReportMoney(overview.net_sales)],
+    ['Doanh số hoàn tất', formatReportMoney(overview.completed_sales)],
+    ['Điều chỉnh trả hàng', formatReportMoney(overview.returned_adjustment)],
+    ['Doanh số thuần', formatReportMoney(overview.net_sales)],
   ];
   if (showOrders)
     metrics.push([
-      "Đơn theo ngày tạo",
-      String(
-        reportStatuses.reduce(
-          (sum, status) => sum + overview.orders_by_status[status],
-          0,
-        ),
-      ),
+      'Đơn theo ngày tạo',
+      String(reportStatuses.reduce((sum, status) => sum + overview.orders_by_status[status], 0)),
     ]);
   return (
     <div
-      className={`grid gap-4 sm:grid-cols-2 ${showOrders ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}
+      className={`grid gap-4 sm:grid-cols-2 ${showOrders ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}
     >
       {metrics.map(([label, value]) => (
         <article key={label} className="report-card min-w-0">
           <p className="text-xs text-[#606863]">{label}</p>
-          <p className="mt-3 break-words font-serif text-2xl font-bold text-[#071A12]">
-            {value}
-          </p>
+          <p className="mt-3 break-words font-serif text-2xl font-bold text-[#071A12]">{value}</p>
         </article>
       ))}
     </div>
   );
 }
-export function SalesSection({ report, previous }: { report: SalesTrendDto; previous?: SalesTrendDto | null }) {
+export function SalesSection({
+  report,
+  previous,
+}: {
+  report: SalesTrendDto;
+  previous?: SalesTrendDto | null;
+}) {
   const empty = report.points.every(
     (point) => point.completed_sales === 0 && point.returned_adjustment === 0,
   );
@@ -82,8 +81,7 @@ export function SalesSection({ report, previous }: { report: SalesTrendDto; prev
     <article className="report-card">
       <h2>Doanh số theo kỳ hoàn tất</h2>
       <p className="report-description">
-        {report.from} → {report.to} · Trả hàng điều chỉnh vào kỳ hoàn tất ban
-        đầu.
+        {report.from} → {report.to} · Trả hàng điều chỉnh vào kỳ hoàn tất ban đầu.
       </p>
       {empty && (
         <p role="status" className="report-empty">
@@ -91,11 +89,13 @@ export function SalesSection({ report, previous }: { report: SalesTrendDto; prev
         </p>
       )}
       <RevenueAreaChart points={report.points} previousPoints={previous?.points} />
-      {previous === null ? <p role="status" className="mt-2 text-xs text-[#687069]">Không tải được kỳ trước; số liệu kỳ hiện tại vẫn hiển thị bình thường.</p> : null}
+      {previous === null ? (
+        <p role="status" className="mt-2 text-xs text-[#687069]">
+          Không tải được kỳ trước; số liệu kỳ hiện tại vẫn hiển thị bình thường.
+        </p>
+      ) : null}
       <details className="mt-4">
-        <summary className="cursor-pointer font-semibold">
-          Bảng doanh số chính xác
-        </summary>
+        <summary className="cursor-pointer font-semibold">Bảng doanh số chính xác</summary>
         <div className="report-table-scroll">
           <table className="report-table">
             <caption className="sr-only">Doanh số theo kỳ (VND)</caption>
@@ -142,9 +142,7 @@ export function OrdersSection({
       )}
       <OrdersChart points={report.points} onPeriod={onPeriod} />
       <details className="mt-4">
-        <summary className="cursor-pointer font-semibold">
-          Bảng số đơn theo trạng thái
-        </summary>
+        <summary className="cursor-pointer font-semibold">Bảng số đơn theo trạng thái</summary>
         <div className="report-table-scroll">
           <table className="report-table">
             <thead>
@@ -161,10 +159,7 @@ export function OrdersSection({
                 <tr key={point.period_start}>
                   <th scope="row">
                     {getPeriodLink ? (
-                      <Link
-                        className="report-link"
-                        to={getPeriodLink(point.period_start)}
-                      >
+                      <Link className="report-link" to={getPeriodLink(point.period_start)}>
                         {point.period_start}
                       </Link>
                     ) : (
@@ -196,7 +191,7 @@ export function ProductsSection({
   const max = Math.max(1, ...report.items.map((item) => item.net_units));
   return (
     <article className="report-card">
-      <h2>{preview ? "Top 5 sản phẩm" : "Top sản phẩm bán thuần"}</h2>
+      <h2>{preview ? 'Top 5 sản phẩm' : 'Top sản phẩm bán thuần'}</h2>
       <p className="report-description">
         Theo ngày hoàn tất · Gộp mọi biến thể · Trừ số lượng trả hàng toàn đơn.
       </p>
@@ -207,10 +202,7 @@ export function ProductsSection({
       ) : (
         <>
           {!preview && (
-            <div
-              className="my-5 space-y-3"
-              aria-label="Biểu đồ sản phẩm theo số lượng bán thuần"
-            >
+            <div className="my-5 space-y-3" aria-label="Biểu đồ sản phẩm theo số lượng bán thuần">
               {report.items.map((item, index) => (
                 <div key={item.product_id}>
                   <div className="flex justify-between gap-3 text-sm">
@@ -231,9 +223,7 @@ export function ProductsSection({
           )}
           <div className="report-table-scroll">
             <table className="report-table report-ranking">
-              <caption className="sr-only">
-                Xếp hạng sản phẩm theo số lượng bán thuần
-              </caption>
+              <caption className="sr-only">Xếp hạng sản phẩm theo số lượng bán thuần</caption>
               <thead>
                 <tr>
                   <th>Sản phẩm</th>
@@ -275,9 +265,7 @@ export function ProductsSection({
                             {item.product_name}
                           </Link>
                         ) : (
-                          <span className="max-w-60 break-words">
-                            {item.product_name}
-                          </span>
+                          <span className="max-w-60 break-words">{item.product_name}</span>
                         )}
                       </div>
                     </th>

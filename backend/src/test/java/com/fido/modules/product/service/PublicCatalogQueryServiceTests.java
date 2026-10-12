@@ -21,9 +21,7 @@ import com.fido.modules.product.repository.CategoryRepository;
 import com.fido.modules.product.repository.ProductImageRepository;
 import com.fido.modules.product.repository.ProductRepository;
 import com.fido.modules.product.repository.ProductVariantRepository;
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,6 +30,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 
 @ExtendWith(MockitoExtension.class)
 class PublicCatalogQueryServiceTests {
@@ -50,17 +52,17 @@ class PublicCatalogQueryServiceTests {
 
     @BeforeEach
     void setUp() {
-        service = new PublicCatalogQueryService(
-                products,
-                variants,
-                images,
-                imageRead,
-                categories,
-                brands,
-                inventory,
-                references,
-                metaService
-        );
+        service =
+                new PublicCatalogQueryService(
+                        products,
+                        variants,
+                        images,
+                        imageRead,
+                        categories,
+                        brands,
+                        inventory,
+                        references,
+                        metaService);
     }
 
     @Test
@@ -77,8 +79,7 @@ class PublicCatalogQueryServiceTests {
         ProductVariant second = variant(2L, 12L, 22L);
         when(variants.findAllByProductIdOrderByVariantIdAsc(100L))
                 .thenReturn(List.of(first, second));
-        when(inventory.availableQuantities(List.of(1L, 2L)))
-                .thenReturn(Map.of(1L, 3, 2L, 4));
+        when(inventory.availableQuantities(List.of(1L, 2L))).thenReturn(Map.of(1L, 3, 2L, 4));
 
         SizeValue firstSize = size(11L);
         SizeValue secondSize = size(12L);
@@ -107,34 +108,19 @@ class PublicCatalogQueryServiceTests {
         when(category.getCategoryId()).thenReturn(5L);
         when(category.getName()).thenReturn("Shirts");
 
-        when(products.findAll(
-                any(Specification.class),
-                any(Pageable.class)
-        )).thenReturn(new PageImpl<>(List.of(first, second)));
-        when(categories.findAllByCategoryIdIn(List.of(5L)))
-                .thenReturn(List.of(category));
+        when(products.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(first, second)));
+        when(categories.findAllByCategoryIdIn(List.of(5L))).thenReturn(List.of(category));
         when(imageRead.representativeByProductIds(List.of(101L, 102L)))
-                .thenReturn(Map.of(
-                        101L, "https://cdn.test/first.jpg",
-                        102L, "https://cdn.test/second.jpg"
-                ));
+                .thenReturn(
+                        Map.of(
+                                101L, "https://cdn.test/first.jpg",
+                                102L, "https://cdn.test/second.jpg"));
 
-        var result = service.publicProducts(
-                new CatalogProductFilter(
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        1,
-                        2
-                )
-        );
+        var result =
+                service.publicProducts(
+                        new CatalogProductFilter(
+                                null, null, null, null, null, null, null, null, null, null, 1, 2));
 
         assertEquals(2, result.data().size());
         assertEquals("https://cdn.test/first.jpg", result.data().get(0).thumbnail());
@@ -166,16 +152,21 @@ class PublicCatalogQueryServiceTests {
         when(l.getSortOrder()).thenReturn(2);
         when(references.sizeValuesById(List.of(12L, 11L))).thenReturn(Map.of(11L, m, 12L, l));
 
-        var result = service.publicProducts(new CatalogProductFilter(
-                null, null, null, null, null, null, null, null, null, null, 1, 2));
+        var result =
+                service.publicProducts(
+                        new CatalogProductFilter(
+                                null, null, null, null, null, null, null, null, null, null, 1, 2));
 
         assertEquals("Cotton; wash gently.", result.data().get(0).material_care());
-        assertEquals(List.of(11L, 12L), result.data().get(0).sizes().stream()
-                .map(size -> size.size_value_id()).toList());
-        assertEquals(List.of(12L), result.data().get(1).sizes().stream()
-                .map(size -> size.size_value_id()).toList());
+        assertEquals(
+                List.of(11L, 12L),
+                result.data().get(0).sizes().stream().map(size -> size.size_value_id()).toList());
+        assertEquals(
+                List.of(12L),
+                result.data().get(1).sizes().stream().map(size -> size.size_value_id()).toList());
         assertEquals(new BigDecimal("100000.00"), result.data().get(0).base_price());
-        verify(variants, times(1)).findAllByProductIdInAndSaleStatus(List.of(101L, 102L), CatalogPolicy.ON_SALE);
+        verify(variants, times(1))
+                .findAllByProductIdInAndSaleStatus(List.of(101L, 102L), CatalogPolicy.ON_SALE);
         verify(references, times(1)).sizeValuesById(List.of(12L, 11L));
         verify(variants, never()).findAllByProductIdOrderByVariantIdAsc(anyLong());
         verifyNoInteractions(inventory);
@@ -185,8 +176,10 @@ class PublicCatalogQueryServiceTests {
     void emptySummaryPageDoesNotQueryVariantsOrSizes() {
         when(products.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of()));
-        var result = service.publicProducts(new CatalogProductFilter(
-                null, null, null, null, null, null, null, null, null, null, 1, 20));
+        var result =
+                service.publicProducts(
+                        new CatalogProductFilter(
+                                null, null, null, null, null, null, null, null, null, null, 1, 20));
         assertEquals(List.of(), result.data());
         verifyNoInteractions(variants, references, categories, brands, inventory);
     }

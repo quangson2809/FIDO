@@ -14,6 +14,4 @@ public record CatalogProductFilter(
         String season,
         String style,
         Integer page,
-        Integer pageSize
-) {
-}
+        Integer pageSize) {}

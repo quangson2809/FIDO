@@ -7,7 +7,9 @@ import com.fido.modules.inventory.dto.request.SupplierPatchRequest;
 import com.fido.modules.inventory.dto.response.SupplierDto;
 import com.fido.modules.inventory.service.SupplierCommandService;
 import com.fido.modules.inventory.service.SupplierQueryService;
+
 import jakarta.validation.Valid;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -36,56 +38,30 @@ public class SupplierController {
     @GetMapping
     public ApiListResponse<SupplierDto> list(
             @RequestParam(required = false) String q,
-            @RequestParam(name = "usage_status", required = false)
-                    String usageStatus,
+            @RequestParam(name = "usage_status", required = false) String usageStatus,
             @RequestParam(required = false) Integer page,
-            @RequestParam(name = "page_size", required = false)
-                    Integer pageSize
-    ) {
-        return query.list(
-                q,
-                usageStatus,
-                page,
-                pageSize
-        );
+            @RequestParam(name = "page_size", required = false) Integer pageSize) {
+        return query.list(q, usageStatus, page, pageSize);
     }
 
     @GetMapping("/{supplierId}")
-    public ApiResponse<SupplierDto> detail(
-            @PathVariable Long supplierId
-    ) {
-        return ApiResponse.of(
-                query.detail(supplierId)
-        );
+    public ApiResponse<SupplierDto> detail(@PathVariable Long supplierId) {
+        return ApiResponse.of(query.detail(supplierId));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<SupplierDto> create(
-            @AuthenticationPrincipal Jwt jwt,
-            @Valid @RequestBody SupplierCreateRequest request
-    ) {
-        return ApiResponse.of(
-                service.create(
-                        actor(jwt),
-                        request
-                )
-        );
+            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody SupplierCreateRequest request) {
+        return ApiResponse.of(service.create(actor(jwt), request));
     }
 
     @PatchMapping("/{supplierId}")
     public ApiResponse<SupplierDto> update(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long supplierId,
-            @Valid @RequestBody SupplierPatchRequest request
-    ) {
-        return ApiResponse.of(
-                service.update(
-                        actor(jwt),
-                        supplierId,
-                        request
-                )
-        );
+            @Valid @RequestBody SupplierPatchRequest request) {
+        return ApiResponse.of(service.update(actor(jwt), supplierId, request));
     }
 
     private Long actor(Jwt jwt) {

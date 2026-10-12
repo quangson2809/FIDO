@@ -1,21 +1,21 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from 'react-router-dom';
 import {
   useSalesReport,
   useOrdersReport,
   useProductsReport,
   useDashboardReport,
-} from "../hooks/useReportQuery";
-import type { TrendQuery } from "../types";
-import { orderDrilldown, reportSearch } from "../model/reportFilters";
+} from '../hooks/useReportQuery';
+import type { TrendQuery } from '../types';
+import { orderDrilldown, reportSearch } from '../model/reportFilters';
 import {
   ReportFeedback,
   RevenueKpis,
   SalesSection,
   OrdersSection,
   ProductsSection,
-} from "./ReportSections";
-import { Link } from "react-router-dom";
-import { OrderStatusDonut } from "./OrderStatusDonut";
+} from './ReportSections';
+import { Link } from 'react-router-dom';
+import { OrderStatusDonut } from './OrderStatusDonut';
 
 export function SalesReport({ query }: { query: TrendQuery }) {
   const result = useSalesReport(query);
@@ -61,9 +61,7 @@ export function OrdersReport({
           <OrdersSection
             report={result.data.trend}
             getPeriodLink={
-              canReadOrders
-                ? (period) => orderDrilldown(query, undefined, period)
-                : undefined
+              canReadOrders ? (period) => orderDrilldown(query, undefined, period) : undefined
             }
             onPeriod={
               canReadOrders
@@ -87,9 +85,7 @@ export function ProductsReport({
   return (
     <>
       <ReportFeedback {...result} onRetry={result.reload} />
-      {result.data && (
-        <ProductsSection report={result.data} canReadCatalog={canReadCatalog} />
-      )}
+      {result.data && <ProductsSection report={result.data} canReadCatalog={canReadCatalog} />}
     </>
   );
 }
@@ -112,10 +108,7 @@ export function DashboardAnalytics({
             {query.from} → {query.to} · Múi giờ Việt Nam
           </p>
         </div>
-        <Link
-          className="report-link"
-          to={`/admin/reports?${reportSearch(query, "sales")}`}
-        >
+        <Link className="report-link" to={`/admin/reports?${reportSearch(query, 'sales')}`}>
           Mở báo cáo doanh số →
         </Link>
       </div>
@@ -134,14 +127,10 @@ export function DashboardAnalytics({
               />
             </div>
           </div>
-          <ProductsSection
-            report={result.data.products}
-            canReadCatalog={canReadCatalog}
-            preview
-          />
+          <ProductsSection report={result.data.products} canReadCatalog={canReadCatalog} preview />
           <Link
             className="report-link inline-block"
-            to={`/admin/reports?${reportSearch(query, "products")}`}
+            to={`/admin/reports?${reportSearch(query, 'products')}`}
           >
             Xem xếp hạng sản phẩm →
           </Link>

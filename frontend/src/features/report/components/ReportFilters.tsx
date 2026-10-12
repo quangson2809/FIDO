@@ -1,6 +1,6 @@
-import { useState } from "react";
-import type { TrendQuery } from "../types";
-import { defaultReportRange } from "../model/reportFilters";
+import { useState } from 'react';
+import type { TrendQuery } from '../types';
+import { defaultReportRange } from '../model/reportFilters';
 
 export function ReportFilters({
   query,
@@ -11,7 +11,7 @@ export function ReportFilters({
 }) {
   const [from, setFrom] = useState(query.from);
   const [to, setTo] = useState(query.to);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   return (
     <div className="report-filters">
       <div className="flex flex-wrap gap-2" aria-label="Khoảng thời gian nhanh">
@@ -36,10 +36,10 @@ export function ReportFilters({
         onSubmit={(event) => {
           event.preventDefault();
           if (from > to) {
-            setError("Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.");
+            setError('Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.');
             return;
           }
-          setError("");
+          setError('');
           onChange({ from, to, granularity: query.granularity });
         }}
       >
@@ -70,7 +70,7 @@ export function ReportFilters({
             value={query.granularity}
             onChange={(event) => {
               const value = event.target.value;
-              if (value === "DAY" || value === "WEEK" || value === "MONTH")
+              if (value === 'DAY' || value === 'WEEK' || value === 'MONTH')
                 onChange({ ...query, granularity: value });
             }}
           >

@@ -10,6 +10,7 @@ import com.fido.modules.inventory.dto.response.SupplierDto;
 import com.fido.modules.inventory.entity.Supplier;
 import com.fido.modules.inventory.mapper.InventoryMapper;
 import com.fido.modules.inventory.repository.SupplierRepository;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -26,22 +27,14 @@ public class SupplierCommandService {
     private final SupplierRepository suppliers;
     private final AuditService audit;
 
-    public SupplierCommandService(
-            SupplierRepository suppliers,
-            AuditService audit
-    ) {
+    public SupplierCommandService(SupplierRepository suppliers, AuditService audit) {
         this.suppliers = suppliers;
         this.audit = audit;
     }
 
     @PreAuthorize(WRITE)
-    public SupplierDto create(
-            Long actor,
-            SupplierCreateRequest request
-    ) {
-        InventoryPolicy.requireSupplierStatus(
-                request.usage_status()
-        );
+    public SupplierDto create(Long actor, SupplierCreateRequest request) {
+        InventoryPolicy.requireSupplierStatus(request.usage_status());
 
         Supplier supplier = new Supplier();
         supplier.setName(request.name());
@@ -58,19 +51,13 @@ public class SupplierCommandService {
                         actor,
                         AuditAction.SUPPLIER_CREATE,
                         AuditTargetType.SUPPLIER,
-                        supplier.getSupplierId()
-                )
-        );
+                        supplier.getSupplierId()));
 
         return InventoryMapper.supplier(supplier);
     }
 
     @PreAuthorize(WRITE)
-    public SupplierDto update(
-            Long actor,
-            Long supplierId,
-            SupplierPatchRequest request
-    ) {
+    public SupplierDto update(Long actor, Long supplierId, SupplierPatchRequest request) {
         Supplier supplier = supplier(supplierId);
 
         if (request.getName() != null) {
@@ -90,13 +77,9 @@ public class SupplierCommandService {
         }
 
         if (request.getUsageStatus() != null) {
-            InventoryPolicy.requireSupplierStatus(
-                    request.getUsageStatus()
-            );
+            InventoryPolicy.requireSupplierStatus(request.getUsageStatus());
 
-            supplier.setUsageStatus(
-                    request.getUsageStatus()
-            );
+            supplier.setUsageStatus(request.getUsageStatus());
         }
 
         if (request.isNotePresent()) {
@@ -107,21 +90,14 @@ public class SupplierCommandService {
 
         audit.record(
                 AuditEvent.of(
-                        actor,
-                        AuditAction.SUPPLIER_UPDATE,
-                        AuditTargetType.SUPPLIER,
-                        supplierId
-                )
-        );
+                        actor, AuditAction.SUPPLIER_UPDATE, AuditTargetType.SUPPLIER, supplierId));
 
         return InventoryMapper.supplier(supplier);
     }
 
     private Supplier supplier(Long supplierId) {
-        return suppliers.findById(supplierId)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND)
-                );
+        return suppliers
+                .findById(supplierId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 }
-

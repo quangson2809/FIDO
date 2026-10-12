@@ -44,10 +44,13 @@ export const Header: React.FC = () => {
   const { isAuthenticated } = useAuthSession();
   const navigate = useNavigate();
   const location = useLocation();
-  const [menu, setMenu] = useState<{ routeKey: string; kind: 'primary' | 'catalog' | null }>({ routeKey: location.key, kind: null });
+  const [menu, setMenu] = useState<{ routeKey: string; kind: 'primary' | 'catalog' | null }>({
+    routeKey: location.key,
+    kind: null,
+  });
   useEffect(() => {
     // History can change before a pending Router render commits. Close even when its key is still the previous one.
-    const closeOnHistory = () => setMenu(current => ({ ...current, kind: null }));
+    const closeOnHistory = () => setMenu((current) => ({ ...current, kind: null }));
     window.addEventListener('popstate', closeOnHistory);
     return () => window.removeEventListener('popstate', closeOnHistory);
   }, []);
@@ -61,10 +64,7 @@ export const Header: React.FC = () => {
     else if (activeMenu === 'catalog') setActiveMenu(null);
   };
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const totalCartCount = cartItems.reduce(
-    (total, item) => total + item.quantity,
-    0,
-  );
+  const totalCartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
 
   const navigateTo = (path: string) => {
     setActiveMenu(null);
@@ -102,13 +102,16 @@ export const Header: React.FC = () => {
           <span className="hidden opacity-35 sm:inline">•</span>
           <span>Thanh toán COD</span>
           <span className="hidden opacity-35 md:inline">•</span>
-          <span className="hidden md:inline">
-            Đăng nhập để dùng giỏ hàng và đặt hàng
-          </span>
+          <span className="hidden md:inline">Đăng nhập để dùng giỏ hàng và đặt hàng</span>
         </div>
       </div>
 
-      <header onPointerLeave={event => { if (event.pointerType === 'mouse') setCategoriesOpen(false); }} className="sticky top-0 z-40 w-full border-b border-[#E2E5DE] bg-white/95 shadow-sm backdrop-blur-md">
+      <header
+        onPointerLeave={(event) => {
+          if (event.pointerType === 'mouse') setCategoriesOpen(false);
+        }}
+        className="sticky top-0 z-40 w-full border-b border-[#E2E5DE] bg-white/95 shadow-sm backdrop-blur-md"
+      >
         <div className="mx-auto flex h-[64px] max-w-[1440px] items-center justify-between px-4 sm:h-[72px] sm:px-8 xl:px-12">
           <div className="flex h-full items-center gap-2 sm:gap-6 xl:gap-9">
             <button
@@ -131,22 +134,29 @@ export const Header: React.FC = () => {
             >
               {navItems.map((item) => {
                 const active = item.active(location.pathname);
-                if (item.path === APP_PATHS.catalog) return <CategoryNavigation key={item.path}
-                  open={activeMenu === 'catalog'} active={active || location.pathname.startsWith('/categories/')}
-                  onOpenChange={setCategoriesOpen} onNavigate={closeNavigation} />;
+                if (item.path === APP_PATHS.catalog)
+                  return (
+                    <CategoryNavigation
+                      key={item.path}
+                      open={activeMenu === 'catalog'}
+                      active={active || location.pathname.startsWith('/categories/')}
+                      onOpenChange={setCategoriesOpen}
+                      onNavigate={closeNavigation}
+                    />
+                  );
                 return (
                   <Link
                     key={item.path}
                     to={item.path}
                     aria-current={active ? 'page' : undefined}
                     onClick={closeNavigation}
-                    onPointerEnter={event => { if (event.pointerType === 'mouse') setCategoriesOpen(false); }}
+                    onPointerEnter={(event) => {
+                      if (event.pointerType === 'mouse') setCategoriesOpen(false);
+                    }}
                     className={`relative hidden py-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 hover:text-[#0B2419] lg:inline-flex ${active ? 'text-[#0B2419]' : ''}`}
                   >
                     {item.label}
-                    {active && (
-                      <span className="absolute inset-x-0 -bottom-1 h-0.5 bg-[#0B2419]" />
-                    )}
+                    {active && <span className="absolute inset-x-0 -bottom-1 h-0.5 bg-[#0B2419]" />}
                   </Link>
                 );
               })}
@@ -162,7 +172,9 @@ export const Header: React.FC = () => {
               aria-expanded={isMenuOpen}
               aria-controls="storefront-mobile-menu"
               onClick={() => setActiveMenu(isMenuOpen ? null : 'primary')}
-              onKeyDown={event => { if (event.key === 'Escape') setActiveMenu(null); }}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') setActiveMenu(null);
+              }}
               className="flex h-10 w-10 items-center justify-center text-[#0B2419] focus-visible:outline-2 focus-visible:outline-offset-2 lg:hidden"
             >
               <StorefrontIcon name={isMenuOpen ? 'close' : 'menu'} />
@@ -193,7 +205,11 @@ export const Header: React.FC = () => {
             </button>
           </div>
         </div>
-        <div className="border-t border-[#E2E5DE] px-4 py-2 sm:px-8 xl:px-12"><div className="mx-auto max-w-[1344px]"><HeaderSearch onSearch={() => setActiveMenu(null)} /></div></div>
+        <div className="border-t border-[#E2E5DE] px-4 py-2 sm:px-8 xl:px-12">
+          <div className="mx-auto max-w-[1344px]">
+            <HeaderSearch onSearch={() => setActiveMenu(null)} />
+          </div>
+        </div>
         {isMenuOpen && (
           <nav
             id="storefront-mobile-menu"
@@ -204,7 +220,13 @@ export const Header: React.FC = () => {
                 menuButtonRef.current?.focus();
               }
             }}
-            onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget) && event.relatedTarget !== menuButtonRef.current) setActiveMenu(null); }}
+            onBlur={(event) => {
+              if (
+                !event.currentTarget.contains(event.relatedTarget) &&
+                event.relatedTarget !== menuButtonRef.current
+              )
+                setActiveMenu(null);
+            }}
             className="absolute inset-x-0 top-full max-h-[calc(100dvh-156px)] overflow-y-auto border-b border-[#E2E5DE] bg-white p-4 shadow-lg lg:hidden"
           >
             <LogoutButton className="w-full text-left" />
@@ -212,9 +234,7 @@ export const Header: React.FC = () => {
               <Link
                 key={item.path}
                 to={item.path}
-                aria-current={
-                  item.active(location.pathname) ? 'page' : undefined
-                }
+                aria-current={item.active(location.pathname) ? 'page' : undefined}
                 onClick={closeNavigation}
                 className={`block px-4 py-3 text-sm focus-visible:outline-2 ${item.active(location.pathname) ? 'border-l-2 border-[#1B5038] bg-[#FAF9F5] font-bold' : ''}`}
               >

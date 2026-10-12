@@ -13,9 +13,7 @@ import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
 import com.fido.modules.order.repository.ShippingInfoRepository;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Objects;
+
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,12 +22,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Objects;
+
 @Service
 @Transactional(readOnly = true)
 public class OrderQueryService {
 
-    private static final String READ =
-            "hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_ORDER_READ')";
+    private static final String READ = "hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_ORDER_READ')";
 
     private final OrderRepository orders;
     private final OrderItemRepository items;
@@ -46,8 +47,7 @@ public class OrderQueryService {
             ShippingInfoRepository shipping,
             OrderSummaryReadService summaryReader,
             OrderActionPolicy actionPolicy,
-            OrderAuthorization authorization
-    ) {
+            OrderAuthorization authorization) {
         this.orders = orders;
         this.items = items;
         this.payments = payments;
@@ -58,21 +58,17 @@ public class OrderQueryService {
     }
 
     public ApiListResponse<OrderSummaryDto> customerOrders(
-            Long accountId,
-            String orderStatus,
-            Integer page,
-            Integer pageSize
-    ) {
+            Long accountId, String orderStatus, Integer page, Integer pageSize) {
         if (orderStatus != null) {
             OrderPolicy.requireOrderStatus(orderStatus);
         }
         Pagination pagination = Pagination.of(page, pageSize);
-        Specification<Order> specification = OrderSpecifications.customerOrders(accountId, orderStatus);
+        Specification<Order> specification =
+                OrderSpecifications.customerOrders(accountId, orderStatus);
         var result = orders.findAll(specification, pagination.toPageable());
         return ApiListResponse.of(
                 summaryReader.summaries(result.getContent()),
-                pagination.meta(result.getTotalElements())
-        );
+                pagination.meta(result.getTotalElements()));
     }
 
     public OrderCustomerDetailDto customerDetail(Long accountId, Long orderId) {
@@ -87,8 +83,7 @@ public class OrderQueryService {
             LocalDateTime createdFrom,
             LocalDateTime createdTo,
             Integer page,
-            Integer pageSize
-    ) {
+            Integer pageSize) {
         if (orderStatus != null) {
             OrderPolicy.requireOrderStatus(orderStatus);
         }
@@ -101,27 +96,18 @@ public class OrderQueryService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         }
         Pagination pagination = Pagination.of(page, pageSize);
-        var result = orders.findAll(
-                OrderSpecifications.adminOrders(
-                        orderCode,
-                        orderStatus,
-                        paymentStatus,
-                        createdFrom,
-                        createdTo
-                ),
-                pagination.toPageable()
-        );
+        var result =
+                orders.findAll(
+                        OrderSpecifications.adminOrders(
+                                orderCode, orderStatus, paymentStatus, createdFrom, createdTo),
+                        pagination.toPageable());
         return ApiListResponse.of(
                 summaryReader.summaries(result.getContent()),
-                pagination.meta(result.getTotalElements())
-        );
+                pagination.meta(result.getTotalElements()));
     }
 
     @PreAuthorize(READ)
-    public OrderAdminDetailDto adminDetail(
-            Long orderId,
-            Authentication authentication
-    ) {
+    public OrderAdminDetailDto adminDetail(Long orderId, Authentication authentication) {
         return adminDetailInternal(order(orderId), authentication);
     }
 
@@ -145,14 +131,10 @@ public class OrderQueryService {
                 order.getCompletedAt(),
                 order.getReturnedAt(),
                 order.getCreatedAt(),
-                order.getUpdatedAt()
-        );
+                order.getUpdatedAt());
     }
 
-    OrderAdminDetailDto adminDetailInternal(
-            Order order,
-            Authentication authentication
-    ) {
+    OrderAdminDetailDto adminDetailInternal(Order order, Authentication authentication) {
         var orderItems = orderItems(order.getOrderId());
         Payment payment = payment(order.getOrderId());
         var shippingInfo = shipping.findById(order.getOrderId()).orElse(null);
@@ -178,17 +160,12 @@ public class OrderQueryService {
                 order.getCancelReason(),
                 OrderMapper.paymentAdmin(payment),
                 authorization.filterAllowed(
-                        authentication,
-                        actionPolicy.allowedActions(order, payment)
-                )
-        );
+                        authentication, actionPolicy.allowedActions(order, payment)));
     }
 
     private List<com.fido.modules.order.dto.response.OrderItemDto> orderItems(Long orderId) {
         List<OrderItem> orderItems = items.findAllByOrderIdOrderByOrderItemIdAsc(orderId);
-        return orderItems.stream()
-                .map(OrderMapper::item)
-                .toList();
+        return orderItems.stream().map(OrderMapper::item).toList();
     }
 
     private Order customerOrder(Long accountId, Long orderId) {

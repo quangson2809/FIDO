@@ -14,15 +14,11 @@ import com.fido.modules.order.entity.ShippingInfo;
 
 public final class OrderMapper {
 
-    private OrderMapper() {
-    }
+    private OrderMapper() {}
 
     public static RecipientDto recipient(Order order) {
         return new RecipientDto(
-                order.getRecipientPhone(),
-                order.getRecipientEmail(),
-                order.getRecipientAddress()
-        );
+                order.getRecipientPhone(), order.getRecipientEmail(), order.getRecipientAddress());
     }
 
     public static OrderItemDto item(OrderItem item) {
@@ -36,8 +32,7 @@ public final class OrderMapper {
                 item.getColorSnapshot(),
                 item.getUnitPriceSnapshot(),
                 item.getQuantity(),
-                item.getLineTotalSnapshot()
-        );
+                item.getLineTotalSnapshot());
     }
 
     public static PaymentPublicDto paymentPublic(Payment payment) {
@@ -45,8 +40,7 @@ public final class OrderMapper {
                 payment.getPaymentStatus(),
                 payment.getAmountDue(),
                 payment.getAmountReceived(),
-                payment.getAmountRefunded()
-        );
+                payment.getAmountRefunded());
     }
 
     public static PaymentAdminDto paymentAdmin(Payment payment) {
@@ -58,25 +52,17 @@ public final class OrderMapper {
                 payment.getCollectedByAccountId(),
                 payment.getCollectedAt(),
                 payment.getRefundedByAccountId(),
-                payment.getRefundedAt()
-        );
+                payment.getRefundedAt());
     }
 
     public static ShippingInfoDto shipping(ShippingInfo shipping) {
         if (shipping == null) {
             return null;
         }
-        return new ShippingInfoDto(
-                shipping.getDeliveryMode(),
-                shipping.getCarrierName()
-        );
+        return new ShippingInfoDto(shipping.getDeliveryMode(), shipping.getCarrierName());
     }
 
-    public static OrderSummaryDto summary(
-            Order order,
-            Payment payment,
-            String imageUrl
-    ) {
+    public static OrderSummaryDto summary(Order order, Payment payment, String imageUrl) {
         return new OrderSummaryDto(
                 order.getOrderId(),
                 order.getOrderCode(),
@@ -86,8 +72,7 @@ public final class OrderMapper {
                 order.getTotalSnapshot(),
                 order.getCreatedAt(),
                 order.getCompletedAt(),
-                order.getReturnedAt()
-        );
+                order.getReturnedAt());
     }
 
     public static OrderConfirmationDto confirmation(Order order, Payment payment) {
@@ -101,7 +86,6 @@ public final class OrderMapper {
                 order.getShippingFeeSnapshot(),
                 order.getTotalSnapshot(),
                 recipient(order),
-                order.getCreatedAt()
-        );
+                order.getCreatedAt());
     }
 }

@@ -1,15 +1,22 @@
 package com.fido.modules.product.entity;
 
 import jakarta.persistence.*;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+
 @Entity
-@Table(name = "product_variants", uniqueConstraints = {@UniqueConstraint(columnNames = {"product_id", "size_value_id", "color_id"}), @UniqueConstraint(columnNames = {"sku"})})
+@Table(
+        name = "product_variants",
+        uniqueConstraints = {
+            @UniqueConstraint(columnNames = {"product_id", "size_value_id", "color_id"}),
+            @UniqueConstraint(columnNames = {"sku"})
+        })
 @Getter
 @Setter
 @NoArgsConstructor
@@ -38,7 +45,11 @@ public class ProductVariant {
     @Column(name = "sale_status", nullable = false, length = 30)
     private String saleStatus;
 
-    @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP(6)", updatable = false)
+    @Column(
+            name = "created_at",
+            nullable = false,
+            columnDefinition = "TIMESTAMP(6)",
+            updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")

@@ -14,8 +14,9 @@ import com.fido.modules.product.service.AdminCatalogQueryService;
 import com.fido.modules.product.service.ProductAdminService;
 import com.fido.modules.product.service.ProductImageAdminService;
 import com.fido.modules.product.service.ProductImageUploadService;
+
 import jakarta.validation.Valid;
-import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -33,6 +34,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/admin")
 public class AdminProductController {
@@ -46,8 +49,7 @@ public class AdminProductController {
             AdminCatalogQueryService query,
             ProductAdminService products,
             ProductImageAdminService productImages,
-            ProductImageUploadService imageUploads
-    ) {
+            ProductImageUploadService imageUploads) {
         this.query = query;
         this.products = products;
         this.productImages = productImages;
@@ -62,9 +64,9 @@ public class AdminProductController {
             @RequestParam(name = "size_system_id", required = false) Long sizeSystemId,
             @RequestParam(name = "sale_status", required = false) String saleStatus,
             @RequestParam(required = false) Integer page,
-            @RequestParam(name = "page_size", required = false) Integer pageSize
-    ) {
-        return query.adminProducts(q, categoryId, brandId, sizeSystemId, saleStatus, page, pageSize);
+            @RequestParam(name = "page_size", required = false) Integer pageSize) {
+        return query.adminProducts(
+                q, categoryId, brandId, sizeSystemId, saleStatus, page, pageSize);
     }
 
     @GetMapping("/products/{productId}")
@@ -75,37 +77,26 @@ public class AdminProductController {
     @PostMapping(value = "/products", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<AdminProductDetailDto> createProduct(
-            @AuthenticationPrincipal Jwt jwt,
-            @Valid @RequestBody ProductCreateRequest request
-    ) {
+            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody ProductCreateRequest request) {
         return ApiResponse.of(products.createProduct(actor(jwt), request));
     }
 
     @PostMapping(
             value = "/products/{productId}/images",
-            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
-    )
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<AdminProductDetailDto> uploadImages(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long productId,
-            @RequestPart("images") MultipartFile[] images
-    ) {
-        return ApiResponse.of(
-                imageUploads.upload(
-                        actor(jwt),
-                        productId,
-                        images
-                )
-        );
+            @RequestPart("images") MultipartFile[] images) {
+        return ApiResponse.of(imageUploads.upload(actor(jwt), productId, images));
     }
 
     @PatchMapping("/products/{productId}")
     public ApiResponse<AdminProductDetailDto> updateProduct(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long productId,
-            @Valid @RequestBody ProductPatchRequest request
-    ) {
+            @Valid @RequestBody ProductPatchRequest request) {
         return ApiResponse.of(products.updateProduct(actor(jwt), productId, request));
     }
 
@@ -114,8 +105,7 @@ public class AdminProductController {
     public void removeImage(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long productId,
-            @PathVariable Long imageId
-    ) {
+            @PathVariable Long imageId) {
         productImages.removeImage(actor(jwt), productId, imageId);
     }
 
@@ -123,15 +113,8 @@ public class AdminProductController {
     public ApiResponse<AdminProductDetailDto> reorderImages(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long productId,
-            @Valid @RequestBody ProductImageReorderRequest request
-    ) {
-        return ApiResponse.of(
-                productImages.reorderImages(
-                        actor(jwt),
-                        productId,
-                        request
-                )
-        );
+            @Valid @RequestBody ProductImageReorderRequest request) {
+        return ApiResponse.of(productImages.reorderImages(actor(jwt), productId, request));
     }
 
     @PostMapping("/products/{productId}/variants")
@@ -139,8 +122,7 @@ public class AdminProductController {
     public ApiResponse<List<AdminVariantDto>> createVariants(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long productId,
-            @Valid @RequestBody VariantBatchCreateRequest request
-    ) {
+            @Valid @RequestBody VariantBatchCreateRequest request) {
         return ApiResponse.of(products.createVariants(actor(jwt), productId, request));
     }
 
@@ -149,8 +131,7 @@ public class AdminProductController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long productId,
             @PathVariable Long variantId,
-            @Valid @RequestBody VariantPatchRequest request
-    ) {
+            @Valid @RequestBody VariantPatchRequest request) {
         return ApiResponse.of(products.updateVariant(actor(jwt), productId, variantId, request));
     }
 

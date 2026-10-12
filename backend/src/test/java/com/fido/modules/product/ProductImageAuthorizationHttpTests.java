@@ -12,23 +12,22 @@ class ProductImageAuthorizationHttpTests extends CatalogHttpSupport {
         Employee reader = employee(customRole(ensurePermission("CATALOG_READ")));
         var fixture = createCatalog(writer);
 
-        long imageId = db.queryForObject(
-                """
-                SELECT MIN(image_id)
-                FROM product_images
-                WHERE product_id=?
-                """,
-                Long.class,
-                fixture.productId()
-        );
+        long imageId =
+                db.queryForObject(
+                        """
+                        SELECT MIN(image_id)
+                        FROM product_images
+                        WHERE product_id=?
+                        """,
+                        Long.class,
+                        fixture.productId());
 
-        var response = call(
-                "DELETE",
-                "/api/v1/admin/products/" + fixture.productId()
-                        + "/images/" + imageId,
-                reader.token(),
-                null
-        );
+        var response =
+                call(
+                        "DELETE",
+                        "/api/v1/admin/products/" + fixture.productId() + "/images/" + imageId,
+                        reader.token(),
+                        null);
 
         assertEquals(403, response.status(), response.body());
         assertEquals(
@@ -36,8 +35,6 @@ class ProductImageAuthorizationHttpTests extends CatalogHttpSupport {
                 db.queryForObject(
                         "SELECT COUNT(*) FROM product_images WHERE image_id=?",
                         Integer.class,
-                        imageId
-                )
-        );
+                        imageId));
     }
 }

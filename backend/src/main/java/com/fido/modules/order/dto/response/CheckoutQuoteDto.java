@@ -11,6 +11,4 @@ public record CheckoutQuoteDto(
         BigDecimal total,
         VoucherDto voucher,
         String quote_id,
-        java.time.Instant expires_at
-) {
-}
+        java.time.Instant expires_at) {}

@@ -9,9 +9,8 @@ public record CreateOrderRequest(
         @Email @Size(max = 254) String recipient_email,
         @NotBlank @Size(max = 500) String recipient_address,
         @Size(max = 80) String voucher_code,
-        @Size(max = 36) String quote_id
-) {
+        @Size(max = 36) String quote_id) {
     public CreateOrderRequest(String phone, String email, String address, String voucherCode) {
-        this(phone,email,address,voucherCode,null);
+        this(phone, email, address, voucherCode, null);
     }
 }

@@ -11,24 +11,76 @@ export function CategoryProductsScreen() {
   const { categoryId } = useParams<{ categoryId: string }>();
   const metadata = useCatalogMetadata();
   const id = categoryId && /^\d+$/.test(categoryId) ? Number(categoryId) : NaN;
-  const category = Number.isSafeInteger(id) && id > 0 ? metadata.data?.categories.find(item => item.category_id === id) : undefined;
-  const ancestors = category ? getCategoryAncestors(metadata.data?.categories ?? [], category.category_id) : [];
-  const children = metadata.data?.categories.filter(item => item.parent_category_id === id) ?? [];
-  const filters = catalogQueryParams({ ...readCatalogQuery(new URLSearchParams(search), metadata.data), category_id: undefined, page: 1 });
-  const categoryLink = (categoryId: number) => `${categoryProductsPath(categoryId)}${filters.size ? `?${filters}` : ''}`;
-  return <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-8">
-    <nav aria-label="Đường dẫn danh mục" className="mb-6 flex flex-wrap items-center gap-2 text-sm">
-      <Link to="/">Trang chủ</Link><span aria-hidden="true">/</span><Link to="/products">Sản phẩm</Link>
-      {ancestors.map(ancestor => <span key={ancestor.category_id} className="contents"><span aria-hidden="true">/</span><Link to={categoryLink(ancestor.category_id)}>{ancestor.name}</Link></span>)}
-      {category && <><span aria-hidden="true">/</span><span aria-current="page">{category.name}</span></>}
-    </nav>
-    <QueryFeedback loading={metadata.loading} error={metadata.error} onRetry={metadata.reload} />
-    {!metadata.loading && !metadata.error && !category && <section role="alert" className="border border-border-subtle p-8"><h1 className="font-serif text-3xl">Không tìm thấy danh mục</h1><Link to="/products" className="mt-4 inline-flex min-h-11 items-center underline">Xem tất cả sản phẩm</Link></section>}
-    {category && <>
-      <h1 className="font-serif text-4xl">{category.name}</h1>
-      <p className="mb-6 mt-3 text-sm text-muted-grey">Khám phá các sản phẩm đang bán{children.length > 0 ? ' trong danh mục và các danh mục con' : ' trong danh mục'} {category.name}.</p>
-      {children.length > 0 && <nav aria-label="Danh mục con" className="mb-8 flex flex-wrap gap-3">{children.map(child => <Link key={child.category_id} to={categoryLink(child.category_id)} className="inline-flex min-h-11 items-center border border-border-subtle bg-white px-4 text-sm font-semibold">{child.name}</Link>)}</nav>}
-      <CatalogBrowse key={id} categoryId={category.category_id} metadata={metadata} />
-    </>}
-  </div>;
+  const category =
+    Number.isSafeInteger(id) && id > 0
+      ? metadata.data?.categories.find((item) => item.category_id === id)
+      : undefined;
+  const ancestors = category
+    ? getCategoryAncestors(metadata.data?.categories ?? [], category.category_id)
+    : [];
+  const children = metadata.data?.categories.filter((item) => item.parent_category_id === id) ?? [];
+  const filters = catalogQueryParams({
+    ...readCatalogQuery(new URLSearchParams(search), metadata.data),
+    category_id: undefined,
+    page: 1,
+  });
+  const categoryLink = (categoryId: number) =>
+    `${categoryProductsPath(categoryId)}${filters.size ? `?${filters}` : ''}`;
+  return (
+    <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-8">
+      <nav
+        aria-label="Đường dẫn danh mục"
+        className="mb-6 flex flex-wrap items-center gap-2 text-sm"
+      >
+        <Link to="/">Trang chủ</Link>
+        <span aria-hidden="true">/</span>
+        <Link to="/products">Sản phẩm</Link>
+        {ancestors.map((ancestor) => (
+          <span key={ancestor.category_id} className="contents">
+            <span aria-hidden="true">/</span>
+            <Link to={categoryLink(ancestor.category_id)}>{ancestor.name}</Link>
+          </span>
+        ))}
+        {category && (
+          <>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page">{category.name}</span>
+          </>
+        )}
+      </nav>
+      <QueryFeedback loading={metadata.loading} error={metadata.error} onRetry={metadata.reload} />
+      {!metadata.loading && !metadata.error && !category && (
+        <section role="alert" className="border border-border-subtle p-8">
+          <h1 className="font-serif text-3xl">Không tìm thấy danh mục</h1>
+          <Link to="/products" className="mt-4 inline-flex min-h-11 items-center underline">
+            Xem tất cả sản phẩm
+          </Link>
+        </section>
+      )}
+      {category && (
+        <>
+          <h1 className="font-serif text-4xl">{category.name}</h1>
+          <p className="mb-6 mt-3 text-sm text-muted-grey">
+            Khám phá các sản phẩm đang bán
+            {children.length > 0 ? ' trong danh mục và các danh mục con' : ' trong danh mục'}{' '}
+            {category.name}.
+          </p>
+          {children.length > 0 && (
+            <nav aria-label="Danh mục con" className="mb-8 flex flex-wrap gap-3">
+              {children.map((child) => (
+                <Link
+                  key={child.category_id}
+                  to={categoryLink(child.category_id)}
+                  className="inline-flex min-h-11 items-center border border-border-subtle bg-white px-4 text-sm font-semibold"
+                >
+                  {child.name}
+                </Link>
+              ))}
+            </nav>
+          )}
+          <CatalogBrowse key={id} categoryId={category.category_id} metadata={metadata} />
+        </>
+      )}
+    </div>
+  );
 }

@@ -13,6 +13,4 @@ public record CartItemDto(
         String color,
         BigDecimal unit_price,
         BigDecimal line_total,
-        Integer available_quantity
-) {
-}
+        Integer available_quantity) {}

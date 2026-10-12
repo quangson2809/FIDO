@@ -7,7 +7,9 @@ import com.fido.modules.order.dto.response.OrderCustomerDetailDto;
 import com.fido.modules.order.dto.response.OrderSummaryDto;
 import com.fido.modules.order.service.OrderEditService;
 import com.fido.modules.order.service.OrderQueryService;
+
 import jakarta.validation.Valid;
+
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,10 +27,7 @@ public class CustomerOrderController {
     private final OrderQueryService query;
     private final OrderEditService edit;
 
-    public CustomerOrderController(
-            OrderQueryService query,
-            OrderEditService edit
-    ) {
+    public CustomerOrderController(OrderQueryService query, OrderEditService edit) {
         this.query = query;
         this.edit = edit;
     }
@@ -36,46 +35,24 @@ public class CustomerOrderController {
     @GetMapping
     public ApiListResponse<OrderSummaryDto> list(
             @AuthenticationPrincipal Jwt jwt,
-            @RequestParam(name = "order_status", required = false)
-                    String orderStatus,
+            @RequestParam(name = "order_status", required = false) String orderStatus,
             @RequestParam(required = false) Integer page,
-            @RequestParam(name = "page_size", required = false)
-                    Integer pageSize
-    ) {
-        return query.customerOrders(
-                actor(jwt),
-                orderStatus,
-                page,
-                pageSize
-        );
+            @RequestParam(name = "page_size", required = false) Integer pageSize) {
+        return query.customerOrders(actor(jwt), orderStatus, page, pageSize);
     }
 
     @GetMapping("/{orderId}")
     public ApiResponse<OrderCustomerDetailDto> detail(
-            @AuthenticationPrincipal Jwt jwt,
-            @PathVariable Long orderId
-    ) {
-        return ApiResponse.of(
-                query.customerDetail(
-                        actor(jwt),
-                        orderId
-                )
-        );
+            @AuthenticationPrincipal Jwt jwt, @PathVariable Long orderId) {
+        return ApiResponse.of(query.customerDetail(actor(jwt), orderId));
     }
 
     @PatchMapping("/{orderId}/recipient")
     public ApiResponse<OrderCustomerDetailDto> recipient(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long orderId,
-            @Valid @RequestBody RecipientPatchRequest request
-    ) {
-        return ApiResponse.of(
-                edit.updateRecipient(
-                        actor(jwt),
-                        orderId,
-                        request
-                )
-        );
+            @Valid @RequestBody RecipientPatchRequest request) {
+        return ApiResponse.of(edit.updateRecipient(actor(jwt), orderId, request));
     }
 
     private Long actor(Jwt jwt) {

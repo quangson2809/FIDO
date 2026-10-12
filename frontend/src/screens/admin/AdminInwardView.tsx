@@ -1,7 +1,10 @@
 import { StatusBadge } from '../../shared/admin/StatusBadge';
 import { useSearchParams } from 'react-router-dom';
 import { Pagination } from '../../shared/admin/Pagination';
-import { VariantPicker, ReceiptVariantLabel } from '../../features/inventory/components/VariantPicker';
+import {
+  VariantPicker,
+  ReceiptVariantLabel,
+} from '../../features/inventory/components/VariantPicker';
 import { statusLabel } from '../../shared/admin/statusLabels';
 import { useRemoteQuery } from '../../shared/hooks/useRemoteQuery';
 import { QueryFeedback } from '../../shared/admin/QueryFeedback';
@@ -39,12 +42,35 @@ export const AdminInwardView: React.FC<{
   const [pickingIndex, setPickingIndex] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const [savedDraft, setSavedDraft] = useState(() => JSON.stringify({ supplierId, receiptDate, note, items }));
+  const [savedDraft, setSavedDraft] = useState(() =>
+    JSON.stringify({ supplierId, receiptDate, note, items }),
+  );
   const draftKey = JSON.stringify({ supplierId, receiptDate, note, items });
   const dirty = draftKey !== savedDraft;
   const canDiscard = useDirtyForm(dirty);
-  const list = useRemoteQuery(useCallback(() => inventoryAdminService.listReceipts({ receipt_status: status || undefined, page, page_size: 20 }), [page, status]));
-  const supplierQuery = useRemoteQuery(useCallback(() => inventoryAdminService.listSuppliers({ usage_status: 'ACTIVE', q: supplierSearch || undefined, page: supplierPage, page_size: 20 }), [supplierSearch, supplierPage]));
+  const list = useRemoteQuery(
+    useCallback(
+      () =>
+        inventoryAdminService.listReceipts({
+          receipt_status: status || undefined,
+          page,
+          page_size: 20,
+        }),
+      [page, status],
+    ),
+  );
+  const supplierQuery = useRemoteQuery(
+    useCallback(
+      () =>
+        inventoryAdminService.listSuppliers({
+          usage_status: 'ACTIVE',
+          q: supplierSearch || undefined,
+          page: supplierPage,
+          page_size: 20,
+        }),
+      [supplierSearch, supplierPage],
+    ),
+  );
   const receipts = list.data?.data ?? [];
   const meta = list.data?.meta;
   const suppliers = supplierQuery.data?.data ?? [];
@@ -52,7 +78,9 @@ export const AdminInwardView: React.FC<{
 
   const resetDraftForm = () => {
     const date = getVietnamToday();
-    setSavedDraft(JSON.stringify({ supplierId: '', receiptDate: date, note: '', items: [emptyItem()] }));
+    setSavedDraft(
+      JSON.stringify({ supplierId: '', receiptDate: date, note: '', items: [emptyItem()] }),
+    );
     setSelected(null);
     setSupplierId('');
     setReceiptDate(date);
@@ -65,9 +93,19 @@ export const AdminInwardView: React.FC<{
     setSupplierId(String(detail.supplier_id));
     setReceiptDate(detail.receipt_date);
     setNote(detail.note ?? '');
-    const nextItems = detail.items.map((item) => ({ variant_id: item.variant_id, quantity: item.quantity }));
+    const nextItems = detail.items.map((item) => ({
+      variant_id: item.variant_id,
+      quantity: item.quantity,
+    }));
     setItems(nextItems);
-    setSavedDraft(JSON.stringify({ supplierId: String(detail.supplier_id), receiptDate: detail.receipt_date, note: detail.note ?? '', items: nextItems }));
+    setSavedDraft(
+      JSON.stringify({
+        supplierId: String(detail.supplier_id),
+        receiptDate: detail.receipt_date,
+        note: detail.note ?? '',
+        items: nextItems,
+      }),
+    );
   };
 
   const openDetail = async (receiptId: number) => {
@@ -78,11 +116,15 @@ export const AdminInwardView: React.FC<{
       editDetail(await inventoryAdminService.getReceipt(receiptId));
     } catch (requestError: unknown) {
       setError(getApiErrorMessage(requestError, 'Không thể tải chi tiết phiếu nhập.'));
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const setItem = (index: number, patch: Partial<GoodsReceiptItemInput>) => {
-    setItems((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
+    setItems((current) =>
+      current.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
+    );
   };
 
   const normalizedItems = (): GoodsReceiptItemInput[] | null => {
@@ -91,7 +133,16 @@ export const AdminInwardView: React.FC<{
       variant_id: Number(item.variant_id),
       quantity: Number(item.quantity),
     }));
-    if (normalized.some((item) => !Number.isInteger(item.variant_id) || item.variant_id <= 0 || !Number.isInteger(item.quantity) || item.quantity <= 0)) return null;
+    if (
+      normalized.some(
+        (item) =>
+          !Number.isInteger(item.variant_id) ||
+          item.variant_id <= 0 ||
+          !Number.isInteger(item.quantity) ||
+          item.quantity <= 0,
+      )
+    )
+      return null;
     if (new Set(normalized.map((item) => item.variant_id)).size !== normalized.length) return null;
     return normalized;
   };
@@ -102,7 +153,9 @@ export const AdminInwardView: React.FC<{
     const parsedSupplier = Number(supplierId);
     const normalized = normalizedItems();
     if (!Number.isInteger(parsedSupplier) || parsedSupplier <= 0 || !receiptDate || !normalized) {
-      setError('Phiếu nhập cần supplier ACTIVE, ngày nhập và ít nhất một variant hợp lệ; không được trùng variant.');
+      setError(
+        'Phiếu nhập cần supplier ACTIVE, ngày nhập và ít nhất một variant hợp lệ; không được trùng variant.',
+      );
       return;
     }
     setSaving(true);
@@ -125,7 +178,12 @@ export const AdminInwardView: React.FC<{
       list.reload();
       showToast(selected ? 'Đã cập nhật phiếu nhập DRAFT.' : 'Đã tạo phiếu nhập DRAFT.');
     } catch (requestError: unknown) {
-      setError(getApiErrorMessage(requestError, 'Không thể lưu phiếu nhập. Kiểm tra trạng thái bản nháp, nhà cung cấp và các biến thể đã chọn.'));
+      setError(
+        getApiErrorMessage(
+          requestError,
+          'Không thể lưu phiếu nhập. Kiểm tra trạng thái bản nháp, nhà cung cấp và các biến thể đã chọn.',
+        ),
+      );
     } finally {
       setSaving(false);
     }
@@ -133,8 +191,16 @@ export const AdminInwardView: React.FC<{
 
   const runAction = async (action: 'CONFIRM' | 'CANCEL') => {
     if (!canWrite || !selected || saving) return;
-    if (dirty) { setError('Phiếu có thay đổi chưa lưu. Hãy lưu bản nháp trước khi xác nhận hoặc hủy.'); return; }
-    if (!window.confirm(`${action === 'CONFIRM' ? 'Xác nhận' : 'Hủy'} phiếu ${selected.receipt_code}?\n${action === 'CONFIRM' ? `${selected.items.length} dòng, tổng ${selected.items.reduce((total, item) => total + item.quantity, 0)} sản phẩm sẽ được cộng vào kho. Phiếu đã xác nhận không sửa được.` : 'Phiếu sẽ bị hủy và không cộng tồn kho.'}`)) return;
+    if (dirty) {
+      setError('Phiếu có thay đổi chưa lưu. Hãy lưu bản nháp trước khi xác nhận hoặc hủy.');
+      return;
+    }
+    if (
+      !window.confirm(
+        `${action === 'CONFIRM' ? 'Xác nhận' : 'Hủy'} phiếu ${selected.receipt_code}?\n${action === 'CONFIRM' ? `${selected.items.length} dòng, tổng ${selected.items.reduce((total, item) => total + item.quantity, 0)} sản phẩm sẽ được cộng vào kho. Phiếu đã xác nhận không sửa được.` : 'Phiếu sẽ bị hủy và không cộng tồn kho.'}`,
+      )
+    )
+      return;
     setSaving(true);
     setError(null);
     try {
@@ -143,7 +209,12 @@ export const AdminInwardView: React.FC<{
       list.reload();
       showToast(action === 'CONFIRM' ? 'Đã xác nhận nhập kho.' : 'Đã hủy phiếu nhập.');
     } catch (requestError: unknown) {
-      setError(getApiErrorMessage(requestError, 'Không thể thực hiện thao tác. Chỉ phiếu nháp mới có thể xác nhận hoặc hủy.'));
+      setError(
+        getApiErrorMessage(
+          requestError,
+          'Không thể thực hiện thao tác. Chỉ phiếu nháp mới có thể xác nhận hoặc hủy.',
+        ),
+      );
     } finally {
       setSaving(false);
     }
@@ -153,27 +224,367 @@ export const AdminInwardView: React.FC<{
 
   return (
     <div className="space-y-6">
-      {pickingIndex !== null && <VariantPicker excludedIds={items.filter((_, index) => index !== pickingIndex).map((item) => item.variant_id)} onClose={() => setPickingIndex(null)} onSelect={(row) => { setItem(pickingIndex, { variant_id: row.variant_id }); setPickingIndex(null); }} />}
-      <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">Goods receipts</p><h1 className="mt-1 font-serif text-3xl font-bold">Phiếu nhập kho</h1><p className="mt-2 text-sm text-[#606863]">Tạo bản nháp, đối chiếu hàng nhận và xác nhận để cộng số lượng vào kho.</p></div><div className="flex gap-2">{canWrite && <button type="button" onClick={() => { if (!saving && canDiscard()) resetDraftForm(); }} className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white">Phiếu mới</button>}<button type="button" onClick={() => onNavigateTab('suppliers', 'Nhà cung cấp')} className="border border-[#0B2419] px-4 py-2 text-xs font-bold uppercase">Nhà cung cấp</button></div></div>
+      {pickingIndex !== null && (
+        <VariantPicker
+          excludedIds={items
+            .filter((_, index) => index !== pickingIndex)
+            .map((item) => item.variant_id)}
+          onClose={() => setPickingIndex(null)}
+          onSelect={(row) => {
+            setItem(pickingIndex, { variant_id: row.variant_id });
+            setPickingIndex(null);
+          }}
+        />
+      )}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">
+            Goods receipts
+          </p>
+          <h1 className="mt-1 font-serif text-3xl font-bold">Phiếu nhập kho</h1>
+          <p className="mt-2 text-sm text-[#606863]">
+            Tạo bản nháp, đối chiếu hàng nhận và xác nhận để cộng số lượng vào kho.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {canWrite && (
+            <button
+              type="button"
+              onClick={() => {
+                if (!saving && canDiscard()) resetDraftForm();
+              }}
+              className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white"
+            >
+              Phiếu mới
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => onNavigateTab('suppliers', 'Nhà cung cấp')}
+            className="border border-[#0B2419] px-4 py-2 text-xs font-bold uppercase"
+          >
+            Nhà cung cấp
+          </button>
+        </div>
+      </div>
       <QueryFeedback error={list.error} onRetry={list.reload} />
       <QueryFeedback error={supplierQuery.error} onRetry={supplierQuery.reload} />
-      {error && <div role="alert" className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}<button type="button" onClick={() => { list.reload(); supplierQuery.reload(); }}>Thử tải lại</button></div>}
+      {error && (
+        <div role="alert" className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+          <button
+            type="button"
+            onClick={() => {
+              list.reload();
+              supplierQuery.reload();
+            }}
+          >
+            Thử tải lại
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_430px]">
         <section className="min-w-0 space-y-4">
-          <div className="flex items-center justify-between gap-3"><select aria-label="Trạng thái" value={status} onChange={(event) => { list.reload(); setPage(1); setStatus(event.target.value as GoodsReceiptStatus | ''); }} className="border border-[#D9DDD6] bg-white px-3 py-2 text-sm"><option value="">Tất cả trạng thái</option><option value="DRAFT">{statusLabel('DRAFT')}</option><option value="CONFIRMED">{statusLabel('CONFIRMED')}</option><option value="CANCELLED">{statusLabel('CANCELLED')}</option></select></div>
-          <div className="overflow-x-auto rounded-lg border border-[#E2E5DE] bg-white">{loading ? <div className="p-10 text-center text-sm">Đang tải...</div> : list.error ? null : receipts.length === 0 ? <div className="p-10 text-center text-sm">Chưa có phiếu nhập.</div> : <table className="min-w-full text-left text-sm"><thead className="bg-[#F5F6F2] text-xs uppercase text-[#606863]"><tr><th className="px-4 py-3">Phiếu</th><th className="px-4 py-3">Nhà cung cấp</th><th className="px-4 py-3">Ngày nhập</th><th className="px-4 py-3">Trạng thái</th><th className="px-4 py-3" /></tr></thead><tbody className="divide-y divide-[#E2E5DE]">{receipts.map((receipt) => <tr key={receipt.receipt_id}><td className="px-4 py-3"><strong className="font-mono">{receipt.receipt_code}</strong><p className="text-xs text-[#606863]">#{receipt.receipt_id}</p></td><td className="px-4 py-3">{suppliers.find((supplier) => supplier.supplier_id === receipt.supplier_id)?.name ?? `Nhà cung cấp #${receipt.supplier_id}`}</td><td className="px-4 py-3">{receipt.receipt_date}</td><td className="px-4 py-3 font-bold"><StatusBadge status={receipt.receipt_status} /></td><td className="px-4 py-3 text-right"><button type="button" onClick={() => void openDetail(receipt.receipt_id)} className="border border-[#0B2419] px-3 py-2 text-xs font-bold uppercase">Chi tiết</button></td></tr>)}</tbody></table>}</div>
-          {meta && meta.total_pages > 1 && <div className="flex justify-center gap-3 text-sm"><button type="button" disabled={page <= 1 || loading} onClick={() => { list.reload(); setPage((value) => value - 1); }} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang trước</button><span className="py-2">{meta.page} / {meta.total_pages}</span><button type="button" disabled={page >= meta.total_pages || loading} onClick={() => { list.reload(); setPage((value) => value + 1); }} className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40">Trang sau</button></div>}
+          <div className="flex items-center justify-between gap-3">
+            <select
+              aria-label="Trạng thái"
+              value={status}
+              onChange={(event) => {
+                list.reload();
+                setPage(1);
+                setStatus(event.target.value as GoodsReceiptStatus | '');
+              }}
+              className="border border-[#D9DDD6] bg-white px-3 py-2 text-sm"
+            >
+              <option value="">Tất cả trạng thái</option>
+              <option value="DRAFT">{statusLabel('DRAFT')}</option>
+              <option value="CONFIRMED">{statusLabel('CONFIRMED')}</option>
+              <option value="CANCELLED">{statusLabel('CANCELLED')}</option>
+            </select>
+          </div>
+          <div className="overflow-x-auto rounded-lg border border-[#E2E5DE] bg-white">
+            {loading ? (
+              <div className="p-10 text-center text-sm">Đang tải...</div>
+            ) : list.error ? null : receipts.length === 0 ? (
+              <div className="p-10 text-center text-sm">Chưa có phiếu nhập.</div>
+            ) : (
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-[#F5F6F2] text-xs uppercase text-[#606863]">
+                  <tr>
+                    <th className="px-4 py-3">Phiếu</th>
+                    <th className="px-4 py-3">Nhà cung cấp</th>
+                    <th className="px-4 py-3">Ngày nhập</th>
+                    <th className="px-4 py-3">Trạng thái</th>
+                    <th className="px-4 py-3" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E2E5DE]">
+                  {receipts.map((receipt) => (
+                    <tr key={receipt.receipt_id}>
+                      <td className="px-4 py-3">
+                        <strong className="font-mono">{receipt.receipt_code}</strong>
+                        <p className="text-xs text-[#606863]">#{receipt.receipt_id}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        {suppliers.find((supplier) => supplier.supplier_id === receipt.supplier_id)
+                          ?.name ?? `Nhà cung cấp #${receipt.supplier_id}`}
+                      </td>
+                      <td className="px-4 py-3">{receipt.receipt_date}</td>
+                      <td className="px-4 py-3 font-bold">
+                        <StatusBadge status={receipt.receipt_status} />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => void openDetail(receipt.receipt_id)}
+                          className="border border-[#0B2419] px-3 py-2 text-xs font-bold uppercase"
+                        >
+                          Chi tiết
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+          {meta && meta.total_pages > 1 && (
+            <div className="flex justify-center gap-3 text-sm">
+              <button
+                type="button"
+                disabled={page <= 1 || loading}
+                onClick={() => {
+                  list.reload();
+                  setPage((value) => value - 1);
+                }}
+                className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40"
+              >
+                Trang trước
+              </button>
+              <span className="py-2">
+                {meta.page} / {meta.total_pages}
+              </span>
+              <button
+                type="button"
+                disabled={page >= meta.total_pages || loading}
+                onClick={() => {
+                  list.reload();
+                  setPage((value) => value + 1);
+                }}
+                className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40"
+              >
+                Trang sau
+              </button>
+            </div>
+          )}
         </section>
 
-        <aside className="min-w-0 rounded-lg border border-[#E2E5DE] bg-white p-5"><div className="flex items-center justify-between gap-3"><div><h2 className="font-serif text-xl font-bold">{selected ? selected.receipt_code : canWrite ? 'Tạo phiếu nháp' : 'Chi tiết phiếu nhập'}</h2>{selected && <p className="mt-1 text-xs font-bold">{statusLabel(selected.receipt_status)}</p>}</div>{selected && canWrite && <button type="button" onClick={() => { if (!saving && canDiscard()) resetDraftForm(); }} className="text-xs font-bold uppercase underline">Phiếu mới</button>}</div>
-          {(canWrite || selected) ? <form onSubmit={saveReceipt} className="mt-5 space-y-4"><fieldset disabled={saving} className="contents"><label className="block space-y-1"><span className="text-xs font-semibold">Nhà cung cấp đang sử dụng *</span><input aria-label="Tìm nhà cung cấp" disabled={saving || !canWrite || (selected !== null && !isDraft)} value={supplierSearch} onChange={(event) => { setSupplierSearch(event.target.value); setSupplierPage(1); }} placeholder="Tìm tên nhà cung cấp" /><select aria-label="Chọn nhà cung cấp" required disabled={!canWrite || (selected !== null && !isDraft)} value={supplierId} onChange={(event) => setSupplierId(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]"><option value="">Chọn nhà cung cấp</option>{supplierId && !suppliers.some((supplier) => supplier.supplier_id === Number(supplierId)) && <option value={supplierId}>Nhà cung cấp #{supplierId} (đang chọn)</option>}{suppliers.map((supplier) => <option key={supplier.supplier_id} value={supplier.supplier_id}>#{supplier.supplier_id} {supplier.name}</option>)}</select></label><Pagination meta={supplierQuery.data?.meta} loading={supplierQuery.loading} onPage={setSupplierPage} /><label className="block space-y-1"><span className="text-xs font-semibold">Ngày nhập *</span><input type="date" required disabled={!canWrite || (selected !== null && !isDraft)} value={receiptDate} onChange={(event) => setReceiptDate(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]" /></label><label className="block space-y-1"><span className="text-xs font-semibold">Ghi chú</span><textarea rows={2} disabled={!canWrite || (selected !== null && !isDraft)} value={note} onChange={(event) => setNote(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]" /></label>
-            <div className="space-y-2"><div className="flex items-center justify-between"><span className="text-xs font-semibold">Biến thể và số lượng *</span>{canWrite && (selected === null || isDraft) && <button type="button" onClick={() => setItems((current) => [...current, emptyItem()])} className="text-xs font-bold uppercase underline">+ Dòng</button>}</div>{items.map((item, index) => <div key={index} className="grid grid-cols-[minmax(0,1fr)_80px_auto] gap-2"><div className="min-w-0">{item.variant_id > 0 && <ReceiptVariantLabel variantId={item.variant_id} />}{canWrite && (selected === null || isDraft) && <button type="button" disabled={saving} onClick={() => setPickingIndex(index)} className="admin-secondary">{item.variant_id ? 'Đổi biến thể' : 'Chọn biến thể'}</button>}</div><input type="number" min="1" step="1" disabled={!canWrite || (selected !== null && !isDraft)} aria-label={`Số lượng dòng ${index + 1}`} value={item.quantity} onChange={(event) => setItem(index, { quantity: Number(event.target.value) })} className="border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]" />{canWrite && (selected === null || isDraft) && <button type="button" disabled={items.length === 1} onClick={() => setItems((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label={`Xóa dòng ${index + 1}`} className="px-2 text-red-700 disabled:opacity-30">×</button>}</div>)}</div>
-            {canWrite && (selected === null || isDraft) && <button disabled={saving} className="w-full bg-[#0B2419] px-4 py-2.5 text-xs font-bold uppercase text-white disabled:opacity-40">{saving ? 'Đang lưu...' : selected ? 'Lưu bản nháp' : 'Tạo bản nháp'}</button>}
-          </fieldset></form> : <p className="mt-5 text-sm text-[#606863]">Chọn phiếu trong danh sách để xem chi tiết. Bạn đang ở chế độ chỉ đọc.</p>}
-          {selected && <div className="mt-4 border-t border-[#E2E5DE] pt-4 text-xs text-[#606863]"><p>Created by account #{selected.created_by_account_id}</p><p>Confirmed by: {selected.confirmed_by_account_id ? `#${selected.confirmed_by_account_id}` : '—'}</p></div>}
-          {selected && <div className="mt-4 rounded-lg bg-[#FAF4DF] p-3 text-sm"><h3 className="font-semibold">Đối chiếu phiếu nhập</h3><p>{items.length} dòng · Tổng {items.reduce((sum, item) => sum + item.quantity, 0)} sản phẩm</p><p>{dirty ? 'Có thay đổi chưa lưu. Lưu bản nháp trước khi xác nhận.' : 'Đang xem dữ liệu đã lưu.'}</p></div>}
-          {canWrite && isDraft && <div className="mt-4 grid grid-cols-2 gap-2"><button type="button" disabled={saving} onClick={() => void runAction('CONFIRM')} className="bg-[#0B2419] px-3 py-2 text-xs font-bold uppercase text-white disabled:opacity-40">Xác nhận nhập kho</button><button type="button" disabled={saving} onClick={() => void runAction('CANCEL')} className="border border-red-300 px-3 py-2 text-xs font-bold uppercase text-red-700 disabled:opacity-40">Hủy phiếu</button></div>}
+        <aside className="min-w-0 rounded-lg border border-[#E2E5DE] bg-white p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-serif text-xl font-bold">
+                {selected
+                  ? selected.receipt_code
+                  : canWrite
+                    ? 'Tạo phiếu nháp'
+                    : 'Chi tiết phiếu nhập'}
+              </h2>
+              {selected && (
+                <p className="mt-1 text-xs font-bold">{statusLabel(selected.receipt_status)}</p>
+              )}
+            </div>
+            {selected && canWrite && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!saving && canDiscard()) resetDraftForm();
+                }}
+                className="text-xs font-bold uppercase underline"
+              >
+                Phiếu mới
+              </button>
+            )}
+          </div>
+          {canWrite || selected ? (
+            <form onSubmit={saveReceipt} className="mt-5 space-y-4">
+              <fieldset disabled={saving} className="contents">
+                <label className="block space-y-1">
+                  <span className="text-xs font-semibold">Nhà cung cấp đang sử dụng *</span>
+                  <input
+                    aria-label="Tìm nhà cung cấp"
+                    disabled={saving || !canWrite || (selected !== null && !isDraft)}
+                    value={supplierSearch}
+                    onChange={(event) => {
+                      setSupplierSearch(event.target.value);
+                      setSupplierPage(1);
+                    }}
+                    placeholder="Tìm tên nhà cung cấp"
+                  />
+                  <select
+                    aria-label="Chọn nhà cung cấp"
+                    required
+                    disabled={!canWrite || (selected !== null && !isDraft)}
+                    value={supplierId}
+                    onChange={(event) => setSupplierId(event.target.value)}
+                    className="w-full border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]"
+                  >
+                    <option value="">Chọn nhà cung cấp</option>
+                    {supplierId &&
+                      !suppliers.some(
+                        (supplier) => supplier.supplier_id === Number(supplierId),
+                      ) && (
+                        <option value={supplierId}>Nhà cung cấp #{supplierId} (đang chọn)</option>
+                      )}
+                    {suppliers.map((supplier) => (
+                      <option key={supplier.supplier_id} value={supplier.supplier_id}>
+                        #{supplier.supplier_id} {supplier.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <Pagination
+                  meta={supplierQuery.data?.meta}
+                  loading={supplierQuery.loading}
+                  onPage={setSupplierPage}
+                />
+                <label className="block space-y-1">
+                  <span className="text-xs font-semibold">Ngày nhập *</span>
+                  <input
+                    type="date"
+                    required
+                    disabled={!canWrite || (selected !== null && !isDraft)}
+                    value={receiptDate}
+                    onChange={(event) => setReceiptDate(event.target.value)}
+                    className="w-full border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]"
+                  />
+                </label>
+                <label className="block space-y-1">
+                  <span className="text-xs font-semibold">Ghi chú</span>
+                  <textarea
+                    rows={2}
+                    disabled={!canWrite || (selected !== null && !isDraft)}
+                    value={note}
+                    onChange={(event) => setNote(event.target.value)}
+                    className="w-full border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]"
+                  />
+                </label>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold">Biến thể và số lượng *</span>
+                    {canWrite && (selected === null || isDraft) && (
+                      <button
+                        type="button"
+                        onClick={() => setItems((current) => [...current, emptyItem()])}
+                        className="text-xs font-bold uppercase underline"
+                      >
+                        + Dòng
+                      </button>
+                    )}
+                  </div>
+                  {items.map((item, index) => (
+                    <div key={index} className="grid grid-cols-[minmax(0,1fr)_80px_auto] gap-2">
+                      <div className="min-w-0">
+                        {item.variant_id > 0 && <ReceiptVariantLabel variantId={item.variant_id} />}
+                        {canWrite && (selected === null || isDraft) && (
+                          <button
+                            type="button"
+                            disabled={saving}
+                            onClick={() => setPickingIndex(index)}
+                            className="admin-secondary"
+                          >
+                            {item.variant_id ? 'Đổi biến thể' : 'Chọn biến thể'}
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        disabled={!canWrite || (selected !== null && !isDraft)}
+                        aria-label={`Số lượng dòng ${index + 1}`}
+                        value={item.quantity}
+                        onChange={(event) =>
+                          setItem(index, { quantity: Number(event.target.value) })
+                        }
+                        className="border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]"
+                      />
+                      {canWrite && (selected === null || isDraft) && (
+                        <button
+                          type="button"
+                          disabled={items.length === 1}
+                          onClick={() =>
+                            setItems((current) =>
+                              current.filter((_, itemIndex) => itemIndex !== index),
+                            )
+                          }
+                          aria-label={`Xóa dòng ${index + 1}`}
+                          className="px-2 text-red-700 disabled:opacity-30"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {canWrite && (selected === null || isDraft) && (
+                  <button
+                    disabled={saving}
+                    className="w-full bg-[#0B2419] px-4 py-2.5 text-xs font-bold uppercase text-white disabled:opacity-40"
+                  >
+                    {saving ? 'Đang lưu...' : selected ? 'Lưu bản nháp' : 'Tạo bản nháp'}
+                  </button>
+                )}
+              </fieldset>
+            </form>
+          ) : (
+            <p className="mt-5 text-sm text-[#606863]">
+              Chọn phiếu trong danh sách để xem chi tiết. Bạn đang ở chế độ chỉ đọc.
+            </p>
+          )}
+          {selected && (
+            <div className="mt-4 border-t border-[#E2E5DE] pt-4 text-xs text-[#606863]">
+              <p>Created by account #{selected.created_by_account_id}</p>
+              <p>
+                Confirmed by:{' '}
+                {selected.confirmed_by_account_id ? `#${selected.confirmed_by_account_id}` : '—'}
+              </p>
+            </div>
+          )}
+          {selected && (
+            <div className="mt-4 rounded-lg bg-[#FAF4DF] p-3 text-sm">
+              <h3 className="font-semibold">Đối chiếu phiếu nhập</h3>
+              <p>
+                {items.length} dòng · Tổng {items.reduce((sum, item) => sum + item.quantity, 0)} sản
+                phẩm
+              </p>
+              <p>
+                {dirty
+                  ? 'Có thay đổi chưa lưu. Lưu bản nháp trước khi xác nhận.'
+                  : 'Đang xem dữ liệu đã lưu.'}
+              </p>
+            </div>
+          )}
+          {canWrite && isDraft && (
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void runAction('CONFIRM')}
+                className="bg-[#0B2419] px-3 py-2 text-xs font-bold uppercase text-white disabled:opacity-40"
+              >
+                Xác nhận nhập kho
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void runAction('CANCEL')}
+                className="border border-red-300 px-3 py-2 text-xs font-bold uppercase text-red-700 disabled:opacity-40"
+              >
+                Hủy phiếu
+              </button>
+            </div>
+          )}
         </aside>
       </div>
     </div>

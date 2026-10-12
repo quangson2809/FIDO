@@ -5,13 +5,15 @@ import com.fido.modules.account.mapper.AccountMapper;
 import com.fido.modules.account.repository.AccountRepository;
 import com.fido.modules.account.repository.PermissionRepository;
 import com.fido.modules.account.repository.RoleRepository;
-import java.util.Optional;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
 /**
- * Internal read contract.
- * Callers must supply the authenticated account ID, never a request actor ID.
+ * Internal read contract. Callers must supply the authenticated account ID, never a request actor
+ * ID.
  */
 @Service
 @Transactional(readOnly = true)
@@ -22,43 +24,34 @@ public class AccountAccessService {
     private final PermissionRepository permissions;
 
     public AccountAccessService(
-            AccountRepository accounts,
-            RoleRepository roles,
-            PermissionRepository permissions
-    ) {
+            AccountRepository accounts, RoleRepository roles, PermissionRepository permissions) {
         this.accounts = accounts;
         this.roles = roles;
         this.permissions = permissions;
     }
 
-    /**
-     * Does not classify an account as staff or authorize an HTTP request.
-     */
+    /** Does not classify an account as staff or authorize an HTTP request. */
     public Optional<StaffAccountDetailDto> findAccess(Long accountId) {
         if (accountId == null) {
             return Optional.empty();
         }
 
         return accounts.findById(accountId)
-                .map(account -> {
-                    var roleDtos = roles
-                            .findAssignedToAccount(accountId)
-                            .stream()
-                            .map(AccountMapper::role)
-                            .toList();
+                .map(
+                        account -> {
+                            var roleDtos =
+                                    roles.findAssignedToAccount(accountId).stream()
+                                            .map(AccountMapper::role)
+                                            .toList();
 
-                    var permissionDtos = permissions
-                            .findGrantedToAccount(accountId)
-                            .stream()
-                            .map(AccountMapper::permission)
-                            .toList();
+                            var permissionDtos =
+                                    permissions.findGrantedToAccount(accountId).stream()
+                                            .map(AccountMapper::permission)
+                                            .toList();
 
-                    return new StaffAccountDetailDto(
-                            AccountMapper.account(account),
-                            roleDtos,
-                            permissionDtos
-                    );
-                });
+                            return new StaffAccountDetailDto(
+                                    AccountMapper.account(account), roleDtos, permissionDtos);
+                        });
     }
 
     public boolean isSuperadmin(Long accountId) {
@@ -66,10 +59,6 @@ public class AccountAccessService {
             return false;
         }
 
-        return roles.existsAssignedToAccountByCode(
-                accountId,
-                "SUPERADMIN"
-        );
+        return roles.existsAssignedToAccountByCode(accountId, "SUPERADMIN");
     }
-
 }

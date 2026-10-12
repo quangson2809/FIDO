@@ -32,21 +32,21 @@ export const normalizeApiError = (error: unknown): ApiClientError => {
     const payload = error.response?.data;
     const status = error.response?.status ?? numericStatus(objectProperty(payload, 'status'));
     const message =
-      nonBlank(objectProperty(payload, 'message'))
-      ?? nonBlank(objectProperty(payload, 'error'))
-      ?? (status ? `Yêu cầu API thất bại (${status}).` : nonBlank(error.message))
-      ?? 'Không thể kết nối tới API.';
+      nonBlank(objectProperty(payload, 'message')) ??
+      nonBlank(objectProperty(payload, 'error')) ??
+      (status ? `Yêu cầu API thất bại (${status}).` : nonBlank(error.message)) ??
+      'Không thể kết nối tới API.';
 
-    return new ApiClientError(
-      message,
-      status,
-      nonBlank(objectProperty(payload, 'path')),
-      error,
-    );
+    return new ApiClientError(message, status, nonBlank(objectProperty(payload, 'path')), error);
   }
 
   if (error instanceof Error) {
-    return new ApiClientError(error.message || 'Đã xảy ra lỗi không xác định.', undefined, undefined, error);
+    return new ApiClientError(
+      error.message || 'Đã xảy ra lỗi không xác định.',
+      undefined,
+      undefined,
+      error,
+    );
   }
 
   return new ApiClientError('Đã xảy ra lỗi không xác định.', undefined, undefined, error);

@@ -13,11 +13,19 @@ export function useRemoteQuery<T>(load: () => Promise<T>) {
   } | null>(null);
   useEffect(() => {
     let active = true;
-    Promise.resolve().then(request.load).then(
-      (data) => { if (active) setResult({ request, data, error: null }); },
-      (error: unknown) => { if (active) setResult({ request, data: null, error: normalizeApiError(error) }); },
-    );
-    return () => { active = false; };
+    Promise.resolve()
+      .then(request.load)
+      .then(
+        (data) => {
+          if (active) setResult({ request, data, error: null });
+        },
+        (error: unknown) => {
+          if (active) setResult({ request, data: null, error: normalizeApiError(error) });
+        },
+      );
+    return () => {
+      active = false;
+    };
   }, [request]);
   const current = result?.request === request ? result : null;
   const reload = useCallback(() => setRevision((value) => value + 1), []);

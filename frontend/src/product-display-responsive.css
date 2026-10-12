@@ -1,7 +1,7 @@
 /* Responsive horizontal product rails outside the all-products catalog. */
 .storefront section[data-home-parent-category] > div.grid,
-.storefront section[aria-label="Khám phá sản phẩm"] > div.grid,
-.storefront section[aria-label="Sản phẩm khác"] div.grid {
+.storefront section[aria-label='Khám phá sản phẩm'] > div.grid,
+.storefront section[aria-label='Sản phẩm khác'] div.grid {
   display: flex;
   min-width: 0;
   overflow-x: auto;
@@ -14,23 +14,23 @@
   -webkit-overflow-scrolling: touch;
 }
 .storefront section[data-home-parent-category] > div.grid > *,
-.storefront section[aria-label="Khám phá sản phẩm"] > div.grid > *,
-.storefront section[aria-label="Sản phẩm khác"] div.grid > * {
+.storefront section[aria-label='Khám phá sản phẩm'] > div.grid > *,
+.storefront section[aria-label='Sản phẩm khác'] div.grid > * {
   flex: 0 0 calc((100% - 12px) / 2);
   min-width: 0;
   scroll-snap-align: start;
 }
 @media (min-width: 768px) {
   .storefront section[data-home-parent-category] > div.grid > *,
-  .storefront section[aria-label="Khám phá sản phẩm"] > div.grid > *,
-  .storefront section[aria-label="Sản phẩm khác"] div.grid > * {
+  .storefront section[aria-label='Khám phá sản phẩm'] > div.grid > *,
+  .storefront section[aria-label='Sản phẩm khác'] div.grid > * {
     flex-basis: calc((100% - 24px) / 3);
   }
 }
 @media (min-width: 1024px) {
   .storefront section[data-home-parent-category] > div.grid > *,
-  .storefront section[aria-label="Khám phá sản phẩm"] > div.grid > *,
-  .storefront section[aria-label="Sản phẩm khác"] div.grid > * {
+  .storefront section[aria-label='Khám phá sản phẩm'] > div.grid > *,
+  .storefront section[aria-label='Sản phẩm khác'] div.grid > * {
     flex-basis: calc((100% - 48px) / 5);
   }
 }
@@ -70,37 +70,40 @@
 }
 
 /* Product detail gallery selectors follow the existing component markup. */
-.storefront .group.relative[class*="aspect-[4/5]"] {
+.storefront .group.relative[class*='aspect-[4/5]'] {
   width: 100%;
   max-height: min(68dvh, 640px);
 }
-.storefront .group.relative[class*="aspect-[4/5]"] > img {
+.storefront .group.relative[class*='aspect-[4/5]'] > img {
   max-height: min(68dvh, 640px);
   object-fit: contain;
 }
-.storefront div[class*="overflow-x-auto"][class*="md:max-h-[640px]"] {
+.storefront div[class*='overflow-x-auto'][class*='md:max-h-[640px]'] {
   max-width: 100%;
   min-width: 0;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
   scrollbar-width: thin;
 }
-.storefront div[class*="overflow-x-auto"][class*="md:max-h-[640px]"] > button {
+.storefront div[class*='overflow-x-auto'][class*='md:max-h-[640px]'] > button {
   flex: 0 0 calc((100% - 48px) / 5);
   min-width: 0;
 }
 @media (min-width: 768px) {
-  .storefront div[class*="overflow-x-auto"][class*="md:max-h-[640px]"] {
+  .storefront div[class*='overflow-x-auto'][class*='md:max-h-[640px]'] {
     max-height: 600px;
     overflow-y: auto;
   }
-  .storefront div[class*="overflow-x-auto"][class*="md:max-h-[640px]"] > button {
+  .storefront div[class*='overflow-x-auto'][class*='md:max-h-[640px]'] > button {
     flex-basis: 96px;
   }
 }
 
 /* Category-specific product listings use the same rail; the all-products page stays a grid. */
-.storefront .catalog-browse:has(form[aria-label="Tìm trong kết quả sản phẩm"]) section[aria-label="Kết quả sản phẩm"] > div.grid {
+.storefront
+  .catalog-browse:has(form[aria-label='Tìm trong kết quả sản phẩm'])
+  section[aria-label='Kết quả sản phẩm']
+  > div.grid {
   display: flex;
   min-width: 0;
   overflow-x: auto;
@@ -112,18 +115,30 @@
   scrollbar-width: thin;
   -webkit-overflow-scrolling: touch;
 }
-.storefront .catalog-browse:has(form[aria-label="Tìm trong kết quả sản phẩm"]) section[aria-label="Kết quả sản phẩm"] > div.grid > * {
+.storefront
+  .catalog-browse:has(form[aria-label='Tìm trong kết quả sản phẩm'])
+  section[aria-label='Kết quả sản phẩm']
+  > div.grid
+  > * {
   flex: 0 0 calc((100% - 16px) / 2);
   min-width: 0;
   scroll-snap-align: start;
 }
 @media (min-width: 768px) {
-  .storefront .catalog-browse:has(form[aria-label="Tìm trong kết quả sản phẩm"]) section[aria-label="Kết quả sản phẩm"] > div.grid > * {
+  .storefront
+    .catalog-browse:has(form[aria-label='Tìm trong kết quả sản phẩm'])
+    section[aria-label='Kết quả sản phẩm']
+    > div.grid
+    > * {
     flex-basis: calc((100% - 32px) / 3);
   }
 }
 @media (min-width: 1024px) {
-  .storefront .catalog-browse:has(form[aria-label="Tìm trong kết quả sản phẩm"]) section[aria-label="Kết quả sản phẩm"] > div.grid > * {
+  .storefront
+    .catalog-browse:has(form[aria-label='Tìm trong kết quả sản phẩm'])
+    section[aria-label='Kết quả sản phẩm']
+    > div.grid
+    > * {
     flex-basis: calc((100% - 64px) / 5);
   }
 }

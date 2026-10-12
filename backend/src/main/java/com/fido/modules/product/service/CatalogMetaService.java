@@ -4,8 +4,6 @@ import com.fido.modules.product.dto.response.CatalogMetaDto;
 import com.fido.modules.product.dto.response.SizeSystemDto;
 import com.fido.modules.product.entity.SizeSystem;
 import com.fido.modules.product.entity.SizeValue;
-import java.util.List;
-import java.util.stream.Collectors;
 import com.fido.modules.product.mapper.CatalogMapper;
 import com.fido.modules.product.repository.BrandRepository;
 import com.fido.modules.product.repository.CategoryRepository;
@@ -13,8 +11,12 @@ import com.fido.modules.product.repository.ColorRepository;
 import com.fido.modules.product.repository.ProductRepository;
 import com.fido.modules.product.repository.SizeSystemRepository;
 import com.fido.modules.product.repository.SizeValueRepository;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -35,8 +37,7 @@ public class CatalogMetaService {
             SizeValueRepository sizeValues,
             ColorRepository colors,
             ProductRepository products,
-            CatalogReferenceService references
-    ) {
+            CatalogReferenceService references) {
         this.categories = categories;
         this.brands = brands;
         this.sizeSystems = sizeSystems;
@@ -49,53 +50,44 @@ public class CatalogMetaService {
     public SizeSystemDto sizeSystemDto(Long sizeSystemId) {
         SizeSystem sizeSystem = references.sizeSystem(sizeSystemId);
 
-        var values = sizeValues
-                .findAllBySizeSystemIdOrderBySortOrderAscSizeValueIdAsc(
-                        sizeSystemId
-                )
-                .stream()
-                .map(CatalogMapper::sizeValue)
-                .toList();
+        var values =
+                sizeValues
+                        .findAllBySizeSystemIdOrderBySortOrderAscSizeValueIdAsc(sizeSystemId)
+                        .stream()
+                        .map(CatalogMapper::sizeValue)
+                        .toList();
 
-        return CatalogMapper.sizeSystem(
-                sizeSystem,
-                values
-        );
+        return CatalogMapper.sizeSystem(sizeSystem, values);
     }
 
     public CatalogMetaDto meta() {
-        var categoryDtos = categories
-                .findAllByOrderByCategoryIdAsc()
-                .stream()
-                .map(CatalogMapper::category)
-                .toList();
+        var categoryDtos =
+                categories.findAllByOrderByCategoryIdAsc().stream()
+                        .map(CatalogMapper::category)
+                        .toList();
 
-        var brandDtos = brands
-                .findAllByOrderByBrandIdAsc()
-                .stream()
-                .map(CatalogMapper::brand)
-                .toList();
+        var brandDtos =
+                brands.findAllByOrderByBrandIdAsc().stream().map(CatalogMapper::brand).toList();
 
-        var valuesBySystem = sizeValues
-                .findAllByOrderBySizeSystemIdAscSortOrderAscSizeValueIdAsc()
-                .stream()
-                .collect(Collectors.groupingBy(
-                        SizeValue::getSizeSystemId,
-                        Collectors.mapping(CatalogMapper::sizeValue, Collectors.toList())
-                ));
-        var sizeSystemDtos = sizeSystems
-                .findAllByOrderBySizeSystemIdAsc()
-                .stream()
-                .map(system -> CatalogMapper.sizeSystem(
-                        system, valuesBySystem.getOrDefault(system.getSizeSystemId(), List.of())
-                ))
-                .toList();
+        var valuesBySystem =
+                sizeValues.findAllByOrderBySizeSystemIdAscSortOrderAscSizeValueIdAsc().stream()
+                        .collect(
+                                Collectors.groupingBy(
+                                        SizeValue::getSizeSystemId,
+                                        Collectors.mapping(
+                                                CatalogMapper::sizeValue, Collectors.toList())));
+        var sizeSystemDtos =
+                sizeSystems.findAllByOrderBySizeSystemIdAsc().stream()
+                        .map(
+                                system ->
+                                        CatalogMapper.sizeSystem(
+                                                system,
+                                                valuesBySystem.getOrDefault(
+                                                        system.getSizeSystemId(), List.of())))
+                        .toList();
 
-        var colorDtos = colors
-                .findAllByOrderByColorIdAsc()
-                .stream()
-                .map(CatalogMapper::color)
-                .toList();
+        var colorDtos =
+                colors.findAllByOrderByColorIdAsc().stream().map(CatalogMapper::color).toList();
 
         return new CatalogMetaDto(
                 categoryDtos,
@@ -104,7 +96,6 @@ public class CatalogMetaService {
                 colorDtos,
                 products.findDistinctGenders(),
                 products.findDistinctSeasons(),
-                products.findDistinctStyles()
-        );
+                products.findDistinctStyles());
     }
 }

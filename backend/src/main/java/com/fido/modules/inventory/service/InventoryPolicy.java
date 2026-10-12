@@ -1,8 +1,9 @@
 package com.fido.modules.inventory.service;
 
-import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.Set;
 
 public final class InventoryPolicy {
 
@@ -23,19 +24,12 @@ public final class InventoryPolicy {
     public static final String INVENTORY_READ = "INVENTORY_READ";
     public static final String INVENTORY_WRITE = "INVENTORY_WRITE";
 
-    private static final Set<String> SUPPLIER_STATUSES = Set.of(
-            SUPPLIER_ACTIVE,
-            SUPPLIER_INACTIVE
-    );
+    private static final Set<String> SUPPLIER_STATUSES = Set.of(SUPPLIER_ACTIVE, SUPPLIER_INACTIVE);
 
-    private static final Set<String> RECEIPT_STATUSES = Set.of(
-            RECEIPT_DRAFT,
-            RECEIPT_CONFIRMED,
-            RECEIPT_CANCELLED
-    );
+    private static final Set<String> RECEIPT_STATUSES =
+            Set.of(RECEIPT_DRAFT, RECEIPT_CONFIRMED, RECEIPT_CANCELLED);
 
-    private InventoryPolicy() {
-    }
+    private InventoryPolicy() {}
 
     public static void requireSupplierStatus(String status) {
         if (!SUPPLIER_STATUSES.contains(status)) {

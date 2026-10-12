@@ -5,7 +5,9 @@ import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 
 public enum ReportGranularity {
-    DAY, WEEK, MONTH;
+    DAY,
+    WEEK,
+    MONTH;
 
     public LocalDate periodStart(LocalDate date) {
         return switch (this) {

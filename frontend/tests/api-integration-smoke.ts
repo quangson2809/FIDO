@@ -62,10 +62,14 @@ const server = createServer((request, response) => {
   if (url.pathname === '/api/v1/admin/size-systems/12' && request.method === 'PATCH') {
     requireBearer(request);
     let body = '';
-    request.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+    request.on('data', (chunk: Buffer) => {
+      body += chunk.toString();
+    });
     request.on('end', () => {
       capturedSizeBody = JSON.parse(body);
-      writeJson(response, 200, { data: { size_system_id: 12, code: 'ALPHA', name: 'Alpha', size_values: [] } });
+      writeJson(response, 200, {
+        data: { size_system_id: 12, code: 'ALPHA', name: 'Alpha', size_values: [] },
+      });
     });
     return;
   }
@@ -79,11 +83,15 @@ const server = createServer((request, response) => {
     });
     return;
   }
-  if ((url.pathname === '/api/v1/admin/vouchers' && request.method === 'POST')
-    || (url.pathname === '/api/v1/admin/vouchers/27' && request.method === 'PUT')) {
+  if (
+    (url.pathname === '/api/v1/admin/vouchers' && request.method === 'POST') ||
+    (url.pathname === '/api/v1/admin/vouchers/27' && request.method === 'PUT')
+  ) {
     requireBearer(request);
     let raw = '';
-    request.on('data', (chunk: Buffer) => { raw += chunk.toString(); });
+    request.on('data', (chunk: Buffer) => {
+      raw += chunk.toString();
+    });
     request.on('end', () => {
       capturedVoucherBody = JSON.parse(raw);
       writeJson(response, request.method === 'POST' ? 201 : 200, { data: voucherDetail });
@@ -93,27 +101,44 @@ const server = createServer((request, response) => {
   if (url.pathname === '/api/v1/checkout/quote' && request.method === 'POST') {
     requireBearer(request);
     let raw = '';
-    request.on('data', (chunk: Buffer) => { raw += chunk.toString(); });
+    request.on('data', (chunk: Buffer) => {
+      raw += chunk.toString();
+    });
     request.on('end', () => {
       capturedQuoteBody = JSON.parse(raw);
-      writeJson(response, 200, { data: {
-        quote_id: 'voucher-smoke-quote',
-        items: [], subtotal: 100000, discount: 10000, shipping_fee: 30000, total: 120000,
-        voucher: { voucher_id: 27, code: 'SAVE10K' },
-      } });
+      writeJson(response, 200, {
+        data: {
+          quote_id: 'voucher-smoke-quote',
+          items: [],
+          subtotal: 100000,
+          discount: 10000,
+          shipping_fee: 30000,
+          total: 120000,
+          voucher: { voucher_id: 27, code: 'SAVE10K' },
+        },
+      });
     });
     return;
   }
   if (url.pathname === '/api/v1/orders' && request.method === 'POST') {
     requireBearer(request);
     let raw = '';
-    request.on('data', (chunk: Buffer) => { raw += chunk.toString(); });
+    request.on('data', (chunk: Buffer) => {
+      raw += chunk.toString();
+    });
     request.on('end', () => {
       capturedOrderBody = JSON.parse(raw);
-      writeJson(response, 201, { data: {
-        order_id: 43, order_code: 'FIDO-43', order_status: 'PENDING',
-        subtotal: 100000, discount: 10000, shipping_fee: 30000, total: 120000,
-      } });
+      writeJson(response, 201, {
+        data: {
+          order_id: 43,
+          order_code: 'FIDO-43',
+          order_status: 'PENDING',
+          subtotal: 100000,
+          discount: 10000,
+          shipping_fee: 30000,
+          total: 120000,
+        },
+      });
     });
     return;
   }
@@ -147,12 +172,14 @@ const server = createServer((request, response) => {
       data: {
         account,
         addresses: [],
-        roles: [{
-          role_id: 1,
-          code: 'SUPERADMIN',
-          name: 'Superadmin',
-          description: null,
-        }],
+        roles: [
+          {
+            role_id: 1,
+            code: 'SUPERADMIN',
+            name: 'Superadmin',
+            description: null,
+          },
+        ],
         permissions: malformedMeResponse
           ? [{ permission_id: 1, code: 42, name: 'Broken permission' }]
           : [],
@@ -165,21 +192,25 @@ const server = createServer((request, response) => {
     assert.equal(url.searchParams.get('page'), '1');
     assert.equal(url.searchParams.get('page_size'), '8');
     writeJson(response, 200, {
-      data: [{
-        product_id: 960001,
-        name: 'Smoke Product',
-        thumbnail: 'https://example.com/product.jpg',
-        category: {
-          category_id: 1,
-          parent_category_id: null,
-          name: 'Áo',
+      data: [
+        {
+          product_id: 960001,
+          name: 'Smoke Product',
+          thumbnail: 'https://example.com/product.jpg',
+          category: {
+            category_id: 1,
+            parent_category_id: null,
+            name: 'Áo',
+          },
+          brand: null,
+          base_price: 199000,
+          sale_status: 'ON_SALE',
+          material_care: 'Giặt mặt trái.',
+          sizes: [
+            { size_value_id: 12, size_system_id: 3, code: '30', display_name: '30', sort_order: 2 },
+          ],
         },
-        brand: null,
-        base_price: 199000,
-        sale_status: 'ON_SALE',
-        material_care: 'Giặt mặt trái.',
-        sizes: [{ size_value_id: 12, size_system_id: 3, code: '30', display_name: '30', sort_order: 2 }],
-      }],
+      ],
       meta: {
         page: 1,
         page_size: 8,
@@ -248,7 +279,12 @@ const server = createServer((request, response) => {
         discount: 0,
         shipping_fee: 30000,
         total: 130000,
-        payment: { payment_status: 'UNPAID', amount_due: 130000, amount_received: 0, amount_refunded: 0 },
+        payment: {
+          payment_status: 'UNPAID',
+          amount_due: 130000,
+          amount_received: 0,
+          amount_refunded: 0,
+        },
         shipping_info: null,
         completed_at: null,
         returned_at: null,
@@ -280,25 +316,76 @@ const server = createServer((request, response) => {
         completed_sales: 100000,
         returned_adjustment: 0,
         net_sales: 100000,
-        orders_by_status: { PENDING: 0, CONFIRMED: 0, PREPARING: 0, SHIPPING: 0, COMPLETED: 1, DELIVERY_FAILED: 0, CANCELLED: 0, RETURNED: 0 },
+        orders_by_status: {
+          PENDING: 0,
+          CONFIRMED: 0,
+          PREPARING: 0,
+          SHIPPING: 0,
+          COMPLETED: 1,
+          DELIVERY_FAILED: 0,
+          CANCELLED: 0,
+          RETURNED: 0,
+        },
       },
     });
     return;
   }
 
-  if (request.method === 'GET' && ['/api/v1/admin/reports/sales-trend', '/api/v1/admin/reports/orders-trend', '/api/v1/admin/reports/product-performance'].includes(url.pathname)) {
+  if (
+    request.method === 'GET' &&
+    [
+      '/api/v1/admin/reports/sales-trend',
+      '/api/v1/admin/reports/orders-trend',
+      '/api/v1/admin/reports/product-performance',
+    ].includes(url.pathname)
+  ) {
     requireBearer(request);
     assert.equal(url.searchParams.get('from'), '2026-10-01');
     assert.equal(url.searchParams.get('to'), '2026-10-07');
     const base = { from: '2026-10-01', to: '2026-10-07' };
     if (url.pathname.endsWith('product-performance')) {
       assert.equal(url.searchParams.get('limit'), '5');
-      writeJson(response, 200, { data: { ...base, items: [{ product_id: 1, product_name: 'Test', thumbnail: null, completed_units: 3, returned_units: 1, net_units: 2 }] } });
+      writeJson(response, 200, {
+        data: {
+          ...base,
+          items: [
+            {
+              product_id: 1,
+              product_name: 'Test',
+              thumbnail: null,
+              completed_units: 3,
+              returned_units: 1,
+              net_units: 2,
+            },
+          ],
+        },
+      });
     } else {
       assert.equal(url.searchParams.get('granularity'), 'WEEK');
-      const point = url.pathname.endsWith('sales-trend') ? { period_start: '2026-09-28', completed_sales: 100, returned_adjustment: 30, net_sales: 70 }
-        : { period_start: '2026-09-28', total_orders: 1, orders_by_status: { PENDING: 0, CONFIRMED: 0, PREPARING: 0, SHIPPING: 0, COMPLETED: 1, DELIVERY_FAILED: 0, CANCELLED: 0, RETURNED: 0 } };
-      writeJson(response, 200, { data: { ...base, granularity: 'WEEK', timezone: 'Asia/Ho_Chi_Minh', points: [point] } });
+      const point = url.pathname.endsWith('sales-trend')
+        ? {
+            period_start: '2026-09-28',
+            completed_sales: 100,
+            returned_adjustment: 30,
+            net_sales: 70,
+          }
+        : {
+            period_start: '2026-09-28',
+            total_orders: 1,
+            orders_by_status: {
+              PENDING: 0,
+              CONFIRMED: 0,
+              PREPARING: 0,
+              SHIPPING: 0,
+              COMPLETED: 1,
+              DELIVERY_FAILED: 0,
+              CANCELLED: 0,
+              RETURNED: 0,
+            },
+          };
+      writeJson(response, 200, {
+        data: { ...base, granularity: 'WEEK', timezone: 'Asia/Ho_Chi_Minh', points: [point] },
+      });
     }
     return;
   }
@@ -340,20 +427,34 @@ try {
   await adminCatalogMetaService.updateSizeSystem(12, { size_values: sizes });
   assert.deepEqual(capturedSizeBody, { size_values: sizes }, 'Preserve IDs and all retained sizes');
   await adminCatalogMetaService.updateSizeSystem(12, { size_values: sizes.slice(1) });
-  assert.deepEqual(capturedSizeBody, { size_values: sizes.slice(1) }, 'Only omit explicitly removed sizes');
+  assert.deepEqual(
+    capturedSizeBody,
+    { size_values: sizes.slice(1) },
+    'Only omit explicitly removed sizes',
+  );
   const listed = await voucherService.list('SAVE', 1);
   assert.equal(listed.data[0]?.code, 'SAVE10K');
   const createdVoucher = await voucherService.create(voucherPolicy);
   assert.equal(createdVoucher.voucher_id, 27);
-  assert.deepEqual(capturedVoucherBody, voucherPolicy, 'Create must preserve the typed voucher policy');
+  assert.deepEqual(
+    capturedVoucherBody,
+    voucherPolicy,
+    'Create must preserve the typed voucher policy',
+  );
   // Real editor receives VoucherDetail, not VoucherInput. Its response metadata
   // must never be serialized into the strict VoucherRequest endpoint.
   await voucherService.update(27, voucherSubmission({ ...voucherDetail, enabled: false }, false));
-  assert.deepEqual(capturedVoucherBody, { ...voucherPolicy, enabled: false },
-    'Updating from a server detail must send only the approved VoucherRequest fields');
+  assert.deepEqual(
+    capturedVoucherBody,
+    { ...voucherPolicy, enabled: false },
+    'Updating from a server detail must send only the approved VoucherRequest fields',
+  );
   await voucherService.update(27, { ...voucherDetail, enabled: false });
-  assert.deepEqual(capturedVoucherBody, { ...voucherPolicy, enabled: false },
-    'HTTP service boundary also strips response metadata for other callers');
+  assert.deepEqual(
+    capturedVoucherBody,
+    { ...voucherPolicy, enabled: false },
+    'HTTP service boundary also strips response metadata for other callers',
+  );
 
   const checkoutRequest = {
     recipient_phone: '0909000001',
@@ -367,7 +468,10 @@ try {
   assert.equal(quotedVoucher.total, 120000);
   assert.equal(quotedVoucher.voucher?.code, 'SAVE10K');
   if (!quotedVoucher.quote_id) throw new Error('Missing voucher quotation ID');
-  const placedOrder = await checkoutService.createOrder({ ...checkoutRequest, quote_id: quotedVoucher.quote_id });
+  const placedOrder = await checkoutService.createOrder({
+    ...checkoutRequest,
+    quote_id: quotedVoucher.quote_id,
+  });
   assert.equal(placedOrder.order_id, 43);
   assert.deepEqual(capturedOrderBody, { ...checkoutRequest, quote_id: 'voucher-smoke-quote' });
 
@@ -379,7 +483,9 @@ try {
   assert.equal(catalog.items[0]?.imageUrl, 'https://example.com/product.jpg');
   assert.equal(catalog.items[0]?.base_price, 199000);
   assert.equal(catalog.items[0]?.materialCare, 'Giặt mặt trái.');
-  assert.deepEqual(catalog.items[0]?.sizes, [{ size_value_id: 12, size_system_id: 3, code: '30', display_name: '30', sort_order: 2 }]);
+  assert.deepEqual(catalog.items[0]?.sizes, [
+    { size_value_id: 12, size_system_id: 3, code: '30', display_name: '30', sort_order: 2 },
+  ]);
   assert.equal(catalog.meta.page, 1);
 
   const meta = await catalogService.getMeta();
@@ -413,7 +519,11 @@ try {
     () => authService.login('0909000001', 'Fido@123'),
     /Invalid API response from POST \/auth\/login: data\.access_token must be/,
   );
-  assert.equal(hasApiAccessToken(), false, 'Malformed login payloads must not publish an access token');
+  assert.equal(
+    hasApiAccessToken(),
+    false,
+    'Malformed login payloads must not publish an access token',
+  );
   malformedLoginResponse = false;
 
   await authService.login('0909000001', 'Fido@123');
@@ -429,6 +539,6 @@ try {
 } finally {
   authService.logout();
   await new Promise<void>((resolve, reject) => {
-    server.close((error) => error ? reject(error) : resolve());
+    server.close((error) => (error ? reject(error) : resolve()));
   });
 }

@@ -6,6 +6,11 @@ export function getStorefrontErrorMessage(error: unknown, fallback: string): str
   if (status === 403) return 'Bạn không có quyền thực hiện thao tác này.';
   if (status === 404) return 'Không tìm thấy nội dung yêu cầu.';
   if (!status || status >= 500) return fallback;
-  if (/exception|stack|\bat\s+\w+\.|sql|java\.|API|Internal Server|Bad Request|Network Error/i.test(message)) return fallback;
+  if (
+    /exception|stack|\bat\s+\w+\.|sql|java\.|API|Internal Server|Bad Request|Network Error/i.test(
+      message,
+    )
+  )
+    return fallback;
   return message && !/^Yêu cầu API/.test(message) ? message : fallback;
 }

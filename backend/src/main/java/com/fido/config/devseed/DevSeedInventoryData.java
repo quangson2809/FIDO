@@ -15,7 +15,8 @@ public class DevSeedInventoryData {
     }
 
     public void seedInventoryRows() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO inventories(
                     variant_id,available_quantity,updated_at
                 ) VALUES
@@ -49,7 +50,8 @@ public class DevSeedInventoryData {
     }
 
     private void seedSuppliers() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO suppliers(
                     supplier_id,name,phone,email,address,usage_status,note
                 ) VALUES
@@ -61,7 +63,8 @@ public class DevSeedInventoryData {
     }
 
     private void seedGoodsReceipts() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO goods_receipts(
                     receipt_id,receipt_code,supplier_id,receipt_status,receipt_date,
                     created_by_account_id,confirmed_by_account_id,confirmed_at,
@@ -80,7 +83,8 @@ public class DevSeedInventoryData {
     }
 
     private void seedGoodsReceiptItems() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO goods_receipt_items(
                     receipt_item_id,receipt_id,variant_id,quantity
                 ) VALUES
@@ -91,7 +95,8 @@ public class DevSeedInventoryData {
     }
 
     private void seedInventoryTransactions() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO inventory_transactions(
                     txn_id,variant_id,quantity_delta,transaction_type,order_id,
                     goods_receipt_id,actor_account_id,reason,created_at

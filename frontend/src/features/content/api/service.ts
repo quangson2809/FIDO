@@ -16,9 +16,7 @@ export const contentService = {
   },
 
   async getAdminPages(): Promise<ContentPageDto[]> {
-    const response = await apiClient.get<ApiResponse<ContentPageDto[]>>(
-      '/admin/content-pages',
-    );
+    const response = await apiClient.get<ApiResponse<ContentPageDto[]>>('/admin/content-pages');
     return response.data;
   },
 

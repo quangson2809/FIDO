@@ -10,6 +10,4 @@ public record GoodsReceiptSummaryDto(
         String receipt_status,
         LocalDate receipt_date,
         LocalDateTime confirmed_at,
-        LocalDateTime created_at
-) {
-}
+        LocalDateTime created_at) {}

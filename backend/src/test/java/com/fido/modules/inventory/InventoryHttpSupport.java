@@ -2,6 +2,16 @@ package com.fido.modules.inventory;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import org.junit.jupiter.api.AfterEach;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
+
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -13,32 +23,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
-@SpringBootTest(
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
-)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 abstract class InventoryHttpSupport {
 
     static final String PASSWORD = "Test-password-123";
 
-    @LocalServerPort
-    int port;
+    @LocalServerPort int port;
 
-    @Autowired
-    ObjectMapper json;
+    @Autowired ObjectMapper json;
 
-    @Autowired
-    JdbcTemplate db;
+    @Autowired JdbcTemplate db;
 
     final HttpClient client = HttpClient.newHttpClient();
 
@@ -49,18 +45,9 @@ abstract class InventoryHttpSupport {
     final List<Long> receipts = new ArrayList<>();
     final List<CatalogFixture> catalog = new ArrayList<>();
 
-    record Result(
-            int status,
-            JsonNode data,
-            String body
-    ) {
-    }
+    record Result(int status, JsonNode data, String body) {}
 
-    record Employee(
-            long id,
-            String token
-    ) {
-    }
+    record Employee(long id, String token) {}
 
     record CatalogFixture(
             long categoryId,
@@ -69,81 +56,49 @@ abstract class InventoryHttpSupport {
             long colorId,
             long productId,
             long variantId,
-            String sku
-    ) {
-    }
+            String sku) {}
 
-    Result call(
-            String method,
-            String path,
-            String token,
-            Object body
-    ) throws Exception {
-        var request = HttpRequest.newBuilder(
-                        URI.create("http://localhost:" + port + path)
-                )
-                .header("Accept", "application/json")
-                .header("Content-Type", "application/json");
+    Result call(String method, String path, String token, Object body) throws Exception {
+        var request =
+                HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
+                        .header("Accept", "application/json")
+                        .header("Content-Type", "application/json");
 
         if (token != null) {
-            request.header(
-                    "Authorization",
-                    "Bearer " + token
-            );
+            request.header("Authorization", "Bearer " + token);
         }
 
         request.method(
                 method,
                 body == null
                         ? HttpRequest.BodyPublishers.noBody()
-                        : HttpRequest.BodyPublishers.ofString(
-                                json.writeValueAsString(body)
-                        )
-        );
+                        : HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)));
 
-        var response = client.send(
-                request.build(),
-                HttpResponse.BodyHandlers.ofString()
-        );
+        var response = client.send(request.build(), HttpResponse.BodyHandlers.ofString());
 
         return new Result(
                 response.statusCode(),
-                response.body().isBlank()
-                        ? null
-                        : json.readTree(response.body()),
-                response.body()
-        );
+                response.body().isBlank() ? null : json.readTree(response.body()),
+                response.body());
     }
 
     String phone() {
-        return "07"
-                + UUID.randomUUID()
-                        .toString()
-                        .replace("-", "")
-                        .substring(0, 16);
+        return "07" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
     }
 
     long register(String phone) throws Exception {
-        var response = call(
-                "POST",
-                "/api/v1/auth/register",
-                null,
-                Map.of(
-                        "phone", phone,
-                        "password", PASSWORD
-                )
-        );
+        var response =
+                call(
+                        "POST",
+                        "/api/v1/auth/register",
+                        null,
+                        Map.of(
+                                "phone", phone,
+                                "password", PASSWORD));
 
-        assertEquals(
-                201,
-                response.status(),
-                response.body()
-        );
+        assertEquals(201, response.status(), response.body());
 
-        long accountId = response.data()
-                .get("data")
-                .get("account_id")
-                .asLong();
+        long accountId = response.data().get("data").get("account_id").asLong();
 
         accounts.add(accountId);
 
@@ -151,32 +106,21 @@ abstract class InventoryHttpSupport {
     }
 
     String login(String phone) throws Exception {
-        var response = call(
-                "POST",
-                "/api/v1/auth/login",
-                null,
-                Map.of(
-                        "identifier", phone,
-                        "password", PASSWORD
-                )
-        );
+        var response =
+                call(
+                        "POST",
+                        "/api/v1/auth/login",
+                        null,
+                        Map.of(
+                                "identifier", phone,
+                                "password", PASSWORD));
 
-        assertEquals(
-                200,
-                response.status(),
-                response.body()
-        );
+        assertEquals(200, response.status(), response.body());
 
-        return response.data()
-                .get("data")
-                .get("access_token")
-                .asText();
+        return response.data().get("data").get("access_token").asText();
     }
 
-    void grantRole(
-            long accountId,
-            String roleCode
-    ) {
+    void grantRole(long accountId, String roleCode) {
         db.update(
                 """
                 INSERT INTO account_roles
@@ -185,32 +129,25 @@ abstract class InventoryHttpSupport {
                 WHERE code = ?
                 """,
                 accountId,
-                roleCode
-        );
+                roleCode);
     }
 
     long ensurePermission(String code) {
-        var existing = db.query(
-                "SELECT permission_id FROM permissions WHERE code=?",
-                (resultSet, rowNumber) -> resultSet.getLong(1),
-                code
-        );
+        var existing =
+                db.query(
+                        "SELECT permission_id FROM permissions WHERE code=?",
+                        (resultSet, rowNumber) -> resultSet.getLong(1),
+                        code);
 
         if (!existing.isEmpty()) {
             return existing.get(0);
         }
 
-        db.update(
-                "INSERT INTO permissions(code,name) VALUES (?,?)",
-                code,
-                code
-        );
+        db.update("INSERT INTO permissions(code,name) VALUES (?,?)", code, code);
 
-        long permissionId = db.queryForObject(
-                "SELECT permission_id FROM permissions WHERE code=?",
-                Long.class,
-                code
-        );
+        long permissionId =
+                db.queryForObject(
+                        "SELECT permission_id FROM permissions WHERE code=?", Long.class, code);
 
         createdPermissions.add(permissionId);
 
@@ -220,17 +157,9 @@ abstract class InventoryHttpSupport {
     long capabilityRole(long permissionId) {
         String code = "inventory-test-" + UUID.randomUUID();
 
-        db.update(
-                "INSERT INTO roles(code,name) VALUES (?,?)",
-                code,
-                "Inventory test"
-        );
+        db.update("INSERT INTO roles(code,name) VALUES (?,?)", code, "Inventory test");
 
-        long roleId = db.queryForObject(
-                "SELECT role_id FROM roles WHERE code=?",
-                Long.class,
-                code
-        );
+        long roleId = db.queryForObject("SELECT role_id FROM roles WHERE code=?", Long.class, code);
 
         customRoles.add(roleId);
 
@@ -240,8 +169,7 @@ abstract class InventoryHttpSupport {
                 VALUES (?,?)
                 """,
                 roleId,
-                permissionId
-        );
+                permissionId);
 
         return roleId;
     }
@@ -250,10 +178,7 @@ abstract class InventoryHttpSupport {
         String phone = phone();
         long accountId = register(phone);
 
-        grantRole(
-                accountId,
-                "ADMIN"
-        );
+        grantRole(accountId, "ADMIN");
 
         db.update(
                 """
@@ -261,34 +186,22 @@ abstract class InventoryHttpSupport {
                 VALUES (?,?)
                 """,
                 accountId,
-                roleId
-        );
+                roleId);
 
-        return new Employee(
-                accountId,
-                login(phone)
-        );
+        return new Employee(accountId, login(phone));
     }
 
     Employee plainAdmin() throws Exception {
         String phone = phone();
         long accountId = register(phone);
 
-        grantRole(
-                accountId,
-                "ADMIN"
-        );
+        grantRole(accountId, "ADMIN");
 
-        return new Employee(
-                accountId,
-                login(phone)
-        );
+        return new Employee(accountId, login(phone));
     }
 
     CatalogFixture createVariant() {
-        String suffix = UUID.randomUUID()
-                .toString()
-                .replace("-", "");
+        String suffix = UUID.randomUUID().toString().replace("-", "");
 
         String categoryName = "Inventory category " + suffix;
         String sizeSystemCode = "INV-SZ-" + suffix.substring(0, 12);
@@ -296,28 +209,24 @@ abstract class InventoryHttpSupport {
         String productName = "Inventory product " + suffix;
         String sku = "INV-SKU-" + suffix;
 
-        db.update(
-                "INSERT INTO categories(parent_category_id,name) VALUES (NULL,?)",
-                categoryName
-        );
+        db.update("INSERT INTO categories(parent_category_id,name) VALUES (NULL,?)", categoryName);
 
-        long categoryId = db.queryForObject(
-                "SELECT category_id FROM categories WHERE name=?",
-                Long.class,
-                categoryName
-        );
+        long categoryId =
+                db.queryForObject(
+                        "SELECT category_id FROM categories WHERE name=?",
+                        Long.class,
+                        categoryName);
 
         db.update(
                 "INSERT INTO size_systems(code,name) VALUES (?,?)",
                 sizeSystemCode,
-                "Inventory size"
-        );
+                "Inventory size");
 
-        long sizeSystemId = db.queryForObject(
-                "SELECT size_system_id FROM size_systems WHERE code=?",
-                Long.class,
-                sizeSystemCode
-        );
+        long sizeSystemId =
+                db.queryForObject(
+                        "SELECT size_system_id FROM size_systems WHERE code=?",
+                        Long.class,
+                        sizeSystemCode);
 
         db.update(
                 """
@@ -332,31 +241,24 @@ abstract class InventoryHttpSupport {
                 sizeSystemId,
                 "M",
                 "Medium",
-                1
-        );
+                1);
 
-        long sizeValueId = db.queryForObject(
-                """
-                SELECT size_value_id
-                FROM size_values
-                WHERE size_system_id=?
-                  AND code='M'
-                """,
-                Long.class,
-                sizeSystemId
-        );
+        long sizeValueId =
+                db.queryForObject(
+                        """
+                        SELECT size_value_id
+                        FROM size_values
+                        WHERE size_system_id=?
+                          AND code='M'
+                        """,
+                        Long.class,
+                        sizeSystemId);
 
-        db.update(
-                "INSERT INTO colors(code,name) VALUES (?,?)",
-                colorCode,
-                "Inventory color"
-        );
+        db.update("INSERT INTO colors(code,name) VALUES (?,?)", colorCode, "Inventory color");
 
-        long colorId = db.queryForObject(
-                "SELECT color_id FROM colors WHERE code=?",
-                Long.class,
-                colorCode
-        );
+        long colorId =
+                db.queryForObject(
+                        "SELECT color_id FROM colors WHERE code=?", Long.class, colorCode);
 
         db.update(
                 """
@@ -380,14 +282,11 @@ abstract class InventoryHttpSupport {
                 """,
                 categoryId,
                 sizeSystemId,
-                productName
-        );
+                productName);
 
-        long productId = db.queryForObject(
-                "SELECT product_id FROM products WHERE name=?",
-                Long.class,
-                productName
-        );
+        long productId =
+                db.queryForObject(
+                        "SELECT product_id FROM products WHERE name=?", Long.class, productName);
 
         db.update(
                 """
@@ -406,14 +305,11 @@ abstract class InventoryHttpSupport {
                 productId,
                 sizeValueId,
                 colorId,
-                sku
-        );
+                sku);
 
-        long variantId = db.queryForObject(
-                "SELECT variant_id FROM product_variants WHERE sku=?",
-                Long.class,
-                sku
-        );
+        long variantId =
+                db.queryForObject(
+                        "SELECT variant_id FROM product_variants WHERE sku=?", Long.class, sku);
 
         db.update(
                 """
@@ -424,86 +320,53 @@ abstract class InventoryHttpSupport {
                 )
                 VALUES (?,0,CURRENT_TIMESTAMP)
                 """,
-                variantId
-        );
+                variantId);
 
-        CatalogFixture fixture = new CatalogFixture(
-                categoryId,
-                sizeSystemId,
-                sizeValueId,
-                colorId,
-                productId,
-                variantId,
-                sku
-        );
+        CatalogFixture fixture =
+                new CatalogFixture(
+                        categoryId, sizeSystemId, sizeValueId, colorId, productId, variantId, sku);
 
         catalog.add(fixture);
 
         return fixture;
     }
 
-    long createSupplier(
-            String token,
-            String status
-    ) throws Exception {
-        var response = call(
-                "POST",
-                "/api/v1/admin/suppliers",
-                token,
-                Map.of(
-                        "name", "Supplier " + UUID.randomUUID(),
-                        "usage_status", status
-                )
-        );
+    long createSupplier(String token, String status) throws Exception {
+        var response =
+                call(
+                        "POST",
+                        "/api/v1/admin/suppliers",
+                        token,
+                        Map.of("name", "Supplier " + UUID.randomUUID(), "usage_status", status));
 
-        assertEquals(
-                201,
-                response.status(),
-                response.body()
-        );
+        assertEquals(201, response.status(), response.body());
 
-        long supplierId = response.data()
-                .get("data")
-                .get("supplier_id")
-                .asLong();
+        long supplierId = response.data().get("data").get("supplier_id").asLong();
 
         suppliers.add(supplierId);
 
         return supplierId;
     }
 
-    long createReceipt(
-            String token,
-            long supplierId,
-            long variantId,
-            int quantity
-    ) throws Exception {
-        var response = call(
-                "POST",
-                "/api/v1/admin/goods-receipts",
-                token,
-                Map.of(
-                        "supplier_id", supplierId,
-                        "receipt_date", LocalDate.now().toString(),
-                        "items", List.of(
-                                Map.of(
-                                        "variant_id", variantId,
-                                        "quantity", quantity
-                                )
-                        )
-                )
-        );
+    long createReceipt(String token, long supplierId, long variantId, int quantity)
+            throws Exception {
+        var response =
+                call(
+                        "POST",
+                        "/api/v1/admin/goods-receipts",
+                        token,
+                        Map.of(
+                                "supplier_id", supplierId,
+                                "receipt_date", LocalDate.now().toString(),
+                                "items",
+                                        List.of(
+                                                Map.of(
+                                                        "variant_id", variantId,
+                                                        "quantity", quantity))));
 
-        assertEquals(
-                201,
-                response.status(),
-                response.body()
-        );
+        assertEquals(201, response.status(), response.body());
 
-        long receiptId = response.data()
-                .get("data")
-                .get("receipt_id")
-                .asLong();
+        long receiptId = response.data().get("data").get("receipt_id").asLong();
 
         receipts.add(receiptId);
 
@@ -518,122 +381,63 @@ abstract class InventoryHttpSupport {
                 WHERE variant_id=?
                 """,
                 Integer.class,
-                variantId
-        );
+                variantId);
     }
 
     @AfterEach
     void clean() {
         for (Long accountId : accounts) {
-            db.update(
-                    "DELETE FROM audit_logs WHERE actor_account_id=?",
-                    accountId
-            );
+            db.update("DELETE FROM audit_logs WHERE actor_account_id=?", accountId);
 
-            db.update(
-                    "DELETE FROM inventory_transactions WHERE actor_account_id=?",
-                    accountId
-            );
+            db.update("DELETE FROM inventory_transactions WHERE actor_account_id=?", accountId);
         }
 
         for (Long receiptId : receipts) {
-            db.update(
-                    "DELETE FROM inventory_transactions WHERE goods_receipt_id=?",
-                    receiptId
-            );
+            db.update("DELETE FROM inventory_transactions WHERE goods_receipt_id=?", receiptId);
 
-            db.update(
-                    "DELETE FROM goods_receipt_items WHERE receipt_id=?",
-                    receiptId
-            );
+            db.update("DELETE FROM goods_receipt_items WHERE receipt_id=?", receiptId);
 
-            db.update(
-                    "DELETE FROM goods_receipts WHERE receipt_id=?",
-                    receiptId
-            );
+            db.update("DELETE FROM goods_receipts WHERE receipt_id=?", receiptId);
         }
 
         for (Long supplierId : suppliers) {
-            db.update(
-                    "DELETE FROM suppliers WHERE supplier_id=?",
-                    supplierId
-            );
+            db.update("DELETE FROM suppliers WHERE supplier_id=?", supplierId);
         }
 
         for (CatalogFixture fixture : catalog) {
-            db.update(
-                    "DELETE FROM inventory_transactions WHERE variant_id=?",
-                    fixture.variantId()
-            );
+            db.update("DELETE FROM inventory_transactions WHERE variant_id=?", fixture.variantId());
 
-            db.update(
-                    "DELETE FROM inventories WHERE variant_id=?",
-                    fixture.variantId()
-            );
+            db.update("DELETE FROM inventories WHERE variant_id=?", fixture.variantId());
 
-            db.update(
-                    "DELETE FROM product_variants WHERE variant_id=?",
-                    fixture.variantId()
-            );
+            db.update("DELETE FROM product_variants WHERE variant_id=?", fixture.variantId());
 
-            db.update(
-                    "DELETE FROM products WHERE product_id=?",
-                    fixture.productId()
-            );
+            db.update("DELETE FROM products WHERE product_id=?", fixture.productId());
 
-            db.update(
-                    "DELETE FROM colors WHERE color_id=?",
-                    fixture.colorId()
-            );
+            db.update("DELETE FROM colors WHERE color_id=?", fixture.colorId());
 
-            db.update(
-                    "DELETE FROM size_values WHERE size_value_id=?",
-                    fixture.sizeValueId()
-            );
+            db.update("DELETE FROM size_values WHERE size_value_id=?", fixture.sizeValueId());
 
-            db.update(
-                    "DELETE FROM size_systems WHERE size_system_id=?",
-                    fixture.sizeSystemId()
-            );
+            db.update("DELETE FROM size_systems WHERE size_system_id=?", fixture.sizeSystemId());
 
-            db.update(
-                    "DELETE FROM categories WHERE category_id=?",
-                    fixture.categoryId()
-            );
+            db.update("DELETE FROM categories WHERE category_id=?", fixture.categoryId());
         }
 
         for (Long accountId : accounts) {
-            db.update(
-                    "DELETE FROM account_roles WHERE account_id=?",
-                    accountId
-            );
+            db.update("DELETE FROM account_roles WHERE account_id=?", accountId);
         }
 
         for (Long roleId : customRoles) {
-            db.update(
-                    "DELETE FROM role_permissions WHERE role_id=?",
-                    roleId
-            );
+            db.update("DELETE FROM role_permissions WHERE role_id=?", roleId);
 
-            db.update(
-                    "DELETE FROM roles WHERE role_id=?",
-                    roleId
-            );
+            db.update("DELETE FROM roles WHERE role_id=?", roleId);
         }
 
         for (Long permissionId : createdPermissions) {
-            db.update(
-                    "DELETE FROM permissions WHERE permission_id=?",
-                    permissionId
-            );
+            db.update("DELETE FROM permissions WHERE permission_id=?", permissionId);
         }
 
         for (Long accountId : accounts) {
-            db.update(
-                    "DELETE FROM accounts WHERE account_id=?",
-                    accountId
-            );
+            db.update("DELETE FROM accounts WHERE account_id=?", accountId);
         }
     }
-
 }

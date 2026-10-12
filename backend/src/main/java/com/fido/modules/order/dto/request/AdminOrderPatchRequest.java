@@ -3,6 +3,7 @@ package com.fido.modules.order.dto.request;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -25,8 +26,7 @@ public class AdminOrderPatchRequest {
 
     private String customerServiceNote;
 
-    @Valid
-    private ShippingInfoInput shippingInfo;
+    @Valid private ShippingInfoInput shippingInfo;
 
     private boolean phonePresent;
     private boolean emailPresent;
@@ -38,10 +38,7 @@ public class AdminOrderPatchRequest {
         return recipientPhone;
     }
 
-    @JsonSetter(
-            value = "recipient_phone",
-            nulls = Nulls.FAIL
-    )
+    @JsonSetter(value = "recipient_phone", nulls = Nulls.FAIL)
     public void setRecipientPhone(String value) {
         recipientPhone = value;
         phonePresent = true;
@@ -61,10 +58,7 @@ public class AdminOrderPatchRequest {
         return recipientAddress;
     }
 
-    @JsonSetter(
-            value = "recipient_address",
-            nulls = Nulls.FAIL
-    )
+    @JsonSetter(value = "recipient_address", nulls = Nulls.FAIL)
     public void setRecipientAddress(String value) {
         recipientAddress = value;
         addressPresent = true;
@@ -84,10 +78,7 @@ public class AdminOrderPatchRequest {
         return shippingInfo;
     }
 
-    @JsonSetter(
-            value = "shipping_info",
-            nulls = Nulls.FAIL
-    )
+    @JsonSetter(value = "shipping_info", nulls = Nulls.FAIL)
     public void setShippingInfo(ShippingInfoInput value) {
         shippingInfo = value;
         shippingInfoPresent = true;
@@ -119,8 +110,5 @@ public class AdminOrderPatchRequest {
     }
 
     public record ShippingInfoInput(
-            @NotBlank @Size(max = 30) String delivery_mode,
-            @Size(max = 255) String carrier_name
-    ) {
-    }
+            @NotBlank @Size(max = 30) String delivery_mode, @Size(max = 255) String carrier_name) {}
 }

@@ -1,10 +1,12 @@
 package com.fido.modules.order.repository;
 
 import com.fido.modules.order.entity.Payment;
+
+import org.springframework.data.repository.Repository;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.data.repository.Repository;
 
 public interface PaymentRepository extends Repository<Payment, Long> {
 

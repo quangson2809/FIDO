@@ -1,4 +1,8 @@
-const formatter = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'short', timeStyle: 'short' });
+const formatter = new Intl.DateTimeFormat('vi-VN', {
+  timeZone: 'Asia/Ho_Chi_Minh',
+  dateStyle: 'short',
+  timeStyle: 'short',
+});
 export function formatVietnamDateTime(value: string | null | undefined): string {
   if (!value) return '—';
   // Backend LocalDateTime audit/order fields are recorded in UTC, without an offset.

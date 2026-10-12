@@ -24,6 +24,4 @@ public record OrderAdminDetailDto(
         String customer_service_note,
         String cancel_reason,
         PaymentAdminDto payment,
-        List<String> allowed_actions
-) {
-}
+        List<String> allowed_actions) {}

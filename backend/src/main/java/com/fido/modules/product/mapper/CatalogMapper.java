@@ -16,19 +16,16 @@ import com.fido.modules.product.entity.ProductImage;
 import com.fido.modules.product.entity.ProductVariant;
 import com.fido.modules.product.entity.SizeSystem;
 import com.fido.modules.product.entity.SizeValue;
+
 import java.util.List;
 
 public final class CatalogMapper {
 
-    private CatalogMapper() {
-    }
+    private CatalogMapper() {}
 
     public static CategoryDto category(Category category) {
         return new CategoryDto(
-                category.getCategoryId(),
-                category.getParentCategoryId(),
-                category.getName()
-        );
+                category.getCategoryId(), category.getParentCategoryId(), category.getName());
     }
 
     public static BrandDto brand(Brand brand) {
@@ -36,10 +33,7 @@ public final class CatalogMapper {
             return null;
         }
 
-        return new BrandDto(
-                brand.getBrandId(),
-                brand.getName()
-        );
+        return new BrandDto(brand.getBrandId(), brand.getName());
     }
 
     public static SizeValueDto sizeValue(SizeValue sizeValue) {
@@ -48,43 +42,24 @@ public final class CatalogMapper {
                 sizeValue.getSizeSystemId(),
                 sizeValue.getCode(),
                 sizeValue.getDisplayName(),
-                sizeValue.getSortOrder()
-        );
+                sizeValue.getSortOrder());
     }
 
-    public static SizeSystemDto sizeSystem(
-            SizeSystem sizeSystem,
-            List<SizeValueDto> values
-    ) {
+    public static SizeSystemDto sizeSystem(SizeSystem sizeSystem, List<SizeValueDto> values) {
         return new SizeSystemDto(
-                sizeSystem.getSizeSystemId(),
-                sizeSystem.getCode(),
-                sizeSystem.getName(),
-                values
-        );
+                sizeSystem.getSizeSystemId(), sizeSystem.getCode(), sizeSystem.getName(), values);
     }
 
     public static ColorDto color(Color color) {
-        return new ColorDto(
-                color.getColorId(),
-                color.getCode(),
-                color.getName()
-        );
+        return new ColorDto(color.getColorId(), color.getCode(), color.getName());
     }
 
     public static ProductImageDto image(ProductImage image) {
         return new ProductImageDto(
-                image.getImageId(),
-                image.getImageUrl(),
-                image.getAltText(),
-                image.getSortOrder()
-        );
+                image.getImageId(), image.getImageUrl(), image.getAltText(), image.getSortOrder());
     }
 
-    public static AdminVariantDto adminVariant(
-            ProductVariant variant,
-            int availableQuantity
-    ) {
+    public static AdminVariantDto adminVariant(ProductVariant variant, int availableQuantity) {
         return new AdminVariantDto(
                 variant.getVariantId(),
                 variant.getProductId(),
@@ -95,14 +70,10 @@ public final class CatalogMapper {
                 variant.getSaleStatus(),
                 availableQuantity,
                 variant.getCreatedAt(),
-                variant.getUpdatedAt()
-        );
+                variant.getUpdatedAt());
     }
 
-    public static AdminProductSummaryDto adminSummary(
-            Product product,
-            String thumbnail
-    ) {
+    public static AdminProductSummaryDto adminSummary(Product product, String thumbnail) {
         return new AdminProductSummaryDto(
                 product.getProductId(),
                 product.getName(),
@@ -113,7 +84,6 @@ public final class CatalogMapper {
                 product.getBasePrice(),
                 product.getSaleStatus(),
                 product.getCreatedAt(),
-                product.getUpdatedAt()
-        );
+                product.getUpdatedAt());
     }
 }

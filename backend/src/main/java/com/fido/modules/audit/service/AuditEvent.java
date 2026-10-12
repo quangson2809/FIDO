@@ -7,8 +7,7 @@ public record AuditEvent(
         AuditAction action,
         AuditTargetType targetType,
         Long targetId,
-        String description
-) {
+        String description) {
 
     public AuditEvent {
         Objects.requireNonNull(actorAccountId, "actorAccountId");
@@ -18,18 +17,8 @@ public record AuditEvent(
     }
 
     public static AuditEvent of(
-            Long actorAccountId,
-            AuditAction action,
-            AuditTargetType targetType,
-            Long targetId
-    ) {
-        return new AuditEvent(
-                actorAccountId,
-                action,
-                targetType,
-                targetId,
-                null
-        );
+            Long actorAccountId, AuditAction action, AuditTargetType targetType, Long targetId) {
+        return new AuditEvent(actorAccountId, action, targetType, targetId, null);
     }
 
     public static AuditEvent described(
@@ -37,14 +26,7 @@ public record AuditEvent(
             AuditAction action,
             AuditTargetType targetType,
             Long targetId,
-            String description
-    ) {
-        return new AuditEvent(
-                actorAccountId,
-                action,
-                targetType,
-                targetId,
-                description
-        );
+            String description) {
+        return new AuditEvent(actorAccountId, action, targetType, targetId, description);
     }
 }

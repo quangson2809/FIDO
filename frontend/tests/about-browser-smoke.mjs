@@ -3,9 +3,7 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createServer } from 'vite';
-const { chromium } = await import(
-  process.env.PLAYWRIGHT_MODULE_PATH || 'playwright'
-);
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE_PATH || 'playwright');
 const server = await createServer({
   server: { host: '127.0.0.1', port: 5173 },
 });
@@ -31,16 +29,12 @@ try {
     });
     await page.goto('http://127.0.0.1:5173/about');
     await page.getByRole('heading', { level: 1 }).waitFor();
-    await page
-      .locator('.about-hero-art img')
-      .evaluate((image) => image.decode());
+    await page.locator('.about-hero-art img').evaluate((image) => image.decode());
     assert.equal(new URL(page.url()).pathname, '/about');
     assert.equal(apis.length, 0, 'No About content/auth/cart API');
     assert.equal(await page.getByRole('heading', { level: 2 }).count(), 5);
     assert.ok(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
+      await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
       `Overflow at ${width}`,
     );
     if (width < 1280) {
@@ -50,9 +44,7 @@ try {
         name: 'Điều hướng mobile',
       });
       assert.equal(
-        await mobile
-          .getByRole('link', { name: 'Giới thiệu' })
-          .getAttribute('aria-current'),
+        await mobile.getByRole('link', { name: 'Giới thiệu' }).getAttribute('aria-current'),
         'page',
       );
       await mobile.getByRole('link', { name: 'Giới thiệu' }).focus();
@@ -105,10 +97,7 @@ try {
   await page.route('**/images/about/wardrobe.svg', (route) => route.abort());
   await page.goto('http://127.0.0.1:5173/about');
   await page.locator('.about-art-fallback').waitFor();
-  assert.equal(
-    await page.locator('.about-art-fallback').getAttribute('role'),
-    'img',
-  );
+  assert.equal(await page.locator('.about-art-fallback').getAttribute('role'), 'img');
   console.log('Illustration failure fallback PASS');
 } finally {
   await browser.close();

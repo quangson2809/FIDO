@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fido.modules.product.entity.ProductImage;
-import java.util.List;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,6 +13,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -30,18 +32,13 @@ class ProductImageRepositoryTests {
 
         List<ProductImage> gallery = images.findAllByProductIdOrderBySortOrderAsc(1L);
 
-        assertEquals(
-                List.of(0, 1, 2),
-                gallery.stream().map(ProductImage::getSortOrder).toList()
-        );
+        assertEquals(List.of(0, 1, 2), gallery.stream().map(ProductImage::getSortOrder).toList());
         assertEquals(
                 List.of(
                         "https://example.invalid/test.png",
                         "https://cdn.test/second.jpg",
-                        "https://cdn.test/third.jpg"
-                ),
-                gallery.stream().map(ProductImage::getImageUrl).toList()
-        );
+                        "https://cdn.test/third.jpg"),
+                gallery.stream().map(ProductImage::getImageUrl).toList());
     }
 
     @Test
@@ -68,8 +65,7 @@ class ProductImageRepositoryTests {
                 () -> {
                     images.save(duplicate);
                     images.flush();
-                }
-        );
+                });
     }
 
     private void insertImage(String url, int sortOrder) {
@@ -79,7 +75,6 @@ class ProductImageRepositoryTests {
                 VALUES (1,?,NULL,?)
                 """,
                 url,
-                sortOrder
-        );
+                sortOrder);
     }
 }

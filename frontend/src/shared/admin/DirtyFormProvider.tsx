@@ -4,25 +4,41 @@ import { DirtyFormContext, discardChanges } from './dirtyFormContext';
 export function DirtyFormProvider({ children }: { children: ReactNode }) {
   const forms = useRef(new Set<string>());
   const register = useCallback((id: string, dirty: boolean) => {
-    if (dirty) forms.current.add(id); else forms.current.delete(id);
+    if (dirty) forms.current.add(id);
+    else forms.current.delete(id);
   }, []);
-  const blocker = useBlocker(({ currentLocation, nextLocation }) => forms.current.size > 0 && (currentLocation.pathname !== nextLocation.pathname || currentLocation.search !== nextLocation.search));
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      forms.current.size > 0 &&
+      (currentLocation.pathname !== nextLocation.pathname ||
+        currentLocation.search !== nextLocation.search),
+  );
   useEffect(() => {
     if (blocker.state === 'blocked') {
-      if (discardChanges()) blocker.proceed(); else blocker.reset();
+      if (discardChanges()) blocker.proceed();
+      else blocker.reset();
     }
   }, [blocker]);
   useEffect(() => {
     const beforeUnload = (event: BeforeUnloadEvent) => {
-      if (forms.current.size) { event.preventDefault(); event.returnValue = ''; }
+      if (forms.current.size) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
     };
     window.addEventListener('beforeunload', beforeUnload);
     return () => window.removeEventListener('beforeunload', beforeUnload);
   }, []);
-  const value = useMemo(() => ({ register, confirmDiscard: () => {
-    if (forms.current.size > 0 && !discardChanges()) return false;
-    forms.current.clear();
-    return true;
-  } }), [register]);
+  const value = useMemo(
+    () => ({
+      register,
+      confirmDiscard: () => {
+        if (forms.current.size > 0 && !discardChanges()) return false;
+        forms.current.clear();
+        return true;
+      },
+    }),
+    [register],
+  );
   return <DirtyFormContext.Provider value={value}>{children}</DirtyFormContext.Provider>;
 }

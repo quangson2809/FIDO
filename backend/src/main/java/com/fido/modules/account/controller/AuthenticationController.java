@@ -6,7 +6,9 @@ import com.fido.modules.account.dto.request.RegisterRequest;
 import com.fido.modules.account.dto.response.AccountDto;
 import com.fido.modules.account.dto.response.LoginResponse;
 import com.fido.modules.account.service.AuthenticationService;
+
 import jakarta.validation.Valid;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,16 +28,12 @@ public class AuthenticationController {
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<AccountDto> register(
-            @Valid @RequestBody RegisterRequest request
-    ) {
+    public ApiResponse<AccountDto> register(@Valid @RequestBody RegisterRequest request) {
         return ApiResponse.of(service.register(request));
     }
 
     @PostMapping("/login")
-    public ApiResponse<LoginResponse> login(
-            @Valid @RequestBody LoginRequest request
-    ) {
+    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.of(service.login(request));
     }
 }

@@ -3,15 +3,16 @@ package com.fido.config.security;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.util.Base64;
 import org.junit.jupiter.api.Test;
+
+import java.util.Base64;
 
 class JwtConfigTests {
     private final JwtConfig config = new JwtConfig();
 
     @Test
     void missingMalformedOrShortKeyFails() {
-        for (String value : new String[]{"", " ", "not base64", "c2hvcnQ="}) {
+        for (String value : new String[] {"", " ", "not base64", "c2hvcnQ="}) {
             assertThrows(IllegalStateException.class, () -> config.jwtKey(value));
         }
         assertThrows(IllegalStateException.class, () -> config.jwtKey(null));
@@ -19,7 +20,8 @@ class JwtConfigTests {
 
     @Test
     void previouslyPublishedDevelopmentKeyIsAlwaysRejected() {
-        String published = "Zmlkby1sb2NhbC1kZXYtc2lnbmluZy1rZXktZG8tbm90LXVzZS1pbi1wcm9kdWN0aW9uLTIwMjY=";
+        String published =
+                "Zmlkby1sb2NhbC1kZXYtc2lnbmluZy1rZXktZG8tbm90LXVzZS1pbi1wcm9kdWN0aW9uLTIwMjY=";
         assertThrows(IllegalStateException.class, () -> config.jwtKey(published));
     }
 

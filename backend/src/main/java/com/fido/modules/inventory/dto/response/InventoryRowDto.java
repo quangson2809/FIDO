@@ -11,6 +11,4 @@ public record InventoryRowDto(
         String color,
         String sale_status,
         Integer available_quantity,
-        LocalDateTime updated_at
-) {
-}
+        LocalDateTime updated_at) {}

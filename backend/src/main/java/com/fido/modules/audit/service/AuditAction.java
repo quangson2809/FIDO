@@ -1,7 +1,8 @@
 package com.fido.modules.audit.service;
 
 public enum AuditAction {
-    VOUCHER_CREATE, VOUCHER_UPDATE,
+    VOUCHER_CREATE,
+    VOUCHER_UPDATE,
     SUPERADMIN_BOOTSTRAP,
     STAFF_CREATE,
     STAFF_UPDATE,

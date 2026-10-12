@@ -1,10 +1,7 @@
 package com.fido.modules.inventory.repository;
 
 import com.fido.modules.inventory.entity.Inventory;
-import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Modifying;
@@ -12,18 +9,22 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+
 public interface InventoryRepository extends Repository<Inventory, Long> {
 
     Optional<Inventory> findById(Long id);
 
-    List<Inventory> findAllByVariantIdIn(
-            Collection<Long> variantIds
-    );
+    List<Inventory> findAllByVariantIdIn(Collection<Long> variantIds);
 
     Inventory save(Inventory entity);
 
     @Query(
-            value = """
+            value =
+                    """
                     SELECT
                         variant.variant_id AS variantId,
                         variant.sku AS sku,
@@ -50,7 +51,8 @@ public interface InventoryRepository extends Repository<Inventory, Long> {
                       AND (:colorId IS NULL OR variant.color_id = :colorId)
                     ORDER BY variant.variant_id
                     """,
-            countQuery = """
+            countQuery =
+                    """
                     SELECT COUNT(*)
                     FROM inventories inventory
                     JOIN product_variants variant
@@ -63,22 +65,18 @@ public interface InventoryRepository extends Repository<Inventory, Long> {
                       AND (:sizeValueId IS NULL OR variant.size_value_id = :sizeValueId)
                       AND (:colorId IS NULL OR variant.color_id = :colorId)
                     """,
-            nativeQuery = true
-    )
+            nativeQuery = true)
     Page<InventoryRowView> search(
             @Param("variantId") Long variantId,
             @Param("sku") String sku,
             @Param("productId") Long productId,
             @Param("sizeValueId") Long sizeValueId,
             @Param("colorId") Long colorId,
-            Pageable pageable
-    );
+            Pageable pageable);
 
-
-    @Modifying(
-            flushAutomatically = true
-    )
-    @Query("""
+    @Modifying(flushAutomatically = true)
+    @Query(
+            """
             update Inventory inventory
             set inventory.availableQuantity =
                     inventory.availableQuantity + :quantity,
@@ -88,13 +86,11 @@ public interface InventoryRepository extends Repository<Inventory, Long> {
     int increment(
             @Param("variantId") Long variantId,
             @Param("quantity") int quantity,
-            @Param("updatedAt") LocalDateTime updatedAt
-    );
+            @Param("updatedAt") LocalDateTime updatedAt);
 
-    @Modifying(
-            flushAutomatically = true
-    )
-    @Query("""
+    @Modifying(flushAutomatically = true)
+    @Query(
+            """
             update Inventory inventory
             set inventory.availableQuantity =
                     inventory.availableQuantity + :delta,
@@ -105,6 +101,5 @@ public interface InventoryRepository extends Repository<Inventory, Long> {
     int adjustIfNonNegative(
             @Param("variantId") Long variantId,
             @Param("delta") int delta,
-            @Param("updatedAt") LocalDateTime updatedAt
-    );
+            @Param("updatedAt") LocalDateTime updatedAt);
 }

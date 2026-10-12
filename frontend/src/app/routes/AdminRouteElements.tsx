@@ -43,7 +43,14 @@ const useAdminWriteAccess = (moduleKey: AdminModuleKey): boolean => {
 };
 
 const dashboardModuleKeys: readonly AdminModuleKey[] = [
-  'vouchers', 'categories', 'brands', 'sizes', 'colors', 'suppliers', 'roles', 'content',
+  'vouchers',
+  'categories',
+  'brands',
+  'sizes',
+  'colors',
+  'suppliers',
+  'roles',
+  'content',
   'orders',
   'products',
   'inventory',
@@ -100,11 +107,7 @@ export const AdminProductDetailRoute = () => {
   );
 };
 
-const AdminCatalogMetaRoute = ({
-  tab,
-}: {
-  tab: 'categories' | 'brands' | 'sizes' | 'colors';
-}) => {
+const AdminCatalogMetaRoute = ({ tab }: { tab: 'categories' | 'brands' | 'sizes' | 'colors' }) => {
   const { navigateTab, showToast } = useAdminRouteDeps();
   const canWrite = useAdminWriteAccess(tab);
   return (
@@ -134,7 +137,13 @@ export const AdminOrderDetailRoute = () => {
   const { navigate } = useAdminRouteDeps();
 
   if (!parsedOrderId) return <Navigate to="/admin/orders" replace />;
-  return <AdminOrderDetailView key={parsedOrderId} orderId={parsedOrderId} onBack={() => navigate('/admin/orders')} />;
+  return (
+    <AdminOrderDetailView
+      key={parsedOrderId}
+      orderId={parsedOrderId}
+      onBack={() => navigate('/admin/orders')}
+    />
+  );
 };
 
 export const AdminInwardRoute = () => {
@@ -152,7 +161,9 @@ export const AdminInventoryRoute = () => {
 export const AdminSuppliersRoute = () => {
   const { navigateTab, showToast } = useAdminRouteDeps();
   const canWrite = useAdminWriteAccess('suppliers');
-  return <AdminSuppliersView showToast={showToast} onNavigateTab={navigateTab} canWrite={canWrite} />;
+  return (
+    <AdminSuppliersView showToast={showToast} onNavigateTab={navigateTab} canWrite={canWrite} />
+  );
 };
 
 export const AdminCustomersRoute = () => {

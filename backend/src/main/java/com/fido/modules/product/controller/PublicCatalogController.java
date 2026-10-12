@@ -7,12 +7,14 @@ import com.fido.modules.product.dto.response.ProductDetailDto;
 import com.fido.modules.product.dto.response.ProductSummaryDto;
 import com.fido.modules.product.service.CatalogProductFilter;
 import com.fido.modules.product.service.PublicCatalogQueryService;
-import java.math.BigDecimal;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.math.BigDecimal;
 
 @RestController
 @RequestMapping("/api/v1/catalog")
@@ -37,8 +39,7 @@ public class PublicCatalogController {
             @RequestParam(required = false) String season,
             @RequestParam(required = false) String style,
             @RequestParam(required = false) Integer page,
-            @RequestParam(name = "page_size", required = false) Integer pageSize
-    ) {
+            @RequestParam(name = "page_size", required = false) Integer pageSize) {
         return service.publicProducts(
                 new CatalogProductFilter(
                         q,
@@ -52,24 +53,16 @@ public class PublicCatalogController {
                         season,
                         style,
                         page,
-                        pageSize
-                )
-        );
+                        pageSize));
     }
 
     @GetMapping("/products/{productId}")
-    public ApiResponse<ProductDetailDto> product(
-            @PathVariable Long productId
-    ) {
-        return ApiResponse.of(
-                service.publicDetail(productId)
-        );
+    public ApiResponse<ProductDetailDto> product(@PathVariable Long productId) {
+        return ApiResponse.of(service.publicDetail(productId));
     }
 
     @GetMapping("/meta")
     public ApiResponse<CatalogMetaDto> meta() {
-        return ApiResponse.of(
-                service.publicMeta()
-        );
+        return ApiResponse.of(service.publicMeta());
     }
 }

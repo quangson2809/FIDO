@@ -9,7 +9,9 @@ export function useCatalogCategories() {
   return {
     nodes: buildCategoryTree(metadata.data?.categories ?? []),
     loading: metadata.loading,
-    error: metadata.error ? getStorefrontErrorMessage(metadata.error, 'Không thể tải danh mục.') : null,
+    error: metadata.error
+      ? getStorefrontErrorMessage(metadata.error, 'Không thể tải danh mục.')
+      : null,
     reload: metadata.reload,
   };
 }

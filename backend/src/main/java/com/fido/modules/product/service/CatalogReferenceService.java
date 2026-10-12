@@ -12,24 +12,26 @@ import com.fido.modules.product.repository.ColorRepository;
 import com.fido.modules.product.repository.ProductRepository;
 import com.fido.modules.product.repository.SizeSystemRepository;
 import com.fido.modules.product.repository.SizeValueRepository;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Centralized catalog reference lookup and invariant checks shared by
- * catalog command/query services.
+ * Centralized catalog reference lookup and invariant checks shared by catalog command/query
+ * services.
  */
 @Service
 @Transactional(readOnly = true)
@@ -48,8 +50,7 @@ public class CatalogReferenceService {
             BrandRepository brands,
             SizeSystemRepository sizeSystems,
             SizeValueRepository sizeValues,
-            ColorRepository colors
-    ) {
+            ColorRepository colors) {
         this.products = products;
         this.categories = categories;
         this.brands = brands;
@@ -59,19 +60,16 @@ public class CatalogReferenceService {
     }
 
     public Product product(Long productId) {
-        return products.findById(productId)
-                .orElseThrow(CatalogReferenceService::notFound);
+        return products.findById(productId).orElseThrow(CatalogReferenceService::notFound);
     }
 
     @Transactional
     public Product productForUpdate(Long productId) {
-        return products.findByIdForUpdate(productId)
-                .orElseThrow(CatalogReferenceService::notFound);
+        return products.findByIdForUpdate(productId).orElseThrow(CatalogReferenceService::notFound);
     }
 
     public Category category(Long categoryId) {
-        return categories.findById(categoryId)
-                .orElseThrow(CatalogReferenceService::notFound);
+        return categories.findById(categoryId).orElseThrow(CatalogReferenceService::notFound);
     }
 
     public Set<Long> categoryIdsIncludingDescendants(Long categoryId) {
@@ -79,7 +77,8 @@ public class CatalogReferenceService {
         Map<Long, List<Long>> children = new HashMap<>();
         for (Category category : categories.findAllByOrderByCategoryIdAsc()) {
             if (category.getParentCategoryId() != null) {
-                children.computeIfAbsent(category.getParentCategoryId(), ignored -> new ArrayList<>())
+                children.computeIfAbsent(
+                                category.getParentCategoryId(), ignored -> new ArrayList<>())
                         .add(category.getCategoryId());
             }
         }
@@ -96,23 +95,18 @@ public class CatalogReferenceService {
     }
 
     public Brand brand(Long brandId) {
-        return brands.findById(brandId)
-                .orElseThrow(CatalogReferenceService::notFound);
+        return brands.findById(brandId).orElseThrow(CatalogReferenceService::notFound);
     }
 
     public SizeSystem sizeSystem(Long sizeSystemId) {
-        return sizeSystems.findById(sizeSystemId)
-                .orElseThrow(CatalogReferenceService::notFound);
+        return sizeSystems.findById(sizeSystemId).orElseThrow(CatalogReferenceService::notFound);
     }
 
     public SizeValue sizeValue(Long sizeValueId) {
-        return sizeValues.findById(sizeValueId)
-                .orElseThrow(CatalogReferenceService::notFound);
+        return sizeValues.findById(sizeValueId).orElseThrow(CatalogReferenceService::notFound);
     }
 
-    public Map<Long, SizeValue> sizeValuesById(
-            Collection<Long> sizeValueIds
-    ) {
+    public Map<Long, SizeValue> sizeValuesById(Collection<Long> sizeValueIds) {
         var requestedIds = distinctIds(sizeValueIds);
 
         if (requestedIds.isEmpty()) {
@@ -122,29 +116,21 @@ public class CatalogReferenceService {
         return requireAll(
                 requestedIds,
                 sizeValues.findAllBySizeValueIdIn(requestedIds),
-                SizeValue::getSizeValueId
-        );
+                SizeValue::getSizeValueId);
     }
 
     public Color color(Long colorId) {
-        return colors.findById(colorId)
-                .orElseThrow(CatalogReferenceService::notFound);
+        return colors.findById(colorId).orElseThrow(CatalogReferenceService::notFound);
     }
 
-    public Map<Long, Color> colorsById(
-            Collection<Long> colorIds
-    ) {
+    public Map<Long, Color> colorsById(Collection<Long> colorIds) {
         var requestedIds = distinctIds(colorIds);
 
         if (requestedIds.isEmpty()) {
             return Map.of();
         }
 
-        return requireAll(
-                requestedIds,
-                colors.findAllByColorIdIn(requestedIds),
-                Color::getColorId
-        );
+        return requireAll(requestedIds, colors.findAllByColorIdIn(requestedIds), Color::getColorId);
     }
 
     public Category leafCategory(Long categoryId) {
@@ -157,28 +143,18 @@ public class CatalogReferenceService {
         return category;
     }
 
-    private java.util.List<Long> distinctIds(
-            Collection<Long> ids
-    ) {
+    private java.util.List<Long> distinctIds(Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return java.util.List.of();
         }
 
-        return ids.stream()
-                .distinct()
-                .toList();
+        return ids.stream().distinct().toList();
     }
 
     private <T> Map<Long, T> requireAll(
-            Collection<Long> requestedIds,
-            Collection<T> values,
-            Function<T, Long> id
-    ) {
-        Map<Long, T> valuesById = values.stream()
-                .collect(Collectors.toMap(
-                        id,
-                        Function.identity()
-                ));
+            Collection<Long> requestedIds, Collection<T> values, Function<T, Long> id) {
+        Map<Long, T> valuesById =
+                values.stream().collect(Collectors.toMap(id, Function.identity()));
 
         for (Long requestedId : requestedIds) {
             if (!valuesById.containsKey(requestedId)) {

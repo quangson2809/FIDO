@@ -1,15 +1,19 @@
 package com.fido.modules.content.entity;
 
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
+
 @Entity
-@Table(name = "content_pages", uniqueConstraints = {@UniqueConstraint(columnNames = {"page_code"})})
+@Table(
+        name = "content_pages",
+        uniqueConstraints = {@UniqueConstraint(columnNames = {"page_code"})})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -46,4 +50,3 @@ public class ContentPage {
         updatedAt = LocalDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
     }
 }
-

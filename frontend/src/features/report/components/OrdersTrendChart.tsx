@@ -1,17 +1,17 @@
-import { useState } from "react";
-import type { OrdersPoint } from "../types";
-import { reportStatuses } from "../types";
-import { statusLabel } from "../../../shared/admin/statusLabels";
+import { useState } from 'react';
+import type { OrdersPoint } from '../types';
+import { reportStatuses } from '../types';
+import { statusLabel } from '../../../shared/admin/statusLabels';
 
 const colors = [
-  "#1B5038",
-  "#9C6519",
-  "#276C9C",
-  "#735493",
-  "#A53B48",
-  "#287B78",
-  "#666258",
-  "#50668C",
+  '#1B5038',
+  '#9C6519',
+  '#276C9C',
+  '#735493',
+  '#A53B48',
+  '#287B78',
+  '#666258',
+  '#50668C',
 ];
 interface Series {
   label: string;
@@ -33,20 +33,16 @@ function OrderTrendPlot({
   const values = series.flatMap((item) => item.values);
   const max = values.reduce((max, value) => Math.max(max, value), 1);
   const min = values.reduce((min, value) => Math.min(min, value), 0);
-  const x = (index: number) =>
-    90 + (index * 620) / Math.max(1, dates.length - 1);
+  const x = (index: number) => 90 + (index * 620) / Math.max(1, dates.length - 1);
   const y = (value: number) => 240 - ((value - min) * 200) / (max - min);
   const format = (value: number) => `${value} đơn`;
   return (
     <div className="orders-plot">
-      <div
-        className="flex flex-wrap gap-x-4 gap-y-2 text-xs"
-        aria-label="Chú giải"
-      >
+      <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs" aria-label="Chú giải">
         {series.map((item, index) => (
           <span key={item.label}>
             <span aria-hidden="true" style={{ color: item.color }}>
-              ● {index + 1}.{" "}
+              ● {index + 1}.{' '}
             </span>
             {item.label}
           </span>
@@ -65,22 +61,10 @@ function OrderTrendPlot({
           const value = min + ((max - min) * tick) / 4;
           return (
             <g key={tick}>
-              <line
-                x1="90"
-                x2="710"
-                y1={y(value)}
-                y2={y(value)}
-                stroke="#D9DDD6"
-              />
-              <text
-                x="82"
-                y={y(value) + 4}
-                textAnchor="end"
-                fontSize="10"
-                fill="#606863"
-              >
-                {new Intl.NumberFormat("vi-VN", {
-                  notation: "compact",
+              <line x1="90" x2="710" y1={y(value)} y2={y(value)} stroke="#D9DDD6" />
+              <text x="82" y={y(value) + 4} textAnchor="end" fontSize="10" fill="#606863">
+                {new Intl.NumberFormat('vi-VN', {
+                  notation: 'compact',
                   maximumFractionDigits: 1,
                 }).format(value)}
               </text>
@@ -94,9 +78,7 @@ function OrderTrendPlot({
             stroke={item.color}
             strokeWidth="2.5"
             strokeDasharray={index === 0 ? undefined : `${5 + index * 2} 3`}
-            points={item.values
-              .map((value, i) => `${x(i)},${y(value)}`)
-              .join(" ")}
+            points={item.values.map((value, i) => `${x(i)},${y(value)}`).join(' ')}
           />
         ))}
         {dates.map((date, index) => (
@@ -117,32 +99,26 @@ function OrderTrendPlot({
               height="220"
               fill="transparent"
               tabIndex={0}
-              role={onPeriod ? "button" : "img"}
-              aria-label={`${date}: ${series.map((item) => `${item.label} ${format(item.values[index] ?? 0)}`).join(", ")}${onPeriod ? ". Mở danh sách đơn." : ""}`}
+              role={onPeriod ? 'button' : 'img'}
+              aria-label={`${date}: ${series.map((item) => `${item.label} ${format(item.values[index] ?? 0)}`).join(', ')}${onPeriod ? '. Mở danh sách đơn.' : ''}`}
               onMouseEnter={() => setActive(index)}
               onMouseLeave={() => setActive(null)}
               onFocus={() => setActive(index)}
               onBlur={() => setActive(null)}
               onClick={() => onPeriod?.(date)}
               onKeyDown={(event) => {
-                if (onPeriod && (event.key === "Enter" || event.key === " ")) {
+                if (onPeriod && (event.key === 'Enter' || event.key === ' ')) {
                   event.preventDefault();
                   onPeriod(date);
                 }
               }}
             >
-              <title>{`${date}: ${series.map((item) => `${item.label} ${format(item.values[index] ?? 0)}`).join(", ")}`}</title>
+              <title>{`${date}: ${series.map((item) => `${item.label} ${format(item.values[index] ?? 0)}`).join(', ')}`}</title>
             </rect>
             {(index === 0 ||
               index === dates.length - 1 ||
               (dates.length < 12 && index % 2 === 0)) && (
-              <text
-                x={x(index)}
-                y="270"
-                textAnchor="middle"
-                fontSize="11"
-                fill="#606863"
-              >
+              <text x={x(index)} y="270" textAnchor="middle" fontSize="11" fill="#606863">
                 {date.slice(5)}
               </text>
             )}
@@ -182,7 +158,7 @@ export function OrdersChart({
       onPeriod={onPeriod}
       series={reportStatuses.map((status, index) => ({
         label: statusLabel(status),
-        color: colors[index] ?? "#071A12",
+        color: colors[index] ?? '#071A12',
         values: points.map((point) => point.orders_by_status[status]),
       }))}
     />

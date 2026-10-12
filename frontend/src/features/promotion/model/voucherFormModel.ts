@@ -1,6 +1,9 @@
 import type { VoucherInput } from '../types';
 
-export const changeVoucherScope = (current: VoucherInput, scope: VoucherInput['scope']): VoucherInput =>
+export const changeVoucherScope = (
+  current: VoucherInput,
+  scope: VoucherInput['scope'],
+): VoucherInput =>
   current.scope === scope ? current : { ...current, scope, product_ids: [], category_ids: [] };
 
 export const changeVoucherDiscountType = (
@@ -35,7 +38,8 @@ export const voucherSubmission = (form: VoucherInput, alreadyUsed: boolean): Vou
   return {
     ...request,
     code: request.code.trim(),
-    maximum_discount: request.discount_type === 'PERCENTAGE' || alreadyUsed ? request.maximum_discount : null,
+    maximum_discount:
+      request.discount_type === 'PERCENTAGE' || alreadyUsed ? request.maximum_discount : null,
     product_ids: request.scope === 'PRODUCT' ? request.product_ids : [],
     category_ids: request.scope === 'CATEGORY' ? request.category_ids : [],
   };

@@ -10,6 +10,4 @@ public record AuditSearchFilter(
         LocalDateTime from,
         LocalDateTime to,
         Integer page,
-        Integer pageSize
-) {
-}
+        Integer pageSize) {}

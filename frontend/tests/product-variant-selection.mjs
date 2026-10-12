@@ -9,16 +9,31 @@ const server = await createServer({ server: { port: 5178, strictPort: true } });
 await server.listen();
 let browser;
 try {
-  browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE_PATH, args: ['--no-sandbox'] });
+  browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.CHROMIUM_EXECUTABLE_PATH,
+    args: ['--no-sandbox'],
+  });
   const page = await browser.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.addInitScript(() => sessionStorage.setItem('fido.accessToken', 'fixture-token'));
-  const size = (id, name) => ({ size_value_id: id, size_system_id: 1, code: name, display_name: name, sort_order: id });
+  const size = (id, name) => ({
+    size_value_id: id,
+    size_system_id: 1,
+    code: name,
+    display_name: name,
+    sort_order: id,
+  });
   const color = (id, name) => ({ color_id: id, code: name, name });
   const variant = (id, sizeValue, colorValue, stock, price = 199000, status = 'ON_SALE') => ({
-    variant_id: id, size: sizeValue, color: colorValue, sku: `SKU-${id}`,
-    effective_price: price, sale_status: status, available_quantity: stock,
+    variant_id: id,
+    size: sizeValue,
+    color: colorValue,
+    sku: `SKU-${id}`,
+    effective_price: price,
+    sale_status: status,
+    available_quantity: stock,
   });
   const m = size(10, 'M');
   const l = size(11, 'L');
@@ -28,11 +43,19 @@ try {
   const white = color(21, 'Trắng');
   const red = color(22, 'Đỏ');
   const product = {
-    product_id: 1, name: 'Variant selection fixture', description: null,
-    category: { category_id: 1, parent_category_id: null, name: 'Áo' }, brand: null,
+    product_id: 1,
+    name: 'Variant selection fixture',
+    description: null,
+    category: { category_id: 1, parent_category_id: null, name: 'Áo' },
+    brand: null,
     size_system: { size_system_id: 1, code: 'TOP', name: 'Áo', size_values: [m, l, xl, xxl] },
-    gender: null, season: null, style: null, material_care: null,
-    base_price: 199000, sale_status: 'ON_SALE', images: [],
+    gender: null,
+    season: null,
+    style: null,
+    material_care: null,
+    base_price: 199000,
+    sale_status: 'ON_SALE',
+    images: [],
     variants: [
       variant(100, m, red, 5, 199000, 'STOPPED'),
       variant(101, m, white, 0),
@@ -46,34 +69,77 @@ try {
   };
   let detail = product;
   const cartRequests = [];
-  const emptyCart = { cart_id: 1, account_id: 1, items: [], subtotal: 0, created_at: null, updated_at: null };
+  const emptyCart = {
+    cart_id: 1,
+    account_id: 1,
+    items: [],
+    subtotal: 0,
+    created_at: null,
+    updated_at: null,
+  };
   await page.route('**/api/v1/**', async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     if (request.method() === 'OPTIONS') {
-      await route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' } });
+      await route.fulfill({
+        status: 204,
+        headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' },
+      });
       return;
     }
     let body;
     if (path === '/api/v1/catalog/products/1') body = { data: detail };
-    else if (path === '/api/v1/catalog/products') body = { data: [], meta: { page: 1, page_size: 5, total_items: 0, total_pages: 0 } };
+    else if (path === '/api/v1/catalog/products')
+      body = { data: [], meta: { page: 1, page_size: 5, total_items: 0, total_pages: 0 } };
     else if (path === '/api/v1/cart/items') {
       cartRequests.push(request.postDataJSON());
       body = { data: emptyCart };
     } else if (path === '/api/v1/cart') body = { data: emptyCart };
-    else if (path === '/api/v1/me') body = { data: {
-      account: { account_id: 1, phone: '0900000000', email: null, created_at: '', updated_at: '' },
-      addresses: [], roles: [{ role_id: 1, code: 'CUSTOMER', name: 'Customer', description: null }], permissions: [],
-    } };
-    else if (path === '/api/v1/catalog/meta') body = { data: { categories: [], brands: [], size_systems: [], colors: [], genders: [], seasons: [], styles: [] } };
-    else { await route.abort(); return; }
+    else if (path === '/api/v1/me')
+      body = {
+        data: {
+          account: {
+            account_id: 1,
+            phone: '0900000000',
+            email: null,
+            created_at: '',
+            updated_at: '',
+          },
+          addresses: [],
+          roles: [{ role_id: 1, code: 'CUSTOMER', name: 'Customer', description: null }],
+          permissions: [],
+        },
+      };
+    else if (path === '/api/v1/catalog/meta')
+      body = {
+        data: {
+          categories: [],
+          brands: [],
+          size_systems: [],
+          colors: [],
+          genders: [],
+          seasons: [],
+          styles: [],
+        },
+      };
+    else {
+      await route.abort();
+      return;
+    }
     await route.fulfill({ json: body, headers: { 'access-control-allow-origin': '*' } });
   });
-  const panel = page.locator('aside').filter({ has: page.getByRole('heading', { name: product.name }) });
+  const panel = page
+    .locator('aside')
+    .filter({ has: page.getByRole('heading', { name: product.name }) });
   const button = (name) => panel.getByRole('button', { name, exact: true });
-  const selected = async (name) => assert.equal(await button(name).getAttribute('aria-pressed'), 'true', `${name} selected`);
+  const selected = async (name) =>
+    assert.equal(await button(name).getAttribute('aria-pressed'), 'true', `${name} selected`);
   const textIncludes = async (text) => assert.ok((await panel.textContent()).includes(text), text);
-  const quantityIs = async (quantity) => assert.equal(await button('Tăng số lượng').locator('..').locator('span').innerText(), String(quantity));
+  const quantityIs = async (quantity) =>
+    assert.equal(
+      await button('Tăng số lượng').locator('..').locator('span').innerText(),
+      String(quantity),
+    );
   const load = async () => {
     await page.goto('http://localhost:5178/products/1');
     await panel.waitFor();
@@ -122,7 +188,9 @@ try {
   assert.ok(!(await panel.textContent()).includes('Màu đã chọn không có'));
   await textIncludes('Còn 2');
   await textIncludes('199.000₫');
-  const posted = page.waitForRequest((request) => request.method() === 'POST' && request.url().endsWith('/cart/items'));
+  const posted = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().endsWith('/cart/items'),
+  );
   await button('Thêm vào giỏ hàng').click();
   assert.deepEqual((await posted).postDataJSON(), { variant_id: 105, quantity: 1 });
   // Reload to dismiss the unrelated cart drawer before continuing selection checks.
@@ -151,7 +219,10 @@ try {
   await textIncludes('Trắng: Tổ hợp size và màu này đã ngừng bán.');
   await assertNoCartRequest();
 
-  detail = { ...product, variants: product.variants.filter((item) => item.sale_status === 'STOPPED') };
+  detail = {
+    ...product,
+    variants: product.variants.filter((item) => item.sale_status === 'STOPPED'),
+  };
   await load();
   await textIncludes('Vui lòng chọn kích cỡ');
   await textIncludes('Vui lòng chọn màu sắc');
@@ -169,7 +240,9 @@ try {
   await textIncludes('Sản phẩm đã ngừng bán');
   await assertNoCartRequest();
   assert.deepEqual(errors, [], 'no browser runtime errors');
-  console.log('Product variant selection browser tests: PASS (initial selection, compatible/incompatible size, disabled colors, missing selection, stock, stopped variants/product, prices, quantity, cart payload/blocked requests)');
+  console.log(
+    'Product variant selection browser tests: PASS (initial selection, compatible/incompatible size, disabled colors, missing selection, stock, stopped variants/product, prices, quantity, cart payload/blocked requests)',
+  );
 } finally {
   await browser?.close();
   await server.close();

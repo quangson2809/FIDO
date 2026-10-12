@@ -27,7 +27,9 @@ const FilterSelect: React.FC<{
     >
       <option value="">Tất cả</option>
       {options.map((option) => (
-        <option key={label + '-' + option.value} value={option.value}>{option.label}</option>
+        <option key={label + '-' + option.value} value={option.value}>
+          {option.label}
+        </option>
       ))}
     </select>
   </label>
@@ -85,90 +87,113 @@ export const CatalogFiltersPanel: React.FC<{
   onMaxPriceInputChange,
   onApplyPriceRange,
   onClear,
-  priceErrorId, priceInvalid,
-  categoryLocked, hideActions,
+  priceErrorId,
+  priceInvalid,
+  categoryLocked,
+  hideActions,
 }) => (
   <section aria-label="Lọc sản phẩm" className="w-full border border-[#E8E9E3] bg-[#FFFDF5] p-5">
     <div className="flex items-center justify-between border-b border-[#E8E9E3] pb-3">
       <div>
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#687069]">Lựa chọn của bạn</p>
-        <h2 className="font-serif text-xl">Bộ lọc{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''}</h2>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#687069]">
+          Lựa chọn của bạn
+        </p>
+        <h2 className="font-serif text-xl">
+          Bộ lọc{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''}
+        </h2>
       </div>
-        <button
-          type="button"
-          onClick={onClear}
-          className="text-[11px] font-bold uppercase text-[#725c00]"
-        >
-          Đặt lại
-        </button>
+      <button
+        type="button"
+        onClick={onClear}
+        className="text-[11px] font-bold uppercase text-[#725c00]"
+      >
+        Đặt lại
+      </button>
     </div>
 
     <div className="space-y-5 pt-5">
-      {!categoryLocked && <FilterSelect
-        label="Danh mục"
-        value={categoryId ?? ''}
-        disabled={metaLoading}
-        onChange={(value) => onCategoryChange(value ? Number(value) : undefined)}
-        options={buildCategoryTree(meta?.categories ?? []).flatMap(function options(node: CategoryNode): FilterOption[] {
-          return [{ value: String(node.category_id), label: [...getCategoryAncestors(meta?.categories ?? [], node.category_id).map(parent => parent.name), node.name].join(' / ') }, ...node.children.flatMap(options)];
-        })}
-      />}
-      <fieldset className="space-y-5"><legend className="mb-3 text-sm font-semibold">Thương hiệu & lựa chọn</legend>
-      <FilterSelect
-        label="Thương hiệu"
-        value={brandId ?? ''}
-        disabled={metaLoading}
-        onChange={(value) => onBrandChange(value ? Number(value) : undefined)}
-        options={(meta?.brands ?? []).map((item) => ({
-          value: String(item.brand_id),
-          label: item.name,
-        }))}
-      />
-      <FilterSelect
-        label="Size"
-        value={sizeValueId ?? ''}
-        disabled={metaLoading}
-        onChange={(value) => onSizeChange(value ? Number(value) : undefined)}
-        options={(meta?.size_systems ?? []).flatMap((system) =>
-          system.size_values.map((size) => ({
-            value: String(size.size_value_id),
-            label: system.name + ' · ' + size.display_name,
-          })),
-        )}
-      />
-      <FilterSelect
-        label="Màu sắc"
-        value={colorId ?? ''}
-        disabled={metaLoading}
-        onChange={(value) => onColorChange(value ? Number(value) : undefined)}
-        options={(meta?.colors ?? []).map((item) => ({
-          value: String(item.color_id),
-          label: item.name,
-        }))}
-      />
-      <FilterSelect
-        label="Giới tính"
-        value={gender ?? ''}
-        disabled={metaLoading}
-        onChange={(value) => onGenderChange(value || undefined)}
-        options={(meta?.genders ?? []).map((item) => ({ value: item, label: item }))}
-      />
+      {!categoryLocked && (
+        <FilterSelect
+          label="Danh mục"
+          value={categoryId ?? ''}
+          disabled={metaLoading}
+          onChange={(value) => onCategoryChange(value ? Number(value) : undefined)}
+          options={buildCategoryTree(meta?.categories ?? []).flatMap(function options(
+            node: CategoryNode,
+          ): FilterOption[] {
+            return [
+              {
+                value: String(node.category_id),
+                label: [
+                  ...getCategoryAncestors(meta?.categories ?? [], node.category_id).map(
+                    (parent) => parent.name,
+                  ),
+                  node.name,
+                ].join(' / '),
+              },
+              ...node.children.flatMap(options),
+            ];
+          })}
+        />
+      )}
+      <fieldset className="space-y-5">
+        <legend className="mb-3 text-sm font-semibold">Thương hiệu & lựa chọn</legend>
+        <FilterSelect
+          label="Thương hiệu"
+          value={brandId ?? ''}
+          disabled={metaLoading}
+          onChange={(value) => onBrandChange(value ? Number(value) : undefined)}
+          options={(meta?.brands ?? []).map((item) => ({
+            value: String(item.brand_id),
+            label: item.name,
+          }))}
+        />
+        <FilterSelect
+          label="Size"
+          value={sizeValueId ?? ''}
+          disabled={metaLoading}
+          onChange={(value) => onSizeChange(value ? Number(value) : undefined)}
+          options={(meta?.size_systems ?? []).flatMap((system) =>
+            system.size_values.map((size) => ({
+              value: String(size.size_value_id),
+              label: system.name + ' · ' + size.display_name,
+            })),
+          )}
+        />
+        <FilterSelect
+          label="Màu sắc"
+          value={colorId ?? ''}
+          disabled={metaLoading}
+          onChange={(value) => onColorChange(value ? Number(value) : undefined)}
+          options={(meta?.colors ?? []).map((item) => ({
+            value: String(item.color_id),
+            label: item.name,
+          }))}
+        />
+        <FilterSelect
+          label="Giới tính"
+          value={gender ?? ''}
+          disabled={metaLoading}
+          onChange={(value) => onGenderChange(value || undefined)}
+          options={(meta?.genders ?? []).map((item) => ({ value: item, label: item }))}
+        />
       </fieldset>
-      <fieldset className="space-y-5"><legend className="mb-3 text-sm font-semibold">Phong cách & mùa</legend>
-      <FilterSelect
-        label="Mùa"
-        value={season ?? ''}
-        disabled={metaLoading}
-        onChange={(value) => onSeasonChange(value || undefined)}
-        options={(meta?.seasons ?? []).map((item) => ({ value: item, label: item }))}
-      />
-      <FilterSelect
-        label="Phong cách"
-        value={style ?? ''}
-        disabled={metaLoading}
-        onChange={(value) => onStyleChange(value || undefined)}
-        options={(meta?.styles ?? []).map((item) => ({ value: item, label: item }))}
-      />
+      <fieldset className="space-y-5">
+        <legend className="mb-3 text-sm font-semibold">Phong cách & mùa</legend>
+        <FilterSelect
+          label="Mùa"
+          value={season ?? ''}
+          disabled={metaLoading}
+          onChange={(value) => onSeasonChange(value || undefined)}
+          options={(meta?.seasons ?? []).map((item) => ({ value: item, label: item }))}
+        />
+        <FilterSelect
+          label="Phong cách"
+          value={style ?? ''}
+          disabled={metaLoading}
+          onChange={(value) => onStyleChange(value || undefined)}
+          options={(meta?.styles ?? []).map((item) => ({ value: item, label: item }))}
+        />
       </fieldset>
 
       <div className="border-t border-[#E8E9E3] pt-4">
@@ -178,24 +203,32 @@ export const CatalogFiltersPanel: React.FC<{
             inputMode="decimal"
             value={minPriceInput}
             onChange={(event) => onMinPriceInputChange(event.target.value)}
-            aria-label="Giá từ" aria-describedby={priceErrorId} aria-invalid={priceInvalid} placeholder="Từ"
+            aria-label="Giá từ"
+            aria-describedby={priceErrorId}
+            aria-invalid={priceInvalid}
+            placeholder="Từ"
             className="min-w-0 border border-[#D9DDD6] bg-white px-3 py-2 text-sm outline-none focus:border-[#0B2419]"
           />
           <input
             inputMode="decimal"
             value={maxPriceInput}
             onChange={(event) => onMaxPriceInputChange(event.target.value)}
-            aria-label="Giá đến" aria-describedby={priceErrorId} aria-invalid={priceInvalid} placeholder="Đến"
+            aria-label="Giá đến"
+            aria-describedby={priceErrorId}
+            aria-invalid={priceInvalid}
+            placeholder="Đến"
             className="min-w-0 border border-[#D9DDD6] bg-white px-3 py-2 text-sm outline-none focus:border-[#0B2419]"
           />
         </div>
-        {!hideActions && <button
-          type="button"
-          onClick={onApplyPriceRange}
-          className="mt-2 w-full border border-[#0B2419] bg-white py-2 text-[11px] font-bold uppercase tracking-wider transition hover:bg-[#0B2419] hover:text-white"
-        >
-          Áp dụng bộ lọc
-        </button>}
+        {!hideActions && (
+          <button
+            type="button"
+            onClick={onApplyPriceRange}
+            className="mt-2 w-full border border-[#0B2419] bg-white py-2 text-[11px] font-bold uppercase tracking-wider transition hover:bg-[#0B2419] hover:text-white"
+          >
+            Áp dụng bộ lọc
+          </button>
+        )}
       </div>
     </div>
   </section>
@@ -226,24 +259,43 @@ export const CatalogProductGrid: React.FC<{
   onPageChange,
   onRetry,
   onClear,
-  emptyMessage = "Không có sản phẩm phù hợp với bộ lọc hiện tại.",
+  emptyMessage = 'Không có sản phẩm phù hợp với bộ lọc hiện tại.',
 }) => (
   <section aria-label="Kết quả sản phẩm" aria-busy={loading} className="min-w-0 flex-1">
-    {loading && <div role="status" className="py-24 text-center text-sm text-[#687069]">Đang tải sản phẩm...</div>}
+    {loading && (
+      <div role="status" className="py-24 text-center text-sm text-[#687069]">
+        Đang tải sản phẩm...
+      </div>
+    )}
     {!loading && error && (
-      <div role="alert" className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}<button type="button" onClick={onRetry} className="ml-3 min-h-11 underline">Thử lại</button></div>
+      <div role="alert" className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        {error}
+        <button type="button" onClick={onRetry} className="ml-3 min-h-11 underline">
+          Thử lại
+        </button>
+      </div>
     )}
     {!loading && !error && products.length === 0 && (
       <div className="border border-[#E8E9E3] bg-[#FFFDF5] py-20 text-center text-sm text-[#687069]">
         {emptyMessage}
-        {onClear && <button type="button" onClick={onClear} className="mx-auto mt-4 block min-h-11 border border-[#0B2419] px-5">Xóa tất cả bộ lọc</button>}
+        {onClear && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="mx-auto mt-4 block min-h-11 border border-[#0B2419] px-5"
+          >
+            Xóa tất cả bộ lọc
+          </button>
+        )}
       </div>
     )}
 
     {!loading && !error && products.length > 0 && (
       <>
         <div className={'grid gap-x-4 gap-y-8 ' + gridClass}>
-          {products.map(product => <ProductSummaryCard key={product.id} product={product} onOpenProduct={onOpenProduct} />)}
+          {products.map((product) => (
+            <ProductSummaryCard key={product.id} product={product} onOpenProduct={onOpenProduct} />
+          ))}
         </div>
 
         {pagination && totalPages > 1 && (
@@ -256,7 +308,9 @@ export const CatalogProductGrid: React.FC<{
             >
               Trang trước
             </button>
-            <span className="px-2 font-semibold">{page} / {totalPages}</span>
+            <span className="px-2 font-semibold">
+              {page} / {totalPages}
+            </span>
             <button
               type="button"
               disabled={page >= totalPages || loading}

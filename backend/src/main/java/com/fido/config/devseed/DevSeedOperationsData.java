@@ -20,7 +20,8 @@ public class DevSeedOperationsData {
     }
 
     private void seedAuditLogs() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO audit_logs(
                     audit_id,actor_account_id,action,target_type,target_id,
                     description,created_at
@@ -35,7 +36,8 @@ public class DevSeedOperationsData {
     }
 
     private void seedContentPages() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO content_pages(
                     page_id,page_code,title,content,updated_by_account_id,updated_at
                 ) VALUES

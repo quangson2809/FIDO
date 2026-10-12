@@ -60,13 +60,18 @@ export function HomeHero() {
   };
 
   return (
-    <section className="w-full overflow-hidden bg-[#FFFDF5]" aria-label="Giới thiệu bộ sưu tập FIDO">
+    <section
+      className="w-full overflow-hidden bg-[#FFFDF5]"
+      aria-label="Giới thiệu bộ sưu tập FIDO"
+    >
       <div className="grid w-full grid-cols-1 md:min-h-[420px] md:grid-cols-12 lg:h-[min(520px,calc(100svh-180px))]">
         <div className="relative z-10 flex flex-col justify-between gap-5 px-4 py-6 sm:px-8 sm:py-8 md:col-span-6 lg:col-span-5 lg:px-12 xl:px-14">
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-[#E8C75B]" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#0B2419]">FIDO • READY-TO-WEAR</span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#0B2419]">
+                FIDO • READY-TO-WEAR
+              </span>
             </div>
             <h1 className="font-serif text-[40px] font-normal leading-[1.02] tracking-tight text-[#0B2419] sm:text-5xl xl:text-[60px]">
               BẢN THỂ
@@ -93,9 +98,24 @@ export function HomeHero() {
             </div>
           </div>
           <div className="hidden grid-cols-3 gap-3 border-t border-[#E8E9E3]/80 pt-4 text-[#0B2419] sm:grid">
-            <div><span className="block font-serif text-lg font-bold sm:text-xl">SẢN PHẨM</span><span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863]">Bộ sưu tập FIDO</span></div>
-            <div><span className="block font-serif text-lg font-bold sm:text-xl">SIZE + MÀU</span><span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863]">Chọn kích cỡ và màu</span></div>
-            <div><span className="block font-serif text-lg font-bold sm:text-xl">COD</span><span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863]">Thanh toán khi nhận</span></div>
+            <div>
+              <span className="block font-serif text-lg font-bold sm:text-xl">SẢN PHẨM</span>
+              <span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863]">
+                Bộ sưu tập FIDO
+              </span>
+            </div>
+            <div>
+              <span className="block font-serif text-lg font-bold sm:text-xl">SIZE + MÀU</span>
+              <span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863]">
+                Chọn kích cỡ và màu
+              </span>
+            </div>
+            <div>
+              <span className="block font-serif text-lg font-bold sm:text-xl">COD</span>
+              <span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863]">
+                Thanh toán khi nhận
+              </span>
+            </div>
           </div>
         </div>
 
@@ -105,7 +125,10 @@ export function HomeHero() {
           aria-label="Bộ ảnh thời trang FIDO"
           className="relative min-h-[224px] overflow-hidden bg-[#E8E6DC] sm:min-h-[300px] md:col-span-6 md:min-h-0 lg:col-span-7"
         >
-          <div className="pointer-events-none absolute -right-14 top-0 h-64 w-64 rounded-full bg-[#E8C75B]/25 blur-2xl" aria-hidden="true" />
+          <div
+            className="pointer-events-none absolute -right-14 top-0 h-64 w-64 rounded-full bg-[#E8C75B]/25 blur-2xl"
+            aria-hidden="true"
+          />
           {slides.map((slide, index) => {
             const active = index === activeIndex;
             return (
@@ -113,9 +136,11 @@ export function HomeHero() {
                 key={slide.src}
                 data-slide-active={active}
                 aria-hidden={!active}
-                className={active
-                  ? 'absolute inset-0 opacity-100 transition-opacity duration-700 ease-in-out motion-reduce:transition-none'
-                  : 'pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-700 ease-in-out motion-reduce:transition-none'}
+                className={
+                  active
+                    ? 'absolute inset-0 opacity-100 transition-opacity duration-700 ease-in-out motion-reduce:transition-none'
+                    : 'pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-700 ease-in-out motion-reduce:transition-none'
+                }
               >
                 <StorefrontImage
                   src={slide.src}
@@ -126,41 +151,70 @@ export function HomeHero() {
               </div>
             );
           })}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#071A12]/65 to-transparent" aria-hidden="true" />
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#071A12]/65 to-transparent"
+            aria-hidden="true"
+          />
           <div className="absolute inset-x-4 bottom-4 flex items-end justify-between gap-3 text-white sm:inset-x-7 sm:bottom-7">
             <div aria-live={isPlaying ? 'off' : 'polite'} aria-atomic="true" className="min-w-0">
-              <span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#E8C75B]">FIDO EDITORIAL</span>
+              <span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#E8C75B]">
+                FIDO EDITORIAL
+              </span>
               <p className="mt-1 text-sm font-semibold sm:text-base">{slides[activeIndex].label}</p>
-              <span className="mt-1 block text-[10px] text-white/80">Minh họa phong cách · {activeIndex + 1} / {slides.length}</span>
+              <span className="mt-1 block text-[10px] text-white/80">
+                Minh họa phong cách · {activeIndex + 1} / {slides.length}
+              </span>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
-                aria-label={isPlaying ? 'Tạm dừng tự động chuyển ảnh' : 'Tiếp tục tự động chuyển ảnh'}
+                aria-label={
+                  isPlaying ? 'Tạm dừng tự động chuyển ảnh' : 'Tiếp tục tự động chuyển ảnh'
+                }
                 onClick={() => setPlaybackOverride(!isPlaying)}
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-white/50 bg-[#071A12]/60 text-white transition-colors hover:bg-[#071A12]"
               >
                 <StorefrontIcon name={isPlaying ? 'pause' : 'play_arrow'} className="h-5 w-5" />
               </button>
-              <button type="button" aria-label="Ảnh trước" onClick={() => moveSlide(-1)}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/50 bg-[#071A12]/60 text-white transition-colors hover:bg-[#071A12]">
+              <button
+                type="button"
+                aria-label="Ảnh trước"
+                onClick={() => moveSlide(-1)}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/50 bg-[#071A12]/60 text-white transition-colors hover:bg-[#071A12]"
+              >
                 <StorefrontIcon name="chevron_left" className="h-5 w-5" />
               </button>
-              <button type="button" aria-label="Ảnh tiếp theo" onClick={() => moveSlide(1)}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/50 bg-[#071A12]/60 text-white transition-colors hover:bg-[#071A12]">
+              <button
+                type="button"
+                aria-label="Ảnh tiếp theo"
+                onClick={() => moveSlide(1)}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/50 bg-[#071A12]/60 text-white transition-colors hover:bg-[#071A12]"
+              >
                 <StorefrontIcon name="chevron_right" className="h-5 w-5" />
               </button>
             </div>
           </div>
-          <div className="absolute right-4 top-4 flex gap-2 sm:right-7 sm:top-7" aria-label="Chọn ảnh banner">
+          <div
+            className="absolute right-4 top-4 flex gap-2 sm:right-7 sm:top-7"
+            aria-label="Chọn ảnh banner"
+          >
             {slides.map((slide, index) => (
-              <button key={slide.src} type="button" aria-label={'Hiển thị ảnh ' + (index + 1) + ': ' + slide.label}
-                aria-pressed={index === activeIndex} onClick={() => setActiveIndex(index)}
+              <button
+                key={slide.src}
+                type="button"
+                aria-label={'Hiển thị ảnh ' + (index + 1) + ': ' + slide.label}
+                aria-pressed={index === activeIndex}
+                onClick={() => setActiveIndex(index)}
                 className="flex h-11 w-11 items-center justify-center rounded-full"
               >
-                <span aria-hidden="true" className={index === activeIndex
-                  ? 'h-2.5 w-7 rounded-full bg-[#0B2419] shadow-sm'
-                  : 'h-2.5 w-4 rounded-full bg-white/80 shadow-sm transition-colors hover:bg-white'} />
+                <span
+                  aria-hidden="true"
+                  className={
+                    index === activeIndex
+                      ? 'h-2.5 w-7 rounded-full bg-[#0B2419] shadow-sm'
+                      : 'h-2.5 w-4 rounded-full bg-white/80 shadow-sm transition-colors hover:bg-white'
+                  }
+                />
               </button>
             ))}
           </div>

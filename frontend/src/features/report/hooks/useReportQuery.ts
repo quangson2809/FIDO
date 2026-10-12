@@ -1,8 +1,8 @@
-import { useCallback } from "react";
-import { useRemoteQuery } from "../../../shared/hooks/useRemoteQuery";
-import { reportService } from "../api/service";
-import type { TrendQuery } from "../types";
-import { precedingReportRange } from "../model/reportFilters";
+import { useCallback } from 'react';
+import { useRemoteQuery } from '../../../shared/hooks/useRemoteQuery';
+import { reportService } from '../api/service';
+import type { TrendQuery } from '../types';
+import { precedingReportRange } from '../model/reportFilters';
 
 export function useSalesReport({ from, to, granularity }: TrendQuery) {
   return useRemoteQuery(
@@ -31,10 +31,7 @@ export function useOrdersReport({ from, to, granularity }: TrendQuery) {
 }
 export function useProductsReport({ from, to }: TrendQuery, limit = 10) {
   return useRemoteQuery(
-    useCallback(
-      () => reportService.getProductPerformance({ from, to }, limit),
-      [from, to, limit],
-    ),
+    useCallback(() => reportService.getProductPerformance({ from, to }, limit), [from, to, limit]),
   );
 }
 export function useDashboardReport({ from, to, granularity }: TrendQuery) {

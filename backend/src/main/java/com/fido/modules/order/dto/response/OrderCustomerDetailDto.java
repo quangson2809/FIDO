@@ -19,6 +19,4 @@ public record OrderCustomerDetailDto(
         LocalDateTime completed_at,
         LocalDateTime returned_at,
         LocalDateTime created_at,
-        LocalDateTime updated_at
-) {
-}
+        LocalDateTime updated_at) {}

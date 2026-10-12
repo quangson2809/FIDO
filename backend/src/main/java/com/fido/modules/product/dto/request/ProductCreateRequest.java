@@ -1,6 +1,7 @@
 package com.fido.modules.product.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -8,6 +9,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -23,15 +25,14 @@ public record ProductCreateRequest(
         String material_care,
         @NotNull @DecimalMin("0.0") BigDecimal base_price,
         @NotBlank @Pattern(regexp = "ON_SALE|STOPPED") String sale_status,
-        @Valid List<VariantInput> variants
-) {
+        @Valid List<VariantInput> variants) {
 
     @JsonAnySetter
     public void rejectLegacyImages(String field, Object ignored) {
         if ("images".equals(field)) {
             throw new IllegalArgumentException(
-                    "Product creation does not accept images; use the product image upload endpoint"
-            );
+                    "Product creation does not accept images; use the product image upload"
+                        + " endpoint");
         }
     }
 
@@ -40,7 +41,5 @@ public record ProductCreateRequest(
             @NotNull @Positive Long color_id,
             @Size(max = 100) String sku,
             @DecimalMin("0.0") BigDecimal override_price,
-            @NotBlank @Pattern(regexp = "ON_SALE|STOPPED") String sale_status
-    ) {
-    }
+            @NotBlank @Pattern(regexp = "ON_SALE|STOPPED") String sale_status) {}
 }
