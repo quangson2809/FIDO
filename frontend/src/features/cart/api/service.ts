@@ -20,9 +20,7 @@ const mockCartService: CartService = {
     const existing = mockCart.items.find((item) => item.variant_id === variantId);
     const items = existing
       ? mockCart.items.map((item) =>
-          item.variant_id === variantId
-            ? { ...item, quantity: item.quantity + quantity }
-            : item,
+          item.variant_id === variantId ? { ...item, quantity: item.quantity + quantity } : item,
         )
       : [
           ...mockCart.items,
@@ -70,23 +68,20 @@ const realCartService: CartService = {
     return response.data;
   },
   async addItem(variantId, quantity) {
-    const response = await apiClient.post<ApiResponse<CartDto>>(
-      '/cart/items',
-      { variant_id: variantId, quantity },
-    );
+    const response = await apiClient.post<ApiResponse<CartDto>>('/cart/items', {
+      variant_id: variantId,
+      quantity,
+    });
     return response.data;
   },
   async updateItem(cartItemId, quantity) {
-    const response = await apiClient.patch<ApiResponse<CartDto>>(
-      `/cart/items/${cartItemId}`,
-      { quantity },
-    );
+    const response = await apiClient.patch<ApiResponse<CartDto>>(`/cart/items/${cartItemId}`, {
+      quantity,
+    });
     return response.data;
   },
   async removeItem(cartItemId) {
-    const response = await apiClient.delete<ApiResponse<CartDto>>(
-      `/cart/items/${cartItemId}`,
-    );
+    const response = await apiClient.delete<ApiResponse<CartDto>>(`/cart/items/${cartItemId}`);
     return response.data;
   },
   async clear() {
@@ -95,6 +90,4 @@ const realCartService: CartService = {
   },
 };
 
-export const cartService = API_MODE === 'mock'
-  ? mockCartService
-  : realCartService;
+export const cartService = API_MODE === 'mock' ? mockCartService : realCartService;

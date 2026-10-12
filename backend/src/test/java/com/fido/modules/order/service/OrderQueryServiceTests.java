@@ -16,8 +16,7 @@ import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
 import com.fido.modules.order.repository.ShippingInfoRepository;
-import java.math.BigDecimal;
-import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,6 +26,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+
+import java.math.BigDecimal;
+import java.util.List;
 
 @ExtendWith(MockitoExtension.class)
 class OrderQueryServiceTests {
@@ -42,15 +44,15 @@ class OrderQueryServiceTests {
 
     @BeforeEach
     void setUp() {
-        service = new OrderQueryService(
-                orders,
-                items,
-                payments,
-                shipping,
-                new OrderSummaryReadService(items, payments),
-                actionPolicy,
-                authorization
-        );
+        service =
+                new OrderQueryService(
+                        orders,
+                        items,
+                        payments,
+                        shipping,
+                        new OrderSummaryReadService(items, payments),
+                        actionPolicy,
+                        authorization);
     }
 
     @Test
@@ -59,31 +61,22 @@ class OrderQueryServiceTests {
         Order first = order(1L, "ORD-1", new BigDecimal("100000.00"));
         Order second = order(2L, "ORD-2", new BigDecimal("200000.00"));
         when(orders.findAll(any(Specification.class), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(
-                        List.of(first, second),
-                        PageRequest.of(0, 20),
-                        2
-                ));
+                .thenReturn(new PageImpl<>(List.of(first, second), PageRequest.of(0, 20), 2));
         when(payments.findAllByOrderIdIn(List.of(1L, 2L)))
-                .thenReturn(List.of(
-                        payment(1L, OrderPolicy.UNPAID),
-                        payment(2L, OrderPolicy.PAID)
-                ));
+                .thenReturn(
+                        List.of(payment(1L, OrderPolicy.UNPAID), payment(2L, OrderPolicy.PAID)));
         when(items.findFirstItemsByOrderIdIn(List.of(1L, 2L)))
-                .thenReturn(List.of(
-                        orderItem(11L, 1L, "https://cdn.example.test/order-1.jpg"),
-                        orderItem(21L, 2L, null)
-                ));
+                .thenReturn(
+                        List.of(
+                                orderItem(11L, 1L, "https://cdn.example.test/order-1.jpg"),
+                                orderItem(21L, 2L, null)));
 
         var response = service.customerOrders(10L, null, 1, 20);
 
         assertEquals(2, response.data().size());
         assertEquals(OrderPolicy.UNPAID, response.data().get(0).payment_status());
         assertEquals(OrderPolicy.PAID, response.data().get(1).payment_status());
-        assertEquals(
-                "https://cdn.example.test/order-1.jpg",
-                response.data().get(0).image_url()
-        );
+        assertEquals("https://cdn.example.test/order-1.jpg", response.data().get(0).image_url());
         assertNull(response.data().get(1).image_url());
         verify(payments).findAllByOrderIdIn(List.of(1L, 2L));
         verify(items).findFirstItemsByOrderIdIn(List.of(1L, 2L));
@@ -96,18 +89,14 @@ class OrderQueryServiceTests {
     void orderListStillRejectsBrokenOrderPaymentInvariant() {
         Order order = order(1L, "ORD-1", new BigDecimal("100000.00"));
         when(orders.findAll(any(Specification.class), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(
-                        List.of(order),
-                        PageRequest.of(0, 20),
-                        1
-                ));
+                .thenReturn(new PageImpl<>(List.of(order), PageRequest.of(0, 20), 1));
         when(payments.findAllByOrderIdIn(List.of(1L))).thenReturn(List.of());
         when(items.findFirstItemsByOrderIdIn(List.of(1L))).thenReturn(List.of());
 
-        IllegalStateException error = assertThrows(
-                IllegalStateException.class,
-                () -> service.customerOrders(10L, null, 1, 20)
-        );
+        IllegalStateException error =
+                assertThrows(
+                        IllegalStateException.class,
+                        () -> service.customerOrders(10L, null, 1, 20));
 
         assertEquals("Order payment is missing", error.getMessage());
     }

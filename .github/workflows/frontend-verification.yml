@@ -8,6 +8,7 @@ on:
   pull_request:
     branches:
       - main
+      - feature/customer-shopping-journey-ux-improvements
     paths:
       - "frontend/**"
       - ".github/workflows/frontend-verification.yml"
@@ -24,6 +25,7 @@ jobs:
   frontend:
     name: Lint, typecheck and build frontend
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Check out repository
@@ -59,6 +61,23 @@ jobs:
       - name: Typecheck and build
         working-directory: frontend
         run: npm run build
+
+      - name: Install Chromium for browser verification
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Customer browser journeys and responsive checks
+        working-directory: frontend
+        run: npm run test:browser
+
+      - name: Keep browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: storefront-browser-evidence
+          path: frontend/.browser-evidence
+          include-hidden-files: true
+          if-no-files-found: warn
 
       - name: Keep production build
         if: success()

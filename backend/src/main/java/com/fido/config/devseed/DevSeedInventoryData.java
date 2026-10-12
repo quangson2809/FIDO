@@ -15,7 +15,8 @@ public class DevSeedInventoryData {
     }
 
     public void seedInventoryRows() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO inventories(
                     variant_id,available_quantity,updated_at
                 ) VALUES
@@ -23,7 +24,21 @@ public class DevSeedInventoryData {
                 (970002,25,'2026-09-20 03:00:00'),
                 (970003,23,'2026-09-20 03:00:00'),
                 (970004,14,'2026-09-20 03:00:00'),
-                (970005,0,'2026-09-20 03:00:00')
+                (970005,0,'2026-09-20 03:00:00'),
+                (970006,12,'2026-09-20 03:00:00'),
+                (970007,8,'2026-09-20 03:00:00'),
+                (970008,18,'2026-09-20 03:00:00'),
+                (970009,16,'2026-09-20 03:00:00'),
+                (970010,11,'2026-09-20 03:00:00'),
+                (970011,14,'2026-09-20 03:00:00'),
+                (970012,9,'2026-09-20 03:00:00'),
+                (970013,7,'2026-09-20 03:00:00'),
+                (970014,10,'2026-09-20 03:00:00'),
+                (970015,8,'2026-09-20 03:00:00'),
+                (970016,6,'2026-09-20 03:00:00'),
+                (970017,12,'2026-09-20 03:00:00'),
+                (970018,9,'2026-09-20 03:00:00'),
+                (970019,5,'2026-09-20 03:00:00')
                 """);
     }
 
@@ -35,7 +50,8 @@ public class DevSeedInventoryData {
     }
 
     private void seedSuppliers() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO suppliers(
                     supplier_id,name,phone,email,address,usage_status,note
                 ) VALUES
@@ -47,7 +63,8 @@ public class DevSeedInventoryData {
     }
 
     private void seedGoodsReceipts() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO goods_receipts(
                     receipt_id,receipt_code,supplier_id,receipt_status,receipt_date,
                     created_by_account_id,confirmed_by_account_id,confirmed_at,
@@ -66,7 +83,8 @@ public class DevSeedInventoryData {
     }
 
     private void seedGoodsReceiptItems() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO goods_receipt_items(
                     receipt_item_id,receipt_id,variant_id,quantity
                 ) VALUES
@@ -77,7 +95,8 @@ public class DevSeedInventoryData {
     }
 
     private void seedInventoryTransactions() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO inventory_transactions(
                     txn_id,variant_id,quantity_delta,transaction_type,order_id,
                     goods_receipt_id,actor_account_id,reason,created_at
@@ -105,7 +124,23 @@ public class DevSeedInventoryData {
                 (1040015,970002,-2,'ORDER_CONFIRM_OUT',1001101,NULL,900005,
                     'Seed report completed','2026-09-10 01:10:00'),
                 (1040016,970003,-1,'ORDER_CONFIRM_OUT',1001102,NULL,900005,
-                    'Seed report returned','2026-09-11 01:10:00')
+                    'Seed report returned','2026-09-11 01:10:00'),
+                (1040017,970006,12,'ADJUSTMENT_IN',NULL,NULL,900004,
+                    'Seed opening stock for dress','2026-09-01 01:00:00'),
+                (1040018,970007,8,'ADJUSTMENT_IN',NULL,NULL,900004,
+                    'Seed opening stock for jacket','2026-09-01 01:00:00'),
+                (1040019,970008,18,'ADJUSTMENT_IN',NULL,NULL,900004,'Seed opening stock','2026-09-01 01:00:00'),
+                (1040020,970009,16,'ADJUSTMENT_IN',NULL,NULL,900004,'Seed opening stock','2026-09-01 01:00:00'),
+                (1040021,970010,11,'ADJUSTMENT_IN',NULL,NULL,900004,'Seed opening stock','2026-09-01 01:00:00'),
+                (1040022,970011,14,'ADJUSTMENT_IN',NULL,NULL,900004,'Seed opening stock','2026-09-01 01:00:00'),
+                (1040023,970012,9,'ADJUSTMENT_IN',NULL,NULL,900004,'Seed opening stock','2026-09-01 01:00:00'),
+                (1040024,970013,7,'ADJUSTMENT_IN',NULL,NULL,900004,'Seed opening stock','2026-09-01 01:00:00'),
+                (1040025,970014,10,'ADJUSTMENT_IN',NULL,NULL,900004,'Seed opening stock','2026-09-01 01:00:00'),
+                (1040026,970015,8,'ADJUSTMENT_IN',NULL,NULL,900004,'Seed opening stock','2026-09-01 01:00:00'),
+                (1040027,970016,6,'ADJUSTMENT_IN',NULL,NULL,900004,'Seed opening stock','2026-09-01 01:00:00'),
+                (1040028,970017,12,'ADJUSTMENT_IN',NULL,NULL,900004,'Seed opening stock','2026-09-01 01:00:00'),
+                (1040029,970018,9,'ADJUSTMENT_IN',NULL,NULL,900004,'Seed opening stock','2026-09-01 01:00:00'),
+                (1040030,970019,5,'ADJUSTMENT_IN',NULL,NULL,900004,'Seed opening stock','2026-09-01 01:00:00')
                 """);
     }
 }

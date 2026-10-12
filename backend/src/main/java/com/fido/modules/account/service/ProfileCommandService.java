@@ -9,7 +9,9 @@ import com.fido.modules.account.entity.Address;
 import com.fido.modules.account.mapper.AccountMapper;
 import com.fido.modules.account.repository.AccountRepository;
 import com.fido.modules.account.repository.AddressRepository;
+
 import jakarta.persistence.EntityManager;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,21 +26,16 @@ public class ProfileCommandService {
     private final EntityManager entityManager;
 
     public ProfileCommandService(
-            AccountRepository accounts,
-            AddressRepository addresses,
-            EntityManager entityManager
-    ) {
+            AccountRepository accounts, AddressRepository addresses, EntityManager entityManager) {
         this.accounts = accounts;
         this.addresses = addresses;
         this.entityManager = entityManager;
     }
 
     public AccountDto update(Long actor, ProfilePatch request) {
-        Account account = accounts
-                .findById(actor)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.UNAUTHORIZED)
-                );
+        Account account =
+                accounts.findById(actor)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
 
         if (request.phone() != null) {
             if (accounts.existsByPhoneAndAccountIdNot(request.phone(), actor)) {
@@ -63,43 +60,28 @@ public class ProfileCommandService {
         address.setAccountId(actor);
         address.setAddressText(request.address_text());
 
-        return addressDto(
-                addresses.save(address)
-        );
+        return addressDto(addresses.save(address));
     }
 
-    public AddressDto updateAddress(
-            Long actor,
-            Long addressId,
-            AddressRequest request
-    ) {
+    public AddressDto updateAddress(Long actor, Long addressId, AddressRequest request) {
         Address address = ownedAddress(actor, addressId);
         address.setAddressText(request.address_text());
 
-        return addressDto(
-                addresses.save(address)
-        );
+        return addressDto(addresses.save(address));
     }
 
     public void deleteAddress(Long actor, Long addressId) {
-        addresses.delete(
-                ownedAddress(actor, addressId)
-        );
+        addresses.delete(ownedAddress(actor, addressId));
     }
 
     private Address ownedAddress(Long actor, Long addressId) {
         return addresses
                 .findByAddressIdAndAccountId(addressId, actor)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND)
-                );
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
     private static AddressDto addressDto(Address address) {
         return new AddressDto(
-                address.getAddressId(),
-                address.getAddressText(),
-                address.getCreatedAt()
-        );
+                address.getAddressId(), address.getAddressText(), address.getCreatedAt());
     }
 }

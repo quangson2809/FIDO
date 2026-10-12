@@ -3,22 +3,22 @@ package com.fido.modules.inventory.dto.request;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+
 import java.time.LocalDate;
 import java.util.List;
 
 public class GoodsReceiptPatchRequest {
 
-    @Positive
-    private Long supplierId;
+    @Positive private Long supplierId;
 
     private LocalDate receiptDate;
     private String note;
 
-    @Valid
-    private List<ItemInput> items;
+    @Valid private List<ItemInput> items;
 
     private boolean notePresent;
     private boolean itemsPresent;
@@ -27,10 +27,7 @@ public class GoodsReceiptPatchRequest {
         return supplierId;
     }
 
-    @JsonSetter(
-            value = "supplier_id",
-            nulls = Nulls.FAIL
-    )
+    @JsonSetter(value = "supplier_id", nulls = Nulls.FAIL)
     public void setSupplierId(Long value) {
         supplierId = value;
     }
@@ -39,10 +36,7 @@ public class GoodsReceiptPatchRequest {
         return receiptDate;
     }
 
-    @JsonSetter(
-            value = "receipt_date",
-            nulls = Nulls.FAIL
-    )
+    @JsonSetter(value = "receipt_date", nulls = Nulls.FAIL)
     public void setReceiptDate(LocalDate value) {
         receiptDate = value;
     }
@@ -61,10 +55,7 @@ public class GoodsReceiptPatchRequest {
         return items;
     }
 
-    @JsonSetter(
-            value = "items",
-            nulls = Nulls.FAIL
-    )
+    @JsonSetter(value = "items", nulls = Nulls.FAIL)
     public void setItems(List<ItemInput> value) {
         items = value;
         itemsPresent = true;
@@ -81,8 +72,5 @@ public class GoodsReceiptPatchRequest {
     }
 
     public record ItemInput(
-            @NotNull @Positive Long variant_id,
-            @NotNull @Positive Integer quantity
-    ) {
-    }
+            @NotNull @Positive Long variant_id, @NotNull @Positive Integer quantity) {}
 }

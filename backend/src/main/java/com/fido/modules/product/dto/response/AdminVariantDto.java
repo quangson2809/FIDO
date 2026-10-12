@@ -13,6 +13,4 @@ public record AdminVariantDto(
         String sale_status,
         Integer available_quantity,
         LocalDateTime created_at,
-        LocalDateTime updated_at
-) {
-}
+        LocalDateTime updated_at) {}

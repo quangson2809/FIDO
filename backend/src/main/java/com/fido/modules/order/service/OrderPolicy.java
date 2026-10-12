@@ -1,9 +1,11 @@
 package com.fido.modules.order.service;
 
-import java.util.Map;
-import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.Set;
 
 public final class OrderPolicy {
 
@@ -32,30 +34,29 @@ public final class OrderPolicy {
     public static final String ORDER_PAYMENT = "ORDER_PAYMENT";
     public static final String ORDER_AFTER_SALES = "ORDER_AFTER_SALES";
 
-    private static final Set<String> ORDER_STATUSES = Set.of(
-            PENDING,
-            CONFIRMED,
-            PREPARING,
-            SHIPPING,
-            COMPLETED,
-            DELIVERY_FAILED,
-            CANCELLED,
-            RETURNED
-    );
+    private static final Set<String> ORDER_STATUSES =
+            Set.of(
+                    PENDING,
+                    CONFIRMED,
+                    PREPARING,
+                    SHIPPING,
+                    COMPLETED,
+                    DELIVERY_FAILED,
+                    CANCELLED,
+                    RETURNED);
 
-    private static final Map<String, Set<String>> TRANSITIONS = Map.of(
-            PENDING, Set.of(CONFIRMED, CANCELLED),
-            CONFIRMED, Set.of(PREPARING, CANCELLED),
-            PREPARING, Set.of(SHIPPING, CANCELLED),
-            SHIPPING, Set.of(COMPLETED, DELIVERY_FAILED),
-            DELIVERY_FAILED, Set.of(SHIPPING, CANCELLED),
-            COMPLETED, Set.of(RETURNED),
-            CANCELLED, Set.of(),
-            RETURNED, Set.of()
-    );
+    private static final Map<String, Set<String>> TRANSITIONS =
+            Map.of(
+                    PENDING, Set.of(CONFIRMED, CANCELLED),
+                    CONFIRMED, Set.of(PREPARING, CANCELLED),
+                    PREPARING, Set.of(SHIPPING, CANCELLED),
+                    SHIPPING, Set.of(COMPLETED, DELIVERY_FAILED),
+                    DELIVERY_FAILED, Set.of(SHIPPING, CANCELLED),
+                    COMPLETED, Set.of(RETURNED),
+                    CANCELLED, Set.of(),
+                    RETURNED, Set.of());
 
-    private OrderPolicy() {
-    }
+    private OrderPolicy() {}
 
     public static void requireOrderStatus(String status) {
         if (!ORDER_STATUSES.contains(status)) {
@@ -63,20 +64,20 @@ public final class OrderPolicy {
         }
     }
 
-    public static boolean canTransition(
-            String from,
-            String to
-    ) {
-        return TRANSITIONS
-                .getOrDefault(from, Set.of())
-                .contains(to);
+    public static boolean canTransition(String from, String to) {
+        return TRANSITIONS.getOrDefault(from, Set.of()).contains(to);
+    }
+
+    public static void requireReturnWithinWindow(LocalDateTime completedAt, LocalDateTime now) {
+        if (completedAt == null
+                || now.isBefore(completedAt)
+                || now.isAfter(completedAt.plusDays(2))) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Return is outside the two-day window");
+        }
     }
 
     public static boolean recipientEditable(String status) {
-        return Set.of(
-                PENDING,
-                CONFIRMED,
-                PREPARING
-        ).contains(status);
+        return Set.of(PENDING, CONFIRMED, PREPARING).contains(status);
     }
 }

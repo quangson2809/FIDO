@@ -1,15 +1,19 @@
 package com.fido.modules.order.entity;
 
 import jakarta.persistence.*;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+
 @Entity
-@Table(name = "orders", uniqueConstraints = {@UniqueConstraint(columnNames = {"order_code"})})
+@Table(
+        name = "orders",
+        uniqueConstraints = {@UniqueConstraint(columnNames = {"order_code"})})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -65,7 +69,11 @@ public class Order {
     @Column(name = "returned_at", nullable = true, columnDefinition = "TIMESTAMP(6)")
     private LocalDateTime returnedAt;
 
-    @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP(6)", updatable = false)
+    @Column(
+            name = "created_at",
+            nullable = false,
+            columnDefinition = "TIMESTAMP(6)",
+            updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")

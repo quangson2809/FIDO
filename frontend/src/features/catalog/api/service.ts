@@ -1,6 +1,8 @@
 import type { ApiListResponse, ApiResponse } from '../../../types/api';
 import { apiClient } from '../../../services/http/apiClient';
+import { sortProductImages } from '../model/productImageOrder';
 import { resolveImageUrl } from '../../../services/media/imageUrl';
+import { summaryMaterialCare, summarySizes } from './summaryFields';
 import type {
   CatalogMetaDto,
   CatalogProductPage,
@@ -16,36 +18,28 @@ const imageOrEmpty = (value?: string | null): string => resolveImageUrl(value) ?
 const summaryToView = (product: ProductSummaryDto): CatalogProductView => ({
   id: String(product.product_id),
   product_id: product.product_id,
-  sku: '',
   name: product.name,
   category: product.category.name,
-  parentCategory: product.category.name,
   brand: product.brand?.name ?? '',
-  price: product.base_price,
   base_price: product.base_price,
   imageUrl: imageOrEmpty(product.thumbnail),
-  galleryImages: product.thumbnail ? [imageOrEmpty(product.thumbnail)] : [],
-  description: '',
-  fabric: '',
-  colors: [],
-  sizes: [],
-  variants: [],
-  rating: 0,
-  reviewsCount: 0,
-  inStockCount: 0,
   sale_status: product.sale_status,
+  materialCare: summaryMaterialCare(product.material_care),
+  sizes: summarySizes(product.sizes),
 });
 
 const normalizeDetailImages = (product: ProductDetailDto): ProductDetailDto => ({
   ...product,
-  images: product.images.map((image) => ({
+  images: sortProductImages(product.images).map((image) => ({
     ...image,
     image_url: resolveImageUrl(image.image_url) ?? image.image_url,
   })),
 });
 
 const loadProductPage = async (query: CatalogProductQuery = {}): Promise<CatalogProductPage> => {
-  const response = await apiClient.get<ApiListResponse<ProductSummaryDto>>('/catalog/products', { params: query });
+  const response = await apiClient.get<ApiListResponse<ProductSummaryDto>>('/catalog/products', {
+    params: query,
+  });
 
   return {
     items: response.data.map(summaryToView),
@@ -56,7 +50,9 @@ const loadProductPage = async (query: CatalogProductQuery = {}): Promise<Catalog
 export const catalogService: CatalogService = {
   listProducts: loadProductPage,
   async getProductDetail(productId) {
-    const response = await apiClient.get<ApiResponse<ProductDetailDto>>(`/catalog/products/${productId}`);
+    const response = await apiClient.get<ApiResponse<ProductDetailDto>>(
+      `/catalog/products/${productId}`,
+    );
     return normalizeDetailImages(response.data);
   },
   async getMeta() {

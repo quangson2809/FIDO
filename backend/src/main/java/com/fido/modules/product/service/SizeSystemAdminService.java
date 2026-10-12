@@ -13,18 +13,21 @@ import com.fido.modules.product.repository.ProductRepository;
 import com.fido.modules.product.repository.ProductVariantRepository;
 import com.fido.modules.product.repository.SizeSystemRepository;
 import com.fido.modules.product.repository.SizeValueRepository;
+
 import jakarta.persistence.EntityManager;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @Transactional
@@ -50,8 +53,7 @@ public class SizeSystemAdminService {
             CatalogReferenceService references,
             CatalogMetaService metaService,
             AuditService audit,
-            EntityManager em
-    ) {
+            EntityManager em) {
         this.sizeSystems = sizeSystems;
         this.sizeValues = sizeValues;
         this.products = products;
@@ -63,25 +65,22 @@ public class SizeSystemAdminService {
     }
 
     @PreAuthorize(WRITE)
-    public SizeSystemDto createSizeSystem(
-            Long actor,
-            SizeSystemCreateRequest request
-    ) {
+    public SizeSystemDto createSizeSystem(Long actor, SizeSystemCreateRequest request) {
         SizeSystem sizeSystem = new SizeSystem();
         sizeSystem.setCode(request.code());
         sizeSystem.setName(request.name());
 
         sizeSystems.save(sizeSystem);
 
-        var requestedValues = request.size_values() == null
-                ? List.<SizeSystemCreateRequest.SizeValueInput>of()
-                : request.size_values();
+        var requestedValues =
+                request.size_values() == null
+                        ? List.<SizeSystemCreateRequest.SizeValueInput>of()
+                        : request.size_values();
 
         validateCodes(
                 requestedValues.stream()
                         .map(SizeSystemCreateRequest.SizeValueInput::code)
-                        .toList()
-        );
+                        .toList());
 
         for (var item : requestedValues) {
             SizeValue value = new SizeValue();
@@ -100,21 +99,14 @@ public class SizeSystemAdminService {
                         actor,
                         AuditAction.SIZE_SYSTEM_CREATE,
                         AuditTargetType.SIZE_SYSTEM,
-                        sizeSystem.getSizeSystemId()
-                )
-        );
+                        sizeSystem.getSizeSystemId()));
 
-        return metaService.sizeSystemDto(
-                sizeSystem.getSizeSystemId()
-        );
+        return metaService.sizeSystemDto(sizeSystem.getSizeSystemId());
     }
 
     @PreAuthorize(WRITE)
     public SizeSystemDto updateSizeSystem(
-            Long actor,
-            Long sizeSystemId,
-            SizeSystemPatchRequest request
-    ) {
+            Long actor, Long sizeSystemId, SizeSystemPatchRequest request) {
         SizeSystem sizeSystem = references.sizeSystem(sizeSystemId);
 
         if (request.getCode() != null) {
@@ -128,10 +120,7 @@ public class SizeSystemAdminService {
         sizeSystems.save(sizeSystem);
 
         if (request.isSizeValuesPresent()) {
-            replaceSizeValues(
-                    sizeSystemId,
-                    request.getSizeValues()
-            );
+            replaceSizeValues(sizeSystemId, request.getSizeValues());
         }
 
         em.flush();
@@ -141,18 +130,13 @@ public class SizeSystemAdminService {
                         actor,
                         AuditAction.SIZE_SYSTEM_UPDATE,
                         AuditTargetType.SIZE_SYSTEM,
-                        sizeSystemId
-                )
-        );
+                        sizeSystemId));
 
         return metaService.sizeSystemDto(sizeSystemId);
     }
 
     @PreAuthorize(WRITE)
-    public void deleteSizeSystem(
-            Long actor,
-            Long sizeSystemId
-    ) {
+    public void deleteSizeSystem(Long actor, Long sizeSystemId) {
         SizeSystem sizeSystem = references.sizeSystem(sizeSystemId);
 
         if (products.existsBySizeSystemId(sizeSystemId)) {
@@ -160,9 +144,7 @@ public class SizeSystemAdminService {
         }
 
         var currentValues =
-                sizeValues.findAllBySizeSystemIdOrderBySortOrderAscSizeValueIdAsc(
-                        sizeSystemId
-                );
+                sizeValues.findAllBySizeSystemIdOrderBySortOrderAscSizeValueIdAsc(sizeSystemId);
 
         for (SizeValue value : currentValues) {
             if (variants.existsBySizeValueId(value.getSizeValueId())) {
@@ -180,55 +162,30 @@ public class SizeSystemAdminService {
                         actor,
                         AuditAction.SIZE_SYSTEM_DELETE,
                         AuditTargetType.SIZE_SYSTEM,
-                        sizeSystemId
-                )
-        );
+                        sizeSystemId));
     }
 
     private void replaceSizeValues(
-            Long sizeSystemId,
-            List<SizeSystemPatchRequest.SizeValueInput> requested
-    ) {
-        validateCodes(
-                requested.stream()
-                        .map(SizeSystemPatchRequest.SizeValueInput::code)
-                        .toList()
-        );
+            Long sizeSystemId, List<SizeSystemPatchRequest.SizeValueInput> requested) {
+        validateCodes(requested.stream().map(SizeSystemPatchRequest.SizeValueInput::code).toList());
 
         var currentValues =
-                sizeValues.findAllBySizeSystemIdOrderBySortOrderAscSizeValueIdAsc(
-                        sizeSystemId
-                );
+                sizeValues.findAllBySizeSystemIdOrderBySortOrderAscSizeValueIdAsc(sizeSystemId);
 
         var valuesById = indexById(currentValues);
         var keptIds = new HashSet<Long>();
 
         for (var item : requested) {
-            upsertRequestedValue(
-                    sizeSystemId,
-                    item,
-                    valuesById,
-                    keptIds
-            );
+            upsertRequestedValue(sizeSystemId, item, valuesById, keptIds);
         }
 
-        deleteRemovedValues(
-                currentValues,
-                keptIds
-        );
+        deleteRemovedValues(currentValues, keptIds);
     }
 
-    private Map<Long, SizeValue> indexById(
-            List<SizeValue> values
-    ) {
+    private Map<Long, SizeValue> indexById(List<SizeValue> values) {
         var result = new HashMap<Long, SizeValue>();
 
-        values.forEach(value ->
-                result.put(
-                        value.getSizeValueId(),
-                        value
-                )
-        );
+        values.forEach(value -> result.put(value.getSizeValueId(), value));
 
         return result;
     }
@@ -237,13 +194,9 @@ public class SizeSystemAdminService {
             Long sizeSystemId,
             SizeSystemPatchRequest.SizeValueInput item,
             Map<Long, SizeValue> valuesById,
-            Set<Long> keptIds
-    ) {
+            Set<Long> keptIds) {
         if (item.size_value_id() == null) {
-            createSizeValue(
-                    sizeSystemId,
-                    item
-            );
+            createSizeValue(sizeSystemId, item);
             return;
         }
 
@@ -259,23 +212,14 @@ public class SizeSystemAdminService {
             notFound();
         }
 
-        requireMeaningChangeAllowed(
-                value,
-                item
-        );
+        requireMeaningChangeAllowed(value, item);
 
-        applySizeValuePatch(
-                value,
-                item
-        );
+        applySizeValuePatch(value, item);
 
         sizeValues.save(value);
     }
 
-    private void createSizeValue(
-            Long sizeSystemId,
-            SizeSystemPatchRequest.SizeValueInput item
-    ) {
+    private void createSizeValue(Long sizeSystemId, SizeSystemPatchRequest.SizeValueInput item) {
         SizeValue value = new SizeValue();
         value.setSizeSystemId(sizeSystemId);
         value.setCode(item.code());
@@ -286,32 +230,23 @@ public class SizeSystemAdminService {
     }
 
     private void requireMeaningChangeAllowed(
-            SizeValue value,
-            SizeSystemPatchRequest.SizeValueInput item
-    ) {
+            SizeValue value, SizeSystemPatchRequest.SizeValueInput item) {
         boolean meaningChanges =
                 !value.getCode().equals(item.code())
-                || !value.getDisplayName().equals(item.display_name());
+                        || !value.getDisplayName().equals(item.display_name());
 
-        if (meaningChanges
-                && variants.existsBySizeValueId(value.getSizeValueId())) {
+        if (meaningChanges && variants.existsBySizeValueId(value.getSizeValueId())) {
             conflict();
         }
     }
 
-    private void applySizeValuePatch(
-            SizeValue value,
-            SizeSystemPatchRequest.SizeValueInput item
-    ) {
+    private void applySizeValuePatch(SizeValue value, SizeSystemPatchRequest.SizeValueInput item) {
         value.setCode(item.code());
         value.setDisplayName(item.display_name());
         value.setSortOrder(item.sort_order());
     }
 
-    private void deleteRemovedValues(
-            List<SizeValue> currentValues,
-            Set<Long> keptIds
-    ) {
+    private void deleteRemovedValues(List<SizeValue> currentValues, Set<Long> keptIds) {
         for (SizeValue value : currentValues) {
             if (keptIds.contains(value.getSizeValueId())) {
                 continue;
@@ -329,9 +264,7 @@ public class SizeSystemAdminService {
         var normalizedCodes = new HashSet<String>();
 
         for (String code : codes) {
-            if (!normalizedCodes.add(
-                    code.toLowerCase(Locale.ROOT)
-            )) {
+            if (!normalizedCodes.add(code.toLowerCase(Locale.ROOT))) {
                 conflict();
             }
         }

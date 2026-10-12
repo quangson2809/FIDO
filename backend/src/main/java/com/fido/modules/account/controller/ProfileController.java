@@ -8,7 +8,9 @@ import com.fido.modules.account.dto.response.AddressDto;
 import com.fido.modules.account.dto.response.MeDto;
 import com.fido.modules.account.service.ProfileCommandService;
 import com.fido.modules.account.service.ProfileQueryService;
+
 import jakarta.validation.Valid;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -36,62 +38,34 @@ public class ProfileController {
 
     @GetMapping
     public ApiResponse<MeDto> me(@AuthenticationPrincipal Jwt jwt) {
-        return ApiResponse.of(
-                query.me(Long.valueOf(jwt.getSubject()))
-        );
+        return ApiResponse.of(query.me(Long.valueOf(jwt.getSubject())));
     }
 
     @PatchMapping
     public ApiResponse<AccountDto> update(
-            @AuthenticationPrincipal Jwt jwt,
-            @Valid @RequestBody ProfilePatch request
-    ) {
-        return ApiResponse.of(
-                service.update(
-                        Long.valueOf(jwt.getSubject()),
-                        request
-                )
-        );
+            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody ProfilePatch request) {
+        return ApiResponse.of(service.update(Long.valueOf(jwt.getSubject()), request));
     }
 
     @PostMapping("/addresses")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<AddressDto> add(
-            @AuthenticationPrincipal Jwt jwt,
-            @Valid @RequestBody AddressRequest request
-    ) {
-        return ApiResponse.of(
-                service.addAddress(
-                        Long.valueOf(jwt.getSubject()),
-                        request
-                )
-        );
+            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody AddressRequest request) {
+        return ApiResponse.of(service.addAddress(Long.valueOf(jwt.getSubject()), request));
     }
 
     @PatchMapping("/addresses/{addressId}")
     public ApiResponse<AddressDto> updateAddress(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long addressId,
-            @Valid @RequestBody AddressRequest request
-    ) {
+            @Valid @RequestBody AddressRequest request) {
         return ApiResponse.of(
-                service.updateAddress(
-                        Long.valueOf(jwt.getSubject()),
-                        addressId,
-                        request
-                )
-        );
+                service.updateAddress(Long.valueOf(jwt.getSubject()), addressId, request));
     }
 
     @DeleteMapping("/addresses/{addressId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(
-            @AuthenticationPrincipal Jwt jwt,
-            @PathVariable Long addressId
-    ) {
-        service.deleteAddress(
-                Long.valueOf(jwt.getSubject()),
-                addressId
-        );
+    public void delete(@AuthenticationPrincipal Jwt jwt, @PathVariable Long addressId) {
+        service.deleteAddress(Long.valueOf(jwt.getSubject()), addressId);
     }
 }

@@ -1,9 +1,28 @@
 import assert from 'node:assert/strict';
+import {
+  productSummaryMetadata,
+  productSummarySizes,
+} from '../src/features/catalog/model/productSummary';
+import { summaryMaterialCare, summarySizes } from '../src/features/catalog/api/summaryFields';
 import { LatestMutationQueue } from '../src/features/cart/model/LatestMutationQueue';
-import { buildMovedImageOrder, sortProductImages } from '../src/features/catalog/model/productImageOrder';
-import { canAccessAdminModule, canWriteAdminModule } from '../src/features/auth/session/adminAccessPolicy';
+import {
+  buildMovedImageOrder,
+  sortProductImages,
+} from '../src/features/catalog/model/productImageOrder';
+import { selectHomepageParentCategories } from '../src/features/catalog/model/categoryTree';
+import {
+  canAccessAdminModule,
+  canWriteAdminModule,
+} from '../src/features/auth/session/adminAccessPolicy';
 import { canPurchaseProductVariant } from '../src/features/catalog/model/purchaseAvailability';
 import { buildCheckoutQuoteKey } from '../src/features/orders/model/checkoutQuoteKey';
+import {
+  changeVoucherScope,
+  changeVoucherDiscountType,
+  voucherRequestFields,
+  voucherSubmission,
+} from '../src/features/promotion/model/voucherFormModel';
+import type { VoucherInput } from '../src/features/promotion/types';
 import { getVietnamMonthStart, getVietnamToday } from '../src/shared/time/vietnamCalendar';
 import { isAdminProfile, isSuperAdminProfile } from '../src/features/auth/session/sessionAccess';
 import {
@@ -16,11 +35,89 @@ import {
   resolveAdminRoute,
   toAdminChildPath,
 } from '../src/routes/paths';
-import {
-  setApiAccessToken,
-  subscribeToApiAccessToken,
-} from '../src/services/http/apiClient';
+import { setApiAccessToken, subscribeToApiAccessToken } from '../src/services/http/apiClient';
 import type { MeDto } from '../src/features/auth/types';
+
+const homepageCategoryFixture = [
+  { category_id: 1, parent_category_id: null, name: 'Root parent' },
+  { category_id: 2, parent_category_id: null, name: 'Root leaf' },
+  { category_id: 3, parent_category_id: 1, name: 'Nested parent' },
+  { category_id: 4, parent_category_id: 3, name: 'Nested leaf' },
+  { category_id: 5, parent_category_id: 999, name: 'Orphan parent' },
+  { category_id: 6, parent_category_id: 5, name: 'Orphan child' },
+];
+assert.deepEqual(
+  selectHomepageParentCategories(homepageCategoryFixture).map((category) => category.category_id),
+  [1],
+  'only explicit top-level categories with descendants own home showcases',
+);
+
+const numericSizes = [29, 30, 31].map((value, index) => ({
+  size_value_id: index + 1,
+  size_system_id: 1,
+  code: String(value),
+  display_name: String(value),
+  sort_order: index,
+}));
+assert.equal(productSummarySizes(numericSizes), 'Size 29 – 31');
+assert.equal(productSummarySizes([numericSizes[0], numericSizes[2]]), 'Size 29 · 31');
+assert.equal(productSummarySizes([numericSizes[0]]), 'Size 29');
+assert.equal(
+  productSummarySizes([
+    { ...numericSizes[0], code: 'Waist 29', display_name: 'Waist 29' },
+    numericSizes[1],
+  ]),
+  'Size Waist 29 · 30',
+);
+assert.equal(
+  productSummarySizes([
+    { ...numericSizes[0], code: 'M', display_name: 'Medium' },
+    { ...numericSizes[1], code: 'L', display_name: 'Large' },
+  ]),
+  'Size M · L',
+);
+assert.equal(
+  productSummarySizes([{ ...numericSizes[0], code: '', display_name: 'Medium' }]),
+  'Size Medium',
+);
+assert.equal(productSummarySizes([]), 'Chưa có size đang bán');
+assert.equal(productSummarySizes(null), 'Size: xem chi tiết');
+const summary = {
+  id: '1',
+  product_id: 1,
+  name: 'Managed product',
+  imageUrl: '',
+  base_price: 200000,
+  sale_status: 'ON_SALE' as const,
+  materialCare: 'Giặt mặt trái.',
+  brand: 'FIDO',
+  category: 'Quần',
+  sizes: numericSizes,
+};
+assert.deepEqual(productSummaryMetadata(summary), {
+  text: 'Giặt mặt trái.',
+  label: 'Chất liệu & chăm sóc: Giặt mặt trái.',
+});
+assert.deepEqual(productSummaryMetadata({ ...summary, materialCare: null }), {
+  text: 'Thương hiệu: FIDO',
+  label: 'Thương hiệu: FIDO',
+});
+assert.deepEqual(productSummaryMetadata({ ...summary, materialCare: ' ', brand: '' }), {
+  text: 'Danh mục: Quần',
+  label: 'Danh mục: Quần',
+});
+assert.equal(
+  productSummaryMetadata({ ...summary, materialCare: null, brand: '', category: '' }),
+  null,
+);
+assert.equal(summaryMaterialCare(undefined), null);
+assert.throws(() => summaryMaterialCare(12));
+assert.equal(summarySizes(undefined), null);
+assert.deepEqual(summarySizes(numericSizes), numericSizes);
+assert.deepEqual(summarySizes([]), []);
+assert.throws(() => summarySizes(null));
+assert.throws(() => summarySizes([{ ...numericSizes[0], sort_order: '0' }]));
+assert.throws(() => summarySizes([{ ...numericSizes[0], size_value_id: -1 }]));
 
 const profileWithRole = (code: string, permissionCodes: readonly string[] = []): MeDto => ({
   account: {
@@ -31,12 +128,14 @@ const profileWithRole = (code: string, permissionCodes: readonly string[] = []):
     updated_at: '2026-10-07T00:00:00Z',
   },
   addresses: [],
-  roles: [{
-    role_id: 1,
-    code,
-    name: code,
-    description: null,
-  }],
+  roles: [
+    {
+      role_id: 1,
+      code,
+      name: code,
+      description: null,
+    },
+  ],
   permissions: permissionCodes.map((permissionCode, index) => ({
     permission_id: index + 1,
     code: permissionCode,
@@ -51,18 +150,126 @@ assert.equal(isAdminProfile(null), false);
 assert.equal(isSuperAdminProfile(profileWithRole('SUPERADMIN')), true);
 assert.equal(isSuperAdminProfile(profileWithRole('ADMIN')), false);
 
+const voucherStaff = profileWithRole('ADMIN', ['VOUCHER_WRITE']);
+assert.equal(canAccessAdminModule('vouchers', voucherStaff, ['VOUCHER_WRITE']), true);
+assert.equal(canAccessAdminModule('products', voucherStaff, ['VOUCHER_WRITE']), false);
+const voucherFixture: VoucherInput = {
+  code: ' WELCOME10 ',
+  discount_type: 'FIXED_AMOUNT',
+  discount_value: 10000,
+  maximum_discount: 10,
+  minimum_amount: 400000,
+  scope: 'CATEGORY',
+  category_ids: [5, 8],
+  product_ids: [],
+  starts_at: '2026-10-09T00:00:00Z',
+  ends_at: '2026-10-12T00:00:00Z',
+  global_limit: 10,
+  customer_limit: 1,
+  enabled: true,
+};
+assert.deepEqual(
+  voucherSubmission(voucherFixture, false).category_ids,
+  [5, 8],
+  'do not replace real category IDs with labels',
+);
+assert.equal(
+  voucherSubmission(voucherFixture, false).maximum_discount,
+  null,
+  'fixed amount has no cap',
+);
+assert.equal(
+  voucherSubmission(voucherFixture, true).maximum_discount,
+  10,
+  'preserve immutable historical cap for used voucher',
+);
+const voucherServerDetail = {
+  ...voucherFixture,
+  voucher_id: 990001,
+  active_usage: 0,
+  ever_used: true,
+};
+const expectedVoucherFields = {
+  ...voucherFixture,
+  code: 'WELCOME10',
+  maximum_discount: null,
+};
+assert.deepEqual(
+  voucherRequestFields(voucherServerDetail),
+  voucherFixture,
+  'response-only metadata must not enter editing state',
+);
+assert.deepEqual(
+  voucherSubmission(voucherServerDetail, false),
+  expectedVoucherFields,
+  'submission must contain only request fields, even if input is a server detail',
+);
+assert.deepEqual(
+  voucherSubmission(voucherServerDetail, true),
+  {
+    ...voucherFixture,
+    code: 'WELCOME10',
+  },
+  'used voucher retains immutable policy without leaking response metadata',
+);
+assert.equal(
+  Object.keys(voucherSubmission(voucherServerDetail, true)).length,
+  Object.keys(voucherFixture).length,
+  'no additional property can leak from VoucherDetail to VoucherRequest',
+);
+const productScope = changeVoucherScope(voucherFixture, 'PRODUCT');
+assert.deepEqual(productScope.category_ids, []);
+assert.deepEqual(productScope.product_ids, []);
+assert.equal(productScope.scope, 'PRODUCT');
+assert.deepEqual(
+  voucherSubmission({ ...productScope, product_ids: [21, 22] }, false).product_ids,
+  [21, 22],
+);
+assert.deepEqual(
+  voucherSubmission({ ...productScope, product_ids: [21, 22] }, false).category_ids,
+  [],
+);
+const allScope = changeVoucherScope({ ...productScope, product_ids: [21] }, 'ALL');
+assert.deepEqual(voucherSubmission(allScope, false).product_ids, []);
+assert.deepEqual(voucherSubmission(allScope, false).category_ids, []);
+assert.equal(
+  changeVoucherDiscountType({ ...voucherFixture, discount_type: 'PERCENTAGE' }, 'FIXED_AMOUNT')
+    .maximum_discount,
+  null,
+);
+
 const catalogStaff = profileWithRole('ADMIN', ['CATALOG_READ', 'CATALOG_WRITE']);
-assert.equal(canAccessAdminModule('dashboard', catalogStaff, ['CATALOG_READ', 'CATALOG_WRITE']), true);
-assert.equal(canAccessAdminModule('products', catalogStaff, ['CATALOG_READ', 'CATALOG_WRITE']), true);
-assert.equal(canAccessAdminModule('inventory', catalogStaff, ['CATALOG_READ', 'CATALOG_WRITE']), false);
-assert.equal(canAccessAdminModule('reports', catalogStaff, ['CATALOG_READ', 'CATALOG_WRITE']), false);
+assert.equal(
+  canAccessAdminModule('dashboard', catalogStaff, ['CATALOG_READ', 'CATALOG_WRITE']),
+  true,
+);
+assert.equal(
+  canAccessAdminModule('products', catalogStaff, ['CATALOG_READ', 'CATALOG_WRITE']),
+  true,
+);
+assert.equal(
+  canAccessAdminModule('inventory', catalogStaff, ['CATALOG_READ', 'CATALOG_WRITE']),
+  false,
+);
+assert.equal(
+  canAccessAdminModule('reports', catalogStaff, ['CATALOG_READ', 'CATALOG_WRITE']),
+  false,
+);
 assert.equal(canAccessAdminModule('reports', profileWithRole('SUPERADMIN'), []), true);
 assert.equal(canAccessAdminModule('products', profileWithRole('CUSTOMER'), []), false);
 
 const catalogReadOnly = profileWithRole('ADMIN', ['CATALOG_READ']);
 assert.equal(canWriteAdminModule('products', catalogReadOnly, ['CATALOG_READ']), false);
-assert.equal(canWriteAdminModule('products', catalogStaff, ['CATALOG_READ', 'CATALOG_WRITE']), true);
-assert.equal(canWriteAdminModule('inventory', profileWithRole('ADMIN', ['INVENTORY_READ']), ['INVENTORY_READ']), false);
+assert.equal(
+  canWriteAdminModule('products', catalogStaff, ['CATALOG_READ', 'CATALOG_WRITE']),
+  true,
+);
+assert.equal(
+  canWriteAdminModule('inventory', profileWithRole('ADMIN', ['INVENTORY_READ']), [
+    'INVENTORY_READ',
+  ]),
+  false,
+);
 assert.equal(
   canWriteAdminModule(
     'inventory',
@@ -73,10 +280,22 @@ assert.equal(
 );
 assert.equal(canWriteAdminModule('content', profileWithRole('SUPERADMIN'), []), true);
 
-assert.equal(canPurchaseProductVariant('ON_SALE', { sale_status: 'ON_SALE', available_quantity: 2 }), true);
-assert.equal(canPurchaseProductVariant('STOPPED', { sale_status: 'ON_SALE', available_quantity: 2 }), false);
-assert.equal(canPurchaseProductVariant('ON_SALE', { sale_status: 'STOPPED', available_quantity: 2 }), false);
-assert.equal(canPurchaseProductVariant('ON_SALE', { sale_status: 'ON_SALE', available_quantity: 0 }), false);
+assert.equal(
+  canPurchaseProductVariant('ON_SALE', { sale_status: 'ON_SALE', available_quantity: 2 }),
+  true,
+);
+assert.equal(
+  canPurchaseProductVariant('STOPPED', { sale_status: 'ON_SALE', available_quantity: 2 }),
+  false,
+);
+assert.equal(
+  canPurchaseProductVariant('ON_SALE', { sale_status: 'STOPPED', available_quantity: 2 }),
+  false,
+);
+assert.equal(
+  canPurchaseProductVariant('ON_SALE', { sale_status: 'ON_SALE', available_quantity: 0 }),
+  false,
+);
 
 const checkoutRequest = {
   recipient_phone: '0900000000',
@@ -94,22 +313,16 @@ const vietnamBoundary = new Date('2026-10-07T17:30:00.000Z');
 assert.equal(getVietnamToday(vietnamBoundary), '2026-10-08');
 assert.equal(getVietnamMonthStart(vietnamBoundary), '2026-10-01');
 
-assert.deepEqual(
-  resolveAdminRoute('/admin/products/960003'),
-  {
-    menuKey: 'product-detail',
-    breadcrumb: 'Chi tiết sản phẩm',
-    productId: '960003',
-  },
-);
-assert.deepEqual(
-  resolveAdminRoute('/admin/orders/42'),
-  {
-    menuKey: 'order-detail',
-    breadcrumb: 'Chi tiết đơn hàng',
-    orderId: 42,
-  },
-);
+assert.deepEqual(resolveAdminRoute('/admin/products/960003'), {
+  menuKey: 'product-detail',
+  breadcrumb: 'Chi tiết sản phẩm',
+  productId: '960003',
+});
+assert.deepEqual(resolveAdminRoute('/admin/orders/42'), {
+  menuKey: 'order-detail',
+  breadcrumb: 'Chi tiết đơn hàng',
+  orderId: 42,
+});
 assert.equal(resolveAdminRoute('/admin/inventory/history').menuKey, 'history');
 assert.equal(productDetailPath('A/B'), '/products/A%2FB');
 assert.equal(orderDetailPath(42), '/orders/42');
@@ -124,7 +337,10 @@ const imageFixtures = [
   { image_id: 1, image_url: '1.jpg', alt_text: null, sort_order: 0 },
   { image_id: 2, image_url: '2.jpg', alt_text: null, sort_order: 1 },
 ];
-assert.deepEqual(sortProductImages(imageFixtures).map((image) => image.image_id), [1, 2, 3]);
+assert.deepEqual(
+  sortProductImages(imageFixtures).map((image) => image.image_id),
+  [1, 2, 3],
+);
 assert.deepEqual(buildMovedImageOrder(imageFixtures, 2, -1), [
   { image_id: 2, sort_order: 0 },
   { image_id: 1, sort_order: 1 },
@@ -202,10 +418,7 @@ invalidatedQueue.enqueue(
   },
 );
 invalidatedQueue.invalidate();
-await Promise.race([
-  invalidatedFinished,
-  new Promise<void>((resolve) => setTimeout(resolve, 20)),
-]);
+await Promise.race([invalidatedFinished, new Promise<void>((resolve) => setTimeout(resolve, 20))]);
 assert.deepEqual(
   invalidatedPublishedValues,
   [],
@@ -213,3 +426,239 @@ assert.deepEqual(
 );
 
 process.stdout.write('Frontend architecture smoke: PASS\n');
+
+const { formatVietnamDateTime } = await import('../src/shared/time/formatVietnamDateTime');
+assert.equal(
+  formatVietnamDateTime('2026-10-07T17:30:00'),
+  formatVietnamDateTime('2026-10-07T17:30:00Z'),
+  'backend UTC timestamps without offset must not use browser timezone',
+);
+assert.equal(formatVietnamDateTime('invalid'), '—');
+const { statusLabel } = await import('../src/shared/admin/statusLabels');
+assert.equal(statusLabel('PENDING'), 'Chờ xác nhận');
+assert.equal(statusLabel('REFUNDED'), 'Đã hoàn tiền');
+assert.equal(statusLabel('DRAFT'), 'Bản nháp');
+
+const { sameCheckoutQuote } = await import('../src/features/orders/model/sameCheckoutQuote');
+const confirmedQuote = {
+  items: [
+    {
+      variant_id: 1,
+      quantity: 2,
+      product_name: 'Áo',
+      size: 'M',
+      color: 'Đen',
+      unit_price: 100000,
+      line_total: 200000,
+      available_quantity: 10,
+    },
+  ],
+  subtotal: 200000,
+  discount: 0,
+  shipping_fee: 30000,
+  total: 230000,
+  voucher: null,
+};
+assert.equal(sameCheckoutQuote(confirmedQuote, structuredClone(confirmedQuote)), true);
+assert.equal(sameCheckoutQuote(confirmedQuote, { ...confirmedQuote, total: 240000 }), false);
+assert.equal(
+  sameCheckoutQuote(confirmedQuote, {
+    ...confirmedQuote,
+    items: [{ ...confirmedQuote.items[0], quantity: 3 }],
+  }),
+  false,
+);
+assert.equal(
+  sameCheckoutQuote(confirmedQuote, {
+    ...confirmedQuote,
+    items: [{ ...confirmedQuote.items[0], variant_id: 2 }],
+  }),
+  false,
+);
+assert.equal(
+  sameCheckoutQuote(confirmedQuote, {
+    ...confirmedQuote,
+    items: [{ ...confirmedQuote.items[0], available_quantity: 9 }],
+  }),
+  true,
+);
+
+const drainingQueue = new LatestMutationQueue<number>();
+let releasePending: () => void = () => {
+  throw new Error('Pending operation not initialized');
+};
+const pendingOperation = new Promise<void>((resolve) => {
+  releasePending = resolve;
+});
+const drainedValues: number[] = [];
+drainingQueue.enqueue(
+  async () => {
+    await pendingOperation;
+    return 1;
+  },
+  {
+    onLatestSuccess: (value) => drainedValues.push(value),
+    onLatestError: () => {
+      throw new Error('Unexpected failure');
+    },
+  },
+);
+let drained = false;
+const waitForDrain = drainingQueue.whenIdle().then(() => {
+  drained = true;
+});
+await Promise.resolve();
+assert.equal(drained, false, 'checkout must wait for pending cart mutations');
+releasePending();
+await waitForDrain;
+assert.deepEqual(drainedValues, [1]);
+assert.equal(drained, true);
+process.stdout.write('Checkout quote comparison and cart drain: PASS\n');
+
+assert.equal(canAccessAdminModule('reports', profileWithRole('ADMIN'), ['REPORT_READ']), true);
+assert.equal(canAccessAdminModule('reports', profileWithRole('ADMIN'), []), false);
+assert.equal(canAccessAdminModule('reports', profileWithRole('CUSTOMER'), ['REPORT_READ']), false);
+
+import {
+  readReportFilters,
+  orderDrilldown,
+  isCalendarDate,
+} from '../src/features/report/model/reportFilters';
+import { parseSales, parseOrders, parseProducts } from '../src/features/report/api/parseReport';
+assert.equal(isCalendarDate('2026-02-30'), false);
+assert.equal(readReportFilters(new URLSearchParams('from=bad&to=2026-10-10')).valid, false);
+assert.equal(readReportFilters(new URLSearchParams('from=2026-10-10&to=2026-10-01')).valid, false);
+assert.equal(readReportFilters(new URLSearchParams('granularity=YEAR')).valid, false);
+const drill = new URL(
+  orderDrilldown(
+    { from: '2026-10-01', to: '2026-10-10', granularity: 'WEEK' },
+    'PENDING',
+    '2026-09-28',
+  ),
+  'http://test',
+);
+assert.equal(drill.searchParams.get('created_from'), '2026-09-30T17:00:00Z');
+assert.equal(drill.searchParams.get('created_to'), '2026-10-04T16:59:59.999999Z');
+assert.equal(drill.searchParams.get('status'), 'PENDING');
+assert.throws(() =>
+  parseSales({
+    from: '2026-01-01',
+    to: '2026-01-01',
+    granularity: 'DAY',
+    timezone: 'UTC',
+    points: [],
+  }),
+);
+assert.throws(() =>
+  parseProducts({
+    from: '2026-01-01',
+    to: '2026-01-01',
+    items: [
+      {
+        product_id: 1,
+        product_name: 'Test',
+        thumbnail: null,
+        completed_units: 'bad',
+        returned_units: 0,
+        net_units: 0,
+      },
+    ],
+  }),
+);
+assert.throws(() =>
+  parseOrders({
+    from: '2026-01-01',
+    to: '2026-01-01',
+    granularity: 'DAY',
+    timezone: 'Asia/Ho_Chi_Minh',
+    points: [{ period_start: '2026-01-01', total_orders: 3, orders_by_status: {} }],
+  }),
+);
+
+import {
+  readCatalogQuery,
+  catalogQueryParams,
+  catalogUrlParams,
+} from '../src/features/catalog/model/catalogQuery';
+import { recipientErrors, quoteHasExpired } from '../src/features/orders/model/recipientValidation';
+import { getStorefrontErrorMessage } from '../src/services/http/storefrontError';
+import { ApiClientError } from '../src/services/http/apiError';
+assert.deepEqual(
+  readCatalogQuery(
+    new URLSearchParams('page=NaN&category_id=-1&brand_id=1.2&min_price=-2&max_price=bad'),
+  ),
+  { page: 1 },
+);
+assert.deepEqual(readCatalogQuery(new URLSearchParams('min_price=200&max_price=100')), { page: 1 });
+assert.deepEqual(
+  readCatalogQuery(new URLSearchParams('page=2147483648&category_id=2')),
+  { page: 1, category_id: 2 },
+  'page must fit the backend Integer contract',
+);
+assert.equal(
+  readCatalogQuery(new URLSearchParams('page=2147483647')).page,
+  2147483647,
+  'do not invent a smaller pagination limit',
+);
+const sharedCatalogQuery = readCatalogQuery(
+  new URLSearchParams('q=shirt&category_id=2&color_id=3&min_price=0&page=2'),
+);
+assert.equal(
+  catalogQueryParams(sharedCatalogQuery).toString(),
+  'q=shirt&category_id=2&color_id=3&min_price=0&page=2',
+);
+const scopedCatalogQuery = readCatalogQuery(
+  new URLSearchParams('q=shirt&category_id=999&brand_id=2&page=3'),
+  null,
+  4,
+);
+assert.deepEqual(
+  scopedCatalogQuery,
+  { page: 3, q: 'shirt', category_id: 4, brand_id: 2 },
+  'route category cannot be replaced by a URL category',
+);
+assert.equal(
+  catalogQueryParams(scopedCatalogQuery).get('category_id'),
+  '4',
+  'API still receives the route category',
+);
+assert.equal(
+  catalogUrlParams(scopedCatalogQuery, 4).toString(),
+  'q=shirt&brand_id=2&page=3',
+  'category URL preserves filters and pagination without duplicate scope',
+);
+assert.deepEqual(
+  recipientErrors({
+    recipient_phone: '+84 90-000-0000',
+    recipient_email: 'user@example.test',
+    recipient_address: 'Hà Nội',
+  }),
+  { phone: null, email: null, address: null },
+);
+assert.ok(
+  recipientErrors({ recipient_phone: 'bad', recipient_email: 'bad', recipient_address: ' ' }).phone,
+);
+assert.ok(
+  recipientErrors({ recipient_phone: '0900000000', recipient_email: null, recipient_address: ' ' })
+    .address,
+);
+assert.equal(
+  quoteHasExpired(undefined, 0),
+  false,
+  'absence of expiry retains the existing quote contract',
+);
+assert.equal(quoteHasExpired('invalid', 0), true, 'malformed expiry must not authorize submission');
+assert.equal(quoteHasExpired('2026-10-10T01:00:00Z', Date.parse('2026-10-10T01:00:00Z')), true);
+assert.equal(
+  getStorefrontErrorMessage(new ApiClientError('SQL private stack', 500), 'Thử lại.'),
+  'Thử lại.',
+);
+assert.match(
+  getStorefrontErrorMessage(new ApiClientError('Unauthorized', 401), 'Thử lại.'),
+  /đăng nhập/,
+);
+assert.match(
+  getStorefrontErrorMessage(new ApiClientError('Forbidden', 403), 'Thử lại.'),
+  /không có quyền/,
+);
+console.log('Storefront URL, recipient, expiry and safe error models: PASS');

@@ -8,16 +8,19 @@ import com.fido.modules.inventory.entity.GoodsReceipt;
 import com.fido.modules.inventory.mapper.InventoryMapper;
 import com.fido.modules.inventory.repository.GoodsReceiptItemRepository;
 import com.fido.modules.inventory.repository.GoodsReceiptRepository;
+
 import jakarta.persistence.criteria.Predicate;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Locale;
+
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Locale;
 
 @Service
 @Transactional(readOnly = true)
@@ -30,9 +33,7 @@ public class GoodsReceiptQueryService {
     private final GoodsReceiptItemRepository items;
 
     public GoodsReceiptQueryService(
-            GoodsReceiptRepository receipts,
-            GoodsReceiptItemRepository items
-    ) {
+            GoodsReceiptRepository receipts, GoodsReceiptItemRepository items) {
         this.receipts = receipts;
         this.items = items;
     }
@@ -46,72 +47,45 @@ public class GoodsReceiptQueryService {
             LocalDate dateFrom,
             LocalDate dateTo,
             Integer page,
-            Integer pageSize
-    ) {
+            Integer pageSize) {
         if (receiptStatus != null) {
             InventoryPolicy.requireReceiptStatus(receiptStatus);
         }
 
-        if (dateFrom != null
-                && dateTo != null
-                && dateFrom.isAfter(dateTo)) {
+        if (dateFrom != null && dateTo != null && dateFrom.isAfter(dateTo)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         }
 
         Pagination pagination = Pagination.of(page, pageSize);
 
-        var result = receipts.findAll(
-                receiptSpec(
-                        receiptCode,
-                        supplierId,
-                        receiptStatus,
-                        dateFrom,
-                        dateTo
-                ),
-                pagination.toPageable()
-        );
+        var result =
+                receipts.findAll(
+                        receiptSpec(receiptCode, supplierId, receiptStatus, dateFrom, dateTo),
+                        pagination.toPageable());
 
-        var data = result.getContent()
-                .stream()
-                .map(InventoryMapper::receiptSummary)
-                .toList();
+        var data = result.getContent().stream().map(InventoryMapper::receiptSummary).toList();
 
-        return ApiListResponse.of(
-                data,
-                pagination.meta(result.getTotalElements())
-        );
+        return ApiListResponse.of(data, pagination.meta(result.getTotalElements()));
     }
 
     @PreAuthorize(READ)
     @Transactional(readOnly = true)
     public GoodsReceiptDetailDto detail(Long receiptId) {
-        return detailInternal(
-                receipt(receiptId)
-        );
+        return detailInternal(receipt(receiptId));
     }
 
-    GoodsReceiptDetailDto detailInternal(
-            GoodsReceipt receipt
-    ) {
-        var receiptItems = items
-                .findAllByReceiptIdOrderByReceiptItemIdAsc(
-                        receipt.getReceiptId()
-                )
-                .stream()
-                .map(InventoryMapper::receiptItem)
-                .toList();
+    GoodsReceiptDetailDto detailInternal(GoodsReceipt receipt) {
+        var receiptItems =
+                items.findAllByReceiptIdOrderByReceiptItemIdAsc(receipt.getReceiptId()).stream()
+                        .map(InventoryMapper::receiptItem)
+                        .toList();
 
-        return InventoryMapper.receiptDetail(
-                receipt,
-                receiptItems
-        );
+        return InventoryMapper.receiptDetail(receipt, receiptItems);
     }
 
     private GoodsReceipt receipt(Long receiptId) {
         return receipts.findById(receiptId)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND)
-                );
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
     private Specification<GoodsReceipt> receiptSpec(
@@ -119,8 +93,7 @@ public class GoodsReceiptQueryService {
             Long supplierId,
             String receiptStatus,
             LocalDate dateFrom,
-            LocalDate dateTo
-    ) {
+            LocalDate dateTo) {
         return (root, query, cb) -> {
             var predicates = new ArrayList<Predicate>();
 
@@ -128,54 +101,26 @@ public class GoodsReceiptQueryService {
                 predicates.add(
                         cb.like(
                                 cb.lower(root.get("receiptCode")),
-                                "%"
-                                        + receiptCode.trim()
-                                                .toLowerCase(Locale.ROOT)
-                                        + "%"
-                        )
-                );
+                                "%" + receiptCode.trim().toLowerCase(Locale.ROOT) + "%"));
             }
 
             if (supplierId != null) {
-                predicates.add(
-                        cb.equal(
-                                root.get("supplierId"),
-                                supplierId
-                        )
-                );
+                predicates.add(cb.equal(root.get("supplierId"), supplierId));
             }
 
             if (receiptStatus != null) {
-                predicates.add(
-                        cb.equal(
-                                root.get("receiptStatus"),
-                                receiptStatus
-                        )
-                );
+                predicates.add(cb.equal(root.get("receiptStatus"), receiptStatus));
             }
 
             if (dateFrom != null) {
-                predicates.add(
-                        cb.greaterThanOrEqualTo(
-                                root.get("receiptDate"),
-                                dateFrom
-                        )
-                );
+                predicates.add(cb.greaterThanOrEqualTo(root.get("receiptDate"), dateFrom));
             }
 
             if (dateTo != null) {
-                predicates.add(
-                        cb.lessThanOrEqualTo(
-                                root.get("receiptDate"),
-                                dateTo
-                        )
-                );
+                predicates.add(cb.lessThanOrEqualTo(root.get("receiptDate"), dateTo));
             }
 
-            return cb.and(
-                    predicates.toArray(Predicate[]::new)
-            );
+            return cb.and(predicates.toArray(Predicate[]::new));
         };
     }
 }
-

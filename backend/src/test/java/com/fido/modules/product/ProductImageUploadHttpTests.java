@@ -1,20 +1,12 @@
 package com.fido.modules.product;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.fido.modules.product.service.ImageStorageGateway;
 import com.fido.modules.product.service.ProductImageStorageException;
-import java.io.ByteArrayOutputStream;
-import java.net.URI;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Deque;
-import java.util.List;
-import java.util.UUID;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,11 +17,21 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
+import java.net.URI;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Deque;
+import java.util.List;
+import java.util.UUID;
+
 @Import(ProductImageUploadHttpTests.StorageTestConfig.class)
 class ProductImageUploadHttpTests extends CatalogHttpSupport {
 
-    @Autowired
-    StubImageStorageGateway storage;
+    @Autowired StubImageStorageGateway storage;
 
     @BeforeEach
     void resetStorage() {
@@ -37,78 +39,47 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
     }
 
     @Test
-    void multipartUploadPersistsImagesInRequestOrderAndEstablishesCover()
-            throws Exception {
+    void multipartUploadPersistsImagesInRequestOrderAndEstablishesCover() throws Exception {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         var fixture = createCatalog(writer);
         clearImages(fixture.productId());
 
-        storage.succeed(
-                "https://storage.test/front.png",
-                "https://storage.test/back.png"
-        );
+        storage.succeed("https://storage.test/front.png", "https://storage.test/back.png");
 
-        var response = uploadImages(
-                fixture.productId(),
-                writer.token(),
-                List.of(
-                        imagePart("front.png"),
-                        imagePart("back.png")
-                )
-        );
+        var response =
+                uploadImages(
+                        fixture.productId(),
+                        writer.token(),
+                        List.of(imagePart("front.png"), imagePart("back.png")));
 
         assertEquals(201, response.status(), response.body());
         assertEquals(
-                List.of(
-                        "https://storage.test/front.png",
-                        "https://storage.test/back.png"
-                ),
-                responseImageUrls(response)
-        );
+                List.of("https://storage.test/front.png", "https://storage.test/back.png"),
+                responseImageUrls(response));
         assertEquals(List.of(0, 1), responseSortOrders(response));
         assertEquals(List.of("front.png", "back.png"), storage.uploadedFilenames());
         assertEquals(
-                List.of(
-                        "https://storage.test/front.png",
-                        "https://storage.test/back.png"
-                ),
-                storedImageUrls(fixture.productId())
-        );
+                List.of("https://storage.test/front.png", "https://storage.test/back.png"),
+                storedImageUrls(fixture.productId()));
 
-        var publicList = call(
-                "GET",
-                "/api/v1/catalog/products?q=FIDO",
-                null,
-                null
-        );
+        var publicList = call("GET", "/api/v1/catalog/products?q=FIDO", null, null);
         assertEquals(200, publicList.status(), publicList.body());
         assertEquals(
                 "https://storage.test/front.png",
-                publicList.data().get("data").get(0).get("thumbnail").asText()
-        );
+                publicList.data().get("data").get(0).get("thumbnail").asText());
 
-        var publicDetail = call(
-                "GET",
-                "/api/v1/catalog/products/" + fixture.productId(),
-                null,
-                null
-        );
+        var publicDetail =
+                call("GET", "/api/v1/catalog/products/" + fixture.productId(), null, null);
         assertEquals(200, publicDetail.status(), publicDetail.body());
         assertEquals(
                 "https://storage.test/front.png",
-                publicDetail.data().get("data").get("images").get(0)
-                        .get("image_url").asText()
-        );
+                publicDetail.data().get("data").get("images").get(0).get("image_url").asText());
         assertEquals(
-                0,
-                publicDetail.data().get("data").get("images").get(0)
-                        .get("sort_order").asInt()
-        );
+                0, publicDetail.data().get("data").get("images").get(0).get("sort_order").asInt());
     }
 
     @Test
-    void multipartUploadRequiresCatalogWriteBeforeCallingStorage()
-            throws Exception {
+    void multipartUploadRequiresCatalogWriteBeforeCallingStorage() throws Exception {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         Employee reader = employee(customRole(ensurePermission("CATALOG_READ")));
         var fixture = createCatalog(writer);
@@ -116,11 +87,9 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
 
         storage.succeed("https://storage.test/forbidden.png");
 
-        var response = uploadImages(
-                fixture.productId(),
-                reader.token(),
-                List.of(imagePart("forbidden.png"))
-        );
+        var response =
+                uploadImages(
+                        fixture.productId(), reader.token(), List.of(imagePart("forbidden.png")));
 
         assertEquals(403, response.status(), response.body());
         assertEquals(List.of(), storage.uploadedFilenames());
@@ -128,23 +97,20 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
     }
 
     @Test
-    void multipartUploadRejectsForgedMimeBeforeCallingStorage()
-            throws Exception {
+    void multipartUploadRejectsForgedMimeBeforeCallingStorage() throws Exception {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         var fixture = createCatalog(writer);
         int imagesBefore = imageCount(fixture.productId());
 
-        var response = uploadImages(
-                fixture.productId(),
-                writer.token(),
-                List.of(
-                        new UploadPart(
-                                "forged.png",
-                                "image/png",
-                                "not-an-image".getBytes(UTF_8)
-                        )
-                )
-        );
+        var response =
+                uploadImages(
+                        fixture.productId(),
+                        writer.token(),
+                        List.of(
+                                new UploadPart(
+                                        "forged.png",
+                                        "image/png",
+                                        "not-an-image".getBytes(UTF_8))));
 
         assertEquals(400, response.status(), response.body());
         assertEquals(List.of(), storage.uploadedFilenames());
@@ -152,23 +118,18 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
     }
 
     @Test
-    void multipartUploadRejectsUnsupportedFormatBeforeCallingStorage()
-            throws Exception {
+    void multipartUploadRejectsUnsupportedFormatBeforeCallingStorage() throws Exception {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         var fixture = createCatalog(writer);
         int imagesBefore = imageCount(fixture.productId());
 
-        var response = uploadImages(
-                fixture.productId(),
-                writer.token(),
-                List.of(
-                        new UploadPart(
-                                "animation.gif",
-                                "image/gif",
-                                "GIF89a".getBytes(UTF_8)
-                        )
-                )
-        );
+        var response =
+                uploadImages(
+                        fixture.productId(),
+                        writer.token(),
+                        List.of(
+                                new UploadPart(
+                                        "animation.gif", "image/gif", "GIF89a".getBytes(UTF_8))));
 
         assertEquals(400, response.status(), response.body());
         assertEquals(List.of(), storage.uploadedFilenames());
@@ -176,17 +137,16 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
     }
 
     @Test
-    void multipartUploadRejectsEmptyFileBeforeCallingStorage()
-            throws Exception {
+    void multipartUploadRejectsEmptyFileBeforeCallingStorage() throws Exception {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         var fixture = createCatalog(writer);
         int imagesBefore = imageCount(fixture.productId());
 
-        var response = uploadImages(
-                fixture.productId(),
-                writer.token(),
-                List.of(new UploadPart("empty.png", "image/png", new byte[0]))
-        );
+        var response =
+                uploadImages(
+                        fixture.productId(),
+                        writer.token(),
+                        List.of(new UploadPart("empty.png", "image/png", new byte[0])));
 
         assertEquals(400, response.status(), response.body());
         assertEquals(List.of(), storage.uploadedFilenames());
@@ -194,8 +154,7 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
     }
 
     @Test
-    void multipartLayerRejectsExcessiveFileCountBeforeCallingStorage()
-            throws Exception {
+    void multipartLayerRejectsExcessiveFileCountBeforeCallingStorage() throws Exception {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         var fixture = createCatalog(writer);
         int imagesBefore = imageCount(fixture.productId());
@@ -205,11 +164,7 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
             parts.add(imagePart("image-" + index + ".png"));
         }
 
-        var response = uploadImages(
-                fixture.productId(),
-                writer.token(),
-                List.copyOf(parts)
-        );
+        var response = uploadImages(fixture.productId(), writer.token(), List.copyOf(parts));
 
         assertEquals(413, response.status(), response.body());
         assertEquals(List.of(), storage.uploadedFilenames());
@@ -217,22 +172,15 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
     }
 
     @Test
-    void storageFailureReturnsGatewayErrorWithoutPersistingProductImage()
-            throws Exception {
+    void storageFailureReturnsGatewayErrorWithoutPersistingProductImage() throws Exception {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         var fixture = createCatalog(writer);
         clearImages(fixture.productId());
 
-        storage.fail(
-                HttpStatus.BAD_GATEWAY,
-                "Image storage request failed"
-        );
+        storage.fail(HttpStatus.BAD_GATEWAY, "Image storage request failed");
 
-        var response = uploadImages(
-                fixture.productId(),
-                writer.token(),
-                List.of(imagePart("failed.png"))
-        );
+        var response =
+                uploadImages(fixture.productId(), writer.token(), List.of(imagePart("failed.png")));
 
         assertEquals(502, response.status(), response.body());
         assertEquals(List.of("failed.png"), storage.uploadedFilenames());
@@ -247,8 +195,14 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
         List<String> before = storedImageUrls(productId);
         storage.succeedThenFail("https://storage.test/orphan.png", HttpStatus.BAD_GATEWAY);
 
-        Result response = uploadImages(productId, writer.token(), List.of(
-                imagePart("success.png"), imagePart("failure.png"), imagePart("not-attempted.png")));
+        Result response =
+                uploadImages(
+                        productId,
+                        writer.token(),
+                        List.of(
+                                imagePart("success.png"),
+                                imagePart("failure.png"),
+                                imagePart("not-attempted.png")));
 
         assertEquals(502, response.status(), response.body());
         assertEquals(List.of("success.png", "failure.png"), storage.uploadedFilenames());
@@ -262,7 +216,8 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
         List<String> before = storedImageUrls(productId);
         storage.fail(HttpStatus.GATEWAY_TIMEOUT, "Image storage request timed out");
 
-        Result response = uploadImages(productId, writer.token(), List.of(imagePart("timeout.png")));
+        Result response =
+                uploadImages(productId, writer.token(), List.of(imagePart("timeout.png")));
 
         assertEquals(504, response.status(), response.body());
         assertEquals(List.of("timeout.png"), storage.uploadedFilenames());
@@ -270,64 +225,54 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
     }
 
     @Test
-    void databaseFailureOnSecondInsertRollsBackAlreadyInsertedPrefix() throws Exception {
+    void invalidSecondProviderUrlRollsBackAlreadyInsertedPrefix() throws Exception {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         long productId = createCatalog(writer).productId();
         List<String> before = storedImageUrls(productId);
-        // The provider succeeded twice; the second URL exceeds the actual VARCHAR(1000) constraint.
-        storage.succeed("https://storage.test/valid.png", "https://storage.test/" + "x".repeat(1001));
+        // The second provider URL is rejected before it reaches VARCHAR(1000); the first insert
+        // must roll back.
+        storage.succeed(
+                "https://storage.test/valid.png", "https://storage.test/" + "x".repeat(1001));
 
-        Result response = uploadImages(productId, writer.token(),
-                List.of(imagePart("first.png"), imagePart("second.png")));
+        Result response =
+                uploadImages(
+                        productId,
+                        writer.token(),
+                        List.of(imagePart("first.png"), imagePart("second.png")));
 
-        assertEquals(409, response.status(), response.body());
+        assertEquals(502, response.status(), response.body());
         assertEquals(List.of("first.png", "second.png"), storage.uploadedFilenames());
         assertEquals(before, storedImageUrls(productId));
     }
 
-    private Result uploadImages(
-            long productId,
-            String token,
-            List<UploadPart> parts
-    ) throws Exception {
+    private Result uploadImages(long productId, String token, List<UploadPart> parts)
+            throws Exception {
         String boundary = "----FidoBoundary" + UUID.randomUUID();
         byte[] body = multipartBody(boundary, parts);
 
-        var request = HttpRequest.newBuilder(
-                        URI.create(
-                                "http://localhost:" + port
-                                        + "/api/v1/admin/products/"
-                                        + productId
-                                        + "/images"
-                        )
-                )
-                .header("Accept", "application/json")
-                .header("Authorization", "Bearer " + token)
-                .header(
-                        "Content-Type",
-                        "multipart/form-data; boundary=" + boundary
-                )
-                .POST(HttpRequest.BodyPublishers.ofByteArray(body))
-                .build();
+        var request =
+                HttpRequest.newBuilder(
+                                URI.create(
+                                        "http://localhost:"
+                                                + port
+                                                + "/api/v1/admin/products/"
+                                                + productId
+                                                + "/images"))
+                        .header("Accept", "application/json")
+                        .header("Authorization", "Bearer " + token)
+                        .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                        .POST(HttpRequest.BodyPublishers.ofByteArray(body))
+                        .build();
 
-        var response = client.send(
-                request,
-                HttpResponse.BodyHandlers.ofString()
-        );
+        var response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
         return new Result(
                 response.statusCode(),
-                response.body().isBlank()
-                        ? null
-                        : json.readTree(response.body()),
-                response.body()
-        );
+                response.body().isBlank() ? null : json.readTree(response.body()),
+                response.body());
     }
 
-    private byte[] multipartBody(
-            String boundary,
-            List<UploadPart> parts
-    ) {
+    private byte[] multipartBody(String boundary, List<UploadPart> parts) {
         var output = new ByteArrayOutputStream();
 
         for (UploadPart part : parts) {
@@ -336,8 +281,7 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
                     output,
                     "Content-Disposition: form-data; name=\"images\"; filename=\""
                             + part.filename()
-                            + "\"\r\n"
-            );
+                            + "\"\r\n");
             write(output, "Content-Type: " + part.contentType() + "\r\n\r\n");
             output.writeBytes(part.content());
             write(output, "\r\n");
@@ -352,43 +296,20 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
     }
 
     private UploadPart imagePart(String filename) {
-        return new UploadPart(
-                filename,
-                "image/png",
-                pngBytes()
-        );
+        return new UploadPart(filename, "image/png", pngBytes());
     }
 
     private byte[] pngBytes() {
-        return new byte[]{
-                (byte) 0x89,
-                0x50,
-                0x4E,
-                0x47,
-                0x0D,
-                0x0A,
-                0x1A,
-                0x0A,
-                0,
-                0,
-                0,
-                0
-        };
+        return new byte[] {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0};
     }
 
     private void clearImages(long productId) {
-        db.update(
-                "DELETE FROM product_images WHERE product_id=?",
-                productId
-        );
+        db.update("DELETE FROM product_images WHERE product_id=?", productId);
     }
 
     private int imageCount(long productId) {
         return db.queryForObject(
-                "SELECT COUNT(*) FROM product_images WHERE product_id=?",
-                Integer.class,
-                productId
-        );
+                "SELECT COUNT(*) FROM product_images WHERE product_id=?", Integer.class, productId);
     }
 
     private List<String> storedImageUrls(long productId) {
@@ -400,8 +321,7 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
                 ORDER BY sort_order
                 """,
                 (resultSet, rowNumber) -> resultSet.getString(1),
-                productId
-        );
+                productId);
     }
 
     private List<String> responseImageUrls(Result response) {
@@ -420,12 +340,7 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
         return List.copyOf(orders);
     }
 
-    private record UploadPart(
-            String filename,
-            String contentType,
-            byte[] content
-    ) {
-    }
+    private record UploadPart(String filename, String contentType, byte[] content) {}
 
     @TestConfiguration(proxyBeanMethods = false)
     static class StorageTestConfig {
@@ -476,9 +391,7 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
                 throw failure;
             }
             if (urls.isEmpty()) {
-                throw new IllegalStateException(
-                        "No test image URL configured for upload"
-                );
+                throw new IllegalStateException("No test image URL configured for upload");
             }
 
             return new UploadedImage(urls.removeFirst());

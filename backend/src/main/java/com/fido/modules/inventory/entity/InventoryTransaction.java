@@ -1,12 +1,15 @@
 package com.fido.modules.inventory.entity;
 
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
 import org.hibernate.annotations.Immutable;
+
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "inventory_transactions")
@@ -42,7 +45,11 @@ public class InventoryTransaction {
     @Column(name = "reason", nullable = true, length = 500, updatable = false)
     private String reason;
 
-    @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP(6)", updatable = false)
+    @Column(
+            name = "created_at",
+            nullable = false,
+            columnDefinition = "TIMESTAMP(6)",
+            updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

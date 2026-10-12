@@ -1,12 +1,15 @@
 package com.fido.modules.product.entity;
 
 import jakarta.persistence.*;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "size_systems", uniqueConstraints = {@UniqueConstraint(columnNames = {"code"})})
+@Table(
+        name = "size_systems",
+        uniqueConstraints = {@UniqueConstraint(columnNames = {"code"})})
 @Getter
 @Setter
 @NoArgsConstructor

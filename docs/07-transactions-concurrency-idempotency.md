@@ -33,8 +33,8 @@ Implementation technique (pessimistic lock vs conditional update) may follow the
 ## 4. GoodsReceipt confirm
 
 1. Require DRAFT.
-2. Conditional DRAFT -> CONFIRMED update; if no row changes, no stock increment.
-3. Upsert/increment each Variant inventory.
+2. Lock the GoodsReceipt row and apply the guarded DRAFT -> CONFIRMED transition; an already-CONFIRMED retry applies no stock increment.
+3. Increment each existing Variant inventory in ascending variant_id order.
 4. Create `RECEIPT_IN` ledger rows linked to GoodsReceipt.
 5. Set `confirmed_by`, `confirmed_at` and audit in same transaction.
 6. Do not mutate confirmed item quantities afterward.

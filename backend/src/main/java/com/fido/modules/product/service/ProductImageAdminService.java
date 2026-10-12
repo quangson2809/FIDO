@@ -8,6 +8,13 @@ import com.fido.modules.product.dto.request.ProductImageReorderRequest;
 import com.fido.modules.product.dto.response.AdminProductDetailDto;
 import com.fido.modules.product.entity.ProductImage;
 import com.fido.modules.product.repository.ProductImageRepository;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -15,11 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @Transactional
@@ -37,8 +39,7 @@ public class ProductImageAdminService {
             ProductImageRepository images,
             CatalogReferenceService references,
             AdminCatalogQueryService query,
-            AuditService audit
-    ) {
+            AuditService audit) {
         this.images = images;
         this.references = references;
         this.query = query;
@@ -47,17 +48,17 @@ public class ProductImageAdminService {
 
     @PreAuthorize(WRITE)
     public AdminProductDetailDto appendUploadedImages(
-            Long actor,
-            Long productId,
-            List<ImageStorageGateway.UploadedImage> uploaded
-    ) {
+            Long actor, Long productId, List<ImageStorageGateway.UploadedImage> uploaded) {
         references.productForUpdate(productId);
 
-        List<ProductImage> current =
-                images.findAllByProductIdOrderBySortOrderAsc(productId);
+        List<ProductImage> current = images.findAllByProductIdOrderBySortOrderAsc(productId);
         int nextSortOrder = current.size();
 
         for (ImageStorageGateway.UploadedImage stored : uploaded) {
+            if (!ProductImageUrlPolicy.isValid(stored.url())) {
+                throw new ProductImageStorageException(
+                        HttpStatus.BAD_GATEWAY, "Image storage returned an invalid HTTPS URL");
+            }
             ProductImage image = new ProductImage();
             image.setProductId(productId);
             image.setImageUrl(stored.url());
@@ -72,27 +73,24 @@ public class ProductImageAdminService {
     }
 
     @PreAuthorize(WRITE)
-    public void removeImage(
-            Long actor,
-            Long productId,
-            Long imageId
-    ) {
+    public void removeImage(Long actor, Long productId, Long imageId) {
         references.productForUpdate(productId);
 
-        List<ProductImage> current =
-                images.findAllByProductIdForUpdate(productId);
+        List<ProductImage> current = images.findAllByProductIdForUpdate(productId);
 
-        ProductImage removed = current.stream()
-                .filter(image -> Objects.equals(image.getImageId(), imageId))
-                .findFirst()
-                .orElseThrow(ProductImageAdminService::notFound);
+        ProductImage removed =
+                current.stream()
+                        .filter(image -> Objects.equals(image.getImageId(), imageId))
+                        .findFirst()
+                        .orElseThrow(ProductImageAdminService::notFound);
 
         images.delete(removed);
         images.flush();
 
-        List<ProductImage> remaining = current.stream()
-                .filter(image -> !Objects.equals(image.getImageId(), imageId))
-                .toList();
+        List<ProductImage> remaining =
+                current.stream()
+                        .filter(image -> !Objects.equals(image.getImageId(), imageId))
+                        .toList();
 
         normalizeSortOrder(remaining);
         recordProductUpdate(actor, productId);
@@ -100,23 +98,13 @@ public class ProductImageAdminService {
 
     @PreAuthorize(WRITE)
     public AdminProductDetailDto reorderImages(
-            Long actor,
-            Long productId,
-            ProductImageReorderRequest request
-    ) {
+            Long actor, Long productId, ProductImageReorderRequest request) {
         references.productForUpdate(productId);
 
-        List<ProductImage> current =
-                images.findAllByProductIdForUpdate(productId);
+        List<ProductImage> current = images.findAllByProductIdForUpdate(productId);
 
-        Map<Long, Integer> requestedOrders = validateRequestedOrders(
-                current,
-                request.images()
-        );
-        List<ProductImage> finalOrder = resolveFinalOrder(
-                current,
-                requestedOrders
-        );
+        Map<Long, Integer> requestedOrders = validateRequestedOrders(current, request.images());
+        List<ProductImage> finalOrder = resolveFinalOrder(current, requestedOrders);
 
         normalizeSortOrder(finalOrder);
         recordProductUpdate(actor, productId);
@@ -125,12 +113,11 @@ public class ProductImageAdminService {
     }
 
     private Map<Long, Integer> validateRequestedOrders(
-            List<ProductImage> current,
-            List<ProductImageReorderRequest.ImageOrder> requested
-    ) {
-        Set<Long> currentIds = current.stream()
-                .map(ProductImage::getImageId)
-                .collect(java.util.stream.Collectors.toSet());
+            List<ProductImage> current, List<ProductImageReorderRequest.ImageOrder> requested) {
+        Set<Long> currentIds =
+                current.stream()
+                        .map(ProductImage::getImageId)
+                        .collect(java.util.stream.Collectors.toSet());
 
         Map<Long, Integer> orders = new HashMap<>();
         Set<Integer> requestedSortOrders = new HashSet<>();
@@ -150,16 +137,11 @@ public class ProductImageAdminService {
     }
 
     private List<ProductImage> resolveFinalOrder(
-            List<ProductImage> current,
-            Map<Long, Integer> requestedOrders
-    ) {
+            List<ProductImage> current, Map<Long, Integer> requestedOrders) {
         Set<Integer> finalSortOrders = new HashSet<>();
 
         for (ProductImage image : current) {
-            int sortOrder = requestedOrders.getOrDefault(
-                    image.getImageId(),
-                    image.getSortOrder()
-            );
+            int sortOrder = requestedOrders.getOrDefault(image.getImageId(), image.getSortOrder());
             if (!finalSortOrders.add(sortOrder)) {
                 conflict();
             }
@@ -172,12 +154,11 @@ public class ProductImageAdminService {
         }
 
         return current.stream()
-                .sorted(Comparator.comparingInt(image ->
-                        requestedOrders.getOrDefault(
-                                image.getImageId(),
-                                image.getSortOrder()
-                        )
-                ))
+                .sorted(
+                        Comparator.comparingInt(
+                                image ->
+                                        requestedOrders.getOrDefault(
+                                                image.getImageId(), image.getSortOrder())))
                 .toList();
     }
 
@@ -185,10 +166,7 @@ public class ProductImageAdminService {
         boolean alreadyNormalized = true;
 
         for (int index = 0; index < orderedImages.size(); index++) {
-            if (!Objects.equals(
-                    orderedImages.get(index).getSortOrder(),
-                    index
-            )) {
+            if (!Objects.equals(orderedImages.get(index).getSortOrder(), index)) {
                 alreadyNormalized = false;
                 break;
             }
@@ -198,11 +176,13 @@ public class ProductImageAdminService {
             return;
         }
 
-        int temporaryBase = orderedImages.stream()
-                .map(ProductImage::getSortOrder)
-                .filter(Objects::nonNull)
-                .max(Integer::compareTo)
-                .orElse(-1) + 1;
+        int temporaryBase =
+                orderedImages.stream()
+                                .map(ProductImage::getSortOrder)
+                                .filter(Objects::nonNull)
+                                .max(Integer::compareTo)
+                                .orElse(-1)
+                        + 1;
 
         for (int index = 0; index < orderedImages.size(); index++) {
             orderedImages.get(index).setSortOrder(temporaryBase + index);
@@ -218,12 +198,7 @@ public class ProductImageAdminService {
     private void recordProductUpdate(Long actor, Long productId) {
         audit.record(
                 AuditEvent.of(
-                        actor,
-                        AuditAction.PRODUCT_UPDATE,
-                        AuditTargetType.PRODUCT,
-                        productId
-                )
-        );
+                        actor, AuditAction.PRODUCT_UPDATE, AuditTargetType.PRODUCT, productId));
     }
 
     private static ResponseStatusException notFound() {

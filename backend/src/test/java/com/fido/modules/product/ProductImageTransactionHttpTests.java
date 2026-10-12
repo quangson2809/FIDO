@@ -1,7 +1,13 @@
 package com.fido.modules.product;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
@@ -9,16 +15,11 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Import;
 
 @Import(ProductImageUploadHttpTests.StorageTestConfig.class)
 class ProductImageTransactionHttpTests extends CatalogHttpSupport {
 
-    @Autowired
-    ProductImageUploadHttpTests.StubImageStorageGateway storage;
+    @Autowired ProductImageUploadHttpTests.StubImageStorageGateway storage;
 
     @BeforeEach
     void resetStorage() {
@@ -26,25 +27,17 @@ class ProductImageTransactionHttpTests extends CatalogHttpSupport {
     }
 
     @Test
-    void databaseConflictRollsBackNewImageRowAfterProviderUpload()
-            throws Exception {
+    void databaseConflictRollsBackNewImageRowAfterProviderUpload() throws Exception {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         var fixture = createCatalog(writer);
 
-        db.update(
-                "DELETE FROM product_images WHERE product_id=?",
-                fixture.productId()
-        );
+        db.update("DELETE FROM product_images WHERE product_id=?", fixture.productId());
         insertImage(fixture.productId(), "https://cdn.test/existing-cover.jpg", 0);
         insertImage(fixture.productId(), "https://cdn.test/existing-gap.jpg", 2);
 
         storage.succeed("https://cdn.test/provider-upload.jpg");
 
-        Result response = uploadImage(
-                fixture.productId(),
-                writer.token(),
-                "new.png"
-        );
+        Result response = uploadImage(fixture.productId(), writer.token(), "new.png");
 
         assertEquals(409, response.status(), response.body());
         assertEquals(List.of("new.png"), storage.uploadedFilenames());
@@ -53,9 +46,7 @@ class ProductImageTransactionHttpTests extends CatalogHttpSupport {
                 db.queryForObject(
                         "SELECT COUNT(*) FROM product_images WHERE product_id=?",
                         Integer.class,
-                        fixture.productId()
-                )
-        );
+                        fixture.productId()));
         assertEquals(
                 0,
                 db.queryForObject(
@@ -66,9 +57,7 @@ class ProductImageTransactionHttpTests extends CatalogHttpSupport {
                         """,
                         Integer.class,
                         fixture.productId(),
-                        "https://cdn.test/provider-upload.jpg"
-                )
-        );
+                        "https://cdn.test/provider-upload.jpg"));
     }
 
     private void insertImage(long productId, String url, int sortOrder) {
@@ -79,47 +68,33 @@ class ProductImageTransactionHttpTests extends CatalogHttpSupport {
                 """,
                 productId,
                 url,
-                sortOrder
-        );
+                sortOrder);
     }
 
-    private Result uploadImage(
-            long productId,
-            String token,
-            String filename
-    ) throws Exception {
+    private Result uploadImage(long productId, String token, String filename) throws Exception {
         String boundary = "----FidoBoundary" + UUID.randomUUID();
         byte[] body = multipartBody(boundary, filename);
 
-        var request = HttpRequest.newBuilder(
-                        URI.create(
-                                "http://localhost:" + port
-                                        + "/api/v1/admin/products/"
-                                        + productId
-                                        + "/images"
-                        )
-                )
-                .header("Accept", "application/json")
-                .header("Authorization", "Bearer " + token)
-                .header(
-                        "Content-Type",
-                        "multipart/form-data; boundary=" + boundary
-                )
-                .POST(HttpRequest.BodyPublishers.ofByteArray(body))
-                .build();
+        var request =
+                HttpRequest.newBuilder(
+                                URI.create(
+                                        "http://localhost:"
+                                                + port
+                                                + "/api/v1/admin/products/"
+                                                + productId
+                                                + "/images"))
+                        .header("Accept", "application/json")
+                        .header("Authorization", "Bearer " + token)
+                        .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                        .POST(HttpRequest.BodyPublishers.ofByteArray(body))
+                        .build();
 
-        var response = client.send(
-                request,
-                HttpResponse.BodyHandlers.ofString()
-        );
+        var response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
         return new Result(
                 response.statusCode(),
-                response.body().isBlank()
-                        ? null
-                        : json.readTree(response.body()),
-                response.body()
-        );
+                response.body().isBlank() ? null : json.readTree(response.body()),
+                response.body());
     }
 
     private byte[] multipartBody(String boundary, String filename) {
@@ -129,8 +104,7 @@ class ProductImageTransactionHttpTests extends CatalogHttpSupport {
                 output,
                 "Content-Disposition: form-data; name=\"images\"; filename=\""
                         + filename
-                        + "\"\r\n"
-        );
+                        + "\"\r\n");
         write(output, "Content-Type: image/png\r\n\r\n");
         output.writeBytes(pngBytes());
         write(output, "\r\n--" + boundary + "--\r\n");
@@ -142,19 +116,6 @@ class ProductImageTransactionHttpTests extends CatalogHttpSupport {
     }
 
     private byte[] pngBytes() {
-        return new byte[]{
-                (byte) 0x89,
-                0x50,
-                0x4E,
-                0x47,
-                0x0D,
-                0x0A,
-                0x1A,
-                0x0A,
-                0,
-                0,
-                0,
-                0
-        };
+        return new byte[] {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0};
     }
 }

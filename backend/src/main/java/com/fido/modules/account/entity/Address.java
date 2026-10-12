@@ -1,11 +1,13 @@
 package com.fido.modules.account.entity;
 
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "addresses")
@@ -25,7 +27,11 @@ public class Address {
     @Column(name = "address_text", nullable = false, length = 500)
     private String addressText;
 
-    @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP(6)", updatable = false)
+    @Column(
+            name = "created_at",
+            nullable = false,
+            columnDefinition = "TIMESTAMP(6)",
+            updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

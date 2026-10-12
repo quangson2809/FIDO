@@ -21,14 +21,17 @@ import com.fido.modules.product.repository.CategoryRepository;
 import com.fido.modules.product.repository.ColorRepository;
 import com.fido.modules.product.repository.ProductRepository;
 import com.fido.modules.product.repository.ProductVariantRepository;
+
 import jakarta.persistence.EntityManager;
-import java.util.HashSet;
-import java.util.Objects;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.HashSet;
+import java.util.Objects;
 
 @Service
 @Transactional
@@ -54,8 +57,7 @@ public class CatalogMasterDataService {
             ProductVariantRepository variants,
             CatalogReferenceService references,
             AuditService audit,
-            EntityManager em
-    ) {
+            EntityManager em) {
         this.categories = categories;
         this.brands = brands;
         this.colors = colors;
@@ -67,19 +69,11 @@ public class CatalogMasterDataService {
     }
 
     @PreAuthorize(WRITE)
-    public CategoryDto createCategory(
-            Long actor,
-            CategoryCreateRequest request
-    ) {
-        validateParent(
-                null,
-                request.parent_category_id()
-        );
+    public CategoryDto createCategory(Long actor, CategoryCreateRequest request) {
+        validateParent(null, request.parent_category_id());
 
         Category category = new Category();
-        category.setParentCategoryId(
-                request.parent_category_id()
-        );
+        category.setParentCategoryId(request.parent_category_id());
         category.setName(request.name());
 
         categories.save(category);
@@ -90,30 +84,19 @@ public class CatalogMasterDataService {
                         actor,
                         AuditAction.CATEGORY_CREATE,
                         AuditTargetType.CATEGORY,
-                        category.getCategoryId()
-                )
-        );
+                        category.getCategoryId()));
 
         return CatalogMapper.category(category);
     }
 
     @PreAuthorize(WRITE)
-    public CategoryDto updateCategory(
-            Long actor,
-            Long categoryId,
-            CategoryPatchRequest request
-    ) {
+    public CategoryDto updateCategory(Long actor, Long categoryId, CategoryPatchRequest request) {
         Category category = references.category(categoryId);
 
         if (request.isParentPresent()) {
-            validateParent(
-                    categoryId,
-                    request.getParentCategoryId()
-            );
+            validateParent(categoryId, request.getParentCategoryId());
 
-            category.setParentCategoryId(
-                    request.getParentCategoryId()
-            );
+            category.setParentCategoryId(request.getParentCategoryId());
         }
 
         if (request.getName() != null) {
@@ -125,21 +108,13 @@ public class CatalogMasterDataService {
 
         audit.record(
                 AuditEvent.of(
-                        actor,
-                        AuditAction.CATEGORY_UPDATE,
-                        AuditTargetType.CATEGORY,
-                        categoryId
-                )
-        );
+                        actor, AuditAction.CATEGORY_UPDATE, AuditTargetType.CATEGORY, categoryId));
 
         return CatalogMapper.category(category);
     }
 
     @PreAuthorize(WRITE)
-    public void deleteCategory(
-            Long actor,
-            Long categoryId
-    ) {
+    public void deleteCategory(Long actor, Long categoryId) {
         Category category = references.category(categoryId);
 
         boolean hasChildren = categories.existsByParentCategoryId(categoryId);
@@ -154,19 +129,11 @@ public class CatalogMasterDataService {
 
         audit.record(
                 AuditEvent.of(
-                        actor,
-                        AuditAction.CATEGORY_DELETE,
-                        AuditTargetType.CATEGORY,
-                        categoryId
-                )
-        );
+                        actor, AuditAction.CATEGORY_DELETE, AuditTargetType.CATEGORY, categoryId));
     }
 
     @PreAuthorize(WRITE)
-    public BrandDto createBrand(
-            Long actor,
-            BrandRequest request
-    ) {
+    public BrandDto createBrand(Long actor, BrandRequest request) {
         Brand brand = new Brand();
         brand.setName(request.name());
 
@@ -178,19 +145,13 @@ public class CatalogMasterDataService {
                         actor,
                         AuditAction.BRAND_CREATE,
                         AuditTargetType.BRAND,
-                        brand.getBrandId()
-                )
-        );
+                        brand.getBrandId()));
 
         return CatalogMapper.brand(brand);
     }
 
     @PreAuthorize(WRITE)
-    public BrandDto updateBrand(
-            Long actor,
-            Long brandId,
-            BrandRequest request
-    ) {
+    public BrandDto updateBrand(Long actor, Long brandId, BrandRequest request) {
         Brand brand = references.brand(brandId);
         brand.setName(request.name());
 
@@ -198,22 +159,13 @@ public class CatalogMasterDataService {
         em.flush();
 
         audit.record(
-                AuditEvent.of(
-                        actor,
-                        AuditAction.BRAND_UPDATE,
-                        AuditTargetType.BRAND,
-                        brandId
-                )
-        );
+                AuditEvent.of(actor, AuditAction.BRAND_UPDATE, AuditTargetType.BRAND, brandId));
 
         return CatalogMapper.brand(brand);
     }
 
     @PreAuthorize(WRITE)
-    public void deleteBrand(
-            Long actor,
-            Long brandId
-    ) {
+    public void deleteBrand(Long actor, Long brandId) {
         Brand brand = references.brand(brandId);
 
         if (products.existsByBrandId(brandId)) {
@@ -224,20 +176,11 @@ public class CatalogMasterDataService {
         em.flush();
 
         audit.record(
-                AuditEvent.of(
-                        actor,
-                        AuditAction.BRAND_DELETE,
-                        AuditTargetType.BRAND,
-                        brandId
-                )
-        );
+                AuditEvent.of(actor, AuditAction.BRAND_DELETE, AuditTargetType.BRAND, brandId));
     }
 
     @PreAuthorize(WRITE)
-    public ColorDto createColor(
-            Long actor,
-            ColorCreateRequest request
-    ) {
+    public ColorDto createColor(Long actor, ColorCreateRequest request) {
         Color color = new Color();
         color.setCode(request.code());
         color.setName(request.name());
@@ -250,29 +193,21 @@ public class CatalogMasterDataService {
                         actor,
                         AuditAction.COLOR_CREATE,
                         AuditTargetType.COLOR,
-                        color.getColorId()
-                )
-        );
+                        color.getColorId()));
 
         return CatalogMapper.color(color);
     }
 
     @PreAuthorize(WRITE)
-    public ColorDto updateColor(
-            Long actor,
-            Long colorId,
-            ColorPatchRequest request
-    ) {
+    public ColorDto updateColor(Long actor, Long colorId, ColorPatchRequest request) {
         Color color = references.color(colorId);
 
         boolean meaningChanges =
-                (request.getCode() != null
-                        && !request.getCode().equals(color.getCode()))
-                || (request.getName() != null
-                        && !request.getName().equals(color.getName()));
+                (request.getCode() != null && !request.getCode().equals(color.getCode()))
+                        || (request.getName() != null
+                                && !request.getName().equals(color.getName()));
 
-        if (meaningChanges
-                && variants.existsByColorId(colorId)) {
+        if (meaningChanges && variants.existsByColorId(colorId)) {
             conflict();
         }
 
@@ -288,22 +223,13 @@ public class CatalogMasterDataService {
         em.flush();
 
         audit.record(
-                AuditEvent.of(
-                        actor,
-                        AuditAction.COLOR_UPDATE,
-                        AuditTargetType.COLOR,
-                        colorId
-                )
-        );
+                AuditEvent.of(actor, AuditAction.COLOR_UPDATE, AuditTargetType.COLOR, colorId));
 
         return CatalogMapper.color(color);
     }
 
     @PreAuthorize(WRITE)
-    public void deleteColor(
-            Long actor,
-            Long colorId
-    ) {
+    public void deleteColor(Long actor, Long colorId) {
         Color color = references.color(colorId);
 
         if (variants.existsByColorId(colorId)) {
@@ -314,19 +240,10 @@ public class CatalogMasterDataService {
         em.flush();
 
         audit.record(
-                AuditEvent.of(
-                        actor,
-                        AuditAction.COLOR_DELETE,
-                        AuditTargetType.COLOR,
-                        colorId
-                )
-        );
+                AuditEvent.of(actor, AuditAction.COLOR_DELETE, AuditTargetType.COLOR, colorId));
     }
 
-    private void validateParent(
-            Long categoryId,
-            Long parentId
-    ) {
+    private void validateParent(Long categoryId, Long parentId) {
         if (parentId == null) {
             return;
         }
@@ -345,13 +262,11 @@ public class CatalogMasterDataService {
         Long cursor = parent.getCategoryId();
 
         while (cursor != null) {
-            if (!seen.add(cursor)
-                    || Objects.equals(cursor, categoryId)) {
+            if (!seen.add(cursor) || Objects.equals(cursor, categoryId)) {
                 conflict();
             }
 
-            cursor = references.category(cursor)
-                    .getParentCategoryId();
+            cursor = references.category(cursor).getParentCategoryId();
         }
     }
 

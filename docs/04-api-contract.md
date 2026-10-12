@@ -174,7 +174,7 @@ Effective from Phase 10, Product creation and binary image upload are separate c
 - If `images` is omitted, the current Product image collection is unchanged.
 - If `images` is present, it replaces the complete collection.
 - `images: []` deletes all Product images.
-- Every item requires `image_url` and `sort_order`; `alt_text` is nullable/optional.
+- Every item requires `image_url` and `sort_order`; `alt_text` is nullable/optional. `image_url` must be a valid absolute HTTPS URI with a host, without userinfo or fragment; invalid URLs return 400. No provider-host restriction is assumed.
 - `sort_order` must be non-negative, unique within the Product and contiguous `0..n-1`; `sort_order = 0` is the cover.
 - Replacement validates the complete requested order before deleting the existing collection.
 
@@ -234,3 +234,45 @@ The latest API document includes #66–69:
 - DELETE `/api/v1/admin/permissions/{permissionId}`: only when no Role references the Permission
 
 Do not use the older 73-endpoint numbering as current baseline.
+
+### Approved Voucher V1 extension
+
+See `15-technical-decisions.md` (2026-10-09) for voucher management request fields,
+capabilities, persisted checkout quote IDs and compatibility semantics. Voucher
+management is now implemented rather than deferred. This extension preserves
+existing response envelopes and snake_case contracts.
+
+## Approved Dashboard Analytics extension — 2026-10-10
+
+These endpoints extend Report beyond the historic 77-route baseline. All use `{ "data": ... }` and require
+`ROLE_SUPERADMIN OR (ROLE_ADMIN AND PERMISSION_REPORT_READ)`. Overview retains all six fields and monetary semantics.
+
+| GET path under `/api/v1/admin/reports` | Query | Data |
+| --- | --- | --- |
+| `/sales-trend` | required ISO `from`, `to`; `granularity=DAY` (`DAY/WEEK/MONTH`) | from, to, granularity, timezone, points: period_start, completed_sales, returned_adjustment, net_sales |
+| `/orders-trend` | same date/granularity query | from, to, granularity, timezone, points: period_start, total_orders, orders_by_status (all 8 statuses) |
+| `/product-performance` | required ISO `from`, `to`; `limit=10` (1–100) | from, to, items: product_id, product_name, thumbnail (nullable), completed_units, returned_units, net_units |
+
+Dates are inclusive Vietnam calendar dates. Invalid/missing dates, reversed ranges, invalid granularity and out-of-range limit return 400.
+Week labels are Monday; month labels are day 1. A partial first bucket can have a canonical period_start before `from`,
+but its data is strictly restricted to the requested inclusive range. Empty intersecting periods are included as zero buckets.
+Orders use created_at and current status; sales/products use completed_at. Neither reconstructs state transition history.
+
+### Storefront audit refinement — category browsing (2026-10-10)
+
+API #11 reuses `category_id` for category navigation. A selected parent includes
+products assigned to any descendant category; a leaf still selects that leaf.
+An unknown category returns an empty paginated result. Existing response fields,
+sale-state/variant predicates, effective-price filtering and pagination remain
+unchanged. The frontend category route uses this existing endpoint and does not
+add a separate category API.
+
+
+### Product summary card read addendum — 2026-10-10
+
+API #11 adds nullable `material_care` and `sizes: SizeValueDto[]` using existing domain data.
+No new endpoint, schema, Admin response or filtering/pagination semantics are introduced.
+Material/care text is returned verbatim. Sizes are unique by identity across ON_SALE variants,
+sorted by managed sort order then identity; zero stock does not mean stopped sale.
+Product cover, `base_price` and API #12 `effective_price` remain unchanged. Summary sizes
+are loaded in one variants query and one SizeValue batch per page, never detail calls per card.

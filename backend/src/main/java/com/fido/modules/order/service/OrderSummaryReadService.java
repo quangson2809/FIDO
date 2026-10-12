@@ -7,12 +7,14 @@ import com.fido.modules.order.entity.Payment;
 import com.fido.modules.order.mapper.OrderMapper;
 import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.PaymentRepository;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional(readOnly = true)
@@ -21,10 +23,7 @@ public class OrderSummaryReadService {
     private final OrderItemRepository items;
     private final PaymentRepository payments;
 
-    public OrderSummaryReadService(
-            OrderItemRepository items,
-            PaymentRepository payments
-    ) {
+    public OrderSummaryReadService(OrderItemRepository items, PaymentRepository payments) {
         this.items = items;
         this.payments = payments;
     }
@@ -34,24 +33,21 @@ public class OrderSummaryReadService {
             return List.of();
         }
 
-        List<Long> orderIds = orders.stream()
-                .map(Order::getOrderId)
-                .toList();
-        Map<Long, Payment> paymentsByOrderId = payments
-                .findAllByOrderIdIn(orderIds)
-                .stream()
-                .collect(Collectors.toMap(Payment::getOrderId, Function.identity()));
-        Map<Long, OrderItem> firstItemsByOrderId = items
-                .findFirstItemsByOrderIdIn(orderIds)
-                .stream()
-                .collect(Collectors.toMap(OrderItem::getOrderId, Function.identity()));
+        List<Long> orderIds = orders.stream().map(Order::getOrderId).toList();
+        Map<Long, Payment> paymentsByOrderId =
+                payments.findAllByOrderIdIn(orderIds).stream()
+                        .collect(Collectors.toMap(Payment::getOrderId, Function.identity()));
+        Map<Long, OrderItem> firstItemsByOrderId =
+                items.findFirstItemsByOrderIdIn(orderIds).stream()
+                        .collect(Collectors.toMap(OrderItem::getOrderId, Function.identity()));
 
         return orders.stream()
-                .map(order -> OrderMapper.summary(
-                        order,
-                        payment(paymentsByOrderId, order.getOrderId()),
-                        previewImage(firstItemsByOrderId.get(order.getOrderId()))
-                ))
+                .map(
+                        order ->
+                                OrderMapper.summary(
+                                        order,
+                                        payment(paymentsByOrderId, order.getOrderId()),
+                                        previewImage(firstItemsByOrderId.get(order.getOrderId()))))
                 .toList();
     }
 

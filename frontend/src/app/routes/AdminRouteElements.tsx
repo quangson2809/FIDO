@@ -1,3 +1,4 @@
+import { AdminVouchersView } from '../../screens/admin/AdminVouchersView';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '../../shared/ui/toast/useToast';
 import { getAdminPath } from '../../routes/paths';
@@ -42,6 +43,14 @@ const useAdminWriteAccess = (moduleKey: AdminModuleKey): boolean => {
 };
 
 const dashboardModuleKeys: readonly AdminModuleKey[] = [
+  'vouchers',
+  'categories',
+  'brands',
+  'sizes',
+  'colors',
+  'suppliers',
+  'roles',
+  'content',
   'orders',
   'products',
   'inventory',
@@ -89,6 +98,7 @@ export const AdminProductDetailRoute = () => {
 
   return (
     <AdminProductDetailView
+      key={parsedProductId}
       productId={parsedProductId}
       onNavigateTab={navigateTab}
       showToast={showToast}
@@ -97,11 +107,7 @@ export const AdminProductDetailRoute = () => {
   );
 };
 
-const AdminCatalogMetaRoute = ({
-  tab,
-}: {
-  tab: 'categories' | 'brands' | 'sizes' | 'colors';
-}) => {
+const AdminCatalogMetaRoute = ({ tab }: { tab: 'categories' | 'brands' | 'sizes' | 'colors' }) => {
   const { navigateTab, showToast } = useAdminRouteDeps();
   const canWrite = useAdminWriteAccess(tab);
   return (
@@ -131,7 +137,13 @@ export const AdminOrderDetailRoute = () => {
   const { navigate } = useAdminRouteDeps();
 
   if (!parsedOrderId) return <Navigate to="/admin/orders" replace />;
-  return <AdminOrderDetailView orderId={parsedOrderId} onBack={() => navigate('/admin/orders')} />;
+  return (
+    <AdminOrderDetailView
+      key={parsedOrderId}
+      orderId={parsedOrderId}
+      onBack={() => navigate('/admin/orders')}
+    />
+  );
 };
 
 export const AdminInwardRoute = () => {
@@ -149,7 +161,9 @@ export const AdminInventoryRoute = () => {
 export const AdminSuppliersRoute = () => {
   const { navigateTab, showToast } = useAdminRouteDeps();
   const canWrite = useAdminWriteAccess('suppliers');
-  return <AdminSuppliersView showToast={showToast} onNavigateTab={navigateTab} canWrite={canWrite} />;
+  return (
+    <AdminSuppliersView showToast={showToast} onNavigateTab={navigateTab} canWrite={canWrite} />
+  );
 };
 
 export const AdminCustomersRoute = () => {
@@ -195,13 +209,16 @@ export const AdminAuditRoute = () => {
   return <AdminAuditView showToast={showToast} />;
 };
 
-export const AdminReportsRoute = () => {
-  const { showToast } = useAdminRouteDeps();
-  return <AdminReportsView showToast={showToast} />;
-};
+export const AdminReportsRoute = () => <AdminReportsView />;
 
 export const AdminContentRoute = () => {
   const { showToast } = useAdminRouteDeps();
   const canWrite = useAdminWriteAccess('content');
   return <AdminSettingsView showToast={showToast} canWrite={canWrite} />;
+};
+
+export const AdminVouchersRoute = () => {
+  const { showToast } = useAdminRouteDeps();
+  const canWrite = useAdminWriteAccess('vouchers');
+  return <AdminVouchersView canWrite={canWrite} showToast={showToast} />;
 };

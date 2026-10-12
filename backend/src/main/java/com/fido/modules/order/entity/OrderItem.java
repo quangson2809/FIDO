@@ -1,11 +1,14 @@
 package com.fido.modules.order.entity;
 
 import jakarta.persistence.*;
-import java.math.BigDecimal;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
 import org.hibernate.annotations.Immutable;
+
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "order_items")
@@ -38,13 +41,23 @@ public class OrderItem {
     @Column(name = "color_snapshot", nullable = false, length = 80, updatable = false)
     private String colorSnapshot;
 
-    @Column(name = "unit_price_snapshot", nullable = false, precision = 18, scale = 2, updatable = false)
+    @Column(
+            name = "unit_price_snapshot",
+            nullable = false,
+            precision = 18,
+            scale = 2,
+            updatable = false)
     private BigDecimal unitPriceSnapshot;
 
     @Column(name = "quantity", nullable = false, updatable = false)
     private Integer quantity;
 
-    @Column(name = "line_total_snapshot", nullable = false, precision = 18, scale = 2, updatable = false)
+    @Column(
+            name = "line_total_snapshot",
+            nullable = false,
+            precision = 18,
+            scale = 2,
+            updatable = false)
     private BigDecimal lineTotalSnapshot;
 
     @Column(name = "image_url_snapshot", nullable = true, length = 1000, updatable = false)

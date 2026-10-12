@@ -4,7 +4,9 @@ import com.fido.common.response.ApiResponse;
 import com.fido.modules.order.dto.request.CreateOrderRequest;
 import com.fido.modules.order.dto.response.OrderConfirmationDto;
 import com.fido.modules.order.service.OrderCreationService;
+
 import jakarta.validation.Valid;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -20,23 +22,14 @@ public class OrderCreationController {
 
     private final OrderCreationService service;
 
-    public OrderCreationController(
-            OrderCreationService service
-    ) {
+    public OrderCreationController(OrderCreationService service) {
         this.service = service;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<OrderConfirmationDto> create(
-            @AuthenticationPrincipal Jwt jwt,
-            @Valid @RequestBody CreateOrderRequest request
-    ) {
-        return ApiResponse.of(
-                service.create(
-                        Long.valueOf(jwt.getSubject()),
-                        request
-                )
-        );
+            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody CreateOrderRequest request) {
+        return ApiResponse.of(service.create(Long.valueOf(jwt.getSubject()), request));
     }
 }

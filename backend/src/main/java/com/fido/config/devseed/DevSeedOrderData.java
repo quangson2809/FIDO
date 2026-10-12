@@ -24,7 +24,8 @@ public class DevSeedOrderData {
     }
 
     private void seedCarts() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO carts(
                     cart_id,account_id,created_at,updated_at
                 ) VALUES
@@ -32,7 +33,8 @@ public class DevSeedOrderData {
                 (980002,900008,'2026-09-05 00:00:00','2026-09-05 00:00:00')
                 """);
 
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO cart_items(
                     cart_item_id,cart_id,variant_id,quantity
                 ) VALUES
@@ -43,14 +45,16 @@ public class DevSeedOrderData {
 
     private void seedVoucher() {
         // Baseline Voucher has only voucher_id/code. Discount rules remain TBD.
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO vouchers(voucher_id,code) VALUES
                 (990001,'WELCOME10')
                 """);
     }
 
     private void seedOrders() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO orders(
                     order_id,order_code,customer_account_id,recipient_phone,
                     recipient_email,recipient_address,subtotal_snapshot,
@@ -107,7 +111,8 @@ public class DevSeedOrderData {
     }
 
     private void seedOrderItems() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO order_items(
                     order_item_id,order_id,variant_id,product_name_snapshot,
                     sku_snapshot,size_snapshot,color_snapshot,unit_price_snapshot,
@@ -135,7 +140,8 @@ public class DevSeedOrderData {
     }
 
     private void seedPayments() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO payments(
                     order_id,payment_status,amount_due,amount_received,
                     amount_refunded,collected_by_account_id,collected_at,
@@ -159,7 +165,8 @@ public class DevSeedOrderData {
     }
 
     private void seedShipping() {
-        jdbc.update("""
+        jdbc.update(
+                """
                 INSERT INTO shipping_infos(
                     order_id,delivery_mode,carrier_name
                 ) VALUES

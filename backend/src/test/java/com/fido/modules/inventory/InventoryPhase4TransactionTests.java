@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fido.modules.inventory.dto.request.GoodsReceiptActionRequest;
 import com.fido.modules.inventory.service.GoodsReceiptService;
-import java.util.UUID;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,15 +14,15 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.util.UUID;
+
 @SpringBootTest
 @ActiveProfiles("test")
 class InventoryPhase4TransactionTests {
 
-    @Autowired
-    GoodsReceiptService receipts;
+    @Autowired GoodsReceiptService receipts;
 
-    @Autowired
-    JdbcTemplate db;
+    @Autowired JdbcTemplate db;
 
     Long accountId;
     Long supplierId;
@@ -35,9 +35,7 @@ class InventoryPhase4TransactionTests {
     Long receiptId;
 
     void fixture() {
-        String suffix = UUID.randomUUID()
-                .toString()
-                .replace("-", "");
+        String suffix = UUID.randomUUID().toString().replace("-", "");
 
         String phone = "06" + suffix.substring(0, 16);
 
@@ -51,14 +49,11 @@ class InventoryPhase4TransactionTests {
                 )
                 VALUES ('test-only',?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
                 """,
-                phone
-        );
+                phone);
 
-        accountId = db.queryForObject(
-                "SELECT account_id FROM accounts WHERE phone=?",
-                Long.class,
-                phone
-        );
+        accountId =
+                db.queryForObject(
+                        "SELECT account_id FROM accounts WHERE phone=?", Long.class, phone);
 
         String supplierName = "Rollback supplier " + suffix;
 
@@ -70,41 +65,31 @@ class InventoryPhase4TransactionTests {
                 )
                 VALUES (?,'ACTIVE')
                 """,
-                supplierName
-        );
+                supplierName);
 
-        supplierId = db.queryForObject(
-                "SELECT supplier_id FROM suppliers WHERE name=?",
-                Long.class,
-                supplierName
-        );
+        supplierId =
+                db.queryForObject(
+                        "SELECT supplier_id FROM suppliers WHERE name=?", Long.class, supplierName);
 
         String categoryName = "Rollback category " + suffix;
 
-        db.update(
-                "INSERT INTO categories(parent_category_id,name) VALUES (NULL,?)",
-                categoryName
-        );
+        db.update("INSERT INTO categories(parent_category_id,name) VALUES (NULL,?)", categoryName);
 
-        categoryId = db.queryForObject(
-                "SELECT category_id FROM categories WHERE name=?",
-                Long.class,
-                categoryName
-        );
+        categoryId =
+                db.queryForObject(
+                        "SELECT category_id FROM categories WHERE name=?",
+                        Long.class,
+                        categoryName);
 
         String systemCode = "RB-SZ-" + suffix.substring(0, 12);
 
-        db.update(
-                "INSERT INTO size_systems(code,name) VALUES (?,?)",
-                systemCode,
-                "Rollback size"
-        );
+        db.update("INSERT INTO size_systems(code,name) VALUES (?,?)", systemCode, "Rollback size");
 
-        sizeSystemId = db.queryForObject(
-                "SELECT size_system_id FROM size_systems WHERE code=?",
-                Long.class,
-                systemCode
-        );
+        sizeSystemId =
+                db.queryForObject(
+                        "SELECT size_system_id FROM size_systems WHERE code=?",
+                        Long.class,
+                        systemCode);
 
         db.update(
                 """
@@ -116,33 +101,26 @@ class InventoryPhase4TransactionTests {
                 )
                 VALUES (?,'M','Medium',1)
                 """,
-                sizeSystemId
-        );
+                sizeSystemId);
 
-        sizeValueId = db.queryForObject(
-                """
-                SELECT size_value_id
-                FROM size_values
-                WHERE size_system_id=?
-                  AND code='M'
-                """,
-                Long.class,
-                sizeSystemId
-        );
+        sizeValueId =
+                db.queryForObject(
+                        """
+                        SELECT size_value_id
+                        FROM size_values
+                        WHERE size_system_id=?
+                          AND code='M'
+                        """,
+                        Long.class,
+                        sizeSystemId);
 
         String colorCode = "RB-C-" + suffix.substring(0, 12);
 
-        db.update(
-                "INSERT INTO colors(code,name) VALUES (?,?)",
-                colorCode,
-                "Rollback color"
-        );
+        db.update("INSERT INTO colors(code,name) VALUES (?,?)", colorCode, "Rollback color");
 
-        colorId = db.queryForObject(
-                "SELECT color_id FROM colors WHERE code=?",
-                Long.class,
-                colorCode
-        );
+        colorId =
+                db.queryForObject(
+                        "SELECT color_id FROM colors WHERE code=?", Long.class, colorCode);
 
         String productName = "Rollback product " + suffix;
 
@@ -163,14 +141,11 @@ class InventoryPhase4TransactionTests {
                 """,
                 categoryId,
                 sizeSystemId,
-                productName
-        );
+                productName);
 
-        productId = db.queryForObject(
-                "SELECT product_id FROM products WHERE name=?",
-                Long.class,
-                productName
-        );
+        productId =
+                db.queryForObject(
+                        "SELECT product_id FROM products WHERE name=?", Long.class, productName);
 
         String sku = "RB-SKU-" + suffix;
 
@@ -190,14 +165,11 @@ class InventoryPhase4TransactionTests {
                 productId,
                 sizeValueId,
                 colorId,
-                sku
-        );
+                sku);
 
-        variantId = db.queryForObject(
-                "SELECT variant_id FROM product_variants WHERE sku=?",
-                Long.class,
-                sku
-        );
+        variantId =
+                db.queryForObject(
+                        "SELECT variant_id FROM product_variants WHERE sku=?", Long.class, sku);
 
         db.update(
                 """
@@ -208,8 +180,7 @@ class InventoryPhase4TransactionTests {
                 )
                 VALUES (?,0,CURRENT_TIMESTAMP)
                 """,
-                variantId
-        );
+                variantId);
 
         String receiptCode = "RB-" + suffix.substring(0, 20);
 
@@ -229,14 +200,13 @@ class InventoryPhase4TransactionTests {
                 """,
                 receiptCode,
                 supplierId,
-                accountId
-        );
+                accountId);
 
-        receiptId = db.queryForObject(
-                "SELECT receipt_id FROM goods_receipts WHERE receipt_code=?",
-                Long.class,
-                receiptCode
-        );
+        receiptId =
+                db.queryForObject(
+                        "SELECT receipt_id FROM goods_receipts WHERE receipt_code=?",
+                        Long.class,
+                        receiptCode);
 
         db.update(
                 """
@@ -248,8 +218,7 @@ class InventoryPhase4TransactionTests {
                 VALUES (?,?,5)
                 """,
                 receiptId,
-                variantId
-        );
+                variantId);
     }
 
     @AfterEach
@@ -258,91 +227,49 @@ class InventoryPhase4TransactionTests {
             return;
         }
 
-        db.update(
-                "DELETE FROM audit_logs WHERE actor_account_id=?",
-                accountId
-        );
+        db.update("DELETE FROM audit_logs WHERE actor_account_id=?", accountId);
 
         if (receiptId != null) {
-            db.update(
-                    "DELETE FROM inventory_transactions WHERE goods_receipt_id=?",
-                    receiptId
-            );
+            db.update("DELETE FROM inventory_transactions WHERE goods_receipt_id=?", receiptId);
 
-            db.update(
-                    "DELETE FROM goods_receipt_items WHERE receipt_id=?",
-                    receiptId
-            );
+            db.update("DELETE FROM goods_receipt_items WHERE receipt_id=?", receiptId);
 
-            db.update(
-                    "DELETE FROM goods_receipts WHERE receipt_id=?",
-                    receiptId
-            );
+            db.update("DELETE FROM goods_receipts WHERE receipt_id=?", receiptId);
         }
 
         if (variantId != null) {
-            db.update(
-                    "DELETE FROM inventory_transactions WHERE variant_id=?",
-                    variantId
-            );
+            db.update("DELETE FROM inventory_transactions WHERE variant_id=?", variantId);
 
-            db.update(
-                    "DELETE FROM inventories WHERE variant_id=?",
-                    variantId
-            );
+            db.update("DELETE FROM inventories WHERE variant_id=?", variantId);
 
-            db.update(
-                    "DELETE FROM product_variants WHERE variant_id=?",
-                    variantId
-            );
+            db.update("DELETE FROM product_variants WHERE variant_id=?", variantId);
         }
 
         if (productId != null) {
-            db.update(
-                    "DELETE FROM products WHERE product_id=?",
-                    productId
-            );
+            db.update("DELETE FROM products WHERE product_id=?", productId);
         }
 
         if (colorId != null) {
-            db.update(
-                    "DELETE FROM colors WHERE color_id=?",
-                    colorId
-            );
+            db.update("DELETE FROM colors WHERE color_id=?", colorId);
         }
 
         if (sizeValueId != null) {
-            db.update(
-                    "DELETE FROM size_values WHERE size_value_id=?",
-                    sizeValueId
-            );
+            db.update("DELETE FROM size_values WHERE size_value_id=?", sizeValueId);
         }
 
         if (sizeSystemId != null) {
-            db.update(
-                    "DELETE FROM size_systems WHERE size_system_id=?",
-                    sizeSystemId
-            );
+            db.update("DELETE FROM size_systems WHERE size_system_id=?", sizeSystemId);
         }
 
         if (categoryId != null) {
-            db.update(
-                    "DELETE FROM categories WHERE category_id=?",
-                    categoryId
-            );
+            db.update("DELETE FROM categories WHERE category_id=?", categoryId);
         }
 
         if (supplierId != null) {
-            db.update(
-                    "DELETE FROM suppliers WHERE supplier_id=?",
-                    supplierId
-            );
+            db.update("DELETE FROM suppliers WHERE supplier_id=?", supplierId);
         }
 
-        db.update(
-                "DELETE FROM accounts WHERE account_id=?",
-                accountId
-        );
+        db.update("DELETE FROM accounts WHERE account_id=?", accountId);
     }
 
     @Test
@@ -352,12 +279,7 @@ class InventoryPhase4TransactionTests {
 
         assertThrows(
                 RuntimeException.class,
-                () -> receipts.action(
-                        -999L,
-                        receiptId,
-                        new GoodsReceiptActionRequest("CONFIRM")
-                )
-        );
+                () -> receipts.action(-999L, receiptId, new GoodsReceiptActionRequest("CONFIRM")));
 
         assertEquals(
                 "DRAFT",
@@ -368,9 +290,7 @@ class InventoryPhase4TransactionTests {
                         WHERE receipt_id=?
                         """,
                         String.class,
-                        receiptId
-                )
-        );
+                        receiptId));
 
         assertEquals(
                 0,
@@ -381,9 +301,7 @@ class InventoryPhase4TransactionTests {
                         WHERE variant_id=?
                         """,
                         Integer.class,
-                        variantId
-                )
-        );
+                        variantId));
 
         assertEquals(
                 0,
@@ -394,8 +312,6 @@ class InventoryPhase4TransactionTests {
                         WHERE goods_receipt_id=?
                         """,
                         Integer.class,
-                        receiptId
-                )
-        );
+                        receiptId));
     }
 }

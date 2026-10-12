@@ -3,25 +3,24 @@ package com.fido.modules.product.dto.request;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+
 import java.math.BigDecimal;
 import java.util.List;
 
 public class ProductPatchRequest {
 
-    @Positive
-    private Long categoryId;
+    @Positive private Long categoryId;
 
-    @Positive
-    private Long brandId;
+    @Positive private Long brandId;
 
-    @Positive
-    private Long sizeSystemId;
+    @Positive private Long sizeSystemId;
 
     @Pattern(regexp = ".*\\S.*")
     @Size(max = 255)
@@ -46,8 +45,7 @@ public class ProductPatchRequest {
     @Pattern(regexp = "ON_SALE|STOPPED")
     private String saleStatus;
 
-    @Valid
-    private List<@NotNull ProductImageInput> images;
+    @Valid private List<@NotNull ProductImageInput> images;
 
     private boolean brandIdPresent;
     private boolean descriptionPresent;
@@ -61,10 +59,7 @@ public class ProductPatchRequest {
         return categoryId;
     }
 
-    @JsonSetter(
-            value = "category_id",
-            nulls = Nulls.FAIL
-    )
+    @JsonSetter(value = "category_id", nulls = Nulls.FAIL)
     public void setCategoryId(Long value) {
         categoryId = value;
     }
@@ -83,10 +78,7 @@ public class ProductPatchRequest {
         return sizeSystemId;
     }
 
-    @JsonSetter(
-            value = "size_system_id",
-            nulls = Nulls.FAIL
-    )
+    @JsonSetter(value = "size_system_id", nulls = Nulls.FAIL)
     public void setSizeSystemId(Long value) {
         sizeSystemId = value;
     }
@@ -95,10 +87,7 @@ public class ProductPatchRequest {
         return name;
     }
 
-    @JsonSetter(
-            value = "name",
-            nulls = Nulls.FAIL
-    )
+    @JsonSetter(value = "name", nulls = Nulls.FAIL)
     public void setName(String value) {
         name = value;
     }
@@ -157,10 +146,7 @@ public class ProductPatchRequest {
         return basePrice;
     }
 
-    @JsonSetter(
-            value = "base_price",
-            nulls = Nulls.FAIL
-    )
+    @JsonSetter(value = "base_price", nulls = Nulls.FAIL)
     public void setBasePrice(BigDecimal value) {
         basePrice = value;
     }
@@ -169,10 +155,7 @@ public class ProductPatchRequest {
         return saleStatus;
     }
 
-    @JsonSetter(
-            value = "sale_status",
-            nulls = Nulls.FAIL
-    )
+    @JsonSetter(value = "sale_status", nulls = Nulls.FAIL)
     public void setSaleStatus(String value) {
         saleStatus = value;
     }
@@ -181,10 +164,7 @@ public class ProductPatchRequest {
         return images;
     }
 
-    @JsonSetter(
-            value = "images",
-            nulls = Nulls.FAIL
-    )
+    @JsonSetter(value = "images", nulls = Nulls.FAIL)
     public void setImages(List<ProductImageInput> value) {
         images = value;
         imagesPresent = true;

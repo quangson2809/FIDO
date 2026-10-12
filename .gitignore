@@ -29,3 +29,5 @@ frontend/*.tsbuildinfo
 
 # Misc
 coverage/
+
+frontend/.browser-evidence/

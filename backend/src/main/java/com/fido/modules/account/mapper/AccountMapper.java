@@ -9,8 +9,7 @@ import com.fido.modules.account.entity.Role;
 
 public final class AccountMapper {
 
-    private AccountMapper() {
-    }
+    private AccountMapper() {}
 
     public static AccountDto account(Account value) {
         return new AccountDto(
@@ -18,24 +17,15 @@ public final class AccountMapper {
                 value.getPhone(),
                 value.getEmail(),
                 value.getCreatedAt(),
-                value.getUpdatedAt()
-        );
+                value.getUpdatedAt());
     }
 
     public static RoleDto role(Role value) {
         return new RoleDto(
-                value.getRoleId(),
-                value.getCode(),
-                value.getName(),
-                value.getDescription()
-        );
+                value.getRoleId(), value.getCode(), value.getName(), value.getDescription());
     }
 
     public static PermissionDto permission(Permission value) {
-        return new PermissionDto(
-                value.getPermissionId(),
-                value.getCode(),
-                value.getName()
-        );
+        return new PermissionDto(value.getPermissionId(), value.getCode(), value.getName());
     }
 }

@@ -4,6 +4,7 @@ import com.fido.modules.audit.service.AuditAction;
 import com.fido.modules.audit.service.AuditEvent;
 import com.fido.modules.audit.service.AuditService;
 import com.fido.modules.audit.service.AuditTargetType;
+import com.fido.modules.cart.service.CartCommandService;
 import com.fido.modules.cart.service.CheckoutCartView;
 import com.fido.modules.order.dto.request.CreateOrderRequest;
 import com.fido.modules.order.dto.response.OrderConfirmationDto;
@@ -14,82 +15,86 @@ import com.fido.modules.order.mapper.OrderMapper;
 import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
 public class OrderCreationService {
 
     private final CheckoutCalculationService checkout;
+    private final CartCommandService cart;
     private final OrderRepository orders;
     private final OrderItemRepository items;
     private final PaymentRepository payments;
     private final AuditService audit;
+    private final CheckoutQuoteStore quotes;
+    private final com.fido.modules.promotion.service.VoucherRedemptionService vouchers;
 
     public OrderCreationService(
             CheckoutCalculationService checkout,
+            CartCommandService cart,
             OrderRepository orders,
             OrderItemRepository items,
             PaymentRepository payments,
-            AuditService audit
-    ) {
+            AuditService audit,
+            CheckoutQuoteStore quotes,
+            com.fido.modules.promotion.service.VoucherRedemptionService vouchers) {
         this.checkout = checkout;
+        this.cart = cart;
         this.orders = orders;
         this.items = items;
         this.payments = payments;
         this.audit = audit;
+        this.quotes = quotes;
+        this.vouchers = vouchers;
     }
 
-    public OrderConfirmationDto create(
-            Long accountId,
-            CreateOrderRequest request
-    ) {
-        CheckoutCalculation calculation = checkout.calculate(
-                accountId,
-                request.voucher_code()
-        );
+    public OrderConfirmationDto create(Long accountId, CreateOrderRequest request) {
+        cart.lockForCheckout(accountId);
+        var quote = quotes.find(accountId, request.quote_id());
+        if (quote != null && quote.getOrderId() != null) {
+            return OrderMapper.confirmation(
+                    orders.findById(quote.getOrderId()).orElseThrow(),
+                    payments.findById(quote.getOrderId()).orElseThrow());
+        }
+        CheckoutCalculation calculation = checkout.calculate(accountId, request.voucher_code());
 
-        Order order = persistOrder(
-                accountId,
-                request,
-                calculation
-        );
+        quotes.requireMatching(
+                quote,
+                request.recipient_phone(),
+                request.recipient_email(),
+                request.recipient_address(),
+                calculation);
 
-        persistOrderItems(
-                order.getOrderId(),
-                calculation.items()
-        );
+        Order order = persistOrder(accountId, request, calculation);
 
-        Payment payment = persistInitialPayment(
-                order.getOrderId(),
-                calculation.total()
-        );
+        persistOrderItems(order.getOrderId(), calculation.items());
+
+        Payment payment = persistInitialPayment(order.getOrderId(), calculation.total());
+
+        vouchers.consume(order.getOrderId(), accountId, calculation.voucher());
+        if (quote != null) quote.setOrderId(order.getOrderId());
+        cart.clear(accountId);
 
         audit.record(
                 AuditEvent.of(
                         accountId,
                         AuditAction.ORDER_CREATE,
                         AuditTargetType.ORDER,
-                        order.getOrderId()
-                )
-        );
+                        order.getOrderId()));
 
-        return OrderMapper.confirmation(
-                order,
-                payment
-        );
+        return OrderMapper.confirmation(order, payment);
     }
 
     private Order persistOrder(
-            Long accountId,
-            CreateOrderRequest request,
-            CheckoutCalculation calculation
-    ) {
+            Long accountId, CreateOrderRequest request, CheckoutCalculation calculation) {
         Order order = new Order();
         order.setOrderCode(generateOrderCode());
         order.setCustomerAccountId(accountId);
@@ -100,16 +105,13 @@ public class OrderCreationService {
         order.setDiscountSnapshot(calculation.discount());
         order.setShippingFeeSnapshot(calculation.shippingFee());
         order.setTotalSnapshot(calculation.total());
-        order.setVoucherId(null);
+        order.setVoucherId(calculation.voucher().voucherId());
         order.setOrderStatus(OrderPolicy.PENDING);
 
         return orders.save(order);
     }
 
-    private void persistOrderItems(
-            Long orderId,
-            List<CheckoutCartView.Item> cartItems
-    ) {
+    private void persistOrderItems(Long orderId, List<CheckoutCartView.Item> cartItems) {
         for (CheckoutCartView.Item cartItem : cartItems) {
             OrderItem orderItem = new OrderItem();
             orderItem.setOrderId(orderId);
@@ -127,10 +129,7 @@ public class OrderCreationService {
         }
     }
 
-    private Payment persistInitialPayment(
-            Long orderId,
-            BigDecimal total
-    ) {
+    private Payment persistInitialPayment(Long orderId, BigDecimal total) {
         Payment payment = new Payment();
         payment.setOrderId(orderId);
         payment.setPaymentStatus(OrderPolicy.UNPAID);
@@ -142,10 +141,6 @@ public class OrderCreationService {
     }
 
     private String generateOrderCode() {
-        return "ORD-"
-                + UUID.randomUUID()
-                        .toString()
-                        .replace("-", "")
-                        .toUpperCase(Locale.ROOT);
+        return "ORD-" + UUID.randomUUID().toString().replace("-", "").toUpperCase(Locale.ROOT);
     }
 }

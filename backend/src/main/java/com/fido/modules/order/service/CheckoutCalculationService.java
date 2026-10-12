@@ -2,38 +2,35 @@ package com.fido.modules.order.service;
 
 import com.fido.modules.cart.service.CartQueryService;
 import com.fido.modules.cart.service.CheckoutCartView;
-import java.math.BigDecimal;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
+
 @Service
 public class CheckoutCalculationService {
 
+    private final com.fido.modules.promotion.service.VoucherRedemptionService vouchers;
     private final CartQueryService cart;
     private final BigDecimal shippingFee;
 
     public CheckoutCalculationService(
             CartQueryService cart,
-            @Value("${app.checkout.shipping-fee:30000.00}")
-                    BigDecimal shippingFee
-    ) {
+            com.fido.modules.promotion.service.VoucherRedemptionService vouchers,
+            @Value("${app.checkout.shipping-fee}") BigDecimal shippingFee) {
         if (shippingFee.signum() < 0) {
-            throw new IllegalArgumentException(
-                    "Checkout shipping fee cannot be negative"
-            );
+            throw new IllegalArgumentException("Checkout shipping fee cannot be negative");
         }
 
         this.cart = cart;
+        this.vouchers = vouchers;
         this.shippingFee = shippingFee;
     }
 
-    CheckoutCalculation calculate(
-            Long accountId,
-            String voucherCode
-    ) {
-        rejectUnsupportedVoucher(voucherCode);
+    CheckoutCalculation calculate(Long accountId, String voucherCode) {
 
         CheckoutCartView current = cart.checkoutView(accountId);
 
@@ -41,43 +38,35 @@ public class CheckoutCalculationService {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
-        current.items().forEach(
-                this::requireCheckoutReady
-        );
+        current.items().forEach(this::requireCheckoutReady);
 
-        BigDecimal discount = BigDecimal.ZERO;
-        BigDecimal total = current.subtotal()
-                .subtract(discount)
-                .add(shippingFee);
+        var voucher =
+                voucherCode == null || voucherCode.isBlank()
+                        ? new com.fido.modules.promotion.service.VoucherRedemptionService.Discount(
+                                null, null, BigDecimal.ZERO)
+                        : vouchers.evaluate(
+                                accountId,
+                                voucherCode,
+                                current.items().stream()
+                                        .map(
+                                                i ->
+                                                        new com.fido.modules.promotion.service
+                                                                .VoucherRedemptionService.Line(
+                                                                i.variantId(), i.lineTotal()))
+                                        .toList());
+        BigDecimal discount = voucher.amount();
+        BigDecimal total = current.subtotal().subtract(discount).add(shippingFee);
 
         return new CheckoutCalculation(
-                current.items(),
-                current.subtotal(),
-                discount,
-                shippingFee,
-                total
-        );
+                current.items(), current.subtotal(), discount, shippingFee, total, voucher);
     }
 
-    private void rejectUnsupportedVoucher(String voucherCode) {
-        if (voucherCode != null && !voucherCode.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_IMPLEMENTED
-            );
-        }
-    }
-
-    private void requireCheckoutReady(
-            CheckoutCartView.Item item
-    ) {
+    private void requireCheckoutReady(CheckoutCartView.Item item) {
         boolean enoughInventory =
-                item.availableQuantity() != null
-                && item.availableQuantity() >= item.quantity();
+                item.availableQuantity() != null && item.availableQuantity() >= item.quantity();
 
         if (!item.purchasable() || !enoughInventory) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT
-            );
+            throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
     }
 }

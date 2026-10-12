@@ -309,3 +309,165 @@ The project owner selected the handwritten DTO/service approach with selective r
 - A malformed login response must not publish an access token. A malformed `/me` response must fail before role/permission state is accepted.
 - Use a small dependency-free feature-local parser for this initial scope. Do not add a validation library until repeated schemas or broader runtime-validation coverage create a concrete reuse/maintenance need.
 - Other API DTOs remain compile-time typed for now and should be promoted to runtime validation based on impact and evidence, not by mechanically validating every endpoint.
+
+## Confirmed backend hardening — 2026-10-07
+
+Base: `aca05117d6650bb3a5eb9ef0283973cfa40e4371`. Scope: findings #1, #4, #5, #7, #8, #9, #10, #11, #13, #18, #20.
+
+- Local Gradle `bootRun` fixes only its working directory; `backend/.env` or process environment sets `SPRING_PROFILES_ACTIVE` for local and Docker. Spring imports `backend/.env` as Java properties, and profile selection is resolved in non-profile-specific `application.properties`. No dev profile or database credentials are hardcoded in build files or runtime properties. Compose additionally reads ignored root `.env` for Docker-only host/port and database settings, overrides the backend DB URL to reach the Docker DB service, and requires ignored backend `.env` for application secrets.
+- No public development JWT signing key or implicit dev profile fallback. Every runtime profile requires an externally supplied, stable, private Base64 JWT secret of at least 32 decoded bytes. Missing, malformed, short and the previously published public development key fail fast, independent of profile. Test resources use explicit non-production fixtures only. No runtime secret is committed.
+- Exception logs use a safe category message, HTTP method, matched route template, numeric path IDs, status and internal stack/cause types for server/database failures. Raw throwable messages, query strings, bodies and credentials are excluded because SQL/provider exceptions may include secrets. Lock/deadlock/optimistic concurrency failures map to existing HTTP 409; the public Boot error envelope is unchanged.
+- Inventory commands sort a copy of all stock lines by `variantId`, across receipt/confirmation/restoration. Atomic conditional inventory updates remain; only the affected managed Inventory is refreshed afterward. No global persistence-context clearing. GoodsReceipt uses its existing pessimistic row lock and managed state transitions instead of redundant bulk updates.
+- Account-owned pessimistic locking serializes authenticated cart commands before reading/creating a current cart. The cart current-row lookup is a locking read. This prevents first-cart/first-item races and lost increments across application instances without assuming a new unique account-cart schema constraint. Cart reads remain read-only. Guest cart remains deferred.
+- Staff role replacement must retain at least one of ADMIN/SUPERADMIN; full replacement semantics and last-superadmin protection remain.
+- Admin namespace admission requires SUPERADMIN or an effective permission loaded from the database. It does not require ADMIN in addition to a custom capability role, and it does not grant ADMIN any capability. Existing service-level checks still authorize each operation.
+- Existing Product PATCH image URLs and provider output must be absolute HTTPS URIs with a host, no userinfo/fragment and a valid port. No provider-host allowlist is invented. Historical snapshots are untouched. The live Analyst API now excludes images from Product PATCH whereas this repository still documents/supports replacement: removing that write path requires a separate contract migration.
+- OrderActionPolicy is the common source for advertised/executable actions, including payment/delivery-return prerequisites. It delegates transitions to OrderPolicy; command services retain side effects and authorization. Repeating an already-applied command remains a no-op.
+- RETURN enforces an inclusive two-day interval from completed_at in UTC, before any state/note/audit mutation. Missing/future completed_at is rejected. Accepted-return retry remains a no-op. Tags/physical inspection remain staff checks; no automatic refund or stock restoration is inferred.
+
+### #8: fixed business policy, missing receipt command representation
+
+The live DB source (`12y5Wjo2y0Ig2ncU9uPqxe7PcSlD6mZFa`, sections after-sales/C-17) confirms two days, intact tags, and CUSTOMER_RETURN_IN only after physically received, inspected, sellable goods. This is **not** a business-policy TBD and requires no new after-sales resource/table.
+
+The live consolidated API (`1WNaHu6g_-XINTVcUvGX9vSJnpSyLff-PebkkDk_9mMk`, Appendix A #26) accepts only operation RETURN/EXCHANGE_SIZE + reason; source_variant_id/target_variant_id/quantity are specified for EXCHANGE_SIZE. It has no received/inspection/sellable flag or separate customer-receipt action. Automatically crediting all items on RETURN would violate C-17 and the current repository contract. Inferring inspection from free text, silently repurposing exchange fields, or adding a public action/field would invent public semantics.
+
+Therefore only the receipt-command wiring is MATERIAL_DECISION_REQUIRED: approve an explicit representation for the actual receipt/inspection result and whether it covers the whole order or selected sellable quantities. Until then #8 is PARTIAL: the return window is implemented, CUSTOMER_RETURN_IN is not exposed or claimed implemented. No unused speculative internal write method is added.
+
+### Explicit exclusions retained
+
+#2 COD collection/cancellation policy; #6 create-order idempotency strategy; #14 phone canonical format; #23 phone-change authentication remain material decisions. #16/#17/#21/#22/#24/#25 are not changed merely to satisfy the old report. #26 DB environment variables are already wired in application-dev.properties. No schema, phone normalization, payment state rules or capability assignments are changed.
+
+## 2026-10-09 — Cart consumption and final checkout confirmation
+
+- API #20 now acquires the existing account/current-cart mutation locks through `CartCommandService.lockForCheckout` before calculating the order. The locks are held by the order transaction until commit. Order/items/payment, cart clearing and audit therefore commit or roll back together. Cart persistence stays in `cart`; no API, schema, inventory or guest-authentication changes.
+- An add serialized before checkout is included; an add serialized after checkout remains in the cart. Quantity replacement of a consumed item returns the existing 404. Repeated/concurrent submissions against the same unmodified cart produce one order and an empty-cart rejection. This is **not durable request idempotency**: retry after cart repopulation or an ambiguous response still requires the unresolved API #20 dedupe contract.
+- FE waits for its cart mutation queue, excludes new local mutations during quotation/order submission, discards stale cart reads, and synchronizes the cart after successful order creation. The confirmation dialog shows the quoted lines, recipient and COD totals. Opening/cancelling never creates an order. A synchronous submission guard prevents double clicks.
+- FE reuses API #19 immediately before POST #20 and requires another confirmation when quoted lines or money changed. This reduces stale purchases but **does not guarantee atomic quote-to-order consistency**; a catalog/cart change between the two requests remains possible. Approval is needed for a server-validated quote/version/token or equivalent contract. No client-authoritative total or hidden fingerprint has been introduced.
+- Voucher Customer/Admin remain blocked by docs/12: discount/value, dates/minimum/scope, usage/stacking, lifecycle/allocation, redemption/cancellation semantics and the corresponding approved management API/schema. No placeholder management or fake discount was added.
+
+## Voucher V1 and checkout quote persistence (2026-10-09)
+
+Approved scope supersedes the earlier voucher deferral: FIXED_AMOUNT/PERCENTAGE
+(with required percentage cap), ALL/PRODUCT/CATEGORY including descendants,
+start/end, eligible-merchandise minimum, nullable global limit, customer limit
+(default 1), no stacking/ownership allocation. Money uses 2 decimals HALF_UP.
+Quote checks do not consume usage. PENDING creation consumes; CANCELLED restores
+once; RETURNED does not. Voucher row locks serialize redemption and edits; current
+locking usage reads avoid stale MySQL repeatable-read counts. Existing code-only
+vouchers migrate disabled and require configuration.
+
+Promotion owns voucher policy, targets and usage. Product exposes scope resolution
+without entities. Order invokes promotion services in its transaction and keeps
+historical monetary snapshots. Used voucher policy/code/scope/start are immutable;
+only extension, increased limits, enable/disable are supported. No delete API.
+Capabilities VOUCHER_READ and VOUCHER_WRITE are seeded without role grants;
+SUPERADMIN bypasses capability checks. WRITE also permits management reads.
+
+Quotes are persisted with opaque UUID, authenticated account, SHA-256 content
+fingerprint, 15-minute expiry and eventual order ID. Fingerprints cover recipient,
+selected variants, quantities, displayed snapshots, voucher and all money amounts.
+Account/cart mutation locking serializes quote creation/use; create revalidates
+within its transaction, rejects changed/expired quotes with 409, and returns the
+existing order on retry (including expired consumed quotes). Frontend always sends
+quote_id and retains it after uncertain network/server errors. Existing non-voucher
+API clients may still omit quote_id for compatibility; they do not receive the new
+quote consistency/idempotent replay guarantee. Voucher placement requires quote_id.
+
+The existing checkout quote response adds quote_id/expires_at; order create adds
+optional quote_id. Admin /api/v1/admin/vouchers: GET (search/page/page_size), POST;
+/{id}: GET, PUT full policy including enabled. Request fields: code, discount_type,
+discount_value, maximum_discount, minimum_amount, starts_at, ends_at, scope,
+product_ids, category_ids, global_limit, customer_limit, enabled. Detail adds
+voucher_id, active_usage, ever_used. No public wallet/list/allocation API.
+Only authored rejection reasons from these endpoints are exposed to clients.
+
+## Dashboard Analytics — approved scope, 2026-10-10
+
+- Supersedes only the SUPERADMIN-only report authorization from Phase 7: all four ReportService entry points now use
+  `ROLE_SUPERADMIN OR (ROLE_ADMIN AND PERMISSION_REPORT_READ)`. CUSTOMER with that permission remains denied.
+- Flyway V6 inserts REPORT_READ (Xem báo cáo và phân tích kinh doanh); it grants no role. Use existing RBAC role permission editing.
+  JWT authentication re-reads effective roles/permissions on every request, including revocation with an unchanged token.
+- Overview and daily sales aggregation share the original SQL formula and completion cohort. No payment/order mutations.
+- JDBC aggregates by Vietnam date using TIMESTAMPADD(HOUR,7,UTC timestamp), portable to H2/MySQL. Vietnam has a fixed UTC+07 offset
+  over the supported business timeline. Java assembles daily aggregates into canonical Monday/week or day-1/month buckets and fills zero periods.
+  UTC range predicates restrict partial buckets. Read-only REPEATABLE_READ remains at the service boundary.
+- Product totals aggregate all variants before the one-row thumbnail join. Existing restrictive OrderItem→Variant→Product FKs
+  preserve historical identity; report applies no sale-status filter. Name/thumbnail are current catalog metadata (not a historical name snapshot).
+  Completed units include COMPLETED and RETURNED cohorts; returned units subtract full order quantities. Ranking has explicit deterministic tie-breakers.
+- No new chart dependency: feature-owned SVG displays server values; VND arithmetic stays in backend BigDecimal.
+  Reports uses URL-owned tab/from/to/granularity and existing useRemoteQuery to suppress stale requests. Only the active tab loads its data.
+- Dashboard report requests mount only for report-authorized users; existing work queues retain their own module permissions.
+  Order drill-down uses UTC instants and the inclusive upper boundary `16:59:59.999999Z` for the last Vietnam day.
+  Product links require CATALOG_READ; order links require ORDER_READ.
+- Deferred: Category/Brand, profit/cost, traffic/conversion/ROAS, cache/aggregate tables. No new performance index without measured evidence.
+
+### Repeatable UI verification
+
+`frontend/tests/report-browser-smoke.mjs` starts Vite automatically (or accepts BROWSER_BASE_URL) and executes deterministic
+browser assertions with HTTP fixtures. Supply an external Playwright installation and Chromium executable if the environment
+has no installed browser via PLAYWRIGHT_MODULE_PATH and CHROMIUM_EXECUTABLE_PATH. No runtime chart/browser package is added to FIDO.
+Screenshots are emitted under ignored frontend/.browser-evidence. This proves rendered UI interactions; it is explicitly not
+live deployed Backend end-to-end certification. H2/MySQL HTTP tests separately exercise the real Backend.
+
+Reviewed structural scope: ReportController→ReportService→ReportRepository; typed DTOs; class-level role/capability guard;
+read-only transaction; no foreign repositories/entities or aggregate ownership moved. Private period helpers and feature-owned
+SVG reuse serve the required three views, with no framework/cache/base service or new runtime dependency.
+Reviewed behavior: shared Overview/sales formula, completion-cohort returns, creation-date/current-state counts, zero buckets,
+product variant totals and deterministic ranking, permission-aware navigation, stale request suppression and inclusive UTC drill-down.
+MySQL EXPLAIN on the CI fixture uses PK/FK lookups for joins and scans the small Orders cohort; no representative load or timing evidence
+justifies a new index. Assess production-volume execution plans separately before performance tuning.
+
+## Audit follow-up — 2026-10-10
+
+- The requested category browsing fix uses API #11 with `category_id` including the selected category and all descendants. Leaf queries, DTOs, paging, sale-state and effective-price rules remain unchanged. Category adjacency is loaded once per scoped query; products/count/pagination remain database predicates. Admin category filtering is unchanged.
+- The customer category route is `/categories/:categoryId`; Home and menu links use it. It offers navigation and paging without Catalog search/filter controls. Existing `/products` filter URLs remain supported and synchronize from URL state.
+- Product summary uses only API #11 fields. Size/color/material information is retrieved via existing API #12 only when opening a card's information dialog; no per-card eager requests, fabricated ratings/stock, wishlist, new schema or DTO fields.
+- Footer contact comes from public build configuration `VITE_SUPPORT_EMAIL` and `VITE_SUPPORT_HOTLINE`. No confirmed store contact exists in repo/audit; blank configuration displays explicit unavailable copy. The reference image's hotline is not adopted as real store data.
+- Admin searches operate on already-complete metadata/access-control/content responses, without inventing server filters. Existing service writes, size IDs in payloads and permission controls remain intact. Logout uses the existing AuthSession context; Admin checks existing dirty-form ownership before clearing the session.
+
+
+## Product summary redesign — 2026-10-10
+
+- Current task authorizes an additive API #11 extension for existing domain data. This supersedes
+  the initial audit follow-up limitation to existing summary fields: `material_care` and `sizes`
+  now come from the summary; colors and full care text still use the on-demand API #12 dialog.
+- Product module queries ON_SALE variants for all page Product IDs once, then batch-loads
+  SizeValue references. It deduplicates by size identity and sorts by `sort_order`, then ID.
+  Page/filter/navigation/detail/stock behavior stays unchanged. No migration or new dependency.
+- Frontend validates the additive fields at the catalog service mapping boundary. An older
+  Backend missing sizes yields “Size: xem chi tiết”, never an invented empty-size assertion.
+  Combined material/care text is explicitly labeled; missing text falls back to a labeled
+  brand/category. No material extraction heuristic or example content is used.
+- Base price remains visible with compact “cơ bản” qualification. A summary variant price
+  or price range would change presentation semantics and still needs owner confirmation.
+- Only consecutive exact integer display labels may collapse into an inclusive size range;
+  custom labels and gaps remain explicit lists in managed order.
+- Compact summary size labels use managed SizeValue codes (e.g. M/L), falling back to the
+  display name only for an empty code. The information dialog retains the full display names.
+- The image information control is a distinct sibling button (44px touch target), not a
+  wishlist. It preserves the existing detail dialog and its retry/focus-return behavior.
+  There is no wishlist mechanism or new-product policy in the current repo; neither is faked.
+- Card geometry/hover styles are scoped to `.product-summary-*`, avoiding the global
+  editorial `.group` image lift and radius. Native focus-visible and reduced motion are retained.
+
+## Header mega menu — 2026-10-11
+
+- The desktop Products link remains `/products` and owns the category disclosure together
+  with its adjacent button. The existing separate category dropdown is replaced, not duplicated.
+  Hover uses one DOM region spanning the full Header height and its absolutely positioned panel;
+  pointer leave closes even when the trigger retains focus. There are no hover timers.
+- Header owns one mutually exclusive primary/catalog menu state. Route identity invalidates and
+  clears that state so Back/Forward cannot restore an old open menu. The category controller owns
+  only pointer/keyboard events and the initiating trigger ref for Escape focus restoration.
+- `useCatalogCategories` reuses `catalogService.getMeta`, `useRemoteQuery`, safe error formatting
+  and the existing category tree model. `CategoryMegaMenu` renders data and callbacks only;
+  `CategoryLinks` retains its existing list layout and adds a menu layout. No API or Backend change.
+- Roots and child groups become fluid columns; recursive links preserve every category level.
+  Visual indentation is limited after three nested child groups to keep narrow/deep trees readable,
+  without limiting data depth. Long labels wrap and large trees scroll inside the overlay.
+- Two existing FIDO illustrations (`about/wardrobe.svg`, `about/details.svg`) link to About and
+  Catalog. They do not assert promotions, new products or campaigns. Reference video assets are
+  used only for review evidence. The menu keeps FIDO colors, typography and design tokens.
+- The panel uses a short opacity/translate transition without affecting layout. Closed content is
+  inert and hidden from accessibility APIs; opening content accepts interaction immediately.
+  Keyboard disclosure, Tab exit, Escape, reduced motion and touch use the same state owner.

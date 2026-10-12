@@ -12,6 +12,4 @@ public record OrderItemDto(
         String color,
         BigDecimal unit_price,
         Integer quantity,
-        BigDecimal line_total
-) {
-}
+        BigDecimal line_total) {}

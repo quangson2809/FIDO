@@ -3,8 +3,10 @@ package com.fido.modules.product.dto.request;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
+
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Pattern;
+
 import java.math.BigDecimal;
 
 public class VariantPatchRequest {
@@ -31,10 +33,7 @@ public class VariantPatchRequest {
         return saleStatus;
     }
 
-    @JsonSetter(
-            value = "sale_status",
-            nulls = Nulls.FAIL
-    )
+    @JsonSetter(value = "sale_status", nulls = Nulls.FAIL)
     public void setSaleStatus(String value) {
         saleStatus = value;
     }

@@ -16,6 +16,4 @@ public record GoodsReceiptDetailDto(
         Long confirmed_by_account_id,
         String note,
         List<GoodsReceiptItemDto> items,
-        LocalDateTime updated_at
-) {
-}
+        LocalDateTime updated_at) {}

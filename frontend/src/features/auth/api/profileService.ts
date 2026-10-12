@@ -26,7 +26,10 @@ export const profileService: ProfileService = {
   },
 
   async updateAddress(addressId: number, input: AddressInput) {
-    const response = await apiClient.patch<ApiResponse<AddressDto>>(`/me/addresses/${addressId}`, input);
+    const response = await apiClient.patch<ApiResponse<AddressDto>>(
+      `/me/addresses/${addressId}`,
+      input,
+    );
     return response.data;
   },
 

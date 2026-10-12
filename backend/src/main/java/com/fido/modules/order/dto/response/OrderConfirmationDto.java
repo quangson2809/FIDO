@@ -13,6 +13,4 @@ public record OrderConfirmationDto(
         BigDecimal shipping_fee,
         BigDecimal total,
         RecipientDto recipient,
-        LocalDateTime created_at
-) {
-}
+        LocalDateTime created_at) {}

@@ -1,3 +1,5 @@
+import { StatusBadge } from '../../shared/admin/StatusBadge';
+import { useDirtyForm } from '../../shared/admin/dirtyFormContext';
 import React, { useEffect, useMemo, useState } from 'react';
 import { adminCatalogMetaService } from '../../features/catalog/api/adminCatalogMetaService';
 import { adminProductService } from '../../features/catalog/api/adminService';
@@ -10,8 +12,12 @@ import {
   buildMovedImageOrder,
   sortProductImages,
 } from '../../features/catalog/model/productImageOrder';
-import type { AdminProductDetailDto, CatalogMetaDto, SaleStatus } from '../../features/catalog/types';
-import { getApiErrorMessage } from '../../services/http/apiError';
+import type {
+  AdminProductDetailDto,
+  CatalogMetaDto,
+  SaleStatus,
+} from '../../features/catalog/types';
+import { ApiClientError, getApiErrorMessage } from '../../services/http/apiError';
 
 interface Props {
   productId: number;
@@ -20,11 +26,17 @@ interface Props {
   canWrite: boolean;
 }
 
-export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateTab, showToast, canWrite }) => {
+export const AdminProductDetailView: React.FC<Props> = ({
+  productId,
+  onNavigateTab,
+  showToast,
+  canWrite,
+}) => {
   const validId = Number.isInteger(productId) && productId > 0;
   const [product, setProduct] = useState<AdminProductDetailDto | null>(null);
   const [meta, setMeta] = useState<CatalogMetaDto | null>(null);
   const [loading, setLoading] = useState(true);
+  const [revision, setRevision] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -32,18 +44,37 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
   const [description, setDescription] = useState('');
   const [basePrice, setBasePrice] = useState('');
   const [saleStatus, setSaleStatus] = useState<SaleStatus>('ON_SALE');
+  const [sizeSystemId, setSizeSystemId] = useState('');
   const [variantSize, setVariantSize] = useState('');
   const [variantColor, setVariantColor] = useState('');
   const [variantSku, setVariantSku] = useState('');
   const [variantOverridePrice, setVariantOverridePrice] = useState('');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
 
-  const applyProduct = (detail: AdminProductDetailDto) => {
+  const infoDirty = Boolean(
+    product &&
+      editing &&
+      (sizeSystemId !== String(product.size_system.size_system_id) ||
+        name !== product.name ||
+        description !== (product.description ?? '') ||
+        basePrice !== String(product.base_price) ||
+        saleStatus !== product.sale_status),
+  );
+  const canDiscard = useDirtyForm(
+    infoDirty ||
+      Boolean(
+        variantSize || variantColor || variantSku || variantOverridePrice || imageFiles.length,
+      ),
+  );
+
+  const applyProduct = (detail: AdminProductDetailDto, preserveDraft = true) => {
     setProduct(detail);
+    if (editing && preserveDraft) return;
     setName(detail.name);
     setDescription(detail.description ?? '');
     setBasePrice(String(detail.base_price));
     setSaleStatus(detail.sale_status);
+    setSizeSystemId(String(detail.size_system.size_system_id));
   };
 
   const refresh = async () => {
@@ -61,13 +92,15 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
     if (!validId) return undefined;
 
     let active = true;
-    void Promise.all([
-      adminProductService.getProduct(productId),
-      adminCatalogMetaService.getMeta(),
-    ])
+    void Promise.all([adminProductService.getProduct(productId), adminCatalogMetaService.getMeta()])
       .then(([detail, metadata]) => {
         if (!active) return;
-        applyProduct(detail);
+        setProduct(detail);
+        setName(detail.name);
+        setDescription(detail.description ?? '');
+        setBasePrice(String(detail.base_price));
+        setSaleStatus(detail.sale_status);
+        setSizeSystemId(String(detail.size_system.size_system_id));
         setMeta(metadata);
         setError(null);
       })
@@ -83,7 +116,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
     return () => {
       active = false;
     };
-  }, [productId, validId]);
+  }, [productId, validId, revision]);
 
   const colorsById = useMemo(
     () => new Map(meta?.colors.map((item) => [item.color_id, item]) ?? []),
@@ -93,30 +126,45 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
     () => new Map(product?.size_system.size_values.map((item) => [item.size_value_id, item]) ?? []),
     [product],
   );
-  const orderedImages = useMemo(
-    () => sortProductImages(product?.images ?? []),
-    [product],
-  );
+  const orderedImages = useMemo(() => sortProductImages(product?.images ?? []), [product]);
 
   const saveProduct = async () => {
     if (!canWrite || !product || busy) return;
 
+    if (!meta?.size_systems.some((system) => system.size_system_id === Number(sizeSystemId))) {
+      setError('Chọn hệ size hợp lệ.');
+      return;
+    }
     const price = Number(basePrice);
-    if (!name.trim() || !Number.isFinite(price) || price < 0) return;
+    if (!name.trim() || !basePrice.trim() || !Number.isFinite(price) || price < 0) {
+      setError('Nhập tên sản phẩm và giá hợp lệ (không âm).');
+      return;
+    }
 
     setBusy(true);
     try {
-      applyProduct(await adminProductService.updateProduct(product.product_id, {
-        name: name.trim(),
-        description: description.trim() || null,
-        base_price: price,
-        sale_status: saleStatus,
-      }));
+      applyProduct(
+        await adminProductService.updateProduct(product.product_id, {
+          size_system_id: Number(sizeSystemId),
+          name: name.trim(),
+          description: description.trim() || null,
+          base_price: price,
+          sale_status: saleStatus,
+        }),
+        false,
+      );
+      setVariantSize('');
       setEditing(false);
       setError(null);
       showToast('Đã cập nhật sản phẩm.');
     } catch (requestError: unknown) {
-      setError(getApiErrorMessage(requestError, 'Không thể cập nhật sản phẩm.'));
+      setError(
+        requestError instanceof ApiClientError &&
+          requestError.status === 409 &&
+          Number(sizeSystemId) !== product.size_system.size_system_id
+          ? 'Không thể đổi hệ size: sản phẩm có biến thể không tương thích. Dữ liệu chưa được thay đổi.'
+          : getApiErrorMessage(requestError, 'Không thể cập nhật sản phẩm.'),
+      );
     } finally {
       setBusy(false);
     }
@@ -124,7 +172,12 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
 
   const cancelProductEdit = () => {
     if (!product) return;
-    applyProduct(product);
+    if (!canDiscard()) return;
+    setName(product.name);
+    setDescription(product.description ?? '');
+    setBasePrice(String(product.base_price));
+    setSaleStatus(product.sale_status);
+    setSizeSystemId(String(product.size_system.size_system_id));
     setEditing(false);
   };
 
@@ -136,20 +189,31 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
     const override = variantOverridePrice.trim() ? Number(variantOverridePrice) : null;
 
     if (
-      !sizesById.has(sizeId)
-      || !colorsById.has(colorId)
-      || (override !== null && (!Number.isFinite(override) || override < 0))
-    ) return;
+      !sizesById.has(sizeId) ||
+      !colorsById.has(colorId) ||
+      (override !== null && (!Number.isFinite(override) || override < 0))
+    ) {
+      setError('Chọn size, màu và giá hợp lệ.');
+      return;
+    }
+    if (
+      product.variants.some((item) => item.size_value_id === sizeId && item.color_id === colorId)
+    ) {
+      setError('Tổ hợp size và màu này đã tồn tại.');
+      return;
+    }
 
     setBusy(true);
     try {
-      await adminProductService.createVariants(product.product_id, [{
-        size_value_id: sizeId,
-        color_id: colorId,
-        sku: variantSku.trim() || null,
-        override_price: override,
-        sale_status: 'ON_SALE',
-      }]);
+      await adminProductService.createVariants(product.product_id, [
+        {
+          size_value_id: sizeId,
+          color_id: colorId,
+          sku: variantSku.trim() || null,
+          override_price: override,
+          sale_status: 'ON_SALE',
+        },
+      ]);
       setVariantSize('');
       setVariantColor('');
       setVariantSku('');
@@ -157,7 +221,12 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
       await refresh();
       showToast('Đã thêm biến thể.');
     } catch (requestError: unknown) {
-      setError(getApiErrorMessage(requestError, 'Không thể thêm biến thể. Kiểm tra tổ hợp size/màu và SKU.'));
+      setError(
+        getApiErrorMessage(
+          requestError,
+          'Không thể thêm biến thể. Kiểm tra tổ hợp size/màu và SKU.',
+        ),
+      );
     } finally {
       setBusy(false);
     }
@@ -218,7 +287,12 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
 
   const deleteProductImage = async (imageId: number) => {
     if (!canWrite || !product || busy) return;
-    if (!window.confirm('Xóa ảnh này khỏi gallery sản phẩm?')) return;
+    if (
+      !window.confirm(
+        `Xóa ảnh #${imageId} của ${product.name}? Nếu là ảnh bìa, ảnh tiếp theo sẽ thay thế.`,
+      )
+    )
+      return;
 
     setBusy(true);
     try {
@@ -234,7 +308,11 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
   };
 
   if (!validId) {
-    return <div className="border border-red-200 bg-white p-6 text-sm text-red-700">Product ID không hợp lệ.</div>;
+    return (
+      <div className="border border-red-200 bg-white p-6 text-sm text-red-700">
+        Product ID không hợp lệ.
+      </div>
+    );
   }
   if (loading && !product) {
     return <div className="py-16 text-center text-sm">Đang tải sản phẩm...</div>;
@@ -243,6 +321,15 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
     return (
       <div className="space-y-4 border border-red-200 bg-white p-6 text-sm text-red-700">
         {error ?? 'Không tìm thấy sản phẩm.'}
+        <button
+          type="button"
+          onClick={() => {
+            setLoading(true);
+            setRevision((value) => value + 1);
+          }}
+        >
+          Thử lại
+        </button>
       </div>
     );
   }
@@ -261,15 +348,29 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
           <p className="font-mono text-xs text-[#606863]">Product #{product.product_id}</p>
           <h1 className="mt-1 font-serif text-3xl font-bold">{product.name}</h1>
         </div>
-        <span className="bg-[#FAF4DF] px-3 py-2 text-xs font-bold">{product.sale_status}</span>
+        <span className="bg-[#FAF4DF] px-3 py-2 text-xs font-bold">
+          <StatusBadge status={product.sale_status} />
+        </span>
       </div>
 
-      {error && <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
+      {error && (
+        <div role="alert" className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
+      <nav aria-label="Các bước quản lý sản phẩm" className="admin-steps">
+        <a href="#product-info">1. Thông tin</a>
+        <a href="#product-images">2. Hình ảnh</a>
+        <a href="#product-variants">3. Biến thể</a>
+      </nav>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
           <AdminProductInfoSection
             product={product}
+            sizeSystems={meta?.size_systems ?? []}
+            sizeSystemId={sizeSystemId}
+            onSizeSystemChange={setSizeSystemId}
             editing={editing}
             busy={busy}
             canWrite={canWrite}
@@ -315,6 +416,19 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
           onVariantSkuChange={setVariantSku}
           onVariantOverridePriceChange={setVariantOverridePrice}
           onAddVariant={() => void addVariant()}
+          onBusyChange={setBusy}
+          onVariantSaved={(updated) =>
+            setProduct((current) =>
+              current
+                ? {
+                    ...current,
+                    variants: current.variants.map((variant) =>
+                      variant.variant_id === updated.variant_id ? updated : variant,
+                    ),
+                  }
+                : current,
+            )
+          }
           onToggleVariant={(variantId, current) => void toggleVariant(variantId, current)}
         />
       </div>

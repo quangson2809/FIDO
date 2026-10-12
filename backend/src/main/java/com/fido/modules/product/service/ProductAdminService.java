@@ -20,16 +20,19 @@ import com.fido.modules.product.entity.SizeValue;
 import com.fido.modules.product.repository.ProductImageRepository;
 import com.fido.modules.product.repository.ProductRepository;
 import com.fido.modules.product.repository.ProductVariantRepository;
+
 import jakarta.persistence.EntityManager;
-import java.math.BigDecimal;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.math.BigDecimal;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
 
 @Service
 @Transactional
@@ -55,8 +58,7 @@ public class ProductAdminService {
             CatalogReferenceService references,
             AdminCatalogQueryService query,
             AuditService audit,
-            EntityManager em
-    ) {
+            EntityManager em) {
         this.products = products;
         this.variants = variants;
         this.images = images;
@@ -68,10 +70,7 @@ public class ProductAdminService {
     }
 
     @PreAuthorize(WRITE)
-    public AdminProductDetailDto createProduct(
-            Long actor,
-            ProductCreateRequest request
-    ) {
+    public AdminProductDetailDto createProduct(Long actor, ProductCreateRequest request) {
         Category category = references.leafCategory(request.category_id());
 
         if (request.brand_id() != null) {
@@ -96,23 +95,20 @@ public class ProductAdminService {
 
         products.save(product);
 
-        if (request.variants() != null
-                && !request.variants().isEmpty()) {
-            var variantInputs = request.variants()
-                    .stream()
-                    .map(variant -> new VariantInput(
-                            variant.size_value_id(),
-                            variant.color_id(),
-                            variant.sku(),
-                            variant.override_price(),
-                            variant.sale_status()
-                    ))
-                    .toList();
+        if (request.variants() != null && !request.variants().isEmpty()) {
+            var variantInputs =
+                    request.variants().stream()
+                            .map(
+                                    variant ->
+                                            new VariantInput(
+                                                    variant.size_value_id(),
+                                                    variant.color_id(),
+                                                    variant.sku(),
+                                                    variant.override_price(),
+                                                    variant.sale_status()))
+                            .toList();
 
-            createVariantsInternal(
-                    product,
-                    variantInputs
-            );
+            createVariantsInternal(product, variantInputs);
         }
 
         em.flush();
@@ -122,80 +118,47 @@ public class ProductAdminService {
                         actor,
                         AuditAction.PRODUCT_CREATE,
                         AuditTargetType.PRODUCT,
-                        product.getProductId()
-                )
-        );
+                        product.getProductId()));
 
-        return query.detailInternal(
-                product.getProductId()
-        );
+        return query.detailInternal(product.getProductId());
     }
 
     @PreAuthorize(WRITE)
     public AdminProductDetailDto updateProduct(
-            Long actor,
-            Long productId,
-            ProductPatchRequest request
-    ) {
+            Long actor, Long productId, ProductPatchRequest request) {
         Product product = references.productForUpdate(productId);
 
-        applyReferenceChanges(
-                product,
-                request
-        );
+        applyReferenceChanges(product, request);
 
-        applyProductAttributes(
-                product,
-                request
-        );
+        applyProductAttributes(product, request);
 
-        replaceImagesIfPresent(
-                productId,
-                request
-        );
+        replaceImagesIfPresent(productId, request);
 
         products.save(product);
         em.flush();
 
         audit.record(
                 AuditEvent.of(
-                        actor,
-                        AuditAction.PRODUCT_UPDATE,
-                        AuditTargetType.PRODUCT,
-                        productId
-                )
-        );
+                        actor, AuditAction.PRODUCT_UPDATE, AuditTargetType.PRODUCT, productId));
 
         return query.detailInternal(productId);
     }
 
-    private void applyReferenceChanges(
-            Product product,
-            ProductPatchRequest request
-    ) {
+    private void applyReferenceChanges(Product product, ProductPatchRequest request) {
         applyCategoryChange(product, request);
         applyBrandChange(product, request);
         applySizeSystemChange(product, request);
     }
 
-    private void applyCategoryChange(
-            Product product,
-            ProductPatchRequest request
-    ) {
+    private void applyCategoryChange(Product product, ProductPatchRequest request) {
         if (request.getCategoryId() == null) {
             return;
         }
 
-        product.setCategoryId(
-                references.leafCategory(request.getCategoryId())
-                        .getCategoryId()
-        );
+        product.setCategoryId(references.leafCategory(request.getCategoryId()).getCategoryId());
     }
 
-    private void applyBrandChange(
-            Product product,
-            ProductPatchRequest request
-    ) {
+    private void applyBrandChange(Product product, ProductPatchRequest request) {
         if (!request.isBrandIdPresent()) {
             return;
         }
@@ -207,52 +170,31 @@ public class ProductAdminService {
         product.setBrandId(request.getBrandId());
     }
 
-    private void applySizeSystemChange(
-            Product product,
-            ProductPatchRequest request
-    ) {
+    private void applySizeSystemChange(Product product, ProductPatchRequest request) {
         Long requestedSizeSystemId = request.getSizeSystemId();
 
         if (requestedSizeSystemId == null
-                || Objects.equals(
-                        requestedSizeSystemId,
-                        product.getSizeSystemId()
-                )) {
+                || Objects.equals(requestedSizeSystemId, product.getSizeSystemId())) {
             return;
         }
 
         references.sizeSystem(requestedSizeSystemId);
-        requireVariantsCompatibleWithSizeSystem(
-                product.getProductId(),
-                requestedSizeSystemId
-        );
+        requireVariantsCompatibleWithSizeSystem(product.getProductId(), requestedSizeSystemId);
 
         product.setSizeSystemId(requestedSizeSystemId);
     }
 
-    private void requireVariantsCompatibleWithSizeSystem(
-            Long productId,
-            Long sizeSystemId
-    ) {
-        for (ProductVariant variant :
-                variants.findAllByProductIdOrderByVariantIdAsc(productId)) {
-            SizeValue value = references.sizeValue(
-                    variant.getSizeValueId()
-            );
+    private void requireVariantsCompatibleWithSizeSystem(Long productId, Long sizeSystemId) {
+        for (ProductVariant variant : variants.findAllByProductIdOrderByVariantIdAsc(productId)) {
+            SizeValue value = references.sizeValue(variant.getSizeValueId());
 
-            if (!Objects.equals(
-                    value.getSizeSystemId(),
-                    sizeSystemId
-            )) {
+            if (!Objects.equals(value.getSizeSystemId(), sizeSystemId)) {
                 conflict();
             }
         }
     }
 
-    private void applyProductAttributes(
-            Product product,
-            ProductPatchRequest request
-    ) {
+    private void applyProductAttributes(Product product, ProductPatchRequest request) {
         if (request.getName() != null) {
             product.setName(request.getName());
         }
@@ -287,10 +229,7 @@ public class ProductAdminService {
         }
     }
 
-    private void replaceImagesIfPresent(
-            Long productId,
-            ProductPatchRequest request
-    ) {
+    private void replaceImagesIfPresent(Long productId, ProductPatchRequest request) {
         if (!request.isImagesPresent()) {
             return;
         }
@@ -304,16 +243,16 @@ public class ProductAdminService {
         saveImages(productId, requested);
     }
 
-    private void requireNormalizedImageOrder(
-            List<ProductImageInput> requested
-    ) {
+    private void requireNormalizedImageOrder(List<ProductImageInput> requested) {
         var sortOrders = new HashSet<Integer>();
 
         for (ProductImageInput item : requested) {
+            if (!ProductImageUrlPolicy.isValid(item.image_url())) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Image URL must be a valid HTTPS URI");
+            }
             Integer sortOrder = item.sort_order();
-            if (sortOrder == null
-                    || sortOrder < 0
-                    || !sortOrders.add(sortOrder)) {
+            if (sortOrder == null || sortOrder < 0 || !sortOrders.add(sortOrder)) {
                 conflict();
             }
         }
@@ -327,72 +266,50 @@ public class ProductAdminService {
 
     @PreAuthorize(WRITE)
     public List<AdminVariantDto> createVariants(
-            Long actor,
-            Long productId,
-            VariantBatchCreateRequest request
-    ) {
-        Product product = references.product(productId);
+            Long actor, Long productId, VariantBatchCreateRequest request) {
+        // Serialize size-system changes and variant creation on the same product row.
+        Product product = references.productForUpdate(productId);
 
-        var variantInputs = request.variants()
-                .stream()
-                .map(variant -> new VariantInput(
-                        variant.size_value_id(),
-                        variant.color_id(),
-                        variant.sku(),
-                        variant.override_price(),
-                        variant.sale_status()
-                ))
-                .toList();
+        var variantInputs =
+                request.variants().stream()
+                        .map(
+                                variant ->
+                                        new VariantInput(
+                                                variant.size_value_id(),
+                                                variant.color_id(),
+                                                variant.sku(),
+                                                variant.override_price(),
+                                                variant.sale_status()))
+                        .toList();
 
-        createVariantsInternal(
-                product,
-                variantInputs
-        );
+        createVariantsInternal(product, variantInputs);
 
         em.flush();
 
         audit.record(
                 AuditEvent.of(
-                        actor,
-                        AuditAction.VARIANT_CREATE,
-                        AuditTargetType.PRODUCT,
-                        productId
-                )
-        );
+                        actor, AuditAction.VARIANT_CREATE, AuditTargetType.PRODUCT, productId));
 
         return query.variantsInternal(productId);
     }
 
     @PreAuthorize(WRITE)
     public AdminVariantDto updateVariant(
-            Long actor,
-            Long productId,
-            Long variantId,
-            VariantPatchRequest request
-    ) {
+            Long actor, Long productId, Long variantId, VariantPatchRequest request) {
         references.product(productId);
 
-        ProductVariant variant = variants
-                .findByVariantIdAndProductId(
-                        variantId,
-                        productId
-                )
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND)
-                );
+        ProductVariant variant =
+                variants.findByVariantIdAndProductId(variantId, productId)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 
         if (request.isOverridePricePresent()) {
             variant.setOverridePrice(request.getOverridePrice());
         }
 
         if (request.getSaleStatus() != null) {
-            CatalogPolicy.requireSaleStatus(
-                    request.getSaleStatus()
-            );
+            CatalogPolicy.requireSaleStatus(request.getSaleStatus());
 
-            variant.setSaleStatus(
-                    request.getSaleStatus()
-            );
+            variant.setSaleStatus(request.getSaleStatus());
         }
 
         variants.save(variant);
@@ -400,62 +317,38 @@ public class ProductAdminService {
 
         audit.record(
                 AuditEvent.of(
-                        actor,
-                        AuditAction.VARIANT_UPDATE,
-                        AuditTargetType.VARIANT,
-                        variantId
-                )
-        );
+                        actor, AuditAction.VARIANT_UPDATE, AuditTargetType.VARIANT, variantId));
 
-        return query.variantInternal(
-                productId,
-                variantId
-        );
+        return query.variantInternal(productId, variantId);
     }
 
-    private void createVariantsInternal(
-            Product product,
-            List<VariantInput> requested
-    ) {
+    private void createVariantsInternal(Product product, List<VariantInput> requested) {
         var combinations = new HashSet<String>();
         var skus = new HashSet<String>();
 
         for (VariantInput item : requested) {
-            CatalogPolicy.requireSaleStatus(
-                    item.saleStatus()
-            );
+            CatalogPolicy.requireSaleStatus(item.saleStatus());
 
-            SizeValue sizeValue = references.sizeValue(
-                    item.sizeValueId()
-            );
+            SizeValue sizeValue = references.sizeValue(item.sizeValueId());
 
-            if (!Objects.equals(
-                    sizeValue.getSizeSystemId(),
-                    product.getSizeSystemId()
-            )) {
+            if (!Objects.equals(sizeValue.getSizeSystemId(), product.getSizeSystemId())) {
                 conflict();
             }
 
             references.color(item.colorId());
 
-            String combinationKey =
-                    item.sizeValueId() + ":" + item.colorId();
+            String combinationKey = item.sizeValueId() + ":" + item.colorId();
 
             if (!combinations.add(combinationKey)) {
                 conflict();
             }
 
-            if (item.sku() != null
-                    && !item.sku().isBlank()
-                    && !skus.add(item.sku())) {
+            if (item.sku() != null && !item.sku().isBlank() && !skus.add(item.sku())) {
                 conflict();
             }
 
             if (variants.existsByProductIdAndSizeValueIdAndColorId(
-                    product.getProductId(),
-                    item.sizeValueId(),
-                    item.colorId()
-            )) {
+                    product.getProductId(), item.sizeValueId(), item.colorId())) {
                 conflict();
             }
 
@@ -472,10 +365,7 @@ public class ProductAdminService {
         }
     }
 
-    private void saveImages(
-            Long productId,
-            List<ProductImageInput> requested
-    ) {
+    private void saveImages(Long productId, List<ProductImageInput> requested) {
         for (ProductImageInput item : requested) {
             ProductImage image = new ProductImage();
             image.setProductId(productId);
@@ -496,7 +386,5 @@ public class ProductAdminService {
             Long colorId,
             String sku,
             BigDecimal overridePrice,
-            String saleStatus
-    ) {
-    }
+            String saleStatus) {}
 }

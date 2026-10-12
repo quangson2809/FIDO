@@ -9,11 +9,14 @@ import type {
 
 export const checkoutService: CheckoutService = {
   async quote(request: CheckoutRequest) {
-    const response = await apiClient.post<ApiResponse<CheckoutQuoteDto>>('/checkout/quote', request);
+    const response = await apiClient.post<ApiResponse<CheckoutQuoteDto>>(
+      '/checkout/quote',
+      request,
+    );
     return response.data;
   },
 
-  async createOrder(request: CheckoutRequest) {
+  async createOrder(request: CheckoutRequest & { quote_id: string }) {
     const response = await apiClient.post<ApiResponse<OrderConfirmationDto>>('/orders', request);
     return response.data;
   },

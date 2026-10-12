@@ -9,6 +9,12 @@ import com.fido.modules.product.repository.ColorRepository;
 import com.fido.modules.product.repository.ProductRepository;
 import com.fido.modules.product.repository.ProductVariantRepository;
 import com.fido.modules.product.repository.SizeValueRepository;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -16,14 +22,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Cross-module read contract for concrete catalog variants.
- * Callers outside product do not access product repositories directly.
+ * Cross-module read contract for concrete catalog variants. Callers outside product do not access
+ * product repositories directly.
  */
 @Service
 @Transactional(readOnly = true)
@@ -42,8 +44,7 @@ public class CatalogVariantReadService {
             SizeValueRepository sizes,
             ColorRepository colors,
             InventoryAvailabilityService inventory,
-            ProductImageReadService imageRead
-    ) {
+            ProductImageReadService imageRead) {
         this.variants = variants;
         this.products = products;
         this.sizes = sizes;
@@ -62,13 +63,11 @@ public class CatalogVariantReadService {
         }
 
         var requestedIds = variantIds.stream().distinct().toList();
-        Map<Long, ProductVariant> variantsById = variants
-                .findAllByVariantIdIn(requestedIds)
-                .stream()
-                .collect(Collectors.toMap(
-                        ProductVariant::getVariantId,
-                        Function.identity()
-                ));
+        Map<Long, ProductVariant> variantsById =
+                variants.findAllByVariantIdIn(requestedIds).stream()
+                        .collect(
+                                Collectors.toMap(
+                                        ProductVariant::getVariantId, Function.identity()));
 
         for (Long variantId : requestedIds) {
             if (!variantsById.containsKey(variantId)) {
@@ -76,62 +75,57 @@ public class CatalogVariantReadService {
             }
         }
 
-        var productIds = variantsById.values()
-                .stream()
-                .map(ProductVariant::getProductId)
-                .distinct()
-                .toList();
+        var productIds =
+                variantsById.values().stream()
+                        .map(ProductVariant::getProductId)
+                        .distinct()
+                        .toList();
 
-        Map<Long, Product> productsById = products
-                .findAllByProductIdIn(productIds)
-                .stream()
-                .collect(Collectors.toMap(Product::getProductId, Function.identity()));
+        Map<Long, Product> productsById =
+                products.findAllByProductIdIn(productIds).stream()
+                        .collect(Collectors.toMap(Product::getProductId, Function.identity()));
 
         Map<Long, String> imagesByProductId = imageRead.representativeByProductIds(productIds);
 
-        Map<Long, SizeValue> sizesById = sizes
-                .findAllBySizeValueIdIn(
-                        variantsById.values().stream()
-                                .map(ProductVariant::getSizeValueId)
-                                .distinct()
-                                .toList()
-                )
-                .stream()
-                .collect(Collectors.toMap(SizeValue::getSizeValueId, Function.identity()));
+        Map<Long, SizeValue> sizesById =
+                sizes
+                        .findAllBySizeValueIdIn(
+                                variantsById.values().stream()
+                                        .map(ProductVariant::getSizeValueId)
+                                        .distinct()
+                                        .toList())
+                        .stream()
+                        .collect(Collectors.toMap(SizeValue::getSizeValueId, Function.identity()));
 
-        Map<Long, Color> colorsById = colors
-                .findAllByColorIdIn(
-                        variantsById.values().stream()
-                                .map(ProductVariant::getColorId)
-                                .distinct()
-                                .toList()
-                )
-                .stream()
-                .collect(Collectors.toMap(Color::getColorId, Function.identity()));
+        Map<Long, Color> colorsById =
+                colors
+                        .findAllByColorIdIn(
+                                variantsById.values().stream()
+                                        .map(ProductVariant::getColorId)
+                                        .distinct()
+                                        .toList())
+                        .stream()
+                        .collect(Collectors.toMap(Color::getColorId, Function.identity()));
 
         Map<Long, Integer> availabilityByVariantId = inventory.availableQuantities(requestedIds);
         var result = new LinkedHashMap<Long, VariantView>();
 
         for (Long variantId : requestedIds) {
             ProductVariant variant = variantsById.get(variantId);
-            Product product = required(
-                    productsById,
-                    variant.getProductId(),
-                    "Variant references missing product"
-            );
-            SizeValue size = required(
-                    sizesById,
-                    variant.getSizeValueId(),
-                    "Variant references missing size"
-            );
-            Color color = required(
-                    colorsById,
-                    variant.getColorId(),
-                    "Variant references missing color"
-            );
-            BigDecimal unitPrice = variant.getOverridePrice() == null
-                    ? product.getBasePrice()
-                    : variant.getOverridePrice();
+            Product product =
+                    required(
+                            productsById,
+                            variant.getProductId(),
+                            "Variant references missing product");
+            SizeValue size =
+                    required(
+                            sizesById, variant.getSizeValueId(), "Variant references missing size");
+            Color color =
+                    required(colorsById, variant.getColorId(), "Variant references missing color");
+            BigDecimal unitPrice =
+                    variant.getOverridePrice() == null
+                            ? product.getBasePrice()
+                            : variant.getOverridePrice();
 
             result.put(
                     variantId,
@@ -146,33 +140,26 @@ public class CatalogVariantReadService {
                             unitPrice,
                             product.getSaleStatus(),
                             variant.getSaleStatus(),
-                            availabilityByVariantId.getOrDefault(variantId, 0)
-                    )
-            );
+                            availabilityByVariantId.getOrDefault(variantId, 0)));
         }
 
         return Map.copyOf(result);
     }
 
-    public Map<Long, String> representativeImageUrlsByVariantIds(
-            Collection<Long> variantIds
-    ) {
+    public Map<Long, String> representativeImageUrlsByVariantIds(Collection<Long> variantIds) {
         if (variantIds == null || variantIds.isEmpty()) {
             return Map.of();
         }
 
-        var foundVariants = variants.findAllByVariantIdIn(
-                variantIds.stream()
-                        .filter(Objects::nonNull)
-                        .distinct()
-                        .toList()
-        );
-        var imageUrlsByProductId = imageRead.representativeByProductIds(
-                foundVariants.stream()
-                        .map(ProductVariant::getProductId)
-                        .distinct()
-                        .toList()
-        );
+        var foundVariants =
+                variants.findAllByVariantIdIn(
+                        variantIds.stream().filter(Objects::nonNull).distinct().toList());
+        var imageUrlsByProductId =
+                imageRead.representativeByProductIds(
+                        foundVariants.stream()
+                                .map(ProductVariant::getProductId)
+                                .distinct()
+                                .toList());
         var result = new LinkedHashMap<Long, String>();
         for (ProductVariant variant : foundVariants) {
             String imageUrl = imageUrlsByProductId.get(variant.getProductId());
@@ -202,8 +189,7 @@ public class CatalogVariantReadService {
             BigDecimal unitPrice,
             String productSaleStatus,
             String variantSaleStatus,
-            Integer availableQuantity
-    ) {
+            Integer availableQuantity) {
         public boolean purchasable() {
             return CatalogPolicy.ON_SALE.equals(productSaleStatus)
                     && CatalogPolicy.ON_SALE.equals(variantSaleStatus)

@@ -6,7 +6,9 @@ import com.fido.modules.cart.dto.request.CartItemQuantityRequest;
 import com.fido.modules.cart.dto.response.CartDto;
 import com.fido.modules.cart.service.CartCommandService;
 import com.fido.modules.cart.service.CartQueryService;
+
 import jakarta.validation.Valid;
+
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -31,62 +33,33 @@ public class CartController {
     }
 
     @GetMapping
-    public ApiResponse<CartDto> current(
-            @AuthenticationPrincipal Jwt jwt
-    ) {
-        return ApiResponse.of(
-                query.current(actor(jwt))
-        );
+    public ApiResponse<CartDto> current(@AuthenticationPrincipal Jwt jwt) {
+        return ApiResponse.of(query.current(actor(jwt)));
     }
 
     @PostMapping("/items")
     public ApiResponse<CartDto> add(
-            @AuthenticationPrincipal Jwt jwt,
-            @Valid @RequestBody CartItemCreateRequest request
-    ) {
-        return ApiResponse.of(
-                service.add(
-                        actor(jwt),
-                        request
-                )
-        );
+            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody CartItemCreateRequest request) {
+        return ApiResponse.of(service.add(actor(jwt), request));
     }
 
     @PatchMapping("/items/{cartItemId}")
     public ApiResponse<CartDto> updateQuantity(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long cartItemId,
-            @Valid @RequestBody CartItemQuantityRequest request
-    ) {
-        return ApiResponse.of(
-                service.updateQuantity(
-                        actor(jwt),
-                        cartItemId,
-                        request
-                )
-        );
+            @Valid @RequestBody CartItemQuantityRequest request) {
+        return ApiResponse.of(service.updateQuantity(actor(jwt), cartItemId, request));
     }
 
     @DeleteMapping("/items/{cartItemId}")
     public ApiResponse<CartDto> deleteItem(
-            @AuthenticationPrincipal Jwt jwt,
-            @PathVariable Long cartItemId
-    ) {
-        return ApiResponse.of(
-                service.deleteItem(
-                        actor(jwt),
-                        cartItemId
-                )
-        );
+            @AuthenticationPrincipal Jwt jwt, @PathVariable Long cartItemId) {
+        return ApiResponse.of(service.deleteItem(actor(jwt), cartItemId));
     }
 
     @DeleteMapping
-    public ApiResponse<CartDto> clear(
-            @AuthenticationPrincipal Jwt jwt
-    ) {
-        return ApiResponse.of(
-                service.clear(actor(jwt))
-        );
+    public ApiResponse<CartDto> clear(@AuthenticationPrincipal Jwt jwt) {
+        return ApiResponse.of(service.clear(actor(jwt)));
     }
 
     private Long actor(Jwt jwt) {

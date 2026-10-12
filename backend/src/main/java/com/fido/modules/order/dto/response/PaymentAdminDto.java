@@ -11,6 +11,4 @@ public record PaymentAdminDto(
         Long collected_by_account_id,
         LocalDateTime collected_at,
         Long refunded_by_account_id,
-        LocalDateTime refunded_at
-) {
-}
+        LocalDateTime refunded_at) {}

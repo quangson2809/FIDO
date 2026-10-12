@@ -1,6 +1,7 @@
 export const APP_PATHS = {
   home: '/',
   catalog: '/products',
+  categoryProducts: '/categories/:categoryId',
   productDetail: '/products/:productId',
   checkout: '/checkout',
   checkoutSuccess: '/checkout/success',
@@ -8,6 +9,7 @@ export const APP_PATHS = {
   myOrders: '/orders',
   orderDetail: '/orders/:orderId',
   policy: '/policies',
+  about: '/about',
   auth: '/login',
   profile: '/account',
   showrooms: '/showrooms',
@@ -27,6 +29,7 @@ export const ADMIN_PATHS = {
   inward: '/admin/goods-receipts',
   inventory: '/admin/inventory',
   history: '/admin/inventory/history',
+  vouchers: '/admin/vouchers',
   suppliers: '/admin/suppliers',
   customers: '/admin/customers',
   staff: '/admin/staff',
@@ -54,15 +57,11 @@ export interface AdminRouteResolution {
 }
 
 export const getAdminPath = (menuKey: string): string =>
-  menuKey in ADMIN_PATHS
-    ? ADMIN_PATHS[menuKey as AdminPathKey]
-    : APP_PATHS.admin;
+  menuKey in ADMIN_PATHS ? ADMIN_PATHS[menuKey as AdminPathKey] : APP_PATHS.admin;
 
 export const toAdminChildPath = (absolutePath: string): string => {
   const prefix = APP_PATHS.adminRoot + '/';
-  return absolutePath.startsWith(prefix)
-    ? absolutePath.slice(prefix.length)
-    : absolutePath;
+  return absolutePath.startsWith(prefix) ? absolutePath.slice(prefix.length) : absolutePath;
 };
 
 export const productDetailPath = (productId: string | number): string =>
@@ -124,15 +123,23 @@ export const resolveAdminRoute = (pathname: string): AdminRouteResolution => {
   if (pathname === ADMIN_PATHS.colors) return { menuKey: 'colors', breadcrumb: 'Màu sắc' };
   if (pathname === ADMIN_PATHS.orders) return { menuKey: 'orders', breadcrumb: 'Đơn hàng' };
   if (pathname === ADMIN_PATHS.inward) return { menuKey: 'inward', breadcrumb: 'Phiếu nhập kho' };
-  if (pathname === ADMIN_PATHS.history) return { menuKey: 'history', breadcrumb: 'Lịch sử biến động' };
+  if (pathname === ADMIN_PATHS.history)
+    return { menuKey: 'history', breadcrumb: 'Lịch sử biến động' };
   if (pathname === ADMIN_PATHS.inventory) return { menuKey: 'inventory', breadcrumb: 'Tồn kho' };
-  if (pathname === ADMIN_PATHS.suppliers) return { menuKey: 'suppliers', breadcrumb: 'Nhà cung cấp' };
+  if (pathname === ADMIN_PATHS.suppliers)
+    return { menuKey: 'suppliers', breadcrumb: 'Nhà cung cấp' };
   if (pathname === ADMIN_PATHS.customers) return { menuKey: 'customers', breadcrumb: 'Khách hàng' };
   if (pathname === ADMIN_PATHS.staff) return { menuKey: 'staff', breadcrumb: 'Nhân viên' };
   if (pathname === ADMIN_PATHS.roles) return { menuKey: 'roles', breadcrumb: 'Vai trò & quyền' };
   if (pathname === ADMIN_PATHS.audit) return { menuKey: 'audit', breadcrumb: 'Audit' };
   if (pathname === ADMIN_PATHS.reports) return { menuKey: 'reports', breadcrumb: 'Báo cáo' };
-  if (pathname === ADMIN_PATHS.content) return { menuKey: 'content', breadcrumb: 'Nội dung & chính sách' };
-  if (pathname === ADMIN_PATHS.settings) return { menuKey: 'settings', breadcrumb: 'Cài đặt nội dung' };
+  if (pathname === ADMIN_PATHS.vouchers) return { menuKey: 'vouchers', breadcrumb: 'Voucher' };
+  if (pathname === ADMIN_PATHS.content)
+    return { menuKey: 'content', breadcrumb: 'Nội dung & chính sách' };
+  if (pathname === ADMIN_PATHS.settings)
+    return { menuKey: 'settings', breadcrumb: 'Cài đặt nội dung' };
   return { menuKey: 'dashboard', breadcrumb: 'Tổng quan' };
 };
+
+export const categoryProductsPath = (categoryId: number): string =>
+  APP_PATHS.categoryProducts.replace(':categoryId', String(categoryId));

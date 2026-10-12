@@ -28,44 +28,28 @@ const fail = (endpoint: string, fieldPath: string, expected: string): never => {
 const isContractObject = (value: unknown): value is ContractObject =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
-const expectObject = (
-  value: unknown,
-  endpoint: string,
-  fieldPath: string,
-): ContractObject => {
+const expectObject = (value: unknown, endpoint: string, fieldPath: string): ContractObject => {
   if (!isContractObject(value)) {
     return fail(endpoint, fieldPath, 'an object');
   }
   return value;
 };
 
-const expectArray = (
-  value: unknown,
-  endpoint: string,
-  fieldPath: string,
-): unknown[] => {
+const expectArray = (value: unknown, endpoint: string, fieldPath: string): unknown[] => {
   if (!Array.isArray(value)) {
     return fail(endpoint, fieldPath, 'an array');
   }
   return value;
 };
 
-const expectString = (
-  value: unknown,
-  endpoint: string,
-  fieldPath: string,
-): string => {
+const expectString = (value: unknown, endpoint: string, fieldPath: string): string => {
   if (typeof value !== 'string') {
     return fail(endpoint, fieldPath, 'a string');
   }
   return value;
 };
 
-const expectNonBlankString = (
-  value: unknown,
-  endpoint: string,
-  fieldPath: string,
-): string => {
+const expectNonBlankString = (value: unknown, endpoint: string, fieldPath: string): string => {
   const result = expectString(value, endpoint, fieldPath);
   if (!result.trim()) {
     return fail(endpoint, fieldPath, 'a non-blank string');
@@ -77,15 +61,9 @@ const expectNullableString = (
   value: unknown,
   endpoint: string,
   fieldPath: string,
-): string | null => (
-  value === null ? null : expectString(value, endpoint, fieldPath)
-);
+): string | null => (value === null ? null : expectString(value, endpoint, fieldPath));
 
-const expectInteger = (
-  value: unknown,
-  endpoint: string,
-  fieldPath: string,
-): number => {
+const expectInteger = (value: unknown, endpoint: string, fieldPath: string): number => {
   if (typeof value !== 'number' || !Number.isSafeInteger(value)) {
     return fail(endpoint, fieldPath, 'a safe integer');
   }
@@ -95,11 +73,7 @@ const expectInteger = (
 const responseData = (value: unknown, endpoint: string): unknown =>
   expectObject(value, endpoint, 'response').data;
 
-const parseAccount = (
-  value: unknown,
-  endpoint: string,
-  fieldPath: string,
-): AccountDto => {
+const parseAccount = (value: unknown, endpoint: string, fieldPath: string): AccountDto => {
   const account = expectObject(value, endpoint, fieldPath);
   return {
     account_id: expectInteger(account.account_id, endpoint, `${fieldPath}.account_id`),
@@ -110,11 +84,7 @@ const parseAccount = (
   };
 };
 
-const parseAddress = (
-  value: unknown,
-  endpoint: string,
-  fieldPath: string,
-): AddressDto => {
+const parseAddress = (value: unknown, endpoint: string, fieldPath: string): AddressDto => {
   const address = expectObject(value, endpoint, fieldPath);
   return {
     address_id: expectInteger(address.address_id, endpoint, `${fieldPath}.address_id`),
@@ -123,11 +93,7 @@ const parseAddress = (
   };
 };
 
-const parseRole = (
-  value: unknown,
-  endpoint: string,
-  fieldPath: string,
-): RoleDto => {
+const parseRole = (value: unknown, endpoint: string, fieldPath: string): RoleDto => {
   const role = expectObject(value, endpoint, fieldPath);
   return {
     role_id: expectInteger(role.role_id, endpoint, `${fieldPath}.role_id`),
@@ -137,11 +103,7 @@ const parseRole = (
   };
 };
 
-const parsePermission = (
-  value: unknown,
-  endpoint: string,
-  fieldPath: string,
-): PermissionDto => {
+const parsePermission = (value: unknown, endpoint: string, fieldPath: string): PermissionDto => {
   const permission = expectObject(value, endpoint, fieldPath);
   return {
     permission_id: expectInteger(permission.permission_id, endpoint, `${fieldPath}.permission_id`),
@@ -172,10 +134,11 @@ export const parseMeResponse = (value: unknown): MeDto => {
   return {
     account: parseAccount(data.account, endpoint, 'data.account'),
     addresses: addresses.map((address, index) =>
-      parseAddress(address, endpoint, `data.addresses[${index}]`)),
-    roles: roles.map((role, index) =>
-      parseRole(role, endpoint, `data.roles[${index}]`)),
+      parseAddress(address, endpoint, `data.addresses[${index}]`),
+    ),
+    roles: roles.map((role, index) => parseRole(role, endpoint, `data.roles[${index}]`)),
     permissions: permissions.map((permission, index) =>
-      parsePermission(permission, endpoint, `data.permissions[${index}]`)),
+      parsePermission(permission, endpoint, `data.permissions[${index}]`),
+    ),
   };
 };

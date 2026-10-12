@@ -1,0 +1,519 @@
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { createServer } from 'vite';
+const { chromium } = createRequire(import.meta.url)('playwright');
+const server = await createServer({ server: { port: 5180, strictPort: true } });
+await server.listen();
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: process.env.CHROMIUM_EXECUTABLE_PATH,
+  args: ['--no-sandbox'],
+});
+const page = await browser.newPage();
+const errors = [];
+page.on('pageerror', (error) => errors.push(error.message));
+const date = '2026-10-08T03:00:00Z';
+const permission = { permission_id: 1, code: 'CATALOG_READ', name: 'Xem danh mục' };
+const role = { role_id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null };
+let me = {
+  account: { account_id: 1, phone: '0900000000', email: null, created_at: date, updated_at: date },
+  addresses: [],
+  roles: [role],
+  permissions: [],
+};
+const pagination = (data, pageNumber = 1, total = data.length) => ({
+  data,
+  meta: { page: pageNumber, page_size: 20, total, total_pages: Math.ceil(total / 20) },
+});
+const size = { size_value_id: 1, size_system_id: 1, code: 'M', display_name: 'M', sort_order: 0 };
+const color = { color_id: 1, code: 'BLACK', name: 'Đen' };
+const metadata = {
+  categories: [{ category_id: 1, parent_category_id: null, name: 'Áo' }],
+  brands: [],
+  colors: [color, { color_id: 2, code: 'WHITE', name: 'Trắng' }],
+  size_systems: [{ size_system_id: 1, code: 'TOP', name: 'Áo', size_values: [size] }],
+  genders: [],
+  seasons: [],
+  styles: [],
+};
+let product = {
+  product_id: 1,
+  name: 'Áo thử nghiệm',
+  description: null,
+  category: metadata.categories[0],
+  category_id: 1,
+  brand: null,
+  brand_id: null,
+  size_system: metadata.size_systems[0],
+  size_system_id: 1,
+  gender: null,
+  season: null,
+  style: null,
+  material_care: null,
+  base_price: 200000,
+  sale_status: 'ON_SALE',
+  images: [],
+  variants: [
+    {
+      variant_id: 10,
+      product_id: 1,
+      size_value_id: 1,
+      color_id: 1,
+      sku: 'TEE-M-BLACK',
+      override_price: null,
+      sale_status: 'ON_SALE',
+      available_quantity: 5,
+      created_at: date,
+      updated_at: date,
+    },
+  ],
+  created_at: date,
+  updated_at: date,
+};
+let order = {
+  order_id: 1,
+  order_code: 'ORD-001',
+  order_status: 'PENDING',
+  recipient: { phone: '0900111222', email: null, address: 'Hà Nội' },
+  items: [],
+  subtotal: 200000,
+  discount: 0,
+  shipping_fee: 0,
+  total: 200000,
+  shipping_info: null,
+  completed_at: null,
+  returned_at: null,
+  created_at: date,
+  updated_at: date,
+  customer_account_id: 1,
+  voucher_id: null,
+  customer_service_note: null,
+  cancel_reason: null,
+  payment: {
+    payment_status: 'UNPAID',
+    amount_due: 200000,
+    amount_received: 0,
+    amount_refunded: 0,
+    collected_by_account_id: null,
+    collected_at: null,
+    refunded_by_account_id: null,
+    refunded_at: null,
+  },
+  allowed_actions: ['CONFIRM', 'CANCEL'],
+};
+let priceError = true;
+const supplier = {
+  supplier_id: 1,
+  name: 'Nhà cung cấp mẫu',
+  phone: null,
+  email: null,
+  address: null,
+  usage_status: 'ACTIVE',
+  note: null,
+};
+let receipt = {
+  receipt_id: 1,
+  receipt_code: 'GR-001',
+  supplier_id: 1,
+  receipt_status: 'DRAFT',
+  receipt_date: '2026-10-08',
+  confirmed_at: null,
+  created_at: date,
+  updated_at: date,
+  created_by_account_id: 1,
+  confirmed_by_account_id: null,
+  note: null,
+  items: [{ receipt_item_id: 1, variant_id: 10, quantity: 2 }],
+};
+let customerError = false;
+let reportError = false;
+let writes = [];
+let customerRequests = 0;
+await page.addInitScript(() => sessionStorage.setItem('fido.accessToken', 'fixture'));
+await page.route('**/api/v1/**', async (route) => {
+  const request = route.request();
+  const url = new URL(request.url());
+  const path = url.pathname.replace('/api/v1', '');
+  const send = (body, status = 200) =>
+    route.fulfill({
+      status,
+      contentType: 'application/json',
+      body: JSON.stringify(body),
+      headers: { 'access-control-allow-origin': '*' },
+    });
+  if (request.method() === 'OPTIONS')
+    return route.fulfill({
+      status: 204,
+      headers: {
+        'access-control-allow-origin': '*',
+        'access-control-allow-headers': '*',
+        'access-control-allow-methods': '*',
+      },
+    });
+  if (request.method() !== 'GET') {
+    writes.push({ path, body: request.postDataJSON() });
+    if (path === '/admin/orders/1/actions') {
+      order = { ...order, order_status: 'CONFIRMED', allowed_actions: ['PREPARE', 'CANCEL'] };
+      return send({ data: order });
+    }
+    if (path === '/admin/orders/1/payment-actions') {
+      order = {
+        ...order,
+        payment: { ...order.payment, payment_status: 'PAID', amount_received: 200000 },
+      };
+      return send({ data: order.payment });
+    }
+    if (path === '/admin/products/1/variants/10' && !priceError) {
+      product = { ...product, variants: [{ ...product.variants[0], ...request.postDataJSON() }] };
+      return send({ data: product.variants[0] });
+    }
+    if (path === '/admin/goods-receipts/1/actions') {
+      receipt = { ...receipt, receipt_status: 'CONFIRMED' };
+      return send({ data: receipt });
+    }
+    return send({ message: 'Lỗi lưu thử nghiệm' }, 500);
+  }
+  if (path === '/me') return send({ data: me });
+  if (path === '/cart')
+    return send({ data: { cart_id: 1, account_id: 1, items: [], subtotal: 0 } });
+  if (path === '/admin/products/1') return send({ data: product });
+  if (path === '/admin/products') return send(pagination([product]));
+  if (path === '/admin/orders/1') return send({ data: order });
+  if (path === '/admin/orders')
+    return send(pagination([{ ...order, payment_status: order.payment.payment_status }]));
+  if (path === '/admin/catalog/meta') return send({ data: metadata });
+  if (path === '/admin/customers/1') return send({ message: 'Không tải được hồ sơ' }, 500);
+  if (path === '/admin/customers') {
+    customerRequests++;
+    const q = url.searchParams.get('q');
+    if (q === 'slow') await new Promise((resolve) => setTimeout(resolve, 400));
+    if (customerError) return send({ message: 'Lỗi danh sách' }, 500);
+    return send(
+      pagination(
+        [
+          {
+            account_id: 1,
+            phone: q || '0900111222',
+            email: null,
+            order_count: 0,
+            last_order_at: null,
+          },
+        ],
+        Number(url.searchParams.get('page') || 1),
+        25,
+      ),
+    );
+  }
+  if (path === '/admin/reports/overview')
+    return reportError
+      ? send({ message: 'Báo cáo lỗi' }, 500)
+      : send({
+          data: {
+            from: url.searchParams.get('from'),
+            to: url.searchParams.get('to'),
+            completed_sales: 123456,
+            returned_adjustment: 0,
+            net_sales: 123456,
+            orders_by_status: { PENDING: 2, COMPLETED: 1 },
+          },
+        });
+  if (path === '/admin/suppliers') return send(pagination([supplier]));
+  if (path === '/admin/goods-receipts') return send(pagination([receipt]));
+  if (path === '/admin/goods-receipts/1') return send({ data: receipt });
+  if (path === '/admin/inventory')
+    return send(
+      pagination([
+        {
+          variant_id: 10,
+          sku: 'TEE-M-BLACK',
+          product_id: 1,
+          product_name: 'Áo thử nghiệm',
+          size: 'M',
+          color: 'Đen',
+          sale_status: 'ON_SALE',
+          available_quantity: 5,
+          updated_at: date,
+        },
+      ]),
+    );
+  if (path === '/admin/staff-accounts')
+    return send(
+      pagination(
+        [{ account: me.account, roles: [role] }],
+        Number(url.searchParams.get('page') || 1),
+        25,
+      ),
+    );
+  if (path === '/admin/staff-accounts/1')
+    return send({ data: { account: me.account, roles: [role], permissions: [permission] } });
+  if (path === '/admin/audit-logs')
+    return send(
+      pagination(
+        [
+          {
+            audit_id: 1,
+            actor_account_id: 1,
+            action: 'PRODUCT_UPDATE',
+            target_type: 'PRODUCT',
+            target_id: '1',
+            description: 'Cập nhật sản phẩm',
+            created_at: date,
+          },
+        ],
+        Number(url.searchParams.get('page') || 1),
+        25,
+      ),
+    );
+  if (path === '/admin/access-control')
+    return send({
+      data: { roles: [{ ...role, permissions: [permission] }], permissions: [permission] },
+    });
+  if (path === '/admin/content-pages')
+    return send({
+      data: [{ page_id: 1, page_code: 'POLICY', title: 'Chính sách', content: 'Nội dung gốc' }],
+    });
+  return send(pagination([]));
+});
+const goto = async (path) => {
+  console.log('Check', path);
+  await page.goto(`http://localhost:5180${path}`, { waitUntil: 'domcontentloaded' });
+  await page.getByText('Hệ thống quản trị', { exact: true }).waitFor();
+};
+try {
+  await goto('/admin/customers');
+  await page.getByRole('cell', { name: '0900111222', exact: true }).waitFor();
+  const count = customerRequests;
+  await page.getByRole('button', { name: 'Tìm', exact: true }).click();
+  await page.getByRole('cell', { name: '0900111222', exact: true }).waitFor();
+  assert.ok(customerRequests > count, 'same-filter search reloads');
+  customerError = true;
+  await page.getByRole('button', { name: 'Tìm', exact: true }).click();
+  await page.getByRole('alert').waitFor();
+  assert.equal(
+    await page.getByRole('cell', { name: '0900111222', exact: true }).count(),
+    0,
+    'failed request hides previous data',
+  );
+  customerError = false;
+  await page.getByRole('button', { name: 'Thử lại', exact: true }).click();
+  await page.getByRole('cell', { name: '0900111222', exact: true }).waitFor();
+  const search = page.getByPlaceholder('Tìm theo số điện thoại hoặc email');
+  await search.fill('slow');
+  await page.getByRole('button', { name: 'Tìm', exact: true }).click();
+  await search.fill('latest');
+  await page.getByRole('button', { name: 'Tìm', exact: true }).click();
+  await page.getByRole('cell', { name: 'latest', exact: true }).waitFor();
+  await page.waitForTimeout(500);
+  assert.equal(await page.getByRole('cell', { name: 'slow', exact: true }).count(), 0);
+  await page.getByRole('button', { name: 'Sau', exact: true }).click();
+  await page.getByText('Trang 2', { exact: false }).waitFor();
+  await page.getByRole('button', { name: 'Chi tiết', exact: true }).click();
+  await page.getByRole('dialog').getByRole('alert').waitFor();
+  await page.getByRole('button', { name: 'Đóng hộp thoại' }).click();
+  await goto('/admin/catalog/categories');
+  await page.locator('main').getByRole('button', { name: 'Thương hiệu', exact: true }).click();
+  assert.match(page.url(), /catalog\/brands/);
+  await page.goBack();
+  assert.match(page.url(), /catalog\/categories/);
+  await goto('/admin/content');
+  await page.getByRole('textbox', { name: 'Tiêu đề' }).fill('Bản chưa lưu');
+  page.once('dialog', (dialog) => dialog.dismiss());
+  await page.getByRole('button', { name: /Đơn hàng/ }).click();
+  assert.match(page.url(), /admin\/content/);
+  await page.getByRole('button', { name: 'Lưu nội dung' }).click();
+  await page.getByText('Lỗi lưu thử nghiệm', { exact: false }).waitFor();
+  assert.equal(await page.getByRole('textbox', { name: 'Tiêu đề' }).inputValue(), 'Bản chưa lưu');
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: /Đơn hàng/ }).click();
+  await goto('/admin/goods-receipts');
+  await page.getByRole('button', { name: 'Chi tiết', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Ghi chú' }).fill('Thay đổi chưa lưu');
+  const writeCount = writes.length;
+  await page.getByRole('button', { name: 'Xác nhận nhập kho', exact: true }).click();
+  await page.getByText('Phiếu có thay đổi chưa lưu.', { exact: false }).waitFor();
+  assert.equal(writes.length, writeCount, 'dirty receipt cannot confirm');
+  await page.getByRole('textbox', { name: 'Ghi chú' }).fill('');
+  page.once('dialog', (dialog) => dialog.dismiss());
+  await page.getByRole('button', { name: 'Xác nhận nhập kho', exact: true }).click();
+  assert.equal(writes.length, writeCount, 'cancelled confirmation sends no request');
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Xác nhận nhập kho', exact: true }).click();
+  await page.getByText('Đã xác nhận nhập kho.', { exact: true }).waitFor();
+  assert.equal(writes.length, writeCount + 1);
+  await goto('/admin/reports');
+  await page.getByText('123.456₫').first().waitFor();
+  reportError = true;
+  await page.getByRole('button', { name: 'Xem báo cáo' }).click();
+  await page.getByRole('alert').waitFor();
+  assert.equal(await page.getByText('123.456₫').count(), 0, 'stale report hidden');
+  await goto('/admin/goods-receipts');
+  await page.getByRole('button', { name: 'Chọn biến thể', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /Áo thử nghiệm/ })
+    .click();
+  await page.getByText('TEE-M-BLACK · M / Đen', { exact: true }).waitFor();
+  page.once('dialog', (dialog) => dialog.accept());
+  await page
+    .getByRole('button', { name: /Sản phẩm/ })
+    .first()
+    .click();
+  await goto('/admin/products/1');
+  const price = page.getByRole('spinbutton', { name: 'Giá riêng TEE-M-BLACK' });
+  await price.fill('250000');
+  await page.getByRole('button', { name: 'Lưu giá', exact: true }).click();
+  await page.getByRole('alert').waitFor();
+  assert.equal(await price.inputValue(), '250000', 'failed price edit preserves input');
+  priceError = false;
+  await page.getByRole('button', { name: 'Lưu giá', exact: true }).click();
+  await page.getByText('Giá riêng: 250.000₫', { exact: false }).waitFor();
+  await goto('/admin/orders/1');
+  const beforeAction = writes.length;
+  page.once('dialog', (dialog) => dialog.dismiss());
+  await page.getByRole('button', { name: 'Xác nhận', exact: true }).click();
+  assert.equal(writes.length, beforeAction);
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Xác nhận', exact: true }).click();
+  await page.getByRole('button', { name: 'Bắt đầu chuẩn bị', exact: true }).waitFor();
+  assert.equal(writes.length, beforeAction + 1);
+  page.once('dialog', (dialog) => {
+    assert.match(dialog.message(), /200.000/);
+    dialog.accept();
+  });
+  await page.getByRole('button', { name: 'Thu COD', exact: true }).click();
+  await page.getByText('Thanh toán: Đã thu tiền', { exact: false }).waitFor();
+  await goto('/admin/orders?status=PENDING');
+  assert.equal(
+    await page.getByRole('combobox', { name: 'Trạng thái đơn' }).inputValue(),
+    'PENDING',
+  );
+  await page.getByRole('combobox', { name: 'Trạng thái đơn' }).selectOption('CONFIRMED');
+  await page.goBack();
+  assert.equal(
+    await page.getByRole('combobox', { name: 'Trạng thái đơn' }).inputValue(),
+    'PENDING',
+  );
+  await goto('/admin/staff');
+  await page.getByRole('button', { name: 'Sau', exact: true }).click();
+  await page.getByText('Trang 2', { exact: false }).waitFor();
+  await page.getByRole('button', { name: 'Chi tiết', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('textbox', { name: 'Số điện thoại', exact: true })
+    .fill('0900999888');
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Lưu thay đổi', exact: true }).click();
+  await page.getByRole('dialog').getByRole('alert').waitFor();
+  assert.equal(
+    await page
+      .getByRole('dialog')
+      .getByRole('textbox', { name: 'Số điện thoại', exact: true })
+      .inputValue(),
+    '0900999888',
+  );
+  page.once('dialog', (dialog) => dialog.dismiss());
+  await page.keyboard.press('Escape');
+  assert.equal(await page.getByRole('dialog').count(), 1, 'dirty modal survives cancelled Escape');
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.keyboard.press('Escape');
+  await goto('/admin/roles');
+  await page.getByRole('button', { name: 'Chỉnh sửa', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('checkbox', { name: 'CATALOG_READ', exact: true })
+    .uncheck();
+  await page.getByText('Gỡ: CATALOG_READ', { exact: true }).waitFor();
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('dialog').getByRole('button', { name: 'Lưu', exact: true }).click();
+  await page.getByRole('dialog').getByRole('alert').waitFor();
+  assert.equal(
+    await page
+      .getByRole('dialog')
+      .getByRole('checkbox', { name: 'CATALOG_READ', exact: true })
+      .isChecked(),
+    false,
+  );
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Đóng hộp thoại' }).click();
+  await goto('/admin/audit');
+  await page.getByRole('button', { name: 'Sau', exact: true }).click();
+  await page.getByText('Trang 2', { exact: false }).waitFor();
+  // Visual layout and accessible form naming across every Admin module.
+  const routes = [
+    '/admin/dashboard',
+    '/admin/products',
+    '/admin/products/1',
+    '/admin/orders',
+    '/admin/orders/1',
+    '/admin/inventory',
+    '/admin/inventory/history',
+    '/admin/goods-receipts',
+    '/admin/suppliers',
+    '/admin/customers',
+    '/admin/staff',
+    '/admin/roles',
+    '/admin/audit',
+    '/admin/reports',
+    '/admin/content',
+    '/admin/catalog/categories',
+    '/admin/catalog/brands',
+    '/admin/catalog/sizes',
+    '/admin/catalog/colors',
+  ];
+  reportError = false;
+  for (const width of [1440, 768, 375]) {
+    await page.setViewportSize({ width, height: 1000 });
+    for (const path of routes) {
+      await goto(path);
+      await page.locator('main h1').waitFor();
+      await page.waitForTimeout(80);
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth > window.innerWidth + 1,
+      );
+      if (overflow)
+        console.error(
+          await page.locator('body *').evaluateAll((nodes) =>
+            nodes
+              .filter((node) => node.getBoundingClientRect().right > innerWidth + 1)
+              .map((node) => ({
+                tag: node.tagName,
+                cls: node.className,
+                right: node.getBoundingClientRect().right,
+                position: getComputedStyle(node).position,
+              }))
+              .slice(-15),
+          ),
+        );
+      assert.equal(overflow, false, `no page overflow ${path} at ${width}px`);
+      const unnamed = await page
+        .locator('main input:not([type=checkbox]), main select, main textarea')
+        .evaluateAll((inputs) =>
+          inputs
+            .filter(
+              (input) =>
+                !input.labels?.length &&
+                !input.getAttribute('aria-label') &&
+                !input.getAttribute('aria-labelledby'),
+            )
+            .map((input) => input.outerHTML),
+        );
+      assert.deepEqual(unnamed, [], `inputs have labels on ${path}`);
+    }
+    await goto('/admin/products');
+    await page.locator('table tbody tr').first().waitFor();
+    await page.screenshot({ path: `/tmp/fido-admin-products-${width}.png`, fullPage: true });
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  me = { ...me, roles: [{ ...role, code: 'ADMIN' }], permissions: [] };
+  await goto('/admin/products');
+  await page.getByRole('heading', { name: 'Không có quyền truy cập' }).waitFor();
+  assert.deepEqual(errors, []);
+  console.log('Admin UX browser regression: PASS');
+} catch (failure) {
+  await page.screenshot({ path: '/tmp/fido-admin-failure.png', fullPage: true });
+  console.error(await page.locator('body').innerText());
+  throw failure;
+} finally {
+  await browser.close();
+  await server.close();
+}

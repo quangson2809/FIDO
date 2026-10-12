@@ -19,11 +19,14 @@ import type {
 } from '../types';
 
 export const adminAccessService = {
-  async getCustomers(query?: { q?: string; page?: number; page_size?: number }): Promise<ApiListResponse<CustomerSummaryDto>> {
-    return apiClient.get<ApiListResponse<CustomerSummaryDto>>(
-      '/admin/customers',
-      { params: query },
-    );
+  async getCustomers(query?: {
+    q?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<ApiListResponse<CustomerSummaryDto>> {
+    return apiClient.get<ApiListResponse<CustomerSummaryDto>>('/admin/customers', {
+      params: query,
+    });
   },
 
   async getCustomer(customerId: number): Promise<CustomerDetailDto> {
@@ -33,11 +36,15 @@ export const adminAccessService = {
     return response.data;
   },
 
-  async getStaff(query?: { q?: string; role_id?: number; page?: number; page_size?: number }): Promise<ApiListResponse<StaffAccountSummaryDto>> {
-    return apiClient.get<ApiListResponse<StaffAccountSummaryDto>>(
-      '/admin/staff-accounts',
-      { params: query },
-    );
+  async getStaff(query?: {
+    q?: string;
+    role_id?: number;
+    page?: number;
+    page_size?: number;
+  }): Promise<ApiListResponse<StaffAccountSummaryDto>> {
+    return apiClient.get<ApiListResponse<StaffAccountSummaryDto>>('/admin/staff-accounts', {
+      params: query,
+    });
   },
 
   async getStaffDetail(accountId: number): Promise<StaffAccountDetailDto> {
@@ -64,24 +71,17 @@ export const adminAccessService = {
   },
 
   async getAccessControl(): Promise<AccessControlDto> {
-    const response = await apiClient.get<ApiResponse<AccessControlDto>>(
-      '/admin/access-control',
-    );
+    const response = await apiClient.get<ApiResponse<AccessControlDto>>('/admin/access-control');
     return response.data;
   },
 
   async getPermissions(): Promise<PermissionDto[]> {
-    const response = await apiClient.get<ApiResponse<PermissionDto[]>>(
-      '/admin/permissions',
-    );
+    const response = await apiClient.get<ApiResponse<PermissionDto[]>>('/admin/permissions');
     return response.data;
   },
 
   async createRole(input: RoleCreateInput): Promise<RoleDetailDto> {
-    const response = await apiClient.post<ApiResponse<RoleDetailDto>>(
-      '/admin/roles',
-      input,
-    );
+    const response = await apiClient.post<ApiResponse<RoleDetailDto>>('/admin/roles', input);
     return response.data;
   },
 
@@ -98,14 +98,14 @@ export const adminAccessService = {
   },
 
   async createPermission(input: PermissionCreateInput): Promise<PermissionDto> {
-    const response = await apiClient.post<ApiResponse<PermissionDto>>(
-      '/admin/permissions',
-      input,
-    );
+    const response = await apiClient.post<ApiResponse<PermissionDto>>('/admin/permissions', input);
     return response.data;
   },
 
-  async updatePermission(permissionId: number, input: PermissionPatchInput): Promise<PermissionDto> {
+  async updatePermission(
+    permissionId: number,
+    input: PermissionPatchInput,
+  ): Promise<PermissionDto> {
     const response = await apiClient.patch<ApiResponse<PermissionDto>>(
       `/admin/permissions/${permissionId}`,
       input,
@@ -118,9 +118,6 @@ export const adminAccessService = {
   },
 
   async getAuditLogs(query?: AuditQuery): Promise<ApiListResponse<AuditLogDto>> {
-    return apiClient.get<ApiListResponse<AuditLogDto>>(
-      '/admin/audit-logs',
-      { params: query },
-    );
+    return apiClient.get<ApiListResponse<AuditLogDto>>('/admin/audit-logs', { params: query });
   },
 };

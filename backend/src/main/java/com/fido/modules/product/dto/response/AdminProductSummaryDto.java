@@ -13,6 +13,4 @@ public record AdminProductSummaryDto(
         BigDecimal base_price,
         String sale_status,
         LocalDateTime created_at,
-        LocalDateTime updated_at
-) {
-}
+        LocalDateTime updated_at) {}

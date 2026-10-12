@@ -3,6 +3,7 @@ package com.fido.modules.order.dto.request;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
+
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -23,10 +24,7 @@ public class RecipientPatchRequest {
         return recipientPhone;
     }
 
-    @JsonSetter(
-            value = "recipient_phone",
-            nulls = Nulls.FAIL
-    )
+    @JsonSetter(value = "recipient_phone", nulls = Nulls.FAIL)
     public void setRecipientPhone(String value) {
         recipientPhone = value;
         phonePresent = true;
@@ -36,10 +34,7 @@ public class RecipientPatchRequest {
         return recipientAddress;
     }
 
-    @JsonSetter(
-            value = "recipient_address",
-            nulls = Nulls.FAIL
-    )
+    @JsonSetter(value = "recipient_address", nulls = Nulls.FAIL)
     public void setRecipientAddress(String value) {
         recipientAddress = value;
         addressPresent = true;

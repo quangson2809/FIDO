@@ -14,14 +14,16 @@ import com.fido.modules.product.mapper.CatalogMapper;
 import com.fido.modules.product.repository.ProductImageRepository;
 import com.fido.modules.product.repository.ProductRepository;
 import com.fido.modules.product.repository.ProductVariantRepository;
-import java.util.List;
-import java.util.Map;
+
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
+import java.util.Map;
 
 @Service
 @Transactional(readOnly = true)
@@ -45,8 +47,7 @@ public class AdminCatalogQueryService {
             ProductImageReadService imageRead,
             InventoryAvailabilityService inventory,
             CatalogReferenceService references,
-            CatalogMetaService metaService
-    ) {
+            CatalogMetaService metaService) {
         this.products = products;
         this.variants = variants;
         this.images = images;
@@ -64,39 +65,31 @@ public class AdminCatalogQueryService {
             Long sizeSystemId,
             String saleStatus,
             Integer page,
-            Integer pageSize
-    ) {
+            Integer pageSize) {
         if (saleStatus != null) {
             CatalogPolicy.requireSaleStatus(saleStatus);
         }
 
         Pagination pagination = Pagination.of(page, pageSize);
-        Specification<Product> specification = CatalogSpecifications.adminProducts(
-                q,
-                categoryId,
-                brandId,
-                sizeSystemId,
-                saleStatus
-        );
+        Specification<Product> specification =
+                CatalogSpecifications.adminProducts(
+                        q, categoryId, brandId, sizeSystemId, saleStatus);
         var result = products.findAll(specification, pagination.toPageable());
         var productsOnPage = result.getContent();
-        Map<Long, String> thumbnailsByProductId = imageRead.representativeByProductIds(
+        Map<Long, String> thumbnailsByProductId =
+                imageRead.representativeByProductIds(
+                        productsOnPage.stream().map(Product::getProductId).toList());
+
+        var data =
                 productsOnPage.stream()
-                        .map(Product::getProductId)
-                        .toList()
-        );
+                        .map(
+                                product ->
+                                        CatalogMapper.adminSummary(
+                                                product,
+                                                thumbnailsByProductId.get(product.getProductId())))
+                        .toList();
 
-        var data = productsOnPage.stream()
-                .map(product -> CatalogMapper.adminSummary(
-                        product,
-                        thumbnailsByProductId.get(product.getProductId())
-                ))
-                .toList();
-
-        return ApiListResponse.of(
-                data,
-                pagination.meta(result.getTotalElements())
-        );
+        return ApiListResponse.of(data, pagination.meta(result.getTotalElements()));
     }
 
     @PreAuthorize(READ)
@@ -112,11 +105,10 @@ public class AdminCatalogQueryService {
     AdminProductDetailDto detailInternal(Long productId) {
         Product product = references.product(productId);
         var adminVariants = readVariants(productId);
-        var productImages = images
-                .findAllByProductIdOrderBySortOrderAsc(productId)
-                .stream()
-                .map(CatalogMapper::image)
-                .toList();
+        var productImages =
+                images.findAllByProductIdOrderBySortOrderAsc(productId).stream()
+                        .map(CatalogMapper::image)
+                        .toList();
 
         return new AdminProductDetailDto(
                 product.getProductId(),
@@ -137,8 +129,7 @@ public class AdminCatalogQueryService {
                 product.getBrandId(),
                 product.getSizeSystemId(),
                 product.getCreatedAt(),
-                product.getUpdatedAt()
-        );
+                product.getUpdatedAt());
     }
 
     List<AdminVariantDto> variantsInternal(Long productId) {
@@ -148,27 +139,25 @@ public class AdminCatalogQueryService {
 
     private List<AdminVariantDto> readVariants(Long productId) {
         var productVariants = variants.findAllByProductIdOrderByVariantIdAsc(productId);
-        var availabilityByVariantId = inventory.availableQuantities(
-                productVariants.stream()
-                        .map(ProductVariant::getVariantId)
-                        .toList()
-        );
+        var availabilityByVariantId =
+                inventory.availableQuantities(
+                        productVariants.stream().map(ProductVariant::getVariantId).toList());
         return productVariants.stream()
-                .map(variant -> CatalogMapper.adminVariant(
-                        variant,
-                        availabilityByVariantId.getOrDefault(variant.getVariantId(), 0)
-                ))
+                .map(
+                        variant ->
+                                CatalogMapper.adminVariant(
+                                        variant,
+                                        availabilityByVariantId.getOrDefault(
+                                                variant.getVariantId(), 0)))
                 .toList();
     }
 
     AdminVariantDto variantInternal(Long productId, Long variantId) {
-        ProductVariant variant = variants
-                .findByVariantIdAndProductId(variantId, productId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        ProductVariant variant =
+                variants.findByVariantIdAndProductId(variantId, productId)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         return CatalogMapper.adminVariant(
-                variant,
-                inventory.availableQuantity(variant.getVariantId())
-        );
+                variant, inventory.availableQuantity(variant.getVariantId()));
     }
 
     private BrandDto brandDto(Long brandId) {

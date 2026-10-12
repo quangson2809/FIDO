@@ -1,11 +1,13 @@
 package com.fido.modules.inventory.entity;
 
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "inventories")

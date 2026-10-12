@@ -69,6 +69,8 @@ export interface ProductSummaryDto {
   brand: BrandDto | null;
   base_price: number;
   sale_status: SaleStatus;
+  material_care?: string | null;
+  sizes?: SizeValueDto[];
 }
 
 export interface ProductDetailDto {
@@ -91,26 +93,14 @@ export interface ProductDetailDto {
 export interface CatalogProductView {
   id: string;
   product_id: number;
-  sku: string;
   name: string;
   category: string;
-  parentCategory: string;
   brand: string;
-  price: number;
   base_price: number;
-  originalPrice?: number;
   imageUrl: string;
-  galleryImages: string[];
-  statusBadge?: string;
-  description: string;
-  fabric: string;
-  colors: Array<{ name: string; hex: string }>;
-  sizes: Array<string | number>;
-  variants: ProductVariantDto[];
-  rating: number;
-  reviewsCount: number;
-  inStockCount: number;
   sale_status: SaleStatus;
+  materialCare: string | null;
+  sizes: readonly SizeValueDto[] | null;
 }
 
 export interface CatalogProductQuery {

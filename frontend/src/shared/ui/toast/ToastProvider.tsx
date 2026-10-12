@@ -7,11 +7,14 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [message, setMessage] = useState<string | null>(null);
   const timeoutRef = useRef<number | null>(null);
 
-  useEffect(() => () => {
-    if (timeoutRef.current !== null) {
-      window.clearTimeout(timeoutRef.current);
-    }
-  }, []);
+  useEffect(
+    () => () => {
+      if (timeoutRef.current !== null) {
+        window.clearTimeout(timeoutRef.current);
+      }
+    },
+    [],
+  );
 
   const showToast = useCallback((nextMessage: string) => {
     setMessage(nextMessage);
@@ -26,10 +29,7 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }, TOAST_DURATION_MS);
   }, []);
 
-  const value = useMemo<ToastContextValue>(
-    () => ({ message, showToast }),
-    [message, showToast],
-  );
+  const value = useMemo<ToastContextValue>(() => ({ message, showToast }), [message, showToast]);
 
   return <ToastContext.Provider value={value}>{children}</ToastContext.Provider>;
 };

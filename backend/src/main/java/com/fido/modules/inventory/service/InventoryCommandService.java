@@ -4,148 +4,93 @@ import com.fido.modules.inventory.entity.Inventory;
 import com.fido.modules.inventory.entity.InventoryTransaction;
 import com.fido.modules.inventory.repository.InventoryRepository;
 import com.fido.modules.inventory.repository.InventoryTransactionRepository;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.List;
+
+import jakarta.persistence.EntityManager;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.Comparator;
+import java.util.List;
+
 /**
- * Single write boundary for sellable inventory and its immutable ledger.
- * Callers describe the business event; this service owns stock mutation details.
+ * Single write boundary for sellable inventory and its immutable ledger. Callers describe the
+ * business event; this service owns stock mutation details.
  */
 @Service
 @Transactional(propagation = Propagation.MANDATORY)
 public class InventoryCommandService {
 
+    private final EntityManager em;
     private final InventoryRepository inventories;
     private final InventoryTransactionRepository transactions;
 
     public InventoryCommandService(
+            EntityManager em,
             InventoryRepository inventories,
-            InventoryTransactionRepository transactions
-    ) {
+            InventoryTransactionRepository transactions) {
+        this.em = em;
         this.inventories = inventories;
         this.transactions = transactions;
     }
 
-    public void receiveGoods(
-            Long actor,
-            Long receiptId,
-            List<StockLine> lines
-    ) {
+    public void receiveGoods(Long actor, Long receiptId, List<StockLine> lines) {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
-        for (StockLine line : lines) {
+        for (StockLine line : ordered(lines)) {
             requireTrackedVariant(line.variantId());
 
-            increment(
-                    line.variantId(),
-                    line.quantity(),
-                    now
-            );
+            increment(line.variantId(), line.quantity(), now);
 
-            record(
-                    InventoryMovement.receipt(
-                            actor,
-                            receiptId,
-                            line
-                    )
-            );
+            record(InventoryMovement.receipt(actor, receiptId, line));
         }
     }
 
     public InventoryTransaction adjustManually(
-            Long actor,
-            Long variantId,
-            int quantityDelta,
-            String reason
-    ) {
+            Long actor, Long variantId, int quantityDelta, String reason) {
         requireTrackedVariant(variantId);
 
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
-        int updated = inventories.adjustIfNonNegative(
-                variantId,
-                quantityDelta,
-                now
-        );
+        int updated = inventories.adjustIfNonNegative(variantId, quantityDelta, now);
 
         if (updated != 1) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
-        return record(
-                InventoryMovement.manualAdjustment(
-                        actor,
-                        variantId,
-                        quantityDelta,
-                        reason
-                )
-        );
+        refreshInventory(variantId);
+        return record(InventoryMovement.manualAdjustment(actor, variantId, quantityDelta, reason));
     }
 
     public void deductConfirmedOrder(
-            Long actor,
-            Long orderId,
-            List<StockLine> lines,
-            String reason
-    ) {
+            Long actor, Long orderId, List<StockLine> lines, String reason) {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
-        for (StockLine line : lines) {
-            int updated = inventories.adjustIfNonNegative(
-                    line.variantId(),
-                    -line.quantity(),
-                    now
-            );
+        for (StockLine line : ordered(lines)) {
+            int updated = inventories.adjustIfNonNegative(line.variantId(), -line.quantity(), now);
 
             if (updated != 1) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT);
             }
 
-            record(
-                    InventoryMovement.confirmedOrder(
-                            actor,
-                            orderId,
-                            line,
-                            reason
-                    )
-            );
+            refreshInventory(line.variantId());
+            record(InventoryMovement.confirmedOrder(actor, orderId, line, reason));
         }
     }
 
     public void restoreCancelledOrder(
-            Long actor,
-            Long orderId,
-            List<StockLine> lines,
-            String reason
-    ) {
-        restoreOrderStock(
-                actor,
-                orderId,
-                lines,
-                InventoryPolicy.ORDER_CANCEL_IN,
-                reason
-        );
+            Long actor, Long orderId, List<StockLine> lines, String reason) {
+        restoreOrderStock(actor, orderId, lines, InventoryPolicy.ORDER_CANCEL_IN, reason);
     }
 
     public void restoreDeliveryReturn(
-            Long actor,
-            Long orderId,
-            List<StockLine> lines,
-            String reason
-    ) {
-        restoreOrderStock(
-                actor,
-                orderId,
-                lines,
-                InventoryPolicy.DELIVERY_RETURN_IN,
-                reason
-        );
+            Long actor, Long orderId, List<StockLine> lines, String reason) {
+        restoreOrderStock(actor, orderId, lines, InventoryPolicy.DELIVERY_RETURN_IN, reason);
     }
 
     private void restoreOrderStock(
@@ -153,50 +98,38 @@ public class InventoryCommandService {
             Long orderId,
             List<StockLine> lines,
             String transactionType,
-            String reason
-    ) {
+            String reason) {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
-        for (StockLine line : lines) {
-            increment(
-                    line.variantId(),
-                    line.quantity(),
-                    now
-            );
+        for (StockLine line : ordered(lines)) {
+            increment(line.variantId(), line.quantity(), now);
 
             record(
                     InventoryMovement.orderRestoration(
-                            actor,
-                            orderId,
-                            line,
-                            transactionType,
-                            reason
-                    )
-            );
+                            actor, orderId, line, transactionType, reason));
         }
     }
 
-    private void increment(
-            Long variantId,
-            int quantity,
-            LocalDateTime now
-    ) {
-        int updated = inventories.increment(
-                variantId,
-                quantity,
-                now
-        );
+    private void increment(Long variantId, int quantity, LocalDateTime now) {
+        int updated = inventories.increment(variantId, quantity, now);
 
         if (updated != 1) {
-            throw new IllegalStateException(
-                    "Inventory row missing during stock mutation"
-            );
+            throw new IllegalStateException("Inventory row missing during stock mutation");
         }
+        refreshInventory(variantId);
     }
 
-    private InventoryTransaction record(
-            InventoryMovement movement
-    ) {
+    private List<StockLine> ordered(List<StockLine> lines) {
+        return lines.stream().sorted(Comparator.comparing(StockLine::variantId)).toList();
+    }
+
+    private void refreshInventory(Long variantId) {
+        // Bulk JPQL bypasses managed state. Refresh only this module-owned row;
+        // clearing the transaction would detach caller Order/GoodsReceipt entities.
+        em.refresh(em.getReference(Inventory.class, variantId));
+    }
+
+    private InventoryTransaction record(InventoryMovement movement) {
         InventoryTransaction transaction = new InventoryTransaction();
         transaction.setVariantId(movement.variantId());
         transaction.setQuantityDelta(movement.quantityDelta());
@@ -242,14 +175,9 @@ public class InventoryCommandService {
             String transactionType,
             Long orderId,
             Long receiptId,
-            String reason
-    ) {
+            String reason) {
 
-        private static InventoryMovement receipt(
-                Long actor,
-                Long receiptId,
-                StockLine line
-        ) {
+        private static InventoryMovement receipt(Long actor, Long receiptId, StockLine line) {
             return new InventoryMovement(
                     actor,
                     line.variantId(),
@@ -257,16 +185,11 @@ public class InventoryCommandService {
                     InventoryPolicy.RECEIPT_IN,
                     null,
                     receiptId,
-                    null
-            );
+                    null);
         }
 
         private static InventoryMovement manualAdjustment(
-                Long actor,
-                Long variantId,
-                int quantityDelta,
-                String reason
-        ) {
+                Long actor, Long variantId, int quantityDelta, String reason) {
             return new InventoryMovement(
                     actor,
                     variantId,
@@ -276,16 +199,11 @@ public class InventoryCommandService {
                             : InventoryPolicy.ADJUSTMENT_OUT,
                     null,
                     null,
-                    reason
-            );
+                    reason);
         }
 
         private static InventoryMovement confirmedOrder(
-                Long actor,
-                Long orderId,
-                StockLine line,
-                String reason
-        ) {
+                Long actor, Long orderId, StockLine line, String reason) {
             return new InventoryMovement(
                     actor,
                     line.variantId(),
@@ -293,17 +211,11 @@ public class InventoryCommandService {
                     InventoryPolicy.ORDER_CONFIRM_OUT,
                     orderId,
                     null,
-                    reason
-            );
+                    reason);
         }
 
         private static InventoryMovement orderRestoration(
-                Long actor,
-                Long orderId,
-                StockLine line,
-                String transactionType,
-                String reason
-        ) {
+                Long actor, Long orderId, StockLine line, String transactionType, String reason) {
             return new InventoryMovement(
                     actor,
                     line.variantId(),
@@ -311,22 +223,16 @@ public class InventoryCommandService {
                     transactionType,
                     orderId,
                     null,
-                    reason
-            );
+                    reason);
         }
     }
 
-    public record StockLine(
-            Long variantId,
-            int quantity
-    ) {
+    public record StockLine(Long variantId, int quantity) {
         public StockLine {
             if (variantId == null || quantity <= 0) {
                 throw new IllegalArgumentException(
-                        "Stock line requires variant and positive quantity"
-                );
+                        "Stock line requires variant and positive quantity");
             }
         }
     }
-
 }

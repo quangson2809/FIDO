@@ -1,8 +1,10 @@
 package com.fido.modules.order.repository;
 
 import com.fido.modules.order.entity.ShippingInfo;
-import java.util.Optional;
+
 import org.springframework.data.repository.Repository;
+
+import java.util.Optional;
 
 public interface ShippingInfoRepository extends Repository<ShippingInfo, Long> {
 

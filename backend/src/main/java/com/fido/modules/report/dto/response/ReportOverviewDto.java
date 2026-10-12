@@ -10,6 +10,4 @@ public record ReportOverviewDto(
         BigDecimal completed_sales,
         BigDecimal returned_adjustment,
         BigDecimal net_sales,
-        Map<String, Long> orders_by_status
-) {
-}
+        Map<String, Long> orders_by_status) {}

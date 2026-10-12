@@ -3,6 +3,11 @@ package com.fido.common;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fido.FidoApplication;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.core.type.classreading.CachingMetadataReaderFactory;
+
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -13,9 +18,6 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import org.junit.jupiter.api.Test;
-import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
-import org.springframework.core.type.classreading.CachingMetadataReaderFactory;
 
 class ArchitectureBoundaryTests {
 
@@ -36,26 +38,20 @@ class ArchitectureBoundaryTests {
 
         assertTrue(
                 violations.isEmpty(),
-                () -> "Architecture boundary violations:\n - "
-                        + String.join("\n - ", violations)
-        );
+                () -> "Architecture boundary violations:\n - " + String.join("\n - ", violations));
     }
 
     private List<Class<?>> applicationClasses() throws Exception {
         var resolver = new PathMatchingResourcePatternResolver();
         var metadata = new CachingMetadataReaderFactory(resolver);
         var loader = Thread.currentThread().getContextClassLoader();
-        URL productionLocation = FidoApplication.class
-                .getProtectionDomain()
-                .getCodeSource()
-                .getLocation();
+        URL productionLocation =
+                FidoApplication.class.getProtectionDomain().getCodeSource().getLocation();
         var classes = new ArrayList<Class<?>>();
 
         for (var resource : resolver.getResources("classpath*:com/fido/**/*.class")) {
-            String className = metadata
-                    .getMetadataReader(resource)
-                    .getClassMetadata()
-                    .getClassName();
+            String className =
+                    metadata.getMetadataReader(resource).getClassMetadata().getClassName();
 
             if (className.contains("$")) {
                 continue;
@@ -65,10 +61,7 @@ class ArchitectureBoundaryTests {
 
             if (candidate.getProtectionDomain().getCodeSource() == null
                     || !productionLocation.equals(
-                            candidate.getProtectionDomain()
-                                    .getCodeSource()
-                                    .getLocation()
-                    )) {
+                            candidate.getProtectionDomain().getCodeSource().getLocation())) {
                 continue;
             }
 
@@ -78,10 +71,7 @@ class ArchitectureBoundaryTests {
         return classes;
     }
 
-    private void rejectFieldInjection(
-            Class<?> owner,
-            List<String> violations
-    ) {
+    private void rejectFieldInjection(Class<?> owner, List<String> violations) {
         for (Field field : owner.getDeclaredFields()) {
             if (Arrays.stream(field.getDeclaredAnnotations())
                     .map(Annotation::annotationType)
@@ -92,10 +82,7 @@ class ArchitectureBoundaryTests {
         }
     }
 
-    private void rejectControllerPersistenceDependencies(
-            Class<?> owner,
-            List<String> violations
-    ) {
+    private void rejectControllerPersistenceDependencies(Class<?> owner, List<String> violations) {
         if (!owner.getPackageName().contains(".controller")) {
             return;
         }
@@ -108,16 +95,12 @@ class ArchitectureBoundaryTests {
                 violations.add(
                         owner.getName()
                                 + " depends directly on persistence type "
-                                + dependency.getName()
-                );
+                                + dependency.getName());
             }
         }
     }
 
-    private void rejectCrossModuleRepositoryDependencies(
-            Class<?> owner,
-            List<String> violations
-    ) {
+    private void rejectCrossModuleRepositoryDependencies(Class<?> owner, List<String> violations) {
         String ownerModule = moduleName(owner);
 
         if (ownerModule == null) {
@@ -137,16 +120,12 @@ class ArchitectureBoundaryTests {
                 violations.add(
                         owner.getName()
                                 + " crosses module persistence boundary via "
-                                + dependency.getName()
-                );
+                                + dependency.getName());
             }
         }
     }
 
-    private void rejectEntityTechnicalLayerDependencies(
-            Class<?> owner,
-            List<String> violations
-    ) {
+    private void rejectEntityTechnicalLayerDependencies(Class<?> owner, List<String> violations) {
         if (!owner.getPackageName().contains(".entity")) {
             return;
         }
@@ -161,8 +140,7 @@ class ArchitectureBoundaryTests {
                 violations.add(
                         owner.getName()
                                 + " leaks technical/API layer dependency "
-                                + dependency.getName()
-                );
+                                + dependency.getName());
             }
         }
     }
@@ -181,8 +159,7 @@ class ArchitectureBoundaryTests {
 
         for (Method method : owner.getDeclaredMethods()) {
             addType(dependencies, method.getReturnType());
-            Arrays.stream(method.getParameterTypes())
-                    .forEach(type -> addType(dependencies, type));
+            Arrays.stream(method.getParameterTypes()).forEach(type -> addType(dependencies, type));
         }
 
         dependencies.remove(owner);
@@ -196,8 +173,7 @@ class ArchitectureBoundaryTests {
             candidate = candidate.getComponentType();
         }
 
-        if (!candidate.isPrimitive()
-                && candidate.getPackageName().startsWith(ROOT_PACKAGE)) {
+        if (!candidate.isPrimitive() && candidate.getPackageName().startsWith(ROOT_PACKAGE)) {
             dependencies.add(candidate);
         }
     }
@@ -212,8 +188,6 @@ class ArchitectureBoundaryTests {
         String remainder = packageName.substring(MODULE_PREFIX.length());
         int separator = remainder.indexOf('.');
 
-        return separator < 0
-                ? remainder
-                : remainder.substring(0, separator);
+        return separator < 0 ? remainder : remainder.substring(0, separator);
     }
 }

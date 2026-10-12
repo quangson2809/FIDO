@@ -7,11 +7,13 @@ import com.fido.modules.cart.entity.CartItem;
 import com.fido.modules.cart.repository.CartItemRepository;
 import com.fido.modules.cart.repository.CartRepository;
 import com.fido.modules.product.service.CatalogVariantReadService;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional(readOnly = true)
@@ -21,10 +23,7 @@ public class CartQueryService {
     private final CatalogVariantReadService catalog;
 
     public CartQueryService(
-            CartRepository carts,
-            CartItemRepository items,
-            CatalogVariantReadService catalog
-    ) {
+            CartRepository carts, CartItemRepository items, CatalogVariantReadService catalog) {
         this.carts = carts;
         this.items = items;
         this.catalog = catalog;
@@ -33,72 +32,54 @@ public class CartQueryService {
     public CartDto current(Long accountId) {
         return carts.findFirstByAccountIdOrderByUpdatedAtDescCartIdDesc(accountId)
                 .map(this::toDto)
-                .orElseGet(() -> new CartDto(
-                        null, accountId, List.of(), BigDecimal.ZERO, null, null
-                ));
+                .orElseGet(
+                        () -> new CartDto(null, accountId, List.of(), BigDecimal.ZERO, null, null));
     }
 
     public CheckoutCartView checkoutView(Long accountId) {
-        return carts
-                .findFirstByAccountIdOrderByUpdatedAtDescCartIdDesc(accountId)
+        return carts.findFirstByAccountIdOrderByUpdatedAtDescCartIdDesc(accountId)
                 .map(this::toCheckoutView)
-                .orElseGet(() -> new CheckoutCartView(
-                        null,
-                        List.of(),
-                        BigDecimal.ZERO
-                ));
+                .orElseGet(() -> new CheckoutCartView(null, List.of(), BigDecimal.ZERO));
     }
 
     CartDto toDto(Cart cart) {
         ResolvedCart resolved = resolveCart(cart);
-        var itemDtos = resolved.items().stream()
-                .map(this::toCartItemDto)
-                .toList();
+        var itemDtos = resolved.items().stream().map(this::toCartItemDto).toList();
         return new CartDto(
                 cart.getCartId(),
                 cart.getAccountId(),
                 itemDtos,
                 resolved.subtotal(),
                 cart.getCreatedAt(),
-                cart.getUpdatedAt()
-        );
+                cart.getUpdatedAt());
     }
 
     private CheckoutCartView toCheckoutView(Cart cart) {
         ResolvedCart resolved = resolveCart(cart);
-        var checkoutItems = resolved.items().stream()
-                .map(this::toCheckoutItem)
-                .toList();
-        return new CheckoutCartView(
-                cart.getCartId(),
-                checkoutItems,
-                resolved.subtotal()
-        );
+        var checkoutItems = resolved.items().stream().map(this::toCheckoutItem).toList();
+        return new CheckoutCartView(cart.getCartId(), checkoutItems, resolved.subtotal());
     }
 
     private ResolvedCart resolveCart(Cart cart) {
         List<CartItem> cartItems = items.findAllByCartIdOrderByCartItemIdAsc(cart.getCartId());
-        Map<Long, CatalogVariantReadService.VariantView> variantsById = catalog.getAll(
-                cartItems.stream().map(CartItem::getVariantId).toList()
-        );
-        var resolvedItems = cartItems.stream()
-                .map(item -> resolve(item, variantsById.get(item.getVariantId())))
-                .toList();
-        BigDecimal subtotal = resolvedItems.stream()
-                .map(ResolvedCartItem::lineTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        Map<Long, CatalogVariantReadService.VariantView> variantsById =
+                catalog.getAll(cartItems.stream().map(CartItem::getVariantId).toList());
+        var resolvedItems =
+                cartItems.stream()
+                        .map(item -> resolve(item, variantsById.get(item.getVariantId())))
+                        .toList();
+        BigDecimal subtotal =
+                resolvedItems.stream()
+                        .map(ResolvedCartItem::lineTotal)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
         return new ResolvedCart(resolvedItems, subtotal);
     }
 
-    private ResolvedCartItem resolve(
-            CartItem item,
-            CatalogVariantReadService.VariantView variant
-    ) {
+    private ResolvedCartItem resolve(CartItem item, CatalogVariantReadService.VariantView variant) {
         if (variant == null) {
             throw new IllegalStateException("Cart item references missing catalog variant");
         }
-        BigDecimal lineTotal = variant.unitPrice()
-                .multiply(BigDecimal.valueOf(item.getQuantity()));
+        BigDecimal lineTotal = variant.unitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
         return new ResolvedCartItem(item, variant, lineTotal);
     }
 
@@ -117,8 +98,7 @@ public class CartQueryService {
                 variant.color(),
                 variant.unitPrice(),
                 resolved.lineTotal(),
-                variant.availableQuantity()
-        );
+                variant.availableQuantity());
     }
 
     private CheckoutCartView.Item toCheckoutItem(ResolvedCartItem resolved) {
@@ -135,8 +115,7 @@ public class CartQueryService {
                 variant.unitPrice(),
                 resolved.lineTotal(),
                 variant.availableQuantity(),
-                variant.purchasable()
-        );
+                variant.purchasable());
     }
 
     private record ResolvedCart(List<ResolvedCartItem> items, BigDecimal subtotal) {
@@ -146,9 +125,5 @@ public class CartQueryService {
     }
 
     private record ResolvedCartItem(
-            CartItem item,
-            CatalogVariantReadService.VariantView variant,
-            BigDecimal lineTotal
-    ) {
-    }
+            CartItem item, CatalogVariantReadService.VariantView variant, BigDecimal lineTotal) {}
 }

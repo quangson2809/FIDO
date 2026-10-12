@@ -112,3 +112,10 @@ Do not invent numeric targets for:
 ## 8. Phase 7 report decision — resolved 2026-09-28
 
 The user resolved API #71 / FR-30 / BRULE-13: include shipping in received sales, subtract the returned order value in its original completion period, count current statuses by order creation date, and use Asia/Ho_Chi_Minh dates. See docs/15 for formulas and boundaries. This is no longer a Phase 7 blocker. Existing guest/voucher/dedupe and other earlier-phase deferred items remain unchanged.
+
+### Voucher V1 override (2026-10-09)
+
+The approved policy recorded in `15-technical-decisions.md` resolves discount,
+time window, eligible merchandise minimum, product/category scope, usage limits,
+non-stacking, enable/disable and cancellation/return semantics for Voucher V1.
+Personal wallets/allocation and variant-specific promotions remain out of scope.

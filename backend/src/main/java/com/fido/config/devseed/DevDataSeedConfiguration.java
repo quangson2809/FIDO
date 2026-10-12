@@ -11,13 +11,8 @@ import org.springframework.context.annotation.Profile;
 public class DevDataSeedConfiguration {
 
     @Bean
-    @ConditionalOnProperty(
-            name = "app.dev-seed.enabled",
-            havingValue = "true"
-    )
-    ApplicationRunner seedDevelopmentData(
-            DevDataSeedService seeder
-    ) {
+    @ConditionalOnProperty(name = "app.dev-seed.enabled", havingValue = "true")
+    ApplicationRunner seedDevelopmentData(DevDataSeedService seeder) {
         return args -> seeder.seed();
     }
 }

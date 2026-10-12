@@ -11,13 +11,15 @@ import com.fido.modules.order.entity.Payment;
 import com.fido.modules.order.mapper.OrderMapper;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 @Service
 @Transactional
@@ -31,64 +33,39 @@ public class OrderPaymentService {
     private final AuditService audit;
 
     public OrderPaymentService(
-            OrderRepository orders,
-            PaymentRepository payments,
-            AuditService audit
-    ) {
+            OrderRepository orders, PaymentRepository payments, AuditService audit) {
         this.orders = orders;
         this.payments = payments;
         this.audit = audit;
     }
 
     @PreAuthorize(PAYMENT)
-    public PaymentAdminDto action(
-            Long actor,
-            Long orderId,
-            PaymentActionRequest request
-    ) {
+    public PaymentAdminDto action(Long actor, Long orderId, PaymentActionRequest request) {
         Order order = lockedOrder(orderId);
         Payment payment = payment(orderId);
 
         return switch (request.action()) {
-            case "COLLECT_COD" ->
-                    collect(actor, order, payment);
-            case "REFUND" ->
-                    refund(actor, order, payment);
-            default -> throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST
-            );
+            case "COLLECT_COD" -> collect(actor, order, payment);
+            case "REFUND" -> refund(actor, order, payment);
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         };
     }
 
-    private PaymentAdminDto collect(
-            Long actor,
-            Order order,
-            Payment payment
-    ) {
-        if (OrderPolicy.PAID.equals(
-                payment.getPaymentStatus()
-        )) {
+    private PaymentAdminDto collect(Long actor, Order order, Payment payment) {
+        if (OrderPolicy.PAID.equals(payment.getPaymentStatus())) {
             return OrderMapper.paymentAdmin(payment);
         }
 
-        if (!OrderPolicy.UNPAID.equals(
-                payment.getPaymentStatus()
-        )
-                || OrderPolicy.CANCELLED.equals(
-                        order.getOrderStatus()
-                )
-                || OrderPolicy.RETURNED.equals(
-                        order.getOrderStatus()
-                )) {
+        if (!OrderPolicy.UNPAID.equals(payment.getPaymentStatus())
+                || OrderPolicy.CANCELLED.equals(order.getOrderStatus())
+                || OrderPolicy.RETURNED.equals(order.getOrderStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
         payment.setPaymentStatus(OrderPolicy.PAID);
-        payment.setAmountReceived(
-                payment.getAmountDue()
-        );
+        payment.setAmountReceived(payment.getAmountDue());
         payment.setCollectedByAccountId(actor);
         payment.setCollectedAt(now);
 
@@ -100,40 +77,25 @@ public class OrderPaymentService {
                         AuditAction.ORDER_COD_COLLECT,
                         AuditTargetType.ORDER,
                         order.getOrderId(),
-                        "UNPAID -> PAID; amount="
-                        + payment.getAmountReceived()
-                )
-        );
+                        "UNPAID -> PAID; amount=" + payment.getAmountReceived()));
 
         return OrderMapper.paymentAdmin(payment);
     }
 
-    private PaymentAdminDto refund(
-            Long actor,
-            Order order,
-            Payment payment
-    ) {
-        if (OrderPolicy.REFUNDED.equals(
-                payment.getPaymentStatus()
-        )) {
+    private PaymentAdminDto refund(Long actor, Order order, Payment payment) {
+        if (OrderPolicy.REFUNDED.equals(payment.getPaymentStatus())) {
             return OrderMapper.paymentAdmin(payment);
         }
 
-        if (!OrderPolicy.PAID.equals(
-                payment.getPaymentStatus()
-        )
-                || !OrderPolicy.RETURNED.equals(
-                        order.getOrderStatus()
-                )) {
+        if (!OrderPolicy.PAID.equals(payment.getPaymentStatus())
+                || !OrderPolicy.RETURNED.equals(order.getOrderStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
         payment.setPaymentStatus(OrderPolicy.REFUNDED);
-        payment.setAmountRefunded(
-                payment.getAmountReceived()
-        );
+        payment.setAmountRefunded(payment.getAmountReceived());
         payment.setRefundedByAccountId(actor);
         payment.setRefundedAt(now);
 
@@ -145,27 +107,18 @@ public class OrderPaymentService {
                         AuditAction.ORDER_REFUND,
                         AuditTargetType.ORDER,
                         order.getOrderId(),
-                        "PAID -> REFUNDED; amount="
-                        + payment.getAmountRefunded()
-                )
-        );
+                        "PAID -> REFUNDED; amount=" + payment.getAmountRefunded()));
 
         return OrderMapper.paymentAdmin(payment);
     }
 
     private Order lockedOrder(Long orderId) {
         return orders.findByIdForUpdate(orderId)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND)
-                );
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
     private Payment payment(Long orderId) {
         return payments.findById(orderId)
-                .orElseThrow(() ->
-                        new IllegalStateException(
-                                "Order payment is missing"
-                        )
-                );
+                .orElseThrow(() -> new IllegalStateException("Order payment is missing"));
     }
 }

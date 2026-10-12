@@ -1,62 +1,87 @@
-import React, { useEffect, useState } from 'react';
-import { reportService } from '../../features/report/api/service';
-import type { ReportOverviewDto } from '../../features/report/types';
-import { getApiErrorMessage } from '../../services/http/apiError';
-import { getVietnamMonthStart, getVietnamToday } from '../../shared/time/vietnamCalendar';
+import { useSearchParams } from 'react-router-dom';
+import { useAuthSession } from '../../features/auth/session/useAuthSession';
+import { canAccessAdminModule } from '../../features/auth/session/adminAccessPolicy';
+import { ReportFilters } from '../../features/report/components/ReportFilters';
+import {
+  SalesReport,
+  OrdersReport,
+  ProductsReport,
+} from '../../features/report/components/ReportTabs';
+import { readReportFilters, reportSearch } from '../../features/report/model/reportFilters';
+import type { ReportTab, TrendQuery } from '../../features/report/types';
 
-const formatMoney = (value: number): string => `${value.toLocaleString('vi-VN')}₫`;
-
-export const AdminReportsView: React.FC<{ showToast: (msg: string) => void }> = ({ showToast }) => {
-  const [fromDraft, setFromDraft] = useState(getVietnamMonthStart());
-  const [toDraft, setToDraft] = useState(getVietnamToday());
-  const [range, setRange] = useState({ from: getVietnamMonthStart(), to: getVietnamToday() });
-  const [report, setReport] = useState<ReportOverviewDto | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      try {
-        const result = await reportService.getOverview(range.from, range.to);
-        if (!active) return;
-        setReport(result);
-        setError(null);
-      } catch (requestError: unknown) {
-        if (active) setError(getApiErrorMessage(requestError, 'Không thể tải báo cáo trong khoảng thời gian đã chọn.'));
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-    void load();
-    return () => { active = false; };
-  }, [range]);
-
+const tabs: readonly { key: ReportTab; label: string }[] = [
+  { key: 'sales', label: 'Doanh số' },
+  { key: 'orders', label: 'Đơn hàng' },
+  { key: 'products', label: 'Sản phẩm' },
+];
+export function AdminReportsView() {
+  const [params, setParams] = useSearchParams();
+  const filters = readReportFilters(params);
+  const { profile, permissionCodes } = useAuthSession();
+  if (!canAccessAdminModule('reports', profile, permissionCodes))
+    return (
+      <section role="alert" className="admin-state">
+        Không có quyền xem báo cáo. Cần REPORT_READ dành cho ADMIN.
+      </section>
+    );
+  const change = (query: TrendQuery, tab: ReportTab = filters.tab) =>
+    setParams(reportSearch(query, tab));
+  const query: TrendQuery = {
+    from: filters.from,
+    to: filters.to,
+    granularity: filters.granularity,
+  };
+  const key = `${filters.from}/${filters.to}/${filters.granularity}`;
   return (
-    <section className="space-y-6">
+    <section className="space-y-6 min-w-0">
       <header>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">Report overview</p>
-        <h1 className="mt-1 font-serif text-3xl text-[#0B2419]">Báo cáo doanh số</h1>
-        <p className="mt-2 max-w-3xl text-sm text-[#606863]">Số liệu lấy trực tiếp từ API báo cáo FIDO. Frontend không tự tính doanh thu, tỷ lệ giao hàng, top sản phẩm hoặc hiệu suất dịch vụ.</p>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">
+          FIDO Analytics
+        </p>
+        <h1 className="mt-1 font-serif text-3xl text-[#071A12]">Báo cáo kinh doanh</h1>
+        <p className="mt-2 max-w-3xl text-sm text-[#606863]">
+          Doanh số và sản phẩm theo ngày hoàn tất; số đơn và trạng thái hiện tại theo ngày tạo. Trả
+          hàng điều chỉnh kỳ hoàn tất ban đầu. Múi giờ Asia/Ho_Chi_Minh.
+        </p>
       </header>
-
-      <form onSubmit={(event) => { event.preventDefault(); if (fromDraft > toDraft) { showToast('Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc.'); return; } setLoading(true); setRange({ from: fromDraft, to: toDraft }); }} className="flex flex-wrap items-end gap-3">
-        <label className="text-xs font-semibold">Từ ngày<input type="date" value={fromDraft} onChange={(event) => setFromDraft(event.target.value)} className="mt-1 block border border-[#D9DDD6] bg-white px-3 py-2 text-sm" /></label>
-        <label className="text-xs font-semibold">Đến ngày<input type="date" value={toDraft} onChange={(event) => setToDraft(event.target.value)} className="mt-1 block border border-[#D9DDD6] bg-white px-3 py-2 text-sm" /></label>
-        <button type="submit" className="bg-[#0B2419] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white">Xem báo cáo</button>
-      </form>
-
-      {error && <div className="border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-      {loading ? <div className="p-8 text-center text-sm text-[#687069]">Đang tải báo cáo...</div> : report && (
-        <>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <article className="border border-[#E8E9E3] bg-white p-5"><p className="text-xs uppercase text-[#687069]">Doanh số đơn hoàn tất</p><p className="mt-2 font-serif text-2xl font-bold">{formatMoney(report.completed_sales)}</p></article>
-            <article className="border border-[#E8E9E3] bg-white p-5"><p className="text-xs uppercase text-[#687069]">Điều chỉnh trả hàng</p><p className="mt-2 font-serif text-2xl font-bold">{formatMoney(report.returned_adjustment)}</p></article>
-            <article className="border border-[#E8E9E3] bg-white p-5"><p className="text-xs uppercase text-[#687069]">Doanh số thuần</p><p className="mt-2 font-serif text-2xl font-bold text-[#1B5038]">{formatMoney(report.net_sales)}</p></article>
-          </div>
-          <div className="border border-[#E8E9E3] bg-white p-5"><div className="flex items-center justify-between gap-4"><div><h2 className="font-serif text-xl">Số đơn theo trạng thái</h2><p className="mt-1 text-xs text-[#687069]">{report.from} → {report.to}</p></div></div><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{Object.entries(report.orders_by_status).map(([status, count]) => <div key={status} className="border border-[#E8E9E3] bg-[#F8FAF4] p-3"><p className="font-mono text-xs font-bold">{status}</p><p className="mt-1 text-2xl font-bold">{count}</p></div>)}</div></div>
-        </>
+      <ReportFilters
+        key={`${filters.from}/${filters.to}`}
+        query={query}
+        onChange={(value) => change(value)}
+      />
+      <nav aria-label="Loại báo cáo" className="flex flex-wrap gap-2">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            aria-current={tab.key === filters.tab ? 'page' : undefined}
+            className={tab.key === filters.tab ? 'admin-primary' : 'admin-secondary'}
+            onClick={() => change(query, tab.key)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+      {!filters.valid ? (
+        <p role="alert" className="admin-state">
+          Bộ lọc URL không hợp lệ. Chọn khoảng ngày và chu kỳ hợp lệ để tiếp tục.
+        </p>
+      ) : filters.tab === 'sales' ? (
+        <SalesReport key={key} query={query} />
+      ) : filters.tab === 'orders' ? (
+        <OrdersReport
+          key={key}
+          query={query}
+          canReadOrders={canAccessAdminModule('orders', profile, permissionCodes)}
+        />
+      ) : (
+        <ProductsReport
+          key={key}
+          query={query}
+          canReadCatalog={canAccessAdminModule('products', profile, permissionCodes)}
+        />
       )}
     </section>
   );
-};
+}

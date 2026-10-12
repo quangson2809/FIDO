@@ -10,6 +10,4 @@ public record CartDto(
         List<CartItemDto> items,
         BigDecimal subtotal,
         LocalDateTime created_at,
-        LocalDateTime updated_at
-) {
-}
+        LocalDateTime updated_at) {}

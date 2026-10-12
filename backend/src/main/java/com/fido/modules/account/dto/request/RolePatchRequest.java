@@ -3,9 +3,11 @@ package com.fido.modules.account.dto.request;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
+
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+
 import java.util.List;
 
 public class RolePatchRequest {
@@ -43,10 +45,7 @@ public class RolePatchRequest {
         return permissionIds;
     }
 
-    @JsonSetter(
-            value = "permission_ids",
-            nulls = Nulls.FAIL
-    )
+    @JsonSetter(value = "permission_ids", nulls = Nulls.FAIL)
     public void setPermissionIds(List<Long> value) {
         permissionIds = value;
     }

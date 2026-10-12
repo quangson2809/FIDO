@@ -15,7 +15,8 @@ import type {
   SizeSystemPatchInput,
 } from '../types';
 
-const unwrap = <T>(request: Promise<ApiResponse<T>>): Promise<T> => request.then((response) => response.data);
+const unwrap = <T>(request: Promise<ApiResponse<T>>): Promise<T> =>
+  request.then((response) => response.data);
 
 export const adminCatalogMetaService = {
   getMeta(): Promise<CatalogMetaDto> {

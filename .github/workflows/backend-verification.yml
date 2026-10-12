@@ -5,6 +5,13 @@ on:
     branches:
       - feature/backend-phase-0-discovery
       - feature/phase-2-3-image-persistence
+      - fix/backend-confirmed-findings-20261007
+      - fix/frontend-product-variant-selection
+      - feature/admin-ui-ux-improvements
+      - feature/cart-checkout-voucher-improvements
+      - feature/customer-shopping-journey-ux-improvements
+      - feature/admin-dashboard-analytics
+      - feature/client-storefront-ui-ux-improvements
   pull_request:
     branches:
       - main
