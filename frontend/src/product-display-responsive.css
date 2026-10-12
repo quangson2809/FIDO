@@ -98,3 +98,32 @@
     flex-basis: 96px;
   }
 }
+
+/* Category-specific product listings use the same rail; the all-products page stays a grid. */
+.storefront .catalog-browse:has(form[aria-label="Tìm trong kết quả sản phẩm"]) section[aria-label="Kết quả sản phẩm"] > div.grid {
+  display: flex;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 16px;
+  padding: 2px 2px 12px;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+.storefront .catalog-browse:has(form[aria-label="Tìm trong kết quả sản phẩm"]) section[aria-label="Kết quả sản phẩm"] > div.grid > * {
+  flex: 0 0 calc((100% - 16px) / 2);
+  min-width: 0;
+  scroll-snap-align: start;
+}
+@media (min-width: 768px) {
+  .storefront .catalog-browse:has(form[aria-label="Tìm trong kết quả sản phẩm"]) section[aria-label="Kết quả sản phẩm"] > div.grid > * {
+    flex-basis: calc((100% - 32px) / 3);
+  }
+}
+@media (min-width: 1024px) {
+  .storefront .catalog-browse:has(form[aria-label="Tìm trong kết quả sản phẩm"]) section[aria-label="Kết quả sản phẩm"] > div.grid > * {
+    flex-basis: calc((100% - 64px) / 5);
+  }
+}
