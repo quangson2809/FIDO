@@ -64,10 +64,17 @@ const main = page.locator('main');
 try {
   await mkdir('.browser-evidence', { recursive: true });
   await go('/');
-  await main.locator('#danh-muc a[href="/categories/1"]').waitFor();
+  const homepageParents = main.locator('[data-home-parent-category]');
+  await main.locator('[data-home-parent-category="1"] a[href="/categories/1"]').first().waitFor();
+  assert.deepEqual(await homepageParents.evaluateAll(nodes => nodes.map(node => Number(node.dataset.homeParentCategory))),
+    [1], 'homepage showcases only top-level parent categories');
+  assert.equal(await main.locator('[data-home-parent-category="2"], [data-home-parent-category="3"], [data-home-parent-category="4"]').count(), 0,
+    'root leaves, nested parents and nested leaves do not own independent showcases');
+  assert.deepEqual([...new Set(requests.filter(request => request.path === '/catalog/products')
+    .map(request => request.query.get('category_id')).filter(Boolean))], ['1'],
+    'homepage product requests use only the root category and rely on the API for its descendants');
   assert.equal(await page.locator('footer a[href="mailto:cskh@example.test"]').count(), 1);
   assert.equal(await page.locator('footer a[href="tel:0900111222"]').count(), 1);
-  assert.ok(await main.locator('#danh-muc a[href^="/categories/"]').count() >= 2, 'multiple dynamic category links');
   const menuButton = page.getByRole('button', { name: 'Danh mục sản phẩm', exact: true });
   const productLink = page.getByRole('navigation', { name: 'Điều hướng chính', exact: true }).getByRole('link', { name: 'Sản phẩm', exact: true });
   await productLink.hover();
@@ -82,8 +89,9 @@ try {
   await menu.getByRole('link', { name: 'Áo', exact: true }).click();
   await main.getByRole('heading', { name: 'Áo', exact: true, level: 1 }).waitFor();
   await main.getByRole('button', { name: /Xem size & chất liệu/ }).waitFor();
-  assert.equal(await main.getByRole('searchbox').count(), 0);
-  assert.equal(await main.getByRole('region', { name: 'Lọc sản phẩm' }).count(), 0);
+  assert.equal(await main.getByRole('searchbox').count(), 1, 'category products share catalog search');
+  assert.equal(await main.getByRole('region', { name: 'Lọc sản phẩm', exact: true }).count(), 1, 'category products share catalog filters');
+  assert.equal(await main.getByLabel('Danh mục', { exact: true }).count(), 0, 'category route keeps its scope fixed');
   assert.equal(requests.filter(r => r.path === '/catalog/products').at(-1).query.get('category_id'), '1');
   await main.getByRole('link', { name: 'Áo sơ mi', exact: true }).click();
   await main.getByRole('heading', { name: 'Áo sơ mi', exact: true, level: 1 }).waitFor();

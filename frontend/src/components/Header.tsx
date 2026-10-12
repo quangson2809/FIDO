@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCart } from '../features/cart/hooks/useCart';
 import { useToast } from '../shared/ui/toast/useToast';
@@ -7,6 +7,7 @@ import { useAuthSession } from '../features/auth/session/useAuthSession';
 import { StorefrontIcon } from './StorefrontIcon';
 import { APP_PATHS } from '../routes/paths';
 import { CategoryNavigation } from '../features/catalog/components/CategoryNavigation';
+import { HeaderSearch } from '../features/catalog/components/HeaderSearch';
 import { LogoutButton } from '../shared/ui/storefront/LogoutButton';
 
 const navItems = [
@@ -44,6 +45,12 @@ export const Header: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [menu, setMenu] = useState<{ routeKey: string; kind: 'primary' | 'catalog' | null }>({ routeKey: location.key, kind: null });
+  useEffect(() => {
+    // History can change before a pending Router render commits. Close even when its key is still the previous one.
+    const closeOnHistory = () => setMenu(current => ({ ...current, kind: null }));
+    window.addEventListener('popstate', closeOnHistory);
+    return () => window.removeEventListener('popstate', closeOnHistory);
+  }, []);
   // Discard route-owned disclosure state permanently, including on Back/Forward.
   if (menu.routeKey !== location.key) setMenu({ routeKey: location.key, kind: null });
   const activeMenu = menu.routeKey === location.key ? menu.kind : null;
@@ -101,15 +108,15 @@ export const Header: React.FC = () => {
         </div>
       </div>
 
-      <header className="sticky top-0 z-40 h-[72px] w-full border-b border-[#E2E5DE] bg-white/95 shadow-sm backdrop-blur-md">
-        <div className="mx-auto flex h-full max-w-[1440px] items-center justify-between px-4 sm:px-8 xl:px-12">
-          <div className="flex h-full items-center gap-3 sm:gap-6 xl:gap-9">
+      <header onPointerLeave={event => { if (event.pointerType === 'mouse') setCategoriesOpen(false); }} className="sticky top-0 z-40 w-full border-b border-[#E2E5DE] bg-white/95 shadow-sm backdrop-blur-md">
+        <div className="mx-auto flex h-[64px] max-w-[1440px] items-center justify-between px-4 sm:h-[72px] sm:px-8 xl:px-12">
+          <div className="flex h-full items-center gap-2 sm:gap-6 xl:gap-9">
             <button
               type="button"
               onClick={() => navigateTo('/')}
               className="group flex items-baseline gap-1.5 text-left focus-visible:outline-2 focus-visible:outline-offset-4"
             >
-              <span className="flex items-baseline text-2xl font-black tracking-[0.16em] text-[#0B2419]">
+              <span className="flex items-baseline text-xl font-black tracking-[0.16em] text-[#0B2419] sm:text-2xl">
                 FIDO
                 <span className="ml-0.5 inline-block h-2 w-2 rounded-full bg-[#E8C75B] transition-transform group-hover:scale-125" />
               </span>
@@ -186,6 +193,7 @@ export const Header: React.FC = () => {
             </button>
           </div>
         </div>
+        <div className="border-t border-[#E2E5DE] px-4 py-2 sm:px-8 xl:px-12"><div className="mx-auto max-w-[1344px]"><HeaderSearch onSearch={() => setActiveMenu(null)} /></div></div>
         {isMenuOpen && (
           <nav
             id="storefront-mobile-menu"
@@ -196,7 +204,8 @@ export const Header: React.FC = () => {
                 menuButtonRef.current?.focus();
               }
             }}
-            className="absolute inset-x-0 top-full border-b border-[#E2E5DE] bg-white p-4 shadow-lg lg:hidden"
+            onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget) && event.relatedTarget !== menuButtonRef.current) setActiveMenu(null); }}
+            className="absolute inset-x-0 top-full max-h-[calc(100dvh-156px)] overflow-y-auto border-b border-[#E2E5DE] bg-white p-4 shadow-lg lg:hidden"
           >
             <LogoutButton className="w-full text-left" />
             {navItems.map((item) => (

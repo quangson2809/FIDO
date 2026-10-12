@@ -61,38 +61,38 @@ export function HomeHero() {
 
   return (
     <section className="w-full overflow-hidden bg-[#FFFDF5]" aria-label="Giới thiệu bộ sưu tập FIDO">
-      <div className="grid w-full grid-cols-1 lg:h-[min(640px,calc(100svh-150px))] lg:min-h-[500px] lg:grid-cols-12">
-        <div className="relative z-10 flex flex-col justify-between gap-8 px-6 py-10 sm:px-10 sm:py-12 lg:col-span-5 lg:px-12 lg:py-12 xl:px-16">
-          <div className="space-y-4">
+      <div className="grid w-full grid-cols-1 md:min-h-[420px] md:grid-cols-12 lg:h-[min(520px,calc(100svh-180px))]">
+        <div className="relative z-10 flex flex-col justify-between gap-5 px-4 py-6 sm:px-8 sm:py-8 md:col-span-6 lg:col-span-5 lg:px-12 xl:px-14">
+          <div className="space-y-3">
             <div className="inline-flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-[#E8C75B]" />
               <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#0B2419]">FIDO • READY-TO-WEAR</span>
             </div>
-            <h1 className="font-serif text-5xl font-normal leading-[1.02] tracking-tight text-[#0B2419] sm:text-6xl xl:text-[68px]">
+            <h1 className="font-serif text-[40px] font-normal leading-[1.02] tracking-tight text-[#0B2419] sm:text-5xl xl:text-[60px]">
               BẢN THỂ
               <br />
               <span className="italic text-[#123A29]">TỐI GIẢN.</span>
             </h1>
-            <p className="max-w-md pt-2 text-[15px] font-light leading-7 text-[#424844] sm:text-[16px]">
+            <p className="max-w-md text-sm leading-6 text-[#424844] sm:text-[15px]">
               Khám phá thiết kế tối giản, chọn phom dáng và màu sắc thể hiện phong cách của bạn.
             </p>
-            <div className="flex flex-col items-stretch gap-3 pt-4 sm:flex-row sm:items-center">
+            <div className="flex flex-wrap items-center gap-2 pt-2">
               <Link
                 to="/products"
-                className="inline-flex min-h-12 items-center justify-center gap-2 bg-[#0B2419] px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-white shadow-md transition-colors hover:bg-[#1B5038]"
+                className="inline-flex min-h-11 items-center justify-center gap-2 bg-[#0B2419] px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-white transition-colors hover:bg-[#1B5038]"
               >
                 Khám phá bộ sưu tập
                 <StorefrontIcon name="arrow_forward" className="h-5 w-5" />
               </Link>
               <a
                 href="#san-pham-noi-bat"
-                className="inline-flex min-h-12 items-center justify-center border border-[#0B2419]/30 px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-[#0B2419] transition-colors hover:bg-[#FAF4DF]"
+                className="inline-flex min-h-11 items-center justify-center px-3 py-3 text-center text-[11px] font-semibold text-[#0B2419] underline underline-offset-4 transition-colors hover:bg-[#FAF4DF]"
               >
-                Xem sản phẩm nổi bật
+                Xem sản phẩm
               </a>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3 border-t border-[#E8E9E3]/80 pt-5 text-[#0B2419]">
+          <div className="hidden grid-cols-3 gap-3 border-t border-[#E8E9E3]/80 pt-4 text-[#0B2419] sm:grid">
             <div><span className="block font-serif text-lg font-bold sm:text-xl">SẢN PHẨM</span><span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863]">Bộ sưu tập FIDO</span></div>
             <div><span className="block font-serif text-lg font-bold sm:text-xl">SIZE + MÀU</span><span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863]">Chọn kích cỡ và màu</span></div>
             <div><span className="block font-serif text-lg font-bold sm:text-xl">COD</span><span className="text-[9px] font-semibold uppercase tracking-wider text-[#606863]">Thanh toán khi nhận</span></div>
@@ -103,7 +103,7 @@ export function HomeHero() {
           role="region"
           aria-roledescription="carousel"
           aria-label="Bộ ảnh thời trang FIDO"
-          className="relative min-h-[290px] overflow-hidden bg-[#E8E6DC] sm:min-h-[410px] lg:col-span-7 lg:min-h-0"
+          className="relative min-h-[224px] overflow-hidden bg-[#E8E6DC] sm:min-h-[300px] md:col-span-6 md:min-h-0 lg:col-span-7"
         >
           <div className="pointer-events-none absolute -right-14 top-0 h-64 w-64 rounded-full bg-[#E8C75B]/25 blur-2xl" aria-hidden="true" />
           {slides.map((slide, index) => {

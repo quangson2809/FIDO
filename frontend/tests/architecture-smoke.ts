@@ -3,6 +3,7 @@ import { productSummaryMetadata, productSummarySizes } from '../src/features/cat
 import { summaryMaterialCare, summarySizes } from '../src/features/catalog/api/summaryFields';
 import { LatestMutationQueue } from '../src/features/cart/model/LatestMutationQueue';
 import { buildMovedImageOrder, sortProductImages } from '../src/features/catalog/model/productImageOrder';
+import { selectHomepageParentCategories } from '../src/features/catalog/model/categoryTree';
 import { canAccessAdminModule, canWriteAdminModule } from '../src/features/auth/session/adminAccessPolicy';
 import { canPurchaseProductVariant } from '../src/features/catalog/model/purchaseAvailability';
 import { buildCheckoutQuoteKey } from '../src/features/orders/model/checkoutQuoteKey';
@@ -25,6 +26,20 @@ import {
   subscribeToApiAccessToken,
 } from '../src/services/http/apiClient';
 import type { MeDto } from '../src/features/auth/types';
+
+const homepageCategoryFixture = [
+  { category_id: 1, parent_category_id: null, name: 'Root parent' },
+  { category_id: 2, parent_category_id: null, name: 'Root leaf' },
+  { category_id: 3, parent_category_id: 1, name: 'Nested parent' },
+  { category_id: 4, parent_category_id: 3, name: 'Nested leaf' },
+  { category_id: 5, parent_category_id: 999, name: 'Orphan parent' },
+  { category_id: 6, parent_category_id: 5, name: 'Orphan child' },
+];
+assert.deepEqual(
+  selectHomepageParentCategories(homepageCategoryFixture).map(category => category.category_id),
+  [1],
+  'only explicit top-level categories with descendants own home showcases',
+);
 
 const numericSizes = [29, 30, 31].map((value, index) => ({
   size_value_id: index + 1, size_system_id: 1, code: String(value), display_name: String(value), sort_order: index,
@@ -338,7 +353,7 @@ assert.throws(() => parseSales({ from: '2026-01-01', to: '2026-01-01', granulari
 assert.throws(() => parseProducts({ from: '2026-01-01', to: '2026-01-01', items: [{ product_id: 1, product_name: 'Test', thumbnail: null, completed_units: 'bad', returned_units: 0, net_units: 0 }] }));
 assert.throws(() => parseOrders({ from: '2026-01-01', to: '2026-01-01', granularity: 'DAY', timezone: 'Asia/Ho_Chi_Minh', points: [{ period_start: '2026-01-01', total_orders: 3, orders_by_status: {} }] }));
 
-import { readCatalogQuery, catalogQueryParams } from '../src/features/catalog/model/catalogQuery';
+import { readCatalogQuery, catalogQueryParams, catalogUrlParams } from '../src/features/catalog/model/catalogQuery';
 import { recipientErrors, quoteHasExpired } from '../src/features/orders/model/recipientValidation';
 import { getStorefrontErrorMessage } from '../src/services/http/storefrontError';
 import { ApiClientError } from '../src/services/http/apiError';
@@ -348,6 +363,10 @@ assert.deepEqual(readCatalogQuery(new URLSearchParams('page=2147483648&category_
 assert.equal(readCatalogQuery(new URLSearchParams('page=2147483647')).page, 2147483647, 'do not invent a smaller pagination limit');
 const sharedCatalogQuery = readCatalogQuery(new URLSearchParams('q=shirt&category_id=2&color_id=3&min_price=0&page=2'));
 assert.equal(catalogQueryParams(sharedCatalogQuery).toString(), 'q=shirt&category_id=2&color_id=3&min_price=0&page=2');
+const scopedCatalogQuery = readCatalogQuery(new URLSearchParams('q=shirt&category_id=999&brand_id=2&page=3'), null, 4);
+assert.deepEqual(scopedCatalogQuery, { page: 3, q: 'shirt', category_id: 4, brand_id: 2 }, 'route category cannot be replaced by a URL category');
+assert.equal(catalogQueryParams(scopedCatalogQuery).get('category_id'), '4', 'API still receives the route category');
+assert.equal(catalogUrlParams(scopedCatalogQuery, 4).toString(), 'q=shirt&brand_id=2&page=3', 'category URL preserves filters and pagination without duplicate scope');
 assert.deepEqual(recipientErrors({ recipient_phone: '+84 90-000-0000', recipient_email: 'user@example.test', recipient_address: 'Hà Nội' }), { phone: null, email: null, address: null });
 assert.ok(recipientErrors({ recipient_phone: 'bad', recipient_email: 'bad', recipient_address: ' ' }).phone);
 assert.ok(recipientErrors({ recipient_phone: '0900000000', recipient_email: null, recipient_address: ' ' }).address);

@@ -226,7 +226,7 @@ try {
   assert.equal(fixture.state.orders,ordersBeforeLostResponse+1);
   assert.ok(page.url().endsWith('/checkout'), 'no success navigation without an order response');
   assert.equal(await cartTrigger.getAttribute('aria-label'),'Giỏ hàng (1 sản phẩm)', 'do not clear cart when response is uncertain');
-  await orderButton.click(); await confirmation.getByRole('button', { name:'Xác nhận đặt hàng COD', exact:true }).click();
+  await page.getByRole('button', { name: 'Xác minh lại đơn đã gửi', exact: true }).click(); await confirmation.getByRole('button', { name:'Xác minh đơn COD đã gửi', exact:true }).click();
   await page.waitForURL('**/checkout/success/1');
   assert.equal(fixture.state.orders,ordersBeforeLostResponse+1,'retry reuses the backend order');
   const attempts = fixture.state.requests.filter(request => request.path === '/orders' && request.method === 'POST').slice(-2);

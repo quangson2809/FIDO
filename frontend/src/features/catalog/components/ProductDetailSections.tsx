@@ -7,6 +7,7 @@ import type {
   ProductDetailDto,
   ProductVariantDto,
 } from '../types';
+import { ProductSummaryCard } from './ProductSummaryCard';
 
 export const ProductGallerySection: React.FC<{
   product: ProductDetailDto;
@@ -25,7 +26,7 @@ export const ProductGallerySection: React.FC<{
 }) => (
   <div className="min-w-0 flex flex-col-reverse gap-4 md:flex-row md:items-start">
     {gallery.length > 1 && (
-      <div className="flex gap-3 overflow-x-auto pb-1 md:w-24 md:flex-col md:overflow-visible">
+      <div className="flex max-w-full gap-3 overflow-x-auto p-1 md:max-h-[640px] md:w-28 md:shrink-0 md:flex-col md:overflow-y-auto">
         {gallery.map((image, index) => (
           <button
             key={image + '-' + index}
@@ -49,7 +50,7 @@ export const ProductGallerySection: React.FC<{
         <StorefrontImage
           loading="eager" src={gallery[activeImageIndex] ?? gallery[0]}
           alt={product.images[activeImageIndex]?.alt_text ?? product.name}
-          className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.02]"
+          className="h-full w-full object-contain"
         />
       ) : (
         <div className="flex h-full items-center justify-center text-sm text-[#606863]">Chưa có ảnh</div>
@@ -128,6 +129,7 @@ export const ProductPurchasePanel: React.FC<{
   sizeAvailability: (sizeValueId: number) => boolean;
   colorAvailability: (colorId: number) => boolean;
   colorCompatibility: (colorId: number) => boolean;
+  colorUnavailableReason: (colorId: number) => string;
   colorSelectionNotice?: string | null;
   onSelectSize: (sizeValueId: number) => void;
   onSelectColor: (colorId: number) => void;
@@ -147,26 +149,27 @@ export const ProductPurchasePanel: React.FC<{
   sizeAvailability,
   colorAvailability,
   colorCompatibility,
+  colorUnavailableReason,
   colorSelectionNotice,
   onSelectSize,
   onSelectColor,
   onQuantityChange,
   onAddToCart,
 }) => (
-  <aside className="space-y-6 lg:sticky lg:top-24 lg:col-span-5 lg:self-start xl:col-span-4">
+  <aside className="min-w-0 space-y-6 lg:sticky lg:top-36 lg:col-span-5 lg:self-start xl:col-span-4">
     <div className="border-b border-[#E8E9E3] pb-5">
       <div className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#687069]">
         <span>{product.brand?.name ?? product.category.name}</span>
-        {selectedVariant?.sku && <span className="font-mono">{selectedVariant.sku}</span>}
+        {selectedVariant?.sku && <span className="min-w-0 break-all text-right font-mono">{selectedVariant.sku}</span>}
       </div>
       <h1 className="mt-3 font-serif text-3xl leading-tight sm:text-4xl">{product.name}</h1>
       {product.description && <p className="mt-4 text-sm leading-7 text-[#424844]">{product.description}</p>}
     </div>
 
-    <div className="flex items-center justify-between border border-[#E8E9E3] bg-[#FFFDF5] p-4">
-      <div>
+    <div className="flex flex-wrap items-center justify-between gap-3 border border-[#E8E9E3] bg-[#FFFDF5] p-4">
+      <div className="min-w-0">
         <p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">{selectedVariant ? 'Giá hiện tại' : 'Giá gốc tham khảo'}</p>
-        <span className="mt-1 block font-serif text-2xl font-bold">{displayedPrice.toLocaleString('vi-VN')}₫</span>
+        <span className="mt-1 block break-words font-serif text-2xl font-bold">{displayedPrice.toLocaleString('vi-VN')}₫</span>
       </div>
       {selectedVariant && (
         <div className={'px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ' + (selectedVariant.available_quantity > 0 ? 'bg-[#E8C75B] text-[#071A12]' : 'bg-[#E8E9E3] text-[#687069]')}>
@@ -221,7 +224,8 @@ export const ProductPurchasePanel: React.FC<{
                 type="button"
                 disabled={!compatible}
                 aria-pressed={selectedColorId === color.color_id}
-                title={!compatible ? "Màu này không được bán ở kích cỡ đã chọn" : !available ? "Hết hàng ở kích cỡ đã chọn" : color.name}
+                title={!compatible || !available ? colorUnavailableReason(color.color_id) : color.name}
+                aria-describedby={!compatible ? `unavailable-color-${color.color_id}` : undefined}
                 onClick={() => onSelectColor(color.color_id)}
                 className={'inline-flex items-center gap-2 border px-3 py-2.5 text-sm transition disabled:cursor-not-allowed ' + (selectedColorId === color.color_id ? 'border-[#0B2419] bg-[#0B2419] text-white' : 'border-[#D9DDD6] bg-white hover:border-[#0B2419]' + (available ? '' : ' text-[#606863]'))}
               >
@@ -231,6 +235,7 @@ export const ProductPurchasePanel: React.FC<{
             );
           })}
         </div>
+        {colorOptions.filter(color => !colorCompatibility(color.color_id)).map(color => <p key={color.color_id} id={`unavailable-color-${color.color_id}`} className="text-xs leading-5 text-[#687069]">{color.name}: {colorUnavailableReason(color.color_id)}.</p>)}
       </div>
     )}
 
@@ -253,8 +258,8 @@ export const ProductPurchasePanel: React.FC<{
     )}
 
     <div className="border-t border-[#E8E9E3] pt-5">
-      <div className="flex items-stretch gap-3">
-        <div className="flex h-12 items-center border border-[#D9DDD6] bg-white">
+      <div className="flex flex-col items-stretch gap-3 sm:flex-row">
+        <div className="flex h-12 shrink-0 items-center justify-center border border-[#D9DDD6] bg-white">
           <button
             type="button"
             aria-label="Giảm số lượng" disabled={quantity <= 1}
@@ -318,30 +323,7 @@ export const ProductRecommendationsSection: React.FC<{
         </div>
         <QueryFeedback loading={loading} error={error} onRetry={onRetry} />
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {recommendations.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onOpenProduct(item.id)}
-              className="group bg-white text-left"
-            >
-              <div className="aspect-[3/4] overflow-hidden bg-[#F3F4EF] ring-1 ring-[#E8E9E3]">
-                {item.imageUrl ? (
-                  <StorefrontImage
-                    src={item.imageUrl}
-                    alt={item.name}
-                    className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-                  />
-                ) : (
-                  <span className="flex h-full items-center justify-center text-xs text-[#606863]">Chưa có ảnh</span>
-                )}
-              </div>
-              <div className="p-3">
-                <p className="line-clamp-2 min-h-10 text-sm font-semibold">{item.name}</p>
-                <p className="mt-1 text-sm font-bold">{item.base_price.toLocaleString('vi-VN')}₫</p>
-              </div>
-            </button>
-          ))}
+          {recommendations.map(item => <ProductSummaryCard key={item.id} product={item} onOpenProduct={onOpenProduct} />)}
         </div>
       </div>
     </section>

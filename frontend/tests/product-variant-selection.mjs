@@ -107,6 +107,7 @@ try {
   assert.equal(await button('Đen').isDisabled(), true);
   assert.equal(await button('Trắng').isEnabled(), true);
   await textIncludes('Màu đã chọn không có ở size XL. Vui lòng chọn màu khác.');
+  await textIncludes('Đen: Tổ hợp size và màu này không tồn tại.');
   await textIncludes('Vui lòng chọn màu sắc');
   await textIncludes('Giá gốc tham khảo');
   await textIncludes('để xác định giá chính xác');
@@ -147,6 +148,7 @@ try {
   assert.equal(await button('Trắng').getAttribute('aria-pressed'), 'false');
   assert.equal(await button('Trắng').isDisabled(), true, 'stopped combination cannot be clicked');
   await textIncludes('Màu đã chọn ngừng bán ở size XXL. Vui lòng chọn màu khác.');
+  await textIncludes('Trắng: Tổ hợp size và màu này đã ngừng bán.');
   await assertNoCartRequest();
 
   detail = { ...product, variants: product.variants.filter((item) => item.sale_status === 'STOPPED') };

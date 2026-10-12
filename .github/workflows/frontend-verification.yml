@@ -8,6 +8,7 @@ on:
   pull_request:
     branches:
       - main
+      - feature/customer-shopping-journey-ux-improvements
     paths:
       - "frontend/**"
       - ".github/workflows/frontend-verification.yml"

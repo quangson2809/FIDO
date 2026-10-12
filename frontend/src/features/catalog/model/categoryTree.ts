@@ -59,3 +59,14 @@ export function selectHomepageCategories(categories: readonly CategoryDto[], lim
 
   return selected;
 }
+
+/**
+ * Only top-level categories with descendants own a homepage showcase.
+ * Products in the showcase are queried by the root category ID; the public
+ * catalog API includes its full descendant tree in the result.
+ */
+export function selectHomepageParentCategories(categories: readonly CategoryDto[]): CategoryDto[] {
+  return buildCategoryTree(categories).filter(
+    category => category.parent_category_id === null && category.children.length > 0,
+  );
+}

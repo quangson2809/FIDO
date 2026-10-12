@@ -56,6 +56,7 @@ export function ProductSummaryCard({ product, onOpenProduct }: { product: Catalo
           </span>
           <span className="product-summary-sizes" title={sizes}>{sizes}</span>
         </span>
+        <span className="product-summary-cta" aria-hidden="true">Chọn size & màu <span>→</span></span>
       </div>
       <button
         type="button"

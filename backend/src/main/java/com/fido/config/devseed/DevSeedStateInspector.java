@@ -18,14 +18,14 @@ public class DevSeedStateInspector {
             probe("permissions", "permission_id BETWEEN 900201 AND 900215", 15),
             probe("account_roles", "account_id BETWEEN 900001 AND 900008", 10),
             probe("role_permissions", "role_id BETWEEN 900101 AND 900104", 15),
-            probe("categories", "category_id BETWEEN 920001 AND 920005", 5),
+            probe("categories", "category_id BETWEEN 920001 AND 920008", 8),
             probe("brands", "brand_id BETWEEN 930001 AND 930002", 2),
             probe("size_systems", "size_system_id BETWEEN 940001 AND 940002", 2),
             probe("size_values", "size_value_id BETWEEN 941001 AND 941006", 6),
             probe("colors", "color_id BETWEEN 950001 AND 950004", 4),
-            probe("products", "product_id BETWEEN 960001 AND 960003", 3),
-            probe("product_images", "image_id BETWEEN 961001 AND 961003", 3),
-            probe("product_variants", "variant_id BETWEEN 970001 AND 970005", 5),
+            probe("products", "product_id BETWEEN 960001 AND 960017", 17),
+            probe("product_images", "image_id BETWEEN 961001 AND 961017", 17),
+            probe("product_variants", "variant_id BETWEEN 970001 AND 970019", 19),
             probe("carts", "cart_id BETWEEN 980001 AND 980002", 2),
             probe("cart_items", "cart_item_id BETWEEN 981001 AND 981002", 2),
             probe("vouchers", "voucher_id = 990001", 1),
@@ -40,11 +40,13 @@ public class DevSeedStateInspector {
             probe("suppliers", "supplier_id BETWEEN 1020001 AND 1020002", 2),
             probe("goods_receipts", "receipt_id BETWEEN 1010001 AND 1010003", 3),
             probe("goods_receipt_items", "receipt_item_id BETWEEN 1030001 AND 1030003", 3),
-            probe("inventories", "variant_id BETWEEN 970001 AND 970005", 5),
+            probe("inventories", "variant_id BETWEEN 970001 AND 970019", 19),
             probe("inventory_transactions",
                     "txn_id IN (1040001,1040002,1040003,1040004,1040005,"
-                            + "1040010,1040011,1040012,1040013,1040014,1040015,1040016)",
-                    12),
+                            + "1040010,1040011,1040012,1040013,1040014,1040015,1040016,"
+                            + "1040017,1040018,1040019,1040020,1040021,1040022,1040023,"
+                            + "1040024,1040025,1040026,1040027,1040028,1040029,1040030)",
+                    26),
             probe("audit_logs", "audit_id BETWEEN 1050001 AND 1050003", 3),
             probe("content_pages", "page_id BETWEEN 1060001 AND 1060003", 3)
     );

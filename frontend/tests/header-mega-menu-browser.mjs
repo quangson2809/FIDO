@@ -76,7 +76,7 @@ async function noOverflow(page) {
 try {
   await check('Pointer crosses the Header boundary without flicker, layout shift or extra metadata requests', async ({ page, state, go, panel, link, toggle, closed }) => {
     await go('/');
-    await page.getByText('Áo FIDO', { exact: true }).waitFor();
+    await page.locator('#san-pham-noi-bat .product-summary-card').first().waitFor();
     await closed();
     const before = await page.locator('header').boundingBox();
     const mainBefore = await page.locator('main').boundingBox();
@@ -160,7 +160,7 @@ try {
   });
   for (const width of [375, 768, 1024, 1440]) {
     await check(`Responsive ${width}px: readable hierarchy, valid visuals and no horizontal overflow`, async ({ page, go, panel, link, toggle }) => {
-      await go('/'); await page.getByText('Áo FIDO', { exact: true }).waitFor();
+      await go('/'); await page.locator('#san-pham-noi-bat .product-summary-card').first().waitFor();
       if (width < 1024) await toggle.tap(); else await link.hover();
       await panel.getByRole('link', { name: 'Áo công sở', exact: true }).waitFor();
       await noOverflow(page);
@@ -260,7 +260,9 @@ try {
     assert.equal(state.pointer, 'auto'); assert.equal(state.inert, false);
     assert.equal(state.duration, '0.18s, 0.18s, 0s');
     // Raw pointer input avoids Playwright's wait for a transition-stable target.
-    await page.mouse.click(85, 150);
+    const target = await page.locator('#storefront-category-menu a').first().boundingBox();
+    assert.ok(target, 'navigation target has geometry during the opening transition');
+    await page.mouse.click(target.x + target.width / 2, target.y + target.height / 2);
     await page.waitForURL('**/products'); await closed();
   });
   await writeFile(`${evidence}/mega-test-results.json`, JSON.stringify({ status: 'PASS', cases: results, source: 'controlled HTTP fixtures; separate live API evidence required' }, null, 2));

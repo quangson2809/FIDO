@@ -12,7 +12,7 @@ const price = (value: string | null): number | undefined => {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed <= Number.MAX_SAFE_INTEGER ? parsed : undefined;
 };
-export function readCatalogQuery(params: URLSearchParams, meta?: CatalogMetaDto | null): CatalogProductQuery {
+export function readCatalogQuery(params: URLSearchParams, meta?: CatalogMetaDto | null, categoryId?: number): CatalogProductQuery {
   // The existing controller binds page to a Java Integer, while filter IDs are Longs.
   const query: CatalogProductQuery = { page: positiveInteger(params.get('page'), 2_147_483_647) ?? 1 };
   const q = params.get('q')?.trim();
@@ -36,6 +36,7 @@ export function readCatalogQuery(params: URLSearchParams, meta?: CatalogMetaDto 
     if (min !== undefined) query.min_price = min;
     if (max !== undefined) query.max_price = max;
   }
+  if (categoryId !== undefined) query.category_id = categoryId;
   return query;
 }
 export function catalogQueryParams(query: CatalogProductQuery): URLSearchParams {
@@ -45,6 +46,9 @@ export function catalogQueryParams(query: CatalogProductQuery): URLSearchParams 
     if (value !== undefined && value !== '' && !(key === 'page' && value === 1)) params.set(key, String(value));
   }
   return params;
+}
+export function catalogUrlParams(query: CatalogProductQuery, categoryId?: number): URLSearchParams {
+  return catalogQueryParams(categoryId === undefined ? query : { ...query, category_id: undefined });
 }
 export const filterLabels: Record<CatalogFilterKey, string> = {
   category_id: 'Danh mục', brand_id: 'Thương hiệu', size_value_id: 'Size', color_id: 'Màu',

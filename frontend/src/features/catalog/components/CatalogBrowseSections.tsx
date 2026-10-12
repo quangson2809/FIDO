@@ -2,6 +2,7 @@ import { ProductSummaryCard } from './ProductSummaryCard';
 import React from 'react';
 import type { CatalogMetaDto, CatalogProductView } from '../types';
 import type { PaginationMeta } from '../../../types/api';
+import { buildCategoryTree, getCategoryAncestors, type CategoryNode } from '../model/categoryTree';
 
 interface FilterOption {
   value: string;
@@ -58,6 +59,8 @@ export const CatalogFiltersPanel: React.FC<{
   onClear: () => void;
   priceErrorId?: string;
   priceInvalid?: boolean;
+  categoryLocked?: boolean;
+  hideActions?: boolean;
 }> = ({
   meta,
   metaLoading,
@@ -83,6 +86,7 @@ export const CatalogFiltersPanel: React.FC<{
   onApplyPriceRange,
   onClear,
   priceErrorId, priceInvalid,
+  categoryLocked, hideActions,
 }) => (
   <section aria-label="Lọc sản phẩm" className="w-full border border-[#E8E9E3] bg-[#FFFDF5] p-5">
     <div className="flex items-center justify-between border-b border-[#E8E9E3] pb-3">
@@ -100,16 +104,16 @@ export const CatalogFiltersPanel: React.FC<{
     </div>
 
     <div className="space-y-5 pt-5">
-      <FilterSelect
+      {!categoryLocked && <FilterSelect
         label="Danh mục"
         value={categoryId ?? ''}
         disabled={metaLoading}
         onChange={(value) => onCategoryChange(value ? Number(value) : undefined)}
-        options={(meta?.categories ?? []).map((item) => ({
-          value: String(item.category_id),
-          label: item.name,
-        }))}
-      />
+        options={buildCategoryTree(meta?.categories ?? []).flatMap(function options(node: CategoryNode): FilterOption[] {
+          return [{ value: String(node.category_id), label: [...getCategoryAncestors(meta?.categories ?? [], node.category_id).map(parent => parent.name), node.name].join(' / ') }, ...node.children.flatMap(options)];
+        })}
+      />}
+      <fieldset className="space-y-5"><legend className="mb-3 text-sm font-semibold">Thương hiệu & lựa chọn</legend>
       <FilterSelect
         label="Thương hiệu"
         value={brandId ?? ''}
@@ -149,6 +153,8 @@ export const CatalogFiltersPanel: React.FC<{
         onChange={(value) => onGenderChange(value || undefined)}
         options={(meta?.genders ?? []).map((item) => ({ value: item, label: item }))}
       />
+      </fieldset>
+      <fieldset className="space-y-5"><legend className="mb-3 text-sm font-semibold">Phong cách & mùa</legend>
       <FilterSelect
         label="Mùa"
         value={season ?? ''}
@@ -163,9 +169,10 @@ export const CatalogFiltersPanel: React.FC<{
         onChange={(value) => onStyleChange(value || undefined)}
         options={(meta?.styles ?? []).map((item) => ({ value: item, label: item }))}
       />
+      </fieldset>
 
       <div className="border-t border-[#E8E9E3] pt-4">
-        <p className="mb-2 text-[11px] font-bold uppercase tracking-wider">Khoảng giá</p>
+        <p className="mb-2 text-sm font-semibold">Khoảng giá cơ bản (đ)</p>
         <div className="grid grid-cols-2 gap-2">
           <input
             inputMode="decimal"
@@ -182,13 +189,13 @@ export const CatalogFiltersPanel: React.FC<{
             className="min-w-0 border border-[#D9DDD6] bg-white px-3 py-2 text-sm outline-none focus:border-[#0B2419]"
           />
         </div>
-        <button
+        {!hideActions && <button
           type="button"
           onClick={onApplyPriceRange}
           className="mt-2 w-full border border-[#0B2419] bg-white py-2 text-[11px] font-bold uppercase tracking-wider transition hover:bg-[#0B2419] hover:text-white"
         >
           Áp dụng bộ lọc
-        </button>
+        </button>}
       </div>
     </div>
   </section>
