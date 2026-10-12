@@ -68,3 +68,33 @@
     flex-basis: 96px;
   }
 }
+
+/* Product detail gallery selectors follow the existing component markup. */
+.storefront .group.relative[class*="aspect-[4/5]"] {
+  width: 100%;
+  max-height: min(68dvh, 640px);
+}
+.storefront .group.relative[class*="aspect-[4/5]"] > img {
+  max-height: min(68dvh, 640px);
+  object-fit: contain;
+}
+.storefront div[class*="overflow-x-auto"][class*="md:max-h-[640px]"] {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+.storefront div[class*="overflow-x-auto"][class*="md:max-h-[640px]"] > button {
+  flex: 0 0 calc((100% - 48px) / 5);
+  min-width: 0;
+}
+@media (min-width: 768px) {
+  .storefront div[class*="overflow-x-auto"][class*="md:max-h-[640px]"] {
+    max-height: 600px;
+    overflow-y: auto;
+  }
+  .storefront div[class*="overflow-x-auto"][class*="md:max-h-[640px]"] > button {
+    flex-basis: 96px;
+  }
+}
