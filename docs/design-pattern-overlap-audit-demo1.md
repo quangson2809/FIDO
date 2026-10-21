@@ -71,9 +71,9 @@ Evidence: [CheckoutQuoteService.java](../backend/src/main/java/com/fido/modules/
 
 Evidence: [OrderPolicy.java](../backend/src/main/java/com/fido/modules/order/service/OrderPolicy.java), [OrderActionPolicy.java](../backend/src/main/java/com/fido/modules/order/service/OrderActionPolicy.java), [OrderActionService.java](../backend/src/main/java/com/fido/modules/order/service/OrderActionService.java).
 
-## 3. Corrections and review rules applied to the companion study
+## 3. Corrections made to the companion study
 
-The companion file, [design-patterns-18-before-after-demo1.md](design-patterns-18-before-after-demo1.md), should follow these accuracy rules:
+The companion file, [design-patterns-18-before-after-demo1.md](design-patterns-18-before-after-demo1.md), has been revised to apply these accuracy rules:
 
 1. Mark that the list is 18 requested patterns from the 22-pattern Refactoring.Guru classic catalog, not the full catalog.
 2. Link each section to its official pattern definition.
