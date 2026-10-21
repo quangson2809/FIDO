@@ -5,7 +5,13 @@
 - Baseline inspected: `af1af690b91f4ba3cfbc70f9f67a21f9d888996f`
 - Scope: Java/Spring backend; package-by-feature modular monolith.
 - Evidence policy: current snippets/links describe code that exists at the baseline. “After (candidate)” is an illustrative design unless explicitly labelled “already present”. It must not be read as a production change. No business behavior is changed by this document.
-- Important: “use 18 patterns” is interpreted as fully evaluate and demonstrate all 18, not force all 18 into production. Adding a pattern without a distinct problem would violate FIDO's architecture constraints and make the code worse.
+- Scope note: Refactoring.Guru's classic catalog lists 22 patterns. This document evaluates the specific 18 requested for FIDO; it does **not** claim to cover all 22. The four catalog patterns outside this request are Singleton, Flyweight, Iterator and Visitor. “Evaluate all 18” means assess applicability and demonstrate correct concepts, not force every pattern into production. Adding a pattern without a distinct problem would violate FIDO's architecture constraints and make the code worse.
+
+## Reference and interpretation rules
+
+The definitions and intended structures below are checked against the [Refactoring.Guru Design Patterns catalog](https://refactoring.guru/design-patterns) and its individual pages: [Factory Method](https://refactoring.guru/design-patterns/factory-method), [Abstract Factory](https://refactoring.guru/design-patterns/abstract-factory), [Builder](https://refactoring.guru/design-patterns/builder), [Prototype](https://refactoring.guru/design-patterns/prototype), [Adapter](https://refactoring.guru/design-patterns/adapter), [Facade](https://refactoring.guru/design-patterns/facade), [Decorator](https://refactoring.guru/design-patterns/decorator), [Proxy](https://refactoring.guru/design-patterns/proxy), [Composite](https://refactoring.guru/design-patterns/composite), [Bridge](https://refactoring.guru/design-patterns/bridge), [Strategy](https://refactoring.guru/design-patterns/strategy), [State](https://refactoring.guru/design-patterns/state), [Command](https://refactoring.guru/design-patterns/command), [Template Method](https://refactoring.guru/design-patterns/template-method), [Chain of Responsibility](https://refactoring.guru/design-patterns/chain-of-responsibility), [Observer](https://refactoring.guru/design-patterns/observer), [Mediator](https://refactoring.guru/design-patterns/mediator), and [Memento](https://refactoring.guru/design-patterns/memento).
+
+A framework feature, a name, or a single switch is not automatically proof of a GoF pattern. Each “Applied” judgment requires matching roles and collaboration structure, not just a similar outcome. Candidate snippets are illustrations, not implemented production code.
 
 ## Architecture guardrails
 
@@ -36,7 +42,7 @@ Keep the existing dependency direction: Controller → Service/Application → o
 
 ---
 
-## 1. Factory Method
+## 1. [Factory Method](https://refactoring.guru/design-patterns/factory-method)
 
 ### Problem evaluated
 Choose a storage implementation at construction time when FIDO supports multiple providers (for example, ImgBB and a second provider) without making catalog logic depend on provider details.
@@ -53,14 +59,26 @@ public interface ImageStorageGateway {
 
 Evidence: [ImageStorageGateway.java](../backend/src/main/java/com/fido/modules/product/service/ImageStorageGateway.java), [ImgBbImageStorageClient.java](../backend/src/main/java/com/fido/modules/product/service/ImgBbImageStorageClient.java).
 
-### After — candidate only if a second implementation is introduced
+### After — valid GoF-shaped candidate, only if a second implementation is introduced
 ```java
-public interface ImageStorageClientFactory {
-    ImageStorageGateway create(ImageStorageProvider provider);
+interface ImageStorageCreator {
+    ImageStorageGateway createStorage();
+}
+
+final class ImgBbStorageCreator implements ImageStorageCreator {
+    @Override
+    public ImageStorageGateway createStorage() {
+        // Construct or obtain the configured ImgBB adapter here.
+        return configuredImgBbGateway();
+    }
+
+    private ImageStorageGateway configuredImgBbGateway() {
+        throw new UnsupportedOperationException("Illustrative pseudocode only");
+    }
 }
 ```
 
-This is not a complete production implementation: provider selection, configuration, credential validation, fallback behavior, and operational requirements have not been specified. A factory with one provider adds indirection and therefore is **not applied**.
+Factory Method delegates creation through a creator-level method so concrete creator implementations can select products behind a common interface. A factory that simply accepts a provider enum and switches on it is more accurately described as a **Simple Factory**; it is not automatically the GoF Factory Method. The snippet is illustrative pseudocode, not production Java. Spring @Bean methods or dependency injection alone do not prove that the application has implemented this GoF pattern. With only one storage provider, neither an explicit GoF creator hierarchy nor a provider selector is justified.
 
 ### Acceptance test if justified later
 For every supported provider, verify the selected adapter and configuration; verify unknown provider configuration fails fast; verify credentials never appear in logs.
@@ -69,7 +87,7 @@ For every supported provider, verify the selected adapter and configuration; ver
 
 ---
 
-## 2. Abstract Factory
+## 2. [Abstract Factory](https://refactoring.guru/design-patterns/abstract-factory)
 
 ### Problem evaluated
 Create a compatible family of related integration objects when a provider requires multiple coordinated clients (for example, upload and asset-management clients with shared credentials/endpoint/version).
@@ -96,7 +114,7 @@ A provider factory must return clients using the same provider configuration and
 
 ---
 
-## 3. Builder
+## 3. [Builder](https://refactoring.guru/design-patterns/builder)
 
 ### Problem evaluated
 Avoid invalid or unreadable construction when an object has many optional fields and invariants that must be enforced together.
@@ -119,24 +137,43 @@ return new CheckoutQuoteDto(
 
 Evidence: [CheckoutQuoteService.java](../backend/src/main/java/com/fido/modules/order/service/CheckoutQuoteService.java).
 
-### After — candidate
+### After — correct Builder shape, illustrative only if construction becomes genuinely complex
 ```java
-public record CheckoutTotals(
-        BigDecimal subtotal,
-        BigDecimal discount,
-        BigDecimal shippingFee,
-        BigDecimal total) {
+public final class CheckoutTotals {
+    private final BigDecimal subtotal;
+    private final BigDecimal discount;
+    private final BigDecimal shippingFee;
+    private final BigDecimal total;
 
-    public CheckoutTotals {
+    private CheckoutTotals(Builder builder) {
+        this.subtotal = Objects.requireNonNull(builder.subtotal);
+        this.discount = Objects.requireNonNull(builder.discount);
+        this.shippingFee = Objects.requireNonNull(builder.shippingFee);
+        this.total = Objects.requireNonNull(builder.total);
         if (subtotal.signum() < 0 || discount.signum() < 0
                 || shippingFee.signum() < 0 || total.signum() < 0) {
             throw new IllegalArgumentException("Checkout amounts must be non-negative");
         }
     }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private BigDecimal subtotal;
+        private BigDecimal discount;
+        private BigDecimal shippingFee;
+        private BigDecimal total;
+
+        public Builder subtotal(BigDecimal value) { subtotal = value; return this; }
+        public Builder discount(BigDecimal value) { discount = value; return this; }
+        public Builder shippingFee(BigDecimal value) { shippingFee = value; return this; }
+        public Builder total(BigDecimal value) { total = value; return this; }
+        public CheckoutTotals build() { return new CheckoutTotals(this); }
+    }
 }
 ```
 
-This record is an example of enforcing an invariant, not a Builder implementation. It must not be introduced without confirming whether negative totals are already ruled out by domain rules and where those invariants belong. A Builder is not needed merely because a DTO has many constructor arguments.
+This is a valid Builder structure, but it is **not a proposed production change**. A four-field value object is probably too simple to benefit from it, and constructing a checkout value must not create a second pricing engine. If ever adopted, keep total calculation and its business invariant owned by the existing checkout calculation service; the Builder should only assemble a validated result. `Objects` would need `java.util.Objects` imported.
 
 ### Acceptance test if justified later
 Test every valid construction path and ensure required values cannot be omitted. Ensure total/discount invariants match current checkout rules and API contract.
@@ -145,7 +182,7 @@ Test every valid construction path and ensure required values cannot be omitted.
 
 ---
 
-## 4. Prototype
+## 4. [Prototype](https://refactoring.guru/design-patterns/prototype)
 
 ### Problem evaluated
 Create a new object from an existing template while deliberately controlling which values and relationships are copied.
@@ -171,7 +208,7 @@ public record ProductDraft(
 
     public static ProductDraft from(Product source) {
         return new ProductDraft(
-                source.getProductName(),
+                source.getName(),
                 source.getDescription(),
                 source.getBasePrice());
     }
@@ -187,7 +224,7 @@ Copied draft has no source ID, does not share mutable collections, and does not 
 
 ---
 
-## 5. Adapter — ALREADY PRESENT
+## 5. [Adapter](https://refactoring.guru/design-patterns/adapter) — ALREADY PRESENT
 
 ### Problem solved
 Keep catalog code independent of the provider-specific HTTP request/response, timeouts, and provider error formats.
@@ -222,10 +259,10 @@ Provider success maps to a validated URL; invalid response maps to an integratio
 
 ---
 
-## 6. Facade
+## 6. [Facade](https://refactoring.guru/design-patterns/facade)
 
 ### Problem evaluated
-Expose a simple application operation while hiding coordination across several subsystem services.
+Expose a simplified interface to a complex subsystem so callers do not need to know the subsystem's internal collaboration.
 
 ### Before — actual baseline
 The orchestration already sits in application services. Checkout quote locks the cart, calculates checkout, saves a quote and maps the response. Goods receipt coordinates receipt validation, inventory commands and audit.
@@ -242,8 +279,8 @@ var saved = quotes.save(
         calculation);
 ```
 
-### After — candidate anti-duplication rule
-Do not wrap this in another `CheckoutFacade` that merely calls `CheckoutQuoteService.quote(...)`. The current service is already the use-case entry point. A facade becomes useful only if a real external caller needs a simpler stable API over multiple distinct subsystem operations.
+### After — adoption decision
+Do not count `CheckoutQuoteService` or `GoodsReceiptService` as the GoF Facade merely because each orchestrates a use case. They are application/use-case services. Their APIs may provide a facade-like simplification, but the evidence does not establish a separate GoF Facade over a subsystem. Do not add another class that only forwards to an existing service. Reconsider only if an external caller needs a deliberately simplified, stable interface over several distinct subsystem operations.
 
 ### Acceptance tests
 If a facade is introduced, verify that it does not duplicate authorization, transactions, quote-expiry rules, or error mapping; integration tests must still cover quote creation and cart locking.
@@ -252,7 +289,7 @@ If a facade is introduced, verify that it does not duplicate authorization, tran
 
 ---
 
-## 7. Decorator
+## 7. [Decorator](https://refactoring.guru/design-patterns/decorator)
 
 ### Problem evaluated
 Compose optional behaviors (metrics, tracing, caching) around a client without changing its implementation and without subclass proliferation.
@@ -267,23 +304,31 @@ return new UploadedImage(response.data().url());
 
 Evidence: [ImgBbImageStorageClient.java](../backend/src/main/java/com/fido/modules/product/service/ImgBbImageStorageClient.java).
 
-### After — candidate only if multiple clients need the same wrapper
+### After — correct Decorator shape, only if a shared metrics wrapper is needed
 ```java
 public final class TimedImageStorageGateway implements ImageStorageGateway {
     private final ImageStorageGateway delegate;
+    private final MeterRegistry registry;
 
-    public TimedImageStorageGateway(ImageStorageGateway delegate) {
+    public TimedImageStorageGateway(
+            ImageStorageGateway delegate, MeterRegistry registry) {
         this.delegate = delegate;
+        this.registry = registry;
     }
 
     @Override
     public UploadedImage upload(MultipartFile image) {
-        return delegate.upload(image);
+        Timer.Sample sample = Timer.start(registry);
+        try {
+            return delegate.upload(image);
+        } finally {
+            sample.stop(registry.timer("fido.image.upload"));
+        }
     }
 }
 ```
 
-This skeleton intentionally omits metrics dependencies and failure semantics; it is not production-ready code. A wrapper that measures nothing is not a useful Decorator. If the provider already owns timing, adding another layer would duplicate responsibility.
+Illustrative code requires `io.micrometer.core.instrument.MeterRegistry` and `Timer`. The wrapper adds behavior around the same `ImageStorageGateway` contract and delegates success/failure semantics unchanged; it is therefore Decorator-shaped. It is not a proposed production change. If FIDO later requires common metrics across several providers, verify existing instrumentation first to avoid double-counting. A wrapper that adds no behavior is not a Decorator.
 
 ### Acceptance tests if justified
 Delegate receives the same input; result and exceptions pass through unchanged; timing is recorded for success and failure; no image bytes or secrets are logged.
@@ -292,7 +337,7 @@ Delegate receives the same input; result and exceptions pass through unchanged; 
 
 ---
 
-## 8. Proxy
+## 8. [Proxy](https://refactoring.guru/design-patterns/proxy)
 
 ### Problem evaluated
 Intercept a call for authorization, transaction boundaries, lazy access, or remote access.
@@ -306,7 +351,7 @@ Spring already provides transaction/security interception; repositories provide 
 public class OrderActionService { /* ... */ }
 ```
 
-and the action method uses `@PreAuthorize`.
+The service also uses method-security interception such as `@PreAuthorize`. Spring's transaction and method-security infrastructure can intercept calls through framework-managed proxies. Repository row locking is a concurrency-control technique, **not itself the Proxy pattern**.
 
 Evidence: [OrderActionService.java](../backend/src/main/java/com/fido/modules/order/service/OrderActionService.java).
 
@@ -320,7 +365,7 @@ Integration tests must verify unauthorized calls are rejected, transaction rollb
 
 ---
 
-## 9. Composite
+## 9. [Composite](https://refactoring.guru/design-patterns/composite)
 
 ### Problem evaluated
 Treat a category leaf and a category group uniformly during recursive operations (for example, calculate a tree summary or apply a policy recursively).
@@ -345,7 +390,7 @@ Nested categories and empty leaves produce correct summaries; cycles are rejecte
 
 ---
 
-## 10. Bridge
+## 10. [Bridge](https://refactoring.guru/design-patterns/bridge)
 
 ### Problem evaluated
 Separate two independent axes of change, such as image-storage abstraction and independent image-processing pipeline, so each can vary without a cross-product of subclasses.
@@ -374,7 +419,7 @@ Cross-product tests cover each supported storage implementation and processing i
 
 ---
 
-## 11. Strategy
+## 11. [Strategy](https://refactoring.guru/design-patterns/strategy)
 
 ### Problem evaluated
 Make algorithms interchangeable when there are multiple independently changing algorithms with meaningful selection rules.
@@ -411,7 +456,7 @@ Fixed and percentage results match existing outputs; percentage uses HALF_UP sca
 
 ---
 
-## 12. State — PARTIALLY REPRESENTED BY EXISTING POLICY
+## 12. [State](https://refactoring.guru/design-patterns/state) — TRANSITION POLICY, NOT THE FULL GOF PATTERN
 
 ### Problem solved
 Centralize legal order transitions and prerequisites so invalid transitions are rejected and action availability agrees with execution.
@@ -436,11 +481,11 @@ Keep the state transition policy as the single source of legal transitions. A fu
 ### Acceptance tests
 Every allowed edge is accepted; disallowed edges conflict; COMPLETE requires paid status; repeated action does not repeat inventory/voucher effects; concurrent actions serialize on the order lock.
 
-**Decision: STATE POLICY ALREADY PRESENT; FULL GOF STATE CLASSES NOT JUSTIFIED.**
+**Decision: TRANSITION POLICY IS PRESENT; THE FULL GOF STATE PATTERN IS NOT IMPLEMENTED OR JUSTIFIED YET.**
 
 ---
 
-## 13. Command — COMMAND-LIKE DISPATCH ALREADY PRESENT
+## 13. [Command](https://refactoring.guru/design-patterns/command) — COMMAND-LIKE DISPATCH, NOT THE FULL GOF PATTERN
 
 ### Problem evaluated
 Separate named business actions from the code that coordinates their effects, with idempotency and authorization preserved.
@@ -474,11 +519,11 @@ The switch is explicit and type-checkable enough for the current action set. Do 
 ### Acceptance tests
 Unknown action returns bad request; invalid transition conflicts; repeated command does not repeat effects; inventory, voucher and audit changes roll back together on failure.
 
-**Decision: COMMAND-LIKE DISPATCH PRESENT; GENERIC COMMAND FRAMEWORK NOT JUSTIFIED.**
+**Decision: EXPLICIT ACTION DISPATCH IS PRESENT; GOF COMMAND OBJECTS AND A GENERIC COMMAND FRAMEWORK ARE NOT JUSTIFIED YET.**
 
 ---
 
-## 14. Template Method
+## 14. [Template Method](https://refactoring.guru/design-patterns/template-method)
 
 ### Problem evaluated
 Reuse a stable algorithm skeleton while allowing a few controlled steps to vary.
@@ -511,7 +556,7 @@ Each workflow's authorization, locking, rollback, stock ledger, and audit semant
 
 ---
 
-## 15. Chain of Responsibility
+## 15. [Chain of Responsibility](https://refactoring.guru/design-patterns/chain-of-responsibility)
 
 ### Problem evaluated
 Run an extensible ordered pipeline of independent handlers where a request may be accepted, rejected, or passed to the next handler.
@@ -537,7 +582,7 @@ Handler order is deterministic; rejection short-circuits; errors preserve API se
 
 ---
 
-## 16. Observer
+## 16. [Observer](https://refactoring.guru/design-patterns/observer)
 
 ### Problem evaluated
 Notify independent consumers when a domain event occurs without making the producer depend on all consumers.
@@ -570,7 +615,7 @@ Audit failure rolls back the business transaction; if asynchronous notification 
 
 ---
 
-## 17. Mediator
+## 17. [Mediator](https://refactoring.guru/design-patterns/mediator)
 
 ### Problem evaluated
 Reduce many-to-many dependencies when several peer components coordinate through a central mediator.
@@ -596,7 +641,7 @@ Mediator must prevent circular dependencies and own no duplicate business rules;
 
 ---
 
-## 18. Memento
+## 18. [Memento](https://refactoring.guru/design-patterns/memento)
 
 ### Problem evaluated
 Capture and restore an object's internal state for an explicit undo/rollback feature.
@@ -649,6 +694,6 @@ Restoration changes only permitted draft fields, rejects stale versions, preserv
 
 ## Final assessment
 
-This report covers all 18 patterns with a concrete FIDO problem, baseline evidence, an after-design/code illustration, acceptance criteria, and an adoption decision. Only Adapter and the existing State/Command-like order policy/dispatch are evidenced as present in the current code; Facade/Proxy responsibilities are already covered by application services and Spring infrastructure. Other patterns remain deferred or not justified until the system has a real distinct requirement.
+This report covers all 18 patterns with a concrete FIDO problem, baseline evidence, an after-design/code illustration, acceptance criteria, and an adoption decision. Adapter is the clearest GoF-style pattern already evidenced by a concrete implementation. The order module has a centralized transition policy and command-like action dispatch, but these are not the full GoF State and Command structures. Spring supplies proxy-based transaction/method-security interception, while current application services provide use-case orchestration; neither fact justifies adding a custom Proxy or counting an application service as a separate GoF Facade. Other patterns remain deferred or not justified until a real distinct requirement exists.
 
 **No pattern should be counted as newly implemented based on an illustrative snippet.** A production pattern is accepted only after a code diff, relevant automated tests, compile/build evidence, and architecture review.
