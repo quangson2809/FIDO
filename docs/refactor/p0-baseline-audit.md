@@ -71,10 +71,10 @@ Nguồn: backend/build.gradle.kts, backend/gradle/wrapper/gradle-wrapper.propert
 | V2 | Unique constraint uq_accounts_phone; seed role ADMIN và SUPERADMIN. Comment nêu duplicate phone làm migration dừng, không tự merge account. |
 | V3 | Insert zero-quantity inventory row còn thiếu cho mỗi variant và tạo 6 index cho receipt/ledger. Không thêm bảng/cột domain. |
 | V4 | Thêm product_images.sort_order, backfill theo image_id tăng dần thành zero-based ordering, NOT NULL + CHECK >= 0 + UNIQUE(product_id, sort_order); thêm nullable order_items.image_url_snapshot, không backfill history. |
-| V5 | Thêm 9 cột voucher policy; tạo voucher_products, voucher_categories, voucher_usages, checkout_quotes; seed VOUCHER_READ/VOUCHER_WRITE. |
+| V5 | Thêm 10 cột voucher policy; tạo voucher_products, voucher_categories, voucher_usages, checkout_quotes; seed VOUCHER_READ/VOUCHER_WRITE. |
 | V6 | Seed permission REPORT_READ. |
 
-**Phát hiện:** V1 tạo 28 bảng; 4 bảng mới ở V5 đưa tổng số bảng từ CREATE TABLE trong chuỗi migration lên **32**. Đây là count của source DDL, không phải xác nhận một DB runtime đã migrate tới V6.
+**Phát hiện:** V1 tạo 28 bảng; 4 bảng mới ở V5 đưa tổng số bảng từ CREATE TABLE trong chuỗi migration lên **32**. Tổng số cột suy ra từ DDL là **186**: 161 ở V1 + 2 cột ở V4 + 10 cột vouchers và 13 cột thuộc bốn bảng mới ở V5. Đây là count của source DDL, không phải xác nhận một DB runtime đã migrate tới V6.
 
 ### 3.2 Bốn bảng V5 bổ sung ngoài V1
 
@@ -695,7 +695,7 @@ Các status mô tả bằng chứng, không đồng nghĩa tự động với bu
 - Baseline là tree tại f931602c86fdf5a59b487d6edd77331b7d64333a; không tái dùng SHA lịch sử từ hội thoại cũ.
 - Schema inventory là phân tích DDL V1–V6; không khẳng định live DB đang ở version 6.
 - Table count 32 = 28 V1 + 4 V5; V3/V4/V6 không thêm table.
-- V1 schema được trích từ SQL source; V4 thêm 2 cột (sort_order, image_url_snapshot); V5 thêm 9 cột voucher và 17 cột trên 4 bảng mới.
+- V1 schema được trích từ SQL source; V4 thêm 2 cột (sort_order, image_url_snapshot); V5 thêm 10 cột vouchers và 13 cột trên 4 bảng mới.
 - Không giả định ID range, actual SKU NULL distribution hoặc row counts.
 - Không giả định NULL SKU/override/attribute values có thể tái tạo.
 - Không giả định workflow khác đã pass; chỉ CI run exact SHA là bằng chứng.
