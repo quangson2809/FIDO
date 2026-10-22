@@ -65,7 +65,7 @@ Legend: PASS means the named acceptance scope is evidenced complete; PARTIAL mea
    - Evidence: No database reset, Flyway history edit, active migration/JPA/service/controller/API/frontend change or pattern implementation.
 
 19. **PASS — Classify uncertainties correctly**
-   - Evidence: Guest, Product/API IDs, stock, voucher/quote, order/payment/shipping/snapshot uncertainties remain HARD BLOCKS; engineering tasks are TECHNICAL DECISIONS; explicit later features remain DEFERRED.
+   - Evidence: Product/API IDs, stock, voucher/quote, order/payment/shipping/snapshot and physical SQL uncertainties remain HARD BLOCKS. Cart/order authentication is resolved as authenticated-only; only the stale legacy access labels require documentation alignment. Engineering tasks are TECHNICAL DECISIONS; explicit later features remain DEFERRED.
 
 20. **PASS — Write audit deliverables on a separate working branch**
    - Evidence: Branch `audit/p0-baseline-erd-v2-20261022` created from verified SHA; the six P0 documents are committed there.
@@ -81,7 +81,7 @@ Legend: PASS means the named acceptance scope is evidenced complete; PARTIAL mea
 
 1. Diagnose the three `CleanResetSchemaTests` failures on the audited baseline; establish whether the cause is test-environment dialect/constraint behavior or an actual schema defect using evidence rather than assumption.
 2. Run the dedicated clean-target schema test against its isolated disposable MySQL service and record the exact SHA/result. Do not run Flyway clean against shared or production data.
-3. Resolve owner HARD BLOCKs before runtime schema implementation: guest identity, Product child ID/API compatibility and attribute inheritance, stock semantics/concurrency, voucher scope/usage, create-order idempotency, money/snapshot semantics, payment/refund, shipping lifecycle and physical SQL choices.
+3. Resolve owner HARD BLOCKs before runtime schema implementation: Product child ID/API compatibility and attribute inheritance, stock semantics/concurrency, voucher scope/usage, create-order idempotency, money/snapshot semantics, payment/refund, shipping lifecycle and physical SQL choices. Guest Cart/order placement is already resolved as authenticated-only; do not reopen it without an explicit owner amendment.
 4. Freeze API/DTO compatibility alongside the schema contract. ERD v2 alone does not authorize public API changes.
 5. In a normal checkout, run `git diff --check` as additional local hygiene; remote compare and content checks confirmed that this audit branch contains only the six intended P0 documents.
 
