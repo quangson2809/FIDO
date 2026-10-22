@@ -16,15 +16,6 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 - **Likelihood / observation:** Certain unless remapping is planned.
 - **Control / mitigation:** Freeze external ID/DTO contract; test the complete shopping journey on target IDs.
 
-### R-02 — HARD BLOCK — Guest ownership
-
-- **Severity:** BLOCKER  
-- **Status:** OPEN  
-- **Owner phase:** P1
-- **Evidence:** Source Order permits nullable customer account and checkout contract retains guest intent/security TBD. Target requires `carts.account_id` and `orders.account_id`; no guest/session table.
-- **Impact:** Guest behavior disappears or ownership is fabricated; order privacy/lookup risk.
-- **Likelihood / observation:** High without decision.
-- **Control / mitigation:** Owner chooses authenticated-only target or authorizes ERD/API revision for secure guest identity.
 
 ### R-03 — HARD BLOCK — Inventory semantics
 
@@ -123,10 +114,10 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 - **Severity:** HIGH  
 - **Status:** OPEN  
 - **Owner phase:** P1/P2
-- **Evidence:** Target phone is NOT NULL+unique and carts/orders are account-owned; current API documents phone login but API/entity integration remains open.
-- **Impact:** Authentication/ownership contract diverges or guest checkout is silently dropped.
+- **Evidence:** Draft target phone is NOT NULL+unique and carts/orders are account-owned; current login lookup, phone uniqueness versus ERD annotations, and API/entity integration remain open.
+- **Impact:** Authentication/identity contract diverges or phone lookup becomes ambiguous.
 - **Likelihood / observation:** Medium.
-- **Control / mitigation:** Freeze identity and login lookup/error contract; ownership tests and duplicate-phone checks.
+- **Control / mitigation:** Resolve the phone uniqueness decision against the ERD/API contract; verify login lookup, error contract, ownership tests and duplicate-phone behavior.
 
 ### R-13 — TECHNICAL DECISION — Audit PII
 
@@ -178,7 +169,17 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 - **Likelihood / observation:** Observed directly at audited SHA.
 - **Control / mitigation:** Diagnose on a dedicated disposable MySQL test run and correct the authorized test/config path in a later implementation/verification task; do not dismiss as an assumed H2 incompatibility.
 
-## MEDIUM — closed/deferred findings
+## MEDIUM — documentation/compatibility and deferred findings
+
+### R-02 — CLOSED — Guest cart/order ownership decision; API metadata alignment remains
+
+- **Severity:** MEDIUM  
+- **Status:** DECISION CLOSED / DOC ALIGNMENT OPEN  
+- **Owner phase:** P1 contract alignment
+- **Evidence:** Owner decision dated 2026-10-05 in `frontend/CONTRACT_ALIGNMENT.md`: login is required before persisted Cart use or Order placement. Target `CARTS` and `ORDERS` are account-owned and have no guest-session model.
+- **Impact:** Legacy JWT-optional/guest-TBD text may cause an implementation to reintroduce an unapproved guest flow.
+- **Likelihood / observation:** Current stale documentation was found in the legacy 77-endpoint contract and chronological decision log; target decision itself is resolved.
+- **Control / mitigation:** Target API #14–20 now records JWT-required access. Remove old “guest checkout required/TBD” statements from active target requirements; retain historical wording only with a superseded label. Do not add guest tables or identity mechanisms without an explicit amended owner decision.
 
 ### R-16 — TECHNICAL DECISION — Migration inventory gap (CLOSED)
 
@@ -212,6 +213,6 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 ## Overall risk judgement
 
-Clean Schema Reset removes the need to preserve disposable development rows. It does **not** remove runtime-contract risks between the existing application and the target schema: guest ownership, public IDs, inventory meaning, voucher rules, quote/idempotency, snapshots/refunds, shipping state and report formulas remain the high-risk areas.
+Clean Schema Reset removes the need to preserve disposable development rows. Guest Cart/Order authentication is resolved as authenticated-only; the stale guest annotations are a documentation-alignment issue, not a reason to add guest storage. Remaining high-risk runtime-contract areas include public IDs, inventory meaning, voucher rules, quote/idempotency, snapshots/refunds, shipping state and report formulas.
 
 No destructive action was performed.
