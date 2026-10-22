@@ -31,6 +31,25 @@ jobs:
     name: Verify target schema from an empty database
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: clean-reset-test-password
+          MYSQL_DATABASE: fido_clean_reset
+          TZ: UTC
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pclean-reset-test-password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      CLEAN_RESET_TEST_DB_URL: jdbc:mysql://127.0.0.1:3306/fido_clean_reset?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      CLEAN_RESET_TEST_DB_DRIVER: com.mysql.cj.jdbc.Driver
+      CLEAN_RESET_TEST_DB_USERNAME: root
+      CLEAN_RESET_TEST_DB_PASSWORD: clean-reset-test-password
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -46,4 +65,4 @@ jobs:
 
       - name: Run clean-target schema tests
         working-directory: backend
-        run: ./gradlew test --tests com.fido.persistence.CleanResetSchemaTests
+        run: ./gradlew test --tests com.fido.persistence.CleanResetSchemaTests --stacktrace
