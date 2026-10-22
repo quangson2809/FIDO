@@ -17,7 +17,7 @@
 | `report` | Sales/order-status report queries; no baseline report table | none |
 | `content` | Public/admin approved information and policy pages | `content_pages` |
 
-Total: **28 tables**.
+Total: **28 tables in the original V1 baseline**. Later source migrations V2–V6 add constraints/seeds and four tables in V5, bringing the complete legacy V1–V6 schema to **32 application tables**. These are source-schema counts, not the 31-table target ERD.
 
 ## 2. API ownership
 
