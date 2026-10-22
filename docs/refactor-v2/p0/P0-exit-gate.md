@@ -8,29 +8,70 @@
 
 Legend: PASS means the named acceptance scope is evidenced complete; PARTIAL means some evidence exists but acceptance is incomplete; BLOCKED means a prerequisite prevents the affected work; NOT VERIFIABLE / NOT RUN means the environment or execution evidence does not support a result.
 
-| # | Acceptance criterion | Status | Evidence / outstanding item |
-|---:|---|---|---|
-| 1 | Verify actual remote `origin/demo1` SHA | PASS | GitHub branch lookup and commit ref resolved SHA `22bd3d887cef3c077e714e5ec21e70ba89855d46`. |
-| 2 | Compare actual source with reference SHA | PASS | Compare reports 1 commit ahead, 0 behind and supplied reference as merge base. |
-| 3 | Inspect working tree and preserve uncommitted local changes | NOT VERIFIABLE in this environment | No local checkout/worktree was provided. Remote branch/file state was inspected and no remote application files were changed; no claim is made about a separate local machine. |
-| 4 | Read requested architecture/business/data/API docs | PASS | The recursive tree confirms every requested documentation path exists except a root `AGENTS.md`; only `backend/AGENTS.md` exists. Required docs and both design-pattern reports were read and the missing root path recorded. |
-| 5 | Inspect every migration and DDL-count the actual source schema | PASS | Recursive tree at `e63241d91f2dd4168bc837ade15eebfce5e2631c` confirms V1–V6. V1 creates 28 tables, V5 adds four, V6 only inserts `REPORT_READ`; total 32 application tables. |
-| 6 | Count target DDL tables | PASS (target file only) | Isolated target V1 contains 31 distinct CREATE TABLE statements; target test source asserts 31. |
-| 7 | Inventory module/backend API contracts | PASS | Full non-truncated tree (651 files) was counted: 260 module Java files, 32 entity-directory files (30 entity types + two composite-ID types), 33 repository-directory files, 74 service-directory files, 20 controllers, 96 DTO files and 84 Java test/support files; 77 numbered API rows counted. Per-module counts are in `P0-module-dependency-map.md`. |
-| 8 | Trace ProductVariant and dependent identifiers | PASS | Source entities and DTO/API contracts confirm `variant_id`, `size_value_id`, `color_id`, `available_quantity` use; target uses child Products and typed attributes. |
-| 9 | Map all target tables and legacy-only dependencies | PASS for inspected source/target set | CSV contains 31 target rows plus 8 legacy-only table rows. Complete non-truncated tree evidence confirms all six source migrations V1–V6; inventory gap R-16 is CLOSED. |
-| 10 | Record Product parent/child and Attribute risks | PASS | Target DDL, ERD, physical dictionary and source entities compared; decisions stay open where contract evidence is insufficient. |
-| 11 | Record warehouse/inventory key/version/ledger risks | PASS | Source Inventory/transaction semantics compared with target composite balance and ledger structure. |
-| 12 | Record voucher/quote/idempotency/snapshot/payment/shipping risks | PASS | Findings classified in matrix and risk register; no unsupported runtime behavior was selected. |
-| 13 | Establish module dependency graph and refactor order | PASS (logical, not exhaustive call graph) | Graph and transaction boundaries documented from architecture guides and inspected service classes. |
-| 14 | Review pattern evidence without implementing patterns | PASS (source/document review) | Existing pattern/overlap reports read and examples cross-checked; no patterns were introduced. |
-| 15 | Capture verification evidence for compile/test/schema/architecture suites | PARTIAL | Exact-SHA backend H2 task ran: 196 tests completed, 3 failed, 1 skipped. The MySQL step was skipped; the dedicated clean-target MySQL workflow is NOT RUN. No local Gradle/architecture-suite invocation was available in this environment. Details are in `P0-test-baseline.md`. |
-| 16 | Verify GitHub Actions run for exact SHA | PASS (result captured; baseline CI FAIL) | Actions run [#39760829809](https://github.com/quangson2809/FIDO/actions/runs/39760829809) is tied to the exact SHA and failed in H2; MySQL step was skipped. Vercel success is separately identified. The dedicated workflow's missing `push` trigger for direct `demo1` changes is recorded as an open CI follow-up. |
-| 17 | Cross-check source/target counts and migration history | PASS | Six source migrations confirmed; source DDL total is 32 application tables; target DDL count is 31; matrix has 31 target rows and 8 legacy-only rows. CSV verification confirmed 13 columns on every row and valid quoting. |
-| 18 | Avoid schema changes, destructive reset and scope creep | PASS | No database reset, Flyway history edit, active migration/JPA/service/controller/API/frontend change or pattern implementation. |
-| 19 | Classify uncertainties correctly | PASS | Guest, Product/API IDs, stock, voucher/quote, order/payment/shipping/snapshot uncertainties remain HARD BLOCKS; engineering tasks are TECHNICAL DECISIONS; explicit later features remain DEFERRED. |
-| 20 | Write audit deliverables on a separate working branch | PASS | Branch `audit/p0-baseline-erd-v2-20261022` created from verified SHA; the six P0 documents are committed there. |
-| 21 | Final diff/secret/scope review for original P0 audit branch | PASS (remote equivalent; local git checks unavailable) | At P0 audit completion, the original audit branch contained exactly six added P0 report paths and no code/schema/workflow changes. All six files were checked for conflict markers/common credential patterns; none were found. The current successor documentation-cleanup branch adds documentation-only edits; see branch compare for its complete changed-file list. Local `git diff --check` could not run without a checkout. |
+## Acceptance checklist
+
+1. **PASS — Verify actual remote `origin/demo1` SHA**
+   - Evidence: GitHub branch lookup and commit ref resolved SHA `22bd3d887cef3c077e714e5ec21e70ba89855d46`.
+
+2. **PASS — Compare actual source with reference SHA**
+   - Evidence: Compare reports 1 commit ahead, 0 behind and supplied reference as merge base.
+
+3. **NOT VERIFIABLE in this environment — Inspect working tree and preserve uncommitted local changes**
+   - Evidence: No local checkout/worktree was provided. Remote branch/file state was inspected and no remote application files were changed; no claim is made about a separate local machine.
+
+4. **PASS — Read requested architecture/business/data/API docs**
+   - Evidence: The recursive tree confirms every requested documentation path exists except a root `AGENTS.md`; only `backend/AGENTS.md` exists. Required docs and both design-pattern reports were read and the missing root path recorded.
+
+5. **PASS — Inspect every migration and DDL-count the actual source schema**
+   - Evidence: Recursive tree at `e63241d91f2dd4168bc837ade15eebfce5e2631c` confirms V1–V6. V1 creates 28 tables, V5 adds four, V6 only inserts `REPORT_READ`; total 32 application tables.
+
+6. **PASS — target file only — Count target DDL tables**
+   - Evidence: Isolated target V1 contains 31 distinct CREATE TABLE statements; target test source asserts 31.
+
+7. **PASS — Inventory module/backend API contracts**
+   - Evidence: Full non-truncated tree (651 files) was counted: 260 module Java files, 32 entity-directory files (30 entity types + two composite-ID types), 33 repository-directory files, 74 service-directory files, 20 controllers, 96 DTO files and 84 Java test/support files; 77 numbered API rows counted. Per-module counts are in `P0-module-dependency-map.md`.
+
+8. **PASS — Trace ProductVariant and dependent identifiers**
+   - Evidence: Source entities and DTO/API contracts confirm `variant_id`, `size_value_id`, `color_id`, `available_quantity` use; target uses child Products and typed attributes.
+
+9. **PASS for inspected source/target set — Map all target tables and legacy-only dependencies**
+   - Evidence: CSV contains 31 target rows plus 8 legacy-only table rows. Complete non-truncated tree evidence confirms all six source migrations V1–V6; inventory gap R-16 is CLOSED.
+
+10. **PASS — Record Product parent/child and Attribute risks**
+   - Evidence: Target DDL, ERD, physical dictionary and source entities compared; decisions stay open where contract evidence is insufficient.
+
+11. **PASS — Record warehouse/inventory key/version/ledger risks**
+   - Evidence: Source Inventory/transaction semantics compared with target composite balance and ledger structure.
+
+12. **PASS — Record voucher/quote/idempotency/snapshot/payment/shipping risks**
+   - Evidence: Findings classified in matrix and risk register; no unsupported runtime behavior was selected.
+
+13. **PASS — logical, not exhaustive call graph — Establish module dependency graph and refactor order**
+   - Evidence: Graph and transaction boundaries documented from architecture guides and inspected service classes.
+
+14. **PASS — source/document review — Review pattern evidence without implementing patterns**
+   - Evidence: Existing pattern/overlap reports read and examples cross-checked; no patterns were introduced.
+
+15. **PARTIAL — Capture verification evidence for compile/test/schema/architecture suites**
+   - Evidence: Exact-SHA backend H2 task ran: 196 tests completed, 3 failed, 1 skipped. The MySQL step was skipped; the dedicated clean-target MySQL workflow is NOT RUN. No local Gradle/architecture-suite invocation was available in this environment. Details are in `P0-test-baseline.md`.
+
+16. **PASS — result captured; baseline CI FAIL — Verify GitHub Actions run for exact SHA**
+   - Evidence: Actions run [#39760829809](https://github.com/quangson2809/FIDO/actions/runs/39760829809) is tied to the exact SHA and failed in H2; MySQL step was skipped. Vercel success is separately identified. The dedicated workflow's missing `push` trigger for direct `demo1` changes is recorded as an open CI follow-up.
+
+17. **PASS — Cross-check source/target counts and migration history**
+   - Evidence: Six source migrations confirmed; source DDL total is 32 application tables; target DDL count is 31; matrix has 31 target rows and 8 legacy-only rows. CSV verification confirmed 13 columns on every row and valid quoting.
+
+18. **PASS — Avoid schema changes, destructive reset and scope creep**
+   - Evidence: No database reset, Flyway history edit, active migration/JPA/service/controller/API/frontend change or pattern implementation.
+
+19. **PASS — Classify uncertainties correctly**
+   - Evidence: Guest, Product/API IDs, stock, voucher/quote, order/payment/shipping/snapshot uncertainties remain HARD BLOCKS; engineering tasks are TECHNICAL DECISIONS; explicit later features remain DEFERRED.
+
+20. **PASS — Write audit deliverables on a separate working branch**
+   - Evidence: Branch `audit/p0-baseline-erd-v2-20261022` created from verified SHA; the six P0 documents are committed there.
+
+21. **PASS — remote equivalent; local git checks unavailable — Final diff/secret/scope review for original P0 audit branch**
+   - Evidence: At P0 audit completion, the original audit branch contained exactly six added P0 report paths and no code/schema/workflow changes. All six files were checked for conflict markers/common credential patterns; none were found. The current successor documentation-cleanup branch adds documentation-only edits; see branch compare for its complete changed-file list. Local `git diff --check` could not run without a checkout.
 
 ## Exit decision
 
