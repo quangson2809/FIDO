@@ -39,9 +39,9 @@ The source does not provide a reliable \`accounts.full_name\`, \`products.cost_p
 
 The source/API supports guest intent, but the target ERD models CARTS and ORDERS as account-owned and has no guest-token/session table.
 
-- A: preserve the exact target ERD by requiring authentication for new target carts/orders; keep historical unowned carts as disposable only if their retention is approved, and retain guest orders in a segregated read-only legacy archive.
-- **B — Recommended for exact 31-table scope and data preservation:** archive unowned carts, archive guest orders without attaching them to a fictitious account, and change the checkout flow to require an account at cutover. This is an explicit business/API behavior change that must be scheduled and communicated.
-- C: guest checkout is mandatory; pause target migration and request an explicit ERD/API scope change to represent guest identity without fabricated accounts.
+- **A — Recommended if the 31-table target is fixed:** archive historical guest orders in the read-only legacy archive, treat unowned carts according to an explicit retention decision, and require authentication for new persisted carts/orders after cutover. This changes current guest-checkout behavior and must be scheduled and communicated.
+- B: guest checkout is mandatory; pause migration and explicitly revise the target ERD/API to represent guest identity and lookup securely, without fake accounts.
+- C: postpone cutover; keep the current guest checkout path in service until a target-compatible guest identity solution is approved and tested.
 
 **Important:** do not insert a fake “Guest” account to make the FK pass unless you explicitly approve that identity model.  
 **Confirm:** A / B / C / OTHER.
