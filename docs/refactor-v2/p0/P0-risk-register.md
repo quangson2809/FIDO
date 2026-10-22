@@ -8,8 +8,8 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 ### R-01 — HARD BLOCK — Product/API identity
 
-- **Severity:** BLOCKER  
-- **Status:** OPEN  
+- **Severity:** BLOCKER
+- **Status:** OPEN
 - **Owner phase:** P1/P2
 - **Evidence:** `ProductVariant.java`, `CartItem.java`, `OrderItem.java`, Inventory source and current DTO/API contract use `variant_id`; target has no Variant table and uses child Products. `docs/04-api-contract.md` explicitly says ERD alone does not authorize API changes.
 - **Impact:** Cart/order/inventory may reference wrong identifiers; breaking external API/FE contract.
@@ -19,8 +19,8 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 ### R-03 — HARD BLOCK — Inventory semantics
 
-- **Severity:** BLOCKER  
-- **Status:** OPEN  
+- **Severity:** BLOCKER
+- **Status:** OPEN
 - **Owner phase:** P1/P2/P3
 - **Evidence:** Source `Inventory.available_quantity` is explicitly sellable availability; target uses composite `(warehouse_id,product_id)`, `quantity_on_hand`, `version`, no reservation.
 - **Impact:** Wrong purchasability, overselling/double restoration or changed reporting.
@@ -29,8 +29,8 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 ### R-04 — HARD BLOCK — Voucher scope/limits
 
-- **Severity:** BLOCKER  
-- **Status:** OPEN  
+- **Severity:** BLOCKER
+- **Status:** OPEN
 - **Owner phase:** P1/P2
 - **Evidence:** V5 creates `voucher_products`, `voucher_categories`, `voucher_usages`; `VoucherRedemptionService` uses these source rules and locking. Target omits scope joins and usage ledger.
 - **Impact:** Product/category eligibility, global/customer caps and cancellation restore may be lost or weakened.
@@ -39,8 +39,8 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 ### R-05 — HARD BLOCK — Quote/idempotency
 
-- **Severity:** BLOCKER  
-- **Status:** OPEN  
+- **Severity:** BLOCKER
+- **Status:** OPEN
 - **Owner phase:** P1/P2
 - **Evidence:** `CheckoutQuote` persists fingerprint, expiry, account and Order association; checkout tests cover same-quote replay, stale quote, cross-account use and rollback. Target removes quotes but requires unique `orders.idempotency_key`.
 - **Impact:** Duplicate Orders or changed replay/conflict behavior.
@@ -49,8 +49,8 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 ### R-06 — HARD BLOCK — Order snapshots
 
-- **Severity:** BLOCKER  
-- **Status:** OPEN  
+- **Severity:** BLOCKER
+- **Status:** OPEN
 - **Owner phase:** P1/P2
 - **Evidence:** Source `OrderItem` persists size/color and image URL snapshots; target only has `attribute_snapshot` and expressly excludes `image_url_snapshot`.
 - **Impact:** Historical Order detail/list may lose current public behavior or mutate its meaning.
@@ -59,8 +59,8 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 ### R-07 — HARD BLOCK — Payment/refund
 
-- **Severity:** BLOCKER  
-- **Status:** OPEN  
+- **Severity:** BLOCKER
+- **Status:** OPEN
 - **Owner phase:** P1
 - **Evidence:** Source `Payment.java` stores due/received/refunded amounts and collector/refunder actor/times. Target Payment lacks refund aggregate/refunder attribution.
 - **Impact:** Cannot preserve same refund auditability/amount semantics with target row alone.
@@ -69,8 +69,8 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 ### R-08 — HARD BLOCK — Cancel/after-sales
 
-- **Severity:** BLOCKER  
-- **Status:** OPEN  
+- **Severity:** BLOCKER
+- **Status:** OPEN
 - **Owner phase:** P1
 - **Evidence:** Source `Order.java` contains `customer_service_note`, `cancel_reason`, `completed_at`, `returned_at`; target Orders omits them and no separate return/timeline tables exist.
 - **Impact:** Reasons/timing and after-sales behavior become unavailable or change.
@@ -79,8 +79,8 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 ### R-09 — HARD BLOCK — Shipping contract
 
-- **Severity:** BLOCKER  
-- **Status:** OPEN  
+- **Severity:** BLOCKER
+- **Status:** OPEN
 - **Owner phase:** P1
 - **Evidence:** Source `ShippingInfo.java` contains `delivery_mode` and `carrier_name`; target has carrier/tracking/status/timestamps and no delivery_mode. Existing technical decisions leave mode literals TBD.
 - **Impact:** Silent loss of delivery mode or Order/Shipping status mismatch.
@@ -91,8 +91,8 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 ### R-10 — TECHNICAL DECISION — Ledger idempotency/reason
 
-- **Severity:** HIGH  
-- **Status:** OPEN  
+- **Severity:** HIGH
+- **Status:** OPEN
 - **Owner phase:** P1/P2
 - **Evidence:** Source InventoryTransaction links Variant, Order/receipt, actor and reason. Target links warehouse/product and item rows with unique `idempotency_key`, but no reason column.
 - **Impact:** Duplicate movement or less explainable adjustment history.
@@ -101,8 +101,8 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 ### R-11 — HARD BLOCK — Attribute/inheritance
 
-- **Severity:** HIGH  
-- **Status:** OPEN  
+- **Severity:** HIGH
+- **Status:** OPEN
 - **Owner phase:** P1/P2
 - **Evidence:** Target introduces ATTRIBUTE_TYPES, ATTRIBUTES, ATTRIBUTE_OPTIONS, PRODUCT_ATTRIBUTE_VALUES; source has fixed Product fields and size/color FKs. Data Dictionary leaves some typed-value/null/inheritance and physical details open.
 - **Impact:** Invalid option/type, ambiguous inheritance, invalid parent cycles/SKU or filter results.
@@ -111,8 +111,8 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 ### R-12 — TECHNICAL DECISION — Account/Cart constraints
 
-- **Severity:** HIGH  
-- **Status:** OPEN  
+- **Severity:** HIGH
+- **Status:** OPEN
 - **Owner phase:** P1/P2
 - **Evidence:** Draft target phone is NOT NULL+unique and carts/orders are account-owned; current login lookup, phone uniqueness versus ERD annotations, and API/entity integration remain open.
 - **Impact:** Authentication/identity contract diverges or phone lookup becomes ambiguous.
@@ -121,8 +121,8 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 ### R-13 — TECHNICAL DECISION — Audit PII
 
-- **Severity:** HIGH  
-- **Status:** OPEN  
+- **Severity:** HIGH
+- **Status:** OPEN
 - **Owner phase:** P1/P2
 - **Evidence:** Source audit is description/target-oriented; target has before/after JSON and correlation ID. Security doc requires audit of important actions without exposing private data.
 - **Impact:** Missing audit facts or credentials/PII serialized into JSON.
@@ -131,8 +131,8 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 ### R-14 — TECHNICAL DECISION — Reports
 
-- **Severity:** HIGH  
-- **Status:** OPEN  
+- **Severity:** HIGH
+- **Status:** OPEN
 - **Owner phase:** P1/P2/P3
 - **Evidence:** Source business rules count COMPLETED + PAID as revenue and adjust returns; source report SQL depends on current fields. Target reshapes Order, Payment and Inventory.
 - **Impact:** Silent revenue/return/stock-report drift.
@@ -141,8 +141,8 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 ### R-15 — TECHNICAL DECISION — Content IDs/status
 
-- **Severity:** HIGH  
-- **Status:** OPEN  
+- **Severity:** HIGH
+- **Status:** OPEN
 - **Owner phase:** P1/P2
 - **Evidence:** Source `ContentPage` uses `page_code` and current publication representation; target uses `slug`/status. Current routes and DTO use pageCode/page_code.
 - **Impact:** Public URL or publish visibility changes unexpectedly.
@@ -151,8 +151,8 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 ### R-17 — TECHNICAL DECISION — Dedicated target CI trigger
 
-- **Severity:** HIGH  
-- **Status:** OPEN  
+- **Severity:** HIGH
+- **Status:** OPEN
 - **Owner phase:** Follow-up CI phase
 - **Evidence:** `.github/workflows/clean-reset-schema-verification.yml` pushes only on `feature/clean-schema-reset`, PRs into demo1 and manual dispatch; not on direct pushes to demo1. The dedicated target schema workflow has no run at the audited SHA.
 - **Impact:** Target MySQL schema test is not automatically evidenced by a direct push to demo1; Vercel success must not be mistaken for backend/target schema success.
@@ -161,8 +161,8 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 ### R-20 — TECHNICAL DECISION — Exact-SHA backend test failure
 
-- **Severity:** HIGH  
-- **Status:** OPEN  
+- **Severity:** HIGH
+- **Status:** OPEN
 - **Owner phase:** P1/P2 verification follow-up
 - **Evidence:** Backend verification run [#39760829809](https://github.com/quangson2809/FIDO/actions/runs/39760829809) is tied to baseline SHA `22bd3d887cef3c077e714e5ec21e70ba89855d46`; 196 tests completed, 3 failed, 1 skipped. All three failures are in `CleanResetSchemaTests` on H2 with `CK_CATEGORIES_STATUS`/`CK_ACCOUNTS_STATUS` reported invalid; MySQL step skipped.
 - **Impact:** General backend CI remains red; exact cause and target DDL behavior on MySQL remain unproven.
@@ -173,8 +173,8 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 ### R-02 — CLOSED — Guest cart/order ownership decision; API metadata alignment remains
 
-- **Severity:** MEDIUM  
-- **Status:** DECISION CLOSED / DOC ALIGNMENT OPEN  
+- **Severity:** MEDIUM
+- **Status:** DECISION CLOSED / DOC ALIGNMENT OPEN
 - **Owner phase:** P1 contract alignment
 - **Evidence:** Owner decision dated 2026-10-05 in `frontend/CONTRACT_ALIGNMENT.md`: login is required before persisted Cart use or Order placement. Target `CARTS` and `ORDERS` are account-owned and have no guest-session model.
 - **Impact:** Legacy JWT-optional/guest-TBD text may cause an implementation to reintroduce an unapproved guest flow.
@@ -183,8 +183,8 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 ### R-16 — TECHNICAL DECISION — Migration inventory gap (CLOSED)
 
-- **Severity:** MEDIUM  
-- **Status:** CLOSED  
+- **Severity:** MEDIUM
+- **Status:** CLOSED
 - **Owner phase:** P0 audit
 - **Evidence:** Recursive Git tree at `e63241d91f2dd4168bc837ade15eebfce5e2631c` is non-truncated and lists exactly V1–V6; V6 only inserts `REPORT_READ`.
 - **Impact:** Original risk of omitting an active migration from the inventory is closed by repository-tree evidence.
@@ -193,8 +193,8 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 ### R-18 — DEFERRED — Notifications/timeline
 
-- **Severity:** MEDIUM  
-- **Status:** DEFERRED  
+- **Severity:** MEDIUM
+- **Status:** DEFERRED
 - **Owner phase:** Deferred
 - **Evidence:** Source API/business docs mark notification provider/template/retry and separate timeline resources as phase-later/TBD; no target tables.
 - **Impact:** Unapproved schema expansion/scope creep.
@@ -203,8 +203,8 @@ Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 ### R-19 — DEFERRED — Automated integrations
 
-- **Severity:** MEDIUM  
-- **Status:** DEFERRED  
+- **Severity:** MEDIUM
+- **Status:** DEFERRED
 - **Owner phase:** Deferred
 - **Evidence:** Source scope is COD and manual delivery; payment gateway and automatic shipping integration are outside scope. Tracking columns alone do not authorize integration.
 - **Impact:** New external provider/security/config requirements are accidentally introduced.
