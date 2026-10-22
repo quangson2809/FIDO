@@ -30,6 +30,11 @@ class CleanResetSchemaTests {
             "goods_receipts", "goods_receipt_items", "warehouses", "inventories",
             "inventory_transactions", "audit_logs", "content_pages");
 
+    private boolean usesMySqlTestDatabase() {
+        String url = System.getenv("CLEAN_RESET_TEST_DB_URL");
+        return url != null && !url.isBlank();
+    }
+
     private MigrateResult migrate(Flyway flyway) {
         try {
             return flyway.migrate();
@@ -111,23 +116,27 @@ class CleanResetSchemaTests {
             assertEquals(2, migrate(flyway).migrationsExecuted);
             flyway.validate();
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-            Set<String> actual = new TreeSet<>(jdbc.queryForList(
-                    """
+            String currentSchemaExpression = usesMySqlTestDatabase() ? "DATABASE()" : "CURRENT_SCHEMA()";
+            String tablesSql = """
                     SELECT LOWER(TABLE_NAME)
                     FROM INFORMATION_SCHEMA.TABLES
                     WHERE TABLE_SCHEMA = CURRENT_SCHEMA()
                       AND TABLE_TYPE = 'BASE TABLE'
                       AND LOWER(TABLE_NAME) <> 'flyway_schema_history'
-                    """, String.class));
+                    """.replace("TABLE_SCHEMA = CURRENT_SCHEMA()",
+                            "TABLE_SCHEMA = " + currentSchemaExpression);
+            Set<String> actual = new TreeSet<>(jdbc.queryForList(tablesSql, String.class));
             assertEquals(new TreeSet<>(TARGET_TABLES), actual);
             Map<String, Set<String>> actualColumns = new java.util.TreeMap<>();
-            jdbc.query(
-                    """
+            String columnsSql = """
                     SELECT LOWER(TABLE_NAME) AS table_name, LOWER(COLUMN_NAME) AS column_name
                     FROM INFORMATION_SCHEMA.COLUMNS
                     WHERE TABLE_SCHEMA = CURRENT_SCHEMA()
                       AND LOWER(TABLE_NAME) <> 'flyway_schema_history'
-                    """,
+                    """.replace("TABLE_SCHEMA = CURRENT_SCHEMA()",
+                            "TABLE_SCHEMA = " + currentSchemaExpression);
+            jdbc.query(
+                    columnsSql,
                     rs -> {
                         String table = rs.getString("table_name");
                         String column = rs.getString("column_name");
