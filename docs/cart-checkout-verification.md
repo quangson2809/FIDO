@@ -1,5 +1,7 @@
 # Cart reset and checkout confirmation — focused verification
 
+> **Scope update (2026-10-22):** The guest-flow note in the original verification report is historical wording. The owner decision dated 2026-10-05 requires login before persisted Cart use or Order placement. Guest sessions/verification are out of target scope unless explicitly re-approved; do not treat guest flow as a pending implementation slice.
+
 Base: `feature/admin-ui-ux-improvements` at `88d1e1d599c309a85c47b16864f11fe41605ff83`.
 Branch: `feature/cart-checkout-voucher-improvements`. Overall status: **PARTIAL** (material decisions below).
 
@@ -28,4 +30,4 @@ Design: keep the FIDO storefront colors/typography and existing API service. A f
 1. **BLOCKER — Voucher Customer/Admin:** discount type/value; validity window/minimum/applicability; global/per-customer limits and stacking; lifecycle and allocation; redemption/cancellation/retry semantics; management API/schema. No placeholder functionality was shipped.
 2. **MAJOR — Quote-to-order guarantee:** approve a server-validated quote/version/token or equivalent contract. The extra API #19 comparison catches earlier changes, but changes between this request and API #20 remain possible. Do not call this atomic price consistency.
 3. **MAJOR — Durable dedupe:** approve request identity, retention and replay/conflict semantics. Empty-cart rejection prevents repeated consumption of an unchanged cart, but cannot identify an old retry after new cart items have been added.
-4. **NOTE — Guest flow:** existing authenticated-only flow is preserved; guest session/verification remains deferred.
+4. **RESOLVED — Guest flow:** authenticated-only Cart/checkout/order placement is the approved target behavior. The old “guest deferred” phrasing is superseded by the 2026-10-05 owner decision.
