@@ -1,5 +1,7 @@
 # 20 — Phase 11 Image retention policy — 2026-10-05
 
+> **Pre-refactor behavior note (2026-10-22):** The snapshot assumptions below describe the current source schema. Target ERD v2 has no ORDER_ITEMS.image_url_snapshot field; historical URLs therefore require an explicit archive/retention decision during migration. This document does not override the owner-confirmed 31-table target.
+
 ## Scope
 
 Phase 11 locks the lifecycle boundary for ProductImage removal. It does not introduce remote-asset cleanup infrastructure.
