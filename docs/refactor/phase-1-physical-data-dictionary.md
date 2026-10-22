@@ -89,7 +89,7 @@ Clean Schema Reset means legacy-source rows do not need to be mapped. The target
 
 | ID | Topic | Target decision required | Status |
 |---|---|---|---|
-| TGT-01 | Account identity | Unique phone is applied for phone login; email remains non-unique. API/entity login lookup still needs alignment. | DDL APPLIED / API OPEN |
+| TGT-01 | Account identity | Draft DDL applies required+unique phone and nullable/non-unique email, but the ERD does not mark phone/email unique. Treat uniqueness as an unresolved working default until the owner approves the login and physical schema contract. | WORKING DEFAULT / DECISION OPEN |
 | TGT-02 | Nullability and lengths | Bounded lengths and required/nullable fields are encoded in target DDL; cross-check each against DTO validation during integration. | DDL DRAFT / REVIEW |
 | TGT-03 | Monetary contract | DECIMAL(18,2), VND, line/order discount snapshots, and total = subtotal − all discounts + shipping are applied as working defaults. | DDL APPLIED / SERVICE OPEN |
 | TGT-04 | Attribute system | Typed TEXT/NUMBER/BOOLEAN/OPTION values are supported; Size/Color are option-backed and variant-defining in the dev fixture. | SCHEMA APPLIED / CATALOG OPEN |
