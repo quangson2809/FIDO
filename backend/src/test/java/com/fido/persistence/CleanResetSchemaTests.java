@@ -29,6 +29,30 @@ class CleanResetSchemaTests {
             "goods_receipts", "goods_receipt_items", "warehouses", "inventories",
             "inventory_transactions", "audit_logs", "content_pages");
 
+    private DriverManagerDataSource newTestDataSource(String name) {
+        String mysqlUrl = System.getenv("CLEAN_RESET_TEST_DB_URL");
+        if (mysqlUrl == null || mysqlUrl.isBlank()) {
+            return new DriverManagerDataSource(
+                    "jdbc:h2:mem:clean-reset-" + name + "-" + UUID.randomUUID()
+                            + ";MODE=MySQL;DB_CLOSE_DELAY=-1",
+                    "sa",
+                    "");
+        }
+
+        java.net.URI server = java.net.URI.create(mysqlUrl.substring("jdbc:".length()));
+        if (!"mysql".equals(server.getScheme())
+                || !("127.0.0.1".equals(server.getHost()) || "localhost".equals(server.getHost()))) {
+            throw new IllegalStateException(
+                    "Clean reset integration tests are restricted to a local disposable MySQL server");
+        }
+        String driver = System.getenv().getOrDefault("CLEAN_RESET_TEST_DB_DRIVER", "com.mysql.cj.jdbc.Driver");
+        String username = System.getenv().getOrDefault("CLEAN_RESET_TEST_DB_USERNAME", "root");
+        String password = System.getenv().getOrDefault("CLEAN_RESET_TEST_DB_PASSWORD", "");
+        DriverManagerDataSource dataSource = new DriverManagerDataSource(mysqlUrl, username, password);
+        dataSource.setDriverClassName(driver);
+        return dataSource;
+    }
+
     private static final Map<String, Set<String>> TARGET_COLUMNS = Map.ofEntries(
             Map.entry("accounts", Set.of("id","full_name","email","phone","password_hash","status","created_at","updated_at")),
             Map.entry("addresses", Set.of("id","account_id","recipient_name","recipient_phone","province","district","ward","address_line","is_default","created_at","updated_at")),
@@ -64,9 +88,7 @@ class CleanResetSchemaTests {
 
     @Test
     void cleanTargetBaselineCreatesExactlyTheApprovedThirtyOneTables() {
-        var dataSource = new DriverManagerDataSource(
-                "jdbc:h2:mem:clean-reset-" + UUID.randomUUID() + ";MODE=MySQL;DB_CLOSE_DELAY=-1",
-                "sa", "");
+        var dataSource = newTestDataSource("schema");
         Flyway flyway = Flyway.configure().dataSource(dataSource)
                 .locations("classpath:db/clean-reset").cleanDisabled(false).load();
         try {
@@ -105,9 +127,7 @@ class CleanResetSchemaTests {
 
     @Test
     void cleanThenMigrateDropsDevelopmentRowsAndReseedsSystemRows() {
-        var dataSource = new DriverManagerDataSource(
-                "jdbc:h2:mem:clean-reset-rebuild-" + UUID.randomUUID() + ";MODE=MySQL;DB_CLOSE_DELAY=-1",
-                "sa", "");
+        var dataSource = newTestDataSource("rebuild");
         Flyway flyway = Flyway.configure().dataSource(dataSource)
                 .locations("classpath:db/clean-reset").cleanDisabled(false).load();
         try {
@@ -133,9 +153,7 @@ class CleanResetSchemaTests {
 
     @Test
     void cleanTargetSeedsSystemRolesPermissionsAndOnlyGrantsAllPermissionsToSuperadmin() {
-        var dataSource = new DriverManagerDataSource(
-                "jdbc:h2:mem:clean-reset-seed-" + UUID.randomUUID() + ";MODE=MySQL;DB_CLOSE_DELAY=-1",
-                "sa", "");
+        var dataSource = newTestDataSource("seed");
         Flyway flyway = Flyway.configure().dataSource(dataSource)
                 .locations("classpath:db/clean-reset").cleanDisabled(false).load();
         try {
@@ -157,9 +175,7 @@ class CleanResetSchemaTests {
 
     @Test
     void developmentFixtureSeedsParentChildAttributesAndInventory() throws SQLException {
-        var dataSource = new DriverManagerDataSource(
-                "jdbc:h2:mem:clean-reset-demo-" + UUID.randomUUID() + ";MODE=MySQL;DB_CLOSE_DELAY=-1",
-                "sa", "");
+        var dataSource = newTestDataSource("demo");
         Flyway flyway = Flyway.configure().dataSource(dataSource)
                 .locations("classpath:db/clean-reset").cleanDisabled(false).load();
         try {
@@ -188,9 +204,7 @@ class CleanResetSchemaTests {
 
     @Test
     void phoneIsUniqueButEmailIsNotUniqueInTheTargetSchema() {
-        var dataSource = new DriverManagerDataSource(
-                "jdbc:h2:mem:clean-reset-constraints-" + UUID.randomUUID() + ";MODE=MySQL;DB_CLOSE_DELAY=-1",
-                "sa", "");
+        var dataSource = newTestDataSource("constraints");
         Flyway flyway = Flyway.configure().dataSource(dataSource)
                 .locations("classpath:db/clean-reset").cleanDisabled(false).load();
         try {
