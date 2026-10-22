@@ -33,12 +33,12 @@ erDiagram
         varchar description
     }
     ACCOUNT_ROLES {
-        bigint account_id PK, FK
-        bigint role_id PK, FK
+        bigint account_id PK,FK
+        bigint role_id PK,FK
     }
     ROLE_PERMISSIONS {
-        bigint role_id PK, FK
-        bigint permission_id PK, FK
+        bigint role_id PK,FK
+        bigint permission_id PK,FK
     }
     CATEGORIES {
         bigint id PK
@@ -94,8 +94,8 @@ erDiagram
         int sort_order
     }
     PRODUCT_ATTRIBUTE_VALUES {
-        bigint product_id PK, FK
-        bigint attribute_id PK, FK
+        bigint product_id PK,FK
+        bigint attribute_id PK,FK
         bigint option_id FK
         varchar text_value
         decimal number_value
@@ -164,7 +164,7 @@ erDiagram
         decimal line_total
     }
     ORDER_ADDRESSES {
-        bigint order_id PK, FK
+        bigint order_id PK,FK
         varchar recipient_name
         varchar recipient_phone
         varchar province
@@ -173,7 +173,7 @@ erDiagram
         varchar address_line
     }
     ORDER_VOUCHER_SNAPSHOTS {
-        bigint order_id PK, FK
+        bigint order_id PK,FK
         varchar voucher_code_snapshot
         varchar discount_type_snapshot
         decimal discount_value_snapshot
@@ -211,8 +211,8 @@ erDiagram
         varchar status
     }
     INVENTORIES {
-        bigint warehouse_id PK, FK
-        bigint product_id PK, FK
+        bigint warehouse_id PK,FK
+        bigint product_id PK,FK
         int quantity_on_hand
         int quantity_reserved
         int version
