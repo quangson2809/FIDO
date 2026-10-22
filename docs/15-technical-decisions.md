@@ -161,17 +161,11 @@ Creating the zero row is initialization, not a stock movement; it does not creat
 
 ## Phase 5 technical decisions
 
-### Authenticated cart slice while guest identity is deferred
+### Authenticated cart slice — historical wording superseded 2026-10-05
 
-The public contract keeps Cart/Checkout guest intent, but the source explicitly leaves guest session key, TTL, persistence and merge behavior unresolved.
+This entry originally described the Phase 5 implementation as an authenticated slice while old API text retained guest intent as TBD. **That final sentence is superseded** by the project-owner decision recorded in `frontend/CONTRACT_ALIGNMENT.md` on 2026-10-05: a user must be logged in to use a persisted cart and place an order. Do not interpret guest session, cookie, anonymous-account or merge behavior as a feature awaiting implementation. Target API #14–20 requires JWT unless a later explicit owner decision changes the scope.
 
-Phase 5 therefore implements the complete authenticated path for APIs #14–19. Until guest identity/security is approved:
-
-- `/api/v1/cart/**` requires a valid JWT;
-- `/api/v1/checkout/quote` requires a valid JWT;
-- no guest cookie, session key, hidden fingerprint or merge policy is invented.
-
-This is a deferred transport/identity slice, not a removal of the guest business requirement.
+The Phase 5 implementation records below remain useful as historical implementation evidence; they do not override the current target contract.
 
 ### Current authenticated cart selection
 
@@ -201,9 +195,9 @@ BRULE-03 fixes the baseline normal shipping fee at 30,000 VND. The implementatio
 
 ## Phase 6 technical decisions
 
-### Authenticated order creation while guest identity remains deferred
+### Authenticated order creation — current rule, historical rationale superseded
 
-API #20 is implemented for authenticated accounts only because guest session identity/verification is still source-TBD. No guest cookie, hidden fingerprint, phone-only lookup secret or merge rule is invented.
+API #20 is implemented for authenticated accounts. The current rule is owner-confirmed on 2026-10-05: login is required before order placement. The older rationale that guest identity was merely source-TBD is superseded; guest checkout is out of target scope unless the owner explicitly amends that decision. No guest cookie, hidden fingerprint, phone-only lookup secret or merge rule is used.
 
 The business transaction creates a PENDING Order, immutable OrderItem snapshots and one UNPAID Payment without deducting stock.
 
