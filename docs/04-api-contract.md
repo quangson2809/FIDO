@@ -1,6 +1,6 @@
 # 04 — API Contract Baseline (77 Endpoints)
 
-> **ERD v2 compatibility boundary (2026-10-22):** This file is the existing 77-endpoint HTTP contract, not the target persistence schema. The 31-table ERD does not by itself approve renaming routes, DTO fields or IDs. Any public-ID adaptation between legacy `variant_id` and target child `product_id` requires an explicit API compatibility decision and tests. Clean Schema Reset does not preserve or map old row IDs; do not silently change the public API because persistence keys change.
+> **ERD v2 compatibility boundary (2026-10-22):** This document preserves the 77-endpoint baseline as an API starting point, not as proof that every legacy access annotation remains valid for the target. The owner decision dated 2026-10-05 requires login before using a persisted cart or placing an order; JWT-optional/guest-TBD annotations on APIs #14–20 below are superseded and must not be implemented for the target. The 31-table ERD does not by itself approve route, DTO or ID changes. Any public-ID adaptation from legacy `variant_id` to target child `product_id` still needs an explicit compatibility decision and tests. Clean Schema Reset does not preserve or map old row IDs.
 
 
 ## 1. Global contract
@@ -10,7 +10,7 @@
 - JSON field naming: `snake_case`.
 - Public: auth register/login, catalog public, content public.
 - `/api/v1/me/**` and `/api/v1/admin/**`: Bearer JWT.
-- Cart/checkout/order support guest intent, but guest session identity/security is still TBD; do not invent it.
+- Target Cart, checkout and order placement require an authenticated account, per owner decision dated 2026-10-05 and the account-owned target ERD. Do not implement guest sessions, anonymous accounts or guest-cart persistence. The legacy endpoint table below is retained as the 77-API starting inventory; access labels for APIs #14–20 have been aligned to this decision.
 - List/search/filter are deliberately consolidated through query parameters; do not split them into extra endpoints.
 - State-changing commands are deliberately separate from ordinary PATCH where transaction/state-machine semantics matter.
 
@@ -31,13 +31,13 @@
 | 11 | `GET` | `/api/v1/catalog/products` | `product` | Public |
 | 12 | `GET` | `/api/v1/catalog/products/{productId}` | `product` | Public |
 | 13 | `GET` | `/api/v1/catalog/meta` | `product` | Public |
-| 14 | `GET` | `/api/v1/cart` | `cart` | JWT optional / guest TBD |
-| 15 | `POST` | `/api/v1/cart/items` | `cart` | JWT optional / guest TBD |
-| 16 | `PATCH` | `/api/v1/cart/items/{cartItemId}` | `cart` | JWT optional / guest TBD |
-| 17 | `DELETE` | `/api/v1/cart/items/{cartItemId}` | `cart` | JWT optional / guest TBD |
-| 18 | `DELETE` | `/api/v1/cart` | `cart` | JWT optional / guest TBD |
-| 19 | `POST` | `/api/v1/checkout/quote` | `order` | JWT optional; voucher requires JWT |
-| 20 | `POST` | `/api/v1/orders` | `order` | JWT optional / guest TBD |
+| 14 | `GET` | `/api/v1/cart` | `cart` | JWT required (target; legacy optional annotation superseded) |
+| 15 | `POST` | `/api/v1/cart/items` | `cart` | JWT required (target; legacy optional annotation superseded) |
+| 16 | `PATCH` | `/api/v1/cart/items/{cartItemId}` | `cart` | JWT required (target; legacy optional annotation superseded) |
+| 17 | `DELETE` | `/api/v1/cart/items/{cartItemId}` | `cart` | JWT required (target; legacy optional annotation superseded) |
+| 18 | `DELETE` | `/api/v1/cart` | `cart` | JWT required (target; legacy optional annotation superseded) |
+| 19 | `POST` | `/api/v1/checkout/quote` | `order` | JWT required (target) |
+| 20 | `POST` | `/api/v1/orders` | `order` | JWT required (target; legacy optional annotation superseded) |
 | 21 | `GET` | `/api/v1/admin/orders` | `order` | JWT + permission |
 | 22 | `GET` | `/api/v1/admin/orders/{orderId}` | `order` | JWT + permission |
 | 23 | `PATCH` | `/api/v1/admin/orders/{orderId}` | `order` | JWT + permission |
