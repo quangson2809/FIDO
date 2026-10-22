@@ -108,7 +108,6 @@ CREATE TABLE products (
  CONSTRAINT fk_products_parent FOREIGN KEY (parent_product_id) REFERENCES products (id),
  CONSTRAINT fk_products_category FOREIGN KEY (category_id) REFERENCES categories (id),
  CONSTRAINT fk_products_brand FOREIGN KEY (brand_id) REFERENCES brands (id),
- CONSTRAINT ck_products_not_self_parent CHECK (parent_product_id IS NULL OR parent_product_id <> id),
  CONSTRAINT ck_products_selling_price CHECK (selling_price IS NULL OR selling_price >= 0),
  CONSTRAINT ck_products_cost_price CHECK (cost_price IS NULL OR cost_price >= 0),
  CONSTRAINT ck_products_status CHECK (status IN ('DRAFT','ACTIVE','INACTIVE','ARCHIVED'))

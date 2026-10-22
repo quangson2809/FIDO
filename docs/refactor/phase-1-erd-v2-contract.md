@@ -300,7 +300,7 @@ Do not claim success based only on a successful compilation or a documentation d
 
 - Do not add tables back from the old implementation (such as `PRODUCT_VARIANTS`, size/color master tables, voucher scope links, voucher usage ledger, or `CHECKOUT_QUOTES`) unless the owner explicitly revises the ERD.
 - Do not add `image_url_snapshot` to `ORDER_ITEMS`; the target contract intentionally omits it.
-- Product parent/child rows share `PRODUCTS`; child IDs must be normal Product IDs in the new database, not legacy Variant IDs.
+- Product parent/child rows share `PRODUCTS`; child IDs must be normal Product IDs in the new database, not legacy Variant IDs. Validate no self-parent/cycle in the service layer; MySQL 8.4 forbids the attempted CHECK reference to the AUTO_INCREMENT id.
 - Inventory is keyed by `(warehouse_id, product_id)` and stores `quantity_on_hand` plus `version`; the target has no reservation column/table.
 - Keep required order address/voucher snapshots and the one-payment-per-order target shape according to the owner-approved ERD.
 - Physical uniqueness, nullability and runtime semantics must be intentionally approved; do not infer them only from a column name.

@@ -14,7 +14,7 @@ This directory holds the owner-confirmed 31-table target schema in a separate Fl
 
 1. Phone is the unique login identifier; email is nullable and non-unique.
 2. New persisted carts/orders require an authenticated account.
-3. Products use a shared parent/child table; Size and Color are option-backed, variant-defining attributes.
+3. Products use a shared parent/child table; Size and Color are option-backed, variant-defining attributes. Prevent self-parent/cycles in service validation: MySQL 8.4 rejects CHECK constraints that reference an AUTO_INCREMENT id.
 4. Voucher behavior is limited to target fields; persisted checkout quote and voucher-scope join tables are not used.
 5. Currency is VND. Order `discount_amount` represents all order discounts (including line discounts); total is `subtotal - discount_amount + shipping_fee`. A line's `line_total` equals `unit_price * quantity - line discount_amount`.
 6. The initial payment method is COD; one payment aggregate per order.
