@@ -6,7 +6,7 @@
 - Date: 2026-10-22
 - **Final status: PASS — P0 audit acceptance is complete.** This means the baseline was inspected and evidence/findings recorded, not that the application's CI is green. The exact-SHA backend CI result is **FAIL** and remains a tracked follow-up finding.
 
-Legend: PASS means evidenced complete; PARTIAL means useful evidence but incomplete acceptance; BLOCKED means unavailable in the current execution environment.
+Legend: PASS means the named acceptance scope is evidenced complete; PARTIAL means some evidence exists but acceptance is incomplete; BLOCKED means a prerequisite prevents the affected work; NOT VERIFIABLE / NOT RUN means the environment or execution evidence does not support a result.
 
 | # | Acceptance criterion | Status | Evidence / outstanding item |
 |---:|---|---|---|
