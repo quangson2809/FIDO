@@ -81,7 +81,7 @@ Only the following fields are marked UK in the owner-provided ERD:
 - INVENTORY_TRANSACTIONS.idempotency_key
 - CONTENT_PAGES.slug
 
-Do not silently add a unique key on ACCOUNTS.email, ACCOUNTS.phone, or PRODUCTS.slug: those columns are not marked UK in this ERD version. This creates a contract question because the existing application uses phone as the login identifier and current migration V2 makes it unique; see the decision register below.
+Do not silently add a unique key on ACCOUNTS.email, ACCOUNTS.phone, or PRODUCTS.slug: those columns are not marked UK in this ERD version. **The isolated target DDL currently makes phone NOT NULL and UNIQUE despite that ERD annotation.** Treat this as a working default, not an approved schema rule; resolve TGT-01 with the login/API contract, then align the ERD decision record, dictionary, DDL and tests.
 
 ## 4. Target behavior and physical decisions
 
