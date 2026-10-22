@@ -72,8 +72,12 @@ INSERT INTO orders (
  'Synthetic address text retained as one source value', 200.00, 10.00, 20.00, 210.00, 9001,
  'PENDING', 'Synthetic customer-service note', NULL, NULL, NULL, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6)),
 (9002, 'P1-FIXTURE-ORDER-9002', 9002, '0900009002', NULL,
+ 'Synthetic cancelled-order address', 100.00, 0.00, 15.00, 115.00, NULL,
+ 'CANCELLED', NULL, 'Synthetic historical cancellation text', NULL, NULL,
+ CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6)),
+(9003, 'P1-FIXTURE-ORDER-9003', 9002, '0900009002', NULL,
  'Synthetic returned-order address', 125.00, 0.00, 15.00, 140.00, NULL,
- 'RETURNED', NULL, 'Synthetic historical cancellation text', NULL, CURRENT_TIMESTAMP(6),
+ 'RETURNED', NULL, NULL, NULL, CURRENT_TIMESTAMP(6),
  CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6));
 
 INSERT INTO order_items (
@@ -82,7 +86,9 @@ INSERT INTO order_items (
 ) VALUES
 (9001, 9001, 9001, 'P1 historical name', 'P1-FIXTURE-SKU-RED-M', 'M', 'Fixture Red',
  100.00, 2, 200.00, 'https://example.invalid/p1-order-snapshot.png'),
-(9002, 9002, 9002, 'P1 historical name B', 'P1-FIXTURE-SKU-BLUE-L', 'L', 'Fixture Blue',
+(9002, 9002, 9001, 'P1 historical cancelled name', 'P1-FIXTURE-SKU-RED-M', 'M', 'Fixture Red',
+ 100.00, 1, 100.00, NULL),
+(9003, 9003, 9002, 'P1 historical returned name', 'P1-FIXTURE-SKU-BLUE-L', 'L', 'Fixture Blue',
  125.00, 1, 125.00, NULL);
 
 INSERT INTO payments (
@@ -90,7 +96,8 @@ INSERT INTO payments (
     collected_by_account_id, collected_at, refunded_by_account_id, refunded_at
 ) VALUES
 (9001, 'UNPAID', 210.00, 0.00, 0.00, NULL, NULL, NULL, NULL),
-(9002, 'REFUNDED', 140.00, 140.00, 140.00, 9001, CURRENT_TIMESTAMP(6), 9002, CURRENT_TIMESTAMP(6));
+(9002, 'UNPAID', 115.00, 0.00, 0.00, NULL, NULL, NULL, NULL),
+(9003, 'REFUNDED', 140.00, 140.00, 140.00, 9001, CURRENT_TIMESTAMP(6), 9002, CURRENT_TIMESTAMP(6));
 
 INSERT INTO shipping_infos (order_id, delivery_mode, carrier_name) VALUES
 (9001, 'P1_FIXTURE_MANUAL', 'Synthetic Carrier');
@@ -120,8 +127,8 @@ INSERT INTO inventory_transactions (
     txn_id, variant_id, quantity_delta, transaction_type, order_id, goods_receipt_id,
     actor_account_id, reason, created_at
 ) VALUES
-(9001, 9001, 4, 'P1_FIXTURE_RECEIPT', NULL, 9002, 9002, 'Synthetic receipt-linked ledger row', CURRENT_TIMESTAMP(6)),
-(9002, 9001, -1, 'P1_FIXTURE_ORDER', 9002, NULL, 9002, 'Synthetic order-linked ledger row', CURRENT_TIMESTAMP(6)),
+(9001, 9002, 3, 'P1_FIXTURE_RECEIPT', NULL, 9002, 9002, 'Synthetic receipt-linked ledger row', CURRENT_TIMESTAMP(6)),
+(9002, 9002, -1, 'P1_FIXTURE_ORDER', 9003, NULL, 9002, 'Synthetic order-linked ledger row', CURRENT_TIMESTAMP(6)),
 (9003, 9002, 2, 'P1_FIXTURE_MANUAL', NULL, NULL, 9002, 'Synthetic unlinked ledger row', CURRENT_TIMESTAMP(6));
 
 INSERT INTO audit_logs (audit_id, actor_account_id, action, target_type, target_id, description, created_at) VALUES
