@@ -19,7 +19,9 @@
 2. Kept the existing V1–V6 migration inventory and its constraint-name appendix as baseline evidence.
 3. Reconciled the target table count, product hierarchy, order/payment/shipping scope, inventory semantics, voucher scope and migration blockers in this contract.
 4. Marked existing architecture/feature documents that describe the pre-refactor implementation as baseline-only where their physical model differs from the approved ERD.
-5. Did not change Java, API DTOs, SQL migrations, live data or branch merge state.
+5. Added docs/refactor/phase-1-physical-data-dictionary.md, read-only backend/src/test/resources/refactor/phase-1-source-preflight.sql, synthetic backend/src/test/resources/refactor/phase-1-source-fixture.sql, and docs/refactor/phase-1-preflight-runbook.md.
+6. Added a static JUnit guard at backend/src/test/java/com/fido/persistence/Phase1PreflightArtifactTests.java. It checks SQL statement classes and fixture coverage; it does not execute SQL.
+7. Did not change Java application code, API DTOs, Flyway V1–V6, live data or branch merge state.
 
 ### 1.2 Verified facts versus unavailable evidence
 
@@ -285,7 +287,7 @@ Required verification includes clean migration, populated-fixture migration, Sch
 ## 10. Conditions before P2 implementation/cutover
 
 1. Preserve the exact 31-table target ERD. Do not expand it to 38 tables or reintroduce columns/tables from the superseded draft without owner approval.
-2. Complete the physical data dictionary without contradicting the owner-supplied logical scope. Resolve phone/email uniqueness and login behavior before target DDL.
+2. Review and complete docs/refactor/phase-1-physical-data-dictionary.md without contradicting the owner-supplied logical scope. Resolve phone/login behavior and all PHY-01–PHY-26 entries relevant to source rows before target DDL.
 3. Approve a row/field-level transform/archive/retire disposition for every source-only fact, especially image snapshots, voucher usages/scopes, checkout quotes, payment refund aggregates and audit descriptions.
 4. Profile a sanitized current database and build complete ID crosswalks; do not infer unseen data from schema alone.
 5. Validate source stock semantics against target quantity_on_hand; the existing available_quantity must not be copied mechanically.
@@ -293,6 +295,18 @@ Required verification includes clean migration, populated-fixture migration, Sch
 7. Do not make API/DTO changes merely because persistence IDs change. Define and test backward compatibility/cutover separately.
 
 **P1 conclusion:** The target table set is now frozen at 31 tables and documented against the owner's exact schema. P1 remains PARTIAL: the diagram alone does not settle physical SQL details, legacy data retention, source/target identity crosswalks or populated-data reconciliation. No live/destructive migration has been run.
+
+## 11. Follow-on preflight package and verification boundary
+
+The following preparation artifacts are now committed on the P1 branch:
+
+- [Physical data dictionary](phase-1-physical-data-dictionary.md): enumerates all 31 target tables and their listed columns; the exact logical table set is frozen, but physical details and data-retention blockers remain open.
+- [Read-only source preflight SQL](../../backend/src/test/resources/refactor/phase-1-source-preflight.sql): verifies source table inventory, exact row counts and data-quality signals for identity, Product/Variant crosswalks, images, orders, payments, shipping, receiving, stock ledger, vouchers, quotes and audit data.
+- [Synthetic source fixture](../../backend/src/test/resources/refactor/phase-1-source-fixture.sql): INSERT-only records with synthetic IDs/contact values, including a deliberate missing-inventory row to exercise source drift detection.
+- [Preflight runbook](phase-1-preflight-runbook.md): describes safe execution on a disposable/sanitized database and interpretation of the outputs.
+- [Static artifact guard](../../backend/src/test/java/com/fido/persistence/Phase1PreflightArtifactTests.java): checks that preflight statements are SELECT-only and that the fixture is INSERT-only and covers the key legacy data gaps.
+
+**Execution status:** these SQL files have not been run against MySQL in this task. The JUnit guard has been authored but has not been executed in CI here. The baseline backend run PASS applies only to the older baseline commit; it is not proof that the new artifacts compile or the fixture loads. A clean and populated MySQL rehearsal is still required.
 
 ## Appendix A — constraint-name ledger from source migrations
 
