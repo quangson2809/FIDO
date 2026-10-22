@@ -96,6 +96,30 @@ SELECT
     (SELECT COUNT(*) FROM products WHERE material_care IS NOT NULL) AS products_with_material_care,
     (SELECT COUNT(*) FROM products p JOIN product_variants v ON p.product_id = v.variant_id) AS numeric_product_variant_id_overlaps;
 
+-- Effective selling-price source for each legacy Variant. Preserve NULL override values as inheritance markers.
+SELECT v.variant_id, v.product_id, v.sku, p.base_price,
+       v.override_price,
+       COALESCE(v.override_price, p.base_price) AS effective_source_price,
+       v.sale_status AS variant_sale_status,
+       p.sale_status AS parent_product_sale_status
+FROM product_variants v
+JOIN products p ON p.product_id = v.product_id
+ORDER BY v.product_id, v.variant_id;
+
+-- Source status distributions that must be mapped to approved target status literals.
+SELECT 'products.sale_status' AS source_status_field, sale_status AS source_status_value, COUNT(*) AS row_count
+FROM products
+GROUP BY sale_status
+UNION ALL
+SELECT 'product_variants.sale_status', sale_status, COUNT(*)
+FROM product_variants
+GROUP BY sale_status
+UNION ALL
+SELECT 'suppliers.usage_status', usage_status, COUNT(*)
+FROM suppliers
+GROUP BY usage_status
+ORDER BY source_status_field, source_status_value;
+
 SELECT product_id, COUNT(*) AS variant_count
 FROM product_variants
 GROUP BY product_id
