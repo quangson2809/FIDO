@@ -1,6 +1,6 @@
 # FIDO — Phase 1: ERD v2 & Data Contract
 
-- **Status: PARTIAL.** Current schema inventory and migration proposal documented. ERD v2 is not frozen because material data-contract decisions and live-data evidence remain unavailable.
+- **Status: PARTIAL.** The owner-confirmed ERD v2 structure is now captured in this branch. The prior assumption that no authoritative ERD existed is corrected. Remaining blockers concern migration/data reconciliation and contract details not encoded by the logical diagram, not whether the target table model is selected.
 - **Repository:** https://github.com/quangson2809/FIDO
 - **Baseline branch:** demo1
 - **Baseline SHA:** f931602c86fdf5a59b487d6edd77331b7d64333a
@@ -9,7 +9,7 @@
 - **Scope:** evidence-based current-schema inventory, candidate ERD v2, data contracts, V1→V2 mapping, migration/recovery design, dependency map and decision log.
 - **Excluded:** editing V1–V6, live database writes, destructive DDL, bulk Java/API refactor, unapproved endpoint changes, merge to demo1/main.
 
-> The target model is a reviewable proposal, not an approved production schema. P0 found no authoritative ERD v2 artifact at the baseline. Missing decisions are explicitly BLOCKED or NEEDS DECISION; they are not silently converted into requirements.
+> Owner confirmation on 2026-10-22 establishes the ERD in docs/refactor/phase-1-erd-v2-approved.mmd as the target structural model. It was recovered from the prior FIDO Library artifact Pasted text(2).txt, which was not committed in demo1 at the inspected baseline. This supersedes the earlier statement that no target ERD was available. The schema structure is not being redesigned in this phase; data-loss, nullability, status-value and cutover requirements that are not represented by the logical ERD remain explicit implementation gates.
 
 ## 1. Execution summary and evidence boundary
 
@@ -20,7 +20,7 @@
 3. Read the complete source of Flyway migrations V1–V6 and checked their table/column/index effects.
 4. Read the P0 audit report from its separate branch, refactor/p0-baseline-audit. That report is not part of demo1 at the audited baseline SHA.
 5. Inspected representative Product/ProductVariant, Inventory, InventoryTransaction, CartItem, OrderItem and GoodsReceiptItem entities, the InventoryCommandService write boundary, schema-mapping/migration tests, API ownership and backend CI workflow.
-6. Created this P1 branch from the exact demo1 SHA. No application code or migration was modified.
+6. Created this P1 branch from the exact demo1 SHA, then added the owner-confirmed ERD recovered from the FIDO Library. No application code or migration was modified.
 
 ### 1.2 Verified facts versus unavailable evidence
 
@@ -30,6 +30,7 @@
 | Migration chain | VERIFIED IN SOURCE | backend/src/main/resources/db/migration/V1…V6. |
 | Application tables from the complete migration DDL | 32 | V1 creates 28; V5 adds 4; V2/V3/V4/V6 add no tables. |
 | Application columns from migration DDL | 186 | P0 DDL count: 161 in V1 + 2 in V4 + 10 voucher columns + 13 columns across the four V5 tables. |
+| Owner-confirmed target ERD | 38 logical tables | Recorded in docs/refactor/phase-1-erd-v2-approved.mmd; target count is distinct from current 32-table V1–V6 schema. |
 | JPA entity-backed tables | 30 | SchemaMappingTests maps all entity-backed tables. voucher_products and voucher_categories are two relational tables without standalone JPA entities. |
 | Flyway system table | Not included in 32 | A successfully migrated runtime schema normally also has flyway_schema_history; the actual runtime database was not introspected. |
 | Current deployed database migration version, live row counts and data profile | UNVERIFIED / BLOCKED | No approved database connection/credentials or sanitized database copy was available to the P0 audit. Source DDL does not prove any live instance has migrated through V6. |
@@ -112,341 +113,239 @@ Notation: “?” means nullable in the current schema. For exact type lengths, 
 
 SchemaMappingTests checks table set, entity/table ownership, mapped column names and nullability. It does not exhaustively compare every SQL type, numeric precision, default, FK action, CHECK and index to live database metadata. DatabaseConstraintsTests covers representative invariants, not a complete schema diff. P2 must extend tests for the target schema.
 
-## 3. Candidate ERD v2 — design proposal, NOT FROZEN
+## 3. Owner-confirmed ERD v2 — structural baseline
 
-Candidate relationship diagram: [phase-1-erd-v2-candidate.mmd](phase-1-erd-v2-candidate.mmd). This is a proposal diagram, not approved DDL; it does not settle the blocked cardinality, inheritance, warehouse allocation or snapshot questions.
+The owner confirmed that the database model is already finalized. The canonical target ERD is now in [phase-1-erd-v2-approved.mmd](phase-1-erd-v2-approved.mmd), copied from the prior FIDO Library artifact Pasted text(2).txt. This replaces the earlier candidate-only diagram. Do not redesign the target table set during P2 without an explicit owner change request.
 
-### 3.1 Product hierarchy proposal
+### 3.1 Target table inventory (38 tables)
 
-**Candidate:** retain one products table and add nullable parent_product_id self-FK. Root/common records have no parent; child/sellable records reference the shared Product. Do not hard-code two levels. If arbitrary depth is approved, the service must reject a reparent operation that puts a node under itself or any descendant inside the transaction. A simple FK and CHECK(parent_product_id <> product_id) prevent missing/direct-self references but cannot prevent longer cycles.
+| Owner module | Target tables |
+|---|---|
+| account | ACCOUNTS, ADDRESSES, ROLES, PERMISSIONS, ACCOUNT_ROLES, ROLE_PERMISSIONS |
+| product | CATEGORIES, BRANDS, PRODUCTS, ATTRIBUTE_TYPES, ATTRIBUTES, ATTRIBUTE_OPTIONS, PRODUCT_ATTRIBUTE_VALUES, PRODUCT_IMAGES |
+| cart | CARTS, CART_ITEMS |
+| promotion | VOUCHERS |
+| order | ORDERS, ORDER_ITEMS, ORDER_ADDRESSES, ORDER_VOUCHER_SNAPSHOTS, PAYMENTS, PAYMENT_TRANSACTIONS, REFUNDS, SHIPMENTS, SHIPMENT_ITEMS, SHIPMENT_TRACKING_EVENTS, RETURNS, RETURN_ITEMS |
+| inventory | SUPPLIERS, GOODS_RECEIPTS, GOODS_RECEIPT_ITEMS, WAREHOUSES, INVENTORIES, INVENTORY_RESERVATIONS, INVENTORY_TRANSACTIONS |
+| audit | AUDIT_LOGS |
+| content | CONTENT_PAGES |
+| **Total** | **38 target tables** |
 
-- Keep existing product_id values for the current products rows.
-- For each legacy ProductVariant, create a new child Product with a newly generated product_id and parent_product_id equal to the legacy variant's product_id.
-- Preserve a unique crosswalk old_variant_id → new_child_product_id. The Product and ProductVariant tables have independent auto-increment identity spaces; numeric identity overlap is possible, so never assume variant_id may become the new product_id.
-- Candidate SKU: add SKU on products and copy product_variants.sku to the corresponding child. UNIQUE over non-NULL SKU is a proposal, subject to checking existing values, collation and NULL distribution.
-- Existing effective price is COALESCE(product_variants.override_price, products.base_price). Candidate mapping keeps parent base price and maps nullable override_price to child override price, with NULL meaning inheritance. Confirm the rule applies to all child cases before implementation.
-- Candidate inherited common fields include name, description, Category, Brand and current descriptive fields. Which columns become nullable on children and how “inherit” differs from “clear” require explicit owner approval. Do not duplicate all parent values into children by default; duplicated authoritative values drift during later edits.
-- Keep current sale meanings ON_SALE and STOPPED and do not equate zero stock with stopped sale. Whether a stopped parent suppresses child sale, and whether a parent can itself be directly sold with children, are open business decisions.
-- Keep Product images linked to retained common/root Product and preserve V4 ordering initially. Per-child image galleries require a separate decision; never rewrite order image snapshots.
-- Do not identify a parent solely because SKU is NULL or identify a child solely because SKU is non-NULL.
+The target and current counts are not directly comparable as a simple “add six tables” operation: several source tables are transformed/replaced, target tables rename keys to id, and new transaction/history resources are added.
 
-**NEEDS DECISION — sellability:** Does the parent represent only a grouping/common-information row, or can a parent with children itself be purchased? Are only terminal leaves sellable? Does stopping a parent affect all children? The schema must represent the approved answer; code must not guess.
+### 3.2 Structural changes fixed by the target ERD
 
-### 3.2 Attribute model proposal
+- One PRODUCTS table represents parent and child rows via parent_product_id. ProductVariant, SizeSystem, SizeValue and Color are not target business tables; typed attributes and child Product records replace them.
+- Attribute data is split into ATTRIBUTE_TYPES, ATTRIBUTES, ATTRIBUTE_OPTIONS and PRODUCT_ATTRIBUTE_VALUES. PRODUCT_ATTRIBUTE_VALUES has the composite PK (product_id, attribute_id), so a Product has at most one stored value per Attribute in this ERD version.
+- Cart and transaction lines reference product_id, not variant_id.
+- Inventory is keyed by (warehouse_id, product_id) and has quantity_on_hand, quantity_reserved and version. INVENTORY_RESERVATIONS is an explicit target table.
+- Order delivery-address and voucher facts have dedicated ORDER_ADDRESSES and ORDER_VOUCHER_SNAPSHOTS records.
+- Payment and fulfillment history is represented by PAYMENTS, PAYMENT_TRANSACTIONS, REFUNDS, SHIPMENTS, SHIPMENT_ITEMS, SHIPMENT_TRACKING_EVENTS, RETURNS and RETURN_ITEMS.
+- INVENTORY_TRANSACTIONS can link to a GoodsReceiptItem, OrderItem and/or InventoryReservation, and carries a unique idempotency key.
+- The logical ERD uses id as the primary-key naming convention for most entities. The composite keys of ACCOUNT_ROLES, ROLE_PERMISSIONS, PRODUCT_ATTRIBUTE_VALUES and INVENTORIES remain composite. ORDER_ADDRESSES and ORDER_VOUCHER_SNAPSHOTS use order_id as their PK/FK.
 
-Candidate entities:
-- attribute_types: attribute_type_id PK, code UNIQUE, name, and a value-representation classification only if approved.
-- attributes: attribute_id PK, attribute_type_id FK, code, name and an explicit applicability scope only if the owner approves the scope model.
-- attribute_options: attribute_option_id PK, attribute_id FK, option code/label/sort order for controlled values.
-- product_attribute_values: association of Product + Attribute and either an option or one typed scalar value. Candidate fields are product_id, attribute_id, attribute_option_id nullable, value_text nullable, value_number nullable and value_boolean nullable.
+### 3.3 Target relationships and cardinalities
 
-Every Attribute belongs to exactly one AttributeType; every Option belongs to one Attribute. Exact physical naming is provisional and must follow repository conventions after approval.
+- Account 1—N Addresses; Account N—M Roles; Role N—M Permissions.
+- Category is a self-referencing tree; Category 1—N Products. Brand 0..1—N Products. Product 0..1 parent—N children.
+- AttributeType 1—N Attributes; Attribute 1—N Options; Product N—M Attributes through ProductAttributeValues.
+- Product 1—N ProductImages, CartItems, OrderItems, GoodsReceiptItems, Inventories per Warehouse, InventoryReservations and InventoryTransactions.
+- Cart 1—N CartItems. Order 1—N OrderItems; Order 1—1 OrderAddress; Order 0..1 OrderVoucherSnapshot; Order 0..N Payments, Shipments and Returns.
+- Payment 1—N PaymentTransactions; PaymentTransaction 1—N Refunds.
+- Shipment 1—N ShipmentItems and ShipmentTrackingEvents; ShipmentItem references OrderItem. Return 1—N ReturnItems; ReturnItem references OrderItem.
+- Warehouse 1—N Inventories, InventoryReservations and InventoryTransactions. Supplier 1—N GoodsReceipts; GoodsReceipt 1—N GoodsReceiptItems.
 
-**Cardinality and integrity decisions still open:**
-1. AttributeType might identify representation type (TEXT/NUMBER/BOOLEAN/OPTION) or a business group (size/color/material). Do not combine these different meanings in one field without approval.
-2. Decide single-valued versus multi-valued attributes. UNIQUE(product_id, attribute_id) is only correct if every attribute has one value per Product.
-3. Decide if absent child values inherit a parent value, whether inheritance is nearest-ancestor, and which attributes apply to parent, child or both.
-4. Decide whether options are shared or scoped per Attribute. Conservative candidate: UNIQUE(attribute_id, code); preserve same codes across different SizeSystems without merging them.
-5. For a typed value row, require exactly one representation (option/text/number/boolean) if this data shape is selected. Ensure stored representation matches the Attribute definition; a simple SQL CHECK cannot generally verify a separate table's type definition.
-6. Empty string, NULL/inherit, and omitted PATCH field have distinct meanings. DTO validation must not collapse them.
-7. Candidate mapping: each legacy SizeSystem becomes its own size Attribute; SizeValues map to Options; Colors map to options of an OPTION-backed Color Attribute. Preserve IDs via crosswalks, codes, labels and sort order. Do not treat equal size codes across different systems as equivalent.
-8. gender, season, style and material_care are currently untyped strings/text; preserve their exact contents unless a controlled vocabulary is separately approved. Do not invent enums.
-9. Current OrderItem snapshots have size_snapshot and color_snapshot. Decide whether future arbitrary attributes must be snapshotted. If so, approve an immutable order_item_attribute_snapshots representation or equivalent contract. Existing snapshot values and NULLs must not be reconstructed from current Catalog state.
+The ERD is the fixed structural reference. It does not encode every SQL nullability, default, CHECK expression, index or enum value. The following data contract makes those semantics explicit where they can be derived safely; unrepresented values are flagged rather than guessed.
 
-### 3.3 Warehouse and Inventory proposal
+## 4. Target data contract
 
-**Current verified meaning:** one warehouse; inventories are keyed by variant_id and contain only available_quantity, which means sellable availability—not physical on-hand or reserved stock. Cart does not reserve/deduct stock. Inventory commands perform guarded quantity changes and write an immutable inventory_transactions row in the same outer Service transaction. They sort multiple stock lines by variant ID to reduce deadlock risk. Creating a missing zero row is initialization, not a stock movement.
+### 4.1 Product parent/child and inherited fields
 
-**Candidate target:**
-- warehouses: minimal warehouse identity with a PK and unique business code. Name/status and lifecycle fields must be scoped to the approved need, not invented.
-- inventories: composite PK (warehouse_id, product_id), FK to warehouses and the stock-tracked Product, available_quantity INT NOT NULL, updated_at, CHECK(available_quantity >= 0).
-- inventory_transactions: keep txn_id; replace variant_id with product_id, add warehouse_id, retain signed quantity_delta, transaction_type, nullable order/receipt references, actor, reason and UTC timestamp. Candidate indexes align with (warehouse_id, product_id, created_at), order_id and goods_receipt_id.
-- goods_receipt_items: replace variant_id with product_id; preserve positive quantity and receipt/product uniqueness.
-- goods_receipts: candidate warehouse_id on the header if every receipt has one destination warehouse. NEEDS DECISION whether a receipt may distribute its lines across multiple warehouses; if yes, warehouse belongs at item level instead.
-- Orders currently have no stock-allocation or warehouse reference. NEEDS DECISION whether an order may be fulfilled from multiple warehouses and, if so, how its allocation is persisted/reconciled.
+- parent_product_id is nullable for root Products and references PRODUCTS.id when present. Direct self-parenting is invalid. If reparenting is supported, the service must also reject cycles of any length within a transaction; a self-FK alone cannot do that.
+- Parent/child is represented by identity in one table, not by SKU-null inference and not by a separate ProductVariant table.
+- Per the established parent/child model, the parent is the source for shared catalog fields; the child stores its identity (SKU), child-specific price when explicitly overridden, and Attribute values that distinguish the child. Inheritable fields are stored as NULL on children where the owner’s inheritance rule specifies that behavior; read paths resolve the effective value through one Catalog-owned resolver. Omitted PATCH fields mean “unchanged”; explicit NULL means “inherit” only for fields defined as inheritable.
+- The target includes category_id, brand_id, name, slug, description, selling_price and cost_price on PRODUCTS. The ERD alone does not specify nullability or inheritance for each of these. P2 must encode the agreed inheritance contract in SQL nullability, validation and tests; do not silently copy parent data to every child.
+- SKU and slug are marked unique in the target ERD. SKU may be nullable on non-sellable/group rows only if the agreed selling rule allows it; preflight source and target duplicate/collation rules before adding uniqueness.
+- Existing effective selling price is COALESCE(product_variants.override_price, products.base_price). Mapping an old Variant’s nullable override_price to the child selling_price preserves that distinction; parent base_price maps to the parent selling_price. A NULL child price is an inheritance marker only if confirmed by the field contract.
+- The source does not store cost_price on Products/Variants. Do not populate target cost_price from selling price or invent historic cost. For existing rows with no trustworthy cost source, use the approved nullable/unknown representation or retain the value in migration evidence.
+- The target has status and deleted_at. Status literals and whether parent status gates child purchase must be consistent across Catalog, Cart, Checkout and Inventory; do not infer purchasability from parent_product_id alone. A deleted Product with historical references must not be hard-deleted.
+- Category cycles, invalid leaf assignment (if retained by the approved catalog contract), missing parent identity and duplicate sellable-child identity must be rejected before persistence. Do not perform recursive EAGER loading; use bounded query/projection patterns.
 
-Do not add physical_quantity, reserved_quantity, on_hand, bins, lots, expiry, transfers or reservation tables without an approved requirement. The current source only specifies available/sellable quantity.
+### 4.2 Attribute integrity
 
-### 3.4 Cross-domain impact matrix
+- Every Attribute belongs to one AttributeType; every AttributeOption belongs to one Attribute; ProductAttributeValue references one Product and one Attribute.
+- The composite PK (product_id, attribute_id) enforces one Product value per Attribute. Multi-select data would require a structural change and is not implied by this ERD.
+- Exactly one of option_id, text_value, number_value and boolean_value should be populated for a single value. The populated representation must match ATTRIBUTES.data_type. A normal CHECK cannot query ATTRIBUTES or ATTRIBUTE_OPTIONS, so cross-table type/option ownership must be validated in the product Service or by a reviewed composite-FK design.
+- An option used by a value must belong to the same Attribute as the value row. Enforce this in Service and tests; a lone FK to option_id is insufficient to prove the attribute_id/option relationship.
+- Attribute option identity/code/label is Catalog master data. Any human-readable value copied to an OrderItem snapshot must remain unchanged after later option edits. Product values must not be recomputed from the current Attribute catalog when displaying old orders.
+- The final ERD has data_type, unit, is_filterable and is_active but not explicit is_required or is_variant_defining columns. Do not implement policy by inventing hidden columns or by hard-coding attribute names without owner-approved semantics. If child-combination uniqueness is required, define the exact set of key attributes from an approved rule before adding a uniqueness mechanism.
+- Migration mapping: old SizeSystem identity must remain traceable to the target size Attribute/options; each old SizeValue maps to one AttributeOption; Color values map to options under the target Attribute model. Existing gender, season, style and material_care values should preserve their exact strings when mapped. Preserve NULLs; do not invent enum values.
 
-| Domain | Current contract | Required target handling | Status |
-|---|---|---|---|
-| Cart | cart_items.variant_id → product_variants.variant_id | Map to sellable child Product ID; keep UNIQUE(cart_id, product_id), quantity > 0; no stock reservation. | Mapping required |
-| Checkout Quote | V5 stores quote ID, account, fingerprint, expiry and order link; no quote-line table | Invalidate/drain active quotes at cutover and recalculate under the new identity mapping; agree retry contract. | NEEDS DECISION |
-| OrderItem | FK to Variant plus immutable product name, SKU, size, color, price, quantity, line total and nullable image snapshots | Map FK through crosswalk; preserve every snapshot exactly, including NULL image. Define arbitrary-attribute snapshot representation before new orders use it. | High risk |
-| Payment | One summary row per Order with aggregates and actor/time fields | Keep unchanged; absent event history cannot be reconstructed. | Preserve |
-| Shipping | One ShippingInfo row per Order; no tracking code in baseline | No Product FK; keep unchanged unless independently approved. | Preserve |
-| Receiving | goods_receipt_items.variant_id; no current warehouse column | Map each item through crosswalk. Assign default warehouse only under approved receipt rule. | High risk |
-| Inventory and ledger | One inventory row per Variant; ledger references Variant | Map to Product + default Warehouse; preserve quantity, txn ID, signed delta, event type, actor, reason, time and order/receipt links. | High risk |
-| Voucher | V5 voucher_products and voucher_categories target Product and Category | Decide product voucher scope: exact parent, exact child or descendants. Do not bulk-expand current target rows silently. | NEEDS DECISION |
-| Reports | ReportRepository joins OrderItem → ProductVariant → Product | Choose sold-child versus parent-family aggregation; validate no double counting and compare old/new report values. | NEEDS DECISION |
-| Product Images | product_images.product_id → products; cover is sort_order 0 | Keep current image gallery on retained common Product initially unless per-child gallery is approved. | Proposed |
-| Audit | target_type/target_id are generic text | Preserve rows; do not rewrite old IDs by guess. Define mapping only if downstream consumers require it. | Preserve / review |
-| Category and Brand | Product has Category FK and optional Brand FK; category search includes descendants | Preserve IDs; define parent/child inheritance and voucher/report behavior before permitting child overrides. | NEEDS DECISION |
+### 4.3 Product images
 
-## 4. V1 → V2 table/column mapping
+- PRODUCT_IMAGES belongs to one Product and contains image_url, is_primary and sort_order.
+- Enforce sort_order >= 0 and UNIQUE(product_id, sort_order). At most one image per Product may be primary. Keep is_primary consistent with the selected primary/cover ordering under one Catalog service transaction; do not allow two independent “cover” truths to diverge.
+- The current source uses alt_text and sort_order, while the target ERD omits alt_text and adds is_primary. The target schema does not provide a permanent alt_text column. Its disposition must be recorded in the migration reconciliation artifact; do not silently drop populated source data during backfill.
+- Current ORDER_ITEMS.image_url_snapshot is historical data. The target ORDER_ITEMS diagram has no image snapshot column. Until an approved representation in the target contract preserves that fact for customer/admin order history, P2 cannot claim image-snapshot preservation PASS or drop the source column and its values.
 
-This is the migration design matrix, not a production migration authorization. Final target column names and nullability are contingent on owner approval.
+### 4.4 Warehouse, Inventory, reservations and immutable ledger
 
-| Current table / fields | Candidate action | Data preservation / validation |
+- INVENTORIES composite PK is (warehouse_id, product_id). Both references must exist. quantity_on_hand and quantity_reserved are non-negative integers; require quantity_reserved <= quantity_on_hand if “reserved” is a subset of on-hand stock. The derived sellable availability is quantity_on_hand - quantity_reserved under that definition. version is non-negative and must participate in the chosen optimistic-lock/conditional-update implementation.
+- A reservation has one Warehouse, one Product and one Order, with positive quantity. The implementation must define legal status literals and expiration/release transitions; duplicate release/consume must be a no-op or conflict, never double-decrement/double-release.
+- Each non-zero inventory movement updates the matching inventory row and inserts exactly one INVENTORY_TRANSACTIONS row in the same Service transaction. Transaction quantity_delta is non-zero; quantity_after cannot be negative. idempotency_key is unique and each business operation retry must return/reject deterministically rather than create a second movement.
+- Goods receipt confirmation, order reservation/commit, cancellation/release and return handling must be atomic with the corresponding ledger/Order/Receipt state changes. Acquire multiple inventory locks in a stable (warehouse_id, product_id) order.
+- The old system stores available_quantity (sellable quantity), does not have reservation rows and does not separate physical on-hand from reserved quantity. For existing stock, a candidate initial mapping is quantity_on_hand = old available_quantity and quantity_reserved = 0, because legacy Cart does not reserve stock. Verify actual code/data and any outstanding order deductions before applying that transformation. Do not interpret a historical cart line as a reservation.
+- V3 backfills zero inventory rows for existing Variants. P2 must reconcile every old Variant to one child Product and one default Warehouse row; current source has one warehouse only. Do not infer multiple old warehouses.
+- Current inventory_transactions has no quantity_after, line-level receipt/order references or idempotency key. Link a legacy ledger row to a receipt/order line only when source + old Variant match uniquely. A deterministic legacy idempotency key may be derived from the old transaction identity, but quantity_after cannot be fabricated from current balance if the old movement sequence lacks a known opening balance.
+- unit_cost is present in target GOODS_RECEIPT_ITEMS but absent from source. Old cost is unknown unless there is a trustworthy external source. Do not use zero or selling price as a pretend purchase cost.
+
+### 4.5 Order, voucher snapshots, Payment, Shipment and Return
+
+- ORDERS separates status, payment_status and fulfillment_status. Treat them as distinct state dimensions; do not collapse them into one lifecycle. Status literal sets and transition effects must be encoded consistently in Service and tests.
+- order_number is unique. idempotency_key is unique in the target ERD, but the uniqueness scope, payload-conflict behavior, retry response and retention period must remain consistent with the approved API contract. checkout_quotes.quote_id/fingerprint is not automatically equivalent to an order idempotency key.
+- Header totals remain server-calculated money values with DECIMAL(18,2)/BigDecimal. Every order line preserves product_id identity plus sku_snapshot, product_name_snapshot, variant_description_snapshot, quantity, unit_price, discount_amount and line_total. Snapshot values must not be rewritten by later Catalog or Attribute edits.
+- Each Order has its own immutable ORDER_ADDRESSES snapshot. Do not derive historical recipient data from the Account’s current Addresses. Legacy address_text cannot be reliably decomposed into province/district/ward; preserve the raw source in address_line unless verified structured data exists.
+- ORDER_VOUCHER_SNAPSHOTS preserves the voucher facts used when an order is placed. Do not backfill historical discount_type/value from today’s mutable Voucher row if the value used historically is unknown.
+- The target ERD retains VOUCHERS but omits current voucher_products, voucher_categories and voucher_usages. The replacement for current product/category targeting and usage/restoration semantics is not represented by the target diagram. Before retiring those source tables, prove there are no dependent active vouchers/usage rows or produce an owner-approved migration/retention mapping; never silently widen/narrow scope or discard usage history.
+- PAYMENTS is 1—N from Orders in the target. PAYMENT_TRANSACTIONS stores payment attempts and REFUNDS stores refund records. The old schema has one aggregate Payment row per Order with amount_due, amount_received, amount_refunded and collection/refund actor/time, not a complete event ledger. Do not create fictitious external payment attempts/refunds from aggregates. Preserve summary facts through a reviewed target mapping or retained migration archive before retiring source columns.
+- SHIPMENTS and their child items/tracking events are new target concepts. Current shipping_infos contains delivery_mode/carrier_name only, without shipment number, tracking number, per-line shipment allocations or tracking event history. Map only source-backed values; do not fabricate historical shipment/tracking events.
+- RETURNS/RETURN_ITEMS are new target concepts. Current Order status RETURNED does not by itself identify quantities, conditions, dispositions or a full return request history. Do not synthesize ReturnItems solely from an order status.
+- Existing snapshot requirements include image_url_snapshot, but target ORDER_ITEMS has no equivalent field. This is a confirmed source-to-target contract mismatch, not authorization to throw away the field. It must be resolved before the data-preservation gate can pass.
+
+### 4.6 Account, Address, RBAC, Audit and Content
+
+- Target PK convention is id for most entities; ACCOUNT_ROLES and ROLE_PERMISSIONS retain composite PKs. Update all FK references and scalar ID mappings as one contract change.
+- phone remains marked UNIQUE in the target ERD. Before migration, detect duplicates after the agreed normalization; do not merge accounts. Decide the legacy handling of NULL/blank phones if target becomes NOT NULL.
+- Target ADDRESSES normalizes recipient/address fields. Retain address_text verbatim in address_line for legacy data that cannot be decomposed reliably.
+- Existing AUDIT_LOGS.description cannot be reconstructed as before_data/after_data JSON. Preserve description in a migration archive or an explicitly approved extension; never fabricate structured before/after state.
+- Target Supplier omits current address/note; GoodsReceipt omits current receipt_date/note; ContentPages omits updated_by_account_id; ProductImages omits alt_text; Payments omits aggregate received/refund actor/time fields. Each value requires an explicit retain/archive/drop disposition before contract/deployment tests can pass.
+- For audit and identity tables, keep actor FKs valid and authorization checks server-side. Do not create new roles or automatically grant permissions based on the schema conversion.
+
+## 5. V1–V6 to owner-confirmed V2 mapping
+
+| Current table / fields | Target table / field | Required mapping and validation |
 |---|---|---|
-| accounts, addresses, roles, permissions, account_roles, role_permissions | Keep structure absent separate approved requirements | Preserve keys and assignments; preflight phone duplicates/normalization; never auto-merge accounts. |
-| categories, brands | Retain | Preserve IDs and hierarchy; do not copy IDs or overwrite Category/Brand based on inheritance assumptions. |
-| products | Retain existing rows as candidate common/root Products; add parent_product_id and add SKU only after contract approval; selectively relax child-inheritable fields only after approval | Existing Product IDs stay stable; preserve raw strings, prices and timestamps. |
-| product_images | Retain | Preserve image IDs, URLs, alt text and V4 sort order. Do not copy the gallery to children without approval. |
-| product_variants | Convert each Variant to one newly inserted child Product; retire old table only in a later release after compatibility proof | Generate new Product ID, preserve SKU/status/price and size/color through explicit crosswalks. Do not reuse numeric Variant ID. |
-| size_systems | Convert to Attribute mapping or keep temporarily during compatibility window | One attribute per legacy size system is a candidate to prevent collisions. |
-| size_values | Convert to AttributeOptions after the mapping contract is approved | Preserve size_value_id → option crosswalk, code, display_name and sort_order. |
-| colors | Convert to Color AttributeOptions after approval | Preserve color_id → option crosswalk, code and name. |
-| attributes, attribute_types, attribute_options, product_attribute_values | New candidate tables | Create only after typed-value, multiplicity, scope, inheritance and snapshot rules are approved. |
-| carts | Retain | Preserve cart ID and timestamps. |
-| cart_items.variant_id | Replace with product_id via variant→child map | Preserve cart_item_id and quantity; detect cart/product uniqueness collisions first. |
-| vouchers | Retain | Preserve voucher IDs, configuration and enabled state; keep legacy code-only vouchers disabled unless configured. |
-| voucher_products, voucher_categories | Retain link rows unless an explicitly approved hierarchy-scope migration says otherwise | Do not expand parent targets to children by guessing. |
-| voucher_usages | Retain | Preserve order key, voucher/account and restored state; verify each FK. |
-| checkout_quotes | Retain short-term; expire/drain quotes at cutover through approved operational procedure | Existing quote has no lines, so don’t treat its fingerprint as proof of the new Product identity contract. |
-| orders | Retain header, status, recipient and all money snapshots | No Product-driven rewrite of order IDs, statuses, totals or timestamps. |
-| order_items.variant_id | Add target Product FK/mapping before eventual removal of old FK | Preserve order_item_id, order_id, all snapshots and quantity exactly. Never fill old NULL image snapshots from Catalog. |
-| payments, shipping_infos | Retain | Do not synthesize payment/refund events, tracking codes or state transitions. |
-| suppliers | Retain | Supplier identity remains distinct from Warehouse identity. |
-| goods_receipts | Add approved warehouse relation if and when target semantics are locked | Historical receipts go to the one seeded default Warehouse only if that mapping is approved. |
-| goods_receipt_items.variant_id | Map to product_id through crosswalk | Preserve receipt_item_id, receipt ID, quantity and confirmed immutability; preflight UNIQUE(receipt, product). |
-| inventories.variant_id | Replace with (warehouse_id, product_id) composite key | Seed default Warehouse; map every old row to child Product and preserve available_quantity exactly. |
-| inventory_transactions.variant_id | Replace with product_id and add warehouse_id | Preserve txn_id, quantity_delta, transaction_type, order/receipt references, actor, reason and timestamp. Do not invent opening ledger events. |
-| audit_logs | Keep verbatim | Generic target IDs may embed old keys; only change under reviewed mapping with dependent-consumer analysis. |
-| content_pages | Retain | No direct Product identity relation. |
-| warehouses | New target table, candidate | Create and seed the approved default Warehouse before inventory backfill; additional lifecycle fields require approval. |
+| accounts.account_id, phone, email, password_hash, timestamps | ACCOUNTS.id, phone, email, password_hash, timestamps | Preserve IDs through a crosswalk or controlled PK migration. Add status with an approved existing/default state; verify unique phone and all FK remaps. |
+| addresses.address_id, account_id, address_text, created_at | ADDRESSES.id, account_id, address_line, structured recipient/address fields | Keep address_text raw in address_line when it cannot be parsed. No inferred province/district/ward. |
+| roles, permissions and junction tables | ROLES, PERMISSIONS, ACCOUNT_ROLES, ROLE_PERMISSIONS | Map PK column names, preserve codes and role assignments. description for Permissions comes from existing name only if a reviewed mapping says that is semantically valid; do not blindly rename name to description. |
+| categories, brands | CATEGORIES, BRANDS | Preserve IDs/hierarchy/name. Add slug and is_active with approved deterministic values; check slug collisions before uniqueness. |
+| products rows | PRODUCTS parent/root rows | Preserve current product identity/metadata and map base_price to selling_price under the approved semantics. Move gender/season/style/material_care to Attribute values only if the target Attribute mapping is valid. |
+| each product_variants row | New child PRODUCTS row | Generate a new Product ID; parent_product_id points to the old parent Product. Map SKU, override_price to child selling_price and sale_status to target status under the approved mapping. Preserve old variant_id in a unique staging crosswalk. |
+| size_systems and size_values | ATTRIBUTE_TYPES / ATTRIBUTES / ATTRIBUTE_OPTIONS | Make explicit crosswalks; maintain system distinctions and label/order. Do not merge equal codes from different size systems. |
+| colors | ATTRIBUTE_OPTIONS through the target Attribute model | Preserve old color key/code/name in a unique crosswalk; don't infer that a same-named option is the same entity without a mapping. |
+| product_variants.size_value_id/color_id | PRODUCT_ATTRIBUTE_VALUES for each child Product | Populate option_id for the approved Size and Color attributes. One value per Product+Attribute follows the target PK. |
+| products.category_id/brand_id/name/slug/description | PRODUCTS | Parent/root holds shared data. Child nullability and inheritance must match the approved field contract and SQL schema; do not duplicate shared values wholesale. |
+| products.base_price and product_variants.override_price | PRODUCTS.selling_price | Parent price from base_price; child price override from override_price. Preserve NULL as NULL if it denotes inheritance. Reconcile every effective price before/after. |
+| products/material fields and prior attributes | ATTRIBUTES / PRODUCT_ATTRIBUTE_VALUES | Preserve exact existing values and NULLs. Use text values for untyped legacy data unless a valid typed Attribute definition already exists. |
+| product_images image_id/product_id/image_url/sort_order/alt_text | PRODUCT_IMAGES id/product_id/image_url/is_primary/sort_order | Preserve ordering, derive primary deterministically only if the current sort_order rule is accepted; alt_text has no target field and must have an explicit retention disposition. Keep old order image snapshots separately protected. |
+| carts / cart_items | CARTS / CART_ITEMS | Preserve Cart IDs and quantities. Map old variant_id to new child product_id. Target requires account identity according to the diagram; handle any unowned/guest Cart deliberately. |
+| vouchers and voucher_products/voucher_categories/voucher_usages | VOUCHERS and order voucher snapshots | Map code/type/discount/time/limits/status only when semantics match. Target has no product/category target links or usage ledger; active scoped vouchers/usage rows block destructive cleanup until a replacement mapping is approved. |
+| checkout_quotes | No direct target table; ORDERS.idempotency_key only partially overlaps | Drain/expire active quotes during an approved cutover. Do not treat quote fingerprint/expiry as interchangeable with order idempotency. Ensure no in-flight order depends on the old quote. |
+| orders header fields | ORDERS | Map order_id→id, order_code→order_number, customer_account_id→account_id, order_status→status. Map monetary snapshots to subtotal/discount_amount/shipping_fee/total_amount without recomputing. Derive payment_status/fulfillment_status only through a validated state mapping. Preserve notes/reasons/timestamps in approved archive/extension if target omits them. |
+| order_items including all snapshots | ORDER_ITEMS | Map variant_id by crosswalk, preserve SKU/name/description/qty/unit/discount/line total. Existing image_url_snapshot has no target field; cannot be dropped while claiming history preservation. |
+| receiver fields embedded in orders | ORDER_ADDRESSES | Copy current recipient phone/email/address data. Parse structured address fields only from trusted source; raw address goes to address_line. |
+| historical voucher use and order discount | ORDER_VOUCHER_SNAPSHOTS | Snapshot code/type/value only where the historic applied rule is known. Existing orders with only voucher_id and discount amount cannot prove a mutable voucher’s old definition. |
+| suppliers | SUPPLIERS | Preserve names/contact; map status from usage_status via an explicit state mapping. Address/note have no target fields; disposition must be recorded. |
+| goods_receipts | GOODS_RECEIPTS | Map receipt_code→receipt_number, receipt_status→status and actors. receipt_date/note are absent in target and require explicit archive/retention handling. |
+| goods_receipt_items | GOODS_RECEIPT_ITEMS | Map variant_id to child product; preserve quantity. unit_cost is unknown in the source and must remain unknown/null unless sourced externally. Ensure receipt/product uniqueness if target requires it. |
+| inventories | INVENTORIES | Map variant stock to (default warehouse_id, child product_id). Candidate initialization: quantity_on_hand=old available_quantity and quantity_reserved=0. Reconcile all row counts and quantities. |
+| no current warehouse table | WAREHOUSES | Create the single default warehouse for the existing one-warehouse baseline before inventory backfill. Do not spread old stock across multiple target warehouses. |
+| no reservation table | INVENTORY_RESERVATIONS | No rows should be invented for historical CartItems; only create reservations for source-backed active reservations if such a source exists. |
+| inventory_transactions | INVENTORY_TRANSACTIONS | Map variant_id to child product, assign warehouse, preserve txn ID/delta/type/actor/reason/time. Link to receipt/order item only when a unique source-line match exists. Use a deterministic legacy idempotency key; quantity_after must not be fabricated without a known opening balance. |
+| payments aggregate | PAYMENTS / PAYMENT_TRANSACTIONS / REFUNDS | Preserve amount due/received/refunded and actor/time facts via an approved mapping/archive. Do not fabricate attempts or refund events solely from summary totals. |
+| shipping_infos | SHIPMENTS and related target tables | Map carrier_name only when equivalent. No tracking or per-item shipment events exist in source; do not synthesize them. |
+| orders with RETURNED status | RETURNS / RETURN_ITEMS | Do not create return request/item rows without reliable per-line quantity, condition and disposition evidence. Preserve returned status and audit data. |
+| audit_logs | AUDIT_LOGS | Map IDs, actor/action/target/time; description has no target field and cannot be converted into before/after JSON. Archive/retention decision is a gate. |
+| content_pages | CONTENT_PAGES | Map page_code→slug if collision-free. updated_by_account_id has no target field; preserve updater attribution in approved archive/extension if the audit requirement requires it. |
 
-### 4.1 Required staging crosswalks
+## 6. P2 migration sequence and recovery plan
 
-Before changing old FKs, migration rehearsal needs at least:
-- old_variant_id → new_child_product_id, unique on both sides;
-- old_size_system_id → new_attribute_id;
-- old_size_value_id → new_attribute_option_id;
-- old_color_id → new_attribute_option_id;
-- source/target row counts and reconciliation keys per FK-bearing table;
-- source inventory identity → seeded default warehouse identity.
+This section is the required execution sequence, not authorization to run a production migration.
 
-These are migration/staging artifacts, not automatically permanent business tables. Do not choose an ID reuse rule based on sample/test data.
+1. **Baseline and profile a safe source copy.** Record applied Flyway version, exact DDL, row counts for all current tables, and phone/SKU/slug duplicates, orphan FKs, ID collisions, null distribution, ProductVariant-to-inventory completeness, stock ledger reconciliation, active quotes, voucher scope/usage rows, order image snapshot counts, payment aggregates, receipt fields and audit descriptions.
+2. **Build crosswalks and data-loss report first.** Create source ID→target ID mapping for every renamed PK/FK; Variant→child Product; SizeSystem/SizeValue/Color→Attribute/Option; old Warehouse (logical one-w-house)→target default Warehouse; source line→target Order/Receipt item and stock ledger references. Flag zero/multiple matching candidates; never “pick first”.
+3. **Expand schema in a new Flyway migration after V6.** Keep V1–V6 immutable. Create target tables and temporary mapping/archive structures. Seed one default Warehouse. Do not drop legacy tables/columns in the expansion/backfill migration.
+4. **Backfill Catalog/Product/Attribute.** Retain existing Product parent IDs where safe, create one child Product per old Variant with generated IDs, map SKU/price/status, and populate Option/AttributeValue mappings. Validate each source variant maps exactly once and effective prices/attribute labels remain correct.
+5. **Backfill stock and operational references.** Map CartItem, OrderItem, ReceiptItem, Inventory and ledger links through the crosswalk. Preserve quantities; do not synthesize reservations, return lines or payment events. Use a deterministic old-transaction idempotency key. Reconcile source balances and ledger independently; do not assume the existing ledger contains an opening-balance transaction.
+6. **Backfill order/address/voucher/payment/shipping/audit.** Copy immutable facts exactly. For each omitted legacy field listed in Section 5, emit a row-level reconciliation outcome: migrated, retained in approved archive, sourced externally with provenance, or blocked. No source row may disappear silently.
+7. **Validate before traffic switch.** Run MySQL 8.4 and H2 tests from an empty database and from a representative populated fixture. Compare counts, crosswalk completeness, FKs, unique values, attribute value type, image ordering, inventory math/ledger, order totals/snapshots, voucher policy, payment totals/refunds, and report metrics. Store the reconciliation artifact with the release.
+8. **Cut over in a controlled deployment window.** Drain/expire live checkout quotes, prevent old/new application versions from writing incompatible identity formats concurrently, run final reconciliation, then switch writes/reads. Preserve old tables and mapping evidence during the rollback window.
+9. **Contract legacy objects only in a later reviewed migration.** Remove ProductVariant/size/color tables, old foreign keys and staging structures only after proving no consumer remains and after source-to-target/data-retention sign-off.
 
-## 5. Data contract — candidate invariants
+### 6.1 Rollback/recovery boundaries
 
-### 5.1 Product hierarchy and inheritance
+- Before cutover/new-only writes: restore the pre-migration backup or discard the expansion on a rehearsal copy.
+- During cutover with writes frozen: return to the old app only while old structures remain complete and no V2-only facts have been accepted.
+- After V2-only writes: a reverse SQL migration can be lossy. Use a tested backup/PITR or a separately reviewed reverse data transformation and document exact loss limits.
+- Keep applied Flyway migrations immutable. Rehearse recovery on MySQL, not only H2. RPO/RTO numbers are not specified in the current ERD and should be set operationally before production cutover.
 
-- One row has at most one parent; a parent may have zero or many children.
-- Referenced parent must exist. Self-parent and every cycle length must be rejected transactionally. FK alone cannot prevent longer cycles.
-- Parent/child role cannot be inferred only from SKU nullability.
-- Candidate inheritance: child non-NULL override wins; otherwise resolve the nearest non-NULL ancestor. This applies only to owner-approved fields. Null means inherit, not “explicitly clear”, unless a separate field-presence contract says otherwise.
-- DTO behavior must distinguish omitted PATCH property (no change) from explicit NULL (switch to inheritance, if approved).
-- SKU candidate is unique across all non-NULL rows; preserve NULL and profile collation/duplicate candidates before creating the index.
-- Money remains DECIMAL(18,2), never floating point, with existing non-negative checks. Keep current price fallback until superseded by a confirmed rule.
-- ON_SALE and STOPPED remain the present sale states; zero stock is not a status transition. Parent-child status propagation is unresolved.
-- Keep ProductImage ordering and snapshot-based OrderItem image semantics.
+## 7. Dependency map and verification scope
 
-### 5.2 Attribute integrity
-
-- Each Attribute belongs to one AttributeType; each Option belongs to one Attribute.
-- A Product value must respect the Attribute's approved applicability scope.
-- Candidate UNIQUE(product_id, attribute_id) is valid only for a single-value model.
-- Option uniqueness should be scoped per Attribute unless global uniqueness is explicitly required.
-- A typed value row must contain exactly one representation when the selected model requires one; the persisted value must match its declared type.
-- Changing option text/code later cannot alter historical order snapshots.
-- SizeSystem identity must survive mapping. Same size code across systems does not prove equivalence.
-- No invented enumerations for existing descriptive strings.
-
-### 5.3 Warehouse / inventory integrity
-
-- Candidate inventory key is (warehouse_id, product_id); available_quantity remains integer, NOT NULL and non-negative.
-- Every non-zero stock movement updates one matching inventory row and writes an immutable ledger row within the same transaction.
-- Initial zero-row creation/backfill is initialization, not a stock movement under the existing rule.
-- Ledger deltas are signed and non-zero; actor and UTC timestamp are server-derived.
-- Receipt confirmation is guarded and exactly once; confirmed receipt lines are immutable.
-- Multi-line order deductions are all-or-nothing; acquire stock locks in deterministic warehouse/product key order.
-- Cart and quote do not reserve stock.
-- Do not force ledger sums to equal current stock if the source was not a complete opening-balance ledger; profile/reconcile before migration.
-
-### 5.4 Historical and financial invariants
-
-- Preserve Order, Payment, InventoryTransaction, AuditLog and confirmed receipt historical facts.
-- Keep receiver, amount, SKU/name/size/color/image snapshot and status data exactly.
-- NULL historical image snapshots remain NULL; no current-catalog backfill.
-- Payment currently contains aggregate amounts, not individual collection/refund event history.
-- Preserve voucher IDs, policy, usage and restored state; scope expansion is not automatic.
-- Report transformation must count each order line once under an explicitly approved child/family grouping rule.
-
-### 5.5 Foreign keys and deletion
-
-- Current V1 DDL intentionally omits ON DELETE CASCADE; retain no-cascade/restrict semantics unless each relationship is separately approved.
-- Product records with children, Cart rows, receipt/ledger links or historical OrderItems must not be hard-deleted just to simplify migration.
-- Do not add generic soft-delete lifecycle, archival or status fields by assumption.
-- Reparent/merge/delete operations require explicit conflict behavior when children, stock, voucher targets or history exist.
-
-## 6. P2 migration design — expand, backfill, validate, cut over, contract
-
-**No production migration is included in this P1 change.** The sequence below is a design gate, not permission to run SQL against any live database.
-
-### Stage 0 — inspect a safe database copy
-
-Capture the exact Flyway version and complete DDL. Produce actual row counts and data profiles for all application tables. At minimum test:
-- duplicate/null phone and normalization before relying on V2 phone uniqueness;
-- SKU NULL count, exact duplicates, collation/case/trim duplicate candidates and lengths;
-- product and variant ID ranges/overlap; Variant→Product, SizeValue→SizeSystem, Color relationships;
-- null override prices and computed effective prices;
-- inventory row count versus Variant count, missing rows, duplicates and quantity distribution;
-- ledger quantities by Variant and the relationship between recorded movements and current availability. Do not assume the ledger includes opening stock;
-- CartItem, OrderItem and receipt-line FKs, counts and possible target UNIQUE conflicts;
-- Order and OrderItem snapshots, nullable image snapshot counts, statuses and monetary values;
-- voucher targets/usages and active checkout quotes;
-- FK orphans, duplicate keys, CHECK violations, column lengths, precision and defaults.
-
-No actual runtime row counts or duplicate statistics are asserted in this document.
-
-### Stage 1 — expand schema; do not remove V1–V6 objects
-
-Add approved target tables/nullable columns and staging/crosswalk structures in new forward Flyway migrations. Create the approved default Warehouse before backfill. Do not drop product_variants, old master tables or old FK columns. Keep the old application path available until rehearsal proves the approved release sequence.
-
-### Stage 2 — establish Attribute identities/options
-
-Create only approved AttributeTypes, Attributes and Options. Build explicit crosswalks for each SizeSystem, SizeValue and Color; preserve source value/code/label/order. Check code collisions before UNIQUE constraints. Backfill child values only after confirming whether every Variant must have a size and color.
-
-### Stage 3 — create child Product rows
-
-For every old Variant create one child Product with a generated Product PK and parent link. Copy SKU and sale state; map nullable override price per the approved inheritance contract. Preserve source Variant ID in a staging crosswalk; don’t rely on non-overlapping sequences. Backfill size/color values using their crosswalks. Reconcile every Variant to exactly one child Product. Do not delete old Variant rows yet.
-
-### Stage 4 — migrate stock and receiving
-
-Create one default Warehouse representing the current one-warehouse configuration. Map current inventory rows to (default warehouse, child Product), preserving available_quantity. Map every ledger row while preserving txn_id, signed delta, event type, order/receipt links, actor, reason and timestamp. Map receipt lines and assign historical receipts to default Warehouse only under the approved receipt model. Validate counts/quantity values/FKs; do not synthesize opening balances or ledger events.
-
-### Stage 5 — migrate Cart, OrderItem and API boundaries
-
-Populate Product IDs in CartItems, OrderItems and GoodsReceiptItems through the crosswalk. Check UNIQUE(cart, product) and UNIQUE(receipt, product) collisions first. Preserve every existing snapshot, including NULLs; new orders need an approved attribute snapshot contract. Decide whether existing variant_id request/response contracts are retained through a compatibility layer or versioned as breaking changes. Never silently reinterpret a field called variant_id as product_id. Expire/drain active quotes using an approved cutover procedure; recalculate quotes through the new identity contract.
-
-Update Product/Catalog, Cart/Checkout, Order, Inventory/Receiving, Voucher, Report and frontend DTO mappings together within the agreed release boundary.
-
-### Stage 6 — validate and reconcile before traffic cutover
-
-Required evidence:
-- Every old Variant maps to exactly one new child Product; crosswalk target keys are unique.
-- No target FK is orphaned; all target unique/check constraints pass on MySQL 8.4.
-- Non-NULL SKU values are retained and unique under an approved normalization/collation policy.
-- Effective price, sale status and sellability have agreed before/after comparisons.
-- Available quantity by old Variant equals the mapped child Product's quantity at the default Warehouse.
-- Ledger transaction identities/deltas/source references are preserved; concurrency tests prove no negative stock and all-or-nothing rollback.
-- Order codes/IDs/statuses, line counts, every snapshot, totals and nullable image snapshots are unchanged.
-- Voucher targeting/usage/restoration, quote invalidation and report totals match an owner-approved expectation.
-- Clean migration, entity mapping, type/precision/default/FK/CHECK/index tests run on H2 where supported and MySQL 8.4.
-- Contract tests and regressions cover Catalog, Cart, Checkout, receiving, Inventory, Voucher, Order lifecycle/snapshots and Reports.
-- Source/target counts and FK crosswalk reconciliation are stored as a release artifact.
-
-### Stage 7 — cut over, observe, then contract
-
-Switch writes only after target code, API compatibility, reconciliation and CI are green. Keep old tables/FKs and crosswalks through the approved recovery window. Stop old-path writes before considering retirement. Remove old compatibility columns/tables only in a later reviewed migration after proving no application instance, worker, client or report uses old identities. Monitor FK errors, SKU conflicts, stock mismatch, quote expiry/conflicts, voucher eligibility and report deltas. Destructive cleanup requires separate approval and verified backup/recovery.
-
-### 6.1 Rollback and recovery limitations
-
-- Before cutover/new writes, restore the pre-migration database or discard the expansion on a rehearsal copy. Do not improvise reverse DDL on live data.
-- During a write-frozen cutover, route back only if old structures remain complete and compatible.
-- After accepted V2-only writes, a simple SQL reversal may be lossy; use tested backup/PITR or a separately reviewed reverse transformation for the full allowed data subset.
-- Keep applied Flyway migrations immutable and prefer forward-only fixes. Preserve audit/financial/history facts.
-- Rehearse restoration on a database copy. RPO/RTO targets are absent from current sources and require an operational owner decision. Passing H2 tests is not proof of MySQL recovery safety.
-
-## 7. Dependency map
-
-### 7.1 Backend modules and touchpoints
-
-| Module | Current areas | Expected impact |
+| Module | Current paths affected | P2 impact |
 |---|---|---|
-| product | Product, ProductVariant, ProductImage, Brand, Category, Color, SizeSystem, SizeValue; product repositories; ProductAdminService, catalog query/image services; Product create/patch/variant DTOs | Product hierarchy, inheritance, SKU, price, attribute persistence, sale rules and compatibility contracts |
-| cart | CartItem, cart repositories/services and DTOs | Replace Variant identity; preserve cart/product uniqueness and no-reservation contract |
-| order | CheckoutCalculationService, CheckoutQuoteService/Store, OrderCreationService, OrderItem, queries/summaries and DTOs | Quote fingerprint/revalidation, child Product identity, effective price and immutable attribute/history snapshots |
-| inventory | Inventory, InventoryTransaction, GoodsReceiptItem, GoodsReceipt, InventoryCommandService and Inventory/receipt repositories | Warehouse composite key, backfill, locking order and ledger semantics |
-| promotion | Voucher, VoucherUsage, VoucherManagementService, VoucherRedemptionService, voucher-product/category links | Parent/child voucher scope, usage/reconciliation |
-| report | ReportRepository, ReportService and report DTOs; current joins OrderItem → ProductVariant → Product | Parent-family versus sold-child grouping and no double count |
-| audit | AuditLog, AuditService and audit query | Preserve append-only rows; target_id may contain legacy IDs |
-| account/content | Existing entities/services, mainly actors and content | No direct Product schema change expected; preserve role/security and actor FKs |
-| frontend | Catalog/admin, variant selection, Cart, Quote/Checkout, Order screens, Inventory/receipt, Voucher administration, Reports | DTO/runtime mapping and field identity must change in lockstep |
+| product | Product/ProductVariant/Category/Brand/SizeSystem/SizeValue/Color/ProductImage entities; Product repositories/services/mappers; Product request/response DTOs | Parent/child Product tree, inherited-field resolver, attribute type/value validation, slug/SKU, image primary/order and Catalog query semantics |
+| cart | Cart/CartItem entities and services/DTOs | variant_id→child product_id, account/guest identity contract, availability read and no accidental reservation |
+| inventory | Inventory/InventoryTransaction/GoodsReceiptItem/Receipt services/repos | Composite Warehouse/Product key, reserved/on-hand math, optimistic/conditional locking, idempotent ledger, receipt and reservation transactions |
+| promotion | Voucher/VoucherUsage, voucher-product/category join tables and redemption logic | Target ERD has a simpler VOUCHERS table; scope and usage replacement must be proven before old rows can be removed |
+| order | Order/OrderItem/CheckoutQuote/Payment/ShippingInfo, creation/action/payment/query services and DTOs | Order idempotency, independent status dimensions, immutable line/address/voucher snapshots, line-level inventory references |
+| payment/fulfillment (current owner remains order unless architecture ownership is explicitly revised) | current Payment/COD and shipping code; new payment transactions/refunds/shipments/returns schema | Model event history without fake backfill; preserve COD/refund and state-machine invariants |
+| report | ReportRepository/ReportService and DTOs | Adapt joins from Variant to child Product; avoid grouping/double counting parent and child; reconcile totals |
+| account/audit/content | account and RBAC entities/services; AuditLog; ContentPage | PK rename, phone uniqueness, preserve actor/audit attribution, address normalization and content slug mapping |
+| frontend | Catalog/admin, cart, checkout, orders, inventory/receipt, vouchers, reports | Coordinate request/response DTO changes in the same compatibility plan; variant_id must not silently change meaning |
 
-### 7.2 API/DTO contracts requiring explicit compatibility decisions
+Required test targets include CleanMigrationTests, MigrationTests, SchemaMappingTests, DatabaseConstraintsTests, ProductImageOrderingMigrationTests, Cart/Checkout and Order tests, Inventory/Receiving concurrency and transaction tests, Voucher tests, report tests, and frontend contract/browser tests wherever the API changes.
 
-docs/04-api-contract.md documents the historical 77-endpoint Analyst baseline plus later Product-image, Voucher and Report additions. Product identity changes affect at least:
-- public Catalog (#11–13) and admin Product/Catalog endpoints (#27–32 and image commands);
-- Cart (#14–18), Checkout Quote (#19) and Create Order (#20);
-- GoodsReceipt/Inventory (#46–57);
-- voucher management and eligibility;
-- Customer/Admin Order DTOs and OrderItem snapshots;
-- Product Performance reports and frontend Product ID versus sold-item identity.
+## 8. Decision and blocker log after owner confirmation
 
-Current contracts use variant_id, size_value_id, color_id, override_price and size_system_id. Changing their name or meaning is an external contract decision even when FE and BE are in one repository. Do not make variant_id silently accept a Product ID.
-
-### 7.3 Relevant tests to extend in P2
-
-- Persistence: CleanMigrationTests, MigrationTests, SchemaMappingTests, DatabaseConstraintsTests, ProductImageOrderingMigrationTests and persistence-fixture.sql.
-- Product: Catalog Admin/Public tests, image tests, size-system concurrency and Product read-model tests.
-- Cart/Checkout: Cart HTTP/concurrency tests, CheckoutQuoteHttpTests, CheckoutConsistencyHttpTests and CheckoutCartTransactionTests.
-- Inventory/Receiving: GoodsReceiptHttpTests, InventoryAdjustmentHttpTests, InventoryConcurrencyTests and InventoryPhase4TransactionTests.
-- Order: creation, stock, lifecycle, concurrency, Order image snapshot and Voucher Checkout tests.
-- Promotion/Report: VoucherDiscountTests, ReportApiTest and ReportRepositoryTests.
-
-P2 must add explicit tests for crosswalk completeness, numeric ID overlap, nullable/duplicate SKUs, typed attributes/value scope, parent cycles/inheritance, sale/price propagation, warehouse/product uniqueness, stock/ledger reconciliation, FK cutover, active quote invalidation, parent/child voucher targeting, report grouping and snapshot immutability after attribute changes.
-
-## 8. Decision log — items preventing a production ERD freeze
-
-These are material business/data-contract decisions, not naming-only implementation choices.
-
-| ID | Decision | Candidate/safe starting point | Status |
-|---|---|---|---|
-| D1 | Hierarchy depth and direct sale | Self-FK can represent arbitrary depth; reject cycles. Do not enable parent direct sale or leaf-only sale without a rule. | NEEDS DECISION |
-| D2 | Inheritable fields | Approve each inheritable field (name/description/Category/Brand/descriptive fields), null semantics and ancestor resolution. | NEEDS DECISION |
-| D3 | SKU/price/status | Confirm SKU requiredness for sellable rows, price override/inheritance, parent sellability and STOPPED propagation. | NEEDS DECISION |
-| D4 | AttributeType meaning | Decide value representation versus business grouping; approve typed fields and options. | NEEDS DECISION |
-| D5 | Attribute cardinality/scope/inheritance | Single/multi-value, parent/child applicability and inherited values. | NEEDS DECISION |
-| D6 | Attribute snapshots | Confirm whether each future arbitrary attribute must be snapshotted per OrderItem and choose immutable representation. | NEEDS DECISION |
-| D7 | Size/Color mapping | Candidate: each SizeSystem maps to a Size Attribute with Options; Colors map to Color options; preserve identity via crosswalk. | Proposal awaiting approval |
-| D8 | Warehouse granularity | Confirm whether multi-warehouse is a real target now, receipt header/item destination, and one/multi-warehouse order fulfillment. | NEEDS DECISION |
-| D9 | Quantity semantics | Current quantity is sellable availability. Confirm whether physical/on-hand/reserved/lot features are excluded. Default is not to add them. | NEEDS DECISION |
-| D10 | Variant ID / API compatibility | Retain old field via compatibility crosswalk or approve breaking API/version decision. Never silently reinterpret. | NEEDS DECISION |
-| D11 | Voucher scope | Decide whether product-specific voucher targets parent, exact child, or descendants. | NEEDS DECISION |
-| D12 | Report aggregation | Decide metrics grouped by sold child, parent family or both; approve baseline comparisons. | NEEDS DECISION |
-| D13 | Live data profile | Provide sanitized DB copy or approved metadata/profile access; count rows, collisions, nulls and orphans. | BLOCKED: data unavailable |
-| D14 | Deployment/recovery | Approve write-freeze versus compatibility approach, rollback window, backup/PITR and RPO/RTO. | NEEDS DECISION |
-| D15 | Canonical ERD v2 | Approve one ERD + data dictionary with table/column/type/null/default/PK/FK/UQ/CHECK/index/cardinality. | BLOCKED until artifact/approval |
+| ID | Decision/evidence | Status |
+|---|---|---|
+| D1 | Target schema source is the owner-confirmed single PRODUCTS parent/child model with typed attributes; canonical diagram is in this branch. | **FROZEN — STRUCTURE** |
+| D2 | Target table set has 38 logical tables. It replaces legacy ProductVariant/size/color identity, adopts Product/Attribute values and adds Warehouse/reservation/payment/fulfillment/return entities. | **FROZEN — STRUCTURE** |
+| D3 | Data identity crosswalk is mandatory; do not reuse numeric Variant IDs as new Product IDs. | **REQUIRED INVARIANT** |
+| D4 | Typed Attribute value representation and composite Product/Attribute PK are defined in the target ERD. Type compatibility and option ownership need database/service assertions. | **FROZEN STRUCTURE; ASSERTIONS REQUIRED** |
+| D5 | Inventory key is (warehouse_id, product_id); on-hand, reserved and version fields are in the target ERD. Source quantity mapping requires profile/reconciliation. | **FROZEN STRUCTURE; MIGRATION GATE** |
+| D6 | Orders separate order/payment/fulfillment status fields, retain idempotency key, and store order address/voucher snapshots separately. | **FROZEN STRUCTURE; STATE MAPPING REQUIRED** |
+| D7 | Target ERD has no permanent equivalents for some source facts: ProductImage alt_text, OrderItem image_url_snapshot, voucher product/category scope and usage rows, checkout_quotes, payment amount aggregates/actor-time facts, shipping delivery_mode, receipt date/note, audit description and content updater. | **BLOCKER — DATA RETENTION MAPPING** |
+| D8 | Current deployed database schema/version, actual row counts, duplicates and FK health have not been read from a live DB/copy. | **BLOCKED — DATA ACCESS** |
+| D9 | Exact nullable/default/length/index/CHECK/state-literal specifications not encoded by logical ERD must be captured in physical data dictionary and tests without changing target structure implicitly. | **P1 CONTRACT COMPLETION** |
+| D10 | P2 migration from empty and populated fixtures; source/target reconciliation, backups and rollback rehearsal. | **NOT RUN — P2** |
+| D11 | Status cardinalities and transition mapping across order_status/payment_status/fulfillment_status/shipment/return remain to be tested against the current state machine. | **MIGRATION/TEST GATE** |
+| D12 | Voucher scope/usage behavior: target table set no longer contains the V5 target/link/usage tables; a replacement or safe retirement mapping is required before dropping them. | **BLOCKER IF SOURCE DATA/BEHAVIOR IS IN USE** |
+| D13 | Cost price, unit_cost, target quantity_after and historical event-level payment/refund/return details may not exist in source. Use nullable/unknown/archive or external provenance; do not fabricate. | **DATA-PRESERVATION GATE** |
+| D14 | API compatibility/release sequencing must prevent simultaneous old-variant/new-product ID writes. | **RELEASE GATE** |
+| D15 | Owner confirmation of ERD structure. | **RESOLVED — 2026-10-22** |
 
 ## 9. P1 exit checklist
 
 | Criterion | Result | Reason |
 |---|---|---|
-| Migration source inventory complete | PASS | Read V1–V6; 28 + 4 = 32 application tables confirmed. |
-| All 32 table names and core keys/relations documented | PASS for source DDL | Section 2; runtime DDL remains unverified. |
-| Product hierarchy/inheritance/sellability frozen | BLOCKED | No authoritative v2 ERD; D1–D3 unresolved. |
-| Attribute value cardinality and constraints frozen | BLOCKED | D4–D7 unresolved. |
-| Warehouse/Inventory contract frozen | BLOCKED | D8–D9 unresolved. |
-| Cart/Quote/Voucher/Order/Receipt/Report impact analysed | PASS as impact analysis, not final contract | Sections 3.4 and 7; decisions remain open. |
-| V1→V2 mapping | PARTIAL | All current tables and major changed identities mapped; final columns/names require approval. |
-| Migration/backfill and recovery design | PASS as proposal | Staged plan exists; not rehearsed against a database copy. |
-| Live row profiling completed | BLOCKED | No database copy/approved access. |
-| Local tree/diff/tests verified | NOT CLAIMED | Remote GitHub APIs were available; local checkout/runtime unavailable. |
-| Baseline CI at exact SHA | PASS | Run 39631789377 succeeds on original demo1 SHA. |
-| CI for this documentation commit | NOT YET EVIDENCED | Backend workflow excludes this docs-only branch from push allowlist and does not include docs in PR path filters. |
-| Ready for P2 production migration | NO | D1–D15 are not all resolved/evidenced. |
+| Source migration inventory complete | PASS | V1–V6 source DDL yields 32 current application tables. |
+| Owner-confirmed target ERD located and committed | PASS | Library artifact Pasted text(2).txt was recovered and added as phase-1-erd-v2-approved.mmd. |
+| Target table set and structural relationships recorded | PASS | 38 target tables, keys and major cardinalities are documented. |
+| Product parent/child and Attribute structure documented | PASS for structure | Details encoded in target ERD; SQL/service invariants and validation tests are required in P2. |
+| Warehouse/Inventory target structure documented | PASS for structure | Composite key, quantity_on_hand/reserved/version/reservations/ledger recorded; migration/reconciliation remains a gate. |
+| Cart, quote, voucher, order, receiving, payment, shipment, returns and snapshot impact analysed | PARTIAL | Target omits/replaces source facts identified in Section 5; lossless mapping not yet proven. |
+| Current table/column → target mapping | PARTIAL | Each current domain table and key transformations mapped; unmappable legacy fields have explicit blocker records. |
+| Migration/recovery sequence documented | PASS as design | Forward migration, crosswalk, reconciliation, cutover and recovery staged; not rehearsed. |
+| Live data profiling | BLOCKED | No database copy or authorized connection available. |
+| Local working tree and local test execution | UNVERIFIED | GitHub connector cannot inspect the user's local checkout. |
+| Baseline CI on original demo1 SHA | PASS | Run 39631789377 passed H2 and MySQL 8.4 checks on f931602c86fdf5a59b487d6edd77331b7d64333a. |
+| CI for the new P1 documentation commit | NOT EVIDENCED | Docs-only P1 branch is not in backend workflow push allowlist; Vercel status is not backend test evidence. |
+| Authorization to run migration in production | NO | Live data reconciliation and retention blockers remain. |
 
-## 10. Conditions required before P2 migration implementation
+## 10. Conditions before P2 implementation/cutover
 
-1. Approve hierarchy depth, direct sale, inherited fields, SKU, pricing and sale-status semantics (D1–D3).
-2. Approve AttributeType purpose, typed value model, scope, cardinality, inheritance and historical snapshots (D4–D7).
-3. Approve Warehouse/stock quantity semantics, receipt destination granularity and order allocation (D8–D9).
-4. Approve Variant ID/API compatibility, voucher hierarchy scope, report aggregation and deployment/recovery approach (D10–D12, D14).
-5. Add and approve the canonical ERD v2/data dictionary (D15).
-6. Obtain sanitized DB evidence and record actual row counts, duplicates, ID overlap, SKU, inventory, FK and snapshot profiles (D13).
-7. Implement forward-only Flyway changes on a feature branch; rehearse upgrade, backfill, reconciliation and recovery on MySQL 8.4. Keep V1–V6 immutable.
-8. Update entity/repository/service/DTO/API and frontend compatibility as an agreed plan; add P2 regression tests from Section 7.
-9. Ensure CI actually runs on the P2 branch/PR and verify every job. Baseline CI is not evidence for future schema code.
+1. Preserve the owner-confirmed 38-table ERD. Do not redesign the table model during migration implementation.
+2. Finish the target physical data dictionary for nullability, defaults, types/precision, unique/check/index/FK actions and status literals.
+3. Build source/target crosswalks and a row-level disposition for every source column not present in the target ERD; no silent drop of source facts.
+4. Reconcile the specific blockers in D7/D12/D13: order image snapshots, voucher scope/usage, checkout quotes, payment aggregates/refund actor/time, shipping semantics, receipt fields, audit description and content updater.
+5. Obtain a sanitized database copy or authorized data profile. Measure IDs, duplicate phone/SKU/slug, inventory versus Variant counts, unique conflicts, FK orphans, active quotes, voucher usages and snapshot counts.
+6. Implement forward-only Flyway migrations after V6. Test empty-schema and populated-fixture migration on MySQL 8.4; never edit V1–V6.
+7. Update Entity/Repository/Service/DTO/API and frontend contracts in coordinated domain slices; retain modular monolith ownership and service transaction boundaries.
+8. Run migration/schema/constraints, API/security, concurrency/idempotency and historical snapshot tests; record CI run links on the actual commit.
+9. Execute cutover and cleanup only after backup/recovery rehearsal, reconciliation PASS and approval. Legacy cleanup remains a later reviewed migration.
 
-## 11. Conclusion
-
-P1 now has a source-backed inventory of the 32 application tables, current FK/dependency risks, a candidate Product/Attribute/Warehouse model, V1→V2 mapping, and a staged migration/recovery design.
-
-**ERD v2 is not frozen. P1 is PARTIAL, not PASS.** P2 must not run or ship a schema migration until material decisions D1–D15 are resolved to the extent required for the chosen target and the actual data profile is verified. No source migration, production table, or application business logic was altered in this phase.
-
+**P1 conclusion:** the target database structure is now owner-confirmed and recorded in this branch; the earlier “ERD v2 missing/not frozen” conclusion is superseded. P1 remains PARTIAL because the target ERD omits several facts currently persisted by V1–V6 and the actual source data has not been profiled. Do not run a data-destructive migration until every omitted legacy field has an approved, tested retain/transform/archive policy and source/target reconciliation passes.
 
 ## Appendix A — constraint-name ledger from source migrations
 
