@@ -1,5 +1,8 @@
 # 11 — Backend Deep Implementation Phases
 
+> **ERD v2 target baseline (2026-10-22):** This roadmap originally described implementation against the pre-refactor v1.3.0 model. For the database refactor, the authoritative target is 31 tables in docs/refactor/phase-1-erd-v2-approved.mmd; the current V1–V6 source is 32 tables. Variant-era phase notes are baseline evidence, not permission to retain ProductVariant or add tables absent from the approved ERD. Keep business/API compatibility decisions separate from target persistence shape.
+
+
 The backend is delivered in nine cohesive phases. Do not fragment the system into one phase per endpoint. Each phase should complete the largest coherent domain slice that can be implemented safely from the approved sources.
 
 ## Blocker policy used by every phase
