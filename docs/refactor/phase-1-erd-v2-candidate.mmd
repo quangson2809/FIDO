@@ -1,0 +1,83 @@
+%% FIDO ERD v2 candidate — NOT APPROVED / NOT PRODUCTION DDL
+%% Lines with uncertain business behavior are proposals pending D1-D15 in phase-1-erd-v2-contract.md.
+erDiagram
+    PRODUCTS o|--o{ PRODUCTS : parent_child
+    CATEGORIES ||--o{ PRODUCTS : classifies
+    BRANDS o|--o{ PRODUCTS : brand
+    PRODUCTS ||--o{ PRODUCT_IMAGES : gallery
+    ATTRIBUTE_TYPES ||--o{ ATTRIBUTES : classifies
+    ATTRIBUTES ||--o{ ATTRIBUTE_OPTIONS : offers
+    PRODUCTS ||--o{ PRODUCT_ATTRIBUTE_VALUES : has_value
+    ATTRIBUTES ||--o{ PRODUCT_ATTRIBUTE_VALUES : defines_value
+    ATTRIBUTE_OPTIONS o|--o{ PRODUCT_ATTRIBUTE_VALUES : selected_option
+    CARTS ||--o{ CART_ITEMS : contains
+    PRODUCTS ||--o{ CART_ITEMS : selected_product
+    ORDERS ||--|{ ORDER_ITEMS : contains
+    PRODUCTS ||--o{ ORDER_ITEMS : ordered_product
+    SUPPLIERS ||--o{ GOODS_RECEIPTS : supplies
+    GOODS_RECEIPTS ||--|{ GOODS_RECEIPT_ITEMS : contains
+    PRODUCTS ||--o{ GOODS_RECEIPT_ITEMS : received_product
+    WAREHOUSES ||--o{ INVENTORIES : owns_stock
+    PRODUCTS ||--o{ INVENTORIES : stock_for
+    WAREHOUSES ||--o{ INVENTORY_TRANSACTIONS : location
+    PRODUCTS ||--o{ INVENTORY_TRANSACTIONS : movement_for
+    ORDERS o|--o{ INVENTORY_TRANSACTIONS : order_source
+    GOODS_RECEIPTS o|--o{ INVENTORY_TRANSACTIONS : receipt_source
+    ORDERS ||--o| PAYMENTS : payment
+    ORDERS ||--o| SHIPPING_INFOS : shipping
+    VOUCHERS ||--o{ VOUCHER_PRODUCTS : targets
+    PRODUCTS ||--o{ VOUCHER_PRODUCTS : product_target
+    VOUCHERS ||--o{ VOUCHER_CATEGORIES : targets
+    CATEGORIES ||--o{ VOUCHER_CATEGORIES : category_target
+    VOUCHERS ||--o{ VOUCHER_USAGES : tracks_use
+    ORDERS ||--o| VOUCHER_USAGES : redeemed_by_order
+
+    PRODUCTS {
+      bigint product_id PK
+      bigint parent_product_id FK
+      varchar sku UK
+      decimal base_price
+      varchar sale_status
+    }
+    ATTRIBUTE_TYPES {
+      bigint attribute_type_id PK
+      varchar code UK
+      varchar name
+    }
+    ATTRIBUTES {
+      bigint attribute_id PK
+      bigint attribute_type_id FK
+      varchar code
+      varchar name
+      varchar applicability_scope
+    }
+    ATTRIBUTE_OPTIONS {
+      bigint attribute_option_id PK
+      bigint attribute_id FK
+      varchar code
+      varchar label
+      int sort_order
+    }
+    PRODUCT_ATTRIBUTE_VALUES {
+      bigint product_id PK, FK
+      bigint attribute_id PK, FK
+      bigint attribute_option_id FK
+      varchar value_text
+      decimal value_number
+      boolean value_boolean
+    }
+    WAREHOUSES {
+      bigint warehouse_id PK
+      varchar code UK
+    }
+    INVENTORIES {
+      bigint warehouse_id PK, FK
+      bigint product_id PK, FK
+      int available_quantity
+    }
+    INVENTORY_TRANSACTIONS {
+      bigint txn_id PK
+      bigint warehouse_id FK
+      bigint product_id FK
+      int quantity_delta
+    }
