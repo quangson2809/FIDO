@@ -13,13 +13,13 @@ The owner has chosen **Clean Schema Reset**:
 - Discard old disposable development/test rows and reseed from scratch.
 - Do not build a populated-source migration, historical ID crosswalk, legacy data archive, dual-write/cutover flow or per-field preservation mechanism solely for test data.
 - This decision applies only to explicitly disposable local/development/test databases. It does **not** authorize dropping production, shared integration, staging or any environment containing real user/business data.
-- No database has been reset by recording this decision. The current PR remains documentation-only.
+- Recording this decision did not execute a reset. Any later destructive operation requires checking the exact target database and confirming it is disposable.
 
 This decision closes legacy-only questions about mapping old source values, old inventory, historical payment/refund aggregates, old image snapshots, source-only fields and old idempotency keys. They are not blockers for a clean target install.
 
-## Implementation defaults adopted in branch `feature/clean-schema-reset`
+## Working defaults in the target draft — not a record of owner approval
 
-To implement the selected scope without pausing for another decision round, the working branch uses these defaults: **D1-A, D2-A, D3-A, D4-A, D5-A, D6-A, D7-A, D8-A, D9-A, D10-A**. They are encoded as working defaults in the draft DDL/runbook; they are not presented as facts about the currently running application. Review before the new schema becomes the default runtime schema. Any rejection must be handled by updating the contract, DDL and tests together.
+The current draft encodes options **D1-A through D10-A** as implementation defaults so the target DDL can be evaluated. These defaults are not automatically approved business requirements and are not facts about the current application. Each material choice must be explicitly accepted or changed before the target schema becomes the default runtime schema. Update this questionnaire, the contract, physical data dictionary, DDL and tests together when a decision changes.
 
 | Decision | Working default applied |
 |---|---|
