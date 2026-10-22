@@ -33,7 +33,9 @@ From `backend/`:
 ./gradlew test --tests com.fido.persistence.CleanResetSchemaTests
 ```
 
-Tests use unique in-memory H2 databases in MySQL compatibility mode and execute only `db/clean-reset`; they do not read runtime database environment variables or connect to an external DB.
+**Default behavior:** with `CLEAN_RESET_TEST_DB_URL` unset, tests use unique in-memory H2 databases in MySQL compatibility mode and execute only `db/clean-reset`.
+
+**MySQL integration behavior:** if `CLEAN_RESET_TEST_DB_URL` is set, the test switches to that MySQL URL and reads `CLEAN_RESET_TEST_DB_DRIVER`, `CLEAN_RESET_TEST_DB_USERNAME` and `CLEAN_RESET_TEST_DB_PASSWORD`. The test code restricts the URL host to `127.0.0.1` or `localhost`, but it calls `flyway.clean()` during cleanup and therefore can drop objects in the selected database. Use only an empty, dedicated, disposable test database; never point these variables at shared or production data. The GitHub Actions target-schema workflow supplies a disposable MySQL service through these test-specific variables.
 
 ## Demo fixture safety
 
