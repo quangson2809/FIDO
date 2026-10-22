@@ -1,6 +1,6 @@
 # FIDO Documentation Control Center
 
-**Last reconciled:** 2026-10-22  
+**Last reconciled:** 2026-10-22
 **Purpose:** identify the authority for each decision, show what is current versus historical, and prevent a passing document/audit gate from being mistaken for a passing application.
 
 ## Current state at a glance
