@@ -17,6 +17,7 @@ Codex must distinguish **locked business requirements** from **implementation ch
 | 7 | `05_Process_Flow_Website_Ban_Quan_Ao.docx` | Operational workflow visualization |
 | 8 | `06_User_Story_Backlog_Website_Ban_Quan_Ao.docx` | Story/AC traceability and refinement flags |
 | 9 | `mo_hinh_hoa_Website_ban_quan_ao.docx` | Conceptual class/component/package boundaries; target persistence follows owner-confirmed ERD v2 |
+| 10 | `01_BRD_Website_Ban_Quan_Ao.docx` | Business scope and high-level decisions |
 
 `Danh_muc_API_Website_Ban_Quan_Ao_v5_CSDL_v1.3.0_Tinh_gon.docx` is an older condensed API snapshot and contains 73 endpoints. It is useful for history, but the live consolidated API document now contains 77 baseline endpoints, including Permission CRUD. Do not regress the contract to 73.
 
