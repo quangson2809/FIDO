@@ -1,0 +1,384 @@
+%% FIDO ERD v2 — owner-confirmed target model
+%% Canonical source: the owner's ERD artifact "Pasted text(2).txt" in the FIDO Library.
+%% Confirmed as the finalized database model by the owner on 2026-10-22.
+%% This is a logical ERD; exact SQL nullability/length/default/check/index details are specified in the companion data-contract document.
+erDiagram
+    ACCOUNTS {
+        bigint id PK
+        varchar phone UK
+        varchar email
+        varchar password_hash
+        varchar status
+        datetime created_at
+        datetime updated_at
+    }
+    ADDRESSES {
+        bigint id PK
+        bigint account_id FK
+        varchar recipient_name
+        varchar recipient_phone
+        varchar province
+        varchar district
+        varchar ward
+        varchar address_line
+    }
+    ROLES {
+        bigint id PK
+        varchar code UK
+        varchar name
+    }
+    PERMISSIONS {
+        bigint id PK
+        varchar code UK
+        varchar description
+    }
+    ACCOUNT_ROLES {
+        bigint account_id PK, FK
+        bigint role_id PK, FK
+    }
+    ROLE_PERMISSIONS {
+        bigint role_id PK, FK
+        bigint permission_id PK, FK
+    }
+    CATEGORIES {
+        bigint id PK
+        bigint parent_id FK
+        varchar name
+        varchar slug UK
+        boolean is_active
+    }
+    BRANDS {
+        bigint id PK
+        varchar name
+        varchar slug UK
+        boolean is_active
+    }
+    PRODUCTS {
+        bigint id PK
+        bigint parent_product_id FK
+        bigint category_id FK
+        bigint brand_id FK
+        varchar name
+        varchar slug UK
+        varchar sku UK
+        text description
+        decimal selling_price
+        decimal cost_price
+        varchar status
+        datetime deleted_at
+        datetime created_at
+        datetime updated_at
+    }
+    ATTRIBUTE_TYPES {
+        bigint id PK
+        varchar code UK
+        varchar name
+        varchar description
+        boolean is_active
+    }
+    ATTRIBUTES {
+        bigint id PK
+        bigint attribute_type_id FK
+        varchar code UK
+        varchar name
+        varchar data_type
+        varchar unit
+        boolean is_filterable
+        boolean is_active
+    }
+    ATTRIBUTE_OPTIONS {
+        bigint id PK
+        bigint attribute_id FK
+        varchar value
+        varchar label
+        int sort_order
+    }
+    PRODUCT_ATTRIBUTE_VALUES {
+        bigint product_id PK, FK
+        bigint attribute_id PK, FK
+        bigint option_id FK
+        varchar text_value
+        decimal number_value
+        boolean boolean_value
+    }
+    PRODUCT_IMAGES {
+        bigint id PK
+        bigint product_id FK
+        varchar image_url
+        boolean is_primary
+        int sort_order
+    }
+    CARTS {
+        bigint id PK
+        bigint account_id FK
+        varchar status
+        datetime created_at
+        datetime updated_at
+    }
+    CART_ITEMS {
+        bigint id PK
+        bigint cart_id FK
+        bigint product_id FK
+        int quantity
+        datetime added_at
+    }
+    VOUCHERS {
+        bigint id PK
+        varchar code UK
+        varchar discount_type
+        decimal discount_value
+        decimal minimum_order_value
+        decimal maximum_discount
+        datetime starts_at
+        datetime ends_at
+        int usage_limit
+        varchar status
+    }
+    ORDERS {
+        bigint id PK
+        bigint account_id FK
+        bigint voucher_id FK
+        varchar order_number UK
+        varchar idempotency_key UK
+        varchar status
+        varchar payment_status
+        varchar fulfillment_status
+        decimal subtotal
+        decimal discount_amount
+        decimal shipping_fee
+        decimal total_amount
+        varchar currency
+        datetime placed_at
+        datetime created_at
+    }
+    ORDER_ITEMS {
+        bigint id PK
+        bigint order_id FK
+        bigint product_id FK
+        varchar sku_snapshot
+        varchar product_name_snapshot
+        varchar variant_description_snapshot
+        int quantity
+        decimal unit_price
+        decimal discount_amount
+        decimal line_total
+    }
+    ORDER_ADDRESSES {
+        bigint order_id PK, FK
+        varchar recipient_name
+        varchar recipient_phone
+        varchar province
+        varchar district
+        varchar ward
+        varchar address_line
+    }
+    ORDER_VOUCHER_SNAPSHOTS {
+        bigint order_id PK, FK
+        varchar voucher_code_snapshot
+        varchar discount_type_snapshot
+        decimal discount_value_snapshot
+        decimal discount_amount_snapshot
+    }
+    SUPPLIERS {
+        bigint id PK
+        varchar code UK
+        varchar name
+        varchar phone
+        varchar email
+        varchar status
+    }
+    GOODS_RECEIPTS {
+        bigint id PK
+        bigint supplier_id FK
+        varchar receipt_number UK
+        varchar status
+        bigint created_by FK
+        bigint confirmed_by FK
+        datetime confirmed_at
+        datetime created_at
+    }
+    GOODS_RECEIPT_ITEMS {
+        bigint id PK
+        bigint goods_receipt_id FK
+        bigint product_id FK
+        int quantity_received
+        decimal unit_cost
+    }
+    WAREHOUSES {
+        bigint id PK
+        varchar code UK
+        varchar name
+        varchar status
+    }
+    INVENTORIES {
+        bigint warehouse_id PK, FK
+        bigint product_id PK, FK
+        int quantity_on_hand
+        int quantity_reserved
+        int version
+        datetime updated_at
+    }
+    INVENTORY_RESERVATIONS {
+        bigint id PK
+        bigint warehouse_id FK
+        bigint product_id FK
+        bigint order_id FK
+        int quantity
+        varchar status
+        datetime expires_at
+        datetime released_at
+    }
+    INVENTORY_TRANSACTIONS {
+        bigint id PK
+        bigint warehouse_id FK
+        bigint product_id FK
+        varchar transaction_type
+        int quantity_delta
+        int quantity_after
+        bigint goods_receipt_item_id FK
+        bigint order_item_id FK
+        bigint reservation_id FK
+        varchar idempotency_key UK
+        bigint created_by FK
+        datetime created_at
+    }
+    PAYMENTS {
+        bigint id PK
+        bigint order_id FK
+        varchar method
+        varchar status
+        decimal amount
+        varchar currency
+        datetime created_at
+    }
+    PAYMENT_TRANSACTIONS {
+        bigint id PK
+        bigint payment_id FK
+        varchar provider
+        varchar provider_transaction_id
+        varchar transaction_type
+        varchar status
+        decimal amount
+        varchar idempotency_key UK
+        datetime processed_at
+    }
+    REFUNDS {
+        bigint id PK
+        bigint payment_transaction_id FK
+        varchar refund_reference UK
+        decimal amount
+        varchar reason
+        varchar status
+        datetime created_at
+    }
+    SHIPMENTS {
+        bigint id PK
+        bigint order_id FK
+        varchar shipment_number UK
+        varchar carrier
+        varchar tracking_number
+        varchar status
+        datetime shipped_at
+        datetime delivered_at
+    }
+    SHIPMENT_ITEMS {
+        bigint id PK
+        bigint shipment_id FK
+        bigint order_item_id FK
+        int quantity
+    }
+    SHIPMENT_TRACKING_EVENTS {
+        bigint id PK
+        bigint shipment_id FK
+        varchar event_code
+        varchar description
+        datetime occurred_at
+    }
+    RETURNS {
+        bigint id PK
+        bigint order_id FK
+        varchar return_number UK
+        varchar status
+        varchar reason
+        datetime requested_at
+        datetime resolved_at
+    }
+    RETURN_ITEMS {
+        bigint id PK
+        bigint return_id FK
+        bigint order_item_id FK
+        int quantity
+        varchar item_condition
+        varchar disposition
+    }
+    AUDIT_LOGS {
+        bigint id PK
+        bigint actor_account_id FK
+        varchar action
+        varchar entity_type
+        varchar entity_id
+        json before_data
+        json after_data
+        varchar correlation_id
+        datetime created_at
+    }
+    CONTENT_PAGES {
+        bigint id PK
+        varchar slug UK
+        varchar title
+        text content
+        varchar status
+        datetime updated_at
+    }
+
+    ACCOUNTS ||--o{ ADDRESSES : owns
+    ACCOUNTS ||--o{ ACCOUNT_ROLES : assigned
+    ROLES ||--o{ ACCOUNT_ROLES : grants_to
+    ROLES ||--o{ ROLE_PERMISSIONS : contains
+    PERMISSIONS ||--o{ ROLE_PERMISSIONS : assigned_to
+    CATEGORIES o|--o{ CATEGORIES : parent_of
+    CATEGORIES ||--o{ PRODUCTS : classifies
+    BRANDS o|--o{ PRODUCTS : brands
+    PRODUCTS o|--o{ PRODUCTS : parent_of
+    ATTRIBUTE_TYPES ||--o{ ATTRIBUTES : classifies
+    ATTRIBUTES ||--o{ ATTRIBUTE_OPTIONS : offers
+    PRODUCTS ||--o{ PRODUCT_ATTRIBUTE_VALUES : has_values
+    ATTRIBUTES ||--o{ PRODUCT_ATTRIBUTE_VALUES : defines
+    ATTRIBUTE_OPTIONS o|--o{ PRODUCT_ATTRIBUTE_VALUES : selected_option
+    PRODUCTS ||--o{ PRODUCT_IMAGES : images
+    ACCOUNTS ||--o{ CARTS : has
+    CARTS ||--o{ CART_ITEMS : contains
+    PRODUCTS ||--o{ CART_ITEMS : selected
+    ACCOUNTS ||--o{ ORDERS : places
+    VOUCHERS o|--o{ ORDERS : applied
+    ORDERS ||--|{ ORDER_ITEMS : contains
+    PRODUCTS ||--o{ ORDER_ITEMS : references
+    ORDERS ||--|| ORDER_ADDRESSES : delivery_snapshot
+    ORDERS ||--o| ORDER_VOUCHER_SNAPSHOTS : voucher_snapshot
+    SUPPLIERS ||--o{ GOODS_RECEIPTS : supplies
+    GOODS_RECEIPTS ||--|{ GOODS_RECEIPT_ITEMS : contains
+    PRODUCTS ||--o{ GOODS_RECEIPT_ITEMS : received_product
+    ACCOUNTS o|--o{ GOODS_RECEIPTS : creates
+    ACCOUNTS o|--o{ GOODS_RECEIPTS : confirms
+    WAREHOUSES ||--o{ INVENTORIES : stores
+    PRODUCTS ||--o{ INVENTORIES : stock_balance
+    WAREHOUSES ||--o{ INVENTORY_RESERVATIONS : reserves
+    PRODUCTS ||--o{ INVENTORY_RESERVATIONS : reserved_product
+    ORDERS o|--o{ INVENTORY_RESERVATIONS : reserves_for
+    WAREHOUSES ||--o{ INVENTORY_TRANSACTIONS : warehouse_ledger
+    PRODUCTS ||--o{ INVENTORY_TRANSACTIONS : product_ledger
+    GOODS_RECEIPT_ITEMS o|--o{ INVENTORY_TRANSACTIONS : receipt_source
+    ORDER_ITEMS o|--o{ INVENTORY_TRANSACTIONS : order_source
+    INVENTORY_RESERVATIONS o|--o{ INVENTORY_TRANSACTIONS : reservation_source
+    ACCOUNTS o|--o{ INVENTORY_TRANSACTIONS : performs
+    ORDERS ||--o{ PAYMENTS : payment_records
+    PAYMENTS ||--o{ PAYMENT_TRANSACTIONS : attempts
+    PAYMENT_TRANSACTIONS ||--o{ REFUNDS : refunds
+    ORDERS ||--o{ SHIPMENTS : ships_in
+    SHIPMENTS ||--|{ SHIPMENT_ITEMS : contains
+    ORDER_ITEMS ||--o{ SHIPMENT_ITEMS : fulfills
+    SHIPMENTS ||--o{ SHIPMENT_TRACKING_EVENTS : tracks
+    ORDERS ||--o{ RETURNS : return_requests
+    RETURNS ||--|{ RETURN_ITEMS : contains
+    ORDER_ITEMS ||--o{ RETURN_ITEMS : returned_lines
+    ACCOUNTS o|--o{ AUDIT_LOGS : performs
