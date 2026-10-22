@@ -1,9 +1,10 @@
-# Phase 1 — Physical Data Dictionary (logical schema mapped, physical decisions open)
+# Phase 1 — Physical Data Dictionary (Clean Schema Reset target)
 
-- Status: **DRAFT / NOT migration-ready**
+- Status: **DRAFT / target DDL not yet implemented or verified**
 - Target: owner-confirmed ERD v2, exactly 31 tables
 - Authority: docs/refactor/phase-1-erd-v2-approved.mmd
-- Source baseline: repository Flyway migrations V1–V6, currently 32 application tables
+- Legacy comparison only: repository Flyway V1–V6, currently 32 application tables
+- Owner-approved strategy: Clean Schema Reset for disposable development/test databases; do not preserve old test rows
 - Date: 2026-10-22
 
 ## 1. Rules for this document
@@ -82,43 +83,40 @@ Only the following fields are marked UK in the owner-provided ERD:
 
 Do not silently add a unique key on ACCOUNTS.email, ACCOUNTS.phone, or PRODUCTS.slug: those columns are not marked UK in this ERD version. This creates a contract question because the existing application uses phone as the login identifier and current migration V2 makes it unique; see the decision register below.
 
-## 4. Physical decisions that remain before DDL
+## 4. Target behavior and physical decisions that remain before DDL
 
-| ID | Item | Required decision/evidence | Status |
+Clean Schema Reset means legacy-source rows do not need to be mapped. The following are still active decisions because they define the **new application**, not old-data preservation.
+
+| ID | Topic | Target decision required | Status |
 |---|---|---|---|
-| PHY-01 | VARCHAR lengths | Set a length for every VARCHAR column using API limits, legacy maxima and required headroom; identify columns needing larger legacy snapshots. | OPEN |
-| PHY-02 | DECIMAL precision/scale | Set precision and scale for prices, costs, totals, discounts and amounts; validate all source values fit without rounding/truncation. | OPEN |
-| PHY-03 | Nullability | Produce a column-level NULL/NOT NULL matrix using relationship cardinalities and explicit ERD inheritance comments; no guesswork. | OPEN |
-| PHY-04 | Timestamp type | Choose TIMESTAMP precision/time-zone storage consistently; include nullable semantics for starts/ends/placed/shipped/delivered/confirmed times. | OPEN |
-| PHY-05 | Defaults | Define only justified technical defaults (e.g. version initialization) and do not invent business defaults/statuses. | OPEN |
-| PHY-06 | Status literals | Publish allowed values/transitions for account, role, category, brand, product, cart, voucher, order, payment, shipping, supplier, receipt, warehouse and content status. | OPEN |
-| PHY-07 | CHECK constraints | Decide/test nonnegative money, positive quantities, nonnegative on-hand stock, version bounds, parent-product self-reference/cycle avoidance and typed attribute exclusivity. | OPEN |
-| PHY-08 | FK actions | Define ON DELETE/ON UPDATE for every FK. Current source documentation says it avoids cascading deletes, but target action must be explicit. | OPEN |
-| PHY-09 | Secondary indexes | Derive indexes from FK joins, catalogue filters, order lookup, inventory ledger and audit queries; verify with explain plans later. No speculative index is marked approved. | OPEN |
-| PHY-10 | Account identity | Reconcile the target ERD's lack of UK marker on phone/email with existing phone login and V2 UNIQUE(phone). Preserve a safe, unambiguous login contract before target DDL. | BLOCKER |
-| PHY-11 | Product/category/brand slugs | Source schema has no slug columns. Approve a deterministic slug-generation/collision policy before backfill. PRODUCTS.slug is not UK in this ERD; category/brand/content slugs are UK. | OPEN |
-| PHY-12 | Target-only source values | ACCOUNTS.full_name, SUPPLIERS.code, GOODS_RECEIPT_ITEMS.unit_cost and PRODUCTS.cost_price have no authoritative equivalents in the source schema. Define nullable/unknown or approved external-source mapping. | BLOCKER |
-| PHY-13 | Attribute snapshot encoding | Define deterministic encoding of legacy size/color and other fields into ORDER_ITEMS.attribute_snapshot. Preserve exact original facts. | BLOCKER |
-| PHY-14 | Idempotency keys | ORDERS.idempotency_key and INVENTORY_TRANSACTIONS.idempotency_key are UK in target. Define historical row backfill, nullability, key derivation and runtime retry semantics. | BLOCKER |
-| PHY-15 | Stock meaning | Current inventories.available_quantity is the legacy sellable quantity; target quantity_on_hand is not automatically equivalent. Review active orders/concurrency and approve the conversion. | BLOCKER |
-| PHY-16 | Historical image URL | Current order_items.image_url_snapshot is not in target ORDER_ITEMS. Approve an archive/retention representation before contracting the source column. | BLOCKER |
-| PHY-17 | Reduced voucher/checkout persistence | Target omits voucher scope joins, usage ledger and checkout_quotes. Profile source rows and approve transform/archive/retire rules; do not add tables back silently. | BLOCKER |
-| PHY-18 | COD aggregate payment | Current payments has due/received/refunded amounts and collection/refund attribution; target PAYMENTS is a smaller one-row aggregate. Define a lossless archive/mapping for all source facts. | BLOCKER |
-| PHY-19 | Source-only operational/audit data | Disposition order recipient_email/notes/reasons/terminal timestamps, shipping delivery_mode, supplier address/note, receipt date/note and audit description. | BLOCKER |
-| PHY-20 | Target-only warehouse | Provision and map a deliberate initial warehouse; existing source has no WAREHOUSES table. | OPEN |
-| PHY-21 | Guest carts/orders | Target relationships require an account for CARTS and ORDERS, while source carts and orders allow NULL account IDs and guest intent exists in the current API. Decide a safe retention/compatibility treatment without adding unapproved target columns/tables. | BLOCKER |
-| PHY-22 | Order fields with no direct source counterpart | ORDERS.currency, placed_at and ORDER_ITEMS.discount_amount have no same-purpose source column. Approve mapping/default semantics and validate money totals; do not invent line-discount allocations or a currency silently. | BLOCKER |
-| PHY-23 | Address recipient/name structure | Source addresses are free-form address_text and orders store recipient phone/address; no reliable recipient name/province/district/ward source is established. Retain raw text and disposition other fields without fabricated decomposition. | BLOCKER |
-| PHY-24 | Shipping history | Target SHIPPING_INFOS contains recipient_name, tracking_number, shipping_status, shipped_at and delivered_at; source has delivery_mode/carrier_name only. Map only source-backed values and retain all source facts that lack target columns. | BLOCKER |
-| PHY-25 | Voucher snapshot history | Source stores a voucher ID on the order and aggregate order discount, not a historic code/type/value snapshot. Do not reconstruct a historical snapshot from current VOUCHERS values without an approved policy. | BLOCKER |
-| PHY-26 | Order line discount allocation | Legacy discounts are stored at order-header level, while target ORDER_ITEMS adds a per-line discount_amount. Define and test an allocation policy or preserve the source-level truth separately; never invent line discount amounts. | BLOCKER |
-| PHY-27 | Other target-only statuses/timestamps | Source has no direct equivalents for several target fields such as account/role/category/brand/cart status, Product deleted_at, ProductImage created_at, CartItem timestamps, Payment timestamps/currency/method, audit before_data/after_data/correlation_id and some tracking timestamps. For each, define an evidence-backed mapping or an honest unknown/default policy. | BLOCKER |
-| PHY-28 | Attribute master/value conversion | Define the mapping from SizeSystem/SizeValue/Color and Product gender/season/style/material_care into ATTRIBUTE_TYPES, ATTRIBUTES, ATTRIBUTE_OPTIONS and PRODUCT_ATTRIBUTE_VALUES, including data_type literals, variant-defining attributes, sort order and one typed value per Product/Attribute. | BLOCKER |
-| PHY-29 | Voucher snapshot source | ORDER_VOUCHER_SNAPSHOTS is required by the target, but source orders only reference voucher_id and store an aggregate discount. Do not copy current voucher values into a historical snapshot unless approved as an explicit approximation. | BLOCKER |
-| PHY-30 | Guest/API compatibility | Public API and current implementation allow some guest intents and Variant-based IDs; target CARTS/ORDERS are account-owned in the ERD and use Product IDs. Document an explicit compatibility/cutover plan without expanding the target schema silently. | BLOCKER |
+| TGT-01 | Account identity | The ERD does not mark phone/email unique, but current login uses phone. Define login identity and physical uniqueness; avoid ambiguous lookup. | OPEN |
+| TGT-02 | Nullability and lengths | Assign physical nullability and VARCHAR lengths from runtime/API validation; do not infer them only from the ERD's logical type names. | OPEN |
+| TGT-03 | Monetary contract | Confirm DECIMAL precision/scale, VND/currency support, line discount semantics, order total formula, rounding and `placed_at` meaning for new orders. | OPEN |
+| TGT-04 | Attribute system | Define stable codes, data types, option values, selectability, variant-defining flag, inheritance and uniqueness for `ATTRIBUTE_TYPES`, `ATTRIBUTES`, `ATTRIBUTE_OPTIONS` and `PRODUCT_ATTRIBUTE_VALUES`. | OPEN |
+| TGT-05 | Product hierarchy | Validate parent/child invariants, inherited nullable fields, SKU uniqueness, permissible status combinations and prevention of self-reference/cycles. `PRODUCTS.slug` is not marked unique in the supplied ERD. | OPEN |
+| TGT-06 | Inventory | Define non-negative `quantity_on_hand`, version/locking semantics, transaction types and idempotent writes. The target has no reservation model; do not add `quantity_reserved` implicitly. | OPEN |
+| TGT-07 | Cart and guest behavior | Target carts/orders are account-owned. Confirm authentication requirements or amend the ERD before supporting guest persistence. | OPEN |
+| TGT-08 | Voucher/checkout | Define the supported voucher limits, eligibility and snapshot rules; target has no scope link tables, usage ledger or checkout_quotes. | OPEN |
+| TGT-09 | Payment and shipping | Define allowed methods, statuses, transitions and actor permissions for the one-payment-per-order and optional shipping-information model. | OPEN |
+| TGT-10 | Address snapshots | Define required order recipient/address fields and guarantee `ORDER_ADDRESSES` remains immutable after order placement. | OPEN |
+| TGT-11 | Idempotency | Define runtime key scope, retry/conflicting-payload behavior and transaction boundaries for order creation and inventory transactions. No historical key backfill is required. | OPEN |
+| TGT-12 | Status/default rules | Enumerate allowed statuses and initial values for account, role, category, brand, products, carts, vouchers, orders, payments, shipping and receiving. | OPEN |
+| TGT-13 | Referential actions | Approve FK delete/update actions table-by-table; use restrictive behavior by default unless a specific lifecycle rule justifies another action. | OPEN |
+| TGT-14 | Operational SQL | Select timestamp precision/time-zone policy, CHECK constraints, supporting indexes, decimal precision, ID strategy and database version compatibility. | OPEN |
+| TGT-15 | Seed separation | Specify mandatory system/reference seeds separately from development-only demo accounts/catalog/orders, and define secure first-admin provisioning. | OPEN |
+
+Suggested defaults for owner review (not yet implementation facts): BIGINT identifiers; DECIMAL(18,2) for money; TIMESTAMP(6) with a documented UTC convention; explicit status checks; restrictive FK deletion by default; unique system codes as marked by the ERD. Any exception must be recorded here before DDL is generated.
+
+The owner-confirmed target ERD is the table/relationship authority. The existing V1–V6 schema is used only to locate legacy code that must be updated or removed; no source row mapping, populated-source migration, legacy archive or historical crosswalk is a release gate for disposable development/test data.
 
 ## 5. Approval and exit gate
 
-The logical table/relationship set is owner-confirmed. The physical dictionary is **not complete enough to authorize DDL** until PHY-01–PHY-09 are completed and reviewed, and any blocker relevant to rows present in the source has an evidence-backed disposition. A missing source value must not be fabricated, and a data-preservation decision must not be implemented by silently adding a table/column outside the approved 31-table ERD.
+The physical dictionary is ready to drive implementation only after the active TGT-01–TGT-15 decisions are recorded or their proposed defaults are explicitly accepted. Then:
 
-P1 does not pass merely because this file exists. The final physical dictionary must be reflected in reviewed target DDL and tests during the migration implementation phase.
+1. Generate a fresh target-first migration for the approved 31-table schema.
+2. Validate it against a newly created empty MySQL database.
+3. Verify constraints, required seeds and application behavior, including authentication, Product hierarchy, typed attributes, inventory concurrency, cart/checkout, order totals, payment/shipping and RBAC.
+4. Keep demo data separate from mandatory system seeds and load it only in a disposable development/test profile.
+5. Recreate only explicitly disposable local/dev/test databases if the old Flyway history is replaced. Never reset production/shared environments under this decision.
+
+Do not claim DDL readiness or test success until the target migration and actual test suite have been run.
