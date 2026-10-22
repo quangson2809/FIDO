@@ -31,7 +31,7 @@ Baseline: `demo1` / `22bd3d887cef3c077e714e5ec21e70ba89855d46`. This is a source
 | `product` | Catalog, categories/brands/size/color, products, images and variants. | Largest rewrite: parent/child Products and typed attributes; no ProductVariant, SizeSystem, SizeValue or Color tables. |
 | `cart` | Authenticated cart/item query and commands. CartItem currently references `variant_id`. | CartItem references a child Product ID; target requires account ownership and removes quote persistence. |
 | `promotion` | Voucher administration/redemption; V5 supports scopes and usage ledger. | VOUCHERS remains, but targeting joins and usage ledger are absent. |
-| `order` | Checkout quote, Order creation/transitions, COD/payment, shipping, after-sales. | Order/product IDs, guest account ownership, snapshots, idempotency, refund and shipping shape change. |
+| `order` | Checkout quote, Order creation/transitions, COD/payment, shipping, after-sales. | Order/product IDs, account-owned orders, snapshots, idempotency, refund and shipping shape change; guest placement is out of target scope. |
 | `inventory` | Supplier, goods receipt, sellable balance and movement ledger. | New warehouse and composite balance key; product replaces variant and balance meaning changes. |
 | `audit` | Audit writes and query. | Description-oriented source contract changes to before/after JSON + correlation ID. |
 | `report` | Aggregate reads of current Order/Payment and related data. | Revisit every query against target Order/Payment/Inventory shapes and status formulas. |
