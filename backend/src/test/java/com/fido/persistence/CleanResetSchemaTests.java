@@ -11,6 +11,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.output.MigrateResult;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.dao.DataAccessException;
@@ -28,6 +29,21 @@ class CleanResetSchemaTests {
             "order_voucher_snapshots", "payments", "shipping_infos", "suppliers",
             "goods_receipts", "goods_receipt_items", "warehouses", "inventories",
             "inventory_transactions", "audit_logs", "content_pages");
+
+    private MigrateResult migrate(Flyway flyway) {
+        try {
+            return flyway.migrate();
+        } catch (RuntimeException failure) {
+            StringBuilder details = new StringBuilder("Target Flyway migration failed");
+            Throwable current = failure;
+            while (current != null) {
+                details.append("\n - ").append(current.getClass().getName())
+                        .append(": ").append(current.getMessage());
+                current = current.getCause();
+            }
+            throw new IllegalStateException(details.toString(), failure);
+        }
+    }
 
     private DriverManagerDataSource newTestDataSource(String name) {
         String mysqlUrl = System.getenv("CLEAN_RESET_TEST_DB_URL");
@@ -92,7 +108,7 @@ class CleanResetSchemaTests {
         Flyway flyway = Flyway.configure().dataSource(dataSource)
                 .locations("classpath:db/clean-reset").cleanDisabled(false).load();
         try {
-            assertEquals(2, flyway.migrate().migrationsExecuted);
+            assertEquals(2, migrate(flyway).migrationsExecuted);
             flyway.validate();
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
             Set<String> actual = new TreeSet<>(jdbc.queryForList(
@@ -131,7 +147,7 @@ class CleanResetSchemaTests {
         Flyway flyway = Flyway.configure().dataSource(dataSource)
                 .locations("classpath:db/clean-reset").cleanDisabled(false).load();
         try {
-            flyway.migrate();
+            migrate(flyway);
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
             jdbc.update("INSERT INTO categories(name,slug,status) VALUES (?,?,?)",
                     "Disposable category", "disposable-category", "ACTIVE");
@@ -139,7 +155,7 @@ class CleanResetSchemaTests {
                     "SELECT COUNT(*) FROM categories WHERE slug='disposable-category'", Integer.class));
 
             flyway.clean();
-            assertEquals(2, flyway.migrate().migrationsExecuted);
+            assertEquals(2, migrate(flyway).migrationsExecuted);
             flyway.validate();
 
             assertEquals(0, jdbc.queryForObject(
@@ -157,7 +173,7 @@ class CleanResetSchemaTests {
         Flyway flyway = Flyway.configure().dataSource(dataSource)
                 .locations("classpath:db/clean-reset").cleanDisabled(false).load();
         try {
-            flyway.migrate();
+            migrate(flyway);
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
             assertEquals(3, jdbc.queryForObject("SELECT COUNT(*) FROM roles", Integer.class));
             assertEquals(16, jdbc.queryForObject("SELECT COUNT(*) FROM permissions", Integer.class));
@@ -179,7 +195,7 @@ class CleanResetSchemaTests {
         Flyway flyway = Flyway.configure().dataSource(dataSource)
                 .locations("classpath:db/clean-reset").cleanDisabled(false).load();
         try {
-            flyway.migrate();
+            migrate(flyway);
             try (Connection connection = dataSource.getConnection()) {
                 ScriptUtils.executeSqlScript(connection, new ClassPathResource("clean-reset/dev-seed.sql"));
             }
@@ -208,7 +224,7 @@ class CleanResetSchemaTests {
         Flyway flyway = Flyway.configure().dataSource(dataSource)
                 .locations("classpath:db/clean-reset").cleanDisabled(false).load();
         try {
-            flyway.migrate();
+            migrate(flyway);
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
             jdbc.update("INSERT INTO accounts(full_name,email,phone,password_hash,status) VALUES (?,?,?,?,?)",
                     "Test One", "same@example.invalid", "+84900000001", "test-only-hash", "ACTIVE");
