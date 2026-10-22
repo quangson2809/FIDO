@@ -1,5 +1,8 @@
 # 08 — Security, RBAC, Audit & Personal Data
 
+> **ERD v2 scope boundary (2026-10-22):** The existing account/security behavior remains a source contract, but the target ERD does not mark ACCOUNTS.phone or email as unique. Before target DDL, explicitly reconcile the current phone-login/unique-phone behavior with the physical data dictionary; do not silently assume the missing unique marker or weaken login identity guarantees.
+
+
 ## 1. Authentication
 
 - Store only `password_hash`; never log or return it.
