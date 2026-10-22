@@ -1,17 +1,19 @@
 %% FIDO ERD v2 — owner-confirmed target model
-%% Canonical source: the owner's ERD artifact "Pasted text(2).txt" in the FIDO Library.
-%% Confirmed as the finalized database model by the owner on 2026-10-22.
-%% This is a logical ERD; exact SQL nullability/length/default/check/index details are specified in the companion data-contract document.
+%% Canonical source: the exact ERD supplied by the project owner on 2026-10-22.
+%% This version supersedes the earlier 38-table draft. It contains 31 target tables.
+%% Logical ERD: unspecified physical nullability, data lengths, defaults, constraints and status literals must be documented separately.
 erDiagram
     ACCOUNTS {
         bigint id PK
-        varchar phone UK
+        varchar full_name
         varchar email
+        varchar phone
         varchar password_hash
         varchar status
-        datetime created_at
-        datetime updated_at
+        timestamp created_at
+        timestamp updated_at
     }
+
     ADDRESSES {
         bigint id PK
         bigint account_id FK
@@ -21,71 +23,87 @@ erDiagram
         varchar district
         varchar ward
         varchar address_line
+        boolean is_default
+        timestamp created_at
+        timestamp updated_at
     }
+
     ROLES {
         bigint id PK
         varchar code UK
         varchar name
+        varchar description
+        varchar status
     }
+
     PERMISSIONS {
         bigint id PK
         varchar code UK
+        varchar name
         varchar description
     }
+
     ACCOUNT_ROLES {
         bigint account_id PK,FK
         bigint role_id PK,FK
     }
+
     ROLE_PERMISSIONS {
         bigint role_id PK,FK
         bigint permission_id PK,FK
     }
+
     CATEGORIES {
         bigint id PK
-        bigint parent_id FK
+        bigint parent_category_id FK
         varchar name
         varchar slug UK
-        boolean is_active
+        varchar status
+        timestamp created_at
+        timestamp updated_at
     }
+
     BRANDS {
         bigint id PK
         varchar name
         varchar slug UK
-        boolean is_active
+        varchar status
     }
+
     PRODUCTS {
         bigint id PK
         bigint parent_product_id FK
         bigint category_id FK
         bigint brand_id FK
-        varchar name
-        varchar slug UK
+        varchar name "NULL for child if inherited"
+        varchar slug "NULL for child if inherited"
         varchar sku UK
-        text description
-        decimal selling_price
-        decimal cost_price
+        text description "NULL for child if inherited"
+        decimal selling_price "NULL on child means inherit"
+        decimal cost_price "Nullable"
         varchar status
-        datetime deleted_at
-        datetime created_at
-        datetime updated_at
+        timestamp deleted_at
+        timestamp created_at
+        timestamp updated_at
     }
+
     ATTRIBUTE_TYPES {
         bigint id PK
         varchar code UK
         varchar name
-        varchar description
-        boolean is_active
+        varchar data_type
     }
+
     ATTRIBUTES {
         bigint id PK
         bigint attribute_type_id FK
         varchar code UK
         varchar name
-        varchar data_type
-        varchar unit
-        boolean is_filterable
-        boolean is_active
+        boolean is_required
+        boolean is_variant_defining
+        int sort_order
     }
+
     ATTRIBUTE_OPTIONS {
         bigint id PK
         bigint attribute_id FK
@@ -93,6 +111,7 @@ erDiagram
         varchar label
         int sort_order
     }
+
     PRODUCT_ATTRIBUTE_VALUES {
         bigint product_id PK,FK
         bigint attribute_id PK,FK
@@ -101,27 +120,33 @@ erDiagram
         decimal number_value
         boolean boolean_value
     }
+
     PRODUCT_IMAGES {
         bigint id PK
         bigint product_id FK
         varchar image_url
         boolean is_primary
         int sort_order
+        timestamp created_at
     }
+
     CARTS {
         bigint id PK
         bigint account_id FK
         varchar status
-        datetime created_at
-        datetime updated_at
+        timestamp created_at
+        timestamp updated_at
     }
+
     CART_ITEMS {
         bigint id PK
         bigint cart_id FK
         bigint product_id FK
         int quantity
-        datetime added_at
+        timestamp added_at
+        timestamp updated_at
     }
+
     VOUCHERS {
         bigint id PK
         varchar code UK
@@ -129,11 +154,12 @@ erDiagram
         decimal discount_value
         decimal minimum_order_value
         decimal maximum_discount
-        datetime starts_at
-        datetime ends_at
+        timestamp starts_at
+        timestamp ends_at
         int usage_limit
         varchar status
     }
+
     ORDERS {
         bigint id PK
         bigint account_id FK
@@ -141,28 +167,29 @@ erDiagram
         varchar order_number UK
         varchar idempotency_key UK
         varchar status
-        varchar payment_status
-        varchar fulfillment_status
         decimal subtotal
         decimal discount_amount
         decimal shipping_fee
         decimal total_amount
         varchar currency
-        datetime placed_at
-        datetime created_at
+        timestamp placed_at
+        timestamp created_at
+        timestamp updated_at
     }
+
     ORDER_ITEMS {
         bigint id PK
         bigint order_id FK
         bigint product_id FK
         varchar sku_snapshot
         varchar product_name_snapshot
-        varchar variant_description_snapshot
+        varchar attribute_snapshot
         int quantity
         decimal unit_price
         decimal discount_amount
         decimal line_total
     }
+
     ORDER_ADDRESSES {
         bigint order_id PK,FK
         varchar recipient_name
@@ -172,6 +199,7 @@ erDiagram
         varchar ward
         varchar address_line
     }
+
     ORDER_VOUCHER_SNAPSHOTS {
         bigint order_id PK,FK
         varchar voucher_code_snapshot
@@ -179,6 +207,31 @@ erDiagram
         decimal discount_value_snapshot
         decimal discount_amount_snapshot
     }
+
+    PAYMENTS {
+        bigint order_id PK,FK
+        varchar method
+        varchar payment_status
+        decimal amount
+        varchar currency
+        bigint collected_by_account_id FK
+        timestamp collected_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    SHIPPING_INFOS {
+        bigint order_id PK,FK
+        varchar recipient_name
+        varchar recipient_phone
+        varchar carrier_name
+        varchar tracking_number
+        varchar shipping_status
+        timestamp shipped_at
+        timestamp delivered_at
+        timestamp updated_at
+    }
+
     SUPPLIERS {
         bigint id PK
         varchar code UK
@@ -186,7 +239,10 @@ erDiagram
         varchar phone
         varchar email
         varchar status
+        timestamp created_at
+        timestamp updated_at
     }
+
     GOODS_RECEIPTS {
         bigint id PK
         bigint supplier_id FK
@@ -194,9 +250,11 @@ erDiagram
         varchar status
         bigint created_by FK
         bigint confirmed_by FK
-        datetime confirmed_at
-        datetime created_at
+        timestamp confirmed_at
+        timestamp created_at
+        timestamp updated_at
     }
+
     GOODS_RECEIPT_ITEMS {
         bigint id PK
         bigint goods_receipt_id FK
@@ -204,113 +262,35 @@ erDiagram
         int quantity_received
         decimal unit_cost
     }
+
     WAREHOUSES {
         bigint id PK
         varchar code UK
         varchar name
         varchar status
     }
+
     INVENTORIES {
         bigint warehouse_id PK,FK
         bigint product_id PK,FK
         int quantity_on_hand
-        int quantity_reserved
         int version
-        datetime updated_at
+        timestamp updated_at
     }
-    INVENTORY_RESERVATIONS {
-        bigint id PK
-        bigint warehouse_id FK
-        bigint product_id FK
-        bigint order_id FK
-        int quantity
-        varchar status
-        datetime expires_at
-        datetime released_at
-    }
+
     INVENTORY_TRANSACTIONS {
         bigint id PK
         bigint warehouse_id FK
         bigint product_id FK
         varchar transaction_type
         int quantity_delta
-        int quantity_after
         bigint goods_receipt_item_id FK
         bigint order_item_id FK
-        bigint reservation_id FK
         varchar idempotency_key UK
         bigint created_by FK
-        datetime created_at
+        timestamp created_at
     }
-    PAYMENTS {
-        bigint id PK
-        bigint order_id FK
-        varchar method
-        varchar status
-        decimal amount
-        varchar currency
-        datetime created_at
-    }
-    PAYMENT_TRANSACTIONS {
-        bigint id PK
-        bigint payment_id FK
-        varchar provider
-        varchar provider_transaction_id
-        varchar transaction_type
-        varchar status
-        decimal amount
-        varchar idempotency_key UK
-        datetime processed_at
-    }
-    REFUNDS {
-        bigint id PK
-        bigint payment_transaction_id FK
-        varchar refund_reference UK
-        decimal amount
-        varchar reason
-        varchar status
-        datetime created_at
-    }
-    SHIPMENTS {
-        bigint id PK
-        bigint order_id FK
-        varchar shipment_number UK
-        varchar carrier
-        varchar tracking_number
-        varchar status
-        datetime shipped_at
-        datetime delivered_at
-    }
-    SHIPMENT_ITEMS {
-        bigint id PK
-        bigint shipment_id FK
-        bigint order_item_id FK
-        int quantity
-    }
-    SHIPMENT_TRACKING_EVENTS {
-        bigint id PK
-        bigint shipment_id FK
-        varchar event_code
-        varchar description
-        datetime occurred_at
-    }
-    RETURNS {
-        bigint id PK
-        bigint order_id FK
-        varchar return_number UK
-        varchar status
-        varchar reason
-        datetime requested_at
-        datetime resolved_at
-    }
-    RETURN_ITEMS {
-        bigint id PK
-        bigint return_id FK
-        bigint order_item_id FK
-        int quantity
-        varchar item_condition
-        varchar disposition
-    }
+
     AUDIT_LOGS {
         bigint id PK
         bigint actor_account_id FK
@@ -320,65 +300,63 @@ erDiagram
         json before_data
         json after_data
         varchar correlation_id
-        datetime created_at
+        timestamp created_at
     }
+
     CONTENT_PAGES {
         bigint id PK
         varchar slug UK
         varchar title
         text content
         varchar status
-        datetime updated_at
+        bigint updated_by FK
+        timestamp updated_at
     }
 
     ACCOUNTS ||--o{ ADDRESSES : owns
     ACCOUNTS ||--o{ ACCOUNT_ROLES : assigned
-    ROLES ||--o{ ACCOUNT_ROLES : grants_to
+    ROLES ||--o{ ACCOUNT_ROLES : grants
     ROLES ||--o{ ROLE_PERMISSIONS : contains
-    PERMISSIONS ||--o{ ROLE_PERMISSIONS : assigned_to
+    PERMISSIONS ||--o{ ROLE_PERMISSIONS : assigned
+
     CATEGORIES o|--o{ CATEGORIES : parent_of
-    CATEGORIES ||--o{ PRODUCTS : classifies
+    CATEGORIES o|--o{ PRODUCTS : classifies
     BRANDS o|--o{ PRODUCTS : brands
+
     PRODUCTS o|--o{ PRODUCTS : parent_of
-    ATTRIBUTE_TYPES ||--o{ ATTRIBUTES : classifies
+    ATTRIBUTE_TYPES ||--o{ ATTRIBUTES : defines_type
     ATTRIBUTES ||--o{ ATTRIBUTE_OPTIONS : offers
-    PRODUCTS ||--o{ PRODUCT_ATTRIBUTE_VALUES : has_values
-    ATTRIBUTES ||--o{ PRODUCT_ATTRIBUTE_VALUES : defines
+    PRODUCTS ||--o{ PRODUCT_ATTRIBUTE_VALUES : has
+    ATTRIBUTES ||--o{ PRODUCT_ATTRIBUTE_VALUES : describes
     ATTRIBUTE_OPTIONS o|--o{ PRODUCT_ATTRIBUTE_VALUES : selected_option
-    PRODUCTS ||--o{ PRODUCT_IMAGES : images
-    ACCOUNTS ||--o{ CARTS : has
-    CARTS ||--o{ CART_ITEMS : contains
+    PRODUCTS ||--o{ PRODUCT_IMAGES : has
+
+    ACCOUNTS ||--o{ CARTS : owns
+    CARTS ||--|{ CART_ITEMS : contains
     PRODUCTS ||--o{ CART_ITEMS : selected
+
     ACCOUNTS ||--o{ ORDERS : places
     VOUCHERS o|--o{ ORDERS : applied
     ORDERS ||--|{ ORDER_ITEMS : contains
-    PRODUCTS ||--o{ ORDER_ITEMS : references
+    PRODUCTS ||--o{ ORDER_ITEMS : snapshot_source
     ORDERS ||--|| ORDER_ADDRESSES : delivery_snapshot
     ORDERS ||--o| ORDER_VOUCHER_SNAPSHOTS : voucher_snapshot
-    SUPPLIERS ||--o{ GOODS_RECEIPTS : supplies
-    GOODS_RECEIPTS ||--|{ GOODS_RECEIPT_ITEMS : contains
-    PRODUCTS ||--o{ GOODS_RECEIPT_ITEMS : received_product
-    ACCOUNTS o|--o{ GOODS_RECEIPTS : creates
+    ORDERS ||--|| PAYMENTS : cod_payment
+    ORDERS ||--o| SHIPPING_INFOS : manual_shipping
+
+    SUPPLIERS o|--o{ GOODS_RECEIPTS : supplies
+    ACCOUNTS ||--o{ GOODS_RECEIPTS : creates
     ACCOUNTS o|--o{ GOODS_RECEIPTS : confirms
+    GOODS_RECEIPTS ||--|{ GOODS_RECEIPT_ITEMS : contains
+    PRODUCTS ||--o{ GOODS_RECEIPT_ITEMS : received_sku
+
     WAREHOUSES ||--o{ INVENTORIES : stores
     PRODUCTS ||--o{ INVENTORIES : stock_balance
-    WAREHOUSES ||--o{ INVENTORY_RESERVATIONS : reserves
-    PRODUCTS ||--o{ INVENTORY_RESERVATIONS : reserved_product
-    ORDERS o|--o{ INVENTORY_RESERVATIONS : reserves_for
-    WAREHOUSES ||--o{ INVENTORY_TRANSACTIONS : warehouse_ledger
-    PRODUCTS ||--o{ INVENTORY_TRANSACTIONS : product_ledger
+    WAREHOUSES ||--o{ INVENTORY_TRANSACTIONS : ledger
+    PRODUCTS ||--o{ INVENTORY_TRANSACTIONS : movement
     GOODS_RECEIPT_ITEMS o|--o{ INVENTORY_TRANSACTIONS : receipt_source
     ORDER_ITEMS o|--o{ INVENTORY_TRANSACTIONS : order_source
-    INVENTORY_RESERVATIONS o|--o{ INVENTORY_TRANSACTIONS : reservation_source
-    ACCOUNTS o|--o{ INVENTORY_TRANSACTIONS : performs
-    ORDERS ||--o{ PAYMENTS : payment_records
-    PAYMENTS ||--o{ PAYMENT_TRANSACTIONS : attempts
-    PAYMENT_TRANSACTIONS ||--o{ REFUNDS : refunds
-    ORDERS ||--o{ SHIPMENTS : ships_in
-    SHIPMENTS ||--|{ SHIPMENT_ITEMS : contains
-    ORDER_ITEMS ||--o{ SHIPMENT_ITEMS : fulfills
-    SHIPMENTS ||--o{ SHIPMENT_TRACKING_EVENTS : tracks
-    ORDERS ||--o{ RETURNS : return_requests
-    RETURNS ||--|{ RETURN_ITEMS : contains
-    ORDER_ITEMS ||--o{ RETURN_ITEMS : returned_lines
+    ACCOUNTS o|--o{ INVENTORY_TRANSACTIONS : records
+
     ACCOUNTS o|--o{ AUDIT_LOGS : performs
+    ACCOUNTS o|--o{ CONTENT_PAGES : updates
