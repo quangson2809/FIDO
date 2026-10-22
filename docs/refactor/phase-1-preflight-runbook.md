@@ -25,7 +25,7 @@ Do not reuse the current app database, an existing shared schema, or a shared de
 1. Load phase-1-source-fixture.sql into the disposable source schema after V1–V6. It uses IDs starting at 9001 and synthetic example.invalid addresses.
 2. Run phase-1-source-preflight.sql against that same schema.
 3. Expected synthetic signals:
-   - 2 accounts, 2 legacy Product rows, 2 Variants, 2 Orders, 2 OrderItems, 2 Payments and 2 Quotes are inserted;
+   - 2 accounts, 2 legacy Product rows, 2 Variants, 3 Orders, 3 OrderItems, 3 Payments and 2 Quotes are inserted;
    - one Variant has no Inventory row by design (a post-V6 drift case; V3 is not rerun);
    - one Product has populated image alt text and one OrderItem has a non-null image_url_snapshot;
    - one order has a voucher targeting link and usage row;
