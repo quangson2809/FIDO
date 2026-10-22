@@ -305,6 +305,7 @@ The following preparation artifacts are now committed on the P1 branch:
 - [Synthetic source fixture](../../backend/src/test/resources/refactor/phase-1-source-fixture.sql): INSERT-only records with synthetic IDs/contact values, including a deliberate missing-inventory row to exercise source drift detection.
 - [Preflight runbook](phase-1-preflight-runbook.md): describes safe execution on a disposable/sanitized database and interpretation of the outputs.
 - [Static artifact guard](../../backend/src/test/java/com/fido/persistence/Phase1PreflightArtifactTests.java): checks that preflight statements are SELECT-only and that the fixture is INSERT-only and covers the key legacy data gaps.
+- [Owner decision questionnaire](phase-1-owner-decision-questionnaire.md): 14 grouped decisions with recommended defaults covering identity/login, guest checkout, Product/attribute mapping, stock, archival retention, voucher/payment/order snapshots, addresses/shipping, idempotency and physical SQL rules.
 
 **Execution status:** these SQL files have not been run against MySQL in this task. The JUnit guard has been authored but has not been executed in CI here. The baseline backend run PASS applies only to the older baseline commit; it is not proof that the new artifacts compile or the fixture loads. A clean and populated MySQL rehearsal is still required.
 
