@@ -1,5 +1,8 @@
 # 12 — TBD, Deferred Work, Hard Blockers & Explicit Exclusions
 
+> **ERD v2 scope boundary (2026-10-22):** Existing feature/TBD statements were authored against the pre-refactor implementation. The target includes VOUCHERS but omits voucher product/category joins, usage ledger and checkout_quotes; it also omits payment/refund event tables, shipments/returns and inventory reservations. Do not implement those as target tables by implication. Record active source data and API dependencies as migration/retention gates.
+
+
 This file prevents invented business behavior. It must not be used to stop implementation for ordinary technical choices.
 
 ## 1. How to use this file
