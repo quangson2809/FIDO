@@ -1,6 +1,6 @@
 # 12 — TBD, Deferred Work, Hard Blockers & Explicit Exclusions
 
-> **ERD v2 scope boundary (2026-10-22):** Existing feature/TBD statements were authored against the pre-refactor implementation. The target includes VOUCHERS but omits voucher product/category joins, usage ledger and checkout_quotes; it also omits payment/refund event tables, shipments/returns and inventory reservations. Do not implement those as target tables by implication. Record active source data and API dependencies as migration/retention gates.
+> **ERD v2 / Clean Schema Reset boundary (2026-10-22):** Several entries below describe the legacy implementation/API, not the 31-table target. Disposable development/test rows and old IDs are not migrated or retained. Use legacy code only to identify runtime/API behavior that must be retained, explicitly deferred or removed. The target includes VOUCHERS but omits voucher product/category joins, usage ledger and checkout_quotes; it also omits payment/refund event tables, returns and inventory reservations. Do not recreate those structures by implication.
 
 
 This file prevents invented business behavior. It must not be used to stop implementation for ordinary technical choices.
@@ -15,30 +15,23 @@ Classify each unresolved point:
 
 ## 2. Current hard/deferred business gaps
 
-### Guest Order lookup — HARD BLOCK for final guest-lookup security only
+### Guest Order lookup — legacy API / target-contract decision OPEN
 
-`POST /api/v1/orders/lookup` is required, but token/OTP/secret, TTL, rate limit, masking and verification channel are not locked. Do not finalize a weak phone-only lookup. This does not block authenticated order APIs.
+The legacy API contract includes `POST /api/v1/orders/lookup`, but the target requires `orders.account_id` and contains no guest identity/session model. Decide explicitly whether this endpoint remains in scope for the target or is removed from the target API contract. If retained, its identity proof, TTL, rate limit, masking and verification channel must be specified; a phone-only lookup is not an acceptable default. Authenticated order APIs can proceed independently.
 
-### Voucher behavior — DEFERRED slice
+### Voucher behavior — target compatibility BLOCKED / explicit defer required
 
-Only `voucher_id` + `code` are locked. Still unresolved:
-- discount type/value;
-- effective dates;
-- minimum order;
-- product/category scope;
-- use limits;
-- stacking;
-- active/inactive lifecycle.
+The legacy source supports more voucher behavior than the target schema represents. The target has `VOUCHERS` and `ORDER_VOUCHER_SNAPSHOTS`, but no product/category scope joins, usage ledger or persisted checkout quotes. Unresolved runtime/API behavior includes discount formula/value, effective dates, minimum order, eligibility scope, usage limits, stacking, lifecycle, concurrent redemption and cancellation restoration.
 
-Do not add fields/tables/rules for these. Authenticated Cart and voucher-less Quote may proceed.
+Do not reintroduce tables absent from the approved ERD by implication. Before implementing voucher endpoints, explicitly approve the reduced target behavior or revise the ERD through the owner decision process. Voucher-less authenticated Cart/Quote work can proceed if the API contract permits it.
 
 ### Create Order dedupe — HARD BLOCK for retry guarantee only
 
-API #20 remains baseline, but request-token/dedupe behavior for retry/double-click is physical/application design TBD. Do not add a schema field merely because it is common. Other Order creation/state logic may proceed; do not claim retry-safe create until this is resolved.
+The legacy API #20 remains a compatibility reference, while the target ERD includes a unique `orders.idempotency_key`. The uniqueness constraint alone does not define request semantics. Freeze key origin/scope, payload binding, same-key replay, conflicting-payload response and transaction boundary before claiming retry-safe create. No historical key backfill is needed for Clean Schema Reset.
 
-### Guest cart — DEFERRED slice
+### Guest cart — legacy behavior not represented in target
 
-Logical Cart permits nullable account. Guest session key, TTL, persistence and login merge are not locked. Authenticated Cart may proceed.
+The **legacy** schema/API permits guest-cart behavior, but the target ERD makes `CARTS.account_id` required and defines no guest session/persistence model. Do not describe guest Cart as a nullable-account target feature. Explicitly retain, defer or remove guest-cart/API behavior in the target contract before attempting to implement it. Authenticated Cart can proceed under the target ownership model.
 
 ### Exchange-size automation — DEFERRED slice
 
