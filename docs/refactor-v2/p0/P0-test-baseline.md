@@ -1,7 +1,9 @@
 # P0 — Test and CI Baseline Report
 
-Audited remote ref: `demo1` at `22bd3d887cef3c077e714e5ec21e70ba89855d46`  
-Date: 2026-10-22  
+Audited remote ref: `demo1` at `22bd3d887cef3c077e714e5ec21e70ba89855d46`
+
+Date: 2026-10-22
+
 **Execution status: baseline CI FAILED; tests were executed.** Source-level existence is not counted as a passing test. The result below is from GitHub Actions run #39760829809 tied to the exact audited SHA.
 
 ## 1. Execution limits
