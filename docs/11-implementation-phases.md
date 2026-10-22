@@ -47,7 +47,7 @@ Scope:
 Do not add Notification, order timeline, after-sales case, unit_cost, voucher-rule fields, account_status, tracking or system settings.
 
 Exit:
-- schema/entity mapping reconciles with the 28-table baseline;
+- schema/entity mapping reconciles the 32-table V1–V6 source with the owner-confirmed 31-table target;
 - migration/mapping/constraint tests pass.
 
 ## Phase 2 — Identity, authentication, RBAC & audit foundation
