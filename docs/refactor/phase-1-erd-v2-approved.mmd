@@ -346,7 +346,6 @@ erDiagram
 
     SUPPLIERS o|--o{ GOODS_RECEIPTS : supplies
     ACCOUNTS ||--o{ GOODS_RECEIPTS : creates
-    ACCOUNTS o|--o{ GOODS_RECEIPTS : confirms
     GOODS_RECEIPTS ||--|{ GOODS_RECEIPT_ITEMS : contains
     PRODUCTS ||--o{ GOODS_RECEIPT_ITEMS : received_sku
 
