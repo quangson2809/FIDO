@@ -114,6 +114,8 @@ SchemaMappingTests checks table set, entity/table ownership, mapped column names
 
 ## 3. Candidate ERD v2 — design proposal, NOT FROZEN
 
+Candidate relationship diagram: [phase-1-erd-v2-candidate.mmd](phase-1-erd-v2-candidate.mmd). This is a proposal diagram, not approved DDL; it does not settle the blocked cardinality, inheritance, warehouse allocation or snapshot questions.
+
 ### 3.1 Product hierarchy proposal
 
 **Candidate:** retain one products table and add nullable parent_product_id self-FK. Root/common records have no parent; child/sellable records reference the shared Product. Do not hard-code two levels. If arbitrary depth is approved, the service must reject a reparent operation that puts a node under itself or any descendant inside the transaction. A simple FK and CHECK(parent_product_id <> product_id) prevent missing/direct-self references but cannot prevent longer cycles.
@@ -444,3 +446,115 @@ These are material business/data-contract decisions, not naming-only implementat
 P1 now has a source-backed inventory of the 32 application tables, current FK/dependency risks, a candidate Product/Attribute/Warehouse model, V1→V2 mapping, and a staged migration/recovery design.
 
 **ERD v2 is not frozen. P1 is PARTIAL, not PASS.** P2 must not run or ship a schema migration until material decisions D1–D15 are resolved to the extent required for the chosen target and the actual data profile is verified. No source migration, production table, or application business logic was altered in this phase.
+
+
+## Appendix A — constraint-name ledger from source migrations
+
+This appendix records names explicitly present in migration DDL. Where V5 declares an inline FK/UNIQUE/PK without a constraint name, this document intentionally does not guess a MySQL-generated physical name. Confirm actual names with metadata from the target database copy before cutover.
+
+### A.1 Named foreign keys from V1
+
+| Constraint | Relationship |
+|---|---|
+| fk_addresses_account_id | addresses.account_id → accounts.account_id |
+| fk_account_roles_account_id | account_roles.account_id → accounts.account_id |
+| fk_account_roles_role_id | account_roles.role_id → roles.role_id |
+| fk_role_permissions_role_id | role_permissions.role_id → roles.role_id |
+| fk_role_permissions_permission_id | role_permissions.permission_id → permissions.permission_id |
+| fk_categories_parent_category_id | categories.parent_category_id → categories.category_id |
+| fk_size_values_size_system_id | size_values.size_system_id → size_systems.size_system_id |
+| fk_products_category_id | products.category_id → categories.category_id |
+| fk_products_brand_id | products.brand_id → brands.brand_id |
+| fk_products_size_system_id | products.size_system_id → size_systems.size_system_id |
+| fk_product_images_product_id | product_images.product_id → products.product_id |
+| fk_product_variants_product_id | product_variants.product_id → products.product_id |
+| fk_product_variants_size_value_id | product_variants.size_value_id → size_values.size_value_id |
+| fk_product_variants_color_id | product_variants.color_id → colors.color_id |
+| fk_carts_account_id | carts.account_id → accounts.account_id |
+| fk_cart_items_cart_id | cart_items.cart_id → carts.cart_id |
+| fk_cart_items_variant_id | cart_items.variant_id → product_variants.variant_id |
+| fk_orders_customer_account_id | orders.customer_account_id → accounts.account_id |
+| fk_orders_voucher_id | orders.voucher_id → vouchers.voucher_id |
+| fk_order_items_order_id | order_items.order_id → orders.order_id |
+| fk_order_items_variant_id | order_items.variant_id → product_variants.variant_id |
+| fk_payments_order_id | payments.order_id → orders.order_id |
+| fk_payments_collected_by_account_id | payments.collected_by_account_id → accounts.account_id |
+| fk_payments_refunded_by_account_id | payments.refunded_by_account_id → accounts.account_id |
+| fk_shipping_infos_order_id | shipping_infos.order_id → orders.order_id |
+| fk_goods_receipts_supplier_id | goods_receipts.supplier_id → suppliers.supplier_id |
+| fk_goods_receipts_created_by_account_id | goods_receipts.created_by_account_id → accounts.account_id |
+| fk_goods_receipts_confirmed_by_account_id | goods_receipts.confirmed_by_account_id → accounts.account_id |
+| fk_goods_receipt_items_receipt_id | goods_receipt_items.receipt_id → goods_receipts.receipt_id |
+| fk_goods_receipt_items_variant_id | goods_receipt_items.variant_id → product_variants.variant_id |
+| fk_inventories_variant_id | inventories.variant_id → product_variants.variant_id |
+| fk_inventory_transactions_variant_id | inventory_transactions.variant_id → product_variants.variant_id |
+| fk_inventory_transactions_order_id | inventory_transactions.order_id → orders.order_id |
+| fk_inventory_transactions_goods_receipt_id | inventory_transactions.goods_receipt_id → goods_receipts.receipt_id |
+| fk_inventory_transactions_actor_account_id | inventory_transactions.actor_account_id → accounts.account_id |
+| fk_audit_logs_actor_account_id | audit_logs.actor_account_id → accounts.account_id |
+| fk_content_pages_updated_by_account_id | content_pages.updated_by_account_id → accounts.account_id |
+
+V5 also declares inline foreign keys for voucher_products (voucher/product), voucher_categories (voucher/category), voucher_usages (order/voucher/account), and checkout_quotes (account/order). Their migration statements do not provide stable explicit constraint names.
+
+### A.2 Named unique constraints from V1–V4
+
+| Constraint | Columns |
+|---|---|
+| uq_roles_1 | roles(code) |
+| uq_permissions_1 | permissions(code) |
+| uq_brands_1 | brands(name) |
+| uq_size_systems_1 | size_systems(code) |
+| uq_size_values_1 | size_values(size_system_id, code) |
+| uq_colors_1 | colors(code) |
+| uq_product_variants_1 | product_variants(product_id, size_value_id, color_id) |
+| uq_product_variants_2 | product_variants(sku) |
+| uq_cart_items_1 | cart_items(cart_id, variant_id) |
+| uq_vouchers_1 | vouchers(code) |
+| uq_orders_1 | orders(order_code) |
+| uq_goods_receipts_1 | goods_receipts(receipt_code) |
+| uq_goods_receipt_items_1 | goods_receipt_items(receipt_id, variant_id) |
+| uq_content_pages_1 | content_pages(page_code) |
+| uq_accounts_phone | accounts(phone), added by V2 |
+| uq_product_images_product_sort_order | product_images(product_id, sort_order), added by V4 |
+
+V1–V4 additionally use primary keys as declared per table. V5 defines the composite primary keys on voucher_products and voucher_categories; voucher_usages.order_id and checkout_quotes.quote_id are primary keys; checkout_quotes.order_id is also UNIQUE. V5 leaves those inline constraint names unspecified.
+
+### A.3 Named CHECK constraints from V1/V4
+
+| Constraint | Expression or rule |
+|---|---|
+| ck_products_base_price | products.base_price >= 0 |
+| ck_product_variants_override_price | product_variants.override_price >= 0 |
+| ck_cart_items_quantity | cart_items.quantity > 0 |
+| ck_orders_subtotal_snapshot | orders.subtotal_snapshot >= 0 |
+| ck_orders_discount_snapshot | orders.discount_snapshot >= 0 |
+| ck_orders_shipping_fee_snapshot | orders.shipping_fee_snapshot >= 0 |
+| ck_orders_total_snapshot | orders.total_snapshot >= 0 |
+| ck_orders_rule_1 | order_status in PENDING, CONFIRMED, PREPARING, SHIPPING, COMPLETED, DELIVERY_FAILED, CANCELLED, RETURNED |
+| ck_orders_rule_2 | voucher_id is NULL or customer_account_id is not NULL |
+| ck_order_items_unit_price_snapshot | order_items.unit_price_snapshot >= 0 |
+| ck_order_items_quantity | order_items.quantity > 0 |
+| ck_order_items_line_total_snapshot | order_items.line_total_snapshot >= 0 |
+| ck_payments_amount_due | payments.amount_due >= 0 |
+| ck_payments_amount_received | payments.amount_received >= 0 |
+| ck_payments_amount_refunded | payments.amount_refunded >= 0 |
+| ck_payments_rule_1 | payment_status in UNPAID, PAID, REFUNDED |
+| ck_goods_receipts_rule_1 | receipt_status in DRAFT, CONFIRMED, CANCELLED |
+| ck_goods_receipt_items_quantity | goods_receipt_items.quantity > 0 |
+| ck_inventories_available_quantity | inventories.available_quantity >= 0 |
+| ck_inventory_transactions_quantity_delta | inventory_transactions.quantity_delta <> 0 |
+| ck_product_images_sort_order | product_images.sort_order >= 0, added by V4 |
+
+### A.4 Explicit non-unique indexes in migrations
+
+| Migration | Index | Columns |
+|---|---|---|
+| V3 | idx_goods_receipts_supplier_date | goods_receipts(supplier_id, receipt_date) |
+| V3 | idx_goods_receipts_status | goods_receipts(receipt_status) |
+| V3 | idx_goods_receipt_items_variant | goods_receipt_items(variant_id) |
+| V3 | idx_inventory_transactions_variant_created | inventory_transactions(variant_id, created_at) |
+| V3 | idx_inventory_transactions_order | inventory_transactions(order_id) |
+| V3 | idx_inventory_transactions_receipt | inventory_transactions(goods_receipt_id) |
+| V5 | ix_voucher_usage_count | voucher_usages(voucher_id, restored, account_id) |
+
+There is no V1–V6 migration named for a standalone warehouse or Product-Attribute index because those candidate tables do not exist in the current schema. Proposed V2 indexes must be specified only after access patterns/cardinality are approved and should be justified by query plans, not added speculatively.
