@@ -53,7 +53,7 @@ The ERD supplies SQL type families such as BIGINT, VARCHAR, TEXT, DECIMAL, INT, 
 - PRODUCTS.name, PRODUCTS.slug and PRODUCTS.description may be NULL for a child if inherited; PRODUCTS.selling_price may be NULL on a child to mean inherited price.
 - PRODUCTS.cost_price is nullable.
 - PRODUCT_ATTRIBUTE_VALUES.option_id is shown as an optional relationship to ATTRIBUTE_OPTIONS. Whether each typed value is nullable and whether exactly one of option_id/text_value/number_value/boolean_value must be set still requires a constraint contract.
-- Root-vs-child nullability for PRODUCTS.parent_product_id, optional category/brand associations, optional voucher/account links, draft GOODS_RECEIPTS.confirmed_by, optional transaction source links and optional timestamps must be translated from the ERD relationships into physical NULL/NOT NULL explicitly before DDL.
+- Root-vs-child nullability for PRODUCTS.parent_product_id, optional category/brand associations, optional voucher links, draft GOODS_RECEIPTS.confirmed_by, optional transaction source links and optional timestamps must be translated from the ERD relationships into physical NULL/NOT NULL explicitly before DDL. The diagram marks each CARTS and ORDERS row as belonging to one account; reconcile this with the legacy schema's nullable guest-cart/guest-order references.
 - A column not listed in an explicit nullability comment is **not** deemed NOT NULL just because it has a value-like name.
 
 ## 3. Key and uniqueness constraints explicitly shown
@@ -106,6 +106,12 @@ Do not silently add a unique key on ACCOUNTS.email, ACCOUNTS.phone, or PRODUCTS.
 | PHY-18 | COD aggregate payment | Current payments has due/received/refunded amounts and collection/refund attribution; target PAYMENTS is a smaller one-row aggregate. Define a lossless archive/mapping for all source facts. | BLOCKER |
 | PHY-19 | Source-only operational/audit data | Disposition order recipient_email/notes/reasons/terminal timestamps, shipping delivery_mode, supplier address/note, receipt date/note and audit description. | BLOCKER |
 | PHY-20 | Target-only warehouse | Provision and map a deliberate initial warehouse; existing source has no WAREHOUSES table. | OPEN |
+| PHY-21 | Guest carts/orders | Target relationships require an account for CARTS and ORDERS, while source carts and orders allow NULL account IDs and guest intent exists in the current API. Decide a safe retention/compatibility treatment without adding unapproved target columns/tables. | BLOCKER |
+| PHY-22 | Order fields with no direct source counterpart | ORDERS.currency, placed_at and ORDER_ITEMS.discount_amount have no same-purpose source column. Approve mapping/default semantics and validate money totals; do not invent line-discount allocations or a currency silently. | BLOCKER |
+| PHY-23 | Address recipient/name structure | Source addresses are free-form address_text and orders store recipient phone/address; no reliable recipient name/province/district/ward source is established. Retain raw text and disposition other fields without fabricated decomposition. | BLOCKER |
+| PHY-24 | Shipping history | Target SHIPPING_INFOS contains recipient_name, tracking_number, shipping_status, shipped_at and delivered_at; source has delivery_mode/carrier_name only. Map only source-backed values and retain all source facts that lack target columns. | BLOCKER |
+| PHY-25 | Voucher snapshot history | Source stores a voucher ID on the order and aggregate order discount, not a historic code/type/value snapshot. Do not reconstruct a historical snapshot from current VOUCHERS values without an approved policy. | BLOCKER |
+| PHY-26 | Order line discount allocation | Legacy discounts are stored at order-header level, while target ORDER_ITEMS adds a per-line discount_amount. Define and test an allocation policy or preserve the source-level truth separately; never invent line discount amounts. | BLOCKER |
 
 ## 5. Approval and exit gate
 
