@@ -6,38 +6,40 @@
 - **Baseline SHA:** f931602c86fdf5a59b487d6edd77331b7d64333a
 - **Documentation branch:** docs/phase-1-erd-v2-freeze
 - **Target schema confirmation:** 2026-10-22
-- **Scope:** record the 31-table target model, inventory the existing V1–V6 migration schema, specify source-to-target mapping and the evidence required before a safe data migration.
-- **Excluded:** modifying V1–V6, implementing migrations, writing to a live database, dropping legacy columns/tables, silently expanding the approved target model, changing public API behavior, or merging this documentation branch.
+- **Scope:** freeze the owner-confirmed 31-table target model and record the approved **Clean Schema Reset** strategy for development/test environments. The existing V1–V6 chain is documented only as a legacy comparison, not as a dataset to migrate.
+- **Owner decision (2026-10-22):** design for the new target business rules, discard obsolete development/test data, and reseed from a clean database. Do not build source-to-target data migration, historical crosswalk, or archive machinery solely to preserve test fixtures.
+- **Excluded:** destructive changes to production/shared environments, any database reset executed from this documentation-only PR, unapproved target schema expansion, unreviewed public API changes, and merging this branch.
 
-> Source of truth: the exact 31-table ERD most recently supplied by the project owner. The earlier 38-table draft and its assumptions are superseded. The current V1–V6 schema inventory below describes the migration source only, not the target schema. Do not re-add a target table or column that is absent from the owner-confirmed ERD without an explicit owner change.
+> Source of truth: the exact 31-table ERD most recently supplied by the project owner. The earlier 38-table draft is superseded. V1–V6 are legacy implementation evidence only. Do not re-add a target table or column absent from the owner-confirmed ERD without an explicit owner change.
 
 ## 1. Execution summary and evidence boundary
 
 ### 1.1 Work performed
 
-1. Replaced the former 38-table target diagram with the exact 31-table logical ERD supplied by the owner.
-2. Kept the existing V1–V6 migration inventory and its constraint-name appendix as baseline evidence.
-3. Reconciled the target table count, product hierarchy, order/payment/shipping scope, inventory semantics, voucher scope and migration blockers in this contract.
-4. Marked existing architecture/feature documents that describe the pre-refactor implementation as baseline-only where their physical model differs from the approved ERD.
-5. Added docs/refactor/phase-1-physical-data-dictionary.md, read-only backend/src/test/resources/refactor/phase-1-source-preflight.sql, synthetic backend/src/test/resources/refactor/phase-1-source-fixture.sql, and docs/refactor/phase-1-preflight-runbook.md.
-6. Added a static JUnit guard at backend/src/test/java/com/fido/persistence/Phase1PreflightArtifactTests.java. It checks SQL statement classes and fixture coverage; it does not execute SQL.
-7. Did not change Java application code, API DTOs, Flyway V1–V6, live data or branch merge state.
+1. Replaced the previous 38-table draft with the exact owner-confirmed 31-table ERD.
+2. Kept the V1–V6 schema inventory as a reference for understanding the pre-refactor implementation, not as a data-migration source.
+3. Recorded the owner's Clean Schema Reset decision for disposable development/test databases.
+4. Updated physical schema questions to focus on the new target's runtime/business contracts rather than preserving legacy test rows.
+5. Removed the migration-preservation package (source preflight SQL, synthetic legacy fixture, preflight runbook and their static JUnit guard) because it is not needed for a clean reset.
+6. No application code, Flyway file, database, or live data was changed or reset by this documentation update.
 
 ### 1.2 Verified facts versus unavailable evidence
 
 | Item | Result | Evidence boundary |
 |---|---|---|
-| Owner-confirmed target ERD | **31 logical tables** | docs/refactor/phase-1-erd-v2-approved.mmd and the owner's exact schema message |
-| Existing V1–V6 migration DDL | **32 application tables** | Source migrations; excludes Flyway metadata |
-| Current schema implementation | Legacy pre-refactor schema | Existing entities, migrations and tests still reference ProductVariant/size/color and V1–V6 fields |
-| Baseline backend CI | **PASS** | Workflow run 39631789377 on baseline f931602c86fdf5a59b487d6edd77331b7d64333a; applies only to that baseline |
-| New ERD documentation commit CI | **NOT VERIFIED** | A pending Vercel status is not backend schema/test evidence; do not claim the new documentation commit passed backend CI |
-| Live DB schema and data profile | **NOT INSPECTED** | No verified live table counts, duplicate scan, orphan scan, row counts or data-quality results are available here |
-| Populated-database migration rehearsal | **NOT RUN** | Requires an isolated/sanitized database copy and explicit reconciliation evidence |
+| Owner-confirmed target ERD | **31 logical tables** | Approved diagram and owner's explicit schema |
+| Existing V1–V6 migration DDL | **32 application tables** | Source migration files; excludes Flyway metadata |
+| Owner's reset strategy | **CONFIRMED** | Clean Schema Reset for disposable development/test data; reseed target data from scratch |
+| Target implementation aligned to ERD | **NOT IMPLEMENTED by this docs PR** | Entities, repositories, services, API contracts and DDL still need implementation work |
+| New clean-database install | **NOT VERIFIED** | No replacement baseline or target DDL has been created/run yet |
+| Database environments reset | **NOT RUN** | No connection or destructive DB operation was performed |
+| Production/shared data deletion | **NOT APPROVED** | The decision applies to development/test data only; any non-disposable environment needs separate explicit authorization |
 
-### 1.3 The 28-versus-32 current-schema discrepancy
+The reset decision makes legacy row counts, populated-source migration rehearsal and historical data retention non-gates for obsolete development fixtures. It does **not** settle the new application's business/API contracts, physical SQL rules, authentication identity constraints, or required seed data.
 
-The original migration file name V1__baseline_28_tables.sql and several pre-refactor documents describe the 28-table V1 baseline. The complete source migration chain V1–V6 defines 32 application tables because V5 adds voucher_products, voucher_categories, voucher_usages and checkout_quotes. Neither number is the approved target count: ERD v2 contains 31 target tables.
+### 1.3 Current-schema count clarification
+
+The original file name `V1__baseline_28_tables.sql` describes the V1 baseline. V1–V6 currently define 32 application tables because V5 adds `voucher_products`, `voucher_categories`, `voucher_usages` and `checkout_quotes`. That count describes the old code/schema only; the target remains the owner's 31-table ERD.
 
 ## 2. Current database inventory — migration DDL V1–V6
 
@@ -198,116 +200,117 @@ The target scope is frozen to the exact diagram in [phase-1-erd-v2-approved.mmd]
 - Build the physical data dictionary for every target table before implementation: actual SQL type, length, precision/scale, nullability, default, PK/FK/UK/CHECK, index, FK delete/update action, timezone policy and allowed status literals. The ERD's logical annotations do not fully specify these.
 - Define and test money non-negativity/rounding, positive quantities, inventory non-negativity/version updates, parent-child cycles, single-parent inheritance behavior, SKU uniqueness, attribute value type compatibility, primary-image uniqueness/order, address snapshot immutability, idempotency uniqueness and audit immutability. This list is a contract-completion checklist, not authorization to change the logical target table set.
 
-## 5. Current source V1–V6 to target mapping
+## 5. Owner-approved strategy — Clean Schema Reset
 
-| Current source | Target mapping | Gate / no-invention rule |
-|---|---|---|
-| accounts | ACCOUNTS; account_id → id; preserve credentials, status where sourced, timestamps | Profile full_name source. Reconcile current unique phone constraint with the target ERD, which does not mark phone unique. |
-| addresses | ADDRESSES; account_id FK remap; address_text → address_line | Do not fabricate recipient/province/district/ward values. |
-| roles, permissions, account_roles, role_permissions | Same-named target entities with renamed IDs/columns | Preserve codes/assignments; test all remapped FKs. |
-| categories, brands | Same-named target entities; remap IDs and retain slugs where source-backed | Check slug collisions and exact source availability before applying target unique constraints. |
-| products | Parent PRODUCTS rows | Map trusted fields; generate/resolve missing slug only under a deterministic approved rule. |
-| product_variants | Newly allocated child PRODUCTS rows | Keep a crosswalk old variant_id → new child product id; never reuse variant IDs as product IDs. |
-| size_systems, size_values, colors and product fields such as gender/season/style/material_care | ATTRIBUTE_TYPES, ATTRIBUTES, ATTRIBUTE_OPTIONS, PRODUCT_ATTRIBUTE_VALUES | Preserve source identity/value crosswalks and typed meaning; no name-only matching and no fabricated attribute data. |
-| product_images | PRODUCT_IMAGES | Preserve URL/order. Derive is_primary only under an approved deterministic rule; source alt_text requires retention/archive disposition. |
-| carts, cart_items | CARTS, CART_ITEMS | Map old variant_id to child product_id; resolve account/guest rows according to physical nullability and approved identity contract. |
-| vouchers and voucher_products/voucher_categories/voucher_usages | VOUCHERS and ORDER_VOUCHER_SNAPSHOTS where source facts match | Target has no scope joins or usage ledger; active scope/usage requires an approved archive/retirement mapping. |
-| checkout_quotes | No direct target table | Drain/expire or preserve active quote state with an approved cutover plan; do not treat quote ID/fingerprint as the order idempotency key. |
-| orders | ORDERS and ORDER_ADDRESSES | Preserve historical totals/status/recipient data; move addresses to snapshots. Map idempotency_key only under an approved rule. Retain any source-only fields. |
-| order_items | ORDER_ITEMS | Variant crosswalk → child product; preserve SKU/name/quantity/prices. Encode legacy size/color only under an agreed attribute_snapshot format. image_url_snapshot has no target equivalent and requires retention disposition. |
-| payments aggregate | PAYMENTS | Define how source amount_due/received/status maps to target amount/payment_status/method/currency. Refund aggregate and refund actor/time lack target equivalents; preserve/archive them. |
-| shipping_infos | SHIPPING_INFOS | Map carrier/recipient/status/times only when source-backed. Do not invent a tracking number. |
-| suppliers | SUPPLIERS | Name/contact/status mapping; target code needs an approved deterministic generation/crosswalk. Source address/note require disposition if present. |
-| goods_receipts, goods_receipt_items | GOODS_RECEIPTS, GOODS_RECEIPT_ITEMS | Map receipt IDs/actors/status/quantities. receipt_date/note have no target columns; unit_cost is not sourced by the current item schema. |
-| inventories | INVENTORIES under a deliberately assigned warehouse | Do not equate available_quantity with quantity_on_hand without stock-semantics sign-off and reconciliation. Target has no reserved quantity. |
-| no source warehouse table | WAREHOUSES | Define the initial warehouse provisioning/mapping; do not invent multiple warehouses. |
-| inventory_transactions | INVENTORY_TRANSACTIONS | Keep source delta/type/actor/time. Add an approved unique idempotency-key mapping and line-link crosswalk; don't invent quantity-after history. |
-| audit_logs | AUDIT_LOGS | Map actor/action/entity/time where source-backed. Free-form description is not equivalent to before/after JSON. |
-| content_pages | CONTENT_PAGES | page_code → slug only when collision-free; preserve updater attribution. |
+### 5.1 Decision
 
-## 6. P2 migration and recovery plan
+The project owner selected **Clean Schema Reset** on 2026-10-22:
 
-1. **Profile a safe, sanitized database copy.** Capture exact Flyway version/DDL, row counts for all 32 current tables, null/duplicate distributions, orphan FKs, account phone collisions, SKU/category/brand slug conflicts, missing Products/images, order snapshots, active checkout quotes, voucher usage/scope rows, payment aggregates, supplier/receipt-only fields and inventory balances.
-2. **Build complete source-to-target crosswalks.** Include Account/Role/Permission, Category/Brand/Product, Variant→child Product, size/color→attribute/option, CartItem/OrderItem/receipt item, address, supplier, warehouse and ledger references. Report zero and multiple candidates; never pick an arbitrary match.
-3. **Publish a data-disposition ledger before DDL.** Every populated source field without a target equivalent must be marked transform, retain/archive or owner-approved retirement, with row counts and evidence. Include order image snapshots, payment/refund aggregates, voucher targeting/usage, checkout quotes, address fragments, receipt date/note, supplier source-only fields, audit descriptions and order-only fields.
-4. **Implement an additive Flyway expansion after V6.** Keep V1–V6 immutable. Build the 31-table target alongside the source schema and temporary crosswalk/archive structures only after physical DDL and disposition rules are approved. Do not drop legacy columns or tables in the expansion/backfill migration.
-5. **Backfill parent/child Products and attributes.** Assign new IDs to child Products, map variant SKU/pricing/status under approved rules and verify one-to-one crosswalk completeness and effective-price equivalence.
-6. **Backfill transactional facts and stock in dependency order.** Reconcile addresses, order lines/snapshots, COD amounts and collection attribution, shipping info, receipt quantities and inventory movements. Every aggregate or missing source field gets an explicit treatment; never synthesize payment, refund, shipment, return or reservation events.
-7. **Verify from both empty and populated fixtures.** Run MySQL 8.4 migration/mapping/constraint tests and H2 tests where supported. Compare row counts, IDs/crosswalks, FKs, unique conflicts, Product hierarchy/cycles, attribute types/options, prices, image ordering, order totals/snapshots, payment aggregate reconciliation, inventory balances/ledger and audit retention.
-8. **Rehearse cutover and recovery on an isolated environment.** Define write freeze/dual-write or compatibility window, active checkout drain, backup/restore, rollback point, reconciliation acceptance and API release ordering. Keep the old data intact until the release passes.
-9. **Contract legacy objects only in a later reviewed migration.** Drop old Variant/size/color, voucher join/usage, quote and source-only columns only after no old code path writes them and the owner-approved data-retention ledger is complete.
+- Build the physical schema from the new owner-confirmed 31-table ERD and the new business/API contract.
+- Treat obsolete development and test rows as disposable; rebuild seed data against the target schema.
+- Do not implement a populated-database migration, source ID crosswalks, row-by-row backfills, legacy archive, dual-write/cutover machinery, or reconciliation solely to retain development fixtures.
+- The existing V1–V6 inventory remains useful only to identify code that must change or be removed.
 
-### 6.1 Recovery boundary
+### 5.2 Safety boundary
 
-Before backfill, recovery means discard/recreate the isolated target schema and rerun after correcting the mapping. After traffic is switched, recovery also requires replay/reconciliation of writes made after cutover. A Flyway rollback script alone is not proof of recoverability. Never run a destructive migration on production as a substitute for rehearsal.
+This decision applies only to explicitly disposable **local/development/test** databases. It does not authorize dropping production, shared integration, staging, or any environment containing user/business data. No database has been reset by this documentation change.
 
-## 7. Dependency map and verification scope
+Before a reset is executed, the implementation task must identify the exact database/profile and verify that it is disposable. Do not run a destructive reset merely because the schema history differs. If any environment's data must be retained, it is outside this Clean Schema Reset path and requires a separately approved plan.
 
-| Area | Target change | Required verification |
-|---|---|---|
-| account/RBAC | IDs and account/address shape | login/uniqueness rule, roles/permissions, address snapshot, FK remap |
-| product/catalog | Variant becomes child Product; typed attributes and image primary flag | parent/child inheritance, SKU/price preservation, options/type integrity, cycle prevention, image ordering |
-| cart/checkout | cart lines point to Product; quote table absent | ID crosswalk, quantity rules, concurrency and quote cutover strategy |
-| voucher/order | reduced voucher persistence, order snapshots and idempotency column | source usage/scope disposition, totals, duplicate-request rules, address/attribute snapshot consistency |
-| payment/shipping | 1:1 aggregate COD payment and optional single shipping-info row | payment aggregate reconciliation, collection attribution, no fictitious refund/shipment events |
-| procurement/inventory | receipt items use Product; warehouse composite inventory | opening stock semantics, warehouse mapping, immutable ledger/idempotency, concurrency/no negative stock |
-| audit/content | revised audit JSON and page slug/updater fields | source-only descriptions, attribution and collision-free page slugs |
-| frontend/API | persistence target changes do not automatically approve a public contract change | no silent renaming of variant IDs/DTOs/routes; use an explicit compatibility plan |
+### 5.3 Flyway strategy for a clean target install
 
-Required verification includes clean migration, populated-fixture migration, SchemaMappingTests, database constraint tests, Cart/Checkout/Order tests, receipt/Inventory transaction and concurrency tests, RBAC tests, report checks and frontend contract tests wherever an approved API change is made. Any expected behavior unsupported by the 31-table ERD must be classified as a business/API decision or a migration blocker, not implemented by adding unapproved schema.
+The implementation phase should establish a fresh target-first baseline for the 31-table schema rather than attempting to upgrade or backfill old development data.
 
-## 8. Decision and blocker log after owner confirmation
+- Review all current V1–V6 references and the target implementation before choosing the final migration file layout.
+- If the branch replaces the old V1–V6 migration chain with a new clean baseline, existing disposable databases that already recorded V1–V6 must be recreated; applying changed historical files to an old Flyway history is not a supported upgrade strategy.
+- Do not modify already-used migration history on a shared/deployed environment. Such an environment must not be treated as a clean-reset target without separate authorization.
+- Validate the target baseline by creating an empty database from scratch and applying the target migrations in order. Populated-source migration tests are not required for this decision.
 
-| ID | Decision / unresolved item | State |
-|---|---|---|
-| D1 | The exact owner-supplied target ERD is the sole target structure for this refactor. | **FROZEN — 31 TABLES** |
-| D2 | The earlier 38-table draft is superseded; do not reintroduce its payment/refund transaction, shipment event, return or inventory reservation tables. | **SUPERSEDED** |
-| D3 | ProductVariant/size/color is not part of target schema; old Variant IDs map through a crosswalk to newly allocated child Product IDs. | **REQUIRED INVARIANT** |
-| D4 | ACCOUNTS.phone/email uniqueness, physical nullable definitions and login lookup constraints are not fully specified by the target ERD. | **PHYSICAL CONTRACT GATE** |
-| D5 | Product inheritance is stated for child name/slug/description/selling_price. Other nullability, attribute typed-value exclusivity and status rules need a data dictionary/tests. | **CONTRACT COMPLETION REQUIRED** |
-| D6 | Target stock uses quantity_on_hand with warehouse/product key and no reservation table/quantity_reserved. Source available_quantity semantics require reconciliation. | **MIGRATION GATE** |
-| D7 | The target omits source image snapshots, voucher scope/usage, checkout quotes, payment/refund aggregates, source-only address/order/receipt/supplier/audit fields and other legacy facts. | **DATA RETENTION GATE** |
-| D8 | Unique order/inventory idempotency keys are present in the target, but source-row backfill and runtime semantics need explicit rules. | **PHYSICAL + API GATE** |
-| D9 | Current V1–V6 migrations must remain immutable; new target migration must be additive and rehearsed from both clean and populated DB fixtures. | **REQUIRED RELEASE GATE** |
-| D10 | Live source data profile and populated migration rehearsal are not available as verified evidence here. | **NOT RUN** |
+### 5.4 Seed strategy
 
-## 9. P1 exit checklist
+Keep mandatory system/reference seeds separate from illustrative demo data.
 
-| Criterion | State | Evidence |
-|---|---|---|
-| Owner-confirmed target scope recorded | **PASS** | Exact 31-table owner-supplied ERD committed in phase-1-erd-v2-approved.mmd |
-| Earlier draft corrected | **PASS** | The old 38-table model and its assumptions are removed from the canonical target diagram/contract |
-| Current source schema inventory retained | **PASS for source documentation** | V1–V6 current migration inventory retained separately from the target |
-| Target mapping described | **PARTIAL** | Mapping is explicit, but source-only data disposition and populated data profiles remain open |
-| Physical DDL dictionary complete | **PARTIAL** | Nullability, defaults, SQL lengths/types/precision, FK actions, checks, indexes and status literals are not fully specified by the logical ERD |
-| Empty + populated migration tests | **NOT RUN** | Requires implementation and an isolated sanitized fixture |
-| Production/live data reconciled | **NOT RUN** | No live database profile or cutover evidence is claimed |
-| P1 documentation branch backend CI | **NOT VERIFIED** | Baseline CI pass does not imply a run for the current documentation head |
+- **Required system seed:** only rows required for the application to initialize and enforce approved RBAC/business rules, such as required roles/permissions and any owner-approved reference values.
+- **Development/demo seed:** representative accounts, catalog, inventory, vouchers, carts and orders for UI/API testing; load only in an explicitly selected development/test profile or documented test fixture.
+- Do not place reusable plaintext passwords, personal information, production secrets or demo-only records in a production migration.
+- Seed IDs/codes must be deterministic where tests depend on them; seed operations must be safe for a fresh database and tested alongside constraints.
 
-## 10. Conditions before P2 implementation/cutover
+The exact seed rows and initial admin/bootstrap mechanism remain implementation decisions and must be documented before code is merged.
 
-1. Preserve the exact 31-table target ERD. Do not expand it to 38 tables or reintroduce columns/tables from the superseded draft without owner approval.
-2. Review and complete docs/refactor/phase-1-physical-data-dictionary.md without contradicting the owner-supplied logical scope. Resolve phone/login behavior and all PHY-01–PHY-26 entries relevant to source rows before target DDL.
-3. Approve a row/field-level transform/archive/retire disposition for every source-only fact, especially image snapshots, voucher usages/scopes, checkout quotes, payment refund aggregates and audit descriptions.
-4. Profile a sanitized current database and build complete ID crosswalks; do not infer unseen data from schema alone.
-5. Validate source stock semantics against target quantity_on_hand; the existing available_quantity must not be copied mechanically.
-6. Keep V1–V6 immutable, implement new migration work additively, and prove clean-install plus populated-fixture migration and recovery before any production cutover.
-7. Do not make API/DTO changes merely because persistence IDs change. Define and test backward compatibility/cutover separately.
+## 6. Remaining target-business decisions
 
-**P1 conclusion:** The target table set is now frozen at 31 tables and documented against the owner's exact schema. P1 remains PARTIAL: the diagram alone does not settle physical SQL details, legacy data retention, source/target identity crosswalks or populated-data reconciliation. No live/destructive migration has been run.
+Clean Schema Reset removes legacy-data preservation questions; it does not authorize incompatible or ambiguous runtime behavior. Resolve these matters against the new schema before implementation:
 
-## 11. Follow-on preflight package and verification boundary
+1. **Account identity:** the ERD does not mark `ACCOUNTS.phone` or `email` unique, but the current application uses phone login. Decide the physical uniqueness rule and login contract; never allow ambiguous account lookup.
+2. **Guest behavior:** the target ownership model has no guest/session identity table. Decide whether new persisted carts/orders require authentication or whether the target ERD/API must be revised to support guest checkout.
+3. **Parent/child Product and attributes:** define the supported attribute codes/types/options, which attributes distinguish child Products, and validation for parent/child inheritance and cycles.
+4. **Voucher/checkout behavior:** the target omits voucher scope join tables, a usage ledger and `checkout_quotes`. Define the supported voucher capability and confirm checkout/API behavior can work without persistence omitted from the target.
+5. **Order money contract:** define line `discount_amount`, order-level discounts, currency and placement time for new orders. Do not introduce a made-up historical allocation; historical rows will not be carried over by this reset.
+6. **Payment/shipping contract:** define target statuses, whether payment methods are limited to COD, and how a new order's `PAYMENTS`, `ORDER_ADDRESSES` and `SHIPPING_INFOS` are created/updated.
+7. **Physical SQL:** approve nullability, VARCHAR lengths, DECIMAL precision/scale, timestamp/time-zone policy, defaults, CHECK constraints, useful indexes and foreign-key delete behavior. The ERD alone does not specify all physical details.
+8. **Initial seed:** list mandatory roles/permissions, attribute types/options, default warehouse (if required), and the development-only demo fixture. Keep production/bootstrap account creation secure.
 
-The following preparation artifacts are now committed on the P1 branch:
+The revised questionnaire narrows to these target-business and physical-schema decisions. Legacy-only questions about preserving old phone duplicates, source inventory balances, historical snapshots/refunds, source-only fields and old idempotency values are no longer migration blockers for disposable dev/test data.
 
-- [Physical data dictionary](phase-1-physical-data-dictionary.md): enumerates all 31 target tables and their listed columns; the exact logical table set is frozen, but physical details and data-retention blockers remain open.
-- [Read-only source preflight SQL](../../backend/src/test/resources/refactor/phase-1-source-preflight.sql): verifies source table inventory, exact row counts and data-quality signals for identity, Product/Variant crosswalks, images, orders, payments, shipping, receiving, stock ledger, vouchers, quotes and audit data.
-- [Synthetic source fixture](../../backend/src/test/resources/refactor/phase-1-source-fixture.sql): INSERT-only records with synthetic IDs/contact values, including a deliberate missing-inventory row to exercise source drift detection.
-- [Preflight runbook](phase-1-preflight-runbook.md): describes safe execution on a disposable/sanitized database and interpretation of the outputs.
-- [Static artifact guard](../../backend/src/test/java/com/fido/persistence/Phase1PreflightArtifactTests.java): checks that preflight statements are SELECT-only and that the fixture is INSERT-only and covers the key legacy data gaps.
-- [Owner decision questionnaire](phase-1-owner-decision-questionnaire.md): 14 grouped decisions with recommended defaults covering identity/login, guest checkout, Product/attribute mapping, stock, archival retention, voucher/payment/order snapshots, addresses/shipping, idempotency and physical SQL rules.
+## 7. Implementation and verification gates
 
-**Execution status:** these SQL files have not been run against MySQL in this task. The JUnit guard has been authored but has not been executed in CI here. The baseline backend run PASS applies only to the older baseline commit; it is not proof that the new artifacts compile or the fixture loads. A clean and populated MySQL rehearsal is still required.
+### P1 — Logical schema freeze
+
+- Preserve the exact 31-table owner-confirmed ERD and its relationships.
+- Complete the active physical decisions above and update the data dictionary.
+- Freeze public API/business contract changes before implementing the new schema.
+
+### P2 — Clean target implementation
+
+- Replace legacy entity/repository assumptions with the target model: one `PRODUCTS` parent/child hierarchy, typed attributes, target inventory keys, and the approved order/payment/shipping persistence shape.
+- Implement fresh target DDL and minimum required system seeds; load demo fixtures separately for development/test.
+- Do not retain unused legacy tables or columns merely to keep old tests passing. Update or remove tests that assert superseded behavior, while preserving tests for still-approved business requirements.
+- Reconcile frontend DTO/API callers with the new contract. A schema reset alone does not make existing Java/TypeScript code compatible.
+
+### P3 — Acceptance
+
+Required evidence for release:
+
+- Create a brand-new empty MySQL database and apply every target migration successfully.
+- Assert exactly the approved target application-table set; Flyway metadata tables are not application tables.
+- Verify PK/FK/UK/CHECK constraints, status transitions, parent/child Product rules, typed attributes, inventory transactions/concurrency, cart ownership, voucher behavior, order totals, payment and shipping flows.
+- Load required system seeds and confirm the application starts with expected permissions; load demo data only through the development/test mechanism.
+- Run the repository's actual backend/frontend lint, type-check, unit, integration and build commands after reviewing current scripts. Report each result accurately.
+- Test the supported database reset/bootstrap path without connecting to production/shared data.
+
+Do not claim success based only on a successful compilation or a documentation diff. No migration, application test, or database reset is claimed as performed in this phase.
+
+## 8. Decision record and phase status
+
+| Item | Decision/status |
+|---|---|
+| Target logical schema | **CONFIRMED — 31 tables** |
+| Existing V1–V6 schema | Legacy reference only — 32 application tables |
+| Development/test data preservation | **NOT REQUIRED — Clean Schema Reset approved** |
+| Historical crosswalk/archive/populated-source migration | **OUT OF SCOPE** for disposable dev/test data |
+| Production/shared database reset | **NOT AUTHORIZED** by this decision |
+| Fresh target DDL and seed implementation | **PENDING** |
+| Physical SQL and active business/API decisions | **OPEN** |
+| Automated acceptance on target schema | **NOT RUN** |
+| Database reset performed | **NO** |
+
+## 9. Target model invariants
+
+- Do not add tables back from the old implementation (such as `PRODUCT_VARIANTS`, size/color master tables, voucher scope links, voucher usage ledger, or `CHECKOUT_QUOTES`) unless the owner explicitly revises the ERD.
+- Do not add `image_url_snapshot` to `ORDER_ITEMS`; the target contract intentionally omits it.
+- Product parent/child rows share `PRODUCTS`; child IDs must be normal Product IDs in the new database, not legacy Variant IDs.
+- Inventory is keyed by `(warehouse_id, product_id)` and stores `quantity_on_hand` plus `version`; the target has no reservation column/table.
+- Keep required order address/voucher snapshots and the one-payment-per-order target shape according to the owner-approved ERD.
+- Physical uniqueness, nullability and runtime semantics must be intentionally approved; do not infer them only from a column name.
+
+## 10. Related artifacts and boundaries
+
+- [Owner-confirmed ERD v2](phase-1-erd-v2-approved.mmd) is the logical schema authority.
+- [Physical data dictionary](phase-1-physical-data-dictionary.md) records target columns and unresolved physical SQL details.
+- [Owner decision questionnaire](phase-1-owner-decision-questionnaire.md) contains only remaining decisions relevant to the new target contract.
+- The former preflight SQL, synthetic legacy fixture, runbook and static artifact test have been removed from this PR because Clean Schema Reset does not require them.
+
+**P1 conclusion:** the 31-table logical target and Clean Schema Reset direction are confirmed. P1 is still **PARTIAL** until the active business/physical decisions are resolved, the target schema and seeds are implemented, and a fresh database plus application acceptance tests pass.
 
 ## Appendix A — constraint-name ledger from source migrations
 
