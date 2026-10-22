@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Set;
+import java.util.Map;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.sql.Connection;
@@ -28,6 +29,39 @@ class CleanResetSchemaTests {
             "goods_receipts", "goods_receipt_items", "warehouses", "inventories",
             "inventory_transactions", "audit_logs", "content_pages");
 
+    private static final Map<String, Set<String>> TARGET_COLUMNS = Map.ofEntries(
+            Map.entry("accounts", Set.of("id","full_name","email","phone","password_hash","status","created_at","updated_at")),
+            Map.entry("addresses", Set.of("id","account_id","recipient_name","recipient_phone","province","district","ward","address_line","is_default","created_at","updated_at")),
+            Map.entry("roles", Set.of("id","code","name","description","status")),
+            Map.entry("permissions", Set.of("id","code","name","description")),
+            Map.entry("account_roles", Set.of("account_id","role_id")),
+            Map.entry("role_permissions", Set.of("role_id","permission_id")),
+            Map.entry("categories", Set.of("id","parent_category_id","name","slug","status","created_at","updated_at")),
+            Map.entry("brands", Set.of("id","name","slug","status")),
+            Map.entry("products", Set.of("id","parent_product_id","category_id","brand_id","name","slug","sku","description","selling_price","cost_price","status","deleted_at","created_at","updated_at")),
+            Map.entry("attribute_types", Set.of("id","code","name","data_type")),
+            Map.entry("attributes", Set.of("id","attribute_type_id","code","name","is_required","is_variant_defining","sort_order")),
+            Map.entry("attribute_options", Set.of("id","attribute_id","value","label","sort_order")),
+            Map.entry("product_attribute_values", Set.of("product_id","attribute_id","option_id","text_value","number_value","boolean_value")),
+            Map.entry("product_images", Set.of("id","product_id","image_url","is_primary","sort_order","created_at")),
+            Map.entry("carts", Set.of("id","account_id","status","created_at","updated_at")),
+            Map.entry("cart_items", Set.of("id","cart_id","product_id","quantity","added_at","updated_at")),
+            Map.entry("vouchers", Set.of("id","code","discount_type","discount_value","minimum_order_value","maximum_discount","starts_at","ends_at","usage_limit","status")),
+            Map.entry("orders", Set.of("id","account_id","voucher_id","order_number","idempotency_key","status","subtotal","discount_amount","shipping_fee","total_amount","currency","placed_at","created_at","updated_at")),
+            Map.entry("order_items", Set.of("id","order_id","product_id","sku_snapshot","product_name_snapshot","attribute_snapshot","quantity","unit_price","discount_amount","line_total")),
+            Map.entry("order_addresses", Set.of("order_id","recipient_name","recipient_phone","province","district","ward","address_line")),
+            Map.entry("order_voucher_snapshots", Set.of("order_id","voucher_code_snapshot","discount_type_snapshot","discount_value_snapshot","discount_amount_snapshot")),
+            Map.entry("payments", Set.of("order_id","method","payment_status","amount","currency","collected_by_account_id","collected_at","created_at","updated_at")),
+            Map.entry("shipping_infos", Set.of("order_id","recipient_name","recipient_phone","carrier_name","tracking_number","shipping_status","shipped_at","delivered_at","updated_at")),
+            Map.entry("suppliers", Set.of("id","code","name","phone","email","status","created_at","updated_at")),
+            Map.entry("goods_receipts", Set.of("id","supplier_id","receipt_number","status","created_by","confirmed_by","confirmed_at","created_at","updated_at")),
+            Map.entry("goods_receipt_items", Set.of("id","goods_receipt_id","product_id","quantity_received","unit_cost")),
+            Map.entry("warehouses", Set.of("id","code","name","status")),
+            Map.entry("inventories", Set.of("warehouse_id","product_id","quantity_on_hand","version","updated_at")),
+            Map.entry("inventory_transactions", Set.of("id","warehouse_id","product_id","transaction_type","quantity_delta","goods_receipt_item_id","order_item_id","idempotency_key","created_by","created_at")),
+            Map.entry("audit_logs", Set.of("id","actor_account_id","action","entity_type","entity_id","before_data","after_data","correlation_id","created_at")),
+            Map.entry("content_pages", Set.of("id","slug","title","content","status","updated_by","updated_at")));
+
     @Test
     void cleanTargetBaselineCreatesExactlyTheApprovedThirtyOneTables() {
         var dataSource = new DriverManagerDataSource(
@@ -48,8 +82,50 @@ class CleanResetSchemaTests {
                       AND LOWER(TABLE_NAME) <> 'flyway_schema_history'
                     """, String.class));
             assertEquals(new TreeSet<>(TARGET_TABLES), actual);
+            Map<String, Set<String>> actualColumns = new java.util.TreeMap<>();
+            jdbc.query(
+                    """
+                    SELECT LOWER(TABLE_NAME) AS table_name, LOWER(COLUMN_NAME) AS column_name
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = CURRENT_SCHEMA()
+                      AND LOWER(TABLE_NAME) <> 'flyway_schema_history'
+                    """,
+                    rs -> {
+                        String table = rs.getString("table_name");
+                        String column = rs.getString("column_name");
+                        actualColumns.computeIfAbsent(table, ignored -> new TreeSet<>()).add(column);
+                    });
+            assertEquals(TARGET_COLUMNS, actualColumns);
             assertEquals("2", flyway.info().current().getVersion().getVersion());
             assertEquals(0, flyway.info().pending().length);
+        } finally {
+            flyway.clean();
+        }
+    }
+
+    @Test
+    void cleanThenMigrateDropsDevelopmentRowsAndReseedsSystemRows() {
+        var dataSource = new DriverManagerDataSource(
+                "jdbc:h2:mem:clean-reset-rebuild-" + UUID.randomUUID() + ";MODE=MySQL;DB_CLOSE_DELAY=-1",
+                "sa", "");
+        Flyway flyway = Flyway.configure().dataSource(dataSource)
+                .locations("classpath:db/clean-reset").cleanDisabled(false).load();
+        try {
+            flyway.migrate();
+            JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+            jdbc.update("INSERT INTO categories(name,slug,status) VALUES (?,?,?)",
+                    "Disposable category", "disposable-category", "ACTIVE");
+            assertEquals(1, jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM categories WHERE slug='disposable-category'", Integer.class));
+
+            flyway.clean();
+            assertEquals(2, flyway.migrate().migrationsExecuted);
+            flyway.validate();
+
+            assertEquals(0, jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM categories WHERE slug='disposable-category'", Integer.class));
+            assertEquals(3, jdbc.queryForObject("SELECT COUNT(*) FROM roles", Integer.class));
+            assertEquals(16, jdbc.queryForObject("SELECT COUNT(*) FROM permissions", Integer.class));
         } finally {
             flyway.clean();
         }
