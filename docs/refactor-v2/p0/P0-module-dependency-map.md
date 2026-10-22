@@ -1,5 +1,26 @@
 # P0 — Module Dependency Map and Refactor Order
 
+Baseline: `demo1` / `22bd3d887cef3c077e714e5ec21e70ba89855d46`. This is a source/document-based logical graph, not a verified runtime call graph; the full recursive path inventory is now verified, but not every service invocation has been runtime-traced.
+
+## Source inventory snapshot (recursive Git tree at the audited SHA)
+
+The complete, non-truncated tree contains 651 files overall and 260 Java files under `backend/src/main/java/com/fido/modules/`. The counts below are Java file-path counts by package folder, not counts of runtime beans or business use cases. `entity` includes two composite-ID types; `repository` includes read-model view types; `service` includes service-related helper/contract types.
+
+| Module | Module Java files | entity folder | repository folder | service folder | controller folder | dto folder |
+|---|---:|---:|---:|---:|---:|---:|
+| account | 54 | 8 | 6 | 12 | 5 | 22 |
+| audit | 11 | 1 | 1 | 7 | 1 | 1 |
+| cart | 12 | 2 | 2 | 3 | 1 | 4 |
+| content | 10 | 1 | 1 | 2 | 1 | 4 |
+| inventory | 38 | 5 | 6 | 11 | 3 | 12 |
+| order | 51 | 5 | 5 | 16 | 4 | 20 |
+| product | 66 | 8 | 9 | 19 | 3 | 26 |
+| promotion | 9 | 2 | 2 | 2 | 1 | 2 |
+| report | 9 | 0 | 1 | 2 | 1 | 5 |
+| **Total** | **260** | **32** | **33** | **74** | **20** | **96** |
+
+The tree contains 84 Java files under `backend/src/test/java/`, including test support/helper classes. There are exactly six active Flyway migrations under `backend/src/main/resources/db/migration/` (V1–V6). The 77 numbered rows in `docs/04-api-contract.md` were counted separately by API owner. The recursive inventory closes the prior path-listing gap; local working-tree state and runtime call graph remain outside this remote inspection.
+
 Baseline: `demo1` / `22bd3d887cef3c077e714e5ec21e70ba89855d46`. This is a source/document-based logical graph, not a verified runtime call graph; exhaustive import graph and tests remain unverified.
 
 ## 1. Module ownership
