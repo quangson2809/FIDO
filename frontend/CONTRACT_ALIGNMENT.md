@@ -76,7 +76,7 @@ This avoids a false client-side transaction across database and external image s
 
 ## Locked frontend business boundary
 
-Project-owner decision on 2026-10-05: **a user must be logged in to use the persisted cart and place an order**. The frontend therefore requires an access token before cart/checkout/order flows. Older documentation that describes guest cart/checkout is pending backend/documentation alignment; frontend must not implement guest identity, guest cookies, anonymous accounts or local guest-cart persistence as a workaround.
+Project-owner decision on 2026-10-05: **a user must be logged in to use the persisted cart and place an order**. The frontend therefore requires an access token before cart/checkout/order flows. This decision supersedes older guest-TBD annotations in the legacy 77-endpoint snapshot. The active target API contract now marks APIs #14–20 as JWT-required; remaining mentions of guest behavior are historical/source-only and must not be implemented. Do not add guest identity, guest cookies, anonymous accounts or local guest-cart persistence as a workaround.
 
 Other locked boundaries:
 
