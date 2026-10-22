@@ -1,5 +1,8 @@
 # 04 — API Contract Baseline (77 Endpoints)
 
+> **ERD v2 compatibility boundary (2026-10-22):** This file describes the approved/current HTTP contract, not the target persistence schema. The 31-table ERD does not by itself approve renaming routes, DTO fields or IDs. Any old variant_id/product_id adaptation must use an explicit crosswalk and compatibility/release plan; do not silently change the public API because persistence keys change.
+
+
 ## 1. Global contract
 
 - Current consolidated Analyst API baseline: **77 endpoints**.
