@@ -117,7 +117,7 @@ The exact 31 target tables are listed in `P0-schema-impact-matrix.csv`.
 
 | ID | Type | Finding |
 |---|---|---|
-| H1 | HARD BLOCK | Target requires account-owned carts/orders, but guest checkout is part of the current contract intent and target has no guest identity/session table. |
+| H1 | DOCUMENTATION ALIGNMENT — business decision resolved | Older API/decision text contained JWT-optional or guest-TBD annotations for Cart/Checkout/Order, but the 2026-10-05 owner decision requires login before persisted Cart use and Order placement. Target has no guest-session table; align the historical API annotations rather than implementing guest storage. |
 | H2 | HARD BLOCK | Public `variant_id`/size/color identifiers become child Product IDs/attributes; persistence target does not automatically authorize a breaking API change. |
 | H3 | HARD BLOCK | Source sellable availability differs from target `quantity_on_hand` + version; stock meaning, concurrency and retry/ledger semantics need a frozen contract. |
 | H4 | HARD BLOCK | Target omits voucher scope joins, usage ledger and checkout quote persistence; current voucher/quote behavior cannot be assumed to survive. |
