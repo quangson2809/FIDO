@@ -50,7 +50,7 @@ The following requested documents were retrieved from `demo1`: `backend/AGENTS.m
 
 Target-specific source files also inspected: `docs/refactor/phase-1-erd-v2-approved.mmd`, `docs/refactor/phase-1-erd-v2-contract.md`, `docs/refactor/phase-1-physical-data-dictionary.md`, `docs/refactor/phase-1-owner-decision-questionnaire.md`, and `docs/refactor/clean-schema-reset-runbook.md`.
 
-A fetch of root `AGENTS.md` returned 404; because directory enumeration is unavailable this records only the failed exact path fetch, not the absence of all equivalent guidance.
+The complete, non-truncated recursive tree contains `backend/AGENTS.md` but no root `AGENTS.md`. This establishes the path is absent at the audited SHA; it does not rule out guidance supplied outside the repository.
 
 ## 5. Module and API inventory
 
