@@ -3,6 +3,8 @@
 **Last reconciled:** 2026-10-22
 **Purpose:** identify the authority for each decision, show what is current versus historical, and prevent a passing document/audit gate from being mistaken for a passing application.
 
+**Latest cleanup review:** [Documentation Cleanup Review — 2026-10-22](documentation-cleanup-2026-10-22.md) records stale-content findings, applied fixes, remaining decisions and verification limits.
+
 ## Current state at a glance
 
 | Topic | Current record | Status |
