@@ -14,7 +14,7 @@
 | P0 baseline audit | [Audit report](refactor-v2/p0/P0-baseline-audit.md) and [exit gate](refactor-v2/p0/P0-exit-gate.md) | PASS for the documentation/audit deliverable only |
 | Backend CI on audited SHA | [GitHub Actions run #39760829809](https://github.com/quangson2809/FIDO/actions/runs/39760829809) | FAIL: 196 tests completed, 3 failed, 1 skipped |
 | Target-schema MySQL run | [Test baseline](refactor-v2/p0/P0-test-baseline.md) | NOT RUN for the audited SHA |
-| Owner decisions | [Decision questionnaire](refactor/phase-1-owner-decision-questionnaire.md) | D1–D10 contain working defaults; do not call them owner-approved unless the decision record says so |
+| Owner decisions | [Decision questionnaire](refactor/phase-1-owner-decision-questionnaire.md) | D2-A (authenticated Cart/order placement) is owner-confirmed 2026-10-05; D1 and D3–D10 remain working defaults unless separately approved |
 
 The latest evidence must be read before reusing older status statements. In particular, the dated PASS in the [Phase 7 gate](16-phase-7-gate.md) is a historical result for that phase and commit, not the current full-repository CI status.
 
