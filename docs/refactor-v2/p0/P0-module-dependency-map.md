@@ -88,7 +88,7 @@ This represents documented service/query dependencies, not a full source-generat
 
 P0 does not implement these steps.
 
-1. **P1 contract freeze:** resolve guest identity, public Product IDs and attribute/inheritance semantics, stock meaning, voucher scope/usage, quote/idempotency, money/snapshot, payment/refund, shipping, address snapshots and physical SQL details.
+1. **P1 contract freeze:** guest Cart/order placement is already resolved as authenticated-only by owner decision 2026-10-05; reconcile legacy JWT-optional annotations. Freeze public Product IDs and attribute/inheritance semantics, stock meaning, voucher scope/usage, quote/idempotency, money/snapshot, payment/refund, shipping, address snapshots and physical SQL details.
 2. **Persistence foundation:** freeze the 31-table ERD and physical dictionary; keep the fresh baseline and required seed isolated from the current runtime migration path.
 3. **Account/RBAC:** preserve login and server-side permission semantics; align account/address ownership constraints.
 4. **Catalog/attributes:** implement Product parent/child, typed option/value model, image ownership, SKU/category checks and public identifier compatibility.
