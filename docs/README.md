@@ -33,6 +33,8 @@ The latest evidence must be read before reusing older status statements. In part
 
 ## Conflict-resolution rules
 
+- **Historical API snapshot:** `reference/api-baseline-77.csv` is a legacy endpoint/access snapshot. Its JWT-optional/guest-TBD annotations for APIs #14–20 are superseded by the 2026-10-05 owner decision and the aligned access column in `04-api-contract.md`; do not treat the CSV's old access values as current target requirements.
+
 - **Schema shape:** the owner-confirmed 31-table ERD wins. Do not reintroduce a legacy table/column without an explicit owner amendment.
 - **Physical SQL:** use the current physical data dictionary and the verified SQL; mark missing details OPEN rather than guessing.
 - **Business/API semantics:** use the consolidated API contract and approved business rules. An ERD shape change alone does not approve a breaking endpoint/DTO behavior change.
