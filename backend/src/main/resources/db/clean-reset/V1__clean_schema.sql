@@ -87,10 +87,10 @@ CREATE TABLE attributes (
 CREATE INDEX ix_attributes_type_order ON attributes (attribute_type_id, sort_order);
 
 CREATE TABLE attribute_options (
- id BIGINT NOT NULL AUTO_INCREMENT, attribute_id BIGINT NOT NULL, value VARCHAR(120) NOT NULL,
+ id BIGINT NOT NULL AUTO_INCREMENT, attribute_id BIGINT NOT NULL, `value` VARCHAR(120) NOT NULL,
  label VARCHAR(150) NOT NULL, sort_order INT NOT NULL DEFAULT 0,
  CONSTRAINT pk_attribute_options PRIMARY KEY (id),
- CONSTRAINT uq_attribute_options_value UNIQUE (attribute_id, value),
+ CONSTRAINT uq_attribute_options_value UNIQUE (attribute_id, `value`),
  CONSTRAINT uq_attribute_options_id_attribute UNIQUE (id, attribute_id),
  CONSTRAINT fk_attribute_options_attribute FOREIGN KEY (attribute_id) REFERENCES attributes (id),
  CONSTRAINT ck_attribute_options_sort_order CHECK (sort_order >= 0)

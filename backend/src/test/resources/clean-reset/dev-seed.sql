@@ -16,7 +16,7 @@ INSERT INTO attribute_types (id,code,name,data_type) VALUES
  (40001,'SIZE','Kích thước','OPTION'),(40002,'COLOR','Màu sắc','OPTION');
 INSERT INTO attributes (id,attribute_type_id,code,name,is_required,is_variant_defining,sort_order) VALUES
  (41001,40001,'SIZE','Kích thước',TRUE,TRUE,1),(41002,40002,'COLOR','Màu sắc',TRUE,TRUE,2);
-INSERT INTO attribute_options (id,attribute_id,value,label,sort_order) VALUES
+INSERT INTO attribute_options (id,attribute_id,`value`,label,sort_order) VALUES
  (42001,41001,'S','S',1),(42002,41002,'WHITE','Trắng',1);
 INSERT INTO product_attribute_values (product_id,attribute_id,option_id,text_value,number_value,boolean_value) VALUES
  (30002,41001,42001,NULL,NULL,NULL),(30002,41002,42002,NULL,NULL,NULL);
