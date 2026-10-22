@@ -9,7 +9,7 @@
 |---|---|---|
 | `account` | Auth/profile/address, internal staff account, role/permission/RBAC, customer back-office views | `accounts`, `addresses`, `roles`, `permissions`, `account_roles`, `role_permissions` |
 | `product` | Public catalog, admin catalog, Category/Brand/Size/Color/Product/Image/Variant | `categories`, `brands`, `size_systems`, `size_values`, `colors`, `products`, `product_images`, `product_variants` |
-| `cart` | Guest/account cart and cart items; no stock reservation | `carts`, `cart_items` |
+| `cart` | Authenticated persisted cart and cart items; guest cart is outside target scope | `carts`, `cart_items` |
 | `promotion` | Voucher identifier/code only in current logical baseline | `vouchers` |
 | `order` | Checkout quote orchestration, create Order, state machine, Payment/COD, shipping, after-sales commands | `orders`, `order_items`, `payments`, `shipping_infos` |
 | `inventory` | Supplier, GoodsReceipt, current sellable inventory, immutable stock ledger | `suppliers`, `goods_receipts`, `goods_receipt_items`, `inventories`, `inventory_transactions` |
