@@ -1,5 +1,8 @@
 # 03 — Data Model, Entity Rules & Persistence Contract
 
+> **ERD v2 scope boundary (2026-10-22):** The inventory and persistence rules in this document describe the pre-refactor runtime schema. They remain useful as source-behavior/migration evidence but are not the target data model. For target table/column/key shape, follow the owner-confirmed 31-table ERD in docs/refactor/phase-1-erd-v2-approved.mmd and its contract. Do not reintroduce ProductVariant, image_url_snapshot, reservation, payment/refund event or return tables into the target without an explicit owner change.
+
+
 ## 1. Baseline data conventions
 
 - Relational model; DBMS is not locked by Analyst Docs.

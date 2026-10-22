@@ -1,5 +1,8 @@
 # 02 — Module Ownership & Dependencies
 
+> **ERD v2 scope boundary (2026-10-22):** Module ownership and current entity/service names below describe the pre-refactor implementation. The target persistence structure is the owner-confirmed 31-table ERD in docs/refactor/phase-1-erd-v2-approved.mmd and docs/refactor/phase-1-erd-v2-contract.md. Keep package ownership as an architectural concern, but do not treat legacy ProductVariant/size/color or any other baseline table as part of the target schema unless the owner changes the ERD.
+
+
 ## 1. Ownership map
 
 | Module | Business responsibility | Baseline tables |

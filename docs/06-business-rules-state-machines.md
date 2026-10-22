@@ -1,5 +1,8 @@
 # 06 — Business Rules & State Machines
 
+> **ERD v2 scope boundary (2026-10-22):** The state machine and ProductVariant rules below describe existing business/runtime behavior. The target ERD has one parent/child PRODUCTS table and no RETURNS/RETURN_ITEMS tables. Preserve confirmed business behavior where compatible, but do not infer new target persistence objects or synthesize return rows from status alone; unresolved incompatibility is a refactor gate.
+
+
 ## 1. Order state machine
 
 ```text

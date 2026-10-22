@@ -1,5 +1,8 @@
 # 05 — JWT, JSON, DTO & Request/Response Contract
 
+> **ERD v2 compatibility boundary (2026-10-22):** This file describes the existing API/DTO contract. The owner-confirmed target schema changes persistence identity and omits some baseline fields, but does not automatically authorize DTO or endpoint changes. Document and test every snapshot-field/ID compatibility decision before changing response shapes.
+
+
 ## 1. JWT minimum
 
 - Public: `/api/v1/auth/register`, `/api/v1/auth/login`, `/api/v1/catalog/**`, `/api/v1/content-pages/**`.
