@@ -94,8 +94,7 @@ SELECT
     (SELECT COUNT(*) FROM products WHERE season IS NOT NULL) AS products_with_season,
     (SELECT COUNT(*) FROM products WHERE style IS NOT NULL) AS products_with_style,
     (SELECT COUNT(*) FROM products WHERE material_care IS NOT NULL) AS products_with_material_care,
-    (SELECT COUNT(*) FROM products p JOIN product_variants v ON v.product_id = p.product_id
-      WHERE p.product_id = v.variant_id) AS numeric_product_variant_id_overlaps;
+    (SELECT COUNT(*) FROM products p JOIN product_variants v ON p.product_id = v.variant_id) AS numeric_product_variant_id_overlaps;
 
 SELECT product_id, COUNT(*) AS variant_count
 FROM product_variants
