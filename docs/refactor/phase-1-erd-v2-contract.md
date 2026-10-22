@@ -261,7 +261,7 @@ Do not claim success based only on a successful compilation or a documentation d
 | Development/test data preservation | **NOT REQUIRED — Clean Schema Reset approved** |
 | Historical crosswalk/archive/populated-source migration | **OUT OF SCOPE** for disposable dev/test data |
 | Production/shared database reset | **NOT AUTHORIZED** by this decision |
-| Fresh target DDL and seed implementation | **PENDING** |
+| Fresh target DDL and seed implementation | **ADDED — VERIFICATION OPEN** | Target DDL + seed exist in isolated `db/clean-reset`; not activated as default runtime migration |
 | Physical SQL and active business/API decisions | **OPEN** |
 | Automated acceptance on target schema | **NOT RUN** |
 | Database reset performed | **NO** |
