@@ -1,5 +1,8 @@
 # 07 — Transactions, Concurrency & Idempotency
 
+> **ERD v2 scope boundary (2026-10-22):** Transaction examples below are written for the current inventory model (available_quantity and Variant identity). The target has INVENTORIES(quantity_on_hand, version), no quantity_reserved and no INVENTORY_RESERVATIONS. Treat the existing rules as source behavior; reconcile physical stock semantics and redesign concurrency against the approved target tables before implementation. Do not add reservation tables to the target without owner approval.
+
+
 ## 1. Principle
 
 Any operation that changes business state plus stock/payment/audit must have one explicit transactional boundary in the Service layer. Do not scatter partial commits across controllers or repository calls.
