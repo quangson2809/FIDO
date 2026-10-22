@@ -30,7 +30,7 @@ Legend: PASS means evidenced complete; PARTIAL means useful evidence but incompl
 | 18 | Avoid schema changes, destructive reset and scope creep | PASS | No database reset, Flyway history edit, active migration/JPA/service/controller/API/frontend change or pattern implementation. |
 | 19 | Classify uncertainties correctly | PASS | Guest, Product/API IDs, stock, voucher/quote, order/payment/shipping/snapshot uncertainties remain HARD BLOCKS; engineering tasks are TECHNICAL DECISIONS; explicit later features remain DEFERRED. |
 | 20 | Write audit deliverables on a separate working branch | PASS | Branch `audit/p0-baseline-erd-v2-20261022` created from verified SHA; the six P0 documents are committed there. |
-| 21 | Final diff/secret/scope review | PASS (remote equivalent; local git checks unavailable) | Compare from the audited baseline shows exactly six added P0 report paths and no code/schema/workflow changes. All six remote files were fetched and checked for conflict markers/common credential patterns; no matches. CSV rows parse consistently. Local `git diff --check` could not run without a checkout. |
+| 21 | Final diff/secret/scope review for original P0 audit branch | PASS (remote equivalent; local git checks unavailable) | At P0 audit completion, the original audit branch contained exactly six added P0 report paths and no code/schema/workflow changes. All six files were checked for conflict markers/common credential patterns; none were found. The current successor documentation-cleanup branch adds documentation-only edits; see branch compare for its complete changed-file list. Local `git diff --check` could not run without a checkout. |
 
 ## Exit decision
 
