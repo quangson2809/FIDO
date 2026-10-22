@@ -1,6 +1,7 @@
 # P0 — Risk Register
 
-Audited baseline: `demo1` at `22bd3d887cef3c077e714e5ec21e70ba89855d46` (2026-10-22).  
+Audited baseline: `demo1` at `22bd3d887cef3c077e714e5ec21e70ba89855d46` (2026-10-22).
+
 Severity refers to impact if unresolved, not a claim that an incident occurred.
 
 | ID | Severity | Classification | Evidence | Impact | Likelihood | Control / mitigation | Owner phase | Status |
