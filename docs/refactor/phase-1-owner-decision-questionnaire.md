@@ -1,164 +1,130 @@
-# FIDO Phase 1 — Owner Decision Questionnaire for ERD v2 blockers
+# FIDO Phase 1 — Owner Decisions for the 31-table Target Schema
 
 - Date: 2026-10-22
-- Applies to: owner-confirmed 31-table ERD v2 only
-- Related documents: \`phase-1-erd-v2-approved.mmd\`, \`phase-1-erd-v2-contract.md\`, \`phase-1-physical-data-dictionary.md\`
-- Purpose: capture owner decisions that affect schema semantics, data preservation and cutover. This is not approval to run a migration.
+- Repository: https://github.com/quangson2809/FIDO
+- Target authority: [owner-confirmed 31-table ERD v2](phase-1-erd-v2-approved.mmd)
+- Related documents: [target contract](phase-1-erd-v2-contract.md), [physical data dictionary](phase-1-physical-data-dictionary.md)
+
+## Decision already confirmed — Clean Schema Reset
+
+The owner has chosen **Clean Schema Reset**:
+
+- Design the target schema for the new business contract, not to preserve the shape of obsolete development data.
+- Discard old disposable development/test rows and reseed from scratch.
+- Do not build a populated-source migration, historical ID crosswalk, legacy data archive, dual-write/cutover flow or per-field preservation mechanism solely for test data.
+- This decision applies only to explicitly disposable local/development/test databases. It does **not** authorize dropping production, shared integration, staging or any environment containing real user/business data.
+- No database has been reset by recording this decision. The current PR remains documentation-only.
+
+This decision closes legacy-only questions about mapping old source values, old inventory, historical payment/refund aggregates, old image snapshots, source-only fields and old idempotency keys. They are not blockers for a clean target install.
 
 ## How to respond
 
-Reply with the option codes, for example:
+Reply with option codes such as `D1-A, D2-A, D3-B`, or provide an explicit alternative. Recommendations are not treated as decisions until confirmed. These questions concern the **new application's behavior and physical schema**, which remain relevant even when all old development data is discarded.
 
-\`Q1-A, Q2-A, Q3-C, Q4-A, ...\`
+## D1 — Account identity and phone login
 
-You may say **“Approve all recommended options”** and list any exceptions. Choices marked **Recommended** are proposals, not decisions until the owner confirms them. If no option is acceptable, answer \`Qn-OTHER: ...\`.
+The target ERD does not mark `ACCOUNTS.phone` or `email` unique, while the current implementation uses phone as the login identifier.
 
-## Questions
-
-### Q1 — Account phone and login identity
-
-The existing app logs in by phone and Flyway V2 applies UNIQUE(phone). The target ERD does not mark phone/email as unique.
-
-- **A — Recommended:** preserve UNIQUE(phone) in the physical target schema as a security/login invariant; email remains non-unique unless separately approved. Document that this physical constraint does not add a table or change the 31-table model.
-- B: remove UNIQUE(phone) and explicitly change the login identity/API contract before migration.
-- C: block migration until a different account identity strategy is designed.
+- **A — Recommended:** enforce physical `UNIQUE(phone)`; keep email non-unique unless a separate requirement says otherwise. Keep login lookup unambiguous and align validation/error behavior with the API contract.
+- B: change login identity away from phone and explicitly define the replacement contract before DDL.
+- C: defer authentication implementation until the account identity rules are supplied.
 
 **Confirm:** A / B / C / OTHER.
 
-### Q2 — Target-only account/cost fields with no trusted source value
+## D2 — Guest carts and checkout
 
-The source does not provide a reliable \`accounts.full_name\`, \`products.cost_price\` or \`goods_receipt_items.unit_cost\`.
+The target ERD has account-owned `CARTS` and `ORDERS`, and contains no guest-token/session table.
 
-- **A — Recommended:** preserve those values as unknown/NULL for legacy rows where physical nullability permits; do not derive a name from email/phone or pretend selling price is purchase cost. New account creation may require full_name at the API level.
-- B: provide an approved external source and a field-specific import mapping.
-- C: block those rows/entities until an authoritative value is available.
-
-**Confirm:** A / B / C / OTHER.
-
-### Q3 — Guest carts and guest orders
-
-The source/API supports guest intent, but the target ERD models CARTS and ORDERS as account-owned and has no guest-token/session table.
-
-- **A — Recommended if the 31-table target is fixed:** archive historical guest orders in the read-only legacy archive, treat unowned carts according to an explicit retention decision, and require authentication for new persisted carts/orders after cutover. This changes current guest-checkout behavior and must be scheduled and communicated.
-- B: guest checkout is mandatory; pause migration and explicitly revise the target ERD/API to represent guest identity and lookup securely, without fake accounts.
-- C: postpone cutover; keep the current guest checkout path in service until a target-compatible guest identity solution is approved and tested.
-
-**Important:** do not insert a fake “Guest” account to make the FK pass unless you explicitly approve that identity model.  
-**Confirm:** A / B / C / OTHER.
-
-### Q4 — ProductVariant-to-child-Product and attribute mapping
-
-Each legacy Variant must receive a newly allocated Product ID. The target uses one PRODUCTS table plus typed attributes.
-
-- **A — Recommended:** create one child PRODUCTS row per old Variant with parent_product_id pointing to its old parent Product; map Size and Color to stable option-based attributes marked variant-defining; map gender/season/style/material_care to typed attributes preserving exact source strings. Keep a source-to-target crosswalk. Never reuse variant_id as the new product id.
-- B: preserve additional source attribute distinctions in an owner-supplied attribute mapping matrix before approving the conversion.
-- C: change the target attribute model before migration.
-
-**Confirm:** A / B / C / OTHER. If B, name any fields that must be modeled differently.
-
-### Q5 — Slugs and supplier codes absent from source
-
-Source Category/Brand/Product tables have no slug fields; Suppliers have no code. Target marks Category/Brand/Content slugs and supplier code unique; Product SKU is unique, while Product slug is not marked unique.
-
-- **A — Recommended:** generate deterministic slugs from names using one documented normalization rule; add a stable source-ID suffix to resolve collisions for fields marked unique. For old suppliers generate an explicitly technical code such as \`LEGACY-SUP-{supplier_id}\`. Keep the generated-to-source mapping in the migration crosswalk.
-- B: supply authoritative slugs and supplier codes externally before migration.
-- C: block only entities whose slug/code cannot be generated collision-free.
+- **A — Recommended if the ERD is fixed:** require authentication before creating persisted carts/orders; update frontend/API behavior and acceptance tests accordingly.
+- B: guest checkout is mandatory; revise the ERD and API first to model guest identity and secure order lookup explicitly.
+- C: pause checkout implementation until the product owner decides.
 
 **Confirm:** A / B / C / OTHER.
 
-### Q6 — Mapping source available_quantity to target quantity_on_hand
+## D3 — Parent/child Product and typed attributes
 
-The source stores one available_quantity per Variant; the target stores quantity_on_hand per Warehouse/Product and has no reservation table or quantity_reserved column.
+The target uses one `PRODUCTS` table for parent and child rows, plus `ATTRIBUTE_TYPES`, `ATTRIBUTES`, `ATTRIBUTE_OPTIONS` and `PRODUCT_ATTRIBUTE_VALUES`.
 
-- **A — Recommended, conditional:** use current available_quantity as initial quantity_on_hand only after verifying every Variant has a stock row, reconciling balances against available ledger/order/receipt evidence, and documenting any unresolved discrepancy. Create one approved default warehouse; set version to an agreed initial value. Any unexplained mismatch blocks that SKU's cutover.
-- B: take a physical stock count at cutover and use the approved count as opening stock, retaining source quantities/ledger in the archive.
-- C: block all inventory cutover until a full stocktake/reconciliation is complete.
-
-**Confirm:** A / B / C / OTHER.
-
-### Q7 — Retention method for data that has no target table/column
-
-Examples: order image snapshots, payment refund aggregates/actors, voucher scope/use history, checkout quotes, supplier address/note, receipt date/note, shipping delivery_mode, order recipient_email/notes/reasons/timestamps, and audit descriptions.
-
-- **A — Recommended:** keep a controlled, read-only legacy archive database/schema outside the 31-table target, with stable source IDs, migration crosswalks, access control, backups and a documented retention period. Do not delete source data during expand/backfill.
-- B: export field/row-level data into an encrypted, versioned archival artifact with a retrieval manifest and approved access/retention controls.
-- C: approve irreversible retirement of specifically listed fields/rows after reviewing a disposition report.
-- D: change the target ERD to preserve the data directly in target tables.
-
-**Confirm:** A / B / C / D / OTHER. If A or B, indicate the desired retention period/policy if already known.
-
-### Q8 — Voucher scopes, usage records and checkout_quotes after cutover
-
-The target includes VOUCHERS and ORDER_VOUCHER_SNAPSHOTS only; it does not include voucher-product/category links, a voucher usage ledger or checkout_quotes.
-
-- **A — Recommended if 31 tables are fixed:** drain/expire all old checkout quotes before cutover; archive source usage history and target links; disable/retire vouchers whose scope or usage behavior cannot be represented. Enable only voucher behavior fully expressible by the approved target fields and API rules.
-- B: these scoped voucher/quote capabilities must remain fully operational; pause cutover and request an explicit target/API redesign.
-- C: temporarily keep the old checkout/voucher path operating until the target-compatible replacement passes acceptance, then cut over; no source tables are dropped while old code depends on them.
+- **A — Recommended:** Size and Color are typed option-backed attributes; explicitly mark them as variant-defining. Gender/season/style/material-care (if still part of the business) use typed attributes with controlled codes where appropriate and preserved display values. Define validation to prevent invalid parent/child structures and cycles.
+- B: provide an owner-authored attribute matrix with code, data type, selectable options, variant-defining flag, and whether each attribute is inherited.
+- C: revise the logical ERD before implementation.
 
 **Confirm:** A / B / C / OTHER.
 
-### Q9 — Historical Order totals and line-level discount_amount
+## D4 — Voucher and checkout scope
 
-The source stores discount_snapshot at Order level; it has no historical per-line discount allocation. Target ORDER_ITEMS adds discount_amount.
+The target includes `VOUCHERS` and `ORDER_VOUCHER_SNAPSHOTS` but omits voucher-product/category link tables, a usage ledger and `CHECKOUT_QUOTES`.
 
-- **A — Recommended:** map historical order-level subtotal/discount/shipping/total exactly; keep line_total from the source snapshot and set legacy line discount_amount to zero only if the agreed target contract defines line_total as pre-order-discount. Do not invent a per-line historical allocation. New orders should store real line-level discounts if the future business rules use them.
-- B: allocate historical order discount proportionally across lines with deterministic rounding/remainder rules; accept that this is a derived allocation, not historical fact.
-- C: do not migrate affected orders until another accounting-preserving representation is approved.
-
-The source also lacks currency and a separate placed_at. The recommendation is to approve VND for this single-market app and map placed_at from the existing order created_at only if that timestamp represents order placement in the current implementation; otherwise preserve it as unknown/archive.
-
-**Confirm:** A / B / C / OTHER. Also confirm currency/placed_at: **VND + created_at mapping** / **provide another rule**.
-
-### Q10 — Legacy payment/refund mapping
-
-The source stores amount_due, amount_received, amount_refunded and collection/refund actor-times. Target PAYMENTS has one amount, payment_status, method/currency and collection attribution only.
-
-- **A — Recommended:** map amount_due to target amount; map payment status and collection actor/time where source-backed; use method COD if confirmed by the existing business contract; preserve amount_received, amount_refunded, refund actor/time and their source provenance in the approved archive. Do not invent payment transaction or refund event rows.
-- B: define target amount as amount_received instead of amount_due and specify treatment for unpaid/partial/refunded rows.
-- C: block migration of payment/order rows until an alternate lossless representation is approved.
-
-**Confirm:** A / B / C / OTHER. Confirm method/currency: **COD + VND** / **provide another rule**.
-
-### Q11 — ORDER_VOUCHER_SNAPSHOTS for historical orders
-
-The source order has a voucher_id and an aggregate discount, but does not store historical voucher code/type/value snapshots.
-
-- **A — Recommended:** preserve the mapped voucher FK and historical order discount where valid; do not create ORDER_VOUCHER_SNAPSHOTS for legacy orders when the historical values cannot be proved. New orders create the snapshot at placement time.
-- B: snapshot the current VOUCHERS fields for historical orders and explicitly accept that they may differ from the values applied when the order was placed.
-- C: block orders with a voucher until a trustworthy historical voucher source is found.
+- **A — Recommended if the ERD is fixed:** support only voucher rules representable in the target schema; explicitly define eligibility, limits, validation timing and order snapshot behavior. Do not depend on persisted checkout quotes or unrepresented targeting.
+- B: scoped vouchers and persisted quotes are required; revise target ERD/API before implementation.
+- C: defer voucher integration until the product behavior is clarified.
 
 **Confirm:** A / B / C / OTHER.
 
-### Q12 — Address, shipping and returned-order facts
+## D5 — Order money semantics for new orders
 
-The source has free-form address_text/order recipient address, recipient_phone/email, shipping delivery_mode/carrier_name and Order status timestamps. The target has structured address snapshots and SHIPPING_INFOS, but no Returns tables.
+The target has order-level totals and `ORDER_ITEMS.discount_amount`, plus `ORDERS.currency` and `placed_at`. Old order rows will not be migrated.
 
-- **A — Recommended:** preserve raw legacy address as address_line and phone as source-backed; leave unknown recipient_name/province/district/ward, tracking_number and shipped/delivered timestamps unknown where nullable. Archive recipient_email and delivery_mode. Preserve Order.status including RETURNED; do not fabricate return rows/events. Collect structured fields for new orders.
-- B: derive structured address/shipping fields from a separately approved authoritative source.
-- C: change the ERD/API contract to retain the source-only fields within the target schema.
+- **A — Recommended for the current single-market contract:** use VND; define `placed_at` as the instant the order is accepted/placed; define line discount as the discount attributable to that specific line, with order-level voucher/discount represented separately and totals validated by one documented formula.
+- B: use another currency/time contract or place all discount logic at order level; supply exact formula and examples.
+- C: block Order implementation until accounting rules are signed off.
 
-**Confirm:** A / B / C / OTHER.
+**Confirm:** A / B / C / OTHER. If B, include an example with two lines and a voucher.
 
-### Q13 — Backfilling target idempotency keys
+## D6 — Payment and shipping lifecycle
 
-Target ORDERS and INVENTORY_TRANSACTIONS mark idempotency_key unique, but the source has no equivalent key on these rows.
+The target stores one `PAYMENTS` row per order and optional `SHIPPING_INFOS`; it has no payment-attempt, refund or shipment-event tables.
 
-- **A — Recommended:** assign deterministic reserved-prefix migration identifiers \`LEGACY-ORDER-{old_order_id}\` and \`LEGACY-INVENTORY-TXN-{old_txn_id}\`. Treat these as historical identity placeholders, not as real client request keys. New runtime idempotency must use the approved API command contract.
-- B: provide a different approved deterministic key scheme.
-- C: make the target key nullable where valid and leave legacy keys NULL; explicitly approve its uniqueness/null behavior.
-
-**Confirm:** A / B / C / OTHER.
-
-### Q14 — Status migration and physical SQL defaults
-
-The logical ERD does not list all status literals or most lengths/nullability/defaults/checks/indexes/FK actions.
-
-- **A — Recommended:** preserve a source status literal where its meaning is unchanged; record an explicit old-to-target translation for every changed state; unknown/unmapped status is a hard error, never silently coerced. Derive physical types from repository conventions and source/API limits: BIGINT IDs, DECIMAL(18,2) for money, TIMESTAMP(6) with the established UTC policy, and no cascading deletes unless an explicit reviewed rule requires otherwise. Propose varchar lengths/defaults/checks/indexes in the physical dictionary for review before DDL.
-- B: owner supplies the complete status/value and physical rule matrix before migration design starts.
-- C: defer target migration until all physical details are separately signed off.
+- **A — Recommended for current COD scope:** model one payment aggregate per order, use COD for the initial payment method, and define explicit payment/shipping status transitions with allowed actors. Do not represent multiple attempts/refunds/tracking history in tables that do not exist.
+- B: multiple methods, retries, refunds or tracking events are mandatory; revise target ERD before implementation.
+- C: defer Payment/Shipping implementation pending detailed state rules.
 
 **Confirm:** A / B / C / OTHER.
 
-## What will happen after the answers
+## D7 — Address snapshot required for an order
 
-After owner decisions are recorded, the migration plan will be revised to match them. The source-only fields will get a row/field-level disposition matrix; the preflight will be run only on a disposable/sanitized MySQL database; and crosswalk/reconciliation tests will be drafted before any target migration. V1–V6 remain immutable. No production migration, source deletion or target schema expansion is authorized by answering this questionnaire alone.
+The target separates account-owned `ADDRESSES` from order-time `ORDER_ADDRESSES`.
+
+- **A — Recommended:** copy recipient and delivery address values into the order snapshot at placement; later edits to the account's address must not mutate historical orders. Validate required recipient name/phone and address fields before placing an order.
+- B: define a different immutable order-address contract with exact nullable/required fields.
+- C: defer checkout until the address contract is supplied.
+
+**Confirm:** A / B / C / OTHER.
+
+## D8 — Idempotency for new commands
+
+The target marks `ORDERS.idempotency_key` and `INVENTORY_TRANSACTIONS.idempotency_key` unique. This decision concerns new runtime writes only; no old keys will be backfilled.
+
+- **A — Recommended:** define request scope, key format, retention, payload conflict behavior and transaction boundary for order creation and inventory mutation. A retry with the same key and same logical payload returns the prior result; reuse with a conflicting payload returns a typed conflict.
+- B: provide a different concrete key/retry policy.
+- C: do not expose retryable write commands until this contract is approved.
+
+**Confirm:** A / B / C / OTHER.
+
+## D9 — Physical SQL contract
+
+The ERD does not specify every column length, nullable constraint, default, timestamp precision, index, CHECK or FK delete action.
+
+- **A — Recommended:** use BIGINT IDs, DECIMAL(18,2) for monetary values, TIMESTAMP(6) with an explicit UTC storage policy, bounded VARCHAR lengths based on API limits, explicit status checks where appropriate, useful query indexes, and restrictive FK deletion by default. Record exceptions in the physical dictionary before generating DDL.
+- B: the owner provides a complete physical matrix.
+- C: review each table's physical DDL individually before implementation.
+
+**Confirm:** A / B / C / OTHER.
+
+## D10 — Required system seeds versus development demo seed
+
+A fresh target database needs a defined initialization path.
+
+- **A — Recommended:** seed required role/permission/reference records through controlled migrations or a documented bootstrap task; keep demo accounts/catalog/orders in a separate development/test-only seed mechanism. Never place plaintext passwords or production credentials in source.
+- B: provide the exact seed catalogue and approved bootstrap administrator mechanism.
+- C: do not seed application/demo accounts automatically; define a secured first-admin setup flow.
+
+**Confirm:** A / B / C / OTHER.
+
+## What happens after the decisions
+
+1. Update this decision record and the physical data dictionary; do not expand the 31-table ERD unless the owner explicitly approves an amendment.
+2. Implement target-first Flyway DDL and system seeds. A clean baseline must be tested from an empty database.
+3. Recreate only disposable development/test databases when the implementation replaces V1–V6 history; do not attempt to apply modified historical migrations to a database whose old Flyway history must be preserved.
+4. Align Java entities/services and frontend API contracts with the target behavior.
+5. Verify database constraints, seed/bootstrap behavior and application acceptance tests before considering merge.
