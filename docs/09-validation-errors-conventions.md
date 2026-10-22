@@ -1,5 +1,7 @@
 # 09 — Validation, Errors & Backend Conventions
 
+> **ERD v2 compatibility boundary (2026-10-22):** The examples below were written against the existing implementation/API. Variant, SizeSystem/SizeValue, Color and legacy field validation are source behavior, not automatic target-schema requirements. Reconcile DTO and service validators against the approved 31-table model and the frozen API/business contract; do not silently preserve or remove externally observable validation behavior.
+
 ## 1. Validation layers
 
 Use layered validation:
