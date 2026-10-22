@@ -111,6 +111,55 @@ UNION ALL SELECT 'goods_receipt_items: target unit_cost has no source column', C
 UNION ALL SELECT 'suppliers: target code has no source column', COUNT(*) FROM suppliers
 ORDER BY data_gap;
 
+-- D2. Candidate normalized phone and SKU collisions. These are diagnostics, not an approved canonicalization rule.
+SELECT normalized_phone_candidate, COUNT(*) AS rows_with_candidate
+FROM (
+    SELECT REPLACE(REPLACE(REPLACE(REPLACE(TRIM(phone), ' ', ''), '-', ''), '(', ''), ')', '') AS normalized_phone_candidate
+    FROM accounts
+    WHERE phone IS NOT NULL AND TRIM(phone) <> ''
+) normalized
+GROUP BY normalized_phone_candidate
+HAVING COUNT(*) > 1
+ORDER BY rows_with_candidate DESC, normalized_phone_candidate;
+
+SELECT UPPER(TRIM(sku)) AS normalized_sku_candidate, COUNT(*) AS rows_with_candidate
+FROM product_variants
+WHERE sku IS NOT NULL AND TRIM(sku) <> ''
+GROUP BY UPPER(TRIM(sku))
+HAVING COUNT(*) > 1
+ORDER BY rows_with_candidate DESC, normalized_sku_candidate;
+
+-- D3. Category/brand/product label review for later slug generation.
+-- These name collisions are not a final slug-collision test because no slug normalization rule is approved.
+SELECT 'categories' AS entity_type, LOWER(TRIM(name)) AS normalized_name_candidate, COUNT(*) AS rows_with_candidate
+FROM categories
+GROUP BY LOWER(TRIM(name))
+HAVING COUNT(*) > 1
+UNION ALL
+SELECT 'brands', LOWER(TRIM(name)), COUNT(*)
+FROM brands
+GROUP BY LOWER(TRIM(name))
+HAVING COUNT(*) > 1
+UNION ALL
+SELECT 'products', LOWER(TRIM(name)), COUNT(*)
+FROM products
+GROUP BY LOWER(TRIM(name))
+HAVING COUNT(*) > 1
+ORDER BY entity_type, rows_with_candidate DESC;
+
+-- D4. Compare existing order header subtotal with line totals without recomputing or changing history.
+-- Differences require interpretation; line totals may not represent header discounts.
+SELECT o.order_id, o.order_code, o.subtotal_snapshot,
+       SUM(oi.line_total_snapshot) AS sum_line_totals,
+       o.discount_snapshot, o.shipping_fee_snapshot, o.total_snapshot,
+       SUM(oi.line_total_snapshot) - o.subtotal_snapshot AS line_subtotal_difference
+FROM orders o
+JOIN order_items oi ON oi.order_id = o.order_id
+GROUP BY o.order_id, o.order_code, o.subtotal_snapshot,
+         o.discount_snapshot, o.shipping_fee_snapshot, o.total_snapshot
+HAVING SUM(oi.line_total_snapshot) <> o.subtotal_snapshot
+ORDER BY o.order_id;
+
 -- E. Images/snapshots.
 SELECT
     (SELECT COUNT(*) FROM product_images) AS image_rows,
