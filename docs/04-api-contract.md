@@ -130,8 +130,7 @@ All actions must validate current state, permissions, side effects and idempoten
 
 Operations: `RETURN | EXCHANGE_SIZE`. This is a command over Order/Payment/Inventory/Audit; do not create an `after_sales_cases` resource/table in baseline.
 
-<<<<<<< HEAD
-=======
+
 ### API #29 — Product creation — Phase 10 BREAKING CHANGE
 
 Effective from Phase 10, Product creation and binary image upload are separate commands:
@@ -222,7 +221,6 @@ Request:
 - Reorder is one database transaction. The implementation must preserve `UNIQUE(product_id, sort_order)` while changing positions and must not expose an intermediate duplicate ordering such as `0,0,2`.
 - The response uses the existing object envelope with the updated `AdminProductDetailDto`; its `images[]` sequence reflects the persisted order.
 
->>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
 ### API #54 — GoodsReceipt actions
 
 `CONFIRM | CANCEL`; CONFIRM increments stock and creates InventoryTransaction exactly once.
