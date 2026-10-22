@@ -1,6 +1,6 @@
 # FIDO P0 — Baseline Audit & Scope Refactor
 
-**STATUS: PARTIAL** — source-backed work is useful, but the available environment did not permit a local checkout, recursive directory listing, or execution of Gradle tests. This is not a PASS report.
+**STATUS: PASS — P0 AUDIT DELIVERABLES COMPLETE.** The baseline itself has a verified backend CI failure, which is recorded as an audit finding rather than hidden or repaired outside P0 scope. Local Gradle execution and the dedicated clean-target MySQL workflow could not be initiated from the available tools; actual exact-SHA GitHub Actions evidence and limitations are documented below.
 
 - Audit date: 2026-10-22 (Asia/Bangkok)
 - Repository: https://github.com/quangson2809/FIDO
@@ -12,9 +12,9 @@
 
 GitHub branch lookup confirmed `demo1`; comparing it with the supplied reference reported `ahead_by=1`, `behind_by=0`, with the reference SHA as merge base. The newer commit is titled **feat: add Clean Schema Reset target baseline**. It adds isolated target DDL/seeds/test/workflow and contract documentation. The commit does not show edits to the active `backend/src/main/resources/db/migration/**` chain or Java persistence/application source.
 
-The target logical schema has 31 tables. The isolated target DDL `backend/src/main/resources/db/clean-reset/V1__clean_schema.sql` contains 31 distinct `CREATE TABLE` statements. Source-of-truth docs state the current schema has 32 application tables; V1 creates 28, and V5 creates four additional tables: `voucher_products`, `voucher_categories`, `voucher_usages`, `checkout_quotes`. V2–V4 files retrieved in this audit add constraints, seed rows, indexes or columns but do not create application tables.
+The target logical schema has 31 tables. The isolated target DDL `backend/src/main/resources/db/clean-reset/V1__clean_schema.sql` contains 31 distinct `CREATE TABLE` statements. The full recursive tree at the audited commit identifies exactly six files under `backend/src/main/resources/db/migration/`. V1 creates 28 tables; V5 adds `voucher_products`, `voucher_categories`, `voucher_usages`, and `checkout_quotes`; V2–V4 add constraints, role seeds, inventory setup, image ordering and the image snapshot. V6 (`V6__report_read_permission.sql`) only inserts `REPORT_READ` into `permissions`. Thus the complete active migration chain contains 32 application tables; this reconciles with source-of-truth documentation and `SchemaMappingTests`.
 
-**Migration-listing caveat:** documentation references V1–V6, but the connected file interface could retrieve known files V1–V5 and cannot enumerate a directory. The audit therefore does not certify that those five files are the complete active migration directory. Resolve this by listing the directory from a real checkout before P0 can pass.
+**Migration listing closed:** the recursive Git tree API at commit tree `e63241d91f2dd4168bc837ade15eebfce5e2631c` returned a complete non-truncated tree and confirmed V1–V6. Each migration file's purpose was inspected; V6 adds one `REPORT_READ` permission and no table.
 
 Target DDL is under `db/clean-reset`, intentionally isolated from the active migration location until JPA, service and API mappings align. No database reset, schema-history mutation, application code change, public API change, frontend change, or design-pattern implementation was performed.
 
@@ -27,9 +27,9 @@ Target DDL is under `db/clean-reset`, intentionally isolated from the active mig
 | Reference comparison | 1 commit ahead, 0 behind; merge base is the given reference SHA. |
 | Local working tree | NOT INSPECTABLE; no repository checkout is mounted. No claim is made about uncommitted local changes. |
 | Native Git fetch | `git ls-remote https://github.com/quangson2809/FIDO.git refs/heads/demo1` was attempted but environment DNS failed (“Could not resolve host: github.com”). |
-| Combined status | The available GitHub status endpoint exposed a Vercel status of `success`; no backend GitHub Actions check was exposed in that response. |
-| Workflow run query | Available commit-run helper is limited to PR-triggered runs and returned none. This does not prove no push workflow ran. |
-| Build/test execution | NOT RUN; no local checkout/Gradle execution environment. |
+| Combined status / exact-SHA CI | Backend verification run [#39760829809](https://github.com/quangson2809/FIDO/actions/runs/39760829809) is tied to audited SHA `22bd3d887cef3c077e714e5ec21e70ba89855d46` and concluded **failure**. Vercel status was success, but is unrelated to backend tests. |
+| Backend test result | H2 workflow step: `196 tests completed, 3 failed, 1 skipped`. The failures are `CleanResetSchemaTests.developmentFixtureSeedsParentChildAttributesAndInventory`, `phoneIsUniqueButEmailIsNotUniqueInTheTargetSchema`, and `cleanThenMigrateDropsDevelopmentRowsAndReseedsSystemRows`; the errors report H2 check-constraint failures (`CK_CATEGORIES_STATUS` / `CK_ACCOUNTS_STATUS`). The MySQL test step was skipped because the H2 test step failed. |
+| Local Git / Gradle | Native `git ls-remote` failed from DNS in this environment; no local checkout exists, so no local `git status`, `git diff --check` or independent Gradle invocation was made. Remote source/branch/CI evidence was obtained from GitHub's API. |
 | Database/reset | NOT RUN; no DB was accessed. |
 
 The last commit’s changed paths include the isolated target schema/seed/test, a target verification workflow and ERD/data-contract documents. It is not evidence that the old Java entities already run against the new target schema.
@@ -78,7 +78,7 @@ Source/controller examples retrieved include:
 - inventory: `SupplierController`, `GoodsReceiptController`, `InventoryController`;
 - audit/report/content: `AuditController`, `ReportController`, `ContentPageController`.
 
-This is an evidence-backed controller sample, not a fully counted recursive inventory of every DTO, repository and service. The repository file interface could fetch known paths but not recursively enumerate the source tree; do not infer exact class counts.
+The recursive tree API returned a complete, non-truncated tree with 651 repository files. Under `backend/src/main/java/com/fido/modules/`, it contains 260 Java source files across the nine modules. Path-based inventory: 20 controller files, 96 DTO files, 74 service-directory files, 33 repository-directory files and 32 entity-directory Java files (30 entity/table types plus two composite-ID types). There are 84 Java files under `backend/src/test/java/`, including test support/fixture classes as well as executable test classes. Counts are file-path counts, not method counts or test-case counts; source-file and module classifications are recorded in this audit.
 
 ## 6. Legacy schema and target schema findings
 
@@ -89,8 +89,8 @@ This is an evidence-backed controller sample, not a fully counted recursive inve
 - `V3__inventory_receiving_guards.sql`: inventory initialization/guards; no table creation.
 - `V4__product_image_order_and_order_item_image_snapshot.sql`: image sort order and nullable `order_items.image_url_snapshot`; no table creation.
 - `V5__voucher_policy_and_checkout_quotes.sql`: four added tables and voucher-rule columns.
-- Fetched-file DDL count: 28 + 4 = **32 application tables**. `SchemaMappingTests` corroborates the model logic: 30 entity-mapped tables plus two voucher element-collection tables, excluding `flyway_schema_history`.
-- Full migration enumeration remains blocked by the V1–V6 documentation/file-interface discrepancy.
+- `V6__report_read_permission.sql`: inserts the `REPORT_READ` permission; no DDL/table change.
+- Complete active chain: **6 migrations**, **32 application tables** (28 in V1 plus four in V5). `SchemaMappingTests` corroborates the model logic: 30 entity-mapped tables plus two voucher element-collection tables, excluding `flyway_schema_history`.
 
 ### Source behaviors that will be affected
 
@@ -134,7 +134,7 @@ See `P0-risk-register.md` for controls, impact and responsible phase.
 
 ## 9. Test and CI summary
 
-No Gradle build/test or DB test was executed. The exact commands specified by the workflows and full coverage inventory are in `P0-test-baseline.md`. Existing source test evidence includes:
+An exact-SHA GitHub Actions test run was executed automatically; it failed in the H2 test step as recorded in `P0-test-baseline.md`. The dedicated clean-target MySQL workflow did not run for this SHA (its trigger is PR/manual and the available connector exposes read operations but no workflow-dispatch action). Existing source test evidence includes:
 - `SchemaMappingTests`: current mappings/table/columns/nullability and repository round-trip;
 - `DatabaseConstraintsTests`: money/stock/quantity/FK/unique/state constraints and historical image snapshot;
 - `ArchitectureBoundaryTests`: key dependency boundaries;
@@ -151,4 +151,4 @@ A successful Vercel status is not backend CI PASS evidence. The target schema wo
 - No design pattern was implemented.
 - No merge/rebase/force-push was performed.
 - The P0-only reports live on the separate audit branch.
-- **Conclusion: PARTIAL.** P0 is not accepted until complete migration enumeration, exact-SHA backend CI/test evidence and full source inventory are obtained. P1 may use the matrix to prepare owner decisions, but runtime implementation must not bypass the HARD BLOCKs.
+- **Conclusion: PASS for P0 audit scope.** Git baseline, complete migration listing, recursive source-file inventory, 31-table target mapping, matrix, dependency map, risk register, test baseline and exit gate are committed on a separate audit branch. The baseline CI failure and missing dedicated target-MySQL run are explicitly reported; they are not misrepresented as PASS. They remain implementation/test findings for the approved follow-up phase. P1 contract decisions classified HARD BLOCK must be resolved before runtime schema implementation.
