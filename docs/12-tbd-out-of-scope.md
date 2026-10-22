@@ -15,9 +15,9 @@ Classify each unresolved point:
 
 ## 2. Current hard/deferred business gaps
 
-### Guest Order lookup — legacy API / target-contract decision OPEN
+### Guest Order lookup — legacy requirement, target disposition
 
-The legacy API contract includes `POST /api/v1/orders/lookup`, but the target requires `orders.account_id` and contains no guest identity/session model. Decide explicitly whether this endpoint remains in scope for the target or is removed from the target API contract. If retained, its identity proof, TTL, rate limit, masking and verification channel must be specified; a phone-only lookup is not an acceptable default. Authenticated order APIs can proceed independently.
+The old TBD register mentioned `POST /api/v1/orders/lookup`, but that route is not part of the current 77-row endpoint map in `docs/04-api-contract.md`. The owner decision dated 2026-10-05 requires login before order placement, and Clean Schema Reset does not preserve old development orders. Therefore guest-order lookup is **not a target capability by default**. Remove it from target requirements unless the owner explicitly amends the API scope; do not add guest identity/session storage to satisfy an obsolete statement.
 
 ### Voucher behavior — target compatibility BLOCKED / explicit defer required
 
@@ -31,7 +31,7 @@ The legacy API #20 remains a compatibility reference, while the target ERD inclu
 
 ### Guest cart — legacy behavior not represented in target
 
-The **legacy** schema/API permits guest-cart behavior, but the target ERD makes `CARTS.account_id` required and defines no guest session/persistence model. Do not describe guest Cart as a nullable-account target feature. Explicitly retain, defer or remove guest-cart/API behavior in the target contract before attempting to implement it. Authenticated Cart can proceed under the target ownership model.
+Older API rows labelled cart operations as JWT-optional/guest-TBD. The owner decision dated 2026-10-05 resolves the target behavior: require login for persisted Cart and order placement. `docs/04-api-contract.md` now records JWT as required for APIs #14–20. Guest sessions, anonymous accounts, local guest-cart persistence and login-time guest-cart merging are out of target scope unless a later owner decision explicitly changes it.
 
 ### Exchange-size automation — DEFERRED slice
 
@@ -107,7 +107,7 @@ Do not invent numeric targets for:
 
 ## 8. Phase 7 report decision — resolved 2026-09-28
 
-The user resolved API #71 / FR-30 / BRULE-13: include shipping in received sales, subtract the returned order value in its original completion period, count current statuses by order creation date, and use Asia/Ho_Chi_Minh dates. See docs/15 for formulas and boundaries. This is no longer a Phase 7 blocker. Existing guest/voucher/dedupe and other earlier-phase deferred items remain unchanged.
+The user resolved API #71 / FR-30 / BRULE-13: include shipping in received sales, subtract the returned order value in its original completion period, count current statuses by order creation date, and use Asia/Ho_Chi_Minh dates. See docs/15 for formulas and boundaries. This is no longer a Phase 7 blocker. Voucher and order-retry semantics remain open as described above. Guest cart/checkout is out of target scope under the owner decision dated 2026-10-05; the remaining task is documentation/API alignment, not a pending decision about whether guest checkout is required.
 
 ### Voucher V1 override (2026-10-09)
 
