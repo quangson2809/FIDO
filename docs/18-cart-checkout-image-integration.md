@@ -1,5 +1,7 @@
 # 18 — Phase 8 Cart / Checkout image integration — 2026-10-04
 
+> **Pre-refactor behavior note (2026-10-22):** This document records the current Variant-based Cart/Checkout image behavior. The approved ERD v2 has no checkout_quotes table and ORDER_ITEMS has no image_url_snapshot column. Do not assume this baseline image/snapshot implementation is the target persistence contract; follow the approved 31-table ERD and its migration-retention gate.
+
 ## Scope
 
 This refinement integrates the current Product cover into Cart and Checkout presentation without changing Cart persistence or historical Order image semantics.

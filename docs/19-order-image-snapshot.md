@@ -1,5 +1,7 @@
 # 19 — Phase 9 Order image snapshot — 2026-10-04
 
+> **Pre-refactor behavior note (2026-10-22):** This document records the implemented source-schema behavior using order_items.image_url_snapshot. The owner-confirmed target ORDER_ITEMS deliberately does not contain that column. Preserve historical values through an owner-approved archive/retention disposition before contracting the source schema; do not add the column back to the target ERD without explicit approval.
+
 ## Scope
 
 Order item images are historical data. This phase connects the existing `order_items.image_url_snapshot` persistence column to Order creation, Order detail reads, and the representative image returned by Order list summaries.

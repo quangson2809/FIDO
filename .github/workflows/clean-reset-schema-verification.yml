@@ -1,0 +1,68 @@
+name: Clean Schema Reset target verification
+
+on:
+  push:
+    branches:
+      - feature/clean-schema-reset
+    paths:
+      - "backend/src/main/resources/db/clean-reset/**"
+      - "backend/src/test/java/com/fido/persistence/CleanResetSchemaTests.java"
+      - ".github/workflows/clean-reset-schema-verification.yml"
+  pull_request:
+    branches:
+      - demo1
+      - docs/phase-1-erd-v2-freeze
+    paths:
+      - "backend/src/main/resources/db/clean-reset/**"
+      - "backend/src/test/java/com/fido/persistence/CleanResetSchemaTests.java"
+      - "backend/src/test/resources/clean-reset/**"
+      - ".github/workflows/clean-reset-schema-verification.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clean-reset-schema-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  target-schema:
+    name: Verify target schema from an empty database
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: clean-reset-test-password
+          MYSQL_DATABASE: fido_clean_reset
+          TZ: UTC
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pclean-reset-test-password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      CLEAN_RESET_TEST_DB_URL: jdbc:mysql://127.0.0.1:3306/fido_clean_reset?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      CLEAN_RESET_TEST_DB_DRIVER: com.mysql.cj.jdbc.Driver
+      CLEAN_RESET_TEST_DB_USERNAME: root
+      CLEAN_RESET_TEST_DB_PASSWORD: clean-reset-test-password
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run clean-target schema tests
+        working-directory: backend
+        run: ./gradlew test --tests com.fido.persistence.CleanResetSchemaTests --stacktrace

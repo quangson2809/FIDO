@@ -1,5 +1,7 @@
 # Implementation decisions — 2026-09-26
 
+> **ERD v2 scope boundary (2026-10-22):** This is a chronological decision log for the current implementation. Existing V1–V6, ProductVariant, inventory and image-snapshot decisions describe the source baseline unless explicitly re-approved for the refactor. The owner-confirmed target persistence model is the 31-table ERD and contract under docs/refactor; earlier schema statements here must not override it. Preserve the existing public/business contract or flag a compatibility blocker rather than silently broadening the target schema.
+
 This file contains **technical implementation decisions** approved by the project owner or safely chosen to encode already-approved source semantics. It must not be used to invent new business rules.
 
 ## Explicitly approved by project owner
@@ -87,7 +89,7 @@ Public catalog #11–13 remains public according to the API contract.
 
 ## Canonical source notes
 
-- Schema authority: `07_Thiet_ke_du_lieu_CSDL_Website_Ban_Quan_Ao_v1.3.0_catalog_final.docx`.
+- Current-source schema authority: `07_Thiet_ke_du_lieu_CSDL_Website_Ban_Quan_Ao_v1.3.0_catalog_final.docx` applies to the existing V1–V6 source schema only; the target refactor follows the owner-confirmed 31-table ERD under `docs/refactor/`.
 - Current API authority: consolidated `DANH MỤC API TINH GỌN THEO CSDL` with 77 baseline APIs and Appendix A.
 - Older API v5/phase snapshots may provide history but do not override the current consolidated contract.
 - Modeling Class/Sequence diagrams guide responsibility/order of interaction; they do not override the current physical schema or force Java framework method names.
