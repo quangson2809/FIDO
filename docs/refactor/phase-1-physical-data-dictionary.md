@@ -105,7 +105,7 @@ Clean Schema Reset means legacy-source rows do not need to be mapped. The target
 | TGT-14 | Operational SQL | BIGINT, DECIMAL(18,2), TIMESTAMP(6), checks and supporting indexes are drafted in SQL; MySQL 8 verification and complete metadata review remain pending. | DDL DRAFT / CI PENDING |
 | TGT-15 | Seed separation | Required roles/permissions are seeded in Flyway. Catalog/attribute/warehouse demo rows are separate, account-free test/dev SQL; first-admin provisioning stays environment-configured. | SEED ADDED / INTEGRATION OPEN |
 
-Applied defaults are working choices for this implementation branch, not a claim that application behavior has already been integrated. The target DDL is kept in a separate Flyway location until entity mappings and services are compatible. Review physical nullability/lengths and align each status literal with API validators before activating it.
+Applied defaults are working choices in the isolated target draft, not a claim that application behavior has already been integrated. The target DDL is kept in a separate Flyway location until entity mappings and services are compatible. Review physical nullability/lengths and align each status literal with API validators before activating it.
 
 The owner-confirmed target ERD is the table/relationship authority. The existing V1–V6 schema is used only to locate legacy code that must be updated or removed; no source row mapping, populated-source migration, legacy archive or historical crosswalk is a release gate for disposable development/test data.
 
