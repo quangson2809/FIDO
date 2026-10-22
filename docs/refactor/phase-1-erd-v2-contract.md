@@ -8,7 +8,7 @@
 - **Target schema confirmation:** 2026-10-22
 - **Scope:** freeze the owner-confirmed 31-table target model and record the approved **Clean Schema Reset** strategy for development/test environments. The existing V1–V6 chain is documented only as a legacy comparison, not as a dataset to migrate.
 - **Owner decision (2026-10-22):** design for the new target business rules, discard obsolete development/test data, and reseed from a clean database. Do not build source-to-target data migration, historical crosswalk, or archive machinery solely to preserve test fixtures.
-- **Excluded:** destructive changes to production/shared environments, any database reset executed from this documentation-only PR, unapproved target schema expansion, unreviewed public API changes, and merging this branch.
+- **Excluded:** executing a database reset from this PR, destructive changes to production/shared environments, silently expanding the target schema, or switching the application to the new migration location before JPA/API/frontend mappings are aligned.
 
 > Source of truth: the exact 31-table ERD most recently supplied by the project owner. The earlier 38-table draft is superseded. V1–V6 are legacy implementation evidence only. Do not re-add a target table or column absent from the owner-confirmed ERD without an explicit owner change.
 
@@ -17,11 +17,12 @@
 ### 1.1 Work performed
 
 1. Replaced the previous 38-table draft with the exact owner-confirmed 31-table ERD.
-2. Kept the V1–V6 schema inventory as a reference for understanding the pre-refactor implementation, not as a data-migration source.
-3. Recorded the owner's Clean Schema Reset decision for disposable development/test databases.
-4. Updated physical schema questions to focus on the new target's runtime/business contracts rather than preserving legacy test rows.
-5. Removed the migration-preservation package (source preflight SQL, synthetic legacy fixture, preflight runbook and their static JUnit guard) because it is not needed for a clean reset.
-6. No application code, Flyway file, database, or live data was changed or reset by this documentation update.
+2. Recorded Clean Schema Reset for disposable development/test databases; legacy source rows are not migrated.
+3. Added an isolated two-version Flyway location: the 31-table target baseline plus required RBAC system seed.
+4. Added a separate development/test demo fixture for parent/child Products, typed Size/Color options, images, warehouse inventory and a voucher; it creates no accounts or credentials and is not a migration.
+5. Added `CleanResetSchemaTests` and a dedicated GitHub Actions workflow covering clean install, exact table inventory, seed boundary, phone uniqueness and development fixture behavior.
+6. Kept the new migration location isolated because existing JPA mappings/services/frontend contracts have not yet been switched from legacy tables.
+7. No external database was connected, dropped, or reset.
 
 ### 1.2 Verified facts versus unavailable evidence
 
@@ -30,7 +31,8 @@
 | Owner-confirmed target ERD | **31 logical tables** | Approved diagram and owner's explicit schema |
 | Existing V1–V6 migration DDL | **32 application tables** | Source migration files; excludes Flyway metadata |
 | Owner's reset strategy | **CONFIRMED** | Clean Schema Reset for disposable development/test data; reseed target data from scratch |
-| Target implementation aligned to ERD | **NOT IMPLEMENTED by this docs PR** | Entities, repositories, services, API contracts and DDL still need implementation work |
+| Target DDL + required system seed | **ADDED / VERIFICATION PENDING** | `backend/src/main/resources/db/clean-reset` contains the 31-table schema and RBAC seed; isolated schema CI is the verification gate |
+| Application integration | **NOT COMPLETE** | Existing entities/services/APIs/frontend still depend on legacy Variant/size/color and checkout-quote contracts; default Flyway location remains unchanged |
 | New clean-database install | **NOT VERIFIED** | No replacement baseline or target DDL has been created/run yet |
 | Database environments reset | **NOT RUN** | No connection or destructive DB operation was performed |
 | Production/shared data deletion | **NOT APPROVED** | The decision applies to development/test data only; any non-disposable environment needs separate explicit authorization |
@@ -310,7 +312,7 @@ Do not claim success based only on a successful compilation or a documentation d
 - [Owner decision questionnaire](phase-1-owner-decision-questionnaire.md) contains only remaining decisions relevant to the new target contract.
 - The former preflight SQL, synthetic legacy fixture, runbook and static artifact test have been removed from this PR because Clean Schema Reset does not require them.
 
-**P1 conclusion:** the 31-table logical target and Clean Schema Reset direction are confirmed. P1 is still **PARTIAL** until the active business/physical decisions are resolved, the target schema and seeds are implemented, and a fresh database plus application acceptance tests pass.
+**Implementation status:** the 31-table logical target and Clean Schema Reset direction are confirmed. The target DDL and system seed now exist in an isolated Flyway location, but P1 remains **PARTIAL** until the dedicated CI run passes and the JPA/service/API/frontend integration is complete. The default runtime migrations were not changed, and no database reset was performed.
 
 ## Appendix A — constraint-name ledger from source migrations
 

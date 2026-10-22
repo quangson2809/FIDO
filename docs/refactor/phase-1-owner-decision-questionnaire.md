@@ -17,9 +17,26 @@ The owner has chosen **Clean Schema Reset**:
 
 This decision closes legacy-only questions about mapping old source values, old inventory, historical payment/refund aggregates, old image snapshots, source-only fields and old idempotency keys. They are not blockers for a clean target install.
 
+## Implementation defaults adopted in branch `feature/clean-schema-reset`
+
+To implement the selected scope without pausing for another decision round, the working branch uses these defaults: **D1-A, D2-A, D3-A, D4-A, D5-A, D6-A, D7-A, D8-A, D9-A, D10-A**. They are encoded as working defaults in the draft DDL/runbook; they are not presented as facts about the currently running application. Review before the new schema becomes the default runtime schema. Any rejection must be handled by updating the contract, DDL and tests together.
+
+| Decision | Working default applied |
+|---|---|
+| D1 | Phone is unique login identity; email is nullable/non-unique. |
+| D2 | New persisted carts/orders require authentication. |
+| D3 | Parent/child Products share PRODUCTS; Size/Color are option-backed, variant-defining attributes. |
+| D4 | Only target-representable vouchers; no persisted checkout quotes or scope-join tables. |
+| D5 | VND; order total = subtotal − total discounts + shipping; each line snapshots its own discount and line total. |
+| D6 | COD initially; one payment aggregate per order. |
+| D7 | Copy recipient/address to an immutable order-address snapshot at placement. |
+| D8 | Unique idempotency keys for new order/inventory commands; same-payload retry replays, conflicting payload returns conflict. |
+| D9 | BIGINT IDs, DECIMAL(18,2), TIMESTAMP(6) UTC, checks/indexes and restrictive FKs by default. |
+| D10 | Required roles/permissions in Flyway; demo catalog/inventory fixture separate from system seed and without accounts/secrets. |
+
 ## How to respond
 
-Reply with option codes such as `D1-A, D2-A, D3-B`, or provide an explicit alternative. Recommendations are not treated as decisions until confirmed. These questions concern the **new application's behavior and physical schema**, which remain relevant even when all old development data is discarded.
+Reply with any changes in the form `D5-OTHER: ...`. The defaults above are used to build the working branch, but must be changed before activation if they are inconsistent with the actual product contract. These questions concern the **new application's behavior and physical schema**, not obsolete development data.
 
 ## D1 — Account identity and phone login
 
