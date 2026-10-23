@@ -22,7 +22,7 @@ Use the following order when documents conflict:
 
 1. [Owner-confirmed target ERD](refactor/phase-1-erd-v2-approved.mmd) — target tables and relationships.
 2. [Target contract](refactor/phase-1-erd-v2-contract.md) — source/target compatibility gaps and target boundaries.
-3. [Physical data dictionary](refactor/phase-1-physical-data-dictionary.md) — columns, constraints and unresolved physical SQL.
+3. [Target physical data dictionary](refactor-v2/p1/P1-data-dictionary.csv) and [owner approval record](refactor-v2/p1/P1-owner-approval-2026-10-23.md) — target columns/constraints plus accepted physical defaults.
 4. [Owner decision questionnaire](refactor/phase-1-owner-decision-questionnaire.md) — working defaults and decisions that still need explicit approval.
 5. [Clean Schema Reset runbook](refactor/clean-schema-reset-runbook.md) — safe test/reset procedure.
 6. [Source of truth](00-source-of-truth.md), [business/TBD register](12-tbd-out-of-scope.md), and [technical decision log](15-technical-decisions.md) — API/business compatibility and historical decisions.
@@ -50,15 +50,16 @@ Required evidence:
 
 **Goal:** close or explicitly disposition every material decision before the target schema becomes the default runtime schema.
 
-Required work:
-- review D1–D10 in the decision questionnaire; distinguish owner-approved requirements from working defaults;
-- freeze account identity, authentication and account ownership;
-- freeze parent/child Product identity, typed attributes, inheritance and public ID/DTO compatibility;
-- define stock semantics, transaction boundaries, concurrency and idempotency for inventory;
-- decide voucher scope, usage limits/redemption, checkout quote behavior and order-create retries;
-- freeze order money calculations/snapshots, payment/refund scope, shipping states and address snapshot behavior;
-- resolve phone uniqueness versus the ERD, physical nullability/defaults/indexes/FK actions, timestamp/timezone rules and allowed literals;
-- update the contract, data dictionary and tests together for every approved decision.
+Owner decision review completed on 2026-10-23: DB-03/05 proposals, DB-12 lifecycle/FK defaults and the proposed DB-01/02/06–DB-11/API defaults were approved. Keep numeric retention duration/anonymization exceptions TBD and do not schedule purges until approved.
+
+Required engineering work carried forward into P2:
+- synchronize target ERD, physical dictionary, SQL and all data/UC/API/DTO documentation with the approval record;
+- implement active-phone soft delete, one-level parent/child Product semantics, typed attributes and Product-ID DTOs;
+- implement inventory source/sign/dedupe/reversal/concurrency semantics and idempotent order placement;
+- implement global voucher quota, immutable order snapshots, COD transitions/full refund and integer-VND rounding/allocation;
+- implement target-first Flyway and seed/bootstrap; keep legacy V1–V6 history unchanged;
+- validate physical DDL, FK lifecycle, UTC timestamps, allowed literals and field nullability against MySQL;
+- preserve clear separation between owner-approved decisions and implementation/test acceptance.
 
 **Gate:** every material decision is either approved with traceable evidence or explicitly excluded/deferred without contradicting the target ERD. No unresolved HARD BLOCK may be treated as a technical default.
 
@@ -118,4 +119,4 @@ NEXT GATE READY: YES | NO
 - Current draft inventory at base: 31 target tables, 228 logical fields, 229 physical SQL columns including generated `accounts.phone_active_key`.
 - Earlier MySQL/backend runs `39904931447` and `39904931498` are historical evidence at prior commits, not validation of the reconciliation changes.
 - The current exact-commit checker/workflow result is pending until the reconciliation PR runs. No current PASS is implied here.
-- Status remains **PARTIAL / P2 IMPLEMENTATION AUTHORIZED UNDER THE DISPOSABLE-DB GATE**. DB-03/05 and DB-12 lifecycle/FK defaults and the proposed DB-01/02/06–11/API defaults were owner-approved on 2026-10-23. Runtime mapping/acceptance tests remain open; numeric retention durations and anonymization exceptions remain TBD.
+- Status remains **PARTIAL / P2 IMPLEMENTATION AUTHORIZED UNDER THE DISPOSABLE-DB GATE**. The owner decision portion of P1 is recorded; runtime mappings, business/security/concurrency acceptance tests, exact-SHA CI and numeric retention durations/anonymization exceptions remain outstanding.
