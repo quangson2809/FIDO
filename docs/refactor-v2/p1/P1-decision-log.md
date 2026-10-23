@@ -25,16 +25,16 @@
 
 | ID | Topic | Recommendation for owner review | Impact | Status |
 |---|---|---|---|---|
-| P1-PROP-01 | Phone uniqueness | Consider required UNIQUE(phone) to keep the current phone login unambiguous. The ERD does not mark phone UK, and D1 is not approved. | Account DDL, registration/login and duplicate behavior. | PROPOSED; DB-09 |
+| P1-PROP-01 | Phone uniqueness | Use active-account-only phone uniqueness and allow reuse after soft delete. A global UNIQUE(phone) is incompatible. Select and verify a MySQL 8.4-compatible physical strategy before migration. | Account DDL, registration/login and duplicate behavior. | PROPOSED; DB-09 |
 | P1-PROP-02 | Product sale unit | Consider root Product as a grouping page and direct children as sellable/stocked/cartable units. Inherit only fields explicitly marked in ERD. | Product ID and Catalog/Cart/Order/receipt/Inventory contracts. | PROPOSED; DB-01 |
 | P1-PROP-03 | Variant identity | Add a normalized variant signature with a unique scope per parent, or approve another concurrency-safe guard. SKU uniqueness alone is insufficient. | Schema, Product DTO/service and concurrent creation. | PROPOSED; DB-01/02 |
 | P1-PROP-04 | Receipt destination | Add GOODS_RECEIPTS.warehouse_id or approve an explicit single-warehouse service assignment policy. | Receipt API and inventory transaction. | PROPOSED; DB-03 |
 | P1-PROP-05 | Adjustment reason | Add searchable reason to INVENTORY_TRANSACTIONS or approve another persisted/auditable contract. | Adjustment API, ledger and audit queries. | PROPOSED; DB-03 |
-| P1-PROP-06 | Order image history | Add ORDER_ITEMS.image_url_snapshot or explicitly accept no historical image guarantee. | Order DTO, storefront/admin history and asset retention. | PROPOSED; DB-07 |
+| P1-PROP-06 | Order image history | Preserve immutable historical image without silently adding a column: prove an existing-schema-compatible immutable asset/version retention mechanism, or formally amend the ERD; otherwise explicitly narrow the guarantee. | Order DTO, storefront/admin history and asset retention. | PROPOSED; DB-07 |
 | P1-PROP-07 | Inventory reversals | Define movement type/source/sign/uniqueness for cancel, restock and return; do not reuse ambiguous movement types. | Stock accounting, Order lifecycle and reports. | PROPOSED; DB-03/08 |
 | P1-PROP-08 | Recipient editing | Resolve immutable placement snapshot versus editable delivery details and duplicated ShippingInfo receiver fields. | Order recipient PATCH, shipping and audit. | PROPOSED; DB-07/08 |
-| P1-PROP-09 | Voucher capability | Approve a reduced schema-representable voucher policy, defer redemption, or amend ERD for scope/usage persistence. | Voucher CRUD/quote/order and concurrency. | PROPOSED; DB-06 |
-| P1-PROP-10 | COD refund | Approve full-refund-only semantics, add refund amount/actor/time persistence, or defer refunds. | Payment API/DTO/report/audit. | PROPOSED; DB-08 |
+| P1-PROP-09 | Voucher capability | Keep order-wide, non-stackable vouchers without product/category conditions. Do not promise redemption caps/per-account limits unless existing schema can persist and atomically enforce them; otherwise explicitly defer those capabilities or formally amend ERD. | Voucher CRUD/quote/order and concurrency. | PROPOSED; DB-06 |
+| P1-PROP-10 | COD refund | Reconcile COD return/refund state transitions and required refund amount/actor/time facts with existing schema; defer any workflow the 31-table ERD cannot represent unless owner formally amends it. | Payment API/DTO/report/audit. | PROPOSED; DB-08 |
 | P1-PROP-11 | Physical SQL contract | Approve every type length, nullability, default, decimal/timestamp precision, status, check, index and FK action. | DDL/JPA/API validation. | PROPOSED; DB-09 |
 
 ## OWNER DECISIONS RECORDED — CONTRACT SYNCHRONIZATION REQUIRED
