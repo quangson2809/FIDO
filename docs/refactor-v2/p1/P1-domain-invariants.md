@@ -3,7 +3,7 @@
 **Status: PARTIAL.** Owner-confirmed decisions are distinguished from proposed mechanics. DB-03/DB-05 proposal details are in P1-design-proposals-DB-03-DB-05.md; they are not approved. Behavioral/implementation blockers remain for DB-03/05/06/07/08/09/10/12 even where target fields now exist.
 
 ## Account and RBAC
-- INV-ACC-01: Phone is the login identity and is unique among active accounts; reuse is allowed after soft deletion (owner decision DB-09, 2026-10-23). Never expose password hashes; retain generic credential-failure behavior. The physical enforcement strategy must match this rule and be verified on MySQL.
+- INV-ACC-01: Phone is the login identity and is unique among active accounts; reuse is allowed after soft deletion (owner decision DB-09, 2026-10-23). Never expose password hashes; retain generic credential-failure behavior. Target MySQL suite passes active-phone uniqueness and reuse after soft deletion. The application Account Entity remains unaligned: global unique phone is present and deleted_at is not mapped.
 - INV-ACC-02: /me resources, saved addresses and customer orders are scoped to authenticated principal. Client account IDs never authorize access.
 - INV-RBAC-01: Resolve effective grants from the database; never trust role claims from the client. Role/permission replacement and audit are atomic; preserve last-SUPERADMIN protection.
 - INV-ACC-03: Target Account status literals and their login/session effects are not approved; do not invent a new lifecycle.
