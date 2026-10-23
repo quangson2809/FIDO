@@ -1,6 +1,6 @@
 # P1 — Domain Invariants
 
-**Status: PARTIAL.** Owner-confirmed decisions are distinguished from proposed mechanics. DB-03/DB-05 proposal details are in P1-design-proposals-DB-03-DB-05.md; they are not approved. ERD-fit blockers remain for DB-06/07/08/09/10.
+**Status: PARTIAL.** Owner-confirmed decisions are distinguished from proposed mechanics. DB-03/DB-05 proposal details are in P1-design-proposals-DB-03-DB-05.md; they are not approved. Behavioral/implementation blockers remain for DB-03/05/06/07/08/09/10/12 even where target fields now exist.
 
 ## Account and RBAC
 - INV-ACC-01: Phone is the login identity and is unique among active accounts; reuse is allowed after soft deletion (owner decision DB-09, 2026-10-23). Never expose password hashes; retain generic credential-failure behavior. The physical enforcement strategy must match this rule and be verified on MySQL.
@@ -25,7 +25,7 @@
 - INV-PRICE-01: The server controls effective price, discount, shipping fee, subtotal and total.
 - INV-QUOTE-01: CHECKOUT_QUOTES is absent; proposal is a stateless preview with no stock reservation and server-side recalculation at placement. If current price/stock/voucher/shipping changes materially, return conflict/requote and create no Order. This requires owner acceptance.
 - INV-ORDER-01: Proposed idempotency scope is authenticated account + create-order operation + key; same canonical payload replays the committed Order, changed payload conflicts, and cross-account reuse is isolated. This guarantee is NOT implementable as durable multi-instance idempotency unless an approved schema location and database uniqueness/arbitration exist for key, payload hash and result identity. Resolve schema fit before claiming this invariant.
-- INV-ORDER-02: VND only; money is stored as integer VND (owner decision DB-10, 2026-10-23). Proposed formula: total = subtotal - discount + shipping fee; discount is capped at subtotal; percentage discount rounds half-up once at order level; line discounts use largest-remainder allocation and must sum exactly to order discount. This rounding/allocation algorithm is proposed, not owner-approved. Do not use DECIMAL(18,2) draft; reconcile the canonical ERD's decimal-labelled fields before freeze.
+- INV-ORDER-02: VND only; money is stored as integer VND (owner decision DB-10, 2026-10-23). Proposed formula: total = subtotal - discount + shipping fee; discount is capped at subtotal; percentage discount rounds half-up once at order level; line discounts use largest-remainder allocation and must sum exactly to order discount. This rounding/allocation algorithm is proposed, not owner-approved. The canonical target ERD/SQL now use integer VND; current Java Order/Product/Voucher and frontend API types still include BigDecimal/legacy decimal calculation and must be aligned after decision freeze.
 - INV-ORDER-03: Capture SKU/name/attributes/quantity/unit price/discount/line total at placement; never query live catalog to recreate historical facts.
 - INV-ORDER-04: Only approved state transitions are allowed. Order and Payment status remain separate.
 - INV-ADDR-01: Saved Address differs from OrderAddress. Recipient PATCH through PREPARING and duplicated ShippingInfo receiver fields need DB-07/08 resolution.
@@ -43,7 +43,7 @@
 - INV-STOCK-02: Balance, immutable ledger and relevant Order/Receipt state/audit commit or roll back together.
 - INV-STOCK-03: Use row lock or guarded version update and check affected row count; @Transactional alone does not prevent lost updates.
 - INV-STOCK-04: Receipt movement must match Product/warehouse and positive inbound delta; Order movement matches OrderItem/Product and outbound delta.
-- INV-STOCK-05: Retry must not duplicate stock. Unique idempotency key alone cannot stop the same source movement under another key; current ERD lacks a dedicated reversal FK and source-unique constraint. Use state guards plus deterministic source-derived keys only if reviewer verifies the key contract; otherwise ERD amendment is required.
+- INV-STOCK-05: Retry must not duplicate stock. Unique idempotency key alone cannot stop the same source movement under another key; the ERD/SQL draft includes reverses_transaction_id, but does not enforce uniqueness of the same semantic source event under a different idempotency key. Use state guards plus an accepted source-derived uniqueness strategy; the movement-source CHECK and reversal rules remain unapproved.
 - INV-RECEIPT-01: Confirm GoodsReceipt once; target does not persist the destination warehouse.
 - INV-STOCK-06: Current adjustment API requires a reason but target ledger omits it; persist it or approve another contract.
 
@@ -58,3 +58,8 @@
 ## Implementation traceability boundary
 
 The clean-reset SQL remains isolated from active Flyway migrations. Current legacy Entity/Repository/API code has not been migrated to the target Product/attribute, warehouse/inventory, Order, Payment and integer-VND contracts. Use P1-traceability-matrix.csv and P1-api-breaking-changes.md for the exact layer-by-layer statuses. DB-03/DB-05 details remain unapproved proposals. Listed tests are acceptance requirements unless a separate CI run explicitly passes them.
+
+
+## Product hierarchy fields — decision still required
+
+DB-01 confirms parent and child Product rows can each sell independently and own SKU, price and inventory. It does not decide hierarchy depth or whether child name, slug, description, selling_price, category_id and brand_id are required, independent or inherited. Treat NULL as its actual persisted value until each field's NULL meaning and parent-update propagation are explicitly decided; never implement silent inheritance from current nullable columns.

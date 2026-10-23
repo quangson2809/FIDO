@@ -1,159 +1,112 @@
-# P1 Design Proposals — DB-03 Inventory and DB-05 Checkout Quote
+# P1 Design Proposals — DB-03 Inventory and DB-05 Checkout
 
-**Status: PROPOSED — NOT OWNER-APPROVED.** DB-03 and DB-05 were selected as requests for a design proposal, not approval of every mechanic below.  
-Branch: demo1 · Date: 2026-10-23  
-Authority: owner-confirmed 31-table ERD docs/refactor/phase-1-erd-v2-approved.mmd, decision log and explicit owner choices. The P1 contract-freeze revision retains 31 tables and adds explicit columns where required; the isolated SQL remains a draft until MySQL 8.4 verification.
+**STATUS: PROPOSED — NOT OWNER-APPROVED.** DB-03 and DB-05 were explicitly selected as requests for a design proposal. The presence of proposed fields in ERD/SQL, this document, or a green static check does not mean the owner approved the mechanics.
 
-## 1. DB-03 — Inventory, receipts, ledger and concurrency
+Current target draft: 31 logical tables; SQL includes warehouse destination, inventory ledger reason/reversal references, order idempotency key + request fingerprint, integer-VND totals, voucher usage counter, order image snapshot, and refund metadata. Runtime schema verification is a separate gate. Live backend and frontend still implement legacy Variant/BigDecimal/quote-ID contracts.
 
-### 1.1 Scope and stock invariant
+## 1. DB-03 — Inventory, receipt, ledger and concurrency
 
-- One operational warehouse in v1 is already approved (A-04). Seed one active warehouse and resolve its ID from configuration/reference data; do not accept an arbitrary warehouse ID from public requests.
-- INVENTORIES.quantity_on_hand means the physical/accounting quantity currently available to promise for sale. No separate reservation quantity exists in the approved ERD.
-- Invariant per (warehouse_id, product_id): quantity_on_hand = sum(INVENTORY_TRANSACTIONS.quantity_delta) from the opening balance onward. If an initial opening balance is needed, represent it by an approved opening-balance movement, not an untracked direct update.
-- All deltas are signed integers: inbound positive; outbound negative. Zero deltas are invalid. Quantities must remain within the integer column range and must not become negative.
-- Only sellable Product records receive inventory. Parent and child Products each have independent stock, SKU and price per DB-01. Cart writes never mutate stock.
+### Current target-schema evidence
 
-### 1.2 When stock changes
+- v1 has one operational warehouse (decision A-04). WAREHOUSES exists; GOODS_RECEIPTS.warehouse_id is NOT NULL and references WAREHOUSES. The service should resolve the active single warehouse, not trust an arbitrary public-client warehouse ID.
+- INVENTORIES has composite primary key (warehouse_id, product_id), a nonnegative quantity check and version field. The balance has no reservation column; quote/cart actions must not reserve stock.
+- INVENTORY_TRANSACTIONS has warehouse_id, product_id, signed quantity_delta, transaction_type, nullable goods_receipt_item_id/order_item_id, unique idempotency_key, reason_code and nullable self-FK reverses_transaction_id. Its current draft CHECK accepts OPENING, GOODS_RECEIPT, ORDER, ORDER_CANCEL_REVERSAL, RETURN_RESTOCK and ADJUSTMENT; do not use a different literal set without updating ERD, SQL, dictionary, services and tests together.
+- Current draft has no CHECK that enforces the source-column shape for each movement type, no unique constraint on the semantic source event independent of client/server key, and no constraint equating inventory balances to ledger sums. Those are behavioral/transaction invariants, not proven by field presence.
 
-| Command/event | Stock effect | Preconditions | Atomic unit |
-|---|---|---|---|
-| Create/edit receipt draft | None | Draft only; validate positive item quantities | Receipt draft + items |
-| Confirm goods receipt | One positive delta per receipt item | Receipt is confirmable; Product is sellable; receipt not previously confirmed | Receipt status + ledger rows + inventory balances |
-| Place order successfully | One negative delta per OrderItem | Reprice and validate all Products; sufficient stock for every line; idempotency resolved | Order + snapshots + COD payment + stock movements/balances + cart mutation |
-| Cancel eligible order | One positive reversal per prior deduction | Allowed Order transition; original deduction exists; not already reversed | Order transition + reversal rows + balances + audit |
-| Manual adjustment | Signed non-zero delta | Permission, mandatory reason/key, actor derived from JWT | Ledger + balance + audit |
-| Return/refund | Not enabled as a stock command until DB-08 return scope/persistence is approved | Owner-approved return contract required | Freeze with DB-08 |
+### Candidate movement semantics — approval required
 
-Proposed deduction point is successful atomic order placement, not quote creation or cart addition. No reservation field/table exists, so quotes do not reserve stock. Order placement rechecks stock and fails without partial writes if stock is insufficient.
-
-### 1.3 Ledger semantics with current columns
-
-Use INVENTORY_TRANSACTIONS only; do not create another ledger table.
-
-| transaction_type proposal | quantity_delta | Source link | Meaning |
+| Draft type | Proposed effect | Expected source | Proposed requirements |
 |---|---:|---|---|
-| GOODS_RECEIPT | Positive | goods_receipt_item_id | Confirmed receipt item |
-| ORDER_DEDUCTION | Negative | order_item_id | Stock consumed by successful Order placement |
-| ORDER_CANCEL_REVERSAL | Positive | order_item_id | Reversal of the corresponding deduction |
-| MANUAL_ADJUSTMENT | Non-zero signed | Neither | Authorized correction with reason in command/audit metadata |
-| OPENING_BALANCE | Strictly positive | Neither | Explicit initial quantity for a tracked Product |
+| OPENING | positive | no receipt/order item | explicit opening movement; never silently seed a balance without ledger evidence |
+| GOODS_RECEIPT | positive | exactly one goods_receipt_item_id | only on the first successful receipt confirmation |
+| ORDER | negative | exactly one order_item_id | only after rechecking current product price/status and sufficient stock |
+| ORDER_CANCEL_REVERSAL | positive | original order-item movement / reverses_transaction_id | at most one reversal of an eligible prior deduction |
+| RETURN_RESTOCK | positive only when item is approved to return to sellable stock | order item and/or explicit reversal link per accepted contract | return decision and inventory restoration must be atomic |
+| ADJUSTMENT | non-zero signed delta | no receipt/order item | require reason code, authorized actor and idempotency/correlation key |
 
-These literals are proposed, not frozen. Receipt/order sources can use nullable source FKs, but each movement type must have exactly one valid source. Manual adjustment/opening balance lack a dedicated ledger reason column. Persist bounded reason/correlation evidence in AUDIT_LOGS (entity_type, entity_id, before_data, after_data, correlation_id) in the same transaction, excluding secrets. This is auditable but is not equivalent to a normalized ledger reason field.
+The exact source relationship for RETURN_RESTOCK and ORDER_CANCEL_REVERSAL is still a design choice. The same semantic source movement submitted under a different key is not automatically prevented by a unique idempotency_key alone; use state guards and an accepted source-derived uniqueness strategy.
 
-A reversal is a new positive movement, never an edit/delete of the original. Since the ERD has no reversal_of_transaction_id, use a deterministic server-generated key derived from the original movement and reversal operation; if this cannot be unambiguous under the physical unique-key contract, request an ERD amendment. INVENTORY_TRANSACTIONS.idempotency_key is unique in the ERD; use namespaced server keys such as receipt:<itemId>:confirm-v1, order:<orderItemId>:deduct-v1, order:<orderItemId>:cancel-reverse-v1 and adjustment:<requestUUID>. Freeze key length/normalization in the physical contract.
+### Proposed transaction protocol
 
-### 1.4 Concurrency and transaction protocol
+1. Treat every receipt confirmation, order placement, cancellation, return-restock and manual adjustment as one transaction covering source state, inventory balance, ledger rows and audit evidence.
+2. Lock affected inventory rows in a deterministic ascending product_id order; for missing rows, handle a composite-key insert race by reselecting under lock.
+3. Validate every line before writing stock changes. Use guarded updates (quantity_on_hand >= requested quantity) as a final defense; require exactly one affected row and roll back the whole business command on failure.
+4. Lock the receipt/order before state transitions. A receipt can be edited only while DRAFT; confirmation is one-way. A confirmed receipt must not be edited or cancelled by mutating its original ledger effects.
+5. Create reversals as new ledger movements, never by editing/deleting original history. A uniqueness exception must roll back, then a caller may replay only after checking the committed source/key and payload.
+6. Actor identity comes from authenticated server context. reason_code vocabulary, requiredness, idempotency key scope/length, lock order, opening-balance process and reversal/source checks must be explicitly accepted before implementation.
 
-1. One database transaction per business command.
-2. Lock affected INVENTORIES rows in deterministic ascending product_id order using SELECT ... FOR UPDATE. For missing rows, insert under the composite key and handle duplicate-key races by reselecting/locking. Single warehouse does not remove per-Product contention.
-3. For deduction, validate every quantity against locked balances before writing any stock changes. Then update balance and increment version, insert the uniquely keyed movement, and use a conditional update (quantity_on_hand >= requested) as a second guard; exactly one row must update.
-4. Confirm receipt under a lock on GOODS_RECEIPTS; only the first allowed transition from draft to confirmed may create movements. Unique source keys are the final defense, not the only state guard.
-5. Order placement locks inventory rows in sorted order, revalidates stock and price, and commits Order/Payment/ledger/balance writes together. Any failure rolls back the entire transaction.
-6. For duplicate key races, roll back the losing transaction, read the committed result, and replay only if the semantic payload matches. Never continue after a uniqueness exception with partial writes.
-7. Lock Order/receipt rows before state transitions. Reject already-confirmed receipts, already-cancelled orders, or already-reversed movements according to the frozen API error contract.
+### Required tests
 
-### 1.5 Required acceptance tests
+- Two simultaneous orders compete for last units: at most one commits; stock never becomes negative.
+- A multi-line order with one insufficient line leaves no Order/Payment/ledger/balance/cart partial writes.
+- Concurrent confirmation of a receipt creates exactly one inbound movement per receipt item.
+- Same source event retried after response loss or with another key cannot duplicate stock.
+- Concurrent cancellation/return cannot create multiple reversal/restock movements.
+- Every committed inventory balance equals the sum of opening and subsequent ledger deltas for that warehouse/product.
+- Missing reason/key or insufficient permission rejects a manual adjustment; audit actor is derived from auth.
 
-- Two simultaneous orders competing for the last units: at most one succeeds; stock never negative.
-- Multi-line order with one insufficient item: no Order, Payment, ledger or partial balance change.
-- Concurrent receipt confirmation: exactly one inbound movement per receipt item.
-- Retry after response loss: no second movement.
-- Same semantic source with a different client key: source-derived uniqueness/state guard prevents duplicate movement.
-- Concurrent/repeated cancellation: one reversal per original deduction.
-- Manual adjustment without permission, reason or key is rejected; actor is server-derived.
-- At every checkpoint, balance equals ledger sum and every movement has a valid source shape.
-
-### 1.6 ERD limitations needing owner/reviewer decision
-
-The ERD has no dedicated adjustment reason or reversal FK; INVENTORY_TRANSACTIONS.idempotency_key physical scope/length is unspecified. Audit JSON preserves evidence but does not fully replace normalized ledger fields. Reviewer must decide whether this is sufficient for v1; otherwise amend the ERD explicitly.
+These concurrency and semantic tests are not yet evidenced as passing. The MySQL schema suite only covers actual DDL constraints and targeted negative cases.
 
 ## 2. DB-05 — Checkout quote, idempotency and order-time repricing
 
-### 2.1 Quote lifecycle and persistence
+### Current target-schema evidence
 
-- Quote is a short-lived calculation response, not a persisted business record. The target ERD has no CHECKOUT_QUOTES table; do not add one implicitly.
-- Inputs: authenticated account, current Cart, optional voucher code and receiver/shipping data required by the existing API. Server reads current Product sale status/price, stock, voucher status/window/rules and configured manual-shipping fee. Never trust client totals, price, discount, stock or currency.
-- Quote has no stock side effect, voucher consumption or reservation. Return server-calculated subtotal, discount, shipping fee, total and item lines; quote is indicative until order placement.
-- Without a quote record, do not promise durable quote IDs, quote replay, expiry lookup or reservation semantics. If required, owner must approve persistence or a different contract.
+- The target ERD has no CHECKOUT_QUOTES table. The proposed target quote is stateless/advisory and has no stock or voucher side effects. The current legacy backend does have CheckoutQuote Entity/Repository/service and current frontend submits quote_id; removing or reinterpreting this is an API-breaking change that requires the target contract to be accepted first.
+- ORDERS currently has a globally unique idempotency_key and request_fingerprint CHAR(64). The fingerprint field therefore exists in the target schema; it is not mapped into the current legacy Order entity/service/API. Its canonicalization, replay rules, retention and conflict response remain unapproved.
+- Proposed client key scope is one logical create-order operation per authenticated account. A candidate stored key can be namespaced with server-derived account identity and the client UUID; never trust account ID from request body. Because the draft unique constraint is global, the key format and cross-account reuse behavior must be explicitly frozen rather than assumed.
+- A unique key plus fingerprint does not by itself create correct retry behavior. Application code must distinguish same-key/same-payload replay from same-key/changed-payload conflict, roll back a losing concurrent transaction, and never reveal another account's Order.
 
-### 2.2 Idempotency key proposal
+### Candidate retry contract — approval required
 
-- Client sends Idempotency-Key as a high-entropy UUID for each logical order-placement attempt. Server derives account identity from authentication; never accept account ID as scope input.
-- ORDERS.idempotency_key is globally unique in the ERD. Store a canonical server value accountId:clientUUID, subject to a physical length contract. If column length is insufficient, use a fixed-length digest of account ID + UUID and document it; do not silently alter the ERD.
-- Canonical semantic input comprises normalized cart Product IDs/quantities, voucher code, receiver/address fields and delivery selection if it affects order semantics. Exclude client totals and volatile fields. Use stable field ordering, Unicode normalization and canonical serialization.
-- Critical limitation: ERD has no request-fingerprint column. The service must compare retries against persisted Order, OrderItems, OrderAddress and voucher snapshot. Freeze comparison rules for every input. If any field cannot be reconstructed exactly, safe same-key/different-payload detection is not implementable under current schema; request an ERD amendment for a request hash instead of claiming full coverage.
-- Key retention follows Order retention. Do not recycle keys after cancellation or deletion; Order records are not physically deleted in this proposal.
-
-### 2.3 Retry and payload-change behavior
-
-| Condition | Required behavior |
+| Condition | Candidate behavior |
 |---|---|
-| First request, unused key | Validate and create Order transactionally |
-| Same account/key and semantically identical payload; original committed | Return existing confirmation/detail; do not duplicate items, payment, stock or voucher effects |
-| Same key but different payload | Deterministic idempotency conflict; never mutate the existing Order |
-| Same key from another account | Never disclose the other Order; account-isolated conflict/not-found per API error contract |
-| Original transaction fully rolled back | Key remains unused; retry can execute |
-| Commit succeeded but response was lost | Find Order by unique key and replay |
-| Concurrent same-key requests | One wins; loser rolls back, reads winner, then replays/conflicts by payload comparison |
-| Different keys, same unchanged Cart | Freeze explicit policy: after first success, second must see cleared Cart or fail stale-cart validation; do not create two orders from the same unchanged Cart accidentally |
+| New key | Re-read current cart, product state/price, inventory, voucher state and server-owned shipping values; calculate and create atomically |
+| Same scoped key + same canonical payload + committed Order | Return the existing confirmation; do not consume stock/voucher a second time |
+| Same scoped key + different semantic payload | Deterministic conflict; never mutate the original Order |
+| Concurrent duplicate requests | One transaction commits; loser rolls back, loads the winner and replays or conflicts after comparing fingerprints |
+| Commit succeeded but response was lost | Find the committed Order using the accepted idempotency scope and replay the existing result |
+| A different account reuses a client UUID | Do not reveal the other account's Order; define whether namespaced keys make this independent or the API returns a generic conflict |
+| Two different keys race against the same stock | Lock and revalidate inventory; at most one may consume the last units |
 
-### 2.4 Order-time calculation and atomic sequence
+### Candidate atomic order-placement sequence
 
-1. Resolve account and idempotency key. If an Order exists, compare persisted semantic input and replay/conflict.
-2. Load the account's active Cart; normalize lines. Reject empty Cart, invalid quantities, non-sellable/deleted Products and missing receiver fields.
-3. Lock relevant inventory rows in sorted Product ID order and recheck quantity. Quote never reserves stock.
-4. Re-read current Product prices/status. Recalculate line gross amounts using integer VND; subtotal is sum of line gross. Reject stale/invalid Product state.
-5. Validate optional voucher against current active status, start/end window, minimum order value and supported order-wide discount. No stacking and no Product/Category conditions. If usage caps are enforced, lock/update the voucher atomically only if the schema has a persisted concurrency-safe counter; the current ERD does not.
-6. Resolve shipping fee from server configuration and calculate total = subtotal - discount + shipping fee. Reject negative/overflow values. Persist currency VND; money contract must be reconciled across all monetary columns first.
-7. Insert Order with canonical unique key; OrderItems and snapshots; OrderAddress; OrderVoucherSnapshot if applicable; COD Payment; stock movements/balances; cart mutation; audit. Consume voucher only if approved semantics are representable.
-8. Commit once. Any failure rolls back every write. Return confirmation only after commit.
-9. On unique-key collision, roll back, load winner by key/account, compare semantic payload, then replay or conflict.
+1. Resolve account from authentication and normalize the idempotency key and semantic payload. Client totals, prices, discounts, stock and currency are never trusted.
+2. If a committed order exists for the accepted key scope, compare the persisted fingerprint: replay only if equivalent; otherwise return the frozen conflict error.
+3. Load a non-empty active cart, validate quantities and receiver/address fields, then lock inventory in deterministic product order.
+4. Re-read Product price/status and available stock. Quote is advisory and does not reserve stock; reprice and validate again at placement.
+5. Validate at most one order-wide voucher, current status/window/minimum and approved quota policy; do not use Product/Category targeting because DB-06 excludes it.
+6. Calculate integer VND subtotal, discount, shipping fee and total using the accepted rounding/allocation rules. Persist item/address/voucher/image snapshots.
+7. Commit Order, OrderItems, OrderAddress, voucher snapshot/counter, COD Payment, inventory ledger/balances, cart mutation and audit in one transaction; any failure rolls back every write.
+8. On a key collision, roll back first, then query the committed winner and compare the fingerprint. Never continue after a unique-key exception with partial writes.
 
-### 2.5 Money, voucher and shipping
+### Money, voucher and snapshot constraints
 
-- Quote and Order share one domain calculation service; quote is advisory, order placement recalculates persisted state.
-- Integer VND supersedes isolated DECIMAL(18,2) SQL drafts. All persisted/API amounts must be whole VND; do not freeze SQL/JPA until monetary ERD types are reconciled.
-- Voucher: order-wide, one voucher, non-stackable, no Product/Category conditions. VOUCHERS has usage_limit but no redemption ledger or used-count column. A safe hard global usage cap cannot be implemented by reading Orders alone unless a precise definition and concurrency guard are frozen. Do not advertise/enforce caps until owner approves a representation or defers caps.
-- Shipping fee is server-owned configuration. Current decisions establish manual shipping but do not specify flat vs other fee formula; freeze before P2.
-- Discount allocation proposal: calculate order discount in integer VND using approved rounding; allocate across lines with proportional largest-remainder allocation, stable tie-break by Product/order-line identity. Allocated line discounts must sum exactly to order discount; line total = quantity × unit price − allocated discount. This is a proposal requiring acceptance.
+- Target monetary values use integer VND. The ERD draft describes percent voucher values as integer basis points and fixed values as integer VND. Legacy Java currently uses BigDecimal, computes percentage as a percent value divided by 100 and rounds to two decimals; frontend money fields still represent legacy amounts. The conversion must be consistent across calculation, JSON, persistence, reporting and FE formatting.
+- Rounding proposal: calculate an integer order discount with an explicit half-up rule, then allocate line discounts using largest remainder and a deterministic tie-break; allocated amounts must sum exactly to the order discount and no line/order amount may be negative. This algorithm remains proposed, not owner-approved.
+- VOUCHERS.usage_count exists in the target schema and is bounded by usage_limit. Atomic increment under concurrent checkout, global versus per-account scope, cancelled-order restoration, return/refund effects and retry rules still need approval and tests. The column alone does not implement the behavior.
+- ORDER_ITEMS.image_url_snapshot exists, but immutable content requires a stable object/version reference and an explicit retention/deletion/overwrite policy. A URL string alone is not proof the referenced bytes remain unchanged.
+- Payment refund metadata columns exist, but refund idempotency/partial/full state transitions and authorization remain DB-08 work, separate from DB-05.
 
-### 2.6 Required acceptance tests
+### Required tests
 
-- Same-key retry after lost response returns the same Order without duplicate stock/payment/voucher effects.
-- Concurrent same-key same-payload requests create one Order.
-- Same key with changed quantity, voucher or receiver conflicts and leaves original Order unchanged.
-- Cross-account same-key requests never leak Order data.
-- Price/status/stock/voucher changes after quote are revalidated at placement; client totals are ignored.
-- Different keys racing for the last stock unit cannot oversell.
-- Injected failure after each write stage rolls back Order, snapshots, Payment, stock, ledger and Cart effects.
-- Integer-money tests assert nonnegative amounts, exact line/order reconciliation, deterministic largest-remainder ties and no fractional VND.
-- If global voucher caps remain required, prove the persisted concurrency guard on MySQL; otherwise document caps as deferred.
+- Same-key retry after lost response returns the same Order without duplicating stock/payment/voucher effects.
+- Concurrent same-key same-payload calls create one Order; changed quantity/voucher/address with the same key conflicts and preserves the original.
+- Client totals are ignored; product/price/stock/voucher changes after quote are rechecked at placement.
+- Injected failure at every write stage rolls back order, snapshots, payment, inventory/ledger, voucher and cart changes.
+- Discount allocation uses integer VND, is deterministic for ties and reconciles exactly to order totals with no fractional VND.
+- If quota remains enabled, concurrent last-redemption requests prove the counter cannot exceed usage_limit on MySQL 8.4.
 
-## 3. Cross-cutting contract conflicts still open
+## 3. Other open decisions that prevent P1 PASS
 
-1. **DB-07 image snapshot:** ERD has PRODUCT_IMAGES.image_url but no image reference on ORDER_ITEMS. attribute_snapshot is not a safe substitute for a dedicated image field without changing its meaning/type contract. Immutable remote storage alone is insufficient unless the Order retains a stable reference to that exact object. Owner must approve an ERD amendment or relax historical-image guarantee. No silent schema change is proposed.
-2. **DB-09 active phone uniqueness:** MySQL has no PostgreSQL-style partial unique index. Physical design needs a MySQL-compatible strategy (for example, generated nullable active-phone key with a unique index) and approved soft-delete semantics. This may be a physical constraint representation but must be documented and reviewed against the 31 logical tables.
-3. **DB-10 integer VND:** canonical ERD still labels money fields decimal. Owner decision says integer VND, so ERD is semantically inconsistent. Approve corrected ERD money notation/physical contract before freeze; update all dependent columns, DTOs and formulas together.
-4. **DB-06 voucher usage:** usage_limit exists but a used-count/redemption ledger does not. A hard usage limit needs an approved persistence/concurrency design.
-5. **DB-08 return/refund:** ERD has payment status/amount and audit JSON but no normalized refund amount/actor/time or return record. Coarse Order status does not represent a complete auditable return/refund workflow. Owner must narrow scope or amend ERD before implementation.
-6. **Approval evidence:** DB-03 and DB-05 remain proposals until owner explicitly accepts/revises them. A documentation change cannot manufacture approval.
+1. Product parent/child depth and inheritance of name, slug, description, selling_price, category_id and brand_id are not resolved. NULL does not implicitly mean inherit; requiredness and parent-update propagation must be specified per field.
+2. DB-06 defines voucher scope but still needs quota scope and cancellation/restoration policy consistent with usage_count.
+3. DB-07 defines snapshots but still needs retained image asset/version policy and historical access tests.
+4. DB-08 defines COD/order lifecycle/refund direction but still needs partial/full refund semantics, idempotency, state transitions, return/restock, actor authorization and audit behavior.
+5. DB-09's generated phone_active_key is present in the target draft. MySQL schema tests cover active uniqueness; the new soft-delete/reuse test must pass before claiming the full rule is verified.
+6. DB-11 system role/permission seed is in V2__system_seed.sql and the clean-reset tests verify basic seed counts/grants; the external secret bootstrap path still needs a source/configuration security audit.
+7. DB-12 has no owner-approved per-entity deletion/cascade/restrict/retention matrix.
+8. These are target-schema documents only. Current Entity/Repository/API/DTO/frontend still use legacy ProductVariant, quote_id, voucher targeting and BigDecimal shapes, so they must not be labelled target-compatible.
 
-## 4. Recommendation
+## Recommendation
 
-Review this proposal and accept/revise DB-03 and DB-05 explicitly. Resolve the cross-cutting incompatibilities above, then run the P1 consistency review. P1 must remain PARTIAL until decisions and reviewer evidence are recorded.
-
-
-## P1 contract-freeze decisions (2026-10-23)
-
-The following are candidate contract-alignment recommendations that retain 31 tables. Their presence in the ERD/SQL draft does not imply owner approval; explicit acceptance and runtime evidence remain required:
-- `ORDERS.request_fingerprint` binds an idempotency key to canonical semantic input; same key + same fingerprint replays the committed order, same key + different fingerprint conflicts.
-- `ORDER_ITEMS.image_url_snapshot` stores the immutable asset reference used at placement. The referenced object must be retained for historical order display.
-- All monetary fields use integer VND. Percentage voucher values use integer basis points (1 basis point = 0.01 percentage point); fixed values and all totals are integer VND. Rounding uses largest remainder for allocating an order-wide discount across lines; sum of allocated line discounts must equal the order discount.
-- `VOUCHERS.usage_count` is updated atomically in the same transaction as successful order placement; a configured limit is enforced by a conditional update and rollback on failure.
-- `PAYMENTS` stores refund amount, actor, timestamp and reason; refund amount cannot exceed collected/paid amount. The Order state machine controls allowed transitions and a repeated refund request must be idempotent.
-- `ACCOUNTS.deleted_at` plus a MySQL generated nullable `phone_active_key` provides active-only uniqueness; deleted accounts have NULL key and can release their phone.
-- `INVENTORY_TRANSACTIONS` stores reason and optional original-movement reference. All movements use a stable idempotency key, positive/negative signs per movement type, row locking and one transaction for balance + ledger. Original movements are never edited/deleted; reversal is a new movement.
-- Quotes are advisory and do not reserve stock. Order placement recalculates current price, stock, voucher and shipping values under the order transaction.
-
-The schema/DDL and dependent contract documents must be synchronized before declaring P1 frozen. MySQL execution and application tests are verification gates, not implied by this design acceptance.
+Review and explicitly accept/revise DB-03 and DB-05. Continue keeping P1 PARTIAL until behavior decisions, full mapping and fresh evidence are recorded. The design proposal itself is not approval and must not authorize P2.

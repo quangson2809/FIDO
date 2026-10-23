@@ -23,3 +23,14 @@
 - API/DTO target compatibility: **FAIL / mapping only**. The 87-row P1 API mapping describes existing endpoints and gaps; it is not runtime proof of the target API.
 - Frontend compatibility: **NOT VERIFIED end-to-end**. Preserve visual presentation; update business types/services after owner-approved target API decisions.
 - No active production API behavior was changed in this P1 documentation/schema-draft alignment. P2 must use request/response fixtures, error assertions, authorization and real database integration tests.
+
+
+## Source-level behavioral evidence reviewed in P1
+
+- Inventory: GoodsReceiptService uses receipt lock/status guards and InventoryCommandService uses transactional guarded balance updates, nonnegative checks and deterministic variant ordering. These are positive safeguards in the current legacy implementation, but methods use variant_id and do not implement the target warehouse_id/product_id ledger contract, source idempotency or target reason/reversal fields.
+- Checkout: OrderCreationService persists BigDecimal amounts and legacy order/item snapshots; current frontend checkoutService posts a request whose checkout type requires quote_id. Target Order.idempotency_key/request_fingerprint are not mapped by the existing Order flow.
+- Payment: current OrderPaymentService only permits a full refund after Order RETURNED and copies received amount into amountRefunded; it does not implement the target partial/refund amount/reason/idempotency contract.
+- Voucher: current VoucherRedemptionService applies Product/Category eligibility with BigDecimal percentages and two-decimal HALF_UP rounding; target owner choice removes Product/Category conditions and target amount semantics are integer VND/basis points. VoucherUsage is a legacy model, not proof the target usage_count counter is atomically enforced.
+- Frontend: orders types and checkout client still use variant_id and quote_id; promotion types use legacy FIXED_AMOUNT/PERCENTAGE strings. They are not compatible with the target Product-ID and target voucher/money contract yet.
+
+These are target compatibility findings, not instructions to silently change active behavior before DB-03/DB-05 and the remaining business contracts are accepted.
