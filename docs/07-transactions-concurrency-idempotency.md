@@ -1,91 +1,60 @@
-# 07 — Transactions, Concurrency & Idempotency
+# 07 — Transactions, Concurrency and Idempotency
 
-> **P1 target status (2026-10-23):** Legacy transaction examples below use Variant IDs and available_quantity and are source behavior only. The target uses INVENTORIES(warehouse_id, product_id, quantity_on_hand, version) and INVENTORY_TRANSACTIONS; it has no reservation table or reserved-quantity field. DB-03 and DB-05 mechanics were owner-approved on 2026-10-23. Implement the approved stock source/sign/dedupe/reversal protocol and account-scoped order idempotency; do not treat legacy examples as the target contract.
+## 1. General transaction rules
 
+- Each business command has one owning module service. Cross-module writes call the owner module service; they do not bypass it through another module's Repository.
+- A transaction must include the aggregate/source state change, related balance/ledger updates and required audit records. If any part fails, all parts roll back.
+- Validate authorization and business preconditions on the server. Client-provided totals, prices, discounts, stock counts, statuses and account identifiers are not authoritative.
+- Use the target ERD and P1 Data Dictionary for physical keys and constraints. Do not create persistence that the approved 31-table target does not contain.
 
-## 1. Principle
+## 2. Inventory movements
 
-Any operation that changes business state plus stock/payment/audit must have one explicit transactional boundary in the Service layer. Do not scatter partial commits across controllers or repository calls.
+Every stock command updates `INVENTORIES(warehouse_id, product_id, quantity_on_hand, version)`, appends a matching `INVENTORY_TRANSACTIONS` row and writes required audit information in one transaction.
 
-## 2. Confirm Order transaction
+| Type | Direction and source requirement |
+|---|---|
+| `OPENING` | Positive delta; an explicit opening-balance command with actor and idempotency/correlation evidence. |
+| `GOODS_RECEIPT` | Positive delta tied to one `GOODS_RECEIPT_ITEMS` row; applied once on successful receipt confirmation. |
+| `ORDER` | Negative delta tied to the affected `ORDER_ITEMS` row after stock is revalidated at placement. |
+| `ORDER_CANCEL_REVERSAL` | Positive delta linked to the original order deduction through `reverses_transaction_id`; never edits the original ledger row. |
+| `RETURN_RESTOCK` | Positive delta only after an authorized decision confirms the returned Product is sellable; link the order item and original movement and prevent duplicate restock. |
+| `ADJUSTMENT` | Non-zero signed delta, authenticated actor, required `reason_code`, and idempotency/correlation key. |
 
-Required algorithm:
+Source-specific uniqueness must prevent a business event from applying more than once even when retries use different request keys. An idempotency key by itself is insufficient.
 
-1. Start transaction.
-2. Load Order and continue only if current status is `PENDING`.
-3. Lock or use an atomic conditional update for every involved `inventories` row.
-4. Validate sufficient inventory for **all** OrderItems.
-5. If any Variant is insufficient: rollback the entire operation.
-6. Decrement `available_quantity` for all items.
-7. Insert `ORDER_CONFIRM_OUT` InventoryTransaction rows.
-8. Change Order to `CONFIRMED` with current-state guard.
-9. Write required audit record.
-10. Commit.
+Lock affected inventory rows in deterministic ascending `product_id` order, use guarded non-negative balance updates, and reject stale/conflicting commands. Receipt confirmation, order placement, cancellation, accepted return/restock and manual adjustment must commit the source status, stock balance, ledger and audit together.
 
-Repeat request after successful CONFIRMED must not deduct again. Competing confirmations must never create negative stock.
+The ledger is append-only. Corrections are represented by a linked reversal/new movement; never update or delete the original movement to “fix” the balance.
 
-Implementation technique (pessimistic lock vs conditional update) may follow the existing DB/repository technology; semantics above are mandatory.
+## 3. Cart and checkout quote
 
-## 3. Cancel after deduction
+- Cart reads and changes do not reserve stock.
+- `POST /api/v1/checkout/quote` is a stateless, advisory calculation. It must not write a quote row, reserve stock, increment voucher usage or create an Order.
+- At order placement, reload the authenticated account's Cart and current Product eligibility, selling prices, stock, voucher eligibility/quota and server-owned shipping inputs. Ignore client totals and re-calculate.
+- If the current server-calculated result is no longer valid under the accepted order contract, return a typed conflict/requote response and create no Order.
+- A quote identifier is not persisted or required by the target contract.
 
-- If the Order has actually consumed stock, cancellation restores the exact quantity once via `ORDER_CANCEL_IN`.
-- If Order is still PENDING, no inventory movement.
-- State change + stock restoration + ledger + audit must succeed or rollback together.
-- Retry must not create a second restoration.
+## 4. Order creation idempotency
 
-## 4. GoodsReceipt confirm
+Order creation uses the authenticated account scope and a canonical SHA-256 fingerprint of the semantic request:
 
-1. Require DRAFT.
-2. Lock the GoodsReceipt row and apply the guarded DRAFT -> CONFIRMED transition; an already-CONFIRMED retry applies no stock increment.
-3. Increment each existing Variant inventory in ascending variant_id order.
-4. Create `RECEIPT_IN` ledger rows linked to GoodsReceipt.
-5. Set `confirmed_by`, `confirmed_at` and audit in same transaction.
-6. Do not mutate confirmed item quantities afterward.
+1. Authenticate the caller and derive account scope from the security principal.
+2. Canonicalize the semantic request and calculate its fingerprint server-side.
+3. If the scoped key is already committed with the same fingerprint, return the prior result without repeating side effects.
+4. If the scoped key exists with a different fingerprint, return a deterministic typed conflict without modifying the prior Order.
+5. For concurrent duplicate requests, permit one commit. The losing transaction rolls back and then reads the winner to replay or conflict.
+6. A key used by another account must not reveal another account's Order.
+7. Keep the key/fingerprint associated with the Order for at least the Order's lifetime.
 
-## 5. COD collect/refund
+One transaction covers the Order, OrderItems, order address/Product/voucher/image snapshots, COD Payment, voucher counter, inventory balance/ledger, Cart mutation and required audit. Failure injection must prove complete rollback.
 
-- One Payment per Order (`payments.order_id` PK/FK).
-- Conditional state changes: UNPAID -> PAID, PAID -> REFUNDED.
-- Actor/time/amount updated once.
-- Retry cannot add amount again.
-- COMPLETE is rejected unless current Payment is PAID.
+## 5. Money and voucher atomicity
 
-## 6. Manual inventory adjustment
+- Money is integer VND end-to-end.
+- Calculate the order-level discount with HALF-UP rounding to whole VND. Allocate to lines with the largest-remainder method and ascending `product_id` tie-break. Allocated discounts must sum exactly to the order discount; no line or order total may be negative.
+- v1 vouchers are order-wide, non-stackable and governed by one global usage limit. Consume usage in the successful order transaction; restore at most once on eligible cancellation. A quote never consumes usage.
+- Test the concurrent final-voucher race and repeated cancellation on MySQL.
 
-- Requires authorization and non-empty reason.
-- `quantity_delta != 0`.
-- Derive IN/OUT direction from sign.
-- Inventory row update + ledger row + audit are one business transaction.
-- Reject result below zero.
-- No ordinary API/service may directly overwrite `available_quantity` without ledger movement.
+## 6. Verification gates
 
-## 7. Delivery failure / return
-
-- `DELIVERY_FAILED`: no automatic inventory increment because goods may still be in transit.
-- `DELIVERY_RETURN_IN`: only when the failed-delivery package physically returns.
-- `RETURNED`: no automatic increment.
-- `CUSTOMER_RETURN_IN`: only after received goods are inspected and sellable.
-
-## 8. Create-Order idempotency — DB-05 approved contract / implementation pending
-
-The current target ERD and isolated draft DDL include `ORDERS.idempotency_key` and `ORDERS.request_fingerprint`; this corrects older statements that the target has no idempotency fields. Their presence alone does not define a correct guarantee.
-
-- DB-05 is approved. Implement API #20 against the owner-accepted protocol and keep it pending until replay/conflict/rollback and concurrency tests pass.
-- The proposal must freeze key scope, canonical fingerprint content, same-key/same-payload replay, changed-payload conflict, cross-account isolation, collision handling, retention and transaction boundary.
-- An in-memory lock alone is not durable across instances/restarts; use the approved database-backed uniqueness/arbitration mechanism after acceptance.
-- Current legacy Order/API/frontend flow is not mapped to those target fields. Do not claim target idempotency works until implementation and concurrency tests pass.
-
-## 9. Transaction tests
-
-Each critical command must have a test proving:
-
-- atomic rollback on intermediate failure;
-- repeated command does not duplicate side effects;
-- concurrent stock changes do not make stock negative;
-- ledger quantity changes reconcile with applied business movements;
-- invalid state never performs a side effect before rejection.
-
-
-## Target concurrency gate (P1)
-
-Under the owner-approved DB-03 contract, target stock writes are keyed by warehouse + Product, with order/receipt state, INVENTORIES balance, INVENTORY_TRANSACTIONS and required audit committed atomically. Quote/cart reads must not reserve stock. Implement the approved movement vocabulary, semantic source uniqueness across different request keys, append-only reversals, explicit opening balance and deterministic lock order; these are engineering acceptance gates, not pending owner decisions.
+Acceptance tests must cover last-stock races, receipt double-confirm, identical source events with different request keys, cancellation/return reversal, same-key order concurrency, changed-payload conflict, cross-account isolation, lost-response replay, voucher quota races, transaction rollback and ledger-to-balance reconciliation. Documentation or schema-only tests do not prove runtime transaction behavior.
