@@ -1,6 +1,6 @@
 # P1 — Decision Log
 
-**Status: PARTIAL.** The logical ERD is owner-confirmed. Owner choices recorded on 2026-10-23 resolve the direction for DB-01, DB-02 and DB-06 through DB-11; DB-03 and DB-05 are explicit requests for design proposals, not approvals. Contract synchronization and evidence remain required before P1 can PASS.
+**Status: PARTIAL.** The logical ERD is owner-confirmed. Owner choices recorded on 2026-10-23 resolve the direction for DB-01, DB-02 and DB-06 through DB-11. Detailed DB-03/DB-05 proposals are in docs/refactor-v2/p1/P1-design-proposals-DB-03-DB-05.md; they remain unapproved until explicit owner acceptance. Contract synchronization and reviewer evidence remain required before P1 can PASS.
 
 ## APPROVED
 
@@ -17,7 +17,7 @@
 |---|---|---|---|
 | TD-01 | Preserve Modular Monolith + Package by Feature. Cross-module writes go through the owner module service, not another module's Repository. | backend/ARCHITECTURE.md; docs/01-architecture-package-structure.md; docs/02-module-ownership.md | TECHNICAL_DECIDED |
 | TD-02 | Flyway is the schema authority; Hibernate validates mappings and does not replace versioned migrations. | docs/15-technical-decisions.md; backend/AGENTS.md | TECHNICAL_DECIDED |
-| TD-03 | Use Java Long for BIGINT IDs and BigDecimal for money. UTC TIMESTAMP(6) is the recorded technical convention, but not approval of all physical columns. | docs/15-technical-decisions.md; docs/05-dto-contract.md | TECHNICAL_DECIDED |
+| TD-03 | Use Java Long for BIGINT IDs. UTC TIMESTAMP(6) is the recorded technical convention. Money mapping must follow DB-10 integer VND; BigDecimal is not the default money contract. Physical SQL/JPA mapping remains unfrozen until all monetary columns are reconciled. | docs/15-technical-decisions.md; DB-10 owner decision | TECHNICAL_DECIDED — money mapping superseded by DB-10 |
 | TD-04 | Represent ACCOUNT_ROLES, ROLE_PERMISSIONS, PRODUCT_ATTRIBUTE_VALUES and INVENTORIES composite keys explicitly. Order-owned one-to-one rows use order_id as PK/FK. | Owner ERD and existing key-mapping convention | TECHNICAL_DECIDED |
 | TD-05 | A self-referencing FK validates reference existence but cannot prevent longer hierarchy cycles. The owner service must protect acyclic changes with concurrency-aware validation. | Owner ERD; docs/06-business-rules-state-machines.md | TECHNICAL_DECIDED |
 
@@ -43,7 +43,7 @@ The owner choices received on 2026-10-23 are recorded in the DB-01, DB-02, DB-06
 
 ## OWNER DESIGN REQUESTS — PROPOSAL REQUIRED
 
-DB-03 and DB-05 are not unresolved because the owner has failed to choose an option: the selected option explicitly requests a design proposal. Prepare those proposals and obtain explicit acceptance before claiming contract freeze.
+DB-03 and DB-05 are not unresolved because the owner has failed to choose an option: the selected option explicitly requests a design proposal. Proposal exists at docs/refactor-v2/p1/P1-design-proposals-DB-03-DB-05.md. Explicit owner acceptance/revision is still required before claiming contract freeze.
 
 ## OPEN_BLOCKED — OWNER DECISION / DESIGN ACCEPTANCE REQUIRED
 
@@ -77,7 +77,7 @@ DB-03 and DB-05 are not unresolved because the owner has failed to choose an opt
 - PROPOSED: 11
 - OWNER DECISIONS RECORDED: DB-01, DB-02, DB-06, DB-07, DB-08, DB-09, DB-10, DB-11 (contract synchronization and acceptance evidence still required)
 - OWNER DESIGN REQUESTS: DB-03, DB-05 (proposal and explicit owner acceptance still required)
-- OPEN_BLOCKED: 2 (DB-03, DB-05)
+- PROPOSAL_REVIEW_REQUIRED: 2 (DB-03, DB-05; proposal documented, explicit owner acceptance pending)
 - DEFERRED: 5
 
 DB-04 (guest checkout) is resolved by A-03 and is not an active blocker. A-04 also fixes one operational warehouse in v1. DB-03 concerns the mechanics within that approved scope, not warehouse count. A later explicit owner amendment may reopen resolved scope.
