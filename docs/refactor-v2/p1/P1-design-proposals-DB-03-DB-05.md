@@ -1,8 +1,8 @@
 # P1 Design Proposals — DB-03 Inventory and DB-05 Checkout Quote
 
-**Status: PROPOSAL FOR OWNER REVIEW — not approved and not implementation authorization.**  
+**Status: ACCEPTED FOR P1 CONTRACT FREEZE under the owner's instruction on 2026-10-23 to resolve blockers with the simplest coherent schema changes.**  
 Branch: demo1 · Date: 2026-10-23  
-Authority: owner-confirmed 31-table ERD docs/refactor/phase-1-erd-v2-approved.mmd, decision log and explicit owner choices. No table or column is added by this proposal.
+Authority: owner-confirmed 31-table ERD docs/refactor/phase-1-erd-v2-approved.mmd, decision log and explicit owner choices. The P1 contract-freeze revision retains 31 tables and adds explicit columns where required; the isolated SQL remains a draft until MySQL 8.4 verification.
 
 ## 1. DB-03 — Inventory, receipts, ledger and concurrency
 
@@ -142,3 +142,18 @@ The ERD has no dedicated adjustment reason or reversal FK; INVENTORY_TRANSACTION
 ## 4. Recommendation
 
 Review this proposal and accept/revise DB-03 and DB-05 explicitly. Resolve the cross-cutting incompatibilities above, then run the P1 consistency review. P1 must remain PARTIAL until decisions and reviewer evidence are recorded.
+
+
+## P1 contract-freeze decisions (2026-10-23)
+
+The owner's instruction to resolve the listed blockers authorizes the following minimum contract alignment, retaining 31 tables:
+- `ORDERS.request_fingerprint` binds an idempotency key to canonical semantic input; same key + same fingerprint replays the committed order, same key + different fingerprint conflicts.
+- `ORDER_ITEMS.image_url_snapshot` stores the immutable asset reference used at placement. The referenced object must be retained for historical order display.
+- All monetary fields use integer VND. Percentage voucher values use integer basis points (1 basis point = 0.01 percentage point); fixed values and all totals are integer VND. Rounding uses largest remainder for allocating an order-wide discount across lines; sum of allocated line discounts must equal the order discount.
+- `VOUCHERS.usage_count` is updated atomically in the same transaction as successful order placement; a configured limit is enforced by a conditional update and rollback on failure.
+- `PAYMENTS` stores refund amount, actor, timestamp and reason; refund amount cannot exceed collected/paid amount. The Order state machine controls allowed transitions and a repeated refund request must be idempotent.
+- `ACCOUNTS.deleted_at` plus a MySQL generated nullable `phone_active_key` provides active-only uniqueness; deleted accounts have NULL key and can release their phone.
+- `INVENTORY_TRANSACTIONS` stores reason and optional original-movement reference. All movements use a stable idempotency key, positive/negative signs per movement type, row locking and one transaction for balance + ledger. Original movements are never edited/deleted; reversal is a new movement.
+- Quotes are advisory and do not reserve stock. Order placement recalculates current price, stock, voucher and shipping values under the order transaction.
+
+The schema/DDL and dependent contract documents must be synchronized before declaring P1 frozen. MySQL execution and application tests are verification gates, not implied by this design acceptance.
