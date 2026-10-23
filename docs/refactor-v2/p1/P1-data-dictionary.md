@@ -1,16 +1,31 @@
-# P1 Data Dictionary — coverage and status
+# P1 Data Dictionary — Canonical Artifact and Status
 
-**Status: PARTIAL.** Static consistency and the disposable MySQL 8.4 schema test are necessary checks, not sufficient evidence of cross-layer target acceptance. Their current result must be read from the workflow run whose head SHA matches the PR HEAD. Owner/business and entity/API/DTO/frontend blockers remain separate.
+**Status: PARTIAL — approved target field contract; runtime mappings and behavioral acceptance remain open.**
 
-The canonical source is P1-data-dictionary.csv (RFC 4180 CSV). Use a real CSV parser rather than splitting lines on commas.
+## Source of truth
 
-- Logical schema at the inspected baseline: 31 tables / 228 ERD fields after adding goods_receipts.warehouse_id (snapshot count, not a hardcoded future acceptance target).
-- Physical draft at the inspected baseline: 31 tables / 229 SQL columns, including generated physical-only accounts.phone_active_key for active-account-only uniqueness. The checker compares against the parsed canonical ERD rather than hard-coding 31.
-- Every physical field has one row with SQL type, observed physical nullability/default, generated expression, constraint/index references, target ownership and current implementation status/evidence.
-- LEGACY_ENTITY_REQUIRES_REMAP and TARGET_ENTITY_NOT_IMPLEMENTED explicitly do not mean the current application matches the target schema.
+- The canonical physical dictionary is [P1-data-dictionary.csv](P1-data-dictionary.csv), an RFC 4180 CSV with one row per target physical column.
+- Logical model: [approved ERD v2](../../refactor/phase-1-erd-v2-approved.mmd).
+- Owner decisions: [P1 approval record](P1-owner-approval-2026-10-23.md) and [decision log](P1-decision-log.md).
+- Target DDL and system seed: `backend/src/main/resources/db/clean-reset/V1__clean_schema.sql` and `V2__system_seed.sql`.
 
-Run from the repository root:
+Use a real CSV parser. The CSV records logical meaning, physical SQL proposal/nullability/default, generated fields, keys and constraints, owner module, transaction/use-case context, current implementation status and evidence. The current-runtime columns are a discrepancy inventory, not alternative target schema requirements.
 
-    python scripts/p1/check_contract_consistency.py
+## Approved contract interpretation
 
-A successful static check does not prove MySQL execution, Java mapping, API/DTO/frontend compatibility, authorization, concurrency or business behavior; these remain separate exit-gate conditions.
+- Target logical table count is 31. The physical DDL has a generated active-phone key that is not a separate logical table or owner-facing domain field.
+- Money amounts use whole integer VND. DECIMAL is permitted only where the target dictionary explicitly defines a descriptive numeric attribute, not as the application money type.
+- `product_id` is the item identity for Cart, OrderItems, GoodsReceiptItems, inventory balances and stock ledger.
+- Typed descriptive attributes never auto-generate Products; `is_variant_defining` is informational only.
+- Approved DB-03 and DB-05 behavior is no longer an owner-decision blocker. Runtime concurrency/idempotency/rollback tests are still required.
+- Owner-approved status/defaults in the canonical contracts supersede older proposal wording and historical audit snapshots.
+
+## Validation
+
+Before accepting a change to this CSV:
+1. Parse the full CSV and assert a consistent header/row column count.
+2. Run `scripts/p1/check_contract_consistency.py` against the canonical ERD and target DDL.
+3. Run the clean-reset schema suite on a fresh isolated MySQL instance at the exact candidate SHA.
+4. Review Entity/API/DTO/frontend mappings as separate gates; the CSV alone does not prove they match.
+
+Never run the reset against an unidentified or persistent database. Numeric retention and anonymization exceptions remain TBD under DB-12.
