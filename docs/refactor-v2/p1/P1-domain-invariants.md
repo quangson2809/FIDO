@@ -25,7 +25,7 @@
 - INV-PRICE-01: The server controls effective price, discount, shipping fee, subtotal and total.
 - INV-QUOTE-01: CHECKOUT_QUOTES is absent. Approve nonpersistent preview with order-time recalculation or amend ERD formally.
 - INV-ORDER-01: Same key + same normalized payload replays one committed Order; changed payload conflicts; cross-account reuse never leaks another Order. DB-05 must define exact scope/retention.
-- INV-ORDER-02: Draft total = subtotal - discount + shipping and line_total = unit_price * quantity - line discount are proposals until DB-10 approves currency, decimal precision/scale, rounding point and allocation/reconciliation.
+- INV-ORDER-02: VND only; money is stored as integer VND (owner decision DB-10, 2026-10-23). Quote/order totals and order-level discount allocation must reconcile exactly; rounding and allocation algorithm still need a written, testable contract. Do not use the old DECIMAL(18,2) draft.
 - INV-ORDER-03: Capture SKU/name/attributes/quantity/unit price/discount/line total at placement; never query live catalog to recreate historical facts.
 - INV-ORDER-04: Only approved state transitions are allowed. Order and Payment status remain separate.
 - INV-ADDR-01: Saved Address differs from OrderAddress. Recipient PATCH through PREPARING and duplicated ShippingInfo receiver fields need DB-07/08 resolution.
