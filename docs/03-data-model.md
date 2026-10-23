@@ -1,147 +1,53 @@
-# 03 — Data Model, Entity Rules & Persistence Contract
+# 03 — Target Data Model and Persistence Contract
 
-> **P1 reconciliation (2026-10-23):** Sections marked legacy/source below describe pre-refactor behavior, not the target contract. The target ERD includes ORDER_ITEMS.image_url_snapshot, ORDERS.request_fingerprint, integer-VND monetary columns, VOUCHERS.usage_count, GOODS_RECEIPTS.warehouse_id and refund metadata in PAYMENTS. A stored image URL does not by itself prove immutable asset retention. See docs/refactor-v2/p1/P1-contract-reconciliation-2026-10-23.md.
+## 1. Authority and scope
 
+This document describes the approved target model only. The canonical source for exact columns, keys and relationships is [ERD v2](refactor/phase-1-erd-v2-approved.mmd); the physical contract is [P1 Data Dictionary](refactor-v2/p1/P1-data-dictionary.csv). Do not infer target fields from implementation classes.
 
-## 1. Legacy source conventions (not the target physical contract)
+## 2. Target table inventory — 31 tables
 
-- Relational model; DBMS is not locked by Analyst Docs.
-- Technical PK: `BIGINT`.
-- Business codes such as `order_code`, `receipt_code`: unique.
-- Money: `DECIMAL(18,2)`, never floating point.
-- Timestamps: consistent system timezone policy.
-- Tables/columns use `snake_case`.
-- Important historical/transactional data is not hard-deleted.
-- Persist snapshots where history must remain stable; derive values where duplication would create inconsistency.
+| Domain | Tables |
+|---|---|
+| Account and RBAC | `ACCOUNTS`, `ADDRESSES`, `ROLES`, `PERMISSIONS`, `ACCOUNT_ROLES`, `ROLE_PERMISSIONS` |
+| Catalog | `CATEGORIES`, `BRANDS`, `PRODUCTS`, `ATTRIBUTE_TYPES`, `ATTRIBUTES`, `ATTRIBUTE_OPTIONS`, `PRODUCT_ATTRIBUTE_VALUES`, `PRODUCT_IMAGES` |
+| Cart, vouchers and orders | `CARTS`, `CART_ITEMS`, `VOUCHERS`, `ORDERS`, `ORDER_ITEMS`, `ORDER_ADDRESSES`, `ORDER_VOUCHER_SNAPSHOTS`, `PAYMENTS`, `SHIPPING_INFOS` |
+| Procurement and inventory | `SUPPLIERS`, `GOODS_RECEIPTS`, `GOODS_RECEIPT_ITEMS`, `WAREHOUSES`, `INVENTORIES`, `INVENTORY_TRANSACTIONS` |
+| Audit and content | `AUDIT_LOGS`, `CONTENT_PAGES` |
 
-## 2. Legacy V1 entity inventory (28 tables before V2–V6 additions)
+The inventory above is the complete logical target table set. Schema additions require an explicit owner-approved amendment.
 
-### account
+## 3. Product identity and catalog
 
-`accounts(account_id, password_hash, phone?, email?, created_at, updated_at)`
+- Every sellable unit is identified by `PRODUCTS.id`; Product foreign keys store that Product ID.
+- Parent and child records share `PRODUCTS`. A child is created explicitly, has its own identity, SKU, required selling price and stock, and is independently sellable. v1 allows one parent-child level only.
+- No implicit field inheritance exists. In particular, NULL `name`, `slug` or `description` does not trigger a parent fallback. SKU, selling price and inventory belong to the individual Product row.
+- Category hierarchy must remain acyclic and no deeper than the approved one-level Product hierarchy rule permits for Products. Validate hierarchy mutations in the owning service under concurrent updates.
+- Dynamic metadata is descriptive. The supported types are `OPTION`, `TEXT`, `NUMBER` and `BOOLEAN`. A Product/Attribute pair has one typed value; exactly the column matching the Attribute type is populated. An `OPTION` value must reference an option owned by the same Attribute.
+- `is_variant_defining` is informational metadata only; it must not trigger automatic Product creation or combinations.
+- Product images belong to the Product. Primary-image behavior follows `is_primary` and the approved image contract. Order image references must continue to resolve to the retained order-time content.
 
-`addresses(address_id, account_id, address_text, created_at)`
+## 4. Cart, order and money
 
-`roles(role_id, code UQ, name, description?)`.
+- A Cart belongs to an authenticated account. `CART_ITEMS.product_id` identifies a Product and `quantity` must be positive.
+- `CART_ITEMS`, `ORDER_ITEMS` and `GOODS_RECEIPT_ITEMS` reference Products directly.
+- Order placement creates the Order, line snapshots, address snapshot, optional voucher snapshot, COD Payment, cart mutation, inventory effects and required audit as one atomic write set.
+- Product, SKU/name/attribute, image, address and voucher facts needed to interpret a placed Order are recorded at order time. Later source edits must not rewrite historical order facts.
+- Monetary amounts use whole VND and integer storage. The order discount is rounded HALF-UP to a whole VND, then allocated by largest remainder with ascending Product ID as the deterministic tie-break. Allocated line discounts must sum to the order discount.
+- A checkout quote is stateless and advisory. It has no persisted quote record, stock reservation, or voucher side effect. Order placement reloads and reprices the current server-side state.
+- Idempotency is scoped to the authenticated account and uses a canonical SHA-256 fingerprint of the semantic request. Same-key/same-payload retries replay the committed result; changed payloads conflict. A different account cannot access another account's result.
 
-`permissions(permission_id, code UQ, name)`.
+## 5. Inventory and procurement
 
-`account_roles(account_id, role_id)` composite PK.
+- v1 has one operational warehouse; the server resolves it for receipt and inventory commands.
+- `INVENTORIES` uses the composite key `(warehouse_id, product_id)` with `quantity_on_hand` and a concurrency `version`. It must never become negative.
+- `INVENTORY_TRANSACTIONS` is an append-only ledger. Source state, balance, ledger and required audit commit or roll back together.
+- Approved movement types are `OPENING`, `GOODS_RECEIPT`, `ORDER`, `ORDER_CANCEL_REVERSAL`, `RETURN_RESTOCK` and `ADJUSTMENT`. Every movement follows the source/sign, actor, reason and reversal policy in [the transaction contract](07-transactions-concurrency-idempotency.md).
+- A semantic source movement may not apply twice even when callers retry with different request keys. Lock affected stock rows in deterministic Product ID order.
 
-`role_permissions(role_id, permission_id)` composite PK.
+## 6. Lifecycle, keys and history
 
-### product
-
-`categories(category_id, parent_category_id?, name)`; self-FK tree, no persisted `is_leaf`.
-
-`brands(brand_id, name UQ)`.
-
-`size_systems(size_system_id, code UQ, name)`.
-
-`size_values(size_value_id, size_system_id, code, display_name, sort_order)`; UQ `(size_system_id, code)`.
-
-`colors(color_id, code UQ, name)`.
-
-`products(product_id, category_id, brand_id?, size_system_id, name, description?, gender?, season?, style?, material_care?, base_price, sale_status, created_at, updated_at)`.
-
-`product_images(image_id, product_id, image_url, alt_text?, sort_order)`; `sort_order >= 0`, UQ `(product_id,sort_order)`.
-
-`product_variants(variant_id, product_id, size_value_id, color_id, sku?, override_price?, sale_status, created_at, updated_at)`; UQ `(product_id,size_value_id,color_id)` and SKU when non-null.
-
-### cart
-
-`carts(cart_id, account_id?, created_at, updated_at)`.
-
-`cart_items(cart_item_id, cart_id, variant_id, quantity)`; UQ `(cart_id,variant_id)`, quantity > 0.
-
-### promotion
-
-`vouchers(voucher_id, code UQ)` only. Discount type/value/date/scope/usage/active lifecycle are not baseline fields.
-
-### order
-
-`orders`:
-- `order_id` PK, `order_code` UQ;
-- `customer_account_id?` for guest support;
-- receiver snapshots: `recipient_phone`, `recipient_email?`, `recipient_address`;
-- money snapshots: `subtotal_snapshot`, `discount_snapshot`, `shipping_fee_snapshot`, `total_snapshot`;
-- `voucher_id?`;
-- `order_status`;
-- `customer_service_note?`, `cancel_reason?`;
-- `completed_at?`, `returned_at?`, `created_at`, `updated_at`.
-
-`order_items`:
-- identity: `order_item_id`, `order_id`, `variant_id`;
-- snapshots: product name, image URL?, SKU?, size, color, unit price, quantity, line total;
-- physical image snapshot column: `image_url_snapshot`.
-
-`payments`:
-- `order_id` PK/FK for 1:1;
-- `payment_status` = UNPAID/PAID/REFUNDED;
-- `amount_due`, `amount_received`, `amount_refunded`;
-- collection/refund actor + timestamp.
-
-`shipping_infos`:
-- `order_id` PK/FK;
-- `delivery_mode`;
-- `carrier_name?`;
-- no tracking/reference code baseline.
-
-### inventory
-
-`suppliers(supplier_id, name, phone?, email?, address?, usage_status, note?)`.
-
-`goods_receipts(receipt_id, receipt_code UQ, supplier_id, receipt_status, receipt_date, created_by_account_id, confirmed_by_account_id?, confirmed_at?, note?, created_at, updated_at)`.
-
-`goods_receipt_items(receipt_item_id, receipt_id, variant_id, quantity)`; UQ `(receipt_id,variant_id)`; no `unit_cost` baseline.
-
-`inventories(variant_id PK/FK, available_quantity >= 0, updated_at)`; value means **sellable availability**, not physical on-hand.
-
-`inventory_transactions(txn_id, variant_id, quantity_delta != 0, transaction_type, order_id?, goods_receipt_id?, actor_account_id, reason?, created_at)`.
-
-### audit/report/content
-
-`audit_logs(audit_id, actor_account_id, action, target_type, target_id, description?, created_at)`.
-
-`report`: no physical baseline table; compute report from transaction/order data.
-
-`content_pages(page_id, page_code UQ, title, content, updated_by_account_id, updated_at)`.
-
-## 3. Values that must be derived, not duplicated
-
-- Effective variant price = `COALESCE(product_variants.override_price, products.base_price)`.
-- Purchasable availability = Product sale state + Variant sale state + `inventories.available_quantity`.
-- Current Product cover = ProductImage at `sort_order = 0`.
-- Cart item image = current Product cover at read time; Cart does not persist an image snapshot.
-- OrderItem image = `order_items.image_url_snapshot`, captured from the current Product cover when the Order is created; later catalog edits must not change it.
-- Order payment status comes from `payments`; do not add `payment_status` to `orders`.
-- Cart subtotal is calculated from cart items and current effective prices.
-- Sales report is calculated from completed/returned orders; no baseline aggregate table.
-
-## 4. Persistence invariants
-
-- Category root may have `parent_category_id = NULL`; self-parent and cycles are forbidden.
-- Product may reference only a leaf Category.
-- Variant `SizeValue` must belong to Product's `SizeSystem`.
-- Variant `(product,size,color)` combination is unique.
-- Existing transactional Variant identity must not be repurposed to a different size/color meaning; create a new Variant instead and stop selling the old one.
-- Product image order is persisted as zero-based `sort_order`; each Product has at most one image at each order position.
-- Product image removal compacts remaining positions to `0..n-1`. The current requirement does not impose a minimum image count, so a Product may have zero images.
-- `sort_order = 0` is the representative/cover presentation image when images exist.
-- `available_quantity` cannot be negative.
-- Purchase/receipt quantities must be positive.
-- Prices and money snapshots must be non-negative.
-- OrderItem snapshot values, including `image_url_snapshot`, must not be rewritten by catalog edits.
-- Existing historical OrderItems with a null image snapshot remain null; do not backfill from current catalog state.
-- Confirmed GoodsReceipt stock-affecting items are immutable.
-- Historical Order/Payment/InventoryTransaction/Audit data is not hard-deleted.
-
-## 5. Legacy Java mapping guidance (target money mapping follows DB-10: integer VND)
-
-This section is an implementation convention, not a new business rule:
-
-- Use `Long` for BIGINT identifiers.
-- Use `BigDecimal` for DECIMAL money.
-- Use the repository's established timestamp types and timezone strategy.
-- Use enums only for state/value sets that are actually locked. For `gender`, `season`, `style`, sale-status technical values, delivery-mode technical values and supplier usage-status, preserve configurable/string treatment until the value set is locked by source/repo.
-- Database constraints and service validation should reinforce one another for critical invariants.
+- Accounts use soft deletion; active phone identity is unique and may be reused after soft deletion.
+- Prefer disabling/soft deletion for referenced catalog, voucher and warehouse data. Business/history foreign keys use RESTRICT by default; CASCADE is limited to explicitly disposable dependent working data.
+- Posted orders, order snapshots, payment facts, inventory ledger and audit history are not hard-deleted as a side effect of account/catalog deletion.
+- Numeric retention durations and legally required anonymization/deletion exceptions remain TBD. Do not implement scheduled purging until those values are approved.
+- Physical SQL types, nullability, defaults, generated values, checks, indexes and FK actions must match the canonical ERD and P1 data dictionary and be verified on the supported MySQL version.
