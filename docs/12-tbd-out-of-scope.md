@@ -12,6 +12,8 @@ Until these rules are approved, do not implement scheduled purging of audit hist
 
 ## 2. Implementation contracts still requiring acceptance evidence
 
+- Current Cart selection uses the most recently updated Cart with a deterministic Cart-ID tie-break. Do not infer a one-active-Cart uniqueness constraint or Cart merge; test the selection rule if an Account has multiple Cart rows.
+
 These items are engineering acceptance gates, not open choices about the approved database model:
 
 - Stable image object/version references, overwrite/delete protection and historical access for order image snapshots.
