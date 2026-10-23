@@ -33,7 +33,7 @@ List:
 
 Pagination defaults: page 1, page_size 20, maximum 100.
 
-Type convention: ID `int64`; quantity integer; money decimal; date `YYYY-MM-DD`; timestamp ISO-8601.
+Type convention: ID `int64`; quantity integer; money follows DB-10 as integer VND (whole VND units); date `YYYY-MM-DD`; timestamp ISO-8601. This is an owner decision, but physical SQL/JPA and every dependent DTO still require reconciliation with decimal-labelled ERD fields before freeze.
 
 PATCH: omitted field means unchanged. `null` may clear a field only where the field is nullable and the specific API permits it.
 
@@ -122,7 +122,7 @@ The nullable Product summary `thumbnail` is live presentation data resolved from
 
 `VoucherDto(voucher_id,code)` — do not add rule fields.
 
-`CheckoutQuoteDto(items[],subtotal,discount,shipping_fee,total,voucher?)`
+`CheckoutQuoteDto(items[],subtotal,discount,shipping_fee,total,voucher?)` — proposed as a non-persistent, advisory calculation; order placement must recalculate all values from current server-side state. No durable quote ID/reservation is implied by the target ERD.
 
 `RecipientDto(phone,email?,address)`
 
