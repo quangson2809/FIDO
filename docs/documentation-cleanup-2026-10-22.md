@@ -1,6 +1,8 @@
 # Documentation Cleanup Review — 2026-10-22
 
-**Status: PASS for documentation cleanup scope.** This result applies only to document quality and consistency; it is not an application/test acceptance result.
+> **HISTORICAL SNAPSHOT:** This report records the repository/doc state before the owner approval dated 2026-10-23. Its open-decision lists, phone-uniqueness note, and runtime/schema status are not current requirements. Use [P1 owner approval](refactor-v2/p1/P1-owner-approval-2026-10-23.md), [current contract reconciliation](refactor-v2/p1/P1-contract-reconciliation-2026-10-23.md), the canonical ERD and current target contracts for effective requirements. This report is preserved as evidence of the earlier cleanup, not as a live specification.
+
+**Status: PASS for the 2026-10-22 documentation cleanup scope.** This result applies only to document quality and consistency; it is not an application/test acceptance result.
 
 - **Repository:** `quangson2809/FIDO`
 - **Working branch:** `docs/cleanup-and-control-20261022`
