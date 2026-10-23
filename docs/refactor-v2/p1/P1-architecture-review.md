@@ -1,42 +1,45 @@
-# P1 Architecture Review
+# P1 Architecture Review — Target vs Current Runtime
 
-**Review status: PARTIAL.** This is a source-evidence review of current legacy implementation versus the proposed 31-table target contract. It does not certify production readiness or approve DB-03/DB-05 semantics.
+**Verdict: PARTIAL — architectural direction remains suitable; target runtime integration and acceptance are not complete.**
 
-## Scope and evidence
+This review uses owner-approved ERD v2 and DB-01–DB-12 defaults recorded on 2026-10-23. Earlier draft/proposal language in the source review is superseded by the owner decision record. Legacy code/schema findings below remain implementation evidence, not target requirements.
 
-Reviewed target ERD, clean-reset SQL, field-level dictionary, API mapping, core backend services/entities, and related frontend types for Account, Product/attributes, inventory/goods receipts, checkout/orders, voucher redemption, payment/refund and shipping. The live implementation remains on the legacy schema; clean-reset SQL stays separate from active Flyway migrations.
+## 1. Architecture fit
 
-## Structural review
+- Modular Monolith + Package by Feature is appropriate for the current project evidence; retain the existing Java/Spring/Gradle stack.
+- Keep Controller → owning Service → Repository. A module owns its persistence and writes; cross-module writes go through the owning module’s service.
+- Current architecture does not justify adding GoF patterns or a new abstraction hierarchy as ceremony. Add an abstraction only when a concrete duplicated rule, policy variation or dependency boundary requires it.
+- Use Flyway for target schema and system seed; ORM-generated schema is not the source of truth.
+- DTOs must be explicit and independent of persistence entities. Do not expose JPA entities as REST response bodies.
 
-| Severity | Finding | Evidence / disposition |
+## 2. Confirmed target compatibility findings
+
+| Severity | Finding | Target correction |
 |---|---|---|
-| MAJOR | Target persistence model differs from active entities | Account identity maps legacy account_id and has global unique phone; Product uses ProductVariant; Inventory keys by variant_id; Order uses BigDecimal and legacy snapshot fields. Dictionary mappings are not implemented mappings. |
-| MAJOR | API/DTO/frontend still use legacy contracts | Checkout frontend posts quote_id; CheckoutQuote entity/repository exists; Product/stock IDs rely on variants; promotion DTO uses legacy voucher enum values; target contract uses Product IDs, idempotency/fingerprint and integer VND. See P1-api-breaking-changes.md. |
-| MAJOR | Target entity/repository alignment is incomplete | WAREHOUSES, typed Product attribute tables, ORDER_ADDRESSES, integer order/refund fields and warehouse/product inventory are not evidenced as aligned across current entities/repositories. P1 remains a contract freeze; implement only after authorization. |
-| MINOR | Logical/physical distinction must be explicit | accounts.phone_active_key is a generated physical column, not a writable Java property. MySQL target test passes, but Account lifecycle mapping remains incomplete. |
-| NOTE | Existing architecture has modular-monolith/package-by-feature and layered Controller -> Service -> Repository conventions | Current receipt/inventory services include transaction/status guards in legacy variant-based flows. No evidence justifies adding architectural layers or applying design patterns as ceremony in P1. Keep business rules in backend, not duplicated in frontend. |
+| MAJOR | Current persistence model still maps Account to legacy identity/deletion semantics. | Map ACCOUNTS.id, soft-delete lifecycle and generated active-phone uniqueness; verify phone reuse after soft deletion. |
+| MAJOR | Current Product/Cart/Order/receipt/inventory paths use ProductVariant/variant identifiers and legacy Size/Color models. | Use explicit Product rows and product_id throughout the approved target; typed attributes are descriptive, not Product generators. |
+| MAJOR | Current checkout persists/consumes quote_id and Order flow lacks target idempotency/fingerprint mapping. | Stateless quote; order-time reprice; authenticated account-scoped idempotency with replay/conflict and full rollback. |
+| MAJOR | Current money path uses legacy BigDecimal/two-decimal calculations. | Integer-VND end-to-end and the approved HALF-UP/largest-remainder allocation rule. |
+| MAJOR | Current voucher path supports catalog targeting and legacy usage structures. | Global order-wide non-stacking limit, atomic usage_count consumption/release; no per-account usage ledger or catalog-targeting persistence. |
+| MAJOR | Current payment/shipping/state transitions do not fully map to the approved target. | COD-only, one Payment per Order, at most one full refund, manual shipping and approved state/actor matrix. |
+| MAJOR | Current image/order snapshot path does not prove target immutable content-version semantics. | Write ORDER_ITEMS.image_url_snapshot and verify its immutable object/version remains resolvable; numeric retention duration remains TBD. |
+| MINOR | Generated `accounts.phone_active_key` is physical enforcement rather than a writable domain field. | Keep Entity/write DTO free of a client-controlled generated value; test against MySQL. |
 
-## Behavioral review
+## 3. Transaction and concurrency review
 
-| Severity | Finding | Evidence / disposition |
-|---|---|---|
-| BLOCKER | DB-03 and DB-05 mechanics are not owner-approved | The owner selected D as a request for a design proposal. Current schema fields do not approve movement source/sign rules, retry/fingerprint scope or transaction mechanics. |
-| MAJOR | Inventory target concurrency and ledger completeness are unproven | Legacy InventoryCommandService uses guarded transactional balance updates ordered by variant; target uses warehouse_id/product_id and source/idempotency/reversal fields. Same source with another key, receipt replay and cancellation/return reversals need target concurrency tests. |
-| MAJOR | Checkout idempotency/repricing is not implemented in target flow | Current flow relies on quote IDs and BigDecimal. Target Order idempotency key/fingerprint are not mapped. Same-key replay/conflict, commit-then-timeout, concurrent retry and atomic order/stock/voucher writes remain unverified. |
-| MAJOR | Monetary conversion/discount allocation differs | Legacy services use BigDecimal and two-decimal HALF_UP calculation; target uses integer VND and basis-point voucher representation. One accepted rounding/allocation rule and cross-layer tests are still needed. |
-| MAJOR | Voucher physical bound is tested, quota protocol is not | MySQL rejects usage_count above usage_limit. This does not prove atomic redemption, final-use concurrency, global/per-account scope or cancellation restoration. |
-| MAJOR | Refund/snapshot history is not established by fields alone | Legacy payment supports full refund after RETURNED; target adds refund metadata but lacks verified partial/full transitions, refund idempotency, authorization and return/restock protocol. Image URL snapshot does not ensure immutable backing content. |
-| MAJOR | Product inheritance, deletes and historical retention lack decisions | DB-01 confirms independent sale units, not hierarchy depth or inheritance of name/slug/description/selling_price/category_id/brand_id. DB-12 lacks owner-approved soft/hard-delete, FK-action and retention rules. |
-| PASS (limited) | Selected physical constraints verified on MySQL | Run 39904931447 on MySQL 8.4.13 verifies active phone uniqueness/reuse, nonnegative inventory, voucher counter bound, wrong-attribute option ownership FK, clean reset/reseed and metadata inventory. This is database-level evidence only. |
+Target runtime acceptance must prove the following on MySQL, not mocks alone:
 
-## Security and transaction boundaries
+- Order placement atomically writes Order, item/address/voucher/image snapshots, COD Payment, Cart mutation, voucher usage, stock balance/ledger and audit.
+- Inventory movement source/sign/dedupe and source state, stock, append-only ledger and audit commit or roll back together.
+- Deterministic Product-ID lock ordering and guarded balance/version updates prevent negative stock and duplicate semantic movements.
+- Same account-scoped order key/payload replays; changed payload conflicts; cross-account results are isolated. Concurrent duplicate submissions create one Order.
+- Concurrent voucher final-use requests respect the global limit; eligible cancellation restores usage at most once.
+- The last-SUPERADMIN guard and all required permission checks hold under concurrent changes.
 
-- Derive actor/account identity from the authenticated principal; do not trust request-supplied actor/account IDs.
-- Keep order placement, stock/ledger, voucher consumption, COD Payment and cart mutation in one transaction after DB-05/06 decisions are accepted.
-- Keep receipt confirmation and ledger generation atomic and make retries idempotent after DB-03 acceptance.
-- Restrict payment/refund/cancel/return/stock-adjustment actions by explicit state and permission matrices; target schema tests do not establish endpoint authorization.
-- Preserve audit history and redact secrets. Basic role/permission seed counts passed the schema test, but external-secret SUPERADMIN bootstrap and secret-source scan remain unverified.
+## 4. Status and next gate
 
-## Decision
+**P1/P2 remains PARTIAL** until Entity/Repository/Service/API/DTO/frontend, target seed, authorization, transaction/rollback/concurrency and responsive client tests pass on the exact candidate SHA.
 
-**P2 NOT AUTHORIZED.** Static consistency and MySQL reset checks pass, but DB-03/05 mechanics, Product inheritance, voucher quota lifecycle, immutable asset retention, refund/return policy and DB-12 deletion/history policy remain open; active backend/API/frontend mappings need a separate approved implementation plan and acceptance tests.
+The owner decision gates for DB-03 and DB-05 are closed. Their implementation and acceptance evidence is not. Numeric audit/image/personal-data retention and anonymization exceptions remain TBD under DB-12. Do not block unrelated implementation work on ordinary technical naming choices, but stop any slice whose required API contract is genuinely unspecified (including the exact HTTP transport for the order idempotency key and Attribute/Option write routes).
+
+Do not activate the clean-reset schema against a shared/persistent database. No database reset or runtime implementation is claimed by this review.
