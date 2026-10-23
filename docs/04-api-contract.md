@@ -37,7 +37,7 @@ Account addresses are mutable account-owned records. An Order's `ORDER_ADDRESSES
 | GET | `/catalog/products` | Public | Product search/list; supported filters must be explicitly defined against Product fields and approved attribute behavior. |
 | GET | `/catalog/products/{productId}` | Public | Product detail and descriptive attribute values. |
 | GET | `/catalog/meta` | Public | Product-facing metadata definitions/options, with deterministic ordering. |
-| GET | `/cart` | JWT | Resolve the authenticated account's current Cart as the most recently updated Cart, with a deterministic Cart-ID tie-break; monetary fields are server-derived. Do not assume one-active-Cart uniqueness or merge multiple Carts. |
+| GET | `/cart` | JWT | Return the authenticated account's current Cart according to the explicit current-Cart selection policy. If multiple Cart rows may exist, define that policy before runtime implementation; monetary fields are server-derived. |
 | POST | `/cart/items` | JWT | Request contains `product_id` and positive `quantity`. |
 | PATCH | `/cart/items/{cartItemId}` | JWT | Update positive quantity on the caller's own line. |
 | DELETE | `/cart/items/{cartItemId}` | JWT | Remove the caller's own line. |
