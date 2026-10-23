@@ -50,6 +50,8 @@ The API map also flags legacy contracts with no direct target table: ProductVari
 - Logical cross-check recorded in P1: 31 ERD tables; 31 target DDL table definitions; 217 logical-column CSV rows.
 - The dictionary-to-DDL comparison is a structural/source cross-check only. It does **not** prove the SQL is approved, executes on MySQL, or behaves correctly through the application.
 - P0's recorded backend CI baseline was **FAILED** on audited SHA `22bd3d887cef3c077e714e5ec21e70ba89855d46`: 196 H2 tests, 3 failed and 1 skipped; failures concerned status CHECK constraints in `CleanResetSchemaTests`. The target MySQL verification step did not run. This is historical evidence; it is not a claim about a fresh CI run for this documentation update.
+- The merge-conflict markers in `docs/05-dto-contract.md` were removed. The legacy `variant_id`/Order image-snapshot API expectations are now separated from the target ERD compatibility gaps; this resolves contradictory source text but does not approve DB-01 or DB-07.
+- The Data Dictionary CSV now carries field-specific meaning and validation text for all 217 rows, and DB-10/DB-11 references are attached to relevant money and seed fields. These entries point to open decisions instead of inventing their values.
 - No database was connected to, dropped or reset for this P1 documentation work.
 - No production migration, JPA/API/frontend switch, or P2 implementation was performed.
 
