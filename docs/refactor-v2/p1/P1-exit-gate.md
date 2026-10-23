@@ -1,52 +1,48 @@
 # P1 Exit Gate — ERD v2 & Data Contract Freeze
 
-> **Latest reconciliation note — 2026-10-23:** Current work starts from `origin/demo1` SHA `551d91dab8b47ac709283f9222667b06c6b1b6de`. The baseline counts (31 logical tables / 228 logical fields / 229 physical columns including generated `accounts.phone_active_key`) are snapshot observations, not checker constants. Prior successful MySQL/backend runs listed below are historical evidence at previous commits; exact-SHA checks must run against the reconciliation PR. Status remains PARTIAL / P2 NOT AUTHORIZED while DB-03, DB-05 and DB-12 and other listed contract details remain open.
+> **Owner decision update — 2026-10-23:** DB-03 and DB-05 proposals, DB-12 lifecycle/FK defaults, and the proposed DB-01/02/06–11/API contract defaults are approved. Clean Schema Reset is approved for verified disposable development/test databases: discard legacy test rows and reseed from the target ERD. Numeric retention durations for audit logs, image assets and personal/business data remain TBD. See [P1 owner approval record](P1-owner-approval-2026-10-23.md).
 
-**STATUS: PARTIAL. P2 is NOT AUTHORIZED.** Static schema and isolated MySQL clean-reset verification passed at previously audited SHAs only. Exact-commit verification for this reconciliation PR is tracked by its current workflow run; it must not be inferred from historical runs. The whole contract is not approved or implemented across the application.
+**STATUS: PARTIAL — P2 implementation is AUTHORIZED with environment and integration gates.** Owner decisions are now recorded, but Entity/Repository/service/API/DTO/frontend code has not been fully aligned to the approved target contract and the required business/security/concurrency acceptance tests have not all passed. No actual database reset was performed by recording this approval.
 
 ## Baseline and verification evidence
 
-- Initial inspected baseline: `c08a8c0c89019e19fd597b70a22eb2e10e38b834`.
-- Latest completed verification of database changes: SHA `dbd7cb6a8293068c9939c3c06707c1d182c47030`.
-- [Clean Schema Reset target verification — run 39904931447](https://github.com/quangson2809/FIDO/actions/runs/39904931447): SUCCESS on MySQL 8.4.13.
-- [Backend verification — run 39904931498](https://github.com/quangson2809/FIDO/actions/runs/39904931498): SUCCESS, including H2 tests and MySQL migration/mapping.
-- MySQL run reports 31 tables, 229 physical columns and successful build/test completion. Static checker output at that revision reported 31 ERD tables, 228 logical ERD fields and 229 Dictionary rows.
-- The target script remains in `db/clean-reset`; it has not been put into active Flyway migrations or run against a production/shared database.
+- Approved target authority: `docs/refactor/phase-1-erd-v2-approved.mmd`, 31 logical tables.
+- PR #26 merged to `demo1` at commit [`f9229aad5b185489d53ac599a28b5d98899230f0`](https://github.com/quangson2809/FIDO/commit/f9229aad5b185489d53ac599a28b5d98899230f0).
+- The reconciliation PR's exact code head `43fe744f13e155d7438eeeb4f67317b211d87748` passed GitHub Actions [run 39914506729](https://github.com/quangson2809/FIDO/actions/runs/39914506729), including the P1 contract checker and isolated MySQL clean-target schema tests. Those results verify that code revision, not later revisions automatically.
+- Earlier isolated MySQL verification [run 39904931447](https://github.com/quangson2809/FIDO/actions/runs/39904931447) and backend verification [run 39904931498](https://github.com/quangson2809/FIDO/actions/runs/39904931498) are historical evidence only for their respective commit SHAs.
+- Target reset DDL remains isolated in `backend/src/main/resources/db/clean-reset/`. It has not been activated as the application's default Flyway location and has not been run against production/shared data.
 
 ## Verification matrix
 
-| Gate | Result | Evidence / limits |
+| Gate | Current result | Evidence / limit |
 |---|---|---|
-| 31-table inventory | PASS — static | ERD and clean-reset SQL agree on 31 table names. |
-| ERD ↔ SQL fields/types | PASS — static | 228 logical ERD fields; SQL contains 229 physical columns including generated `accounts.phone_active_key`. |
-| SQL ↔ Dictionary | PASS — static at SHA dbd7 | 229 RFC-4180 CSV field rows; old checker compared types, nullability/defaults and generated expression. Enhanced checker additionally checks ERD key annotations and per-column constraint evidence; require its own latest CI run. |
-| Critical constraints | PASS — selected DB checks | MySQL suite rejects active duplicate phones, permits phone reuse after soft delete, rejects negative stock, rejects voucher use above limit and rejects a Product Attribute Option from a different Attribute. This does not validate full application behavior. |
-| MySQL clean-reset | PASS | MySQL 8.4.13 applies the isolated reset DDL; exact table/column metadata and clean/reseed assertions pass in run 39904931447. |
-| Backend H2 + MySQL migration/mapping | PASS | Backend run 39904931498. This is not proof the live application matches all target APIs. |
-| Entity/Repository alignment | FAIL | Current Account uses legacy `account_id` and global unique phone; Product uses ProductVariant; Inventory is variant-keyed; Order and monetary logic still use legacy fields/BigDecimal. |
-| API/DTO/frontend compatibility | FAIL / NOT VERIFIED | Checkout still uses `quote_id`; target idempotency/fingerprint, Product-ID inventory and integer-VND contracts are not fully implemented end-to-end. See `P1-api-breaking-changes.md`. |
-| Full business/security/concurrency tests | NOT VERIFIED | Order/ledger race tests, same-key changed-payload behavior, atomic voucher consumption/restoration, discount allocation, refund idempotency, state authorization and full API contract tests remain outstanding. |
+| 31-table inventory and ERD/SQL agreement | PASS on verified code SHA | Checker derives expected tables from the canonical ERD; latest document-only branch still needs its own exact-SHA CI. |
+| SQL ↔ physical data dictionary | PASS on verified code SHA | 228 logical ERD fields; 229 physical columns, including generated `accounts.phone_active_key`. |
+| Selected target MySQL constraints | PASS on verified code SHA | Active-phone uniqueness/reuse, nonnegative stock, voucher bound and attribute-option ownership have targeted checks. |
+| Clean target schema creation and seed tests | PASS on verified code SHA | Isolated MySQL 8.4 workflow; does not authorize any non-disposable database reset. |
+| Owner acceptance of DB-03 / DB-05 proposals | APPROVED 2026-10-23 | Design is frozen; behavior is not yet proven by runtime/concurrency tests. |
+| DB-12 lifecycle/FK defaults | APPROVED; duration TBD | Do not implement scheduled purge until numeric retention periods and anonymization exceptions are accepted. |
+| Entity/Repository/service alignment | NOT PASS | Current Account still has legacy phone mapping; Product uses ProductVariant; Inventory is variant-keyed; Order uses legacy contract/money behavior. |
+| API/DTO/frontend compatibility | NOT PASS / not verified end-to-end | Frontend still contains quote_id/legacy Variant contract; Product-ID, idempotency and integer-VND alignment remains implementation work. |
+| Business/security/concurrency acceptance | NOT PASS / incomplete | Inventory source dedupe and races, replay/conflict/rollback, voucher quota, discount allocation, state authorization, refund and history tests remain required. |
+| Latest revision CI | PENDING for this approval PR | Do not infer a green result from an ancestor SHA. |
 
-## Remaining blockers
+## Remaining engineering acceptance gates
 
-1. **DB-03:** detailed inventory/receipt/ledger movement types, source shape, same-source/different-key deduplication, reversal rules, opening balance and concurrency behavior are proposals, not owner-approved mechanics.
-2. **DB-05:** idempotency/fingerprint scope, same-key replay versus changed-payload conflict, retention, retry/error contract and atomic checkout behavior remain proposed and are not implemented in current Order/API/frontend flow.
-3. **Product hierarchy/inheritance:** DB-01 confirms parent and child each own a required, non-inherited `selling_price`. Permitted hierarchy depth and effective-value/parent-update propagation for `name`, `slug`, `description` remain open; `category_id` / `brand_id` requiredness and FK NULL semantics also remain open. NULL does not otherwise imply inheritance.
-4. **DB-06:** `usage_count` and a database bound check exist, but atomic quota use, global/per-account scope, cancellation/return restoration and retry behavior remain open.
-5. **DB-07:** `image_url_snapshot` exists; stable asset versioning, overwrite/deletion prevention and historical access/retention are not established.
-6. **DB-08:** refund amount/actor/time/reason columns exist; partial/full refund, idempotency, authorized state transitions, return/restock and audit atomicity are not defined or tested end-to-end.
-7. **DB-09:** target DDL phone uniqueness/reuse passed MySQL tests, but the active Account entity/service is not mapped to `deleted_at` and generated `phone_active_key`.
-8. **DB-10:** target ERD/SQL uses integer VND, but current Java/API/frontend amount types and calculation/discount-allocation rules are not aligned.
-9. **DB-11 / DB-12:** basic seed/grant checks passed in the MySQL suite. External-secret SUPERADMIN bootstrap and source secret scan need evidence; an owner-approved per-entity soft/hard-delete, FK action and historical-retention matrix is missing.
-10. **Static checker follow-up:** the enhanced checker now explicitly verifies ERD PK/FK/UK markers and per-column constraint/index evidence. Its own post-change CI must pass before claiming those additional checks verified.
+1. **DB-03:** implement approved movement source/sign rules, source-derived duplicate prevention, deterministic locks, guarded stock updates, append-only reversals, and atomic source/balance/ledger/audit writes. Test concurrent receipt/order/cancel/return/adjustment on MySQL.
+2. **DB-05:** implement account-scoped idempotency and canonical SHA-256 fingerprint; verify same-payload replay, changed-payload conflict, lost-response retry, cross-account isolation and transaction rollback.
+3. **DB-01 / DB-02:** align Product ID, one-level parent-child behavior, row-owned SKU/price/stock and descriptive typed attributes through schema, service, API and frontend.
+4. **DB-06:** implement global voucher quota in the order transaction; prove a concurrent last-use cannot exceed the limit and eligible cancellation restores usage at most once.
+5. **DB-07:** persist complete immutable order snapshots and stable image/version references. Numeric asset/history retention period remains TBD; no automatic purge yet.
+6. **DB-08:** implement COD/order/shipping state and actor matrix; support at most one full refund in v1; test replay, authorization, stock reversal and audit atomicity.
+7. **DB-09:** align Account service and physical constraints with active-phone uniqueness and soft deletion; test entity deletion/FK behavior.
+8. **DB-10:** align Java/API/frontend/report money fields to integer VND, HALF-UP order discount rounding and largest-remainder line allocation with deterministic product_id tie-break.
+9. **DB-11:** verify Flyway system seeds, separate demo fixture, external-secret SUPERADMIN bootstrap, last-SUPERADMIN protection and source/configuration secret scan.
+10. **DB-12:** implement approved delete/FK defaults. Decide numeric retention durations and anonymization exceptions before deploying automatic history/image purging.
+11. **CI:** run the enhanced contract checker and isolated MySQL clean-reset tests for the exact PR head before claiming the schema/document changes pass.
 
-## Architecture review
+## P2 authorization and safety boundary
 
-- **BLOCKER:** DB-03 and DB-05 mechanics remain proposals, not approvals.
-- **MAJOR:** active backend/API/frontend contracts remain on the legacy schema.
-- **MAJOR:** inventory/checkout concurrency, refund lifecycle, API authorization, voucher restoration and immutable asset retention are not proven.
-- **NOTE:** current layered modular-monolith structure is retained; P1 has not justified broadening the refactor into active feature behavior. See `P1-architecture-review.md`.
+**P2 is authorized to begin.** The approved target schema may be created and reseeded only in an explicitly disposable local/development/test database after verifying the exact host, database name and environment. Discard the existing disposable test rows; do not build a migration to preserve those rows.
 
-## P2 authorization
-
-**NOT AUTHORIZED.** The schema/runtime portion has substantial passing evidence, but P1 as a whole is not complete until the remaining business decisions are explicitly recorded, target mappings and APIs are reconciled, required behavioral/security/concurrency tests are implemented and passed, and the enhanced checker passes CI.
+This approval is **not** permission to delete an unspecified database, or any production, staging, shared-integration or real/persistent data. Keep clean-reset DDL isolated until the application mapping/activation step is ready. P1 remains PARTIAL until the implementation gates above and exact-SHA CI are satisfied; numeric retention periods remain an explicit open input.
