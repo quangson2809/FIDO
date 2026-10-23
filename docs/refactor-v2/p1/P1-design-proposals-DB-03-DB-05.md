@@ -1,4 +1,4 @@
-# P1 Design Proposals — DB-03 Inventory and DB-05 Checkout
+# P1 — Approved DB-03 Inventory and DB-05 Checkout Contract
 
 **STATUS: OWNER-APPROVED TARGET CONTRACT (2026-10-23); IMPLEMENTATION/TESTS PENDING.** The owner explicitly approved DB-03 and DB-05 proposals. This freezes the target rules below; it does not imply that runtime code or concurrency/acceptance tests already pass.
 
