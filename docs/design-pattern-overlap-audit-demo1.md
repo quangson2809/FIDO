@@ -1,5 +1,7 @@
 # FIDO demo1 — Design Pattern Overlap & Architecture Audit
 
+> **Historical baseline review:** Findings below refer to the inspected code SHA, not to the owner-approved ERD v2 runtime. Use this report to understand the architecture baseline only; do not treat observed legacy persistence types or endpoint behavior as target requirements.
+
 - Repository: https://github.com/quangson2809/FIDO
 - Branch audited: demo1
 - Code baseline reviewed: 78f6d0f015abae7a4f5afc1fb0180cab3a029e2a
