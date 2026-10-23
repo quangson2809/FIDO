@@ -231,7 +231,7 @@ class CleanResetSchemaTests {
     }
 
     @Test
-    void phoneIsUniqueButEmailIsNotUniqueInTheTargetSchema() {
+    void phoneIsUniqueAmongActiveAccountsAndReusableAfterSoftDeleteWhileEmailMayRepeat() {
         var dataSource = newTestDataSource("constraints");
         Flyway flyway = Flyway.configure().dataSource(dataSource)
                 .locations("classpath:db/clean-reset").cleanDisabled(false).load();
@@ -245,6 +245,40 @@ class CleanResetSchemaTests {
             assertThrows(DataAccessException.class, () -> jdbc.update(
                     "INSERT INTO accounts(full_name,email,phone,password_hash,status) VALUES (?,?,?,?,?)",
                     "Duplicate Phone", "different@example.invalid", "+84900000001", "test-only-hash", "ACTIVE"));
+
+            assertEquals(1, jdbc.update(
+                    "UPDATE accounts SET deleted_at = CURRENT_TIMESTAMP(6) WHERE phone = ?",
+                    "+84900000001"));
+            jdbc.update("INSERT INTO accounts(full_name,email,phone,password_hash,status) VALUES (?,?,?,?,?)",
+                    "Phone Reused", "reused@example.invalid", "+84900000001", "test-only-hash", "ACTIVE");
+            assertEquals(2, jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM accounts WHERE phone = '+84900000001'", Integer.class));
+            assertEquals(1, jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM accounts WHERE phone = '+84900000001' AND deleted_at IS NULL",
+                    Integer.class));
+        } finally {
+            flyway.clean();
+        }
+    }
+
+    @Test
+    void targetCheckConstraintsRejectNegativeInventoryOverLimitVoucherAndMismatchedAttributeOption()
+            throws SQLException {
+        var dataSource = newTestDataSource("check-constraints");
+        Flyway flyway = Flyway.configure().dataSource(dataSource)
+                .locations("classpath:db/clean-reset").cleanDisabled(false).load();
+        try {
+            migrate(flyway);
+            try (Connection connection = dataSource.getConnection()) {
+                ScriptUtils.executeSqlScript(connection, new ClassPathResource("clean-reset/dev-seed.sql"));
+            }
+            JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+            assertThrows(DataAccessException.class, () -> jdbc.update(
+                    "UPDATE inventories SET quantity_on_hand = -1 WHERE warehouse_id = 50001 AND product_id = 30002"));
+            assertThrows(DataAccessException.class, () -> jdbc.update(
+                    "UPDATE vouchers SET usage_count = usage_limit + 1 WHERE code = 'DEMO10'"));
+            assertThrows(DataAccessException.class, () -> jdbc.update(
+                    "INSERT INTO product_attribute_values(product_id,attribute_id,option_id) VALUES (30001,41002,42001)"));
         } finally {
             flyway.clean();
         }

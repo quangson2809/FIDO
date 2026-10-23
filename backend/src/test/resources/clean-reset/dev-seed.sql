@@ -8,7 +8,7 @@ INSERT INTO brands (id,name,slug,status) VALUES (20001,'FIDO Demo','fido-demo','
 
 INSERT INTO products (id,parent_product_id,category_id,brand_id,name,slug,sku,description,selling_price,cost_price,status)
 VALUES (30001,NULL,10001,20001,'Áo thun cơ bản','ao-thun-co-ban-demo','DEMO-TSHIRT',
- 'Sản phẩm cha minh họa cho mô hình Product cha/con.',250000.00,100000.00,'ACTIVE');
+ 'Sản phẩm cha minh họa cho mô hình Product cha/con.',250000,100000,'ACTIVE');
 INSERT INTO products (id,parent_product_id,category_id,brand_id,name,slug,sku,description,selling_price,cost_price,status)
 VALUES (30002,30001,NULL,NULL,NULL,NULL,'DEMO-TSHIRT-WHT-S',NULL,NULL,NULL,'ACTIVE');
 
@@ -26,4 +26,4 @@ VALUES (43001,30001,'https://example.invalid/fido-demo-shirt.png',TRUE,0);
 INSERT INTO warehouses (id,code,name,status) VALUES (50001,'MAIN','Kho chính','ACTIVE');
 INSERT INTO inventories (warehouse_id,product_id,quantity_on_hand,version) VALUES (50001,30002,50,0);
 INSERT INTO vouchers (id,code,discount_type,discount_value,minimum_order_value,maximum_discount,starts_at,ends_at,usage_limit,status)
-VALUES (60001,'DEMO10','PERCENT',10.00,0.00,50000.00,'2026-01-01 00:00:00','2030-12-31 23:59:59',100,'ACTIVE');
+VALUES (60001,'DEMO10','PERCENT',1000,0,50000,'2026-01-01 00:00:00','2030-12-31 23:59:59',100,'ACTIVE');
