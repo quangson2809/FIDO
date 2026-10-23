@@ -23,7 +23,7 @@
 
 - **INV-CART-01:** Persisted Cart operations, quote access and Order placement require authentication. There are no guest Cart/order flows or cart merges in target v1.
 - **INV-CART-02:** Cart item identity is (Cart, Product); use product_id. Quantity must be positive. Cart and quote do not reserve/deduct stock.
-- **INV-CART-03:** The schema does not imply one-active-Cart uniqueness or merge. When multiple Cart rows exist for an Account, resolve the current Cart as the most recently updated row, with a deterministic Cart-ID tie-break.
+- **INV-CART-03:** The schema does not imply one-active-Cart uniqueness or merge. If multiple Cart rows exist for an Account, current-Cart resolution must be defined explicitly in the API/workflow contract before implementing Cart/quote/Order; do not silently choose by update time.
 - **INV-PRICE-01:** The server controls Product price, discount, shipping fee, subtotal and total. At Order placement, reload/reprice current server-side Product, stock, voucher and shipping inputs.
 - **INV-QUOTE-01:** Quote is stateless/advisory: no CHECKOUT_QUOTES row, quote_id, stock reservation, voucher mutation or Order side effect.
 - **INV-ORDER-01:** Create-order idempotency is scoped to authenticated Account plus operation and key, with a canonical SHA-256 semantic-request fingerprint. Same key/payload replays the committed result; changed payload conflicts; a different Account cannot access another result. The HTTP transport for the key must be specified in the API contract.
