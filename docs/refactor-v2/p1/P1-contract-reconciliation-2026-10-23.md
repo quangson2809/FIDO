@@ -8,7 +8,7 @@
 
 ## 1. Status boundary
 
-This work reconciles documentation against the approved target, not the legacy implementation. Current Controllers/DTOs/services and V1–V6 migrations remain evidence only. Clean-reset SQL remains isolated under backend/src/main/resources/db/clean-reset/. No database reset was run and no active migration was changed.
+This work reconciles documentation against the approved target, not the legacy implementation. Current Controllers/DTOs/services and V1–V6 migrations remain evidence only. Clean-reset SQL remains isolated under backend/src/main/resources/db/clean-reset/. No reset was executed against a persistent, shared or production database and no active Flyway V1–V6 migration was changed. The existing PR verification workflow uses only its ephemeral, per-run MySQL service and runs target-schema tests in that disposable environment.
 
 The current P1 inventory records 31 logical tables, 228 logical ERD fields and 229 physical SQL columns, including generated-only accounts.phone_active_key. These are snapshot counts, not invariants hard-coded for future revisions. The checker must derive expected table count from the canonical ERD and compare the complete ERD/SQL table sets.
 
