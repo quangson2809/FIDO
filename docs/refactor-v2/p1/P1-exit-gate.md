@@ -1,13 +1,33 @@
 # P1 Exit Gate — ERD v2 & Data Contract Freeze
 
-**STATUS: PARTIAL — P1 deliverables are now present, but the target contract is not frozen and P2 implementation is blocked.**
+**STATUS: PARTIAL — owner decisions DB-01, DB-02 and DB-06 through DB-11 are recorded; DB-03/DB-05 design proposals and cross-document contract synchronization remain before P1 can PASS.**
 
 - Branch under review: `demo1`
 - Review date: 2026-10-23
 - Scope: documentation and contract alignment only. No Java/TypeScript runtime changes, migration execution, database reset, or schema activation is part of P1.
 - Authority: owner-confirmed logical ERD v2 at `docs/refactor/phase-1-erd-v2-approved.mmd`, plus explicit owner decisions recorded in the project docs. A proposal, SQL draft or inferred API mapping is not owner approval.
 
-## 1. Deliverable inventory
+
+## 2. Owner decisions received on 2026-10-23
+
+- DB-01: parent and child Products are both sellable; each has independent SKU, price and inventory.
+- DB-02: dynamic attributes are descriptive only; variants are not generated from attributes and child Products are created explicitly.
+- DB-06: simple order-wide voucher; non-stackable; no product/category conditions.
+- DB-07: complete order snapshots with immutable image-retention policy. Implementation must not silently add a column to the 31-table ERD; the persistence/API solution still needs reconciliation.
+- DB-08: COD with an Order state machine including transitions, cancellation, returns and refund; detailed states/persistence need a contract and scope check.
+- DB-09: phone can be reused after soft deletion and is unique among active accounts.
+- DB-10: VND only, money stored as integer VND; rounding and discount allocation must reconcile exactly. The isolated DECIMAL(18,2) proposal is superseded.
+- DB-11: Flyway seeds roles/permissions; SUPERADMIN bootstrap uses external secret configuration; demo fixtures stay separate.
+- DB-03 and DB-05 option D means prepare a design proposal; neither is approved until the proposal is reviewed and explicitly accepted.
+
+## 3. Remaining P1 gates
+
+1. Produce and obtain explicit owner acceptance for DB-03 inventory/receipt/ledger/concurrency design and DB-05 checkout quote/idempotency/retry/recalculation design.
+2. Reconcile all dependent documents with the recorded decisions: ERD-compatible image snapshot strategy, active-only phone uniqueness, integer-VND types/formulas, voucher scope/usage semantics, order/refund state contracts and API DTO mappings.
+3. Recompute and review the Data Dictionary and API mapping after reconciliation; no stale OPEN_BLOCKED labels for decided items, no unsupported schema columns/tables, and no conflict markers.
+4. Reviewer verifies each gate against the owner-approved ERD and records acceptance evidence. P0 runtime/MySQL verification is reported separately and must not be represented as passed by this documentation work.
+
+## 4. Deliverable inventory
 
 | Gate | Evidence | Result | Limitation |
 |---|---|---|---|
@@ -17,7 +37,7 @@
 | API-to-schema map | `P1-api-contract-mapping.csv` | PARTIAL | Maps the 77 numbered API baseline plus 10 source extensions (3 Product image commands, 3 analytics routes, 4 voucher CRUD routes). Legacy ProductVariant/SizeSystem/Color and voucher-scope behavior do not map directly to the 31-table target. Rows label source/controller DTO gaps instead of inventing contracts. |
 | Domain invariants | `P1-domain-invariants.md` | PARTIAL | Source-confirmed rules are separated from proposed target behavior; blocked decisions must be resolved before implementation. |
 | Acceptance matrix | `P1-test-matrix.md` | PASS as a plan, NOT as executed tests | These are P2 acceptance requirements. They are not evidence that P2 behavior already passes. |
-| Decision log | `P1-decision-log.md` | PARTIAL | Approved decisions, technical decisions, proposals and owner blockers are separated. DB-01/02/03/05/06/07/08/09 plus DB-10/11 remain open. |
+| Decision log | `P1-decision-log.md` | PARTIAL | Approved decisions, technical decisions, proposals and owner blockers are separated. DB-03 and DB-05 require design proposals and explicit acceptance; DB-01/02/06/07/08/09/10/11 are recorded owner decisions whose dependent contracts still need reconciliation. |
 | Physical SQL | `backend/src/main/resources/db/clean-reset` | BLOCKED | Isolated target DDL is a working draft, not an approved/fresh-MySQL-verified physical contract. It must not replace the active migration path during P1. |
 
 ## 2. Decisions already resolved — do not reopen as blockers
