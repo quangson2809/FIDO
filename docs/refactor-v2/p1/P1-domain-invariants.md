@@ -16,16 +16,16 @@
 - INV-PROD-04: Preserve leaf Category assignment unless explicitly amended; protect in-use categories.
 - INV-ATTR-01: OPTION/TEXT/NUMBER/BOOLEAN are candidate data types. Each row needs one compatible typed value; an option must belong to the same Attribute.
 - INV-ATTR-02: Unique SKU does not guarantee a unique variant-defining option combination. Approve a signature/unique guard or explicitly accept the weaker behavior.
-- INV-IMG-01: Never reconstruct historical Order images from the current gallery; approve image snapshot or no-history guarantee.
+- INV-IMG-01: Never reconstruct historical Order images from the current gallery. The approved 31-table ERD has no explicit ORDER_ITEMS image snapshot field; do not claim immutable image history until an existing schema-compatible storage/retention mechanism is evidenced or the owner formally amends the ERD.
 
 ## Cart, Price, Checkout and Order
 - INV-CART-01: A-03 approves JWT-required Cart, quote and Create Order. No guest session/cart merge.
 - INV-CART-02: Quantity must be positive; add and replace semantics differ; Cart never deducts stock.
 - INV-CART-03: One active Cart/account is not implied by status; approve if required and enforce concurrent creation safely.
 - INV-PRICE-01: The server controls effective price, discount, shipping fee, subtotal and total.
-- INV-QUOTE-01: CHECKOUT_QUOTES is absent. Approve nonpersistent preview with order-time recalculation or amend ERD formally.
-- INV-ORDER-01: Same key + same normalized payload replays one committed Order; changed payload conflicts; cross-account reuse never leaks another Order. DB-05 must define exact scope/retention.
-- INV-ORDER-02: VND only; money is stored as integer VND (owner decision DB-10, 2026-10-23). Quote/order totals and order-level discount allocation must reconcile exactly; rounding and allocation algorithm still need a written, testable contract. Do not use the old DECIMAL(18,2) draft.
+- INV-QUOTE-01: CHECKOUT_QUOTES is absent; proposal is a stateless preview with no stock reservation and server-side recalculation at placement. If current price/stock/voucher/shipping changes materially, return conflict/requote and create no Order. This requires owner acceptance.
+- INV-ORDER-01: Proposed idempotency scope is authenticated account + create-order operation + key; same canonical payload replays the committed Order, changed payload conflicts, and cross-account reuse is isolated. This guarantee is NOT implementable as durable multi-instance idempotency unless an approved schema location and database uniqueness/arbitration exist for key, payload hash and result identity. Resolve schema fit before claiming this invariant.
+- INV-ORDER-02: VND only; money is stored as integer VND (owner decision DB-10, 2026-10-23). Proposed formula: total = subtotal - discount + shipping fee; discount is capped at subtotal; percentage discount rounds half-up once at order level; line discounts use largest-remainder allocation and must sum exactly to order discount. Proposal and test vectors require owner acceptance; do not use DECIMAL(18,2) draft.
 - INV-ORDER-03: Capture SKU/name/attributes/quantity/unit price/discount/line total at placement; never query live catalog to recreate historical facts.
 - INV-ORDER-04: Only approved state transitions are allowed. Order and Payment status remain separate.
 - INV-ADDR-01: Saved Address differs from OrderAddress. Recipient PATCH through PREPARING and duplicated ShippingInfo receiver fields need DB-07/08 resolution.
