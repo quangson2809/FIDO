@@ -107,9 +107,11 @@ Do not invent numeric targets for:
 
 ## 8. Phase 7 report decision — resolved 2026-09-28
 
-The user resolved API #71 / FR-30 / BRULE-13: include shipping in received sales, subtract the returned order value in its original completion period, count current statuses by order creation date, and use Asia/Ho_Chi_Minh dates. See docs/15 for formulas and boundaries. This is no longer a Phase 7 blocker. Voucher and order-retry semantics remain open as described above. Guest cart/checkout is out of target scope under the owner decision dated 2026-10-05; the remaining task is documentation/API alignment, not a pending decision about whether guest checkout is required.
+The user resolved API #71 / FR-30 / BRULE-13: include shipping in received sales, subtract the returned order value in its original completion period, count current statuses by order creation date, and use Asia/Ho_Chi_Minh dates. See docs/15 for formulas and boundaries. This is no longer a Phase 7 blocker. Target voucher and order-retry semantics were owner-approved on 2026-10-23; runtime implementation and acceptance tests remain pending. Guest cart/checkout is out of target scope under the owner decision dated 2026-10-05; the remaining task is documentation/API alignment, not a pending decision about whether guest checkout is required.
 
-### Voucher V1 override (2026-10-09)
+### Voucher V1 override (2026-10-09) — legacy source behavior only
+
+> The details in this historical section describe the pre-reset runtime, not the v2 target contract. The 2026-10-23 owner approval supersedes target scope: order-wide non-stackable voucher, no Product/Category targeting or per-account usage ledger, global usage limit, atomic counter update, and at-most-once restoration on eligible cancellation. The target quote is stateless and the target schema has no CHECKOUT_QUOTES table. Use P1-owner-approval-2026-10-23.md as the target authority.
 
 The approved policy recorded in `15-technical-decisions.md` resolves discount,
 time window, eligible merchandise minimum, product/category scope, usage limits,
@@ -117,12 +119,11 @@ non-stacking, enable/disable and cancellation/return semantics for Voucher V1.
 Personal wallets/allocation and variant-specific promotions remain out of scope.
 
 
-## P1 contract blockers confirmed at 2026-10-23
+## P1 owner approvals and implementation gates (approved 2026-10-23)
 
-- **DB-03 — inventory/receipt/ledger:** the target includes warehouse+Product inventory, source item IDs, idempotency key, reason code and reversal reference. Movement type/source semantics, same-source retries under another key, opening balance, cancellation/return reversal, lock order and atomic consistency remain a proposed protocol, not owner approval.
-- **DB-05 — quote/order idempotency:** the target has ORDERS.idempotency_key and request_fingerprint and no CHECKOUT_QUOTES table. Key scope, canonical fingerprint, replay vs changed-payload conflict, account isolation, retention and advisory quote/repricing behavior remain unapproved.
-- **DB-12 — deletion and retention:** no owner-approved per-entity soft/hard-delete matrix, FK delete action or historical retention matrix was found. The draft DDL is not authority to assume CASCADE, hard deletion or a numeric retention period.
-- **DB-01 — Product inheritance:** parent and child Products each own selling_price; only name/slug/description are marked as possible child inheritance. Their effective-value and parent-update rules and hierarchy depth remain open; NULL elsewhere does not imply inherit.
-- **DB-07/08/09/10 details:** asset retention, refund state/idempotency/authorization, remaining physical type/default/FK decisions, and discount rounding/allocation still require explicit contract evidence.
+- **DB-03:** movement types/source/sign, semantic deduplication across request keys, opening balance, reversal policy, lock ordering and atomic source/balance/ledger/audit are approved. MySQL concurrency and ledger reconciliation tests remain required.
+- **DB-05:** stateless quote, order-time repricing, account-scoped idempotency/fingerprint, same-payload replay, changed-payload conflict, account isolation and atomic order write set are approved. Runtime replay/conflict/rollback tests remain required.
+- **DB-12:** delete lifecycle/FK defaults are approved; numeric audit/image/personal-data retention periods and anonymization exceptions remain TBD. Do not schedule purges before those durations are accepted.
+- **DB-01/02/06/07/08/09/10/11/API:** proposed defaults are approved; implement Product hierarchy/typed attributes, global voucher quota, immutable snapshots, COD/refund rules, active-phone uniqueness, integer-VND rounding and safe bootstrap as specified in the owner-approval record.
 
-**Gate:** Do not execute Clean Schema Reset or enable the target migration location until the required owner decisions and their derived dictionary/DDL/API/DTO changes are reviewed and P1 exit checks pass.
+**Gate:** P2 implementation may proceed only with a verified disposable local/development/test database. Recreate schema from the approved 31-table ERD and seed from scratch; do not preserve legacy disposable rows. Never reset production/shared/persistent data. P1 remains PARTIAL until runtime alignment and exact-SHA acceptance tests pass; numeric retention durations remain TBD.
