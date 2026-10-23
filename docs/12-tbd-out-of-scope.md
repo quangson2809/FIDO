@@ -1,6 +1,6 @@
 # 12 — TBD, Deferred Work, Hard Blockers & Explicit Exclusions
 
-> **ERD v2 / Clean Schema Reset boundary (2026-10-22):** Several entries below describe the legacy implementation/API, not the 31-table target. Disposable development/test rows and old IDs are not migrated or retained. Use legacy code only to identify runtime/API behavior that must be retained, explicitly deferred or removed. The target includes VOUCHERS but omits voucher product/category joins, usage ledger and checkout_quotes; it also omits payment/refund event tables, returns and inventory reservations. Do not recreate those structures by implication.
+> **ERD v2 / Clean Schema Reset boundary (owner approval 2026-10-23):** Several entries below describe the legacy implementation/API, not the 31-table target. Discard disposable development/test rows and reseed from the target; do not preserve/migrate legacy test IDs. The owner approved DB-03/05, DB-12 lifecycle/FK defaults and the proposed DB-01/02/06–11/API defaults. Voucher and order-retry semantics are approved; remaining gates are implementation/tests and numeric retention durations/anonymization exceptions. The target includes VOUCHERS but omits voucher product/category joins, usage ledger and checkout_quotes; it also omits payment/refund event tables, returns and inventory reservations. Do not recreate those structures by implication.
 
 
 This file prevents invented business behavior. It must not be used to stop implementation for ordinary technical choices.
@@ -19,15 +19,15 @@ Classify each unresolved point:
 
 The old TBD register mentioned `POST /api/v1/orders/lookup`, but that route is not part of the current 77-row endpoint map in `docs/04-api-contract.md`. The owner decision dated 2026-10-05 requires login before order placement, and Clean Schema Reset does not preserve old development orders. Therefore guest-order lookup is **not a target capability by default**. Remove it from target requirements unless the owner explicitly amends the API scope; do not add guest identity/session storage to satisfy an obsolete statement.
 
-### Voucher behavior — target compatibility BLOCKED / explicit defer required
+### Voucher behavior — owner-approved target contract / implementation pending
 
-The legacy source supports more voucher behavior than the target schema represents. The target has `VOUCHERS` and `ORDER_VOUCHER_SNAPSHOTS`, but no product/category scope joins, usage ledger or persisted checkout quotes. Unresolved runtime/API behavior includes discount formula/value, effective dates, minimum order, eligibility scope, usage limits, stacking, lifecycle, concurrent redemption and cancellation restoration.
+The legacy source supports more voucher behavior than the target schema represents. For target ERD v2, use the owner-approved reduced contract: one order-wide, non-stackable voucher; no Product/Category scope joins or per-account usage ledger; one global usage limit; atomic usage counter update with successful order placement; and at-most-once restoration when an eligible cancellation releases the use. The quote is stateless/advisory and does not reserve stock or consume a voucher. Runtime quota, cancellation/retry and API/frontend tests remain required.
 
-Do not reintroduce tables absent from the approved ERD by implication. Before implementing voucher endpoints, explicitly approve the reduced target behavior or revise the ERD through the owner decision process. Voucher-less authenticated Cart/Quote work can proceed if the API contract permits it.
+Do not reintroduce tables absent from the approved ERD by implication. Implement only the approved target behavior; a broader scope requires explicit ERD amendment.
 
-### Create Order dedupe — HARD BLOCK for retry guarantee only
+### Create Order dedupe — owner-approved target contract / implementation pending
 
-The legacy API #20 remains a compatibility reference, while the target ERD includes a unique `orders.idempotency_key`. The uniqueness constraint alone does not define request semantics. Freeze key origin/scope, payload binding, same-key replay, conflicting-payload response and transaction boundary before claiming retry-safe create. No historical key backfill is needed for Clean Schema Reset.
+The target ERD includes a unique `orders.idempotency_key` and `request_fingerprint`. The owner approved account-scoped key namespacing, canonical SHA-256 payload binding, same-key/same-payload replay, same-key/changed-payload conflict, cross-account isolation, order-time repricing and an atomic write set. The unique key alone does not implement these semantics: application code and replay/conflict/rollback tests remain required. No historical key backfill is needed for Clean Schema Reset.
 
 ### Guest cart — legacy behavior not represented in target
 
