@@ -118,4 +118,4 @@ NEXT GATE READY: YES | NO
 - Current draft inventory at base: 31 target tables, 228 logical fields, 229 physical SQL columns including generated `accounts.phone_active_key`.
 - Earlier MySQL/backend runs `39904931447` and `39904931498` are historical evidence at prior commits, not validation of the reconciliation changes.
 - The current exact-commit checker/workflow result is pending until the reconciliation PR runs. No current PASS is implied here.
-- Status remains **PARTIAL / P2 NOT AUTHORIZED** because DB-03, DB-05 and DB-12 are open, as are specified product inheritance, monetary allocation, asset retention and refund behavior details.
+- Status remains **PARTIAL / P2 IMPLEMENTATION AUTHORIZED UNDER THE DISPOSABLE-DB GATE**. DB-03/05 and DB-12 lifecycle/FK defaults and the proposed DB-01/02/06–11/API defaults were owner-approved on 2026-10-23. Runtime mapping/acceptance tests remain open; numeric retention durations and anonymization exceptions remain TBD.
