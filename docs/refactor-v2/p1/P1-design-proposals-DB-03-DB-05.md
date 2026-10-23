@@ -102,7 +102,7 @@ These concurrency and semantic tests are not yet evidenced as passing. The MySQL
 2. DB-06 defines voucher scope but still needs quota scope and cancellation/restoration policy consistent with usage_count.
 3. DB-07 defines snapshots but still needs retained image asset/version policy and historical access tests.
 4. DB-08 defines COD/order lifecycle/refund direction but still needs partial/full refund semantics, idempotency, state transitions, return/restock, actor authorization and audit behavior.
-5. DB-09's generated phone_active_key is present in the target draft. MySQL schema tests cover active uniqueness; the new soft-delete/reuse test must pass before claiming the full rule is verified.
+5. DB-09's generated phone_active_key is present in the target draft. MySQL schema tests passed active-phone uniqueness and reuse after soft delete; this proves physical schema behavior only because the current Account Entity still declares global unique phone.
 6. DB-11 system role/permission seed is in V2__system_seed.sql and the clean-reset tests verify basic seed counts/grants; the external secret bootstrap path still needs a source/configuration security audit.
 7. DB-12 has no owner-approved per-entity deletion/cascade/restrict/retention matrix.
 8. These are target-schema documents only. Current Entity/Repository/API/DTO/frontend still use legacy ProductVariant, quote_id, voucher targeting and BigDecimal shapes, so they must not be labelled target-compatible.
