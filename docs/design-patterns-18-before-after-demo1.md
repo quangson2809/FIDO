@@ -5,6 +5,7 @@
 - Baseline inspected: `af1af690b91f4ba3cfbc70f9f67a21f9d888996f`
 - Scope: Java/Spring backend; package-by-feature modular monolith.
 - Evidence policy: current snippets/links describe code that exists at the baseline. “After (candidate)” is an illustrative design unless explicitly labelled “already present”. It must not be read as a production change. No business behavior is changed by this document.
+- **Target contract boundary:** BigDecimal examples below are snapshots/illustrations of the inspected legacy baseline, not the approved money contract. The ERD v2 target uses whole integer VND and its approved HALF-UP/largest-remainder rule; do not copy these monetary snippets into the target checkout/order implementation.
 - Scope note: Refactoring.Guru's classic catalog lists 22 patterns. This document evaluates the specific 18 requested for FIDO; it does **not** claim to cover all 22. The four catalog patterns outside this request are Singleton, Flyweight, Iterator and Visitor. “Evaluate all 18” means assess applicability and demonstrate correct concepts, not force every pattern into production. Adding a pattern without a distinct problem would violate FIDO's architecture constraints and make the code worse.
 
 ## Reference and interpretation rules
