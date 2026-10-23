@@ -1,5 +1,7 @@
 # 23 — Phase 14: verification and architecture review
 
+> **Historical verification record:** Results below apply only to the source SHA and scope recorded in this document. They do not certify the ERD v2 target or current `demo1` runtime. Follow the owner-approved target contracts for implementation and use exact-SHA current CI for acceptance.
+
 Date: 2026-10-05. Branch: `feature/phase-2-3-image-persistence`.
 Initial reviewed implementation: `cabe4eaa0cb97922fdb14d8d59b5fc3657239aba`. Verified code revision: **`629c37c639c25b678ed5a346300621dcfdd1e314`**.
 Review scope: existing Product image implementation through Phase 13, including its Cart/Checkout/Order consumers, V4 migration, contracts and tests. This is not a whole-backend audit. The Phase 14 diff adds verification, the branch CI trigger and one malformed-input validation fix. Subsequent report/evidence publication changes documentation only.
