@@ -255,6 +255,7 @@ erDiagram
     GOODS_RECEIPTS {
         bigint id PK
         bigint supplier_id FK
+        bigint warehouse_id FK "Destination warehouse for this receipt"
         varchar receipt_number UK
         varchar status
         bigint created_by FK

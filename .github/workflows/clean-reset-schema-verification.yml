@@ -3,11 +3,15 @@ name: Clean Schema Reset target verification
 on:
   push:
     branches:
+      - demo1
       - feature/clean-schema-reset
     paths:
       - "backend/src/main/resources/db/clean-reset/**"
       - "backend/src/test/java/com/fido/persistence/CleanResetSchemaTests.java"
       - ".github/workflows/clean-reset-schema-verification.yml"
+      - "scripts/p1/**"
+      - "docs/refactor/phase-1-erd-v2-approved.mmd"
+      - "docs/refactor-v2/p1/P1-data-dictionary.csv"
   pull_request:
     branches:
       - demo1
@@ -62,6 +66,9 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Run contract consistency gate
+        run: python scripts/p1/check_contract_consistency.py
 
       - name: Run clean-target schema tests
         working-directory: backend

@@ -13,12 +13,14 @@ import java.sql.SQLException;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.output.MigrateResult;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 
+@EnabledIfEnvironmentVariable(named = "CLEAN_RESET_TEST_DB_URL", matches = "jdbc:mysql:.*")
 class CleanResetSchemaTests {
 
     private static final Set<String> TARGET_TABLES = Set.of(
@@ -75,37 +77,38 @@ class CleanResetSchemaTests {
     }
 
     private static final Map<String, Set<String>> TARGET_COLUMNS = Map.ofEntries(
-            Map.entry("accounts", Set.of("id","full_name","email","phone","password_hash","status","created_at","updated_at")),
-            Map.entry("addresses", Set.of("id","account_id","recipient_name","recipient_phone","province","district","ward","address_line","is_default","created_at","updated_at")),
-            Map.entry("roles", Set.of("id","code","name","description","status")),
-            Map.entry("permissions", Set.of("id","code","name","description")),
             Map.entry("account_roles", Set.of("account_id","role_id")),
-            Map.entry("role_permissions", Set.of("role_id","permission_id")),
-            Map.entry("categories", Set.of("id","parent_category_id","name","slug","status","created_at","updated_at")),
+            Map.entry("accounts", Set.of("created_at","deleted_at","email","full_name","id","password_hash","phone","phone_active_key","status","updated_at")),
+            Map.entry("addresses", Set.of("account_id","address_line","created_at","district","id","is_default","province","recipient_name","recipient_phone","updated_at","ward")),
+            Map.entry("attribute_options", Set.of("attribute_id","id","label","sort_order","value")),
+            Map.entry("attribute_types", Set.of("code","data_type","id","name")),
+            Map.entry("attributes", Set.of("attribute_type_id","code","id","is_required","is_variant_defining","name","sort_order")),
+            Map.entry("audit_logs", Set.of("action","actor_account_id","after_data","before_data","correlation_id","created_at","entity_id","entity_type","id")),
             Map.entry("brands", Set.of("id","name","slug","status")),
-            Map.entry("products", Set.of("id","parent_product_id","category_id","brand_id","name","slug","sku","description","selling_price","cost_price","status","deleted_at","created_at","updated_at")),
-            Map.entry("attribute_types", Set.of("id","code","name","data_type")),
-            Map.entry("attributes", Set.of("id","attribute_type_id","code","name","is_required","is_variant_defining","sort_order")),
-            Map.entry("attribute_options", Set.of("id","attribute_id","value","label","sort_order")),
-            Map.entry("product_attribute_values", Set.of("product_id","attribute_id","option_id","text_value","number_value","boolean_value")),
-            Map.entry("product_images", Set.of("id","product_id","image_url","is_primary","sort_order","created_at")),
-            Map.entry("carts", Set.of("id","account_id","status","created_at","updated_at")),
-            Map.entry("cart_items", Set.of("id","cart_id","product_id","quantity","added_at","updated_at")),
-            Map.entry("vouchers", Set.of("id","code","discount_type","discount_value","minimum_order_value","maximum_discount","starts_at","ends_at","usage_limit","status")),
-            Map.entry("orders", Set.of("id","account_id","voucher_id","order_number","idempotency_key","status","subtotal","discount_amount","shipping_fee","total_amount","currency","placed_at","created_at","updated_at")),
-            Map.entry("order_items", Set.of("id","order_id","product_id","sku_snapshot","product_name_snapshot","attribute_snapshot","quantity","unit_price","discount_amount","line_total")),
-            Map.entry("order_addresses", Set.of("order_id","recipient_name","recipient_phone","province","district","ward","address_line")),
-            Map.entry("order_voucher_snapshots", Set.of("order_id","voucher_code_snapshot","discount_type_snapshot","discount_value_snapshot","discount_amount_snapshot")),
-            Map.entry("payments", Set.of("order_id","method","payment_status","amount","currency","collected_by_account_id","collected_at","created_at","updated_at")),
-            Map.entry("shipping_infos", Set.of("order_id","recipient_name","recipient_phone","carrier_name","tracking_number","shipping_status","shipped_at","delivered_at","updated_at")),
-            Map.entry("suppliers", Set.of("id","code","name","phone","email","status","created_at","updated_at")),
-            Map.entry("goods_receipts", Set.of("id","supplier_id","receipt_number","status","created_by","confirmed_by","confirmed_at","created_at","updated_at")),
-            Map.entry("goods_receipt_items", Set.of("id","goods_receipt_id","product_id","quantity_received","unit_cost")),
-            Map.entry("warehouses", Set.of("id","code","name","status")),
-            Map.entry("inventories", Set.of("warehouse_id","product_id","quantity_on_hand","version","updated_at")),
-            Map.entry("inventory_transactions", Set.of("id","warehouse_id","product_id","transaction_type","quantity_delta","goods_receipt_item_id","order_item_id","idempotency_key","created_by","created_at")),
-            Map.entry("audit_logs", Set.of("id","actor_account_id","action","entity_type","entity_id","before_data","after_data","correlation_id","created_at")),
-            Map.entry("content_pages", Set.of("id","slug","title","content","status","updated_by","updated_at")));
+            Map.entry("cart_items", Set.of("added_at","cart_id","id","product_id","quantity","updated_at")),
+            Map.entry("carts", Set.of("account_id","created_at","id","status","updated_at")),
+            Map.entry("categories", Set.of("created_at","id","name","parent_category_id","slug","status","updated_at")),
+            Map.entry("content_pages", Set.of("content","id","slug","status","title","updated_at","updated_by")),
+            Map.entry("goods_receipt_items", Set.of("goods_receipt_id","id","product_id","quantity_received","unit_cost")),
+            Map.entry("goods_receipts", Set.of("confirmed_at","confirmed_by","created_at","created_by","id","receipt_number","status","supplier_id","updated_at","warehouse_id")),
+            Map.entry("inventories", Set.of("product_id","quantity_on_hand","updated_at","version","warehouse_id")),
+            Map.entry("inventory_transactions", Set.of("created_at","created_by","goods_receipt_item_id","id","idempotency_key","order_item_id","product_id","quantity_delta","reason_code","reverses_transaction_id","transaction_type","warehouse_id")),
+            Map.entry("order_addresses", Set.of("address_line","district","order_id","province","recipient_name","recipient_phone","ward")),
+            Map.entry("order_items", Set.of("attribute_snapshot","discount_amount","id","image_url_snapshot","line_total","order_id","product_id","product_name_snapshot","quantity","sku_snapshot","unit_price")),
+            Map.entry("order_voucher_snapshots", Set.of("discount_amount_snapshot","discount_type_snapshot","discount_value_snapshot","order_id","voucher_code_snapshot")),
+            Map.entry("orders", Set.of("account_id","created_at","currency","discount_amount","id","idempotency_key","order_number","placed_at","request_fingerprint","shipping_fee","status","subtotal","total_amount","updated_at","voucher_id")),
+            Map.entry("payments", Set.of("amount","collected_at","collected_by_account_id","created_at","currency","method","order_id","payment_status","refund_amount","refund_reason","refunded_at","refunded_by_account_id","updated_at")),
+            Map.entry("permissions", Set.of("code","description","id","name")),
+            Map.entry("product_attribute_values", Set.of("attribute_id","boolean_value","number_value","option_id","product_id","text_value")),
+            Map.entry("product_images", Set.of("created_at","id","image_url","is_primary","product_id","sort_order")),
+            Map.entry("products", Set.of("brand_id","category_id","cost_price","created_at","deleted_at","description","id","name","parent_product_id","selling_price","sku","slug","status","updated_at")),
+            Map.entry("role_permissions", Set.of("permission_id","role_id")),
+            Map.entry("roles", Set.of("code","description","id","name","status")),
+            Map.entry("shipping_infos", Set.of("carrier_name","delivered_at","order_id","recipient_name","recipient_phone","shipped_at","shipping_status","tracking_number","updated_at")),
+            Map.entry("suppliers", Set.of("code","created_at","email","id","name","phone","status","updated_at")),
+            Map.entry("vouchers", Set.of("code","discount_type","discount_value","ends_at","id","maximum_discount","minimum_order_value","starts_at","status","usage_count","usage_limit")),
+            Map.entry("warehouses", Set.of("code","id","name","status"))
+    );
 
     @Test
     void cleanTargetBaselineCreatesExactlyTheApprovedThirtyOneTables() {

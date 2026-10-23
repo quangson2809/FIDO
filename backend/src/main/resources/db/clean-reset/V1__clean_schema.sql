@@ -278,13 +278,21 @@ CREATE TABLE suppliers (
  CONSTRAINT ck_suppliers_status CHECK (status IN ('ACTIVE','INACTIVE'))
 );
 
+CREATE TABLE warehouses (
+ id BIGINT NOT NULL AUTO_INCREMENT, code VARCHAR(80) NOT NULL, name VARCHAR(150) NOT NULL,
+ status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE', CONSTRAINT pk_warehouses PRIMARY KEY (id),
+ CONSTRAINT uq_warehouses_code UNIQUE (code),
+ CONSTRAINT ck_warehouses_status CHECK (status IN ('ACTIVE','INACTIVE'))
+);
+
 CREATE TABLE goods_receipts (
- id BIGINT NOT NULL AUTO_INCREMENT, supplier_id BIGINT NOT NULL, receipt_number VARCHAR(40) NOT NULL,
+ id BIGINT NOT NULL AUTO_INCREMENT, supplier_id BIGINT NOT NULL, warehouse_id BIGINT NOT NULL, receipt_number VARCHAR(40) NOT NULL,
  status VARCHAR(20) NOT NULL DEFAULT 'DRAFT', created_by BIGINT NOT NULL, confirmed_by BIGINT NULL,
  confirmed_at TIMESTAMP(6) NULL, created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
  updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
  CONSTRAINT pk_goods_receipts PRIMARY KEY (id), CONSTRAINT uq_goods_receipts_number UNIQUE (receipt_number),
  CONSTRAINT fk_goods_receipts_supplier FOREIGN KEY (supplier_id) REFERENCES suppliers (id),
+ CONSTRAINT fk_goods_receipts_warehouse FOREIGN KEY (warehouse_id) REFERENCES warehouses (id),
  CONSTRAINT fk_goods_receipts_created_by FOREIGN KEY (created_by) REFERENCES accounts (id),
  CONSTRAINT fk_goods_receipts_confirmed_by FOREIGN KEY (confirmed_by) REFERENCES accounts (id),
  CONSTRAINT ck_goods_receipts_status CHECK (status IN ('DRAFT','CONFIRMED','CANCELLED'))
@@ -303,12 +311,7 @@ CREATE TABLE goods_receipt_items (
 );
 CREATE INDEX ix_goods_receipt_items_product ON goods_receipt_items (product_id);
 
-CREATE TABLE warehouses (
- id BIGINT NOT NULL AUTO_INCREMENT, code VARCHAR(80) NOT NULL, name VARCHAR(150) NOT NULL,
- status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE', CONSTRAINT pk_warehouses PRIMARY KEY (id),
- CONSTRAINT uq_warehouses_code UNIQUE (code),
- CONSTRAINT ck_warehouses_status CHECK (status IN ('ACTIVE','INACTIVE'))
-);
+
 
 CREATE TABLE inventories (
  warehouse_id BIGINT NOT NULL, product_id BIGINT NOT NULL,
