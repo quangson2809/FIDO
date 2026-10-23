@@ -43,7 +43,7 @@
 | DB-10 Money policy | Currency, decimal scale/rounding, order total formula, allocation of order discounts to lines, shipping and reconciliation behavior. The formulas in the current technical draft are not owner approval. |
 | DB-11 Seed/bootstrap | Required role/permission inventory, initial SUPERADMIN bootstrap boundary, deterministic system seed vs demo fixtures, and protection against hard-coded credentials. |
 
-The API map also flags legacy contracts with no direct target table: ProductVariant IDs, SizeSystem/Color masters, checkout quote persistence assumptions, voucher scope/usage relations and historical Order image snapshots. P1 records these as compatibility gaps; it does not silently add those tables back.
+The API map also flags legacy contracts with no direct target table or field mapping: ProductVariant IDs, SizeSystem/Color masters, checkout quote persistence assumptions, voucher scope/usage relations, historical Order image snapshots, and API #70's AuditLogDto fields (`target_type`, `target_id`, `description`) versus target AUDIT_LOGS (`entity_type`, `entity_id`, `before_data`, `after_data`, `correlation_id`). P1 records these as compatibility gaps; it does not silently add tables/columns or change public DTOs to force a match.
 
 ## 4. Verification evidence and limits
 
