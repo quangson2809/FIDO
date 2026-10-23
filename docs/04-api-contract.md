@@ -1,294 +1,113 @@
-# 04 — API Contract Baseline (77 Endpoints)
+# 04 — Target HTTP API Contract (ERD v2)
 
-> **P1 target contract status (2026-10-23):** The 77 rows below are the existing endpoint inventory, not proof that all routes or DTOs are target-ready. APIs #14–20 require JWT under owner decision A-03. Product-variant, size-system and color endpoints (#31–32, #40–45) are legacy routes that cannot be backed by target tables absent from ERD v2. Target readiness is recorded in the P1 API mapping; current controller/DTO behavior is legacy evidence. See docs/refactor-v2/p1/P1-contract-reconciliation-2026-10-23.md.
+## 1. Contract boundary
 
+This file defines the target HTTP surface for the approved ERD v2. It is not a copy of the repository's former route/DTO inventory. Current controllers and the P1 mapping files are implementation evidence only; they do not keep a route in the target contract when its persistence concept is no longer part of the approved model.
 
-## 1. Global contract
+Global rules:
 
-- Current consolidated Analyst API baseline: **77 endpoints**.
-- URL version prefix: `/api/v1`.
-- JSON field naming: `snake_case`.
-- Public: auth register/login, catalog public, content public.
-- `/api/v1/me/**` and `/api/v1/admin/**`: Bearer JWT.
-- Target Cart, checkout and order placement require an authenticated account, per owner decision dated 2026-10-05 and the account-owned target ERD. Do not implement guest sessions, anonymous accounts or guest-cart persistence. The legacy endpoint table below is retained as the 77-API starting inventory; access labels for APIs #14–20 have been aligned to this decision.
-- List/search/filter are deliberately consolidated through query parameters; do not split them into extra endpoints.
-- State-changing commands are deliberately separate from ordinary PATCH where transaction/state-machine semantics matter.
+- Base path: `/api/v1`. JSON field names use `snake_case`.
+- Response envelope: `{ "data": ... }`. Paged lists also return `meta` with `page`, `page_size`, `total` and `total_pages`.
+- Public routes are limited to registration/login, public catalog metadata/products and published content.
+- `/api/v1/me/**` and `/api/v1/admin/**` require a Bearer access token. The authenticated actor and account scope come from the token, never the request body.
+- Persisted Cart, quote and order creation require login. There are no guest sessions, anonymous carts or guest-cart merging.
+- Monetary request/response values are whole VND integers. The server calculates prices, discounts, shipping, totals, status transitions and stock effects.
+- Use stable typed error codes for validation, ownership, authorization, state conflicts, stock conflicts and idempotency conflicts. Never expose SQL details or secrets.
 
+## 2. Target route groups
 
-## 1A. Target catalog metadata and dynamic attributes (P1 contract)
+### Authentication and account
 
-The target schema replaces legacy SizeSystem/SizeValue/Color masters with ATTRIBUTE_TYPES, ATTRIBUTES and ATTRIBUTE_OPTIONS. Dynamic attributes are descriptive: they do not generate Product child rows or variants. A child Product is created explicitly.
+| Method | Route | Access |
+|---|---|---|
+| POST | `/auth/register` | Public |
+| POST | `/auth/login` | Public |
+| GET, PATCH | `/me` | JWT |
+| POST | `/me/addresses` | JWT |
+| PATCH, DELETE | `/me/addresses/{addressId}` | JWT |
+| GET | `/me/orders` | JWT |
+| GET | `/me/orders/{orderId}` | JWT |
 
-Target metadata responsibilities for existing routes:
-- GET /api/v1/catalog/meta (API #13): return navigation metadata plus product-facing attribute definitions and selectable options required by the public UI.
-- GET /api/v1/admin/catalog/meta (API #33): return the same attribute/type/option model for authorized administration, with management operations owned by the Product module.
-- Attribute definitions expose identity, code, name, data_type, is_required, is_variant_defining (informational only; never auto-generates variants) and sort_order. Options expose id, attribute_id, value, label and sort_order. Sort deterministically by sort_order then stable ID.
-- Attribute values are keyed by (product_id, attribute_id). The approved mapping is OPTION → option_id, TEXT → text_value, NUMBER → number_value, BOOLEAN → boolean_value. Exactly one typed value is populated and it matches the authoritative Attribute type. An OPTION must belong to that same Attribute. number_value is descriptive numeric data, never money.
-- Owner-approved DB-02 contract: use the four type literals OPTION, TEXT, NUMBER and BOOLEAN; expose only product-facing metadata because the target schema has no visibility flag. Implement the wire DTO consistently with snake_case, validate value/range/requiredness by type, and do not infer filter operators or generate Product variants from the metadata.
-- Do not infer filter operators from metadata or is_variant_defining. Supported attribute filters remain an explicit API decision.
+Account addresses are mutable account-owned records. An Order's `ORDER_ADDRESSES` row is an immutable order-time snapshot; APIs must not rewrite it after placement. Do not offer an Order-recipient mutation route that changes the snapshot.
 
-The existing 77-row endpoint list is retained as the legacy starting inventory. It is not a frozen target request/response contract, and current controllers/DTOs are evidence of legacy behavior only. Product-variant, size-system and color endpoints must not be implemented by adding tables absent from ERD v2.
+### Public catalog and authenticated Cart/checkout
 
-## 2. Baseline endpoint map
+| Method | Route | Access | Contract |
+|---|---|---|---|
+| GET | `/catalog/products` | Public | Product search/list; supported filters must be explicitly defined against Product fields and approved attribute behavior. |
+| GET | `/catalog/products/{productId}` | Public | Product detail and descriptive attribute values. |
+| GET | `/catalog/meta` | Public | Product-facing metadata definitions/options, with deterministic ordering. |
+| GET | `/cart` | JWT | Return the authenticated account's Cart; monetary fields are server-derived. |
+| POST | `/cart/items` | JWT | Request contains `product_id` and positive `quantity`. |
+| PATCH | `/cart/items/{cartItemId}` | JWT | Update positive quantity on the caller's own line. |
+| DELETE | `/cart/items/{cartItemId}` | JWT | Remove the caller's own line. |
+| DELETE | `/cart` | JWT | Clear Cart items; Cart ownership remains with the account. |
+| POST | `/checkout/quote` | JWT | Return a stateless/advisory quote; no persistent quote ID, stock reservation or voucher side effect. |
+| POST | `/orders` | JWT | Re-read and reprice current state; atomically place the order using account-scoped idempotency. |
 
-| # | Method | URL | Owner module | Access |
-|---:|---|---|---|---|
-| 1 | `POST` | `/api/v1/auth/register` | `account` | Public |
-| 2 | `POST` | `/api/v1/auth/login` | `account` | Public |
-| 3 | `GET` | `/api/v1/me` | `account` | JWT |
-| 4 | `PATCH` | `/api/v1/me` | `account` | JWT |
-| 5 | `POST` | `/api/v1/me/addresses` | `account` | JWT |
-| 6 | `PATCH` | `/api/v1/me/addresses/{addressId}` | `account` | JWT |
-| 7 | `DELETE` | `/api/v1/me/addresses/{addressId}` | `account` | JWT |
-| 8 | `GET` | `/api/v1/me/orders` | `account/order` | JWT |
-| 9 | `GET` | `/api/v1/me/orders/{orderId}` | `account/order` | JWT |
-| 10 | `PATCH` | `/api/v1/me/orders/{orderId}/recipient` | `order` | JWT |
-| 11 | `GET` | `/api/v1/catalog/products` | `product` | Public |
-| 12 | `GET` | `/api/v1/catalog/products/{productId}` | `product` | Public |
-| 13 | `GET` | `/api/v1/catalog/meta` | `product` | Public |
-| 14 | `GET` | `/api/v1/cart` | `cart` | JWT required (target; legacy optional annotation superseded) |
-| 15 | `POST` | `/api/v1/cart/items` | `cart` | JWT required (target; legacy optional annotation superseded) |
-| 16 | `PATCH` | `/api/v1/cart/items/{cartItemId}` | `cart` | JWT required (target; legacy optional annotation superseded) |
-| 17 | `DELETE` | `/api/v1/cart/items/{cartItemId}` | `cart` | JWT required (target; legacy optional annotation superseded) |
-| 18 | `DELETE` | `/api/v1/cart` | `cart` | JWT required (target; legacy optional annotation superseded) |
-| 19 | `POST` | `/api/v1/checkout/quote` | `order` | JWT required (target) |
-| 20 | `POST` | `/api/v1/orders` | `order` | JWT required (target; legacy optional annotation superseded) |
-| 21 | `GET` | `/api/v1/admin/orders` | `order` | JWT + permission |
-| 22 | `GET` | `/api/v1/admin/orders/{orderId}` | `order` | JWT + permission |
-| 23 | `PATCH` | `/api/v1/admin/orders/{orderId}` | `order` | JWT + permission |
-| 24 | `POST` | `/api/v1/admin/orders/{orderId}/actions` | `order` | JWT + permission |
-| 25 | `POST` | `/api/v1/admin/orders/{orderId}/payment-actions` | `order` | JWT + permission |
-| 26 | `POST` | `/api/v1/admin/orders/{orderId}/after-sales` | `order` | JWT + permission |
-| 27 | `GET` | `/api/v1/admin/products` | `product` | JWT + permission |
-| 28 | `GET` | `/api/v1/admin/products/{productId}` | `product` | JWT + permission |
-| 29 | `POST` | `/api/v1/admin/products` | `product` | JWT + permission |
-| 30 | `PATCH` | `/api/v1/admin/products/{productId}` | `product` | JWT + permission |
-| 31 | `POST` | `/api/v1/admin/products/{productId}/variants` | `product` | JWT + permission |
-| 32 | `PATCH` | `/api/v1/admin/products/{productId}/variants/{variantId}` | `product` | JWT + permission |
-| 33 | `GET` | `/api/v1/admin/catalog/meta` | `product` | JWT + permission |
-| 34 | `POST` | `/api/v1/admin/categories` | `product` | JWT + permission |
-| 35 | `PATCH` | `/api/v1/admin/categories/{categoryId}` | `product` | JWT + permission |
-| 36 | `DELETE` | `/api/v1/admin/categories/{categoryId}` | `product` | JWT + permission |
-| 37 | `POST` | `/api/v1/admin/brands` | `product` | JWT + permission |
-| 38 | `PATCH` | `/api/v1/admin/brands/{brandId}` | `product` | JWT + permission |
-| 39 | `DELETE` | `/api/v1/admin/brands/{brandId}` | `product` | JWT + permission |
-| 40 | `POST` | `/api/v1/admin/size-systems` | `product` | JWT + permission |
-| 41 | `PATCH` | `/api/v1/admin/size-systems/{sizeSystemId}` | `product` | JWT + permission |
-| 42 | `DELETE` | `/api/v1/admin/size-systems/{sizeSystemId}` | `product` | JWT + permission |
-| 43 | `POST` | `/api/v1/admin/colors` | `product` | JWT + permission |
-| 44 | `PATCH` | `/api/v1/admin/colors/{colorId}` | `product` | JWT + permission |
-| 45 | `DELETE` | `/api/v1/admin/colors/{colorId}` | `product` | JWT + permission |
-| 46 | `GET` | `/api/v1/admin/suppliers` | `inventory` | JWT + permission |
-| 47 | `GET` | `/api/v1/admin/suppliers/{supplierId}` | `inventory` | JWT + permission |
-| 48 | `POST` | `/api/v1/admin/suppliers` | `inventory` | JWT + permission |
-| 49 | `PATCH` | `/api/v1/admin/suppliers/{supplierId}` | `inventory` | JWT + permission |
-| 50 | `GET` | `/api/v1/admin/goods-receipts` | `inventory` | JWT + permission |
-| 51 | `GET` | `/api/v1/admin/goods-receipts/{receiptId}` | `inventory` | JWT + permission |
-| 52 | `POST` | `/api/v1/admin/goods-receipts` | `inventory` | JWT + permission |
-| 53 | `PATCH` | `/api/v1/admin/goods-receipts/{receiptId}` | `inventory` | JWT + permission |
-| 54 | `POST` | `/api/v1/admin/goods-receipts/{receiptId}/actions` | `inventory` | JWT + permission |
-| 55 | `GET` | `/api/v1/admin/inventory` | `inventory` | JWT + permission |
-| 56 | `POST` | `/api/v1/admin/inventory/adjustments` | `inventory` | JWT + permission |
-| 57 | `GET` | `/api/v1/admin/inventory/transactions` | `inventory` | JWT + permission |
-| 58 | `GET` | `/api/v1/admin/staff-accounts` | `account` | JWT / Admin |
-| 59 | `GET` | `/api/v1/admin/staff-accounts/{accountId}` | `account` | JWT / Admin |
-| 60 | `POST` | `/api/v1/admin/staff-accounts` | `account` | JWT / Admin |
-| 61 | `PATCH` | `/api/v1/admin/staff-accounts/{accountId}` | `account` | JWT / Admin |
-| 62 | `GET` | `/api/v1/admin/access-control` | `account` | JWT / Admin |
-| 63 | `POST` | `/api/v1/admin/roles` | `account` | JWT / Admin |
-| 64 | `PATCH` | `/api/v1/admin/roles/{roleId}` | `account` | JWT / Admin |
-| 65 | `DELETE` | `/api/v1/admin/roles/{roleId}` | `account` | JWT / Admin |
-| 66 | `GET` | `/api/v1/admin/permissions` | `account` | JWT / Admin |
-| 67 | `POST` | `/api/v1/admin/permissions` | `account` | JWT / Admin |
-| 68 | `PATCH` | `/api/v1/admin/permissions/{permissionId}` | `account` | JWT / Admin |
-| 69 | `DELETE` | `/api/v1/admin/permissions/{permissionId}` | `account` | JWT / Admin |
-| 70 | `GET` | `/api/v1/admin/audit-logs` | `audit` | JWT + permission |
-| 71 | `GET` | `/api/v1/admin/reports/overview` | `report` | JWT / Admin |
-| 72 | `GET` | `/api/v1/content-pages/{pageCode}` | `content` | Public |
-| 73 | `GET` | `/api/v1/admin/content-pages` | `content` | JWT + permission |
-| 74 | `POST` | `/api/v1/admin/content-pages` | `content` | JWT + permission |
-| 75 | `PATCH` | `/api/v1/admin/content-pages/{pageId}` | `content` | JWT + permission |
-| 76 | `GET` | `/api/v1/admin/customers` | `account` | JWT + permission |
-| 77 | `GET` | `/api/v1/admin/customers/{customerId}` | `account` | JWT + permission |
+A Cart line identifies one Product row. Use `product_id` consistently through Cart, quote, order line, receiving and inventory requests. Product parent/child structure is explicit; metadata never creates Products.
 
-The Product-image commands below are project-owner refinements added after the consolidated 77-endpoint Analyst baseline. They preserve the global `/api/v1/admin` prefix and `CATALOG_WRITE` authorization convention; they are not renumbered into the historical 77-endpoint table.
+Order creation revalidates Product status, price, stock, voucher quota and server-owned shipping input. Same account-scoped idempotency key plus the same canonical payload replays the committed result; a changed payload returns a typed conflict. The exact transport location of the key must be frozen before implementation.
 
-## 3. Important command semantics
+### Admin catalog
 
-### API #19 — Checkout quote
+| Method | Route | Access |
+|---|---|---|
+| GET | `/admin/products` | JWT + `CATALOG_READ` |
+| GET | `/admin/products/{productId}` | JWT + `CATALOG_READ` |
+| POST | `/admin/products` | JWT + `CATALOG_WRITE` |
+| PATCH | `/admin/products/{productId}` | JWT + `CATALOG_WRITE` |
+| GET | `/admin/catalog/meta` | JWT + `CATALOG_READ` |
+| POST, PATCH, DELETE | `/admin/categories`, `/admin/categories/{categoryId}` | JWT + `CATALOG_WRITE` |
+| POST, PATCH, DELETE | `/admin/brands`, `/admin/brands/{brandId}` | JWT + `CATALOG_WRITE` |
 
-- Input: receiver phone/address, optional email, optional voucher code.
-- Server revalidates cart, effective price and availability.
-- Returns quote only; **must not create Order or deduct stock**.
-- Voucher business rules are still yellow/TBD.
+Product create/update uses Product fields such as `parent_product_id`, `category_id`, `brand_id`, `name`, `slug`, `sku`, `selling_price`, `status`, descriptive attribute values and images according to the target DTO contract. A child is created/edited as a Product resource with its own Product ID, SKU, required selling price and inventory.
 
-### API #20 — Create Order
+The target contract does not contain variant-creation/update routes or separate size-system/color-master routes. Do not add these routes or tables as a compatibility shortcut. Metadata read routes do not define attribute/option write APIs; those operations require a separately specified and approved API contract before implementation.
 
-- Client does not provide totals or workflow state.
-- Server creates exactly one logical `PENDING` Order with OrderItem/receiver/money snapshots and Payment `UNPAID`.
-- PENDING does not deduct stock.
-- Retry/double-click dedupe implementation remains a physical/application design blocker; do not pretend it is solved without a locked mechanism.
+### Orders, COD and after-sales
 
-### API #24 — Order actions
+| Method | Route | Access |
+|---|---|---|
+| GET | `/admin/orders` | JWT + `ORDER_READ` |
+| GET | `/admin/orders/{orderId}` | JWT + `ORDER_READ` |
+| PATCH | `/admin/orders/{orderId}` | JWT + `ORDER_EDIT`; only approved non-snapshot fields/commands |
+| POST | `/admin/orders/{orderId}/actions` | JWT + action-specific permission |
+| POST | `/admin/orders/{orderId}/after-sales` | JWT + `ORDER_AFTER_SALES`; `RETURN` only in v1 |
 
-Documented actions include:
+Order-time Product, address, voucher, money, COD Payment and image facts are immutable historical facts. v1 supports COD, manual shipping and at most one full refund per order; partial/multiple refunds and detailed item-level return/exchange flows are outside the target scope. State, Payment, inventory and audit changes follow the atomic transaction rules in docs/06 and docs/07.
 
-`CONFIRM | PREPARE | SHIP | DELIVERY_FAILED | RETRY_DELIVERY | CANCEL | COMPLETE | DELIVERY_RETURN_IN`
+### Supplier, receiving and inventory
 
-All actions must validate current state, permissions, side effects and idempotency in Service.
+| Method | Route | Access |
+|---|---|---|
+| GET | `/admin/suppliers` | JWT + inventory-read permission |
+| GET | `/admin/suppliers/{supplierId}` | JWT + inventory-read permission |
+| POST, PATCH | `/admin/suppliers`, `/admin/suppliers/{supplierId}` | JWT + inventory-write permission |
+| GET | `/admin/goods-receipts` | JWT + inventory-read permission |
+| GET | `/admin/goods-receipts/{receiptId}` | JWT + inventory-read permission |
+| POST, PATCH | `/admin/goods-receipts`, `/admin/goods-receipts/{receiptId}` | JWT + inventory-write permission |
+| POST | `/admin/goods-receipts/{receiptId}/actions` | JWT + inventory-write permission; confirm/cancel commands |
+| GET | `/admin/inventory` | JWT + inventory-read permission |
+| POST | `/admin/inventory/adjustments` | JWT + inventory-write permission |
+| GET | `/admin/inventory/transactions` | JWT + inventory-read permission |
 
-### API #25 — Payment actions
+Receipt line and inventory requests identify Products, not option combinations. The v1 server resolves the single operational warehouse; callers cannot select an arbitrary warehouse. Adjustments require a non-zero delta and a reason code. A successful command atomically updates source state, Product stock, the ledger and required audit.
 
-`COLLECT_COD | REFUND`. Payment status is separate from Order status; repeated requests must not double-count receipt/refund.
+### Staff, RBAC, audit, reports, content and customers
 
-### API #26 — After-sales command
+- Staff-account routes: `GET/POST /admin/staff-accounts`, `GET/PATCH /admin/staff-accounts/{accountId}`; access requires the approved SUPERADMIN policy.
+- Access control: `GET /admin/access-control`; role and permission management routes under `/admin/roles` and `/admin/permissions`; writes use the owning account/RBAC service, audit changes and preserve the last-SUPERADMIN invariant.
+- Audit: `GET /admin/audit-logs` with approved actor/action/entity/time filters and pagination. DTO fields must map to the target audit columns; do not expose secrets or sensitive payloads.
+- Report: `GET /admin/reports/overview?from=...&to=...`; dates follow the approved Asia/Ho_Chi_Minh reporting rules; monetary outputs are integer VND.
+- Content: public `GET /content-pages/{slug}`; admin list/create/update routes under `/admin/content-pages`. Use target `slug` and status semantics.
+- Customers: `GET /admin/customers` and `GET /admin/customers/{customerId}`; customer records derive from authenticated Accounts and their linked Orders, not synthetic guest identities.
 
-Operations: `RETURN | EXCHANGE_SIZE`. This is a command over Order/Payment/Inventory/Audit; do not create an `after_sales_cases` resource/table in baseline.
+## 3. Wire and persistence invariants
 
-
-### API #29 — Product creation — Phase 10 BREAKING CHANGE
-
-Effective from Phase 10, Product creation and binary image upload are separate commands:
-
-- `POST /api/v1/admin/products` consumes **`application/json` only**.
-- The create request contains Product metadata and optional variants; it does **not** contain `images`, `image_url[]` or binary files.
-- `multipart/form-data` on `POST /api/v1/admin/products` is no longer supported.
-- Consumers that previously sent `images[]` URLs or multipart files to API #29 must migrate to the two-step flow: create Product first, then upload files through the dedicated Product-image endpoint below.
-- This is an intentional breaking API change. Do not preserve the old JSON-image or multipart-create representations as parallel compatibility write paths.
-
-### Product image upload command — project-owner refinement Phase 10
-
-`POST /api/v1/admin/products/{productId}/images`
-
-- Requires catalog write authorization and consumes `multipart/form-data`.
-- The request uses one or more repeated `images` file parts. Empty uploads are invalid.
-- The backend validates all files before beginning provider uploads, uploads them in request order, and persists only the provider-returned full direct URLs.
-- Uploaded images are appended after the Product's existing image collection. Their `sort_order` values continue from the current contiguous sequence; the first image uploaded to an image-less Product becomes `sort_order = 0` and therefore the cover.
-- Success returns HTTP `201 Created` with the existing object envelope containing the updated `AdminProductDetailDto`.
-- Provider calls are outside the database transaction. If a remote upload succeeds and a later provider/database step fails, a provider-side orphan can remain because provider deletion/compensation is not part of the current storage gateway contract.
-
-### API #30 — Product PATCH image replacement semantics — Phase 10
-
-`PATCH /api/v1/admin/products/{productId}` keeps Product metadata updates and may optionally carry an authoritative image collection:
-
-```json
-{
-  "images": [
-    {
-      "image_url": "https://example.test/front.png",
-      "alt_text": "front",
-      "sort_order": 0
-    },
-    {
-      "image_url": "https://example.test/back.png",
-      "alt_text": null,
-      "sort_order": 1
-    }
-  ]
-}
-```
-
-- If `images` is omitted, the current Product image collection is unchanged.
-- If `images` is present, it replaces the complete collection.
-- `images: []` deletes all Product images.
-- Every item requires `image_url` and `sort_order`; `alt_text` is nullable/optional. `image_url` must be a valid absolute HTTPS URI with a host, without userinfo or fragment; invalid URLs return 400. No provider-host restriction is assumed.
-- `sort_order` must be non-negative, unique within the Product and contiguous `0..n-1`; `sort_order = 0` is the cover.
-- Replacement validates the complete requested order before deleting the existing collection.
-
-### Product image read semantics — project-owner refinement 2026-10-04
-
-- Public `ProductSummaryDto` and `AdminProductSummaryDto` expose nullable `thumbnail` only; Product list responses do **not** return `images[]`.
-- `thumbnail` is the `image_url` of the ProductImage at `sort_order = 0`; a Product with no images returns `thumbnail = null`.
-- `ProductDetailDto` and `AdminProductDetailDto` return the full `images[]` collection, always ordered by the server in ascending `sort_order`.
-- Each detail image exposes `image_id`, `image_url`, `alt_text`, and `sort_order`. JSON keeps the global `snake_case` convention.
-- Cart and Order presentation/snapshot contracts keep their existing nullable `image_url`; this read-model refinement does not rename those fields.
-- Product image ordering is catalog presentation state; historical OrderItem snapshots remain authoritative and are not rewritten by later catalog edits.
-
-### Product image remove command — project-owner refinement 2026-10-04
-
-`DELETE /api/v1/admin/products/{productId}/images/{imageId}`
-
-- Requires catalog write authorization.
-- `imageId` must belong to `productId`; missing or foreign image identity is treated as not found for that Product.
-- Remove the `product_images` row from the catalog only. Do **not** invoke provider-side remote delete in this command.
-- Remaining image positions are compacted to contiguous `0..n-1` in the same transaction. Removing the cover therefore promotes the next image to `sort_order = 0`.
-- The current requirement does not define a minimum image count; removing the last image is valid and leaves the Product with zero images.
-- Success returns HTTP `204 No Content`.
-
-### Product image reorder command — project-owner refinement 2026-10-04
-
-`PATCH /api/v1/admin/products/{productId}/images`
-
-Request:
-
-```json
-{
-  "images": [
-    {"image_id": 13, "sort_order": 0},
-    {"image_id": 11, "sort_order": 1}
-  ]
-}
-```
-
-- Requires catalog write authorization.
-- The request may include all or a subset of the Product's current images. Unspecified images retain their current `sort_order`; after requested changes are applied, the complete resulting order must still be unique and contiguous `0..n-1`.
-- An image that does not belong to the Product is not found; duplicate image entries, duplicate resulting positions or gaps are conflicts.
-- Reorder is one database transaction. The implementation must preserve `UNIQUE(product_id, sort_order)` while changing positions and must not expose an intermediate duplicate ordering such as `0,0,2`.
-- The response uses the existing object envelope with the updated `AdminProductDetailDto`; its `images[]` sequence reflects the persisted order.
-
-### API #54 — GoodsReceipt actions
-
-`CONFIRM | CANCEL`; CONFIRM increments stock and creates InventoryTransaction exactly once.
-
-## 4. Permission CRUD added in current consolidated contract
-
-The latest API document includes #66–69:
-
-- GET `/api/v1/admin/permissions` -> `PermissionDto[]`
-- POST `/api/v1/admin/permissions` body: `code`, `name`
-- PATCH `/api/v1/admin/permissions/{permissionId}`: optional `code`, `name`; omitted fields unchanged
-- DELETE `/api/v1/admin/permissions/{permissionId}`: only when no Role references the Permission
-
-Do not use the older 73-endpoint numbering as current baseline.
-
-### Approved Voucher V1 extension
-
-See `15-technical-decisions.md` (2026-10-09) for voucher management request fields,
-capabilities, persisted checkout quote IDs and compatibility semantics. Voucher
-management is now implemented rather than deferred. This extension preserves
-existing response envelopes and snake_case contracts.
-
-## Approved Dashboard Analytics extension — 2026-10-10
-
-These endpoints extend Report beyond the historic 77-route baseline. All use `{ "data": ... }` and require
-`ROLE_SUPERADMIN OR (ROLE_ADMIN AND PERMISSION_REPORT_READ)`. Overview retains all six fields and monetary semantics.
-
-| GET path under `/api/v1/admin/reports` | Query | Data |
-| --- | --- | --- |
-| `/sales-trend` | required ISO `from`, `to`; `granularity=DAY` (`DAY/WEEK/MONTH`) | from, to, granularity, timezone, points: period_start, completed_sales, returned_adjustment, net_sales |
-| `/orders-trend` | same date/granularity query | from, to, granularity, timezone, points: period_start, total_orders, orders_by_status (all 8 statuses) |
-| `/product-performance` | required ISO `from`, `to`; `limit=10` (1–100) | from, to, items: product_id, product_name, thumbnail (nullable), completed_units, returned_units, net_units |
-
-Dates are inclusive Vietnam calendar dates. Invalid/missing dates, reversed ranges, invalid granularity and out-of-range limit return 400.
-Week labels are Monday; month labels are day 1. A partial first bucket can have a canonical period_start before `from`,
-but its data is strictly restricted to the requested inclusive range. Empty intersecting periods are included as zero buckets.
-Orders use created_at and current status; sales/products use completed_at. Neither reconstructs state transition history.
-
-### Storefront audit refinement — category browsing (2026-10-10)
-
-API #11 reuses `category_id` for category navigation. A selected parent includes
-products assigned to any descendant category; a leaf still selects that leaf.
-An unknown category returns an empty paginated result. Existing response fields,
-sale-state/variant predicates, effective-price filtering and pagination remain
-unchanged. The frontend category route uses this existing endpoint and does not
-add a separate category API.
-
-
-### Product summary card read addendum — 2026-10-10
-
-API #11 adds nullable `material_care` and `sizes: SizeValueDto[]` using existing domain data.
-No new endpoint, schema, Admin response or filtering/pagination semantics are introduced.
-Material/care text is returned verbatim. Sizes are unique by identity across ON_SALE variants,
-sorted by managed sort order then identity; zero stock does not mean stopped sale.
-Product cover, `base_price` and API #12 `effective_price` remain unchanged. Summary sizes
-are loaded in one variants query and one SizeValue batch per page, never detail calls per card.
+- `product_id` is the Product identity on Cart lines, Order lines, goods receipt lines, inventory balances and ledger movements.
+- Monetary fields are integer VND. No client-supplied total, unit price, discount, stock balance, workflow state or account scope is authoritative.
+- A quote has no durable identifier. Order placement rechecks all relevant inputs in its own transaction.
+- Order snapshots must not be rewritten by later catalog, account-address or voucher changes.
+- Do not expose CRUD routes for concepts outside the target schema. Retire routes that rely on removed persistence concepts rather than inventing replacement tables.
+- Exact request/response fields and mutation semantics must agree with docs/05-dto-contract.md. Any still-open API detail is listed in docs/12-tbd-out-of-scope.md; do not infer it from the old runtime.
