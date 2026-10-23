@@ -27,6 +27,7 @@ No P2 implementation is included: no new baseline migration, no database reset, 
 ## Required P1 gate artifacts
 
 - P1-traceability-matrix.csv — independent status for ERD, SQL, dictionary, backend, API/DTO, frontend and tests.
+- P1-architecture-review.md — structural and behavioral review with severity and source-level evidence.
 - P1-api-breaking-changes.md — target-vs-legacy breaking-change inventory.
 - scripts/p1/check_contract_consistency.py — deterministic static consistency gate; nonzero means static alignment fails.
 - P1-exit-gate.md — current evidence and explicit P2 authorization.
