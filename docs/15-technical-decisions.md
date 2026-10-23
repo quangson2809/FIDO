@@ -1,6 +1,6 @@
 # Implementation decisions — 2026-09-26
 
-> **Target contract addendum (2026-10-23):** DB-10 owner decision supersedes legacy Phase 5 monetary implementation notes: target money is integer VND stored/exposed in whole VND units using BIGINT, not BigDecimal/DECIMAL money. DECIMAL remains valid for non-monetary descriptive numbers such as PRODUCT_ATTRIBUTE_VALUES.number_value. DB-01 also confirms parent and child Products each own SKU, selling price and inventory. Current phase implementation bullets and earlier decisions below remain historical source-code evidence where they describe ProductVariant, BigDecimal or the pre-reset schema; do not use them to override the target ERD or owner decision log.
+> **Owner-approved target contract addendum (2026-10-23):** The owner approved DB-03/DB-05 proposals, DB-12 deletion/FK defaults, and proposed DB-01/02/06–DB-11/API defaults. Clean Schema Reset discards disposable development/test rows and recreates/seeds data from the owner-confirmed 31-table ERD; never reset production/shared/persistent data. Numeric audit/image/personal-data retention durations and anonymization exceptions remain TBD. Target money is integer VND stored/exposed as whole VND using BIGINT, not BigDecimal/DECIMAL money; DECIMAL remains valid for non-money values such as PRODUCT_ATTRIBUTE_VALUES.number_value. Parent and child Products each own SKU, required selling price and inventory; v1 allows one parent-child level and no field implicitly inherits from NULL. The approved target also uses Product-ID inventory, stateless quote, account-scoped order idempotency/replay/conflict, global non-stacking voucher quota, immutable order snapshots and COD-only payment. Current phase bullets and older decisions below are historical source-code evidence where they describe ProductVariant, quote_id, voucher targeting or BigDecimal; they must not override the approval record.
 
 > **ERD v2 scope boundary (2026-10-22):** This is a chronological decision log for the current implementation. Existing V1–V6, ProductVariant, inventory and image-snapshot decisions describe the source baseline unless explicitly re-approved for the refactor. The owner-confirmed target persistence model is the 31-table ERD and contract under docs/refactor; earlier schema statements here must not override it. Preserve the existing public/business contract or flag a compatibility blocker rather than silently broadening the target schema.
 
@@ -11,7 +11,7 @@ This file contains **technical implementation decisions** approved by the projec
 - Preserve Java 17, Spring Boot 4.0.3, Gradle and MySQL from the repository.
 - Use Flyway to version the schema. Hibernate validates mappings; it does not create or update the schema.
 - Login uses the account phone number. Login does not require phone verification.
-- `ADMIN` identifies employees; `SUPERADMIN` is the highest administrator. Lowercase `admin` is not privileged. Phone values are unique.
+- `ADMIN` identifies employees; `SUPERADMIN` is the highest administrator. Lowercase `admin` is not privileged. Target v2 phone identity is unique among active accounts and may be reused after soft deletion; legacy global UNIQUE(phone) is source-only.
 - Bootstrap the initial account with role `SUPERADMIN` from external credentials.
 - JWT library: Spring Security Resource Server with Nimbus JOSE/JWT, versions managed by Boot.
 
@@ -37,9 +37,11 @@ Ordinary technical decisions do not require stakeholder confirmation when they p
 - CI tests H2 in MySQL mode and MySQL 8.4.
 - V1 targets an empty schema; populated production databases require a separate reviewed migration plan.
 
-## Phase 2 decisions already implemented
+## Phase 2 decisions already implemented (legacy source implementation)
 
-- Flyway V2 adds UNIQUE(phone) and seeds ADMIN/SUPERADMIN roles.
+> Historical runtime note: this subsection documents the existing V1–V6 implementation. For target ERD v2, phone is unique among active accounts and may be reused after soft deletion; align the target Account entity/service rather than copying legacy global UNIQUE(phone).
+
+- Legacy Flyway V2 adds UNIQUE(phone) and seeds ADMIN/SUPERADMIN roles.
 - JWT uses HS256 with externally configured Base64 secret; role/permission data is reloaded from DB rather than trusted from JWT claims.
 - System roles cannot be deleted.
 - RBAC writes protect the last SUPERADMIN assignment.
