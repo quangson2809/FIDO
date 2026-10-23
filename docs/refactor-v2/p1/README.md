@@ -11,13 +11,13 @@ Baseline branch: demo1. This folder records the P1 design outputs. Canonical log
 | P1-data-dictionary.csv | Machine-readable row for every ERD column. |
 | P1-decision-log.md | Approved, technical, proposed, blocked and deferred decisions. |
 | P1-schema-constraints.md | PK/FK/UK/CHECK/index inventory and DB-vs-application invariant boundary. |
-| P1-api-contract-mapping.csv | 77 numbered API contracts plus current source extensions with DTO, target tables and tests. |
+| P1-api-contract-mapping.csv | 77 numbered API contracts plus 10 verified current-source extensions (Product image commands, voucher CRUD and dashboard reports), with DTO/source gaps, target tables, owner decisions and acceptance tests. |
 | P1-domain-invariants.md | Module/transaction domain invariants. |
 | P1-test-matrix.md | Schema, integration, security, concurrency and contract acceptance matrix. |
 | P1-exit-gate.md | Cross-check results and P2 readiness decision. |
 
 ## State and boundary
 
-The owner-approved ERD fixes logical table structure, not every SQL nullability, size, default, index, FK action or state literal. D1 and D3–D10 in the owner questionnaire remain working proposals. The authenticated-only Cart/Order decision from 2026-10-05 is approved; guest checkout is not an active blocker.
+The owner-approved ERD fixes logical table structure, not every SQL nullability, size, default, index, FK action or state literal. D1 and D3–D10 in the owner questionnaire remain working proposals except the already-approved authenticated Cart/Order decision D2. The API map preserves the legacy 77-route baseline and explicitly calls out 10 source extensions; it does not silently make target-incompatible DTOs implementable. The decision log tracks DB-10 money rules and DB-11 system seed/bootstrap as separate owner blockers. Guest checkout and the number of operational warehouses are already resolved, not active questions.
 
 No P2 implementation is included: no new baseline migration, no database reset, no entity/service/controller/frontend change. Existing clean-reset SQL is treated as a draft and must not be considered approved physical schema.
