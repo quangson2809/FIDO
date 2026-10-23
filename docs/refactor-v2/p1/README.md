@@ -22,3 +22,11 @@ Baseline branch: demo1. This folder records the P1 design outputs. Canonical log
 Owner decisions recorded on 2026-10-23 resolve DB-01, DB-02 and DB-06 through DB-11 at the business-policy level. DB-03 and DB-05 proposals are now documented in `P1-design-proposals-DB-03-DB-05.md`, but remain unapproved until explicit owner acceptance. The proposals identify material schema-fit gaps around durable idempotency, ledger source/reversal fields and immutable order images; they do not authorize adding tables/columns. The owner-approved ERD fixes logical table structure, not every SQL nullability, size, default, index, FK action or state literal. D1 and D3–D10 in the owner questionnaire remain working proposals except the already-approved authenticated Cart/Order decision D2. The API map preserves the legacy 77-route baseline and explicitly calls out 10 source extensions; it does not silently make target-incompatible DTOs implementable. The decision log tracks DB-10 money rules and DB-11 system seed/bootstrap as separate owner blockers. Guest checkout and the number of operational warehouses are already resolved, not active questions.
 
 No P2 implementation is included: no new baseline migration, no database reset, no entity/service/controller/frontend change. Existing clean-reset SQL is treated as a draft and must not be considered approved physical schema.
+
+
+## Required P1 gate artifacts
+
+- P1-traceability-matrix.csv — independent status for ERD, SQL, dictionary, backend, API/DTO, frontend and tests.
+- P1-api-breaking-changes.md — target-vs-legacy breaking-change inventory.
+- scripts/p1/check_contract_consistency.py — deterministic static consistency gate; nonzero means static alignment fails.
+- P1-exit-gate.md — current evidence and explicit P2 authorization.
