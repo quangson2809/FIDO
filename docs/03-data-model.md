@@ -21,7 +21,7 @@ The inventory above is the complete logical target table set. Schema additions r
 - Every sellable unit is identified by `PRODUCTS.id`; Product foreign keys store that Product ID.
 - Parent and child records share `PRODUCTS`. A child is created explicitly, has its own identity, SKU, required selling price and stock, and is independently sellable. v1 allows one parent-child level only.
 - No implicit field inheritance exists. In particular, NULL `name`, `slug` or `description` does not trigger a parent fallback. SKU, selling price and inventory belong to the individual Product row.
-- Category hierarchy must remain acyclic and no deeper than the approved one-level Product hierarchy rule permits for Products. Validate hierarchy mutations in the owning service under concurrent updates.
+- Category hierarchy must remain acyclic. Product parent/child depth is a separate invariant limited to one level. Validate each hierarchy mutation in its owning service under concurrent updates.
 - Dynamic metadata is descriptive. The supported types are `OPTION`, `TEXT`, `NUMBER` and `BOOLEAN`. A Product/Attribute pair has one typed value; exactly the column matching the Attribute type is populated. An `OPTION` value must reference an option owned by the same Attribute.
 - `is_variant_defining` is informational metadata only; it must not trigger automatic Product creation or combinations.
 - Product images belong to the Product. Primary-image behavior follows `is_primary` and the approved image contract. Order image references must continue to resolve to the retained order-time content.
