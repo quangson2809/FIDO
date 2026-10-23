@@ -3,7 +3,7 @@
 **Status: PARTIAL.** Source-confirmed rules are separated from target behavior that still requires DB-01/02/03/05/06/07/08/09 approval.
 
 ## Account and RBAC
-- INV-ACC-01: Current source login uses phone, but target ERD does not mark phone unique. DB-09 must resolve this before target auth is frozen. Never expose password hashes; retain generic credential-failure behavior.
+- INV-ACC-01: Phone is the login identity and is unique among active accounts; reuse is allowed after soft deletion (owner decision DB-09, 2026-10-23). Never expose password hashes; retain generic credential-failure behavior. The physical enforcement strategy must match this rule and be verified on MySQL.
 - INV-ACC-02: /me resources, saved addresses and customer orders are scoped to authenticated principal. Client account IDs never authorize access.
 - INV-RBAC-01: Resolve effective grants from the database; never trust role claims from the client. Role/permission replacement and audit are atomic; preserve last-SUPERADMIN protection.
 - INV-ACC-03: Target Account status literals and their login/session effects are not approved; do not invent a new lifecycle.
