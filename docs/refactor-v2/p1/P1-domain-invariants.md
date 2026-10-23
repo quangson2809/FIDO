@@ -31,7 +31,7 @@
 - INV-ADDR-01: Saved Address differs from OrderAddress. Recipient PATCH through PREPARING and duplicated ShippingInfo receiver fields need DB-07/08 resolution.
 
 ## Voucher, Payment and Shipping
-- INV-VOUCHER-01: Discount type/formula/date/min/max/scope/stacking/limits and cancellation restoration need DB-06 approval; currency/scale/rounding interaction needs DB-10. Target lacks scope joins and usage ledger.
+- INV-VOUCHER-01: Voucher is order-wide, non-stackable, with no product/category conditions (owner decision DB-06, 2026-10-23). Formula, validity/usage limits and cancellation behavior must fit the target schema or be explicitly deferred; do not imply product/category scope or usage-ledger capabilities. Monetary behavior follows integer VND DB-10.
 - INV-VOUCHER-02: Snapshot voucher code/type/value/discount so future edits do not rewrite old Orders.
 - INV-VOUCHER-03: Any usage limit needs serialized consumption/restoration; unique voucher code is insufficient.
 - INV-PAY-01: COD only is the source baseline; collector identity/time are server-derived by authorized command.
