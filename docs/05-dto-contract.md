@@ -110,17 +110,13 @@ arrays. Existing `base_price` and detail effective-price semantics remain unchan
 
 `CatalogMetaDto(categories[],brands[],size_systems[],colors[],genders[],seasons[],styles[])`; last three are derived from managed catalog values.
 
-<<<<<<< HEAD
-### cart/checkout/order
-
-`CartItemDto(cart_item_id,variant_id,quantity,product_name,size,color,unit_price,line_total,available_quantity)`
-=======
 The nullable Product summary `thumbnail` is live presentation data resolved from the ProductImage at `sort_order = 0`. A Product with no image returns `thumbnail = null`. Detail `images[]` remains the complete image collection ordered by `sort_order`.
 
 ### cart/checkout/order
 
-`CartItemDto(cart_item_id,variant_id,quantity,product_name,image_url?,thumbnail?,size,color,unit_price,line_total,available_quantity)`
->>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
+`CartItemDto(cart_item_id,variant_id,quantity,product_name,image_url?,size,color,unit_price,line_total,available_quantity)`
+
+> **ERD v2 compatibility gap:** `variant_id` and the cart's nullable `image_url` belong to the current/legacy API contract. Target CartItems point to `product_id` and do not persist variant identity; DB-01 must approve the public-ID adaptation before the target contract is frozen. Cart images are live presentation data resolved from the current Product cover, not a Cart snapshot.
 
 `CartDto(cart_id?,account_id?,items[],subtotal,created_at?,updated_at?)` — for an authenticated account without a persisted cart, return the same fields with null cart ID/timestamps, an empty item list and zero subtotal; GET does not create a cart.
 
@@ -146,11 +142,9 @@ The nullable Product summary `thumbnail` is live presentation data resolved from
 
 `OrderAdminDetailDto`: customer/voucher references, service note, cancel reason, admin payment and `allowed_actions` derived from state + permission.
 
-<<<<<<< HEAD
-=======
-Cart image fields are live catalog presentation data resolved from the Product cover at read/recalculation time; Cart does not persist an image snapshot. Order image fields are historical: `OrderItemDto.image_url` comes from `order_items.image_url_snapshot`, and `OrderSummaryDto.image_url` comes from the first OrderItem snapshot by smallest `order_item_id`. Historical Order reads must not query the current Product gallery. Existing null OrderItem snapshots remain null rather than being backfilled from current catalog state.
+Order image fields are historical in the current/legacy contract: `OrderItemDto.image_url` comes from `order_items.image_url_snapshot`, and `OrderSummaryDto.image_url` comes from the first OrderItem snapshot by smallest `order_item_id`. Historical Order reads must not query the current Product gallery; existing null snapshots remain null rather than being backfilled from current catalog state.
 
->>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
+> **ERD v2 compatibility gap (DB-07):** the owner-confirmed target ERD does not contain `ORDER_ITEMS.image_url_snapshot`. This is a deliberate contract blocker, not permission to add the column silently. The owner must either approve an ERD amendment or explicitly accept that Order history has no persisted image guarantee. Until then, preserve the existing source contract as evidence and do not claim it is implementable against target schema.
 ### inventory/audit/report/content
 
 `SupplierDto`, `GoodsReceiptItemDto`, `GoodsReceiptSummaryDto`, `GoodsReceiptDetailDto`, `InventoryRowDto`, `InventoryTransactionDto`, `AuditLogDto`, `ReportOverviewDto`, `PublicContentPageDto`, `ContentPageDto`, `CustomerSummaryDto`, `CustomerDetailDto` follow the fields in Analyst API Appendix A; do not expose persistence-only secrets.
@@ -175,31 +169,27 @@ Receiver phone/address required, email optional, voucher code optional. Server o
 
 ### Product create — Phase 10 breaking contract
 
-<<<<<<< HEAD
-Required: category, SizeSystem, name, base price, sale status. Optional fields follow schema. Nested image/variant collections are allowed by API contract. Validate leaf Category, SizeSystem/SizeValue match and variant uniqueness.
-=======
-Required: category, SizeSystem, name, base price, sale status. Optional Product metadata and nested variants follow schema. Validate leaf Category, SizeSystem/SizeValue match and variant uniqueness.
+**Legacy/current source contract (not yet the ERD v2 target contract):** required fields are category, SizeSystem, name, base price and sale status. Optional Product metadata and nested variants follow the source request DTO. Validate the source-model leaf Category and SizeSystem/SizeValue relationship before the target mapping is changed.
 
-`POST /api/v1/admin/products` is JSON-only and does **not** accept an image collection or multipart files. The old JSON `images[]` and multipart create representations are intentionally removed. Clients must create Product first and then call the dedicated binary image upload command.
+> **ERD v2 compatibility gap (DB-01/02):** the target has no SizeSystem, SizeValue, Color or ProductVariant table. The target API must map the current concepts to parent/child Products and typed attributes, or obtain an explicit owner-approved contract amendment. Do not add the legacy tables back implicitly.
+
+`POST /api/v1/admin/products` is JSON-only and does **not** accept an image collection or multipart files. The old JSON `images[]` and multipart create representations are intentionally removed. Create Product first, then use the dedicated binary image-upload command.
 
 ### Product binary image upload
 
-`POST /api/v1/admin/products/{productId}/images` consumes `multipart/form-data` with one or more repeated `images` file parts. The backend validates all files, uploads them through the Product-owned storage gateway and appends the returned direct URLs to `product_images`. Server assigns contiguous `sort_order` values after the current collection. The first image of an image-less Product receives `sort_order = 0` and is the live cover.
+`POST /api/v1/admin/products/{productId}/images` consumes `multipart/form-data` with one or more repeated `images` file parts. The backend validates all files, uploads them through the Product-owned storage gateway and persists provider-returned direct URLs. Files are appended to the current collection; the first image of an image-less Product gets `sort_order = 0`.
 
 ### Product PATCH image replacement
 
-`PATCH /api/v1/admin/products/{productId}` may contain `images: ProductImageInput[]`:
+`PATCH /api/v1/admin/products/{productId}` may include an authoritative `images: ProductImageInput[]` collection:
 
 - field omitted -> preserve current collection;
 - field present -> replace the entire collection;
 - `images: []` -> remove all Product images;
-- every item requires `image_url` and `sort_order`; `alt_text` is optional/nullable;
+- each item requires `image_url` and `sort_order`; `alt_text` is optional/nullable;
 - `sort_order` must be unique, non-negative and contiguous `0..n-1`; `0` is the cover.
 
-This URL-based replacement command is a distinct catalog editing use case from binary upload; it is not a compatibility path for Product creation.
-
-Provider credentials are backend-only. Provider-side remote deletion/compensation remains unsupported unless the provider exposes a verified machine-to-machine delete contract.
->>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
+This URL-based replacement is distinct from binary upload and is not a compatibility path for Product creation. Provider credentials remain backend-only; provider-side remote deletion/compensation is unsupported unless the provider exposes a verified contract.
 
 ### Inventory adjustment
 
