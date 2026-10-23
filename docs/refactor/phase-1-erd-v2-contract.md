@@ -133,7 +133,7 @@ The target scope is frozen to the exact diagram in [phase-1-erd-v2-approved.mmd]
 ### 3.2 Structural decisions locked by the ERD
 
 - Product identity is represented by PRODUCTS parent/child rows using parent_product_id. PRODUCT_VARIANTS, SIZE_SYSTEMS, SIZE_VALUES and COLORS are not target tables.
-- Child Product fields name, slug and description may be NULL to mean inherited; a NULL child selling_price means the price is inherited. cost_price is nullable. Those comments are part of the supplied contract and must be preserved.
+- Child Product fields name, slug and description are the only ERD-annotated inheritance candidates; their effective-value fallback and parent-update propagation are not yet approved, so NULL remains NULL until an explicit rule is accepted. Under DB-01, each parent and child Product owns a required selling_price; it is never inherited. cost_price remains nullable.
 - Attributes use ATTRIBUTE_TYPES, ATTRIBUTES, ATTRIBUTE_OPTIONS and PRODUCT_ATTRIBUTE_VALUES. The composite PK (product_id, attribute_id) permits at most one row for each Product/Attribute pair. The exact rule for selecting option_id versus text_value/number_value/boolean_value, including mutual-exclusion validation, still needs physical/service-level specification.
 - CART_ITEMS, ORDER_ITEMS, GOODS_RECEIPT_ITEMS, INVENTORIES and INVENTORY_TRANSACTIONS point to PRODUCT IDs, not the old Variant IDs.
 - INVENTORIES has the composite key (warehouse_id, product_id), quantity_on_hand and version. The target does **not** contain quantity_reserved or INVENTORY_RESERVATIONS.
@@ -221,7 +221,7 @@ Clean Schema Reset removes legacy-data preservation questions; it does not autho
 4. **Voucher/checkout behavior:** the target omits voucher scope join tables, a usage ledger and `checkout_quotes`. Define the supported voucher capability and confirm checkout/API behavior can work without persistence omitted from the target.
 5. **Order money contract:** define line `discount_amount`, order-level discounts, currency and placement time for new orders. Do not introduce a made-up historical allocation; historical rows will not be carried over by this reset.
 6. **Payment/shipping contract:** define target statuses, whether payment methods are limited to COD, and how a new order's `PAYMENTS`, `ORDER_ADDRESSES` and `SHIPPING_INFOS` are created/updated.
-7. **Physical SQL:** approve nullability, VARCHAR lengths, DECIMAL precision/scale, timestamp/time-zone policy, defaults, CHECK constraints, useful indexes and foreign-key delete behavior. The ERD alone does not specify all physical details.
+7. **Physical SQL:** approve remaining nullability, VARCHAR lengths, non-monetary DECIMAL precision/scale, timestamp/time-zone policy, defaults, CHECK constraints, useful indexes and foreign-key delete behavior. DB-10 already sets monetary values to integer VND/BIGINT; DB-12 must approve delete/retention rules. The ERD alone does not specify all physical details.
 8. **Initial seed:** list mandatory roles/permissions, attribute types/options, default warehouse (if required), and the development-only demo fixture. Keep production/bootstrap account creation secure.
 
 The revised questionnaire narrows to these target-business and physical-schema decisions. Legacy-only questions about preserving old phone duplicates, source inventory balances, historical snapshots/refunds, source-only fields and old idempotency values are no longer migration blockers for disposable dev/test data.
@@ -271,7 +271,7 @@ Do not claim success based only on a successful compilation or a documentation d
 ## 9. Target model invariants
 
 - Do not add tables back from the old implementation (such as `PRODUCT_VARIANTS`, size/color master tables, voucher scope links, voucher usage ledger, or `CHECKOUT_QUOTES`) unless the owner explicitly revises the ERD.
-- Do not add `image_url_snapshot` to `ORDER_ITEMS`; the target contract intentionally omits it.
+- `ORDER_ITEMS.image_url_snapshot` is included in the target ERD/DDL. Do not recreate immutable-asset retention guarantees from the URL alone; DB-07 must approve object/version stability, overwrite/deletion protection, access and retention. Do not add unrelated image-event/history tables without an owner amendment.
 - Product parent/child rows share `PRODUCTS`; child IDs must be normal Product IDs in the new database, not legacy Variant IDs. Validate no self-parent/cycle in the service layer; MySQL 8.4 forbids the attempted CHECK reference to the AUTO_INCREMENT id.
 - Inventory is keyed by `(warehouse_id, product_id)` and stores `quantity_on_hand` plus `version`; the target has no reservation column/table.
 - Keep required order address/voucher snapshots and the one-payment-per-order target shape according to the owner-approved ERD.
