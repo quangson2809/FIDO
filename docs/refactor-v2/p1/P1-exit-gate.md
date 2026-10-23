@@ -1,86 +1,64 @@
 # P1 Exit Gate — ERD v2 & Data Contract Freeze
 
-**STATUS: PARTIAL — DB-03/DB-05 proposals and cross-document acceptance requirements are documented; owner approval, verified schema fit and reviewer evidence are still missing.**
+**STATUS: PARTIAL — logical ERD and owner choices are recorded; the target data contract is not yet freeze-ready because several explicit choices cannot be represented or verified against the current 31-table ERD without a deliberate contract decision.**
 
-- Branch under review: `demo1`
+- Branch: `demo1`
 - Review date: 2026-10-23
-- Scope: documentation and contract alignment only. No Java/TypeScript runtime changes, migration execution, database reset, or schema activation is part of P1.
-- Authority: owner-confirmed logical ERD v2 at `docs/refactor/phase-1-erd-v2-approved.mmd`, plus explicit owner decisions recorded in the project docs. A proposal, SQL draft or inferred API mapping is not owner approval.
+- Scope: P1 documentation and contract readiness. This gate does not claim runtime implementation, migration activation, or database verification.
+- Authority: `docs/refactor/phase-1-erd-v2-approved.mmd` is the canonical owner-confirmed 31-table logical ERD. Do not add tables/columns or change public API contracts implicitly.
 
+## 1. Decisions recorded
 
-## 2. Owner decisions received on 2026-10-23
+- **DB-01:** Parent and child Products are sellable; each has independent SKU, price and inventory.
+- **DB-02:** Dynamic attributes are descriptive only and do not generate variants.
+- **DB-03:** Option D requested a design proposal. The proposal exists; it is not treated as owner-approved.
+- **DB-05:** Option D requested a design proposal. The proposal exists; it is not treated as owner-approved.
+- **DB-06:** Order-wide, non-stackable voucher; no product/category conditions.
+- **DB-07:** Complete order snapshots and immutable image-retention policy are required.
+- **DB-08:** COD and an order state machine including transitions, cancellation, returns and refund are required.
+- **DB-09:** Phone number may be reused after soft deletion and is unique among active accounts.
+- **DB-10:** VND only; monetary values are integer VND and reconciliation/rounding must be exact.
+- **DB-11:** Roles/permissions are seeded by Flyway; SUPERADMIN bootstrap uses external secret configuration; demo fixtures are separate.
 
-- DB-01: parent and child Products are both sellable; each has independent SKU, price and inventory.
-- DB-02: dynamic attributes are descriptive only; variants are not generated from attributes and child Products are created explicitly.
-- DB-06: simple order-wide voucher; non-stackable; no product/category conditions.
-- DB-07: complete order snapshots with immutable image-retention policy. Implementation must not silently add a column to the 31-table ERD; the persistence/API solution still needs reconciliation.
-- DB-08: COD with an Order state machine including transitions, cancellation, returns and refund; detailed states/persistence need a contract and scope check.
-- DB-09: phone can be reused after soft deletion and is unique among active accounts.
-- DB-10: VND only, money stored as integer VND; rounding and discount allocation must reconcile exactly. The isolated DECIMAL(18,2) proposal is superseded.
-- DB-11: Flyway seeds roles/permissions; SUPERADMIN bootstrap uses external secret configuration; demo fixtures stay separate.
-- DB-03 and DB-05 option D means prepare a design proposal; neither is approved until the proposal is reviewed and explicitly accepted.
+## 2. Cross-document contract gaps
 
-## 3. Remaining P1 gates
+These are implementation blockers, not invitations to silently amend the approved ERD.
 
-1. Proposal package exists at docs/refactor-v2/p1/P1-design-proposals-DB-03-DB-05.md. Obtain explicit owner acceptance or revisions for DB-03 inventory/receipt/ledger/concurrency and DB-05 quote/idempotency/retry/recalculation. The document identifies ERD limitations; it does not imply approval.
-2. Reconcile all dependent documents with recorded decisions: ERD-compatible image snapshot strategy, active-only phone uniqueness, integer-VND types/formulas, voucher scope/usage semantics, order/refund state contracts and API DTO mappings. Current ERD conflicts remain for DB-07 image history, DB-10 decimal-labelled money fields, DB-06 usage caps and DB-08 complete return/refund persistence.
-3. Recompute and review the Data Dictionary and API mapping after reconciliation; no stale OPEN_BLOCKED labels for decided items, no unsupported schema columns/tables, and no conflict markers. Ensure API #19/#20, DTO contract, integer-VND arithmetic, stock transitions, image history, phone uniqueness and voucher/return/refund behavior tell one consistent story.
-4. Reviewer verifies each gate against the owner-approved ERD and records acceptance evidence. P0 runtime/MySQL verification is reported separately and must not be represented as passed by this documentation work.
-
-## 4. Deliverable inventory
-
-| Gate | Evidence | Result | Limitation |
+| Area | Confirmed direction | Gap against current target model | Required resolution |
 |---|---|---|---|
-| Canonical ERD v2 | `docs/refactor/phase-1-erd-v2-approved.mmd`; `P1-erd-v2.md` | PASS — logical shape | Exactly 31 logical tables. Physical constraints and unannotated nullability remain open. |
-| Per-column dictionary | `P1-data-dictionary.csv`, `P1-data-dictionary.md` | PARTIAL | 217 logical-column rows across 31 tables; SQL/null/default values copied from isolated DDL are expressly proposals. Several semantic rules still depend on owner decisions below. |
-| Constraint inventory | `P1-schema-constraints.md` | PARTIAL | ERD keys are mapped; extracted SQL CHECK/index/FK actions are not owner-approved and have not been proven on MySQL 8.4. |
-| API-to-schema map | `P1-api-contract-mapping.csv` | PARTIAL | Maps the 77 numbered API baseline plus 10 source extensions (3 Product image commands, 3 analytics routes, 4 voucher CRUD routes). Legacy ProductVariant/SizeSystem/Color and voucher-scope behavior do not map directly to the 31-table target. Rows label source/controller DTO gaps instead of inventing contracts. |
-| Domain invariants | `P1-domain-invariants.md` | PARTIAL | DB-03/DB-05 proposal invariants are documented, but schema-fit limitations and owner acceptance remain open. |
-| Acceptance matrix | `P1-test-matrix.md` | PASS as a plan, NOT as executed tests | These are P2 acceptance requirements. They are not evidence that P2 behavior already passes. |
-| Decision log | `P1-decision-log.md` | PARTIAL | DB-03/DB-05 proposals exist but are not owner-approved; DB-01/02/06/07/08/09/10/11 choices are recorded, with dependent contract/schema-fit checks still open. |
-| Physical SQL | `backend/src/main/resources/db/clean-reset` | BLOCKED | Isolated target DDL is a working draft, not an approved/fresh-MySQL-verified physical contract. It must not replace the active migration path during P1. |
+| Inventory and receipt (DB-03) | Single operational warehouse (A-04); stock changes must be atomic and concurrency-safe | Proposed movement semantics and retry/idempotency behavior have not been accepted; current ERD may not carry every adjustment/reversal audit attribute | Accept/revise the proposal, then map each invariant to existing fields and MySQL constraints |
+| Quote/order idempotency (DB-05) | Authenticated cart/order; quote is advisory and order-time values must be revalidated | Current order schema lacks an explicit request fingerprint; voucher usage enforcement also lacks a redemption/counter structure | Accept/revise the proposal and prove same-key replay vs changed-payload conflict without adding unapproved schema |
+| Order image history (DB-07) | Snapshot must preserve image references for historical orders | No explicit order-item image snapshot field in the approved ERD | Decide whether an existing snapshot field is formally defined to include immutable image references or amend the ERD explicitly; do not silently overload a field |
+| Integer VND (DB-10) | Integer VND across persistence, DTOs and arithmetic | Canonical ERD still labels monetary fields as decimal | Reconcile the canonical ERD with DB-10 through an explicit owner-approved ERD revision, or formally revise DB-10; do not claim both contracts agree |
+| Voucher limits (DB-06) | Simple order-wide discount; non-stackable | `usage_limit` cannot safely enforce concurrent redemption limits without persisted consumption state | Define whether hard usage caps are in scope. If yes, approve a schema amendment; if no, document the narrower rule consistently |
+| Returns/refunds (DB-08) | Return/refund lifecycle required | Current model does not clearly persist return/refund case, amount, actor and timestamps | Approve a schema amendment or explicitly narrow return/refund scope; no implied persistence |
+| Active-only phone uniqueness (DB-09) | Phone unique among active accounts; reusable after soft deletion | MySQL requires a concrete physical strategy for conditional uniqueness | Select and test a generated nullable key or another MySQL-compatible strategy in the physical contract |
+| API/DTO compatibility | Existing public API mapping must remain explicit | Legacy variant IDs, Product image expectations and AuditLog DTO fields do not map directly to target schema | Define compatibility/adaptation at the service/DTO boundary; do not invent target columns or leak persistence entities |
 
-## 2. Decisions already resolved — do not reopen as blockers
+## 3. Deliverable inventory
 
-- **A-01:** The target logical schema is the owner-confirmed ERD v2 with exactly 31 tables. Adding a table/column requires an explicit owner amendment.
-- **A-02:** Clean Schema Reset is allowed only for explicitly disposable development/test databases. This does not authorize destructive operations on production/shared environments.
-- **A-03:** Persisted Cart use and order placement require authentication. Guest sessions, guest carts/orders, guest lookup and cart merge are out of scope.
-- **A-04:** The v1 business baseline is single-merchant, COD-only, **one operational warehouse**, manual shipping, and no online payment gateway or automatic carrier integration.
-- The Product identity choice, stock-accounting mechanics, voucher policy, money rounding, account/physical SQL details and seed/bootstrap details are **not** resolved merely because the draft DDL implements a suggested default.
-
-## 3. Owner blockers before the target contract can be frozen
-
-| Decision | Must be explicitly decided |
-|---|---|
-| DB-01 Product parent/child | Root vs child sale/stock/cart identity, hierarchy depth, inheritance, parent stop/delete rules and public API ID compatibility. |
-| DB-02 Dynamic attributes | Allowed data types, one-compatible-value rule, option ownership, requiredness/inheritance, variant-defining matrix and duplicate-combination enforcement. |
-| DB-03 Inventory/receipt/ledger | Meaning of `quantity_on_hand`, deduction transition, assignment to the single operational warehouse, source-to-movement mapping, reasons, reversals and concurrency protection. **Number of warehouses is already decided by A-04; do not ask that again.** |
-| DB-05 Checkout quote/idempotency | Key origin/scope, normalized-payload binding, replay vs conflict, retention and non-persistent quote behavior. |
-| DB-06 Voucher | Discount formula/rounding interaction, eligibility scope, stacking, limits, consumption/restoration, and whether removed scope/usage persistence can be dropped or ERD must be amended. |
-| DB-07 Order snapshots | Required historical fields, image-history guarantee, address/recipient mutability, voucher snapshot completeness and line-discount allocation. |
-| DB-08 Payment/shipping/order lifecycle | COD/refund amount/actor/time, separate state domains, shipping transitions, receiver authority and stock effects of cancel/return. |
-| DB-09 Physical schema/account/audit | Exact types/lengths/nullability/defaults/status domains, phone uniqueness, FK actions/indexes, account lifecycle, soft-delete visibility and audit actor/redaction policy. |
-| DB-10 Money policy | Currency, decimal scale/rounding, order total formula, allocation of order discounts to lines, shipping and reconciliation behavior. The formulas in the current technical draft are not owner approval. |
-| DB-11 Seed/bootstrap | Required role/permission inventory, initial SUPERADMIN bootstrap boundary, deterministic system seed vs demo fixtures, and protection against hard-coded credentials. |
-
-The API map also flags legacy contracts with no direct target table or field mapping: ProductVariant IDs, SizeSystem/Color masters, checkout quote persistence assumptions, voucher scope/usage relations, historical Order image snapshots, and API #70's AuditLogDto fields (`target_type`, `target_id`, `description`) versus target AUDIT_LOGS (`entity_type`, `entity_id`, `before_data`, `after_data`, `correlation_id`). P1 records these as compatibility gaps; it does not silently add tables/columns or change public DTOs to force a match.
+| Gate | Evidence | Status | Evidence limit |
+|---|---|---|---|
+| Logical ERD | `docs/refactor/phase-1-erd-v2-approved.mmd` | PASS for logical shape (31 tables) | Not proof of physical types, constraints or runtime behavior |
+| Data dictionary | `P1-data-dictionary.csv`, `P1-data-dictionary.md` | PARTIAL | 217 logical-column rows; physical defaults/types must be reconciled with the decisions above |
+| Schema constraints | `P1-schema-constraints.md` | PARTIAL | Proposed constraints have not been verified on MySQL 8.4 |
+| API mapping | `P1-api-contract-mapping.csv` | PARTIAL | Numbered API baseline and source extensions mapped; several target-schema compatibility gaps remain |
+| Domain invariants | `P1-domain-invariants.md` | PARTIAL | Proposals are documented but not accepted and verified end-to-end |
+| Acceptance matrix | `P1-test-matrix.md` | PASS as a test plan only | Tests in the matrix have not thereby been executed |
+| Decision log | `P1-decision-log.md` | PARTIAL | DB-03/DB-05 proposal approval and cross-contract reconciliation remain open |
+| Physical SQL | `backend/src/main/resources/db/clean-reset` | BLOCKED as a frozen contract | Draft SQL is not the approved physical contract and must not replace the active migration path during P1 |
 
 ## 4. Verification evidence and limits
 
-- Logical cross-check recorded in P1: 31 ERD tables; 31 target DDL table definitions; 217 logical-column CSV rows.
-- The dictionary-to-DDL comparison is a structural/source cross-check only. It does **not** prove the SQL is approved, executes on MySQL, or behaves correctly through the application.
-- P0's recorded backend CI baseline was **FAILED** on audited SHA `22bd3d887cef3c077e714e5ec21e70ba89855d46`: 196 H2 tests, 3 failed and 1 skipped; failures concerned status CHECK constraints in `CleanResetSchemaTests`. The target MySQL verification step did not run. This is historical evidence; it is not a claim about a fresh CI run for this documentation update.
-- The merge-conflict markers in `docs/05-dto-contract.md` were removed. The legacy `variant_id`/Order image-snapshot API expectations are now separated from the target ERD compatibility gaps; this resolves contradictory source text but does not approve DB-01 or DB-07.
-- The Data Dictionary CSV now carries field-specific meaning and validation text for all 217 rows, and DB-10/DB-11 references are attached to relevant money and seed fields. These entries point to open decisions instead of inventing their values.
-- No database was connected to, dropped or reset for this P1 documentation work.
-- No production migration, JPA/API/frontend switch, or P2 implementation was performed.
+- The recorded structural inventory is 31 logical ERD tables, 31 target DDL table definitions and 217 logical-column dictionary rows.
+- These counts are document/source cross-checks, not proof that target SQL executes on MySQL or that application behavior is correct.
+- Historical P0 baseline: 196 H2 tests, 3 failures and 1 skipped on audited SHA `22bd3d887cef3c077e714e5ec21e70ba89855d46`; target MySQL verification did not run. This is historical evidence, not a fresh CI result.
+- No database was connected to, dropped or reset as part of this P1 documentation work.
+- No Java/TypeScript runtime code or active migration path was changed as part of this P1 documentation work.
+- Current GitHub connector session has not produced evidence of a local compile/test/lint/typecheck run or a fresh MySQL 8.4 verification. These checks must not be marked PASS.
 
-## 5. P1 exit decision
+## 5. Exit decision
 
-P1 may be accepted as a **documentation checkpoint** only when a reviewer confirms the deliverables and compatibility map are complete for the intended scope. It is **not approved as a frozen implementable data contract** while DB-03/DB-05 proposals lack explicit owner acceptance or the identified schema/API contradictions remain unresolved.
+**P1: PARTIAL. P2 readiness: BLOCKED.**
 
-**P2 readiness: BLOCKED.** Before P2 starts, obtain owner answers for DB-01/02/03/05/06/07/08/09/10/11, synchronize the logical contract, physical data dictionary, SQL proposal, API/DTO compatibility and invariant matrix, then verify the target on an explicitly disposable MySQL 8.4 database. Do not reset or switch any non-disposable/shared database as part of that verification.
-
-## 5. Design proposals — not approval evidence
-
-`P1-design-proposals-DB-03-DB-05.md` now specifies proposed stock movement timing, ledger semantics, row locking/atomicity, receipt/cancellation retry, stateless quote lifecycle, order-time recalculation, integer-VND arithmetic and idempotency behavior. It also explicitly identifies capabilities that may not fit the owner-approved 31-table ERD. No schema/runtime changes or MySQL tests were performed as part of this documentation update. Therefore P1 remains PARTIAL pending owner decision and reviewer evidence; P2 is not authorized by this status.
+The logical ERD and owner decisions are documented, but the implementable contract cannot truthfully be frozen while DB-03/DB-05 are proposals, integer-VND conflicts with the canonical ERD, and image history, voucher consumption and return/refund persistence lack a confirmed representation. Resolve these contract gaps explicitly, synchronize the ERD/dictionary/API/DTO/invariants/SQL, then run the acceptance suite against a disposable MySQL 8.4 database. Do not perform destructive operations on production or shared environments.
