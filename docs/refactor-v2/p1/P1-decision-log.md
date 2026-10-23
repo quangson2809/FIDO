@@ -1,15 +1,15 @@
 # P1 — Decision Log
 
-> **Reconciliation note — 2026-10-23:** The approved target currently includes ORDERS.request_fingerprint, ORDER_ITEMS.image_url_snapshot, VOUCHERS.usage_count, GOODS_RECEIPTS.warehouse_id, PAYMENTS refund metadata, and integer-VND monetary columns. The target fields exist; presence does not approve DB-03/05/06/07/08 transaction, quota, retention or refund semantics. DB-03 and DB-05 remain unapproved owner-requested design proposals; DB-12 has no owner-approved deletion/FK/retention matrix. Do not authorize P2 reset from schema-only evidence.
+> **Owner approval recorded — 2026-10-23:** DB-03, DB-05 and DB-12 proposals and the proposed DB-01/02/06–11/API defaults were approved. The development/test data policy is Clean Schema Reset: discard disposable legacy test data and rebuild/seed from the 31-table target ERD. DB-12 numeric retention periods remain TBD. See [P1-owner-approval-2026-10-23.md](P1-owner-approval-2026-10-23.md).
 
-**Status: PARTIAL.** The logical ERD is owner-confirmed. Owner choices recorded on 2026-10-23 resolve the direction for DB-01, DB-02 and DB-06 through DB-11. Detailed DB-03/DB-05 proposals are in docs/refactor-v2/p1/P1-design-proposals-DB-03-DB-05.md; they remain unapproved until explicit owner acceptance. Contract synchronization and reviewer evidence remain required before P1 can PASS.
+**Status: PARTIAL — owner decision gates are recorded, but implementation acceptance remains open.** Clean-reset work may proceed only against a verified disposable development/test database. No reset has been executed. Do not activate target migrations in the app until entity/service/API/DTO/frontend mapping and acceptance evidence are ready.
 
 ## APPROVED
 
 | ID | Decision | Evidence/source | Status | Acceptance evidence |
 |---|---|---|---|---|
 | A-01 | Target logical schema is the owner-confirmed ERD v2 with exactly 31 tables. Schema additions need explicit owner amendment. | docs/refactor/phase-1-erd-v2-approved.mmd; docs/refactor/phase-1-erd-v2-contract.md | APPROVED | P2 checks exact table/key/relationship metadata. |
-| A-02 | Clean Schema Reset is permitted only on explicitly disposable development/test databases; old development rows need not be migrated. This does not authorize destructive work on production/shared environments. | docs/refactor/phase-1-owner-decision-questionnaire.md, owner decision 2026-10-22 | APPROVED | P2 fresh isolated MySQL install and target-DB identity verification. |
+| A-02 | Clean Schema Reset: discard disposable legacy development/test rows, create the approved ERD v2 target from a clean baseline and seed it again. No legacy data migration is required. Production, staging, shared integration and real/persistent data are excluded. | Owner approval 2026-10-23; docs/refactor/clean-schema-reset-runbook.md | APPROVED | Fresh isolated MySQL install; verify exact host/database and disposability before any destructive operation. |
 | A-03 | Persisted Cart and order placement require authentication. Guest identity, guest Cart/checkout, guest order lookup and cart merge are out of target scope. | docs/15-technical-decisions.md; docs/04-api-contract.md; frontend/CONTRACT_ALIGNMENT.md, owner decision 2026-10-05 | APPROVED | P2 security tests reject anonymous access to API #14–20. |
 | A-04 | Business baseline is single-merchant, COD-only, one operational warehouse in v1 and manual shipping; no gateway or automatic carrier integration. | docs/00-source-of-truth.md; docs/03-data-model.md; docs/12-tbd-out-of-scope.md | APPROVED | P2 validates scope boundaries. This does not define stock meaning or warehouse persistence. |
 
@@ -23,45 +23,46 @@
 | TD-04 | Represent ACCOUNT_ROLES, ROLE_PERMISSIONS, PRODUCT_ATTRIBUTE_VALUES and INVENTORIES composite keys explicitly. Order-owned one-to-one rows use order_id as PK/FK. | Owner ERD and existing key-mapping convention | TECHNICAL_DECIDED |
 | TD-05 | A self-referencing FK validates reference existence but cannot prevent longer hierarchy cycles. The owner service must protect acyclic changes with concurrency-aware validation. | Owner ERD; docs/06-business-rules-state-machines.md | TECHNICAL_DECIDED |
 
-## PROPOSED — NOT APPROVED
+## OWNER-APPROVED TECHNICAL DEFAULTS — IMPLEMENTATION PENDING
 
-| ID | Topic | Recommendation for owner review | Impact | Status |
-|---|---|---|---|---|
-| P1-PROP-01 | Phone uniqueness | Target DDL uses generated nullable phone_active_key with a unique index, alongside deleted_at, to represent active-only uniqueness. MySQL 8.4 suite on SHA dbd7cb6 passed active duplicate rejection and phone reuse after soft delete; current Account Entity still maps global unique phone. Current Account Entity still uses global unique phone. | Account DDL, registration/login and duplicate behavior. | SCHEMA AND DB TEST PASS; APP MAPPING BLOCKED |
-| P1-PROP-02 | Product hierarchy/inheritance | DB-01 confirms parent and child Products are independently sellable with their own SKU, price and inventory. Hierarchy depth and field inheritance rules for name, slug, description, selling_price, category_id and brand_id remain unresolved; null does not imply inheritance. | Product and Catalog/Cart/Order/receipt/Inventory contracts. | DIRECTION CONFIRMED; DETAILS BLOCKED |
-| P1-PROP-03 | Variant identity | Add a normalized variant signature with a unique scope per parent, or approve another concurrency-safe guard. SKU uniqueness alone is insufficient. | Schema, Product DTO/service and concurrent creation. | PROPOSED; DB-01/02 |
-| P1-PROP-04 | Receipt destination | GOODS_RECEIPTS.warehouse_id and its FK to WAREHOUSES are represented in ERD and draft SQL. With one operational warehouse in v1, the service resolves the active destination instead of trusting arbitrary client warehouse IDs. Target DDL and ordering are verified on MySQL 8.4; live GoodsReceipt Entity/service/API mapping remains unimplemented. | Receipt API, Entity and inventory transaction. | SCHEMA ALIGNED; RUNTIME PENDING |
-| P1-PROP-05 | Adjustment reason | INVENTORY_TRANSACTIONS.reason_code is now represented in the target ERD/DDL. Vocabulary, requiredness, source-event uniqueness and audit semantics still belong to the unapproved DB-03 proposal. | Adjustment API, ledger and audit queries. | PROPOSED; DB-03 NOT APPROVED |
-| P1-PROP-06 | Order image history | ORDER_ITEMS.image_url_snapshot is present in the target ERD/DDL. A stored URL alone does not prove immutable content: stable object versioning, deletion/overwrite behavior and historical access must be defined and tested. | Order DTO, storefront/admin history and asset retention. | FIELD ALIGNED; RETENTION BLOCKED |
-| P1-PROP-07 | Inventory reversals | Define movement type/source/sign/uniqueness for cancel, restock and return; do not reuse ambiguous movement types. | Stock accounting, Order lifecycle and reports. | PROPOSED; DB-03/08 |
-| P1-PROP-08 | Recipient editing | Resolve immutable placement snapshot versus editable delivery details and duplicated ShippingInfo receiver fields. | Order recipient PATCH, shipping and audit. | PROPOSED; DB-07/08 |
-| P1-PROP-09 | Voucher capability | Target VOUCHERS has usage_limit and usage_count plus a bound check; no separate redemption ledger or Product/Category scope joins exist in the target. Atomic increment, global/per-account scope and cancellation/return restoration remain unresolved. | Voucher CRUD/quote/order and concurrency. | SCHEMA REPRESENTED; BEHAVIOR PROPOSED |
-| P1-PROP-10 | COD refund | Target Payment has integer refund_amount, refunded_by_account_id, refunded_at and refund_reason. Column presence does not define full/partial refund, idempotency, allowed actors/transitions, return/restock or audit transaction. | Payment API/DTO/report/audit. | FIELDS REPRESENTED; BEHAVIOR BLOCKED |
-| P1-PROP-11 | Physical SQL contract | Approve every type length, nullability, default, decimal/timestamp precision, status, check, index and FK action. | DDL/JPA/API validation. | PROPOSED; DB-09 |
+The following technical defaults were accepted by the owner on 2026-10-23. "Approved" freezes target behavior; it does not assert that live Java/SQL/API/frontend mappings or acceptance tests already pass.
 
-## OWNER DECISIONS RECORDED — CONTRACT SYNCHRONIZATION REQUIRED
+| ID | Topic | Approved target default | Remaining engineering evidence |
+|---|---|---|---|
+| P1-PROP-01 | Phone uniqueness | Generated active-phone key plus soft-delete timestamp; active phone unique and reusable after soft delete. | Map current Account entity/service and auth flows to deleted_at / generated key; schema checks alone are insufficient. |
+| P1-PROP-02 | Product hierarchy/inheritance | One parent-child level in v1; parent and child each own SKU, required selling price and inventory. No implicit inheritance from NULL; child creation is explicit. | Reconcile ERD, DDL, validation, DTOs and catalog tests. |
+| P1-PROP-03 | Variant identity | No auto-generated variants or attribute-combination signature. Each child Product is explicitly created and identified by its own Product ID/SKU. | Remove legacy Variant-backed contracts; do not silently add variant tables. |
+| P1-PROP-04 | Receipt destination | One operational warehouse; server resolves the active destination rather than trusting a client-selected warehouse. | Map GoodsReceipt entity/service/API to warehouse_id and Product IDs. |
+| P1-PROP-05 | Adjustment reason | Inventory adjustments use a required reason_code, authenticated actor and idempotency/correlation key. | Implement vocabulary, authorization, audit and source deduplication tests. |
+| P1-PROP-06 | Order image history | Image references in orders resolve to immutable object/version content; no overwrite/delete during the retention window. Numeric retention period remains TBD under DB-12. | Stable asset reference and historical-access tests. |
+| P1-PROP-07 | Inventory reversals | Append-only reversal movements with source linkage; no direct ledger edits/deletes and no duplicate semantic source event. | Implement guarded transitions, uniqueness and concurrency tests. |
+| P1-PROP-08 | Recipient editing | Order address is immutable once placed; edits to account address or catalog data do not mutate historical order snapshots. | Align recipient PATCH/API behavior and snapshot tests. |
+| P1-PROP-09 | Voucher quota | Order-wide, non-stackable, global quota; atomic usage increment during successful order placement; one-time release on eligible cancellation; no per-account ledger. | MySQL concurrent last-use and repeated-cancel tests. |
+| P1-PROP-10 | COD refund | One COD Payment aggregate; v1 allows at most one full refund per order. Partial/multiple refunds and detailed item-level return workflows require a future explicit scope/schema amendment. | State/role checks, replay/idempotency, return/restock and atomic audit tests. |
+| P1-PROP-11 | Physical SQL contract | BIGINT identifiers, UTC TIMESTAMP(6), integer VND/BIGINT money, bounded strings and explicit null/default/check/index/FK policies; RESTRICT default for business/history data. | Compare all DDL/JPA mappings to dictionary and verify in MySQL. |
 
-The owner choices received on 2026-10-23 are recorded in the DB-01, DB-02, DB-06, DB-07, DB-08, DB-09, DB-10 and DB-11 rows below. These are decision inputs, not proof that all dependent API/schema documents have already been reconciled. In particular, DB-07's image_url_snapshot field now exists in the draft but asset retention remains open; DB-09 has a candidate generated-key strategy pending reuse-test evidence; DB-10 target ERD/SQL uses integer VND but legacy implementation still uses decimal monetary types.
+## Owner approval scope
 
-## OWNER DESIGN REQUESTS — PROPOSAL REQUIRED
+- DB-01, DB-02, DB-06–DB-11 defaults are owner-approved as frozen in [P1-owner-approval-2026-10-23.md](P1-owner-approval-2026-10-23.md).
+- DB-03 and DB-05 design proposals are explicitly APPROVED on 2026-10-23; their implementation and behavioral/concurrency tests are not yet accepted as passing.
+- DB-12 entity lifecycle/FK defaults are APPROVED. Numeric data, audit and image-retention durations remain TBD; automatic purging must not be implemented until those durations are decided.
+- The confirmed business scope stays single-merchant, COD-only, one operational warehouse, manual shipping, authenticated Cart/order placement, Product-ID inventory and integer-VND money.
 
-DB-03 and DB-05 are not unresolved because the owner has failed to choose an option: the selected option explicitly requests a design proposal. Proposal exists at docs/refactor-v2/p1/P1-design-proposals-DB-03-DB-05.md. Explicit owner acceptance/revision is still required before claiming contract freeze.
+## APPROVED TARGET CONTRACT DETAILS — IMPLEMENTATION ACCEPTANCE REQUIRED
 
-## CONTRACT RECONCILIATION / ACCEPTANCE REQUIRED — OWNER DIRECTIONS ALREADY RECORDED
-
-| ID | Unresolved question | Recommended direction (not approval) | Consequence if wrong | Required tests |
-|---|---|---|---|---|
-| DB-01 | Product parent/child | OWNER DECISION RECORDED: both parent and child Products are sellable; each record has its own SKU, price and inventory. Child creation is explicit; parent/child identity and API behavior must honor this. | Parent and child must not accidentally share SKU, price or stock; legacy Variant IDs still need API compatibility mapping. | Parent and child sellability, independent SKU/price/stock, parent/child cycle, API-ID compatibility. |
-| DB-02 | Dynamic attributes | OWNER DECISION RECORDED: dynamic attributes are descriptive only and do not generate variants. Child Products are created explicitly. Typed value validation and attribute/option ownership still need to be specified in the contract. | Do not derive SKU/Product rows or uniqueness from attribute combinations. | Type matrix, wrong option ownership, requiredness where configured, explicit child creation. |
-| DB-03 | Inventory/receipt/ledger mechanics | Proposal required per owner choice D; see P1-design-proposals-DB-03-DB-05.md. A-04 fixes one operational warehouse; do not reopen warehouse count. | Proposal is not accepted; movement reasons/reversals must fit the approved schema. | Concurrent receive/order/adjust/cancel plus ledger consistency. |
-| DB-05 | Quote/idempotency | Proposal required per owner choice D; target Order draft contains globally unique idempotency_key and request_fingerprint CHAR(64), and target ERD has no CHECKOUT_QUOTES table. | Proposal is not accepted; key scope/canonical fingerprint/replay/conflict/retention are not implemented in the current legacy Order/API/FE flow. | Lost-response retry, concurrent retry, changed-payload conflict, account isolation and repricing. |
-| DB-06 | Voucher | OWNER DECISION RECORDED: order-wide, non-stackable, no Product/Category conditions. Target has usage_count and usage_limit, but their increment, per-account/global scope and cancellation/return restoration remain open. | Draft counter exists; atomic redemption and usage-limit semantics are not yet approved or verified. | Eligibility, concurrent last-use, cancellation retry and total reconciliation. |
-| DB-07 | Order snapshots | OWNER DECISION RECORDED: complete order-time data snapshots and immutable image-retention policy. Target draft now includes ORDER_ITEMS.image_url_snapshot and separate ORDER_ADDRESSES. | Retained immutable image object/version, address/history immutability and historical access are not yet evidenced by application code or integration tests. | Catalog/image/address mutations, historical DTO and snapshot completeness. |
-| DB-08 | Payment/shipping | OWNER DECISION RECORDED: COD with Order lifecycle, cancellation, returns and refund. Target draft includes refund amount, actor, time and reason columns. | Partial/full refund, retry/idempotency, allowed transitions, role authorization, return/restock and audit atomicity remain to be designed and tested; current code supports only full refund after RETURNED. | State-transition matrix, duplicate refund/collection, authorization and stock effects. |
-| DB-09 | Physical/account/audit lifecycle | OWNER DECISION RECORDED: phone may be reused after an account is soft-deleted; phone is unique among active accounts. Physical uniqueness strategy, soft-delete semantics, lengths/null/defaults/status/index/FK actions and audit policy must be consistent with that rule. | A conventional global UNIQUE(phone) would incorrectly block reuse after soft delete. | MySQL run 39904931447 passed active duplicate rejection and deleted-phone reuse; auth flow and audit redaction remain unverified. |
-| DB-10 | Money/currency/rounding | OWNER DECISION RECORDED: VND only; store money as integers. Freeze rounding and order-level discount allocation so totals reconcile exactly across quote/order/items/voucher/refund/report. | Existing draft DECIMAL(18,2) is incompatible with this decision unless explicitly redesigned; do not retain it by inertia. | Multi-line rounding, boundary values, discount allocation, integer VND totals and reconciliation. |
-| DB-11 | System seed/bootstrap | OWNER DECISION RECORDED: seed roles/permissions through Flyway; bootstrap SUPERADMIN separately via external secret configuration; keep demo fixtures separate. No credentials may be hardcoded or committed. | Missing initial admin, privilege drift or secret/demo-account leakage. | Fresh-install seed completeness/idempotency, role grants, no credentials in source and last-SUPERADMIN protection. |
-
+| ID | Approved target contract | Remaining acceptance evidence |
+|---|---|---|
+| DB-01 | Parent/child Products independently sellable; one hierarchy level; each row owns SKU, required selling price and inventory; no implicit NULL inheritance; children explicit. | Parent/child validation, acyclic graph, API/DTO compatibility and independent-stock tests. |
+| DB-02 | Attributes are descriptive, not variant generators. OPTION, TEXT, NUMBER, BOOLEAN; one value per Product/Attribute pair; option must belong to the same Attribute. | Typed-value validation, metadata visibility/order and DTO tests. |
+| DB-03 | Approved movement types/source/sign rules, source-derived dedupe, guarded non-negative balance updates, deterministic locks, append-only reversals and atomic source/balance/ledger/audit. | Concurrent receipt/order/adjustment/cancel/return tests and ledger-vs-balance reconciliation on MySQL. |
+| DB-05 | Stateless quote; reprice at placement; account-scoped key and canonical SHA-256 request fingerprint; same payload replays; changed payload conflicts; one atomic order write set. | Lost-response replay, same-key concurrency, payload conflict, rollback injection and account isolation tests. |
+| DB-06 | Order-wide/non-stackable/global quota; atomic count update; one-time restoration for eligible cancellation; no per-account quota ledger. | Concurrent last-voucher test and cancellation retry tests. |
+| DB-07 | Order-time address/product/voucher/image snapshots; stable immutable image content; historical order remains stable after source edits. | Asset immutability/history integration tests; numeric retention duration remains TBD. |
+| DB-08 | COD, one Payment aggregate, manual shipping, explicit state/actor matrix; at most one full refund; no partial/multiple refund or detailed item-level return workflow in v1. | State-transition, authorization, duplicate collection/refund, stock reversal and audit atomicity tests. |
+| DB-09 | Active-phone uniqueness with reuse after soft delete; physical nullability/defaults/indexes/checks/FKs follow approved dictionary and lifecycle rules. | JPA/service mapping, schema-validation and delete/FK tests. |
+| DB-10 | VND-only integer money; HALF-UP order discount rounding; largest-remainder line allocation with stable product_id tie-break; all totals reconcile exactly. | Multi-line/boundary allocation and API/Java/frontend/report reconciliation tests. |
+| DB-11 | Flyway seeds required roles/permissions; SUPERADMIN bootstrap uses external secret/config; demo fixture is separate and contains no credentials. | Fresh-install, seed repeatability, external bootstrap and secret scan. |
+| DB-12 | Approved soft-delete/immutable-history/FK defaults; RESTRICT except approved disposable dependent working data; no hard deletion of posted Order/Payment/ledger/audit history. | Per-module delete/FK tests; numeric retention periods and anonymization exceptions remain TBD. |
 ## DEFERRED
 
 | ID | Item | Scope/evidence | Status |
@@ -74,17 +75,20 @@ DB-03 and DB-05 are not unresolved because the owner has failed to choose an opt
 
 ## Status counts
 
-- APPROVED: 4
-- TECHNICAL_DECIDED: 5
-- PROPOSED: 11 (technical/schema recommendations; not owner-approved)
-- OWNER DECISIONS RECORDED: DB-01, DB-02, DB-06, DB-07, DB-08, DB-09, DB-10, DB-11 (contract synchronization and schema-fit acceptance still required)
-- OWNER DESIGN REQUESTS: DB-03, DB-05 (proposal exists; explicit acceptance still required)
-- PROPOSAL_REVIEW_REQUIRED: 2 (DB-03, DB-05; proposal documented, explicit owner acceptance pending)
-- DEFERRED: 5
+- APPROVED scope decisions: A-01 through A-04.
+- TECHNICAL_DECIDED: TD-01 through TD-05.
+- OWNER-APPROVED CONTRACTS: DB-01 through DB-12 as scoped in the 2026-10-23 owner approval record.
+- OWNER-APPROVED DESIGN PROPOSALS: DB-03 and DB-05.
+- REMAINING OWNER INPUT: numeric retention durations for audit logs, image assets and personal/business data, plus any legally required anonymization exceptions.
+- IMPLEMENTATION ACCEPTANCE OPEN: runtime mappings, business/security/concurrency tests, bootstrap secret audit, exact-SHA CI and frontend compatibility.
 
-DB-04 (guest checkout) is resolved by A-03 and is not an active blocker. A-04 also fixes one operational warehouse in v1. DB-03 concerns the mechanics within that approved scope, not warehouse count. A later explicit owner amendment may reopen resolved scope. Current code evidence shows the live GoodsReceipt/Inventory paths still key items by variant_id; the target schema keys inventory by warehouse_id/product_id and requires a service/API remap.
+DB-04 (guest checkout) remains resolved by A-03; guest Cart/order lookup/cart merge are out of scope. A-04 fixes one operational warehouse in v1; DB-03 covers mechanics within that scope, not warehouse count. Live GoodsReceipt/Inventory paths still need to be remapped from legacy variant IDs to Product IDs.
 
+## DB-12 — Deletion and history retention (OWNER-APPROVED DEFAULTS; DURATION TBD)
 
-## DB-12 — Entity deletion and history retention (NOT APPROVED)
-
-No explicit owner-approved per-entity delete lifecycle matrix has been evidenced. This decision must remain open until Product, Account, Voucher, Warehouse, Inventory, InventoryTransaction, Order, OrderItem, OrderAddress snapshot, Payment and AuditLog each specify: soft delete versus hard delete; whether deletion is forbidden; FK RESTRICT/CASCADE/SET NULL behavior; historical retention; and the effect on unique-key reuse. The current target draft uses soft-delete timestamps for Account and Product and restrictive FKs by default, and treats ledger/audit/order snapshots as historical. Those draft choices are not equivalent to an owner-approved DB-12 policy.
+- Soft-delete Account; enforce active-phone uniqueness and permit phone reuse only after soft delete.
+- Soft-delete/disable Product, Category, Brand, Attribute/Option, Voucher and Warehouse; reject hard delete while referenced.
+- Preserve posted Order, OrderItem, OrderAddress, Payment snapshots, InventoryTransaction and AuditLog history; correct ledger history through reversal entries.
+- RESTRICT is the default FK action for business/history rows. CASCADE is limited to approved disposable dependent working data such as CartItems. SET NULL requires an explicit optional-reference justification.
+- Numeric retention durations and anonymization exceptions remain TBD. Do not implement scheduled deletion/purging of history or image assets until those periods are approved.
+- This lifecycle policy does not prevent a Clean Schema Reset on a separately verified disposable development/test database; that reset discards the database's existing test rows and reseeds from the target baseline.
