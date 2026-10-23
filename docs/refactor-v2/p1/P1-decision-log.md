@@ -45,14 +45,14 @@ The owner choices received on 2026-10-23 are recorded in the DB-01, DB-02, DB-06
 
 DB-03 and DB-05 are not unresolved because the owner has failed to choose an option: the selected option explicitly requests a design proposal. Proposal exists at docs/refactor-v2/p1/P1-design-proposals-DB-03-DB-05.md. Explicit owner acceptance/revision is still required before claiming contract freeze.
 
-## OPEN_BLOCKED — OWNER DECISION / DESIGN ACCEPTANCE REQUIRED
+## CONTRACT RECONCILIATION / ACCEPTANCE REQUIRED — OWNER DIRECTIONS ALREADY RECORDED
 
 | ID | Unresolved question | Recommended direction (not approval) | Consequence if wrong | Required tests |
 |---|---|---|---|---|
 | DB-01 | Product parent/child | OWNER DECISION RECORDED: both parent and child Products are sellable; each record has its own SKU, price and inventory. Child creation is explicit; parent/child identity and API behavior must honor this. | Parent and child must not accidentally share SKU, price or stock; legacy Variant IDs still need API compatibility mapping. | Parent and child sellability, independent SKU/price/stock, parent/child cycle, API-ID compatibility. |
 | DB-02 | Dynamic attributes | OWNER DECISION RECORDED: dynamic attributes are descriptive only and do not generate variants. Child Products are created explicitly. Typed value validation and attribute/option ownership still need to be specified in the contract. | Do not derive SKU/Product rows or uniqueness from attribute combinations. | Type matrix, wrong option ownership, requiredness where configured, explicit child creation. |
-| DB-03 | Inventory/receipt/ledger mechanics | Decide quantity_on_hand meaning, when order stock is deducted, how receipts/adjustments bind to the already-approved single operational warehouse, movement sources/signs, reversals/reasons and concurrency. A-04 already fixes the warehouse count to one; do not reopen that decision. | Stock drift/negative stock, ambiguous receipt destination and unsearchable adjustment reason. | Concurrent receive/order/adjust/cancel plus ledger consistency. |
-| DB-05 | Quote/idempotency | Decide key origin/location/scope, payload binding, replay/conflict behavior, retention, mandatory behavior and quote lifecycle. Recommendation: Idempotency-Key UUID, same-payload replay, changed-payload conflict, preview-only quote with order-time recalculation. | Unique key alone does not bind payload/replay; target has no CHECKOUT_QUOTES table. | Lost-response retry, concurrent retry, conflicting payload, account isolation and repricing. |
+| DB-03 | Inventory/receipt/ledger mechanics | Proposal required per owner choice D; see P1-design-proposals-DB-03-DB-05.md. A-04 fixes one operational warehouse; do not reopen warehouse count. | Proposal is not accepted; movement reasons/reversals must fit the approved schema. | Concurrent receive/order/adjust/cancel plus ledger consistency. |
+| DB-05 | Quote/idempotency | Proposal required per owner choice D; see P1-design-proposals-DB-03-DB-05.md. Proposal recommends advisory quote and order-time recalculation. | Proposal is not accepted; target has no CHECKOUT_QUOTES table or explicit request-fingerprint field. | Lost-response retry, concurrent retry, conflicting payload, account isolation and repricing. |
 | DB-06 | Voucher | OWNER DECISION RECORDED: simple order-wide voucher only; non-stackable; no product/category conditions. Remaining contract must define formula, time/usage limits, consumption point and cancellation behavior without silently adding target tables. | Target has no product/category scope joins or usage ledger; usage limits must not be claimed unless representable and approved. | Eligibility matrix, concurrent use where limits exist, cancellation retry and total reconciliation. |
 | DB-07 | Order snapshots | OWNER DECISION RECORDED: complete order snapshots with an immutable image-retention policy. The exact image snapshot field/storage/retention contract must be aligned with the 31-table ERD; do not add a column without an explicit ERD amendment. | Historical order view must not change when the live Product/image changes; current ERD has no ORDER_ITEMS.image_url_snapshot. | Catalog/image/address mutations, historical DTO and snapshot completeness. |
 | DB-08 | Payment/shipping | OWNER DECISION RECORDED: COD with an Order state machine, including allowed transitions, cancellation, returns and refund. Detailed states and refund persistence/attribution must be proposed and reconciled with the target ERD; structured return workflow remains out of scope unless approved. | Order state alone may not represent return details or refund amount/actor/time. | State-transition matrix, duplicate refund/collection, authorization and stock effects. |
@@ -66,7 +66,7 @@ DB-03 and DB-05 are not unresolved because the owner has failed to choose an opt
 |---|---|---|---|
 | DEF-01 | Notification provider/templates/events/retry/retention persistence | No notifications table in target; documents treat it as phase-later/TBD. | DEFERRED |
 | DEF-02 | Online gateway and automatic carrier API/tracking events | Outside COD/manual-shipping baseline. | DEFERRED |
-| DEF-03 | Structured item-level return/exchange and automatic refund/restock workflow | No return tables; Order state alone is not a return record. | DEFERRED |
+| DEF-03 | Structured item-level return/exchange and automatic refund/restock workflow | Owner requires an Order state machine including returns/refund, but current ERD lacks normalized return/refund persistence. State transitions may be specified; full item-level workflow remains blocked unless schema is amended. | PARTIAL — lifecycle direction is in scope; detailed persistence is not representable yet |
 | DEF-04 | Dedicated Order timeline endpoint/table | Current baseline uses current state plus audit; separate timeline not approved. | DEFERRED |
 | DEF-05 | Guest sessions/cart/checkout/lookup/cart merge | Excluded by A-03 unless owner formally amends scope. | DEFERRED |
 
@@ -74,9 +74,9 @@ DB-03 and DB-05 are not unresolved because the owner has failed to choose an opt
 
 - APPROVED: 4
 - TECHNICAL_DECIDED: 5
-- PROPOSED: 11
-- OWNER DECISIONS RECORDED: DB-01, DB-02, DB-06, DB-07, DB-08, DB-09, DB-10, DB-11 (contract synchronization and acceptance evidence still required)
-- OWNER DESIGN REQUESTS: DB-03, DB-05 (proposal and explicit owner acceptance still required)
+- PROPOSED: 11 (technical/schema recommendations; not owner-approved)
+- OWNER DECISIONS RECORDED: DB-01, DB-02, DB-06, DB-07, DB-08, DB-09, DB-10, DB-11 (contract synchronization and schema-fit acceptance still required)
+- OWNER DESIGN REQUESTS: DB-03, DB-05 (proposal exists; explicit acceptance still required)
 - PROPOSAL_REVIEW_REQUIRED: 2 (DB-03, DB-05; proposal documented, explicit owner acceptance pending)
 - DEFERRED: 5
 
