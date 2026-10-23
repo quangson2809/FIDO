@@ -96,3 +96,12 @@ Detailed named PK/FK/UNIQUE/CHECK/index definitions are extracted in the per-col
 | Voucher caps | Unique code only | Eligibility, serialized count and cancellation release |
 | Idempotent replay | Unique key only | Payload binding, account scope, response replay and retention |
 | Audit privacy | JSON column validity | Field allowlist, redaction, actor and correlation correctness |
+
+## Contract/schema fit checks added from owner decisions
+
+- **DB-03 inventory ledger:** confirm whether the approved `INVENTORY_TRANSACTIONS` columns can represent signed quantity delta, source identity, movement reason/type and reversal linkage. A transaction ledger must not be described as idempotent or fully auditable unless the schema has enforceable source uniqueness/reversal semantics or the limitation is explicitly accepted. Do not add a column/table without owner amendment.
+- **DB-05 idempotency:** durable multi-instance create-order idempotency needs a unique key scope, canonical request hash and resulting Order identity persisted and arbitrated by the database. If none of the approved 31 tables can store these without overloading unrelated fields, this is an ERD capability gap; application-local locks are not an acceptable substitute. Owner must choose an ERD amendment or explicitly weaker contract.
+- **DB-07 image history:** `ORDER_ITEMS` has no explicit image snapshot field in the approved ERD. A foreign key/reference to mutable `PRODUCT_IMAGES` is not by itself an immutable historical snapshot. Evidence an immutable asset/version retention design using existing schema, or obtain an owner-approved ERD amendment; otherwise narrow the guarantee transparently.
+- **DB-09 active-only phone uniqueness:** global `UNIQUE(phone)` is incompatible with reuse after soft delete. The selected MySQL 8.4 physical mechanism must be tested on the target engine and documented; do not infer it from H2.
+- **DB-10 integer VND:** every amount column and DTO involved in Product price, voucher discount, Cart/Order line totals, shipping and Payment must be integer VND with overflow-safe range limits. Existing DECIMAL proposal is superseded, not approved.
+- **DB-06/08:** no voucher redemption-limit guarantee or complete return/refund workflow until existing columns and unique/transaction constraints are proven sufficient. Do not add business tables/columns silently.
