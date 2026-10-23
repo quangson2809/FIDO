@@ -1,46 +1,52 @@
-# Clean Schema Reset — target baseline
+# Clean Schema Reset — Target Baseline Runbook
 
-> **Owner approval recorded (2026-10-23):** Clean Schema Reset is approved for a verified disposable local/development/test database. Discard all existing disposable development/test rows and recreate/seed from the approved 31-table ERD v2; do not migrate legacy test records. This is not an instruction to reset an unspecified database and does not authorize any production, staging, shared-integration or real/persistent data deletion. No reset was executed by recording this decision. P1 remains PARTIAL pending runtime mapping and acceptance evidence; numeric retention periods remain TBD under DB-12. Money is integer VND/BIGINT per DB-10.
+> **Authorization boundary:** The owner approved a clean reset only for a verified disposable local/development/test database. Discard disposable test data and create/reseed from the approved 31-table ERD v2. This does not authorize resetting production, staging, shared integration or any database with persistent business data. No database reset was performed by this documentation change.
 
-## Scope
+## 1. Target authority
 
-This directory holds the owner-confirmed 31-table target schema in a separate Flyway location while the application entity/API rewrite is in progress. It is intentionally not the default application migration location yet: activating it before JPA mappings and service contracts are aligned would make the current application fail schema validation.
+- Logical schema: [owner-approved ERD v2](phase-1-erd-v2-approved.mmd).
+- Physical schema: [canonical P1 data dictionary](../refactor-v2/p1/P1-data-dictionary.csv).
+- Required system seed: `backend/src/main/resources/db/clean-reset/V2__system_seed.sql`.
+- Approved rules: [P1 owner approval](../refactor-v2/p1/P1-owner-approval-2026-10-23.md) and [decision log](../refactor-v2/p1/P1-decision-log.md).
 
-- Logical authority: `docs/refactor/phase-1-erd-v2-approved.mmd`
-- Target DDL: `backend/src/main/resources/db/clean-reset/V1__clean_schema.sql`
-- Required non-secret RBAC seed: `backend/src/main/resources/db/clean-reset/V2__system_seed.sql`
-- Development/test records: `backend/src/test/resources/clean-reset/dev-seed.sql`
-- Verification: `com.fido.persistence.CleanResetSchemaTests`
+The clean-reset Flyway location is isolated from the active default migration path until application mappings and acceptance gates are ready. Do not activate it merely to make a schema reset happen.
 
-## Working implementation defaults
+## 2. Preflight — mandatory
 
-1. Phone is the unique login identifier; email is nullable and non-unique.
-2. New persisted carts/orders require an authenticated account.
-3. Products use a shared parent/child table; Size and Color are option-backed, variant-defining attributes. Prevent self-parent/cycles in service validation: MySQL 8.4 rejects CHECK constraints that reference an AUTO_INCREMENT id.
-4. Voucher behavior is limited to target fields; persisted checkout quote and voucher-scope join tables are not used.
-5. Currency is VND. Order `discount_amount` represents all order discounts (including line discounts); total is `subtotal - discount_amount + shipping_fee`. A line's `line_total` equals `unit_price * quantity - line discount_amount`.
-6. The initial payment method is COD; one payment aggregate per order.
-7. Order address is an immutable snapshot copied at placement.
-8. New order and inventory writes require unique idempotency keys; same key/same payload replays, same key/conflicting payload returns conflict.
-9. BIGINT IDs, integer-VND/BIGINT monetary columns per DB-10 (DECIMAL is non-money only), TIMESTAMP(6) UTC. DB-12 approved RESTRICT as the default for business/history rows, with CASCADE limited to approved disposable dependent working data. Numeric retention durations/anonymization exceptions remain TBD; do not schedule purges until they are approved.
-10. Required roles/permissions are Flyway-seeded; bootstrap SUPERADMIN is configured by an external secret/configuration path; demo data is a separate non-migration development/test fixture with no committed account credentials. The reset does not preserve old fixture rows; load the approved fixture again after creating the clean target baseline.
+Before any destructive action:
 
-These defaults are owner-approved target behavior and do not expand the 31-table model. Implementation must still prove them through schema/application tests. Any business change must be recorded as an explicit contract/ERD amendment before implementation.
+1. Identify the exact host, port, database name and active application profile.
+2. Verify that the target is a disposable local/development/test database and contains no persistent, shared or real business data.
+3. Confirm the candidate commit and that the target DDL/system seed passed the required exact-SHA static checker and fresh MySQL tests.
+4. Review the actual reset command and database credentials; do not derive a reset target from an unspecified environment variable.
+5. Stop if the database identity or disposability cannot be proven. Never attempt an exploratory reset against an unknown database.
 
-## Run the schema tests
+## 3. Target model invariants
 
-From `backend/`:
+- The target contains exactly the 31 logical tables in the canonical ERD.
+- Parent/child Products share `PRODUCTS`, with one parent-child level. Children are explicit Product records; each owns its Product ID, SKU, required integer-VND selling price and stock. No implicit NULL inheritance exists.
+- Attributes `OPTION`, `TEXT`, `NUMBER` and `BOOLEAN` are descriptive only. They do not generate child Products. Every option belongs to its owning Attribute.
+- Cart, order lines, receiving lines and inventory balances/transactions refer to `product_id`, never a variant identifier.
+- Stock is keyed by `(warehouse_id, product_id)`. The v1 server resolves one operational warehouse. Stock ledger changes are append-only and atomic with source state/balance/audit.
+- Quote is stateless/advisory. No persisted quote ID, stock reservation or voucher side effect is part of the target.
+- Money is integer VND. Order placement re-prices current data and uses authenticated account-scoped idempotency.
+- One COD Payment aggregate per Order and manual shipping. Preserve placed-order snapshots, payment facts, stock ledger and audit according to the approved lifecycle/FK rules.
 
-```bash
-./gradlew test --tests com.fido.persistence.CleanResetSchemaTests
-```
+## 4. Schema and seed sequence
 
-**Default behavior:** with `CLEAN_RESET_TEST_DB_URL` unset, tests use unique in-memory H2 databases in MySQL compatibility mode and execute only `db/clean-reset`.
+1. Validate the canonical ERD, target SQL, dictionary and consistency checker agree on the same table/column/key set.
+2. Apply the target baseline to a newly created empty isolated MySQL database, not to a database whose history or contents are unknown.
+3. Apply required system roles/permissions and reference data through the approved migration seed.
+4. Load demo fixtures only through an explicit development/test mechanism after target mappings are ready. Demo seed must not contain secrets or reusable plaintext passwords.
+5. Start the application only after JPA/entity mappings are aligned to the target schema; validate startup and module-level behavior.
+6. Verify the installed table set, keys, foreign keys, checks, defaults, indexes and seed contents. Run API, security, transaction, concurrency and frontend acceptance tests on the exact candidate SHA.
 
-**MySQL integration behavior:** if `CLEAN_RESET_TEST_DB_URL` is set, the test switches to that MySQL URL and reads `CLEAN_RESET_TEST_DB_DRIVER`, `CLEAN_RESET_TEST_DB_USERNAME` and `CLEAN_RESET_TEST_DB_PASSWORD`. The test code restricts the URL host to `127.0.0.1` or `localhost`, but it calls `flyway.clean()` during cleanup and therefore can drop objects in the selected database. Use only an empty, dedicated, disposable test database; never point these variables at shared or production data. The GitHub Actions target-schema workflow supplies a disposable MySQL service through these test-specific variables.
+Do not preserve, migrate or crosswalk disposable legacy test records solely for the reset.
 
-## Demo fixture safety
+## 5. Verification and status
 
-Load the demo fixture only after the target baseline and target application mappings are ready, and only in a disposable local/development/test database. It creates catalog, options, warehouse, inventory and a voucher; it does not create demo accounts or credentials.
+The reset is not complete until a fresh install and its schema/seed checks are evidenced. Runtime acceptance remains separate: Entity/Repository/Service/API/DTO/frontend, auth/RBAC, Product attributes, Cart/order, integer-VND math, inventory/ledger, voucher quota, Payment/shipping and snapshot behavior must be verified.
 
-Before running a database command, verify host and database name. This decision does not authorize reset/drop operations against production/shared/staging.
+**Retention caveat:** numeric audit/image/personal-data retention periods and anonymization exceptions remain TBD. Do not schedule a purge of retained history or assets until those decisions are approved.
+
+**Current state:** the clean-reset DDL and system seed remain isolated; this runbook is not an execution log. No database was reset by this documentation work.
