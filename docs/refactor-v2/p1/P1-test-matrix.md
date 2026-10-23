@@ -15,7 +15,7 @@
 | T-ATTR-01 | Typed attributes | OPTION/TEXT/NUMBER/BOOLEAN values match the declared Attribute type; exactly one compatible typed value. | Unit/API and database constraint tests. |
 | T-ATTR-02 | Option ownership / variant metadata | Cross-Attribute option rejected; is_variant_defining does not create Products or generate sale identity. | MySQL FK/composite-check + service tests. |
 | T-CART-01 | Authenticated Cart item CRUD | Lines use product_id; positive quantity; account/line ownership enforced; mutations never reserve stock. | API/integration tests, including multiple Cart rows if present. |
-| T-CART-02 | Current Cart selection | The implementation has a documented deterministic resolution rule if multiple Cart rows exist; no implicit one-active-Cart constraint or merge. | API contract review and service tests. |
+| T-CART-02 | Current Cart selection | The API/workflow contract explicitly defines and tests current-Cart selection if multiple Cart rows exist; do not infer one-active-Cart uniqueness or merge from the schema. | API contract review and service tests. |
 | T-QUOTE-01 | Quote calculation | Stateless/advisory; no quote row/ID, stock reservation, voucher mutation or Order side effect. | Database write-set assertions around quote calls. |
 | T-ORDER-01 | Order placement reprice | Reload current Product eligibility/price, stock, voucher and server-owned shipping inputs. | Price/stock/voucher race integration. |
 | T-IDEM-01 | Same key and same semantic payload | Concurrent duplicate requests produce one committed Order and replay the same result. | Real MySQL multi-transaction/API retry test. |
