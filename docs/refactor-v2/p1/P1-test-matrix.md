@@ -1,6 +1,6 @@
 # P1 — Invariant and Test Matrix
 
-**Status: PARTIAL.** These are P2 acceptance requirements, not tests executed in P1. P0 recorded 196 H2 tests, 3 failures and 1 skipped; target MySQL verification did not run.
+**Status: PARTIAL.** These are acceptance requirements, not tests executed in this P1 documentation pass. Historical P0 baseline recorded 196 H2 tests, 3 failures and 1 skipped; target MySQL verification did not run. The DB-03/DB-05 design proposal is not owner-approved, and P1 does not claim these tests pass.
 
 | Test | Condition | Allowed | Forbidden | Protection | Acceptance evidence | Decision |
 |---|---|---|---|---|---|---|
@@ -20,8 +20,8 @@
 | T-PRICE-01 | Product price changes after quote | Reprice at Order commit | Trust client quote total | Order transaction | Price-race integration | DB-05/06/07 |
 | T-IDEM-01 | Same key/payload after response loss | Replay committed Order | Duplicate Order/items/payment/stock/usage | Unique key/transaction | Concurrent MySQL HTTP retry | DB-05 |
 | T-IDEM-02 | Same key/different payload or account | Deterministic conflict and account isolation | Payload mutation or cross-account leak | Service/security | API contract security tests | DB-05 |
-| T-MONEY-01 | Integer VND multi-line discount/shipping calculation | Every stored amount is integer VND and order totals reconcile exactly under the approved rounding/allocation rule | Fractional VND, negative/inconsistent totals or undocumented rounding | Integer-money domain/service | Property and boundary tests + MySQL: fractional input rejection, discount allocation, quote/order/report reconciliation | DB-06/07/10 |
-| T-VOUCH-01 | Date/min/max/type/scope/stacking | Only approved voucher rules redeem | Legacy scope silently dropped/invented | Voucher service | Parameterized eligibility tests | DB-06 |
+| T-MONEY-01 | Integer VND multi-line discount/shipping calculation | Every stored amount is integer VND and order totals reconcile exactly under the owner-approved rounding/allocation rule; current formula is only proposed | Fractional VND, negative/inconsistent totals or undocumented rounding | Integer-money domain/service | Property and boundary tests + MySQL: fractional input rejection, discount allocation, quote/order/report reconciliation | DB-06/07/10 |
+| T-VOUCH-01 | Date/min/max/type/scope/stacking | Only owner-approved, schema-representable voucher rules redeem; usage caps remain blocked until persistence/concurrency semantics are approved | Legacy scope silently dropped/invented | Voucher service | Parameterized eligibility tests | DB-06 |
 | T-VOUCH-02 | Concurrent final-use/cancel retry | Respect approved cap/restoration | Over-redemption/double restoration | Lock/conditional update | Real MySQL concurrency | DB-06 |
 | T-VOUCH-03 | Legacy voucher-management DTO against target ERD | Only explicitly approved target-representable behavior is exposed | Silent scope/usage feature loss or implicit voucher_products/voucher_categories/voucher_usages tables | Voucher contract + schema | DTO-to-target metadata comparison; contract tests for scope/limits/active_usage and owner-approved reduced-vs-amended schema behavior | DB-06 |
 | T-STOCK-01 | Confirm order with enough/insufficient stock | One deduction at approved transition | Pending deduction/negative/double deduction | Lock/version + transaction | MySQL concurrency; balance=ledger | DB-03 |
