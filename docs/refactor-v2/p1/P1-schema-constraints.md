@@ -1,6 +1,6 @@
 # P1 — Schema Constraints and Physical Contract
 
-**Status: PARTIAL.** The current static contract contains 31 tables and 228 logical fields. Draft SQL has 229 physical columns, including generated ACCOUNTS.phone_active_key. This is not a successful MySQL execution or application compatibility proof.
+**Status: PARTIAL.** Static consistency and isolated MySQL 8.4.13 clean-reset PASS on SHA dbd7cb6a8293068c9939c3c06707c1d182c47030. SQL has 31 tables/229 physical columns, including generated ACCOUNTS.phone_active_key; this does not prove application compatibility or all business behavior.
 
 ## Verified by static source inspection
 
@@ -14,7 +14,7 @@
 
 | Area | Current draft contract | Still required before P1 PASS |
 |---|---|---|
-| Phone identity | Generated nullable phone_active_key with a unique index, released when deleted_at is populated | Execute on MySQL 8.4; verify active duplicate rejection and phone reuse; remap legacy Account entity which still declares global unique phone |
+| Phone identity | Generated nullable phone_active_key with a unique index, released when deleted_at is populated | MySQL 8.4 suite passed active duplicate rejection and reuse after soft delete; remap legacy Account entity which still declares global unique phone |
 | Product hierarchy | Self-FK, unique SKU, selling/cost price checks | Define allowed depth, cycle-safe updates, and per-field inheritance/NULL semantics; target Product API remains legacy Variant-based |
 | Dynamic attributes | Composite FK on option_id + attribute_id and CHECK that one typed value is set | Verify Attribute type compatibility, requiredness, and type-change behavior when values already exist |
 | Inventory | Composite PK warehouse_id/product_id, nonnegative quantity/version | Concurrency-safe guarded balance updates, stable lock ordering, source uniqueness, exact balance=ledger and rollback semantics; DB-03 not approved |
@@ -25,6 +25,12 @@
 | Voucher | usage_limit plus usage_count bound check | Atomic increment/restoration, scope (global/per-account), cancellation semantics, and concurrency test; draft column does not prove behavior |
 | Payment/refund | COD-only status, refund amount/actor/time/reason checks | Define partial/full refund semantics, idempotency, authorization, return/restock and audit atomicity |
 | RBAC/audit | Composite role assignment keys, named FK/check constraints, system seed separate from demo fixtures | Fresh install seed test, external-secret bootstrap verification and audit redaction/security checks |
+
+## Runtime evidence
+
+- [Clean Schema Reset target verification — run 39904931447](https://github.com/quangson2809/FIDO/actions/runs/39904931447): SUCCESS using MySQL 8.4.13.
+- [Backend verification — run 39904931498](https://github.com/quangson2809/FIDO/actions/runs/39904931498): SUCCESS, including H2 test suite and MySQL migration/mapping step.
+- These runs validate clean-reset DDL, schema metadata, selected constraints and existing backend test jobs. They do not test every target business behavior.
 
 ## Exit blockers
 
