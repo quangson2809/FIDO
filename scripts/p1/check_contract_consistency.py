@@ -115,20 +115,49 @@ def parse_sql(text):
             if nm:
                 named.add(nm.group(1))
     indexes = {}
+    unique_index_columns = set()
     ip = re.compile(r"\bCREATE\s+(UNIQUE\s+)?INDEX\s+([A-Za-z0-9_]+)\s+ON\s+([A-Za-z0-9_]+)\s*\(([^)]+)\)", re.I)
     for m in ip.finditer(text):
+        table = m.group(3).lower()
         for item in m.group(4).split(","):
             col = re.sub(r"[\x60\"]", "", item.strip()).split()[0].lower()
-            indexes.setdefault((m.group(3).lower(), col), []).append(m.group(2))
+            key = (table, col)
+            indexes.setdefault(key, []).append(m.group(2))
+            if m.group(1):
+                unique_index_columns.add(key)
     evidence = {}
     for table, parts in constraints.items():
         for part in parts:
             nm = re.match(r"^CONSTRAINT\s+([A-Za-z0-9_]+)\s+", part, re.I)
             label = nm.group(1) if nm else part.split()[0] + "_unnamed"
-            for col in tables[table]:
-                if re.search(r"(?<![A-Za-z0-9_])" + re.escape(col) + r"(?![A-Za-z0-9_])", part, re.I):
-                    evidence.setdefault((table, col), []).append(label)
-    return tables, named, order, indexes, evidence
+            for col in local_constraint_columns(part, tables[table].keys()):
+                evidence.setdefault((table, col), []).append(label)
+    return tables, named, order, indexes, evidence, constraints, unique_index_columns
+
+
+
+def local_constraint_columns(part, table_columns):
+    """Resolve local constrained columns only, excluding FK parent columns."""
+    key_match = re.search(
+        r"\b(?:PRIMARY\s+KEY|FOREIGN\s+KEY|UNIQUE(?:\s+KEY)?)\s*\(([^)]*)\)",
+        part,
+        re.I,
+    )
+    if key_match:
+        requested = [
+            token.strip().strip(chr(96)).strip('"').lower()
+            for token in key_match.group(1).split(",")
+        ]
+        return [column for column in requested if column in table_columns]
+    check_match = re.search(r"\bCHECK\s*\(", part, re.I)
+    if check_match:
+        open_at = part.find("(", check_match.start())
+        expression = part[open_at + 1:close_paren(part, open_at)]
+        return [
+            column for column in table_columns
+            if re.search(r"(?<![A-Za-z0-9_])" + re.escape(column) + r"(?![A-Za-z0-9_])", expression, re.I)
+        ]
+    return []
 
 
 def parse_erd(text):
@@ -150,6 +179,7 @@ def parse_erd(text):
             result[current][fm.group(2).lower()] = {
                 "type": typ,
                 "base": re.match(r"[A-Z]+", typ).group(0),
+                "annotations": sorted(set(re.findall(r"\b(PK|FK|UK)\b", fm.group(3).upper()))),
             }
     return result
 
@@ -161,7 +191,8 @@ def norm(value):
 def main():
     issues = []
     erd = parse_erd(ERD.read_text(encoding="utf-8"))
-    sql, named_constraints, create_order, indexes, evidence = parse_sql(SQL.read_text(encoding="utf-8"))
+    sql_text = SQL.read_text(encoding="utf-8")
+    sql, named_constraints, create_order, indexes, evidence, sql_constraints, unique_index_columns = parse_sql(sql_text)
     with DICT.open(encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle, strict=True)
         rows = list(reader)
@@ -246,6 +277,48 @@ def main():
             issues.append("Missing critical constraint: " + label)
     if "warehouses" not in create_order or "goods_receipts" not in create_order or create_order.index("warehouses") > create_order.index("goods_receipts"):
         issues.append("WAREHOUSES must be created before GOODS_RECEIPTS")
+
+    # Check that every ERD PK/FK/UK marker maps to a physical SQL constraint.
+    for table, fields in erd.items():
+        for column, field in fields.items():
+            for annotation in field.get("annotations", []):
+                keyword = {
+                    "PK": re.compile(r"\bPRIMARY\s+KEY\b", re.I),
+                    "FK": re.compile(r"\bFOREIGN\s+KEY\b", re.I),
+                    "UK": re.compile(r"\bUNIQUE\b", re.I),
+                }[annotation]
+                physical_match = any(
+                    keyword.search(part)
+                    and column in local_constraint_columns(part, sql.get(table, {}).keys())
+                    for part in sql_constraints.get(table, [])
+                )
+                if annotation == "UK" and (table, column) in unique_index_columns:
+                    physical_match = True
+                if not physical_match:
+                    issues.append(
+                        "ERD key annotation has no matching SQL constraint: "
+                        + table + "." + column + " (" + annotation + ")"
+                    )
+
+    # Verify each dictionary row's own constraint/index evidence.
+    for table, column in sorted(sql_keys & dict_keys):
+        row = dictionary[(table, column)]
+        expected_labels = set(evidence.get((table, column), []))
+        expected_labels.update(indexes.get((table, column), []))
+        expected_labels = sorted(expected_labels)
+        observed_labels = sorted({
+            label.strip()
+            for label in re.split(r"[;,]\s*", row.get("related_constraint_index") or "")
+            if label.strip() and label.strip() != "NONE"
+        })
+        if expected_labels != observed_labels:
+            issues.append(
+                "Constraint/index evidence mismatch " + table + "." + column
+                + ": SQL=" + repr(expected_labels)
+                + "; Dictionary=" + repr(observed_labels)
+            )
+
+
     dict_constraint_names = {
         item
         for row in rows
