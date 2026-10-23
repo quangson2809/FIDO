@@ -58,12 +58,17 @@ Order creation revalidates Product status, price, stock, voucher quota and serve
 | POST | `/admin/products` | JWT + `CATALOG_WRITE` |
 | PATCH | `/admin/products/{productId}` | JWT + `CATALOG_WRITE` |
 | GET | `/admin/catalog/meta` | JWT + `CATALOG_READ` |
+| POST | `/admin/products/{productId}/images` | JWT + `CATALOG_WRITE`; multipart image files |
+| DELETE | `/admin/products/{productId}/images/{imageId}` | JWT + `CATALOG_WRITE`; image must belong to Product |
+| PATCH | `/admin/products/{productId}/images` | JWT + `CATALOG_WRITE`; reorder image IDs |
 | POST, PATCH, DELETE | `/admin/categories`, `/admin/categories/{categoryId}` | JWT + `CATALOG_WRITE` |
 | POST, PATCH, DELETE | `/admin/brands`, `/admin/brands/{brandId}` | JWT + `CATALOG_WRITE` |
 
 Product create/update uses Product fields such as `parent_product_id`, `category_id`, `brand_id`, `name`, `slug`, `sku`, `selling_price`, `status`, descriptive attribute values and images according to the target DTO contract. A child is created/edited as a Product resource with its own Product ID, SKU, required selling price and inventory.
 
-The target contract does not contain variant-creation/update routes or separate size-system/color-master routes. Do not add these routes or tables as a compatibility shortcut. Metadata read routes do not define attribute/option write APIs; those operations require a separately specified and approved API contract before implementation.
+The target contract does not contain variant-creation/update routes or separate size-system/color-master routes. Do not add these routes or tables as a compatibility shortcut. Metadata read routes do not define Attribute/Option write APIs; those operations require a separately specified and approved API contract before implementation.
+
+Image management uses the Product ID and the `PRODUCT_IMAGES` collection. Upload validates the entire request and image policy before persistence; every saved image reference must be version-stable/immutable for order history. Removal detaches an image from the current Product gallery but must not delete object/version content still referenced by any Order snapshot. Reorder validates ownership of every image ID and writes a unique, contiguous order atomically; a concurrent reorder must not create duplicate positions. Provider/database partial failures must be handled without losing existing Order image history.
 
 ### Orders, COD and after-sales
 
@@ -99,7 +104,12 @@ Receipt line and inventory requests identify Products, not option combinations. 
 - Staff-account routes: `GET/POST /admin/staff-accounts`, `GET/PATCH /admin/staff-accounts/{accountId}`; access requires the approved SUPERADMIN policy.
 - Access control: `GET /admin/access-control`; role and permission management routes under `/admin/roles` and `/admin/permissions`; writes use the owning account/RBAC service, audit changes and preserve the last-SUPERADMIN invariant.
 - Audit: `GET /admin/audit-logs` with approved actor/action/entity/time filters and pagination. DTO fields must map to the target audit columns; do not expose secrets or sensitive payloads.
-- Report: `GET /admin/reports/overview?from=...&to=...`; dates follow the approved Asia/Ho_Chi_Minh reporting rules; monetary outputs are integer VND.
+- Reporting (all routes require JWT + `REPORT_READ`):
+  - `GET /admin/reports/overview?from=...&to=...` returns the overview aggregates defined in the DTO contract.
+  - `GET /admin/reports/sales-trend?from=...&to=...&granularity=DAY|WEEK|MONTH` returns completed sales, returned adjustment and net sales per period.
+  - `GET /admin/reports/orders-trend?from=...&to=...&granularity=DAY|WEEK|MONTH` returns total Orders and counts for every approved Order status per period.
+  - `GET /admin/reports/product-performance?from=...&to=...&limit=...` returns Product-level completed, returned and net units; limit defaults to 10 and is constrained to 1–100.
+  - Reporting uses Asia/Ho_Chi_Minh date boundaries and current Order state/approved completion/return accounting rules; currency amounts are integer VND and ranking/tie-break rules must be deterministic.
 - Content: public `GET /content-pages/{slug}`; admin list/create/update routes under `/admin/content-pages`. Use target `slug` and status semantics.
 - Customers: `GET /admin/customers` and `GET /admin/customers/{customerId}`; customer records derive from authenticated Accounts and their linked Orders, not synthetic guest identities.
 
