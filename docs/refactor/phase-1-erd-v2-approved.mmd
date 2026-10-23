@@ -11,6 +11,7 @@ erDiagram
         varchar phone
         varchar password_hash
         varchar status
+        timestamp deleted_at "NULL means active; soft-deleted accounts release phone"
         timestamp created_at
         timestamp updated_at
     }
