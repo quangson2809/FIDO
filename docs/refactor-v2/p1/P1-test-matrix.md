@@ -38,3 +38,21 @@
 | T-CONT-01 | Public content lookup | Published only | Draft/archived exposure or duplicate slug | DB/content service | API/DB integration | DB-09 |
 | T-REPORT-01 | Sales/return/status date range | Approved formula/timezone | Wrong return period/status grouping date | Report query | Fixed fixtures/timezone tests | DB-09/docs15 |
 | T-ARCH-01 | Cross-module persistence | Owner service contract; report aggregate-read exception | Cross-module Repository dependency | Architecture tests | Gradle boundary suite | TD-01 |
+
+## Additional mandatory acceptance cases for DB-03/DB-05 and dependent contracts
+
+| ID | Scenario | Required observable result | Verification | Gate |
+|---|---|---|---|---|
+| T-INV-01 | Two orders compete for final available units | No oversell; one fails atomically; balance equals ledger | MySQL integration test with concurrent transactions | DB-03 |
+| T-INV-02 | Goods receipt confirmation retried concurrently/sequentially | One stock increase and one logical ledger posting | MySQL integration test + unique/state guard evidence | DB-03 |
+| T-INV-03 | Cancellation retried after committed deduction | At most one restoration; original ledger entry remains immutable | Order/Inventory integration test | DB-03/08 |
+| T-INV-04 | Failure on one order line after earlier lines validate | No partial Order, item, payment, inventory or ledger effects | Transaction rollback test | DB-03/05 |
+| T-QUOTE-01 | Price, stock, voucher validity or shipping changes after quote | Placement revalidates; material change returns conflict/requote; no Order is created | API integration test | DB-05 |
+| T-QUOTE-02 | Same idempotency key and same canonical payload concurrently | One committed Order; other request replays same result | MySQL multi-transaction test and schema unique-key evidence | DB-05 |
+| T-QUOTE-03 | Same key but changed payload / another account | Changed payload conflicts; cross-account key never exposes Order | API/security integration tests | DB-05 |
+| T-MONEY-01 | Percentage discount and multiple line items | Integer VND only; allocated line discounts sum exactly to order discount; total reconciles | Deterministic unit/property tests with edge vectors | DB-10 |
+| T-VOUCHER-01 | Voucher redemption repeated/concurrent | No unsupported usage-limit guarantee; if a limit is promised, storage and atomic enforcement are proven | Contract + MySQL concurrency test | DB-06 |
+| T-SNAPSHOT-01 | Product gallery image changes/deletes after Order | Historical image is immutable only if the approved schema and retention strategy prove it; otherwise contract explicitly reports limitation | Persistence/asset-retention test | DB-07 |
+| T-PHONE-01 | Soft-delete account then register same normalized phone | Reuse succeeds; concurrent active duplicates fail | MySQL 8.4 integration test, not H2-only | DB-09 |
+
+These are acceptance requirements, not executed-test evidence. P1 documentation review does not imply P0 runtime/MySQL verification has passed.
