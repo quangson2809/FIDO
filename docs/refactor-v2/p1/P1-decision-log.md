@@ -1,6 +1,6 @@
 # P1 — Decision Log
 
-**Status: PARTIAL.** The logical ERD is owner-confirmed; physical schema and material business/API decisions remain open. Recording an option here does not approve it.
+**Status: PARTIAL.** The logical ERD is owner-confirmed. Owner choices recorded on 2026-10-23 resolve the direction for DB-01, DB-02 and DB-06 through DB-11; DB-03 and DB-05 are explicit requests for design proposals, not approvals. Contract synchronization and evidence remain required before P1 can PASS.
 
 ## APPROVED
 
@@ -37,20 +37,28 @@
 | P1-PROP-10 | COD refund | Approve full-refund-only semantics, add refund amount/actor/time persistence, or defer refunds. | Payment API/DTO/report/audit. | PROPOSED; DB-08 |
 | P1-PROP-11 | Physical SQL contract | Approve every type length, nullability, default, decimal/timestamp precision, status, check, index and FK action. | DDL/JPA/API validation. | PROPOSED; DB-09 |
 
-## OPEN_BLOCKED — OWNER DECISION REQUIRED
+## OWNER DECISIONS RECORDED — CONTRACT SYNCHRONIZATION REQUIRED
+
+The owner choices received on 2026-10-23 are recorded in the DB-01, DB-02, DB-06, DB-07, DB-08, DB-09, DB-10 and DB-11 rows below. These are decision inputs, not proof that all dependent API/schema documents have already been reconciled. In particular, DB-07 requires an immutable image-history solution that does not silently add a column to the owner-confirmed 31-table ERD; DB-09 requires active-only phone uniqueness; DB-10 supersedes the DECIMAL(18,2) draft with integer VND.
+
+## OWNER DESIGN REQUESTS — PROPOSAL REQUIRED
+
+DB-03 and DB-05 are not unresolved because the owner has failed to choose an option: the selected option explicitly requests a design proposal. Prepare those proposals and obtain explicit acceptance before claiming contract freeze.
+
+## OPEN_BLOCKED — OWNER DECISION / DESIGN ACCEPTANCE REQUIRED
 
 | ID | Unresolved question | Recommended direction (not approval) | Consequence if wrong | Required tests |
 |---|---|---|---|---|
-| DB-01 | Product parent/child | Decide root SKU/sellability/stock, child depth, inherited fields, parent stopped/deleted behavior, category/brand and public ID. Recommendation: root grouping-only, direct child sellable, inherit only name/slug/description/selling_price. | Wrong Product identity breaks Catalog, Cart, Order, receipt and Inventory. | Parent/child, cycle, sellability, API-ID compatibility. |
-| DB-02 | Dynamic attributes | Decide data_type domain, exactly-one typed-value rule, option ownership, requiredness/inheritance, variant-defining matrix and duplicate-combination strategy. OPTION/TEXT/NUMBER/BOOLEAN is only a candidate domain. | A plain option FK does not prove attribute ownership; service-only duplicate checking races. | Type matrix, wrong option, required attributes and concurrent duplicate. |
+| DB-01 | Product parent/child | OWNER DECISION RECORDED: both parent and child Products are sellable; each record has its own SKU, price and inventory. Child creation is explicit; parent/child identity and API behavior must honor this. | Parent and child must not accidentally share SKU, price or stock; legacy Variant IDs still need API compatibility mapping. | Parent and child sellability, independent SKU/price/stock, parent/child cycle, API-ID compatibility. |
+| DB-02 | Dynamic attributes | OWNER DECISION RECORDED: dynamic attributes are descriptive only and do not generate variants. Child Products are created explicitly. Typed value validation and attribute/option ownership still need to be specified in the contract. | Do not derive SKU/Product rows or uniqueness from attribute combinations. | Type matrix, wrong option ownership, requiredness where configured, explicit child creation. |
 | DB-03 | Inventory/receipt/ledger mechanics | Decide quantity_on_hand meaning, when order stock is deducted, how receipts/adjustments bind to the already-approved single operational warehouse, movement sources/signs, reversals/reasons and concurrency. A-04 already fixes the warehouse count to one; do not reopen that decision. | Stock drift/negative stock, ambiguous receipt destination and unsearchable adjustment reason. | Concurrent receive/order/adjust/cancel plus ledger consistency. |
 | DB-05 | Quote/idempotency | Decide key origin/location/scope, payload binding, replay/conflict behavior, retention, mandatory behavior and quote lifecycle. Recommendation: Idempotency-Key UUID, same-payload replay, changed-payload conflict, preview-only quote with order-time recalculation. | Unique key alone does not bind payload/replay; target has no CHECKOUT_QUOTES table. | Lost-response retry, concurrent retry, conflicting payload, account isolation and repricing. |
-| DB-06 | Voucher | Decide formula/rounding/date/min/max/scope/stacking/global or per-account caps, consumption point and cancel/return restoration. | Target lacks product/category scope joins and usage ledger while prior Voucher behavior is richer. | Eligibility matrix, concurrent final-use and cancellation retry. |
-| DB-07 | Order snapshots | Decide line/image/address/voucher snapshot completeness, discount allocation, recipient edit and ShippingInfo authority. | Current DTO expects image history absent from target; recipient edit through PREPARING conflicts with immutable snapshot interpretation. | Catalog/address mutations, discount reconciliation and historical DTO. |
-| DB-08 | Payment/shipping | Decide COD states, refund amount/actor/time, separation of Order and Payment states, shipping states/timestamps/carrier and recipient source. | Target removes refund attribution and delivery_mode; state literals remain unapproved. | Duplicate collection/refund, state/security and shipping transitions. |
-| DB-09 | Physical/account/audit lifecycle | Decide phone uniqueness, lengths/null/defaults/status domains/indexes/FK actions, Account lifecycle, Product status+deleted_at and audit actor/JSON policy. | Auth, history and privacy regressions; P0 H2 status checks failed. | MySQL metadata diff, authentication, soft delete, audit redaction. |
-| DB-10 | Money/currency/rounding | Explicitly approve currency, decimal precision/scale, rounding mode and point, order-total calculation, shipping treatment, and allocation/reconciliation of order-level discounts to OrderItems. The draft's VND and DECIMAL(18,2) choices are proposals, not approval. | Amounts can diverge between quote, order, line totals, voucher snapshots, refunds and reports. | Multi-line rounding, boundary values, negative/maximum discounts, order-to-line reconciliation and report totals. |
-| DB-11 | System seed/bootstrap | Approve baseline system roles/permissions, initial SUPERADMIN bootstrap boundary, deterministic repeatable system seed, separation from demo fixtures and external credential handling. Never hardcode credentials. | Unbootstrappable environment, unintended privileges or demo identities/secrets entering a shared environment. | Fresh-install seed completeness/idempotency, role grants, no credential in source/fixtures and last-SUPERADMIN protection. |
+| DB-06 | Voucher | OWNER DECISION RECORDED: simple order-wide voucher only; non-stackable; no product/category conditions. Remaining contract must define formula, time/usage limits, consumption point and cancellation behavior without silently adding target tables. | Target has no product/category scope joins or usage ledger; usage limits must not be claimed unless representable and approved. | Eligibility matrix, concurrent use where limits exist, cancellation retry and total reconciliation. |
+| DB-07 | Order snapshots | OWNER DECISION RECORDED: complete order snapshots with an immutable image-retention policy. The exact image snapshot field/storage/retention contract must be aligned with the 31-table ERD; do not add a column without an explicit ERD amendment. | Historical order view must not change when the live Product/image changes; current ERD has no ORDER_ITEMS.image_url_snapshot. | Catalog/image/address mutations, historical DTO and snapshot completeness. |
+| DB-08 | Payment/shipping | OWNER DECISION RECORDED: COD with an Order state machine, including allowed transitions, cancellation, returns and refund. Detailed states and refund persistence/attribution must be proposed and reconciled with the target ERD; structured return workflow remains out of scope unless approved. | Order state alone may not represent return details or refund amount/actor/time. | State-transition matrix, duplicate refund/collection, authorization and stock effects. |
+| DB-09 | Physical/account/audit lifecycle | OWNER DECISION RECORDED: phone may be reused after an account is soft-deleted; phone is unique among active accounts. Physical uniqueness strategy, soft-delete semantics, lengths/null/defaults/status/index/FK actions and audit policy must be consistent with that rule. | A conventional global UNIQUE(phone) would incorrectly block reuse after soft delete. | MySQL metadata diff, active duplicate rejection, deleted-phone reuse, auth and audit redaction. |
+| DB-10 | Money/currency/rounding | OWNER DECISION RECORDED: VND only; store money as integers. Freeze rounding and order-level discount allocation so totals reconcile exactly across quote/order/items/voucher/refund/report. | Existing draft DECIMAL(18,2) is incompatible with this decision unless explicitly redesigned; do not retain it by inertia. | Multi-line rounding, boundary values, discount allocation, integer VND totals and reconciliation. |
+| DB-11 | System seed/bootstrap | OWNER DECISION RECORDED: seed roles/permissions through Flyway; bootstrap SUPERADMIN separately via external secret configuration; keep demo fixtures separate. No credentials may be hardcoded or committed. | Missing initial admin, privilege drift or secret/demo-account leakage. | Fresh-install seed completeness/idempotency, role grants, no credentials in source and last-SUPERADMIN protection. |
 
 ## DEFERRED
 
@@ -67,7 +75,9 @@
 - APPROVED: 4
 - TECHNICAL_DECIDED: 5
 - PROPOSED: 11
-- OPEN_BLOCKED: 10 (DB-01, DB-02, DB-03, DB-05, DB-06, DB-07, DB-08, DB-09, DB-10, DB-11)
+- OWNER DECISIONS RECORDED: DB-01, DB-02, DB-06, DB-07, DB-08, DB-09, DB-10, DB-11 (contract synchronization and acceptance evidence still required)
+- OWNER DESIGN REQUESTS: DB-03, DB-05 (proposal and explicit owner acceptance still required)
+- OPEN_BLOCKED: 2 (DB-03, DB-05)
 - DEFERRED: 5
 
-DB-04 (guest checkout) is resolved by A-03 and is not an active blocker. A later explicit owner amendment may reopen that scope.
+DB-04 (guest checkout) is resolved by A-03 and is not an active blocker. A-04 also fixes one operational warehouse in v1. DB-03 concerns the mechanics within that approved scope, not warehouse count. A later explicit owner amendment may reopen resolved scope.
