@@ -1,15 +1,17 @@
 -- Clean Schema Reset target baseline.
 -- Isolated from db/migration until all JPA mappings and API contracts are aligned.
 -- Never run against a database that must retain data.
--- Defaults: BIGINT identities, DECIMAL(18,2), TIMESTAMP(6) UTC, restrictive FKs.
+-- P1 contract-freeze draft: BIGINT identities, integer VND money, TIMESTAMP(6) UTC, restrictive FKs.
+-- Review and execute only on a disposable MySQL 8.4 database before activation.
 
 CREATE TABLE accounts (
  id BIGINT NOT NULL AUTO_INCREMENT, full_name VARCHAR(150) NOT NULL, email VARCHAR(254) NULL,
  phone VARCHAR(20) NOT NULL, password_hash VARCHAR(255) NOT NULL,
- status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+ status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE', deleted_at TIMESTAMP(6) NULL,
+ phone_active_key VARCHAR(20) GENERATED ALWAYS AS (CASE WHEN deleted_at IS NULL THEN phone ELSE NULL END) STORED,
  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
  updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
- CONSTRAINT pk_accounts PRIMARY KEY (id), CONSTRAINT uq_accounts_phone UNIQUE (phone),
+ CONSTRAINT pk_accounts PRIMARY KEY (id), CONSTRAINT uq_accounts_phone_active UNIQUE (phone_active_key),
  CONSTRAINT ck_accounts_status CHECK (status IN ('ACTIVE','PENDING_APPROVAL','LOCKED','SUSPENDED'))
 );
 
@@ -100,7 +102,7 @@ CREATE INDEX ix_attribute_options_order ON attribute_options (attribute_id, sort
 CREATE TABLE products (
  id BIGINT NOT NULL AUTO_INCREMENT, parent_product_id BIGINT NULL, category_id BIGINT NULL, brand_id BIGINT NULL,
  name VARCHAR(255) NULL, slug VARCHAR(200) NULL, sku VARCHAR(100) NOT NULL, description TEXT NULL,
- selling_price DECIMAL(18,2) NULL, cost_price DECIMAL(18,2) NULL,
+ selling_price BIGINT NULL, cost_price BIGINT NULL,
  status VARCHAR(20) NOT NULL DEFAULT 'DRAFT', deleted_at TIMESTAMP(6) NULL,
  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
  updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -165,15 +167,16 @@ CREATE TABLE cart_items (
 
 CREATE TABLE vouchers (
  id BIGINT NOT NULL AUTO_INCREMENT, code VARCHAR(80) NOT NULL, discount_type VARCHAR(20) NOT NULL,
- discount_value DECIMAL(18,2) NOT NULL, minimum_order_value DECIMAL(18,2) NOT NULL DEFAULT 0,
- maximum_discount DECIMAL(18,2) NULL, starts_at TIMESTAMP(6) NULL, ends_at TIMESTAMP(6) NULL,
- usage_limit INT NULL, status VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+ discount_value BIGINT NOT NULL, minimum_order_value BIGINT NOT NULL DEFAULT 0,
+ maximum_discount BIGINT NULL, starts_at TIMESTAMP(6) NULL, ends_at TIMESTAMP(6) NULL,
+ usage_limit INT NULL, usage_count INT NOT NULL DEFAULT 0, status VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
  CONSTRAINT pk_vouchers PRIMARY KEY (id), CONSTRAINT uq_vouchers_code UNIQUE (code),
  CONSTRAINT ck_vouchers_discount_type CHECK (discount_type IN ('PERCENT','FIXED')),
  CONSTRAINT ck_vouchers_discount_value CHECK (discount_value > 0),
  CONSTRAINT ck_vouchers_minimum_order CHECK (minimum_order_value >= 0),
  CONSTRAINT ck_vouchers_maximum_discount CHECK (maximum_discount IS NULL OR maximum_discount >= 0),
  CONSTRAINT ck_vouchers_usage_limit CHECK (usage_limit IS NULL OR usage_limit > 0),
+ CONSTRAINT ck_vouchers_usage_count CHECK (usage_count >= 0 AND (usage_limit IS NULL OR usage_count <= usage_limit)),
  CONSTRAINT ck_vouchers_window CHECK (starts_at IS NULL OR ends_at IS NULL OR starts_at < ends_at),
  CONSTRAINT ck_vouchers_status CHECK (status IN ('DRAFT','ACTIVE','INACTIVE','EXPIRED'))
 );
@@ -181,9 +184,10 @@ CREATE TABLE vouchers (
 CREATE TABLE orders (
  id BIGINT NOT NULL AUTO_INCREMENT, account_id BIGINT NOT NULL, voucher_id BIGINT NULL,
  order_number VARCHAR(40) NOT NULL, idempotency_key VARCHAR(120) NOT NULL,
- status VARCHAR(30) NOT NULL DEFAULT 'PENDING', subtotal DECIMAL(18,2) NOT NULL,
- discount_amount DECIMAL(18,2) NOT NULL DEFAULT 0, shipping_fee DECIMAL(18,2) NOT NULL DEFAULT 0,
- total_amount DECIMAL(18,2) NOT NULL, currency CHAR(3) NOT NULL DEFAULT 'VND',
+ request_fingerprint CHAR(64) NOT NULL,
+ status VARCHAR(30) NOT NULL DEFAULT 'PENDING', subtotal BIGINT NOT NULL,
+ discount_amount BIGINT NOT NULL DEFAULT 0, shipping_fee BIGINT NOT NULL DEFAULT 0,
+ total_amount BIGINT NOT NULL, currency CHAR(3) NOT NULL DEFAULT 'VND',
  placed_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
  updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -204,9 +208,9 @@ CREATE INDEX ix_orders_status_placed ON orders (status, placed_at);
 CREATE TABLE order_items (
  id BIGINT NOT NULL AUTO_INCREMENT, order_id BIGINT NOT NULL, product_id BIGINT NOT NULL,
  sku_snapshot VARCHAR(100) NOT NULL, product_name_snapshot VARCHAR(255) NOT NULL,
- attribute_snapshot VARCHAR(2000) NOT NULL DEFAULT '{}', quantity INT NOT NULL,
- unit_price DECIMAL(18,2) NOT NULL, discount_amount DECIMAL(18,2) NOT NULL DEFAULT 0,
- line_total DECIMAL(18,2) NOT NULL, CONSTRAINT pk_order_items PRIMARY KEY (id),
+ attribute_snapshot VARCHAR(2000) NOT NULL DEFAULT '{}', image_url_snapshot VARCHAR(1000) NOT NULL,
+ quantity INT NOT NULL, unit_price BIGINT NOT NULL, discount_amount BIGINT NOT NULL DEFAULT 0,
+ line_total BIGINT NOT NULL, CONSTRAINT pk_order_items PRIMARY KEY (id),
  CONSTRAINT fk_order_items_order FOREIGN KEY (order_id) REFERENCES orders (id),
  CONSTRAINT fk_order_items_product FOREIGN KEY (product_id) REFERENCES products (id),
  CONSTRAINT ck_order_items_quantity CHECK (quantity > 0),
@@ -226,8 +230,8 @@ CREATE TABLE order_addresses (
 
 CREATE TABLE order_voucher_snapshots (
  order_id BIGINT NOT NULL, voucher_code_snapshot VARCHAR(80) NOT NULL,
- discount_type_snapshot VARCHAR(20) NOT NULL, discount_value_snapshot DECIMAL(18,2) NOT NULL,
- discount_amount_snapshot DECIMAL(18,2) NOT NULL,
+ discount_type_snapshot VARCHAR(20) NOT NULL, discount_value_snapshot BIGINT NOT NULL,
+ discount_amount_snapshot BIGINT NOT NULL,
  CONSTRAINT pk_order_voucher_snapshots PRIMARY KEY (order_id),
  CONSTRAINT fk_order_voucher_snapshots_order FOREIGN KEY (order_id) REFERENCES orders (id),
  CONSTRAINT ck_order_voucher_discount_type CHECK (discount_type_snapshot IN ('PERCENT','FIXED')),
@@ -237,17 +241,22 @@ CREATE TABLE order_voucher_snapshots (
 
 CREATE TABLE payments (
  order_id BIGINT NOT NULL, method VARCHAR(30) NOT NULL DEFAULT 'COD',
- payment_status VARCHAR(20) NOT NULL DEFAULT 'UNPAID', amount DECIMAL(18,2) NOT NULL,
+ payment_status VARCHAR(20) NOT NULL DEFAULT 'UNPAID', amount BIGINT NOT NULL,
  currency CHAR(3) NOT NULL DEFAULT 'VND', collected_by_account_id BIGINT NULL,
- collected_at TIMESTAMP(6) NULL,
+ collected_at TIMESTAMP(6) NULL, refund_amount BIGINT NOT NULL DEFAULT 0,
+ refunded_by_account_id BIGINT NULL, refunded_at TIMESTAMP(6) NULL, refund_reason VARCHAR(500) NULL,
  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
  updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
  CONSTRAINT pk_payments PRIMARY KEY (order_id),
  CONSTRAINT fk_payments_order FOREIGN KEY (order_id) REFERENCES orders (id),
  CONSTRAINT fk_payments_collected_by FOREIGN KEY (collected_by_account_id) REFERENCES accounts (id),
+ CONSTRAINT fk_payments_refunded_by FOREIGN KEY (refunded_by_account_id) REFERENCES accounts (id),
  CONSTRAINT ck_payments_method CHECK (method = 'COD'),
  CONSTRAINT ck_payments_status CHECK (payment_status IN ('UNPAID','PAID','REFUNDED')),
- CONSTRAINT ck_payments_amount CHECK (amount >= 0), CONSTRAINT ck_payments_currency CHECK (currency = 'VND')
+ CONSTRAINT ck_payments_amount CHECK (amount >= 0),
+ CONSTRAINT ck_payments_refund CHECK (refund_amount >= 0 AND refund_amount <= amount),
+ CONSTRAINT ck_payments_refund_metadata CHECK ((refund_amount = 0 AND refunded_by_account_id IS NULL AND refunded_at IS NULL) OR (refund_amount > 0 AND refunded_by_account_id IS NOT NULL AND refunded_at IS NOT NULL)),
+ CONSTRAINT ck_payments_currency CHECK (currency = 'VND')
 );
 
 CREATE TABLE shipping_infos (
@@ -284,7 +293,7 @@ CREATE INDEX ix_goods_receipts_supplier_date ON goods_receipts (supplier_id, cre
 
 CREATE TABLE goods_receipt_items (
  id BIGINT NOT NULL AUTO_INCREMENT, goods_receipt_id BIGINT NOT NULL, product_id BIGINT NOT NULL,
- quantity_received INT NOT NULL, unit_cost DECIMAL(18,2) NOT NULL,
+ quantity_received INT NOT NULL, unit_cost BIGINT NOT NULL,
  CONSTRAINT pk_goods_receipt_items PRIMARY KEY (id),
  CONSTRAINT uq_goods_receipt_items_receipt_product UNIQUE (goods_receipt_id, product_id),
  CONSTRAINT fk_goods_receipt_items_receipt FOREIGN KEY (goods_receipt_id) REFERENCES goods_receipts (id),
@@ -317,7 +326,8 @@ CREATE TABLE inventory_transactions (
  id BIGINT NOT NULL AUTO_INCREMENT, warehouse_id BIGINT NOT NULL, product_id BIGINT NOT NULL,
  transaction_type VARCHAR(30) NOT NULL, quantity_delta INT NOT NULL,
  goods_receipt_item_id BIGINT NULL, order_item_id BIGINT NULL,
- idempotency_key VARCHAR(120) NOT NULL, created_by BIGINT NULL,
+ idempotency_key VARCHAR(120) NOT NULL, reason_code VARCHAR(80) NULL,
+ reverses_transaction_id BIGINT NULL, created_by BIGINT NULL,
  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
  CONSTRAINT pk_inventory_transactions PRIMARY KEY (id),
  CONSTRAINT uq_inventory_transactions_idempotency UNIQUE (idempotency_key),
@@ -326,7 +336,8 @@ CREATE TABLE inventory_transactions (
  CONSTRAINT fk_inventory_transactions_receipt_item FOREIGN KEY (goods_receipt_item_id) REFERENCES goods_receipt_items (id),
  CONSTRAINT fk_inventory_transactions_order_item FOREIGN KEY (order_item_id) REFERENCES order_items (id),
  CONSTRAINT fk_inventory_transactions_created_by FOREIGN KEY (created_by) REFERENCES accounts (id),
- CONSTRAINT ck_inventory_transactions_type CHECK (transaction_type IN ('OPENING','GOODS_RECEIPT','ORDER','ADJUSTMENT')),
+ CONSTRAINT fk_inventory_transactions_reverses FOREIGN KEY (reverses_transaction_id) REFERENCES inventory_transactions (id),
+ CONSTRAINT ck_inventory_transactions_type CHECK (transaction_type IN ('OPENING','GOODS_RECEIPT','ORDER','ORDER_CANCEL_REVERSAL','RETURN_RESTOCK','ADJUSTMENT')),
  CONSTRAINT ck_inventory_transactions_delta CHECK (quantity_delta <> 0)
 );
 CREATE INDEX ix_inventory_transactions_balance_time ON inventory_transactions (warehouse_id, product_id, created_at);
