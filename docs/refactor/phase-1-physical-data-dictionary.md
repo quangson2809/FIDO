@@ -81,31 +81,31 @@ Only the following fields are marked UK in the owner-provided ERD:
 - INVENTORY_TRANSACTIONS.idempotency_key
 - CONTENT_PAGES.slug
 
-Do not silently add a unique key on ACCOUNTS.email, ACCOUNTS.phone, or PRODUCTS.slug: those columns are not marked UK in this ERD version. This creates a contract question because the existing application uses phone as the login identifier and current migration V2 makes it unique; see the decision register below.
+Do not silently add a unique key on ACCOUNTS.email, ACCOUNTS.phone, or PRODUCTS.slug: those columns are not marked UK in this ERD version. **The isolated target DDL currently makes phone NOT NULL and UNIQUE despite that ERD annotation.** Treat this as a working default, not an approved schema rule; resolve TGT-01 with the login/API contract, then align the ERD decision record, dictionary, DDL and tests.
 
 ## 4. Target behavior and physical decisions
 
-Clean Schema Reset means legacy-source rows do not need to be mapped. The target DDL applies the following working defaults. Application-level enforcement and final acceptance tests remain pending.
+Clean Schema Reset means legacy-source rows do not need to be mapped. The isolated target DDL draft contains the following working defaults; their presence in SQL is not proof that MySQL verification or application integration passed. Application-level enforcement and final acceptance tests remain pending.
 
 | ID | Topic | Target decision required | Status |
 |---|---|---|---|
-| TGT-01 | Account identity | Unique phone is applied for phone login; email remains non-unique. API/entity login lookup still needs alignment. | DDL APPLIED / API OPEN |
+| TGT-01 | Account identity | Draft DDL applies required+unique phone and nullable/non-unique email, but the ERD does not mark phone/email unique. Treat uniqueness as an unresolved working default until the owner approves the login and physical schema contract. | WORKING DEFAULT / DECISION OPEN |
 | TGT-02 | Nullability and lengths | Bounded lengths and required/nullable fields are encoded in target DDL; cross-check each against DTO validation during integration. | DDL DRAFT / REVIEW |
-| TGT-03 | Monetary contract | DECIMAL(18,2), VND, line/order discount snapshots, and total = subtotal − all discounts + shipping are applied as working defaults. | DDL APPLIED / SERVICE OPEN |
-| TGT-04 | Attribute system | Typed TEXT/NUMBER/BOOLEAN/OPTION values are supported; Size/Color are option-backed and variant-defining in the dev fixture. | SCHEMA APPLIED / CATALOG OPEN |
-| TGT-05 | Product hierarchy | Parent/child rows share PRODUCTS; nullable inherited fields and SKU uniqueness are applied. MySQL 8.4 rejects a CHECK that references the AUTO_INCREMENT id, so self-parent and multi-row cycle prevention must be enforced by the product service and tests. | DDL APPLIED / SERVICE OPEN |
-| TGT-06 | Inventory | Composite warehouse/product key, non-negative quantity, version and idempotency uniqueness are applied; locking and ledger/balance atomicity remain service-level work. | DDL APPLIED / SERVICE OPEN |
-| TGT-07 | Cart and guest behavior | Clean target carts/orders require an account. Authenticated-only behavior still needs API/frontend enforcement. | DDL APPLIED / API OPEN |
-| TGT-08 | Voucher/checkout | Target-only simple vouchers and order voucher snapshots are selected; scope links and persisted checkout_quotes are excluded. Limit enforcement and atomic redemption remain service-level work. | DDL APPLIED / SERVICE OPEN |
-| TGT-09 | Payment and shipping | COD-only initial method and one payment per order are applied; status transitions, authorization and shipping API behavior remain open implementation work. | DDL APPLIED / API OPEN |
-| TGT-10 | Address snapshots | Required immutable order address snapshot fields are present. Service-level copy-on-place and immutability tests remain pending. | DDL APPLIED / SERVICE OPEN |
-| TGT-11 | Idempotency | Unique mandatory keys are applied for new orders and inventory transactions; same-payload replay and conflicting-payload handling are still service-level requirements. | DDL APPLIED / SERVICE OPEN |
+| TGT-03 | Monetary contract | Draft uses DECIMAL(18,2), VND, line/order discount snapshots, and total = subtotal − all discounts + shipping as working defaults. | PRESENT IN DRAFT DDL / SERVICE OPEN |
+| TGT-04 | Attribute system | Draft models typed TEXT/NUMBER/BOOLEAN/OPTION values; the development fixture uses option-backed, variant-defining Size/Color attributes. | PRESENT IN DRAFT DDL / CATALOG OPEN |
+| TGT-05 | Product hierarchy | Draft uses shared parent/child PRODUCTS, nullable inherited fields and SKU uniqueness. MySQL 8.4 rejects a CHECK that references the AUTO_INCREMENT id, so self-parent and multi-row cycle prevention must be enforced by the product service and tests. | PRESENT IN DRAFT DDL / SERVICE OPEN |
+| TGT-06 | Inventory | Draft contains composite warehouse/product key, non-negative quantity, version and idempotency uniqueness; locking and ledger/balance atomicity remain service-level work. | PRESENT IN DRAFT DDL / SERVICE OPEN |
+| TGT-07 | Cart and guest behavior | Draft requires an account for target carts/orders. Owner decision 2026-10-05 resolves authenticated-only behavior; API #14–20 docs are aligned, while code integration still needs verification. | PRESENT IN DRAFT DDL / API INTEGRATION OPEN |
+| TGT-08 | Voucher/checkout | Draft has target-shaped vouchers and order voucher snapshots; scope links and persisted checkout_quotes are excluded. Voucher capability, limit enforcement and atomic redemption remain unresolved. | PRESENT IN DRAFT DDL / BUSINESS + SERVICE OPEN |
+| TGT-09 | Payment and shipping | Draft models COD-only initial method and one payment per order; status transitions, authorization and shipping API behavior remain open. | PRESENT IN DRAFT DDL / API + SERVICE OPEN |
+| TGT-10 | Address snapshots | Draft contains required order-address snapshot fields. Service-level copy-on-place and immutability tests remain pending. | PRESENT IN DRAFT DDL / SERVICE OPEN |
+| TGT-11 | Idempotency | Draft declares mandatory unique keys for new orders and inventory transactions; same-payload replay and conflicting-payload handling remain service-level requirements. | PRESENT IN DRAFT DDL / SERVICE OPEN |
 | TGT-12 | Status/default rules | Allowed values/defaults are encoded in target CHECK constraints for the principal status fields; service transitions must be aligned. | DDL DRAFT / REVIEW |
-| TGT-13 | Referential actions | Foreign keys use restrictive/default behavior; no cascading deletes are added. | DDL APPLIED |
+| TGT-13 | Referential actions | Draft uses restrictive/default foreign-key behavior and defines no cascading deletes. | PRESENT IN DRAFT DDL / REVIEW |
 | TGT-14 | Operational SQL | BIGINT, DECIMAL(18,2), TIMESTAMP(6), checks and supporting indexes are drafted in SQL; MySQL 8 verification and complete metadata review remain pending. | DDL DRAFT / CI PENDING |
-| TGT-15 | Seed separation | Required roles/permissions are seeded in Flyway. Catalog/attribute/warehouse demo rows are separate, account-free test/dev SQL; first-admin provisioning stays environment-configured. | SEED ADDED / INTEGRATION OPEN |
+| TGT-15 | Seed separation | The system RBAC seed file exists in the isolated Flyway location. Catalog/attribute/warehouse demo rows are separate, account-free test/dev SQL; first-admin provisioning remains environment-configured. | SEED FILE PRESENT / INTEGRATION OPEN |
 
-Applied defaults are working choices for this implementation branch, not a claim that application behavior has already been integrated. The target DDL is kept in a separate Flyway location until entity mappings and services are compatible. Review physical nullability/lengths and align each status literal with API validators before activating it.
+Applied defaults are working choices in the isolated target draft, not a claim that application behavior has already been integrated. The target DDL is kept in a separate Flyway location until entity mappings and services are compatible. Review physical nullability/lengths and align each status literal with API validators before activating it.
 
 The owner-confirmed target ERD is the table/relationship authority. The existing V1–V6 schema is used only to locate legacy code that must be updated or removed; no source row mapping, populated-source migration, legacy archive or historical crosswalk is a release gate for disposable development/test data.
 

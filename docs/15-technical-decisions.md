@@ -97,8 +97,8 @@ Public catalog #11–13 remains public according to the API contract.
 ## Still deferred/unresolved
 
 - Employee role-to-permission assignment matrix.
-- Guest session identity/TTL/merge.
-- Guest order lookup verification/security details.
+- Guest session/guest-cart merge: **OUT OF TARGET SCOPE** under the 2026-10-05 owner decision; this is not an active feature TBD.
+- Legacy `POST /api/v1/orders/lookup` wording: not present in the 77-endpoint contract table and not a target requirement by default; remove unless the owner explicitly amends API scope.
 - Voucher business rules.
 - Detailed size guide.
 - Notification/provider/template/retry/retention.
@@ -161,17 +161,11 @@ Creating the zero row is initialization, not a stock movement; it does not creat
 
 ## Phase 5 technical decisions
 
-### Authenticated cart slice while guest identity is deferred
+### Authenticated cart slice — historical wording superseded 2026-10-05
 
-The public contract keeps Cart/Checkout guest intent, but the source explicitly leaves guest session key, TTL, persistence and merge behavior unresolved.
+This entry originally described the Phase 5 implementation as an authenticated slice while old API text retained guest intent as TBD. **That final sentence is superseded** by the project-owner decision recorded in `frontend/CONTRACT_ALIGNMENT.md` on 2026-10-05: a user must be logged in to use a persisted cart and place an order. Do not interpret guest session, cookie, anonymous-account or merge behavior as a feature awaiting implementation. Target API #14–20 requires JWT unless a later explicit owner decision changes the scope.
 
-Phase 5 therefore implements the complete authenticated path for APIs #14–19. Until guest identity/security is approved:
-
-- `/api/v1/cart/**` requires a valid JWT;
-- `/api/v1/checkout/quote` requires a valid JWT;
-- no guest cookie, session key, hidden fingerprint or merge policy is invented.
-
-This is a deferred transport/identity slice, not a removal of the guest business requirement.
+The Phase 5 implementation records below remain useful as historical implementation evidence; they do not override the current target contract.
 
 ### Current authenticated cart selection
 
@@ -201,9 +195,9 @@ BRULE-03 fixes the baseline normal shipping fee at 30,000 VND. The implementatio
 
 ## Phase 6 technical decisions
 
-### Authenticated order creation while guest identity remains deferred
+### Authenticated order creation — current rule, historical rationale superseded
 
-API #20 is implemented for authenticated accounts only because guest session identity/verification is still source-TBD. No guest cookie, hidden fingerprint, phone-only lookup secret or merge rule is invented.
+API #20 is implemented for authenticated accounts. The current rule is owner-confirmed on 2026-10-05: login is required before order placement. The older rationale that guest identity was merely source-TBD is superseded; guest checkout is out of target scope unless the owner explicitly amends that decision. No guest cookie, hidden fingerprint, phone-only lookup secret or merge rule is used.
 
 The business transaction creates a PENDING Order, immutable OrderItem snapshots and one UNPAID Payment without deducting stock.
 
@@ -320,7 +314,7 @@ Base: `aca05117d6650bb3a5eb9ef0283973cfa40e4371`. Scope: findings #1, #4, #5, #7
 - No public development JWT signing key or implicit dev profile fallback. Every runtime profile requires an externally supplied, stable, private Base64 JWT secret of at least 32 decoded bytes. Missing, malformed, short and the previously published public development key fail fast, independent of profile. Test resources use explicit non-production fixtures only. No runtime secret is committed.
 - Exception logs use a safe category message, HTTP method, matched route template, numeric path IDs, status and internal stack/cause types for server/database failures. Raw throwable messages, query strings, bodies and credentials are excluded because SQL/provider exceptions may include secrets. Lock/deadlock/optimistic concurrency failures map to existing HTTP 409; the public Boot error envelope is unchanged.
 - Inventory commands sort a copy of all stock lines by `variantId`, across receipt/confirmation/restoration. Atomic conditional inventory updates remain; only the affected managed Inventory is refreshed afterward. No global persistence-context clearing. GoodsReceipt uses its existing pessimistic row lock and managed state transitions instead of redundant bulk updates.
-- Account-owned pessimistic locking serializes authenticated cart commands before reading/creating a current cart. The cart current-row lookup is a locking read. This prevents first-cart/first-item races and lost increments across application instances without assuming a new unique account-cart schema constraint. Cart reads remain read-only. Guest cart remains deferred.
+- Account-owned pessimistic locking serializes authenticated cart commands before reading/creating a current cart. The cart current-row lookup is a locking read. This prevents first-cart/first-item races and lost increments across application instances without assuming a new unique account-cart schema constraint. Cart reads remain read-only. This records the current source implementation; for target scope, the owner-confirmed authenticated-only rule applies and the older guest-deferred wording is superseded.
 - Staff role replacement must retain at least one of ADMIN/SUPERADMIN; full replacement semantics and last-superadmin protection remain.
 - Admin namespace admission requires SUPERADMIN or an effective permission loaded from the database. It does not require ADMIN in addition to a custom capability role, and it does not grant ADMIN any capability. Existing service-level checks still authorize each operation.
 - Existing Product PATCH image URLs and provider output must be absolute HTTPS URIs with a host, no userinfo/fragment and a valid port. No provider-host allowlist is invented. Historical snapshots are untouched. The live Analyst API now excludes images from Product PATCH whereas this repository still documents/supports replacement: removing that write path requires a separate contract migration.

@@ -1,5 +1,7 @@
 # 10 — Testing Strategy & Acceptance Matrix
 
+> **ERD v2 scope boundary (2026-10-22):** Existing test inventories include legacy V1–V6 persistence assumptions. Treat schema-specific tests as candidates to update for the 31-table target, while preserving tests for approved business invariants. Current evidence is recorded in [P0 test baseline](refactor-v2/p0/P0-test-baseline.md): backend CI failed on the audited SHA and the dedicated target-schema MySQL run was not run.
+
 ## 1. Test levels
 
 ### Unit

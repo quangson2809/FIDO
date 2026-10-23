@@ -1,5 +1,7 @@
 # Phase 7 implementation gate — 2026-09-28
 
+> **HISTORICAL GATE RESULT.** This records Phase 7 acceptance evidence on its original date/commit. It is not the current full-repository CI status and does not verify the ERD v2 Clean Schema Reset target. For current status, read [docs/README.md](README.md) and the exact-SHA [P0 test baseline](refactor-v2/p0/P0-test-baseline.md).
+
 - PHASE: 7 — Audit, Reporting, Content & Customer back-office
 - STATUS: PASS
 - SOURCE IDS IMPLEMENTED: API #70–77; SRS FR-29/30/31, BRULE-13, Customer Admin / FR-27; consolidated API Appendix A; DB v1.3.0; report decisions approved by the user on 2026-09-28.

@@ -37,7 +37,7 @@ The following bullets describe the existing implementation/business baseline and
 - single merchant;
 - COD only;
 - one warehouse in the source inventory model;
-- guest checkout supported in the existing API/implementation, subject to its documented security TBD;
+- older API/implementation text described guest checkout as supported/TBD. **Legacy-only:** this wording is superseded for the target by the owner decision dated 2026-10-05 requiring login before using a persisted cart or placing an order; do not implement guest checkout unless that decision is explicitly amended;
 - no automatic shipping tracking integration in the current implementation;
 - existing Order/Payment state behavior remains the business/API compatibility baseline;
 - Catalog v1.3.0 uses Product SizeSystem and ProductVariant = Product + SizeValue + Color;

@@ -9,7 +9,7 @@
 |---|---|---|
 | `account` | Auth/profile/address, internal staff account, role/permission/RBAC, customer back-office views | `accounts`, `addresses`, `roles`, `permissions`, `account_roles`, `role_permissions` |
 | `product` | Public catalog, admin catalog, Category/Brand/Size/Color/Product/Image/Variant | `categories`, `brands`, `size_systems`, `size_values`, `colors`, `products`, `product_images`, `product_variants` |
-| `cart` | Guest/account cart and cart items; no stock reservation | `carts`, `cart_items` |
+| `cart` | Authenticated persisted cart and cart items; guest cart is outside target scope | `carts`, `cart_items` |
 | `promotion` | Voucher identifier/code only in current logical baseline | `vouchers` |
 | `order` | Checkout quote orchestration, create Order, state machine, Payment/COD, shipping, after-sales commands | `orders`, `order_items`, `payments`, `shipping_infos` |
 | `inventory` | Supplier, GoodsReceipt, current sellable inventory, immutable stock ledger | `suppliers`, `goods_receipts`, `goods_receipt_items`, `inventories`, `inventory_transactions` |
@@ -17,7 +17,7 @@
 | `report` | Sales/order-status report queries; no baseline report table | none |
 | `content` | Public/admin approved information and policy pages | `content_pages` |
 
-Total: **28 tables**.
+Total: **28 tables in the original V1 baseline**. Later source migrations V2–V6 add constraints/seeds and four tables in V5, bringing the complete legacy V1–V6 schema to **32 application tables**. These are source-schema counts, not the 31-table target ERD.
 
 ## 2. API ownership
 

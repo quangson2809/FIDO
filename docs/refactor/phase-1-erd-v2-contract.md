@@ -3,8 +3,9 @@
 - **Status: PARTIAL.** The owner has supplied the finalized logical schema directly in the 2026-10-22 conversation. The canonical target is **31 tables**, not the 38-table draft previously recorded here. The diagram and this contract now match the owner-supplied scope.
 - **Repository:** https://github.com/quangson2809/FIDO
 - **Migration baseline branch:** demo1
-- **Baseline SHA:** f931602c86fdf5a59b487d6edd77331b7d64333a
-- **Documentation branch:** docs/phase-1-erd-v2-freeze
+- **Pre-reset source reference SHA:** f931602c86fdf5a59b487d6edd77331b7d64333a
+- **Audited source baseline SHA:** 22bd3d887cef3c077e714e5ec21e70ba89855d46
+- **Original documentation branch:** `docs/phase-1-erd-v2-freeze` (historical provenance; not the current working branch)
 - **Target schema confirmation:** 2026-10-22
 - **Scope:** freeze the owner-confirmed 31-table target model and record the approved **Clean Schema Reset** strategy for development/test environments. The existing V1–V6 chain is documented only as a legacy comparison, not as a dataset to migrate.
 - **Owner decision (2026-10-22):** design for the new target business rules, discard obsolete development/test data, and reseed from a clean database. Do not build source-to-target data migration, historical crosswalk, or archive machinery solely to preserve test fixtures.
@@ -33,7 +34,7 @@
 | Owner's reset strategy | **CONFIRMED** | Clean Schema Reset for disposable development/test data; reseed target data from scratch |
 | Target DDL + required system seed | **ADDED / VERIFICATION PENDING** | `backend/src/main/resources/db/clean-reset` contains the 31-table schema and RBAC seed; isolated schema CI is the verification gate |
 | Application integration | **NOT COMPLETE** | Existing entities/services/APIs/frontend still depend on legacy Variant/size/color and checkout-quote contracts; default Flyway location remains unchanged |
-| New clean-database install | **NOT VERIFIED** | No replacement baseline or target DDL has been created/run yet |
+| Fresh install of the isolated target DDL | **NOT VERIFIED** | The 31-table DDL and system seed exist under `db/clean-reset`; exact-SHA H2 tests failed and the dedicated MySQL verification did not run. No successful clean install is evidenced. |
 | Database environments reset | **NOT RUN** | No connection or destructive DB operation was performed |
 | Production/shared data deletion | **NOT APPROVED** | The decision applies to development/test data only; any non-disposable environment needs separate explicit authorization |
 
@@ -150,57 +151,26 @@ The target scope is frozen to the exact diagram in [phase-1-erd-v2-approved.mmd]
 - PRODUCTS may form a self-referencing parent/child hierarchy; categories may also form a self-referencing hierarchy.
 - A stock ledger line may refer to a receipt item, an order item and an account as represented by the optional/required relationships in the diagram. The target has no quantity-after column.
 
-## 4. Target data contract and explicit limitations
+## 4. Runtime/API compatibility gates (not source-row migration instructions)
 
-### 4.1 Accounts, addresses and RBAC
+Clean Schema Reset means disposable development/test rows and old IDs are not migrated. This section records **runtime and API behavior that may depend on the old implementation**; it is not a checklist for retaining old rows, building historical ID crosswalks, backfilling old values or archiving test fixtures. Decide whether each behavior remains supported in the new application before implementation.
 
-- ACCOUNTS adds full_name and status to the target contract. The current migration inventory does not establish a trusted source for every target full_name. Do not populate missing names with invented business data.
-- The ERD does not mark ACCOUNTS.phone or ACCOUNTS.email as unique. Existing repository login behavior treats phone as the login identifier and the current V2 migration enforces phone uniqueness. Reconcile this physical/security requirement before writing target DDL: keep the logical ERD unchanged unless the owner changes it, but do not deploy an ambiguous login lookup or assume uniqueness merely from the column name.
-- ADDRESSES changes the current free-form address source into recipient_name, recipient_phone, province, district, ward and address_line. Preserve source text verbatim in address_line when it cannot be reliably decomposed. Do not fabricate province/district/ward values.
-- ACCOUNT_ROLES and ROLE_PERMISSIONS keep composite primary keys. Preserve role/permission codes and assignments through ID crosswalks. Do not infer new grants.
+| Area | Legacy behavior or dependency to inspect | Target-shape gap / decision still required |
+|---|---|---|
+| Accounts and RBAC | Phone is the current login identifier; source V2 enforces phone uniqueness. Existing role/permission codes and grants affect authorization. | The logical ERD does not mark phone/email unique, while the draft target DDL enforces unique phone. Resolve this physical/security contract before freeze. Confirm login/error semantics and system seeds; never invent grants. |
+| Addresses | Current APIs accept an address representation from the existing account/order flow. | Target addresses require recipient and structured province/district/ward/address fields. Define validation and DTO mapping; do not silently fabricate missing geographic fields. New orders need an immutable address snapshot. |
+| Parent/child Products and attributes | Current entities, cart items, order items, inventory and public DTOs refer to Variant/SizeValue/Color identifiers. | Target uses child Product IDs plus typed attributes. Freeze public ID/DTO behavior, parent/child inheritance, price resolution, option/type validation and parent-cycle rules. Do not treat the old numeric Variant ID as a target Product ID. |
+| Prices, costs and images | Legacy catalog uses parent price/optional variant override, image ordering/alt text and an order-item image snapshot. | Freeze NULL-means-inherit price behavior and primary-image rules. The target has `is_primary`, no image alt-text column and no order-item image snapshot; decide the supported API behavior for new target orders without adding unapproved columns. Unknown cost values must remain unknown, not be replaced with sales price or zero. |
+| Cart and checkout | The legacy implementation uses Variant-based cart items and a checkout quote flow. Older API text also described guest intent. | Owner decision (2026-10-05) requires login before using a persisted cart or placing an order; target carts require an account and `cart_items.product_id`. Do not implement guest-cart/session behavior without an explicit amended owner decision. The absence of `checkout_quotes` is a separate open quote-validation/API contract decision. |
+| Vouchers | Source V5 and services include product/category scopes, usage tracking, restoration and persisted checkout quotes. | Target contains `VOUCHERS` and `ORDER_VOUCHER_SNAPSHOTS`, but no scope joins, usage ledger or persisted quote. Freeze or explicitly defer discount rules, eligibility, limits, concurrency, redemption/restore semantics and related API behavior. |
+| Orders and money | Source orders/payment APIs expose existing state transitions, totals, snapshots, cancellation and after-sales behavior. | Target has a different order shape and one payment aggregate. Freeze total/discount formulas, legal status transitions, attribute-snapshot encoding, response DTOs and the behavior of fields absent from the target. The current source row values will not be migrated. |
+| Order idempotency | Source quote fingerprint/expiry/order association is not equivalent to an order idempotency key. | Target marks `orders.idempotency_key` unique. Define key scope, payload binding, same-key replay, conflicting-payload response and transaction boundary for new requests. No historical key backfill is needed for Clean Schema Reset. |
+| Payment and shipping | Source Payment stores received/refunded aggregates and actor/time facts; source ShippingInfo uses `delivery_mode`. | Target has one COD-oriented payment row with no payment/refund event table; target shipping has carrier/tracking/status/timestamps but no `delivery_mode`. Decide supported lifecycle and public DTO behavior without inferring external integrations from column names. |
+| Procurement and inventory | Source stock is keyed by Variant and `available_quantity`; source receipts and movements have their own reason/actor semantics. | Target stock is keyed by `(warehouse_id, product_id)` and uses `quantity_on_hand` plus version; there is no reservation column/table. Freeze stock meaning, deduction timing, warehouse behavior, idempotent movement keys, adjustment reason/audit representation and receipt command invariants. Old balances are not carried forward. |
+| Audit, content and reports | Source audit descriptions, content page codes and reporting queries use legacy fields/states. | Target audit stores before/after JSON and correlation ID; content uses slug; report columns/status filters change with order/payment/inventory. Define new runtime payloads and formulas. Do not fabricate event-level history from aggregates. |
+| Physical SQL | ERD shape does not specify every physical detail. | Before activation, finish type/length/precision, nullability/defaults, constraints, indexes, FK actions, timezone and allowed status literals in the physical dictionary, then verify on supported MySQL. |
 
-### 4.2 Catalog, parent/child Products and attributes
-
-- Map each legacy parent Product to a parent PRODUCTS row. Map each legacy ProductVariant to a newly allocated child PRODUCTS row with parent_product_id pointing at its legacy parent. **Never reuse a legacy variant ID as a child Product ID.**
-- SKU is marked unique in the supplied ERD. Products.slug is not marked unique in this version; do not import the previous draft's uniqueness assumption. Category and Brand slugs are marked unique.
-- Existing override_price can map to child selling_price only under the stated NULL-means-inherit rule. A legacy parent price maps to parent selling_price. Compare effective prices before and after mapping for every sellable source Variant.
-- Legacy SizeSystem/SizeValue/Color and other product traits require a crosswalk to target Attributes/AttributeOptions/ProductAttributeValues. Do not match entities solely because labels look alike. Preserve source labels and NULLs; do not invent data types or attribute semantics.
-- The target adds cost_price to PRODUCTS and unit_cost to GOODS_RECEIPT_ITEMS. The inspected source schema does not provide authoritative historical cost values for these fields. Leave unknown costs unknown/NULL where permitted; never substitute selling price or zero as a fabricated cost.
-- PRODUCT_IMAGES replaces the source alt_text-like shape with is_primary. Its exact primary-image rule must be explicit and deterministic. Source alt_text has no target column; a retention/archive disposition is required if any source value is populated.
-- ORDER_ITEMS has no image_url_snapshot. Existing historical order image URLs must be dispositioned through an approved archive/retention method before the source column can be retired. This is not permission to add the missing column to the approved target ERD.
-
-### 4.3 Cart, voucher and checkout scope
-
-- CartItem.product_id maps from the old variant through the legacy Variant-to-child-Product crosswalk. Cart quantity and historical relationships must be reconciled.
-- The target schema has only VOUCHERS and ORDER_VOUCHER_SNAPSHOTS for voucher persistence. It does not encode product/category targeting, a usage/redemption ledger, usage restoration or checkout quote expiry/fingerprint.
-- The presence of discount columns does not define the discount formula, eligible scope, stacking, usage counting, cancellation restoration or status literals. These are separate business/API decisions and must not be fabricated during schema work.
-- Source voucher_products, voucher_categories, voucher_usages and checkout_quotes are not target tables. Active voucher scope, usage history and in-flight quotes must be profiled; every source record must receive a documented transform, archive or owner-approved retirement disposition.
-- ORDERS.idempotency_key is marked unique in the target but the source does not have an equivalent field on the order row. Its physical nullability, historical backfill and runtime retry semantics must be specified. A checkout quote fingerprint/ID is not automatically equivalent to an Order idempotency key.
-
-### 4.4 Orders, payment and shipping
-
-- Map order header totals without recomputing historical values. Target columns include subtotal, discount_amount, shipping_fee, total_amount, currency and status. The physical scale/precision and legal status literals still require a data dictionary.
-- Current order rows contain recipient information inside the order record; the target uses ORDER_ADDRESSES. Structured address fields should only be populated from trustworthy source columns; otherwise retain the raw address in address_line. If legacy recipient_email or other source fields lack a target field, retain/archive them under an approved policy before source removal.
-- ORDER_ITEMS uses product_id and includes sku_snapshot, product_name_snapshot, attribute_snapshot, quantity, unit_price, discount_amount and line_total. Existing size/color snapshots can only become attribute_snapshot under an agreed encoding; do not silently invent a serialization format.
-- PAYMENTS is a one-row-per-order target shape. It cannot faithfully represent multiple payment attempts or separate refunds because the target contains neither PAYMENT_TRANSACTIONS nor REFUNDS. The current source stores aggregate due/received/refunded amounts and collection/refund actor-time data. Preserve all facts in mapped fields or an approved retained archive; never fabricate event-level attempts/refunds from aggregate totals.
-- SHIPPING_INFOS contains recipient, carrier, tracking number, shipping status and shipped/delivered timestamps. The current source shipping row has fewer fields. Map only values actually present; never synthesize tracking numbers, shipment-line allocations or tracking events.
-- The target has no Returns tables. Preserve legacy order state and relevant audit evidence, but do not create fake return requests/items from status RETURNED alone.
-
-### 4.5 Procurement, warehouse and inventory
-
-- SUPPLIERS adds a unique code while source supplier rows do not have an equivalent approved code in the current inventory. Code generation and collision policy must be deterministic and reviewed; do not create plausible-looking business codes without a recorded rule.
-- GOODS_RECEIPTS retains supplier, receipt number, status, actors and timestamps but omits source receipt_date/note fields. GOODS_RECEIPT_ITEMS has unit_cost even though the current source item table does not. Profile these fields and explicitly disposition missing target equivalents.
-- The target introduces WAREHOUSES. The source baseline has no warehouse table and its inventory is keyed by Variant. A warehouse assignment/backfill must be deliberate; do not distribute old quantity across multiple target warehouses.
-- Source inventories.available_quantity describes sellable availability in the existing implementation, whereas the target says quantity_on_hand. They are not automatically semantically equivalent. Profile pending orders, cancellation behavior and any implicit reservations, then approve and test the conversion before assigning values.
-- The target has no quantity_reserved or INVENTORY_RESERVATIONS. Do not create reservation rows or carry a reserved quantity into a nonexistent target column. Checkout/confirmation concurrency must use a design consistent with the approved tables and reviewed stock semantics.
-- Preserve inventory ledger delta, type, actor and timestamp where source evidence exists. Link receipt/order lines only through unique crosswalk matches. INVENTORY_TRANSACTIONS.idempotency_key is new; its deterministic legacy backfill and uniqueness behavior need a recorded rule. Do not fabricate line-level source IDs.
-
-### 4.6 Audit, content and general physical details
-
-- AUDIT_LOGS has before_data/after_data JSON, entity_type/entity_id and correlation_id. Existing free-form audit description cannot automatically be transformed into before/after JSON. Retain the source description or its lossless equivalent in an approved archive.
-- Map content page_code to CONTENT_PAGES.slug only when the conversion is collision-free. updated_by exists in the target; preserve updater attribution.
-- Build the physical data dictionary for every target table before implementation: actual SQL type, length, precision/scale, nullability, default, PK/FK/UK/CHECK, index, FK delete/update action, timezone policy and allowed status literals. The ERD's logical annotations do not fully specify these.
-- Define and test money non-negativity/rounding, positive quantities, inventory non-negativity/version updates, parent-child cycles, single-parent inheritance behavior, SKU uniqueness, attribute value type compatibility, primary-image uniqueness/order, address snapshot immutability, idempotency uniqueness and audit immutability. This list is a contract-completion checklist, not authorization to change the logical target table set.
+The legacy migration inventory in Section 2 is evidence for locating affected code and tests. It is **not** an instruction to preserve or transform the old development database. The target schema and new application contract must be tested together after the P1 decisions are frozen.
 
 ## 5. Owner-approved strategy — Clean Schema Reset
 
@@ -244,7 +214,7 @@ The exact seed rows and initial admin/bootstrap mechanism remain implementation 
 Clean Schema Reset removes legacy-data preservation questions; it does not authorize incompatible or ambiguous runtime behavior. Resolve these matters against the new schema before implementation:
 
 1. **Account identity:** the ERD does not mark `ACCOUNTS.phone` or `email` unique, but the current application uses phone login. Decide the physical uniqueness rule and login contract; never allow ambiguous account lookup.
-2. **Guest behavior:** the target ownership model has no guest/session identity table. Decide whether new persisted carts/orders require authentication or whether the target ERD/API must be revised to support guest checkout.
+2. **Cart/order authentication — resolved:** the owner decision dated 2026-10-05 requires login before using a persisted cart or placing an order. Do not add guest identity/session persistence to the 31-table target. Reconcile all legacy JWT-optional/guest-TBD annotations in API #14–20 to JWT-required target behavior. The old guest-order-lookup wording is not in the current 77-endpoint map and must not be treated as a target requirement without an explicit scope amendment.
 3. **Parent/child Product and attributes:** define the supported attribute codes/types/options, which attributes distinguish child Products, and validation for parent/child inheritance and cycles.
 4. **Voucher/checkout behavior:** the target omits voucher scope join tables, a usage ledger and `checkout_quotes`. Define the supported voucher capability and confirm checkout/API behavior can work without persistence omitted from the target.
 5. **Order money contract:** define line `discount_amount`, order-level discounts, currency and placement time for new orders. Do not introduce a made-up historical allocation; historical rows will not be carried over by this reset.
@@ -291,7 +261,7 @@ Do not claim success based only on a successful compilation or a documentation d
 | Development/test data preservation | **NOT REQUIRED — Clean Schema Reset approved** |
 | Historical crosswalk/archive/populated-source migration | **OUT OF SCOPE** for disposable dev/test data |
 | Production/shared database reset | **NOT AUTHORIZED** by this decision |
-| Fresh target DDL and seed implementation | **PENDING** |
+| Fresh target DDL and seed implementation | **ADDED — VERIFICATION OPEN** | Target DDL + seed exist in isolated `db/clean-reset`; not activated as default runtime migration |
 | Physical SQL and active business/API decisions | **OPEN** |
 | Automated acceptance on target schema | **NOT RUN** |
 | Database reset performed | **NO** |

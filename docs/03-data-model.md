@@ -14,7 +14,7 @@
 - Important historical/transactional data is not hard-deleted.
 - Persist snapshots where history must remain stable; derive values where duplication would create inconsistency.
 
-## 2. 28-table entity inventory
+## 2. Legacy V1 entity inventory (28 tables before V2–V6 additions)
 
 ### account
 

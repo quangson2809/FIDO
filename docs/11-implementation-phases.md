@@ -1,220 +1,112 @@
-# 11 — Backend Deep Implementation Phases
+# 11 — ERD v2 Implementation Roadmap (Clean Schema Reset)
 
-> **ERD v2 target baseline (2026-10-22):** This roadmap originally described implementation against the pre-refactor v1.3.0 model. For the database refactor, the authoritative target is 31 tables in docs/refactor/phase-1-erd-v2-approved.mmd; the current V1–V6 source is 32 tables. Variant-era phase notes are baseline evidence, not permission to retain ProductVariant or add tables absent from the approved ERD. Keep business/API compatibility decisions separate from target persistence shape.
+> **Current execution authority — 2026-10-22.** This roadmap replaces the pre-ERD v2 nine-phase plan. The previous version is preserved at [docs/archive/11-implementation-phases-pre-erd-v2.md](archive/11-implementation-phases-pre-erd-v2.md) for historical context only. Do not use its 28-table baseline or ProductVariant-era implementation instructions as target requirements.
 
+## 1. Baseline and status
 
-The backend is delivered in nine cohesive phases. Do not fragment the system into one phase per endpoint. Each phase should complete the largest coherent domain slice that can be implemented safely from the approved sources.
+| Area | Verified current state | Meaning |
+|---|---|---|
+| Legacy implementation | Flyway V1–V6 describe 32 application tables | Source-code and API dependency evidence only; not the target schema |
+| Target model | Owner-confirmed ERD v2 defines 31 logical tables | Schema authority for the refactor |
+| Target DDL and system seed | Present under `backend/src/main/resources/db/clean-reset/` | Isolated; not yet the default runtime Flyway location |
+| Application integration | Not complete | Entities, repositories, services, DTOs, API and frontend still need alignment |
+| P0 audit deliverable | PASS for audit scope on the separate audit branch | Does not mean backend CI passed |
+| Exact-SHA backend CI | FAIL: 196 tests completed, 3 failed, 1 skipped | Failures are in `CleanResetSchemaTests`; see the P0 test baseline |
+| Target-schema MySQL verification | NOT RUN for the audited SHA | Do not claim the new target passes MySQL until an exact-SHA run succeeds |
 
-## Blocker policy used by every phase
+Detailed evidence: [P0 baseline audit](refactor-v2/p0/P0-baseline-audit.md), [test baseline](refactor-v2/p0/P0-test-baseline.md), [risk register](refactor-v2/p0/P0-risk-register.md), and [exit gate](refactor-v2/p0/P0-exit-gate.md).
 
-Before stopping, classify the unresolved point:
+## 2. Authority and decision rules
 
-- **HARD BLOCK** — proceeding changes/invents business behavior, public API semantics, security guarantee, persistent business meaning/schema, state machine, money/stock semantics or an external contract.
-- **TECHNICAL DECISION** — implementation naming/organization/algorithm choice with already-fixed semantics. Decide minimally, record in `docs/15-technical-decisions.md`, test, continue.
-- **DEFERRED FEATURE** — explicitly phase-later/TBD feature. Skip only the affected slice and continue the phase.
+Use the following order when documents conflict:
 
-A blocker in one slice does not block unrelated work in the same phase.
+1. [Owner-confirmed target ERD](refactor/phase-1-erd-v2-approved.mmd) — target tables and relationships.
+2. [Target contract](refactor/phase-1-erd-v2-contract.md) — source/target compatibility gaps and target boundaries.
+3. [Physical data dictionary](refactor/phase-1-physical-data-dictionary.md) — columns, constraints and unresolved physical SQL.
+4. [Owner decision questionnaire](refactor/phase-1-owner-decision-questionnaire.md) — working defaults and decisions that still need explicit approval.
+5. [Clean Schema Reset runbook](refactor/clean-schema-reset-runbook.md) — safe test/reset procedure.
+6. [Source of truth](00-source-of-truth.md), [business/TBD register](12-tbd-out-of-scope.md), and [technical decision log](15-technical-decisions.md) — API/business compatibility and historical decisions.
 
-## Phase 0 — Canonicalization & engineering guard
+The legacy implementation and V1–V6 migrations identify code paths and current behavior; they do not override the target ERD. Clean Schema Reset means **do not migrate or preserve disposable development/test rows**. It does not remove the need to decide which API/business behaviors the rewritten application must support.
 
-**Goal:** create one implementable interpretation of the Analyst sources and current repository without inventing business behavior.
+Classify open items as:
+- **HARD BLOCK** — requires an owner/business/API/security/data-semantics decision before the affected behavior can be implemented.
+- **TECHNICAL DECISION** — semantics are fixed; record and test the implementation choice.
+- **DEFERRED / OUT OF SCOPE** — explicitly excluded from this delivery; do not implement it indirectly through schema or endpoint additions.
 
-Tasks:
-- inspect Java/Spring/Gradle/DB/migration/security/test setup;
-- apply `docs/00-source-of-truth.md` when sources differ;
-- reconcile Class/Sequence diagrams against DD-DB-01 v1.3.0 and current API;
-- keep architecture Modular Monolith + Package by Feature;
-- record repository-approved technical decisions in `docs/15-technical-decisions.md`;
-- classify all known gaps into HARD BLOCK / TECHNICAL DECISION / DEFERRED FEATURE.
+## 3. P0 — Baseline audit and documentation
 
-Exit:
-- build/tests pass;
-- architecture/source authority is documented;
-- no fake business implementation;
-- ordinary technical choices are not left as stakeholder blockers.
+**Goal:** establish a reliable source baseline, inventory the migration and module dependencies, and record incompatible assumptions before runtime changes.
 
-## Phase 1 — Persistence foundation
+Required evidence:
+- exact source commit and complete V1–V6 inventory;
+- 31-target-table impact matrix, module dependency map and risk register;
+- exact-SHA test/CI result with failures and unrun checks reported truthfully;
+- no target runtime migration activation or destructive database operation.
 
-**Goal:** implement the exact relational baseline and common API foundation.
+**Gate:** audit artifacts are complete and traceable. This gate is distinct from application CI. The current P0 audit deliverable is PASS; backend CI is FAIL and target-schema MySQL verification is NOT RUN.
 
-Scope:
-- common response/pagination/exception infrastructure;
-- Flyway baseline for the approved 28 tables;
-- JPA entities/repositories;
-- FK/unique/check/index rules supported by current MySQL;
-- immutable history conventions.
+## 4. P1 — Freeze target contract and physical schema
 
-Do not add Notification, order timeline, after-sales case, unit_cost, voucher-rule fields, account_status, tracking or system settings.
+**Goal:** close or explicitly disposition every material decision before the target schema becomes the default runtime schema.
 
-Exit:
-- schema/entity mapping reconciles the 32-table V1–V6 source with the owner-confirmed 31-table target;
-- migration/mapping/constraint tests pass.
+Required work:
+- review D1–D10 in the decision questionnaire; distinguish owner-approved requirements from working defaults;
+- freeze account identity, authentication and account ownership;
+- freeze parent/child Product identity, typed attributes, inheritance and public ID/DTO compatibility;
+- define stock semantics, transaction boundaries, concurrency and idempotency for inventory;
+- decide voucher scope, usage limits/redemption, checkout quote behavior and order-create retries;
+- freeze order money calculations/snapshots, payment/refund scope, shipping states and address snapshot behavior;
+- resolve phone uniqueness versus the ERD, physical nullability/defaults/indexes/FK actions, timestamp/timezone rules and allowed literals;
+- update the contract, data dictionary and tests together for every approved decision.
 
-## Phase 2 — Identity, authentication, RBAC & audit foundation
+**Gate:** every material decision is either approved with traceable evidence or explicitly excluded/deferred without contradicting the target ERD. No unresolved HARD BLOCK may be treated as a technical default.
 
-**Goal:** complete account/auth/RBAC green APIs and a reusable authorization foundation.
+## 5. P2 — Implement the clean target persistence and align the application
 
-Implement APIs #1–7 and #58–69.
+**Goal:** replace legacy assumptions with the approved 31-table target while preserving only the API/business behaviors still in scope.
 
-Rules:
-- use approved phone-login decision from `docs/15`;
-- SUPERADMIN remains highest technical administrator;
-- do not create account status/disable lifecycle or refresh token;
-- role-to-business-permission matrix remains unassigned unless explicitly approved;
-- capability identifiers needed by implemented endpoints are technical decisions, not blockers;
-- every admin endpoint checks authorization server-side;
-- important writes include audit in the same service transaction where required.
+Required work:
+- establish the approved target-first Flyway baseline and system seed; do not rewrite historical V1–V6 files and expect existing Flyway histories to upgrade;
+- align entity/repository mappings, module-owned services, transaction boundaries and architecture tests;
+- update controllers, DTOs, validation, error behavior, authorization and frontend API callers as one contract-aligned change;
+- remove or rewrite tests that assert superseded storage details, while retaining tests for approved business invariants;
+- preserve atomicity and retry/concurrency behavior for order placement, inventory movements and goods-receipt confirmation;
+- keep demo fixtures separate from system seeds and free of credentials.
 
-Exit:
-- auth/profile/address/staff/role/permission flows work;
-- ownership/authorization/RBAC tests pass.
+**Safety boundary:** never run Clean Schema Reset against production, shared integration, staging, or any database containing data that must remain. A reset is permitted only after the exact database is verified disposable.
 
-## Phase 3 — Complete Catalog domain
+**Gate:** clean target DDL and seed are applied successfully to a disposable, empty supported MySQL database; target mappings and relevant service/API tests pass; no unresolved contract blocker is hidden by schema changes.
 
-**Goal:** deliver public and admin Catalog as one cohesive vertical slice.
+## 6. P3 — Acceptance and release evidence
 
-Implement APIs #11–13 and #27–45.
+**Goal:** prove the integrated target works rather than relying on compilation or a schema table count alone.
 
-Must enforce:
-- Category tree and no cycle;
-- Product belongs only to a leaf Category;
-- Product selects one SizeSystem;
-- Variant SizeValue belongs to that Product SizeSystem;
-- Product + SizeValue + Color unique;
-- effective price = variant override price else Product base price;
-- sellable availability derives from Product sale state + Variant sale state + inventory availability;
-- zero stock is not the same as stopped sale;
-- historical Variant identity is not rewritten after order history exists.
+Required evidence:
+- an exact-commit MySQL clean-install test and full backend test/build result;
+- table, column, key, CHECK, index, seed and Flyway validation for the target;
+- representative end-to-end tests for authentication/RBAC, catalog, cart/checkout, orders/COD, inventory/receiving, reporting/content and error/authorization paths;
+- rollback, duplicate request, concurrency, stock and money invariants where applicable;
+- architecture-boundary checks and frontend typecheck/tests/build for the changed contract;
+- review of the final diff, credentials/secrets, dead code and out-of-scope changes.
 
-Technical decisions already approved for implementation:
-- sale-state literals: `ON_SALE`, `STOPPED`; these encode the already-documented meanings “đang bán” and “ngừng bán” and do not add a new lifecycle;
-- capability identifiers: `CATALOG_READ` and `CATALOG_WRITE`;
-- SUPERADMIN may perform both capabilities;
-- no employee role is automatically granted either capability; role-to-permission assignment remains data/business configuration.
+**Gate:** publish exact SHA, commands, test results, unresolved issues and scope. Do not label the target accepted while a required test failed or was not run.
 
-Important nuance:
-- default sorting and direct public URL behavior for a stopped Product remain source TBD; do not let those details block the rest of Catalog. Use no speculative special redirect/tombstone lifecycle.
-
-Exit:
-- public/admin catalog API tests pass;
-- constraints/business rules above are tested;
-- no detailed size-guide model or invented gender/season/style enum set.
-
-## Phase 4 — Inventory & Receiving
-
-**Goal:** complete Supplier, GoodsReceipt, Inventory and ledger behavior.
-
-Implement APIs #46–57.
-
-Must prove:
-- GoodsReceipt DRAFT can be edited; CONFIRMED stock-affecting items are immutable;
-- confirmation increases sellable availability exactly once;
-- every stock mutation writes an immutable InventoryTransaction in the same transaction;
-- manual adjustment requires permission, reason, actor and audit;
-- stock never becomes negative;
-- no `unit_cost` field.
-
-Exit:
-- transaction/idempotency/rollback tests pass.
-
-## Phase 5 — Cart, Checkout Quote & Promotion integration
-
-**Goal:** complete all non-speculative Cart/Checkout behavior without waiting for unrelated TBDs.
-
-Implement APIs #14–19 where source is ready.
-
-Must enforce:
-- Cart never reserves/deducts stock;
-- quote has no persistence side effect and never creates Order;
-- server recalculates effective prices/availability;
-- authenticated cart path is implementable independently.
-
-Deferred slices:
-- guest-session key/TTL/persistence/merge;
-- voucher eligibility/calculation beyond locked `voucher_id/code`.
-
-These deferred slices do not block authenticated Cart or voucher-less Quote.
-
-Exit:
-- all non-deferred Cart/Quote behavior and tests pass.
-
-## Phase 6 — Order, COD, Fulfillment & baseline After-sales
-
-**Goal:** deliver the complete order state machine and stock/payment consistency.
-
-Implement APIs #8–10 and #20–26.
-
-Implement:
-- PENDING creation with immutable snapshots and UNPAID Payment;
-- no stock deduction on create;
-- atomic PENDING -> CONFIRMED stock check/deduction;
-- PREPARING/SHIPPING/COMPLETED/DELIVERY_FAILED/CANCELLED/RETURNED transitions;
-- cancel stock restoration exactly once when prior deduction occurred;
-- COD UNPAID -> PAID -> REFUNDED;
-- COMPLETE only when SHIPPING and PAID;
-- DELIVERY_FAILED does not auto-restock;
-- RETURNED does not auto-restock without actual returned sellable stock;
-- recipient editable only through PREPARING;
-- after-sales remains command-based, no new case resource/table.
-
-Create-order dedupe is a HARD BLOCK only for the retry/double-submit guarantee itself; it must not prevent implementation/testing of the rest of Order behavior.
-
-Exit:
-- state, rollback, idempotency and concurrency tests pass for implemented guarantees.
-
-## Phase 7 — Operations: Audit, Reporting, Content & Customer back-office
-
-Implement:
-- #70 audit;
-- #71 report;
-- #72–75 content;
-- #76–77 customer back-office.
-
-Rules:
-- report remains query-based;
-- no report aggregate table without measured need and new decision;
-- no content draft/publish/version lifecycle;
-- guest Orders do not become Accounts;
-- do not expose unnecessary PII.
-
-Exit:
-- authorization/query/API/report adjustment tests pass.
-
-## Phase 8 — Hardening & delivery readiness
-
-No new feature work.
-
-Verify:
-- all implemented baseline APIs against current API contract;
-- architecture boundaries and no cross-module Repository access;
-- no Entity leakage from controllers;
-- JWT/RBAC/ownership;
-- secure logging and PII handling;
-- stock/payment/receipt concurrency and retry safety;
-- transaction rollback;
-- indexes/query behavior;
-- full regression.
-
-Final status must classify every endpoint/requirement as:
-- IMPLEMENTED;
-- DEFERRED/BLOCKED WITH SOURCE;
-- OUT OF SCOPE.
-
-Do not report COMPLETE while a Must baseline slice has an unresolved hard blocker.
-
-## Phase gate output
+## 7. Phase report template
 
 ```text
 PHASE:
 STATUS: PASS | PARTIAL | BLOCKED | FAIL
-SOURCE IDS IMPLEMENTED:
-APIS IMPLEMENTED:
-FILES CHANGED:
-SCHEMA CHANGES:
-TECHNICAL DECISIONS RECORDED:
-TESTS RUN + RESULT:
-INVARIANTS VERIFIED:
-DEFERRED SLICES:
-HARD BLOCKERS REMAINING:
-NEXT PHASE READY: YES | NO
+BASE SHA:
+FINAL SHA:
+SOURCE / API CONTRACTS CHANGED:
+SCHEMA / MIGRATION CHANGES:
+DECISIONS APPROVED:
+TESTS RUN + EXACT RESULTS:
+MYSQL TARGET VERIFICATION:
+ARCHITECTURE REVIEW:
+OPEN HARD BLOCKS:
+DEFERRED / OUT OF SCOPE:
+NEXT GATE READY: YES | NO
 ```
+

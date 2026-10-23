@@ -1,6 +1,6 @@
 # 08 — Security, RBAC, Audit & Personal Data
 
-> **ERD v2 scope boundary (2026-10-22):** The existing account/security behavior remains a source contract, but the target ERD does not mark ACCOUNTS.phone or email as unique. Before target DDL, explicitly reconcile the current phone-login/unique-phone behavior with the physical data dictionary; do not silently assume the missing unique marker or weaken login identity guarantees.
+> **ERD v2 scope boundary (2026-10-22):** Existing account/security behavior remains the source contract. The ERD does not mark ACCOUNTS.phone or email unique, while the isolated target DDL currently makes phone required+unique as a working default. Resolve this discrepancy before accepting or activating the target DDL; do not silently assume uniqueness or weaken login identity guarantees.
 
 
 ## 1. Authentication

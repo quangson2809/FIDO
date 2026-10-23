@@ -13,13 +13,13 @@ The owner has chosen **Clean Schema Reset**:
 - Discard old disposable development/test rows and reseed from scratch.
 - Do not build a populated-source migration, historical ID crosswalk, legacy data archive, dual-write/cutover flow or per-field preservation mechanism solely for test data.
 - This decision applies only to explicitly disposable local/development/test databases. It does **not** authorize dropping production, shared integration, staging or any environment containing real user/business data.
-- No database has been reset by recording this decision. The current PR remains documentation-only.
+- Recording this decision did not execute a reset. Any later destructive operation requires checking the exact target database and confirming it is disposable.
 
 This decision closes legacy-only questions about mapping old source values, old inventory, historical payment/refund aggregates, old image snapshots, source-only fields and old idempotency keys. They are not blockers for a clean target install.
 
-## Implementation defaults adopted in branch `feature/clean-schema-reset`
+## Working defaults in the target draft — not a record of owner approval
 
-To implement the selected scope without pausing for another decision round, the working branch uses these defaults: **D1-A, D2-A, D3-A, D4-A, D5-A, D6-A, D7-A, D8-A, D9-A, D10-A**. They are encoded as working defaults in the draft DDL/runbook; they are not presented as facts about the currently running application. Review before the new schema becomes the default runtime schema. Any rejection must be handled by updating the contract, DDL and tests together.
+The target draft encodes options **D1-A through D10-A** as implementation defaults, but not all of those defaults are owner-approved. **D2-A is already confirmed** by the owner decision dated 2026-10-05 requiring login before use of persisted Cart and before order placement; see `frontend/CONTRACT_ALIGNMENT.md`. D1 and D3–D10 remain working defaults until explicitly accepted or changed. Keep this distinction in downstream status tables and update the contract, physical data dictionary, DDL and tests together when a material decision changes.
 
 | Decision | Working default applied |
 |---|---|
@@ -48,15 +48,14 @@ The target ERD does not mark `ACCOUNTS.phone` or `email` unique, while the curre
 
 **Confirm:** A / B / C / OTHER.
 
-## D2 — Guest carts and checkout
+## D2 — Cart/order authentication (CONFIRMED 2026-10-05)
 
-The target ERD has account-owned `CARTS` and `ORDERS`, and contains no guest-token/session table.
+The owner has decided that a user must be logged in to use the persisted Cart and place an Order. The target ERD has account-owned `CARTS` and `ORDERS` and no guest-token/session table. The frontend contract records the same rule in `frontend/CONTRACT_ALIGNMENT.md`.
 
-- **A — Recommended if the ERD is fixed:** require authentication before creating persisted carts/orders; update frontend/API behavior and acceptance tests accordingly.
-- B: guest checkout is mandatory; revise the ERD and API first to model guest identity and secure order lookup explicitly.
-- C: pause checkout implementation until the product owner decides.
+- **Confirmed: A** — require authentication before persisted cart and order-placement flows; target API #14–20 must use JWT-required access.
+- The former option B (guest checkout) is not an active choice. It would require a new explicit owner decision and an amended ERD/API contract.
 
-**Confirm:** A / B / C / OTHER.
+**Status:** RESOLVED. Do not hold P1 open for a guest-checkout decision; track the stale access annotations as documentation/API alignment.
 
 ## D3 — Parent/child Product and typed attributes
 
