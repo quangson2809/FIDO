@@ -63,18 +63,18 @@ Detailed named PK/FK/UNIQUE/CHECK/index definitions are extracted in the per-col
 ### Cart, quote and idempotency
 - A-03 approves authenticated Cart and Order. Account IDs from the client do not grant ownership.
 - CARTS.status does not establish one active Cart per account; decide whether that invariant is required and implement concurrency-safe enforcement.
-- Unique ORDERS.idempotency_key prevents duplicate values only. It does not bind the key to normalized request payload or account, define retention, or guarantee same-response replay.
+- Unique ORDERS.idempotency_key prevents duplicate values only. Proposed account-scoped key can be encoded as a fixed-length digest of account ID + client UUID, but changed-payload detection must compare every semantic input to immutable Order/OrderItem/OrderAddress/voucher snapshots. Any non-reconstructible input requires an ERD amendment for request fingerprint storage; process-local locks are not sufficient.
 - Target has no CHECKOUT_QUOTES table. If quote is approved as a nonpersistent preview, order creation must re-compute all authoritative price/discount/shipping and check stock at transaction time.
 
 ### Money and snapshots
-- Target DDL proposes DECIMAL(18,2), VND and total = subtotal - discount + shipping. These are proposals, not owner-approved accounting/rounding rules; DB-10 must freeze currency, scale, rounding point and line-discount allocation/reconciliation.
+- Owner decision DB-10 requires whole integer VND and exact reconciliation. The canonical logical ERD still labels monetary columns decimal, so the contract is internally inconsistent until an owner-approved ERD correction or formal amendment changes every Product/Voucher/Order/OrderItem/Snapshot/Payment amount field together. Rounding/allocation formula remains proposed; do not treat DECIMAL(18,2) draft as authoritative.
 - A row CHECK cannot reconcile summed OrderItems with order subtotal or reconcile line-discount allocation to Order-level discount and voucher snapshot. Application/service validation must do so once formulas and rounding are approved.
-- Order history must not rebuild old Product facts from current catalog. Image history remains blocked by DB-07.
+- Order history must not rebuild old Product facts from current catalog. Image history remains blocked by DB-07: the approved ERD has no explicit immutable image reference on ORDER_ITEMS, and overloading attribute_snapshot is not approved.
 
 ### Inventory and goods receipts
 - INVENTORIES uses (warehouse_id, product_id); a version column only helps if writes compare/guard version or lock the row and check affected-row count.
 - Balance, immutable inventory movement, relevant Order/Receipt state and required audit must commit or roll back together.
-- A-04 approves one operational warehouse in v1, but GOODS_RECEIPTS does not persist a destination warehouse; DB-03 must decide the service assignment/receipt contract. Existing adjustment API requires a reason but the target ledger has no reason column (P1-PROP-05); DB-03 must approve persistence or another auditable representation.
+- A-04 approves one operational warehouse in v1, so the service may resolve the sole active warehouse server-side; callers cannot select an arbitrary warehouse. GOODS_RECEIPTS does not persist a destination warehouse; the DB-03 proposal defines this as a server-owned single-warehouse assignment, pending owner/reviewer acceptance. Existing adjustment API requires a reason but the target ledger has no reason column (P1-PROP-05); DB-03 must approve persistence or another auditable representation.
 - Candidate inbound movement: exactly one GoodsReceiptItem source with positive delta. Candidate outbound movement: exactly one OrderItem source with outbound delta. Opening/adjustment/cancel/return/reversal semantics require DB-03/08 approval.
 - Unique idempotency_key does not prevent the same source event from being recorded twice using different keys.
 
