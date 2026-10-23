@@ -43,12 +43,14 @@
 |---|---|---|---|---|
 | DB-01 | Product parent/child | Decide root SKU/sellability/stock, child depth, inherited fields, parent stopped/deleted behavior, category/brand and public ID. Recommendation: root grouping-only, direct child sellable, inherit only name/slug/description/selling_price. | Wrong Product identity breaks Catalog, Cart, Order, receipt and Inventory. | Parent/child, cycle, sellability, API-ID compatibility. |
 | DB-02 | Dynamic attributes | Decide data_type domain, exactly-one typed-value rule, option ownership, requiredness/inheritance, variant-defining matrix and duplicate-combination strategy. OPTION/TEXT/NUMBER/BOOLEAN is only a candidate domain. | A plain option FK does not prove attribute ownership; service-only duplicate checking races. | Type matrix, wrong option, required attributes and concurrent duplicate. |
-| DB-03 | Warehouse/stock/ledger | Decide stock meaning, warehouse scope, receipt destination, fulfillment, deduction time, movement sources/reversals/reason and concurrency. | Stock drift/negative stock, ambiguous receipt destination and unsearchable adjustment reason. | Concurrent receive/order/adjust/cancel plus ledger consistency. |
+| DB-03 | Inventory/receipt/ledger mechanics | Decide quantity_on_hand meaning, when order stock is deducted, how receipts/adjustments bind to the already-approved single operational warehouse, movement sources/signs, reversals/reasons and concurrency. A-04 already fixes the warehouse count to one; do not reopen that decision. | Stock drift/negative stock, ambiguous receipt destination and unsearchable adjustment reason. | Concurrent receive/order/adjust/cancel plus ledger consistency. |
 | DB-05 | Quote/idempotency | Decide key origin/location/scope, payload binding, replay/conflict behavior, retention, mandatory behavior and quote lifecycle. Recommendation: Idempotency-Key UUID, same-payload replay, changed-payload conflict, preview-only quote with order-time recalculation. | Unique key alone does not bind payload/replay; target has no CHECKOUT_QUOTES table. | Lost-response retry, concurrent retry, conflicting payload, account isolation and repricing. |
 | DB-06 | Voucher | Decide formula/rounding/date/min/max/scope/stacking/global or per-account caps, consumption point and cancel/return restoration. | Target lacks product/category scope joins and usage ledger while prior Voucher behavior is richer. | Eligibility matrix, concurrent final-use and cancellation retry. |
 | DB-07 | Order snapshots | Decide line/image/address/voucher snapshot completeness, discount allocation, recipient edit and ShippingInfo authority. | Current DTO expects image history absent from target; recipient edit through PREPARING conflicts with immutable snapshot interpretation. | Catalog/address mutations, discount reconciliation and historical DTO. |
 | DB-08 | Payment/shipping | Decide COD states, refund amount/actor/time, separation of Order and Payment states, shipping states/timestamps/carrier and recipient source. | Target removes refund attribution and delivery_mode; state literals remain unapproved. | Duplicate collection/refund, state/security and shipping transitions. |
 | DB-09 | Physical/account/audit lifecycle | Decide phone uniqueness, lengths/null/defaults/status domains/indexes/FK actions, Account lifecycle, Product status+deleted_at and audit actor/JSON policy. | Auth, history and privacy regressions; P0 H2 status checks failed. | MySQL metadata diff, authentication, soft delete, audit redaction. |
+| DB-10 | Money/currency/rounding | Explicitly approve currency, decimal precision/scale, rounding mode and point, order-total calculation, shipping treatment, and allocation/reconciliation of order-level discounts to OrderItems. The draft's VND and DECIMAL(18,2) choices are proposals, not approval. | Amounts can diverge between quote, order, line totals, voucher snapshots, refunds and reports. | Multi-line rounding, boundary values, negative/maximum discounts, order-to-line reconciliation and report totals. |
+| DB-11 | System seed/bootstrap | Approve baseline system roles/permissions, initial SUPERADMIN bootstrap boundary, deterministic repeatable system seed, separation from demo fixtures and external credential handling. Never hardcode credentials. | Unbootstrappable environment, unintended privileges or demo identities/secrets entering a shared environment. | Fresh-install seed completeness/idempotency, role grants, no credential in source/fixtures and last-SUPERADMIN protection. |
 
 ## DEFERRED
 
@@ -65,7 +67,7 @@
 - APPROVED: 4
 - TECHNICAL_DECIDED: 5
 - PROPOSED: 11
-- OPEN_BLOCKED: 8 (DB-01, DB-02, DB-03, DB-05, DB-06, DB-07, DB-08, DB-09)
+- OPEN_BLOCKED: 10 (DB-01, DB-02, DB-03, DB-05, DB-06, DB-07, DB-08, DB-09, DB-10, DB-11)
 - DEFERRED: 5
 
 DB-04 (guest checkout) is resolved by A-03 and is not an active blocker. A later explicit owner amendment may reopen that scope.
