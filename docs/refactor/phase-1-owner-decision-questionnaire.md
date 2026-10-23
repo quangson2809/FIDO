@@ -1,5 +1,7 @@
 # FIDO Phase 1 — Owner Decisions for the 31-table Target Schema
 
+> **Superseded for approval status on 2026-10-23:** The owner has now approved DB-03, DB-05, DB-12 lifecycle/FK defaults and the proposed DB-01/02/06–DB-11/API defaults. Use [P1-owner-approval-2026-10-23.md](../refactor-v2/p1/P1-owner-approval-2026-10-23.md) and [P1-decision-log.md](../refactor-v2/p1/P1-decision-log.md) as current authority. This questionnaire is retained as historical decision input; its older “Confirm A/B/C” prompts are not open questions unless the current approval record explicitly leaves an item TBD. Numeric retention durations and anonymization exceptions remain TBD.
+
 - Date: 2026-10-22
 - Repository: https://github.com/quangson2809/FIDO
 - Target authority: [owner-confirmed 31-table ERD v2](phase-1-erd-v2-approved.mmd)
@@ -10,16 +12,16 @@
 The owner has chosen **Clean Schema Reset**:
 
 - Design the target schema for the new business contract, not to preserve the shape of obsolete development data.
-- Discard old disposable development/test rows and reseed from scratch.
+- Discard all existing disposable development/test rows and recreate/reseed from scratch under the approved target ERD v2; no legacy test-data migration is required.
 - Do not build a populated-source migration, historical ID crosswalk, legacy data archive, dual-write/cutover flow or per-field preservation mechanism solely for test data.
 - This decision applies only to explicitly disposable local/development/test databases. It does **not** authorize dropping production, shared integration, staging or any environment containing real user/business data.
 - Recording this decision did not execute a reset. Any later destructive operation requires checking the exact target database and confirming it is disposable.
 
 This decision closes legacy-only questions about mapping old source values, old inventory, historical payment/refund aggregates, old image snapshots, source-only fields and old idempotency keys. They are not blockers for a clean target install.
 
-## Working defaults in the target draft — not a record of owner approval
+## Historical working defaults — current approval is recorded separately
 
-The D1–D10 options below are historical decision inputs and proposed physical defaults, not an authoritative current approval matrix. As of 2026-10-23, use `docs/refactor-v2/p1/P1-decision-log.md` and `P1-exit-gate.md` for current disposition: owner directions are recorded for DB-01, DB-02, DB-04 and DB-06–DB-11 within the explicit scope of each decision; DB-03 and DB-05 remain unapproved requests for proposal; DB-12 deletion/FK/history retention remains open. DB-02/A-03 requires authentication before persisted Cart use and order placement, superseding legacy guest wording. DB-10 fixes monetary storage to integer VND/BIGINT; any DECIMAL(18,2) money recommendation in the D9 section below is superseded. Other D9 physical defaults are still proposals and do not close DB-09/DB-12.
+The D1–D10 options below are historical decision inputs. The owner approval dated 2026-10-23 supersedes their previous unapproved status: DB-03 and DB-05 proposals are approved; DB-12 lifecycle/FK defaults are approved with numeric retention durations still TBD; the proposed DB-01/02/06–DB-11/API defaults are approved. DB-02/A-03 keeps persisted Cart and order placement authenticated. DB-10 fixes money storage to integer VND/BIGINT. For implementation and current blockers, follow the linked owner-approval record and P1 exit gate.
 
 | Decision | Working default applied |
 |---|---|
@@ -34,9 +36,9 @@ The D1–D10 options below are historical decision inputs and proposed physical 
 | D9 | BIGINT IDs; integer VND for all monetary fields per owner decision DB-10 (2026-10-23); TIMESTAMP(6) UTC, checks/indexes and restrictive FKs by default. Other physical defaults remain subject to DB-09 review. |
 | D10 | Required roles/permissions in Flyway; demo catalog/inventory fixture separate from system seed and without accounts/secrets. |
 
-## How to respond
+## Historical response instructions
 
-Reply with any changes in the form `D5-OTHER: ...`. The defaults above are used to build the working branch, but must be changed before activation if they are inconsistent with the actual product contract. These questions concern the **new application's behavior and physical schema**, not obsolete development data.
+The old `D1-OTHER` / `D5-OTHER` prompts below are kept for traceability and are not a request to re-approve already accepted defaults. Any future change to an approved decision must be recorded as a dated amendment to the decision log, ERD/API contract and acceptance tests. The Clean Schema Reset applies to disposable development/test data only; it is not authority to delete production/shared/persistent data.
 
 ## D1 — Account identity and phone login
 
@@ -139,8 +141,8 @@ A fresh target database needs a defined initialization path.
 
 ## What happens after the decisions
 
-1. Update this decision record and the physical data dictionary; do not expand the 31-table ERD unless the owner explicitly approves an amendment.
-2. Implement target-first Flyway DDL and system seeds. A clean baseline must be tested from an empty database.
-3. Recreate only disposable development/test databases when the implementation replaces V1–V6 history; do not attempt to apply modified historical migrations to a database whose old Flyway history must be preserved.
-4. Align Java entities/services and frontend API contracts with the target behavior.
-5. Verify database constraints, seed/bootstrap behavior and application acceptance tests before considering merge.
+1. Apply the 2026-10-23 owner approvals to the decision log, ERD contract, data dictionary, API/DTO/UC maps and reset runbook.
+2. Implement the target-first Flyway baseline and system seeds; keep the clean-reset location isolated until runtime mapping is ready.
+3. Reset only an explicitly disposable development/test database, discard legacy fixture rows and reseed. Do not migrate V1–V6 development data for preservation; never target production/shared/persistent data.
+4. Align Java entities/services and frontend API contracts to the approved Product-ID, integer-VND, voucher, snapshot and idempotency contracts.
+5. Verify database constraints, seed/bootstrap security and application acceptance/concurrency tests before claiming P1 PASS.
