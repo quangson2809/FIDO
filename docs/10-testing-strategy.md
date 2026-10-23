@@ -35,7 +35,7 @@ This is the target testing plan for the approved 31-table ERD v2. Historical P0/
 | T-01 | Parent/child Products have independent IDs, SKUs, required prices and stock; depth > 1, self-parent and cycles are rejected. |
 | T-02 | Attributes support OPTION/TEXT/NUMBER/BOOLEAN; exactly one matching typed value is accepted; cross-Attribute options are rejected; attributes never generate Products. |
 | T-03 | Duplicate Product SKU and duplicate active phone are rejected; a phone becomes reusable after Account soft deletion. |
-| T-04 | Authenticated Cart lines use product_id; non-positive quantity and foreign Cart/item ownership are rejected. Current-Cart resolution follows the explicitly documented selection rule. |
+| T-04 | Authenticated Cart lines use product_id; non-positive quantity and foreign Cart/item ownership are rejected. If multiple Cart rows exist, the current-Cart selection policy must be explicitly agreed and tested; do not infer one-active-Cart uniqueness or a merge from the schema. |
 | T-05 | Quote is stateless/advisory: no quote row/ID, stock reservation, voucher use or Order side effect. Order placement re-reads and reprices current data. |
 | T-06 | Same Account-scoped idempotency key and same semantic payload replays the committed Order; changed payload conflicts; cross-Account access is isolated; concurrent duplicates commit once. |
 | T-07 | Integer-VND totals reconcile; HALF-UP and largest-remainder allocation are deterministic with ascending Product-ID tie-break. |
