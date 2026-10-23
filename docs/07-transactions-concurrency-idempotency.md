@@ -1,6 +1,6 @@
 # 07 — Transactions, Concurrency & Idempotency
 
-> **P1 target status (2026-10-23):** Legacy transaction examples below use Variant IDs and available_quantity and are source behavior only. The target uses INVENTORIES(warehouse_id, product_id, quantity_on_hand, version) and INVENTORY_TRANSACTIONS; it has no reservation table or reserved-quantity field. DB-03 remains a proposal, so proposed target stock semantics and transaction protocol below are not yet owner-approved. Do not activate clean-reset or treat these paragraphs as a frozen implementation contract.
+> **P1 target status (2026-10-23):** Legacy transaction examples below use Variant IDs and available_quantity and are source behavior only. The target uses INVENTORIES(warehouse_id, product_id, quantity_on_hand, version) and INVENTORY_TRANSACTIONS; it has no reservation table or reserved-quantity field. DB-03 and DB-05 mechanics were owner-approved on 2026-10-23. Implement the approved stock source/sign/dedupe/reversal protocol and account-scoped order idempotency; do not treat legacy examples as the target contract.
 
 
 ## 1. Principle
@@ -66,11 +66,11 @@ Implementation technique (pessimistic lock vs conditional update) may follow the
 - `RETURNED`: no automatic increment.
 - `CUSTOMER_RETURN_IN`: only after received goods are inspected and sellable.
 
-## 8. Create-Order idempotency — DB-05 approval required
+## 8. Create-Order idempotency — DB-05 approved contract / implementation pending
 
 The current target ERD and isolated draft DDL include `ORDERS.idempotency_key` and `ORDERS.request_fingerprint`; this corrects older statements that the target has no idempotency fields. Their presence alone does not define a correct guarantee.
 
-- DB-05 proposal must be explicitly accepted before implementing API #20 against this protocol.
+- DB-05 is approved. Implement API #20 against the owner-accepted protocol and keep it pending until replay/conflict/rollback and concurrency tests pass.
 - The proposal must freeze key scope, canonical fingerprint content, same-key/same-payload replay, changed-payload conflict, cross-account isolation, collision handling, retention and transaction boundary.
 - An in-memory lock alone is not durable across instances/restarts; use the approved database-backed uniqueness/arbitration mechanism after acceptance.
 - Current legacy Order/API/frontend flow is not mapped to those target fields. Do not claim target idempotency works until implementation and concurrency tests pass.
@@ -88,4 +88,4 @@ Each critical command must have a test proving:
 
 ## Target concurrency gate (P1)
 
-When DB-03 is accepted, target stock writes must be keyed by warehouse + Product, with order/receipt state, INVENTORIES balance, INVENTORY_TRANSACTIONS and required audit committed atomically. Quote/cart reads must not reserve stock. The movement vocabulary, semantic source uniqueness across different idempotency keys, reversal rules, opening balance and lock ordering are still proposal items and block P2.
+Under the owner-approved DB-03 contract, target stock writes are keyed by warehouse + Product, with order/receipt state, INVENTORIES balance, INVENTORY_TRANSACTIONS and required audit committed atomically. Quote/cart reads must not reserve stock. Implement the approved movement vocabulary, semantic source uniqueness across different request keys, append-only reversals, explicit opening balance and deterministic lock order; these are engineering acceptance gates, not pending owner decisions.
