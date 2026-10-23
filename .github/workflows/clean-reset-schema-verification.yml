@@ -21,6 +21,9 @@ on:
       - "backend/src/test/java/com/fido/persistence/CleanResetSchemaTests.java"
       - "backend/src/test/resources/clean-reset/**"
       - ".github/workflows/clean-reset-schema-verification.yml"
+      - "scripts/p1/**"
+      - "docs/refactor/phase-1-erd-v2-approved.mmd"
+      - "docs/refactor-v2/p1/P1-data-dictionary.csv"
   workflow_dispatch:
 
 permissions:
