@@ -26,7 +26,7 @@ The successful target-schema run recorded for the approved P1 baseline is [GitHu
 2. [Owner approval](refactor-v2/p1/P1-owner-approval-2026-10-23.md)
 3. [Canonical target ERD](refactor/phase-1-erd-v2-approved.mmd)
 4. [Physical data dictionary](refactor-v2/p1/P1-data-dictionary.csv)
-5. [Target data/API/DTO/business/transaction contracts](03-data-model.md), (04-api-contract.md), (05-dto-contract.md), (06-business-rules-state-machines.md), (07-transactions-concurrency-idempotency.md)
+5. Target contracts: [data model](03-data-model.md), [API](04-api-contract.md), [DTO](05-dto-contract.md), [business rules](06-business-rules-state-machines.md) and [transactions/concurrency/idempotency](07-transactions-concurrency-idempotency.md)
 6. [P1 target-vs-runtime mapping](refactor-v2/p1/P1-api-breaking-changes.md) and [traceability matrix](refactor-v2/p1/P1-traceability-matrix.csv)
 7. [Clean Schema Reset runbook](refactor/clean-schema-reset-runbook.md)
 8. [Implementation roadmap](11-implementation-phases.md)
