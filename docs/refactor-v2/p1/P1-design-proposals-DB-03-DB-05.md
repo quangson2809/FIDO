@@ -21,12 +21,12 @@ Current target draft: 31 logical tables; SQL includes warehouse destination, inv
 | GOODS_RECEIPT | positive | exactly one goods_receipt_item_id | only on the first successful receipt confirmation |
 | ORDER | negative | exactly one order_item_id | only after rechecking current product price/status and sufficient stock |
 | ORDER_CANCEL_REVERSAL | positive | original order-item movement / reverses_transaction_id | at most one reversal of an eligible prior deduction |
-| RETURN_RESTOCK | positive only when item is approved to return to sellable stock | order item and/or explicit reversal link per accepted contract | return decision and inventory restoration must be atomic |
+| RETURN_RESTOCK | positive only after authorized approval that item is sellable again | order_item_id plus reverses_transaction_id referencing the original ORDER movement | one per accepted return event; source/state guards prevent duplication; commit with return/order state and audit |
 | ADJUSTMENT | non-zero signed delta | no receipt/order item | require reason code, authorized actor and idempotency/correlation key |
 
 ORDER_CANCEL_REVERSAL must reference the original ORDER movement. RETURN_RESTOCK must reference the order item and original stock deduction; it is allowed only after an authorized return decision determines the item is sellable again, and at most once for the accepted return event. The same semantic source movement submitted under a different request key must still be rejected through a source-derived uniqueness strategy plus guarded state transition.
 
-### Proposed transaction protocol
+### Approved transaction protocol
 
 1. Treat every receipt confirmation, order placement, cancellation, return-restock and manual adjustment as one transaction covering source state, inventory balance, ledger rows and audit evidence.
 2. Lock affected inventory rows in a deterministic ascending product_id order; for missing rows, handle a composite-key insert race by reselecting under lock.
@@ -68,7 +68,7 @@ These concurrency and semantic tests are not yet evidenced as passing. The MySQL
 | A different account reuses a client UUID | Resolve to a different account-scoped stored key; never reveal another account's Order |
 | Two different keys race against the same stock | Lock and revalidate inventory; at most one may consume the last units |
 
-### Candidate atomic order-placement sequence
+### Approved atomic order-placement sequence
 
 1. Resolve account from authentication and normalize the idempotency key and semantic payload. Client totals, prices, discounts, stock and currency are never trusted.
 2. If a committed order exists for the accepted key scope, compare the persisted fingerprint: replay only if equivalent; otherwise return the frozen conflict error.
