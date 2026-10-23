@@ -47,7 +47,7 @@ Account addresses are mutable account-owned records. An Order's `ORDER_ADDRESSES
 
 A Cart line identifies one Product row. Use `product_id` consistently through Cart, quote, order line, receiving and inventory requests. Product parent/child structure is explicit; metadata never creates Products.
 
-All Cart endpoints, quote and Order placement use the same deterministic current-Cart rule: select the Account's most recently updated Cart, breaking ties by Cart ID. Do not merge multiple Carts or assume a one-active-Cart database constraint.
+The target schema does not impose a one-active-Cart uniqueness constraint or Cart merge. Before Cart/quote/Order runtime implementation, define how the application resolves an Account that has multiple Cart rows; do not silently choose by update time or merge them.
 
 Order creation revalidates Product status, price, stock, voucher quota and server-owned shipping input. Same account-scoped idempotency key plus the same canonical payload replays the committed result; a changed payload returns a typed conflict. The exact transport location of the key must be frozen before implementation.
 
