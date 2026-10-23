@@ -1,65 +1,66 @@
-# P1 — Domain Invariants
+# P1 — Owner-Approved Domain Invariants
 
-**Status: PARTIAL.** Owner-confirmed decisions are distinguished from proposed mechanics. DB-03/DB-05 proposal details are in P1-design-proposals-DB-03-DB-05.md; they are not approved. Behavioral/implementation blockers remain for DB-03/05/06/07/08/09/10/12 even where target fields now exist.
+**Status: PARTIAL.** The target behavior below reflects the owner approval dated 2026-10-23. Runtime implementation, authorization, transaction, concurrency and end-to-end tests remain open. Numeric retention durations and anonymization/deletion exceptions remain TBD under DB-12.
 
 ## Account and RBAC
-- INV-ACC-01: Phone is the login identity and is unique among active accounts; reuse is allowed after soft deletion (owner decision DB-09, 2026-10-23). Never expose password hashes; retain generic credential-failure behavior. Target MySQL suite passes active-phone uniqueness and reuse after soft deletion. The application Account Entity remains unaligned: global unique phone is present and deleted_at is not mapped.
-- INV-ACC-02: /me resources, saved addresses and customer orders are scoped to authenticated principal. Client account IDs never authorize access.
-- INV-RBAC-01: Resolve effective grants from the database; never trust role claims from the client. Role/permission replacement and audit are atomic; preserve last-SUPERADMIN protection.
-- INV-ACC-03: Target Account status literals and their login/session effects are not approved; do not invent a new lifecycle.
-- INV-SEED-01: Seed roles/permissions through Flyway; bootstrap SUPERADMIN separately using secret configuration external to source control; keep demo fixtures separate (owner decision DB-11, 2026-10-23). No credentials may be hardcoded or committed.
 
-## Product, Attribute and Image
-- INV-PROD-01: Parent references must exist and graph must be acyclic; permitted hierarchy depth remains DB-01.
-- INV-PROD-02: Both parent and child Products are sellable and each has its own SKU, price and inventory (owner decision DB-01, 2026-10-23). Cart/Order/receipt/Inventory target Product IDs replace legacy Variant IDs; public API compatibility mapping still requires documentation and tests.
-- INV-PROD-03: Dynamic attributes are descriptive only and do not generate variants; child Products are created explicitly (owner decision DB-02, 2026-10-23). Do not derive SKU/Product rows from attribute combinations. Existing ERD inheritance annotations remain the only inheritance authority; do not implicitly inherit category, brand, status, SKU or images.
-- INV-PROD-04: Preserve leaf Category assignment unless explicitly amended; protect in-use categories.
-- INV-ATTR-01: OPTION/TEXT/NUMBER/BOOLEAN are candidate data types. Each row needs one compatible typed value; an option must belong to the same Attribute.
-- INV-ATTR-02: Unique SKU does not guarantee a unique variant-defining option combination. Approve a signature/unique guard or explicitly accept the weaker behavior.
-- INV-IMG-01: Never reconstruct historical Order images from the current gallery. ORDER_ITEMS.image_url_snapshot is present in the target ERD/SQL draft. Do not claim immutable image history until retained asset versioning, deletion/overwrite policy and historical access are evidenced.
+- **INV-ACC-01:** Phone is the login identity and is unique among active Accounts. Soft deletion releases the phone for reuse. Generic credential-failure messaging must not reveal whether an account exists.
+- **INV-ACC-02:** /me resources, saved addresses and customer Orders are scoped to the authenticated principal. Request-supplied Account IDs do not grant access.
+- **INV-ACC-03:** Account status literals are ACTIVE, PENDING_APPROVAL, LOCKED and SUSPENDED. Status-specific login/session effects must follow the API/security contract.
+- **INV-RBAC-01:** Resolve effective grants from target role/permission data. Role/permission mutation and required audit are atomic; preserve the last-SUPERADMIN invariant under concurrent updates.
+- **INV-SEED-01:** Seed system roles/permissions through Flyway; keep demo fixtures separate. Bootstrap SUPERADMIN credentials come from external secret/configuration and are never committed.
 
-## Cart, Price, Checkout and Order
-- INV-CART-01: A-03 approves JWT-required Cart, quote and Create Order. No guest session/cart merge.
-- INV-CART-02: Quantity must be positive; add and replace semantics differ; Cart never deducts stock.
-- INV-CART-03: One active Cart/account is not implied by status; approve if required and enforce concurrent creation safely.
-- INV-PRICE-01: The server controls effective price, discount, shipping fee, subtotal and total.
-- INV-QUOTE-01: CHECKOUT_QUOTES is absent; proposal is a stateless preview with no stock reservation and server-side recalculation at placement. If current price/stock/voucher/shipping changes materially, return conflict/requote and create no Order. This requires owner acceptance.
-- INV-ORDER-01: Proposed idempotency scope is authenticated account + create-order operation + key; same canonical payload replays the committed Order, changed payload conflicts, and cross-account reuse is isolated. This guarantee is NOT implementable as durable multi-instance idempotency unless an approved schema location and database uniqueness/arbitration exist for key, payload hash and result identity. Resolve schema fit before claiming this invariant.
-- INV-ORDER-02: VND only; money is stored as integer VND (owner decision DB-10, 2026-10-23). Proposed formula: total = subtotal - discount + shipping fee; discount is capped at subtotal; percentage discount rounds half-up once at order level; line discounts use largest-remainder allocation and must sum exactly to order discount. This rounding/allocation algorithm is proposed, not owner-approved. The canonical target ERD/SQL now use integer VND; current Java Order/Product/Voucher and frontend API types still include BigDecimal/legacy decimal calculation and must be aligned after decision freeze.
-- INV-ORDER-03: Capture SKU/name/attributes/quantity/unit price/discount/line total at placement; never query live catalog to recreate historical facts.
-- INV-ORDER-04: Only approved state transitions are allowed. Order and Payment status remain separate.
-- INV-ADDR-01: Saved Address differs from OrderAddress. Recipient PATCH through PREPARING and duplicated ShippingInfo receiver fields need DB-07/08 resolution.
+## Product, attributes and images
 
-## Voucher, Payment and Shipping
-- INV-VOUCHER-01: Voucher is order-wide, non-stackable, with no product/category conditions (owner decision DB-06, 2026-10-23). Formula, validity/usage limits and cancellation behavior must fit the target schema or be explicitly deferred; do not imply product/category scope or usage-ledger capabilities. Monetary behavior follows integer VND DB-10.
-- INV-VOUCHER-02: Snapshot voucher code/type/value/discount so future edits do not rewrite old Orders.
-- INV-VOUCHER-03: Any usage limit needs serialized consumption/restoration; unique voucher code is insufficient.
-- INV-PAY-01: COD only is the source baseline; collector identity/time are server-derived by authorized command.
-- INV-PAY-02: Target draft contains refund amount/actor/time/reason fields, but partial/full semantics, durable refund idempotency, allowed transitions and authorization remain DB-08 blockers.
-- INV-SHIP-01: Carrier/tracking fields are not an integration contract; approve status transitions/timestamps and recipient source.
+- **INV-PROD-01:** Product parent/child depth is at most one. Reject self-parenting, cycles and invalid parent references.
+- **INV-PROD-02:** Parent and child Product rows are independently sellable. Each row owns its own Product ID, SKU, required integer-VND selling price and stock.
+- **INV-PROD-03:** NULL name/slug/description means the stored field is NULL; it does not implicitly inherit a parent value. No other field may acquire implicit inheritance.
+- **INV-ATTR-01:** Dynamic attributes support OPTION, TEXT, NUMBER and BOOLEAN. A value must match the authoritative Attribute type and exactly one compatible value is populated.
+- **INV-ATTR-02:** An OPTION value must reference an option belonging to the same Attribute. `is_variant_defining` is informational only: attributes do not generate child Products or define a composite sale identity.
+- **INV-IMG-01:** Order-time ORDER_ITEMS.image_url_snapshot must reference immutable retained object/version content. Never reconstruct historical Order images from the current Product gallery. Numeric retention duration and legal exceptions remain TBD; automatic purge is disabled pending approval.
+
+## Cart, checkout and Order
+
+- **INV-CART-01:** Persisted Cart operations, quote access and Order placement require authentication. There are no guest Cart/order flows or cart merges in target v1.
+- **INV-CART-02:** Cart item identity is (Cart, Product); use product_id. Quantity must be positive. Cart and quote do not reserve/deduct stock.
+- **INV-CART-03:** The schema allows the possibility of more than one Cart row for an Account; an automatic one-active-Cart constraint or merge policy is not inferred. Specify a deterministic current-Cart resolution rule before implementing Cart/checkout if multiple rows may exist.
+- **INV-PRICE-01:** The server controls Product price, discount, shipping fee, subtotal and total. At Order placement, reload/reprice current server-side Product, stock, voucher and shipping inputs.
+- **INV-QUOTE-01:** Quote is stateless/advisory: no CHECKOUT_QUOTES row, quote_id, stock reservation, voucher mutation or Order side effect.
+- **INV-ORDER-01:** Create-order idempotency is scoped to authenticated Account plus operation and key, with a canonical SHA-256 semantic-request fingerprint. Same key/payload replays the committed result; changed payload conflicts; a different Account cannot access another result. The HTTP transport for the key must be specified in the API contract.
+- **INV-ORDER-02:** Money is whole VND in integer storage. Calculate order discount using HALF-UP rounding once at order level, then allocate by largest remainder with ascending Product ID tie-break. Line discounts sum exactly to the order discount; totals are reconciled and non-negative.
+- **INV-ORDER-03:** Capture Product/SKU/name/attribute/quantity/price/discount/line/image facts and recipient/voucher snapshots at placement. Later source edits never rewrite placed Order facts.
+- **INV-ORDER-04:** Use the approved Order state/actor matrix; Order, Payment, inventory and required audit side effects commit atomically.
+- **INV-ADDR-01:** Saved Address and ORDER_ADDRESSES are different aggregates. Editing a saved Address must not rewrite an OrderAddress snapshot.
+
+## Voucher, COD and shipping
+
+- **INV-VOUCHER-01:** Voucher is order-wide and non-stackable. There is one global usage limit; no Product/Category targeting and no per-account usage ledger.
+- **INV-VOUCHER-02:** Increment voucher usage atomically with successful Order placement; restore at most once on eligible cancellation. A quote never consumes usage.
+- **INV-VOUCHER-03:** Snapshot voucher code/type/value/discount so later voucher edits cannot rewrite historical Orders. Test the concurrent final-use race and cancellation retries.
+- **INV-PAY-01:** COD only. Collection/refund actor and time are server-derived by an authorized command.
+- **INV-PAY-02:** One Payment aggregate per Order; at most one full refund per Order in v1. Partial/multiple refunds are out of target. Duplicate collection/refund is rejected and side effects are atomic.
+- **INV-SHIP-01:** Shipping is manual; no carrier API or automatic tracking integration. Use the approved ShippingInfo state/actor matrix and preserve order-time receiver facts.
 
 ## Inventory, Supplier and Goods Receipt
-- INV-STOCK-01: Proposed meaning of quantity_on_hand is the non-reserved on-hand quantity; quote/cart do not reserve stock, and deduction occurs only in successful order placement. This is DB-03 proposal, pending owner acceptance.
-- INV-STOCK-02: Balance, immutable ledger and relevant Order/Receipt state/audit commit or roll back together.
-- INV-STOCK-03: Use row lock or guarded version update and check affected row count; @Transactional alone does not prevent lost updates.
-- INV-STOCK-04: Receipt movement must match Product/warehouse and positive inbound delta; Order movement matches OrderItem/Product and outbound delta.
-- INV-STOCK-05: Retry must not duplicate stock. Unique idempotency key alone cannot stop the same source movement under another key; the ERD/SQL draft includes reverses_transaction_id, but does not enforce uniqueness of the same semantic source event under a different idempotency key. Use state guards plus an accepted source-derived uniqueness strategy; the movement-source CHECK and reversal rules remain unapproved.
-- INV-RECEIPT-01: Confirm GoodsReceipt once; target does not persist the destination warehouse.
-- INV-STOCK-06: Current adjustment API requires a reason but target ledger omits it; persist it or approve another contract.
 
-## Audit, Content, Soft Delete and Reports
-- INV-AUDIT-01: Before/after JSON allowlist excludes password/hash, tokens, OTP, cookies/session IDs, secrets, raw authorization headers and unnecessary PII.
-- INV-AUDIT-02: Nullable actor requires system-event policy; correlation IDs do not establish identity.
-- INV-CONTENT-01: Slug unique in ERD; public endpoint serves only approved published content; pageCode-to-slug compatibility is open.
-- INV-SOFTDELETE-01: Product status and deleted_at are separate. Define visibility/parent history; never cascade-delete Order, ledger or audit.
-- INV-REPORT-01: Follow docs/15 approved formulas: include shipping in received sales, subtract returns in original completion period, group current states by Order creation date and use Asia/Ho_Chi_Minh boundaries.
+- **INV-STOCK-01:** INVENTORIES is keyed by (warehouse_id, product_id), tracks quantity_on_hand and version, and never becomes negative. v1 uses one operational warehouse resolved by the server.
+- **INV-STOCK-02:** Every movement updates source state, Product balance, append-only INVENTORY_TRANSACTIONS and required audit in one transaction.
+- **INV-STOCK-03:** Approved movement types are OPENING, GOODS_RECEIPT, ORDER, ORDER_CANCEL_REVERSAL, RETURN_RESTOCK and ADJUSTMENT. Enforce source/sign rules and semantic-source dedupe independently of client request keys.
+- **INV-STOCK-04:** Lock stock rows in deterministic ascending Product ID order. Guard balance/version updates and check affected-row count; @Transactional alone is insufficient to prevent lost updates.
+- **INV-STOCK-05:** Correct mistakes with linked compensating movements. Never update/delete an original ledger entry. Receipt confirmation, Order placement/cancellation, eligible restock and adjustment must be atomic with source state and audit.
+- **INV-RECEIPT-01:** GoodsReceipt is DRAFT/CONFIRMED/CANCELLED; only DRAFT is editable and CONFIRMED posts stock once. Confirmed stock-affecting lines are immutable.
+- **INV-STOCK-06:** ADJUSTMENT requires a non-zero delta, authenticated actor and reason code; reject invalid/duplicate source movements and insufficient stock.
 
+## Audit, content, soft deletion and reports
 
-## Implementation traceability boundary
+- **INV-AUDIT-01:** Before/after JSON must exclude password/hash, tokens, OTP, cookies/session IDs, secrets, raw Authorization headers and unnecessary PII.
+- **INV-AUDIT-02:** Actor attribution comes from authenticated/system context; correlation IDs are not identity.
+- **INV-CONTENT-01:** Public content reads return published pages only. Use target slug/status semantics; no version/event table is implied.
+- **INV-SOFTDELETE-01:** Prefer disabling/soft deletion for referenced Account/catalog/voucher/warehouse records. RESTRICT is the default for business/history FKs; CASCADE only for approved disposable dependent data. Preserve placed Order, Payment, ledger and audit history.
+- **INV-REPORT-01:** Apply the approved report formulas, Asia/Ho_Chi_Minh date boundaries and return adjustment policy consistently across backend/frontend.
 
-The clean-reset SQL remains isolated from active Flyway migrations. Current legacy Entity/Repository/API code has not been migrated to the target Product/attribute, warehouse/inventory, Order, Payment and integer-VND contracts. Use P1-traceability-matrix.csv and P1-api-breaking-changes.md for the exact layer-by-layer statuses. DB-03/DB-05 details remain unapproved proposals. Listed tests are acceptance requirements unless a separate CI run explicitly passes them.
+## Acceptance boundary
 
+The canonical ERD, owner approval and data dictionary are the target authority. Existing Entities/Repositories/APIs/frontend may be used to locate mismatches only. Use the P1 traceability and API mapping files to report implementation status; do not turn old behavior into target requirements.
 
-## Product hierarchy fields — decision still required
-
-DB-01 confirms parent and child Product rows can each sell independently and own SKU, required selling_price and inventory. selling_price is non-inherited and required in the target DDL. Hierarchy depth, effective-value fallback and parent-update propagation for the ERD-annotated child name, slug and description remain open; category_id and brand_id requiredness/FK null semantics also remain open. Treat NULL as persisted NULL unless an approved field-specific rule says otherwise; never implement silent inheritance from arbitrary nullable columns.
+P1 remains PARTIAL until fresh-target MySQL checks, application mappings, RBAC/security, source/balance/ledger transaction tests, quote/idempotency replay/conflict tests, voucher race tests, immutable image history and frontend/API acceptance all pass on the exact candidate SHA. Clean Schema Reset is allowed only on an identified disposable local/development/test database.
