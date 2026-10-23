@@ -1,72 +1,75 @@
 # 02 — Module Ownership & Dependencies
 
-> **ERD v2 scope boundary (2026-10-22):** Module ownership and current entity/service names below describe the pre-refactor implementation. The target persistence structure is the owner-confirmed 31-table ERD in docs/refactor/phase-1-erd-v2-approved.mmd and docs/refactor/phase-1-erd-v2-contract.md. Keep package ownership as an architectural concern, but do not treat legacy ProductVariant/size/color or any other baseline table as part of the target schema unless the owner changes the ERD.
-
-
 ## 1. Ownership map
 
-| Module | Business responsibility | Baseline tables |
+Package ownership remains Modular Monolith + Package by Feature + layered architecture. Persistence ownership follows the approved 31-table target ERD.
+
+| Module | Business responsibility | Target tables owned |
 |---|---|---|
-| `account` | Auth/profile/address, internal staff account, role/permission/RBAC, customer back-office views | `accounts`, `addresses`, `roles`, `permissions`, `account_roles`, `role_permissions` |
-| `product` | Public catalog, admin catalog, Category/Brand/Size/Color/Product/Image/Variant | `categories`, `brands`, `size_systems`, `size_values`, `colors`, `products`, `product_images`, `product_variants` |
-| `cart` | Authenticated persisted cart and cart items; guest cart is outside target scope | `carts`, `cart_items` |
-| `promotion` | Voucher identifier/code only in current logical baseline | `vouchers` |
-| `order` | Checkout quote orchestration, create Order, state machine, Payment/COD, shipping, after-sales commands | `orders`, `order_items`, `payments`, `shipping_infos` |
-| `inventory` | Supplier, GoodsReceipt, current sellable inventory, immutable stock ledger | `suppliers`, `goods_receipts`, `goods_receipt_items`, `inventories`, `inventory_transactions` |
-| `audit` | Immutable/auditable important operation records | `audit_logs` |
-| `report` | Sales/order-status report queries; no baseline report table | none |
-| `content` | Public/admin approved information and policy pages | `content_pages` |
+| `account` | Authentication, account lifecycle/profile/address book, staff/customer queries and RBAC | `ACCOUNTS`, `ADDRESSES`, `ROLES`, `PERMISSIONS`, `ACCOUNT_ROLES`, `ROLE_PERMISSIONS` |
+| `product` | Public/admin catalog, category/brand, Product parent-child hierarchy, Product images and descriptive typed attributes | `CATEGORIES`, `BRANDS`, `PRODUCTS`, `PRODUCT_IMAGES`, `ATTRIBUTE_TYPES`, `ATTRIBUTES`, `ATTRIBUTE_OPTIONS`, `PRODUCT_ATTRIBUTE_VALUES` |
+| `cart` | Authenticated Cart and Cart lines | `CARTS`, `CART_ITEMS` |
+| `promotion` | Voucher definition, eligibility and global usage count | `VOUCHERS` |
+| `order` | Stateless checkout quote orchestration, order placement/state transitions, COD Payment, manual shipping and in-scope after-sales commands | `ORDERS`, `ORDER_ITEMS`, `ORDER_ADDRESSES`, `ORDER_VOUCHER_SNAPSHOTS`, `PAYMENTS`, `SHIPPING_INFOS` |
+| `inventory` | Supplier/procurement, GoodsReceipt, warehouse-scoped Product stock and append-only ledger | `SUPPLIERS`, `GOODS_RECEIPTS`, `GOODS_RECEIPT_ITEMS`, `WAREHOUSES`, `INVENTORIES`, `INVENTORY_TRANSACTIONS` |
+| `audit` | Append-only records of important administrative and business operations | `AUDIT_LOGS` |
+| `report` | Sales and Order-state reporting; query-only aggregation | No dedicated target table |
+| `content` | Public content and admin content lifecycle | `CONTENT_PAGES` |
 
-Total: **28 tables in the original V1 baseline**. Later source migrations V2–V6 add constraints/seeds and four tables in V5, bringing the complete legacy V1–V6 schema to **32 application tables**. These are source-schema counts, not the 31-table target ERD.
+The table sets above cover all 31 approved target tables. A target schema addition needs explicit owner approval and an ERD/dictionary/API amendment.
 
-## 2. API ownership
+## 2. API responsibility by domain
 
-- `account`: API #1–7, #58–69, #76–77.
-- `product`: API #11–13, #27–45.
-- `cart`: API #14–18.
-- `order`: API #8–10, #19–26.
-- `inventory`: API #46–57.
-- `audit`: API #70.
-- `report`: API #71.
-- `content`: API #72–75.
-- `promotion`: participates in quote/order only where voucher rules are actually locked; full behavior remains yellow/TBD.
+- `account`: registration/login, `/me` profile/address/order reads, staff accounts, roles, permissions and customer administration.
+- `product`: public/admin Product catalog, categories, brands and catalog metadata read routes.
+- `cart`: authenticated Cart read/mutation routes; each line is identified by `product_id`.
+- `promotion`: voucher management and voucher eligibility/usage behavior invoked by quote/order flows. It does not own Order transactions.
+- `order`: quote, order placement, Order reads/commands, COD Payment and manual ShippingInfo.
+- `inventory`: Supplier, GoodsReceipt, stock/ledger reads and adjustments.
+- `audit`: audit query API and audit records called by the owning transaction.
+- `report`: report query API over target Order/Payment data.
+- `content`: public page reads and admin content lifecycle.
 
-## 3. Key dependency direction
+The target has no separate Variant, SizeSystem or Color-master API. Child Products use Product resources with a Product ID; typed attributes remain descriptive. Do not turn old route numbers into target API obligations.
 
-```text
-controller -> service -> repository
-                 |
-                 +--> another module's public service/query contract
-```
+## 3. Dependency direction
 
-Typical runtime dependencies:
+Normal request flow:
 
 ```text
-cart ------> product (variant/effective-price read)
-order -----> cart (checkout input)
-order -----> product (snapshot/product/variant read)
-order -----> promotion (only locked voucher behavior)
-order -----> inventory (confirm/cancel/return stock commands)
-order -----> audit
-product ---> inventory (availability read and zero-row initialization for new variants)
-inventory -> audit
-account ---> audit (important RBAC changes)
-content ---> audit (important admin changes where required)
-report ----> order/payment read model
+Controller -> owning Service -> owning Repository
+                       |
+                       +-> another module's public service/query contract
 ```
 
-These arrows express service/query use, not repository imports.
+Approved domain dependencies:
 
-## 4. Avoid false modules
+```text
+cart ------> product (Product eligibility, display/price reads)
+cart ------> inventory (availability query; no stock reservation)
+order -----> cart (authenticated checkout input and Cart mutation)
+order -----> product (current values and order-time Product snapshots)
+order -----> promotion (validate/consume approved voucher quota)
+order -----> inventory (stock, ledger and reversal commands)
+order -----> audit (required mutation audit)
+product ---> inventory (only through an explicit inventory-owned stock-provisioning command, if required by the target creation flow)
+inventory -> audit (stock/receipt/adjustment audit)
+account ---> audit (privileged account/RBAC changes)
+content ---> audit (privileged content changes)
+report ----> order/payment query contract (read-only)
+```
 
-Do not split the following into new top-level modules in this baseline:
+These arrows express permitted service/query dependencies, not direct imports of another module's Repository. One transaction must include the source aggregate, related stock/payment/voucher effects and required audit for each approved atomic command.
 
-- checkout -> belongs to `order`;
-- payment/COD -> `order`;
-- shipping -> `order`;
-- after-sales -> `order` command behavior;
-- supplier/goods receipt -> `inventory`;
-- permissions/RBAC -> `account`;
-- customer back-office -> `account` read/service concern.
+## 4. Module boundaries to preserve
 
-This keeps the already agreed 9-module shape stable.
+Do not split these concerns into new top-level modules without an architecture decision:
+
+- Checkout quote and Order placement -> `order` orchestration.
+- COD Payment and manual shipping -> `order`.
+- Supplier and goods receipt -> `inventory`.
+- RBAC and staff authorization -> `account`.
+- Customer back-office reads -> `account` query/service contract.
+- Product stock/ledger mutation -> `inventory` service; catalog/order modules must not bypass it through direct Repository writes.
+
+Guest sessions, ProductVariant persistence, persisted quotes/reservations and event/history tables absent from the approved ERD are not target module responsibilities.
