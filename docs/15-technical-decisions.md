@@ -1,6 +1,6 @@
 # Implementation decisions — 2026-09-26
 
-> **Target contract addendum (2026-10-23):** DB-10 owner decision supersedes legacy Phase 5 monetary implementation notes: target money is integer VND stored/exposed in whole VND units using BIGINT, not BigDecimal/DECIMAL money. DECIMAL remains valid for non-monetary descriptive numbers such as PRODUCT_ATTRIBUTE_VALUES.number_value. DB-01 also confirms parent and child Products each own SKU, selling price and inventory. Current phase implementation bullets and earlier decisions below remain historical source-code evidence where they describe ProductVariant, BigDecimal or the pre-reset schema; do not use them to override the target ERD or owner decision log.
+> **Owner-approved target contract addendum (2026-10-23):** The owner approved DB-03/DB-05 proposals, DB-12 deletion/FK defaults, and proposed DB-01/02/06–DB-11/API defaults. Clean Schema Reset discards disposable development/test rows and recreates/seeds data from the owner-confirmed 31-table ERD; never reset production/shared/persistent data. Numeric audit/image/personal-data retention durations and anonymization exceptions remain TBD. Target money is integer VND stored/exposed as whole VND using BIGINT, not BigDecimal/DECIMAL money; DECIMAL remains valid for non-money values such as PRODUCT_ATTRIBUTE_VALUES.number_value. Parent and child Products each own SKU, required selling price and inventory; v1 allows one parent-child level and no field implicitly inherits from NULL. The approved target also uses Product-ID inventory, stateless quote, account-scoped order idempotency/replay/conflict, global non-stacking voucher quota, immutable order snapshots and COD-only payment. Current phase bullets and older decisions below are historical source-code evidence where they describe ProductVariant, quote_id, voucher targeting or BigDecimal; they must not override the approval record.
 
 > **ERD v2 scope boundary (2026-10-22):** This is a chronological decision log for the current implementation. Existing V1–V6, ProductVariant, inventory and image-snapshot decisions describe the source baseline unless explicitly re-approved for the refactor. The owner-confirmed target persistence model is the 31-table ERD and contract under docs/refactor; earlier schema statements here must not override it. Preserve the existing public/business contract or flag a compatibility blocker rather than silently broadening the target schema.
 
@@ -11,7 +11,7 @@ This file contains **technical implementation decisions** approved by the projec
 - Preserve Java 17, Spring Boot 4.0.3, Gradle and MySQL from the repository.
 - Use Flyway to version the schema. Hibernate validates mappings; it does not create or update the schema.
 - Login uses the account phone number. Login does not require phone verification.
-- `ADMIN` identifies employees; `SUPERADMIN` is the highest administrator. Lowercase `admin` is not privileged. Phone values are unique.
+- `ADMIN` identifies employees; `SUPERADMIN` is the highest administrator. Lowercase `admin` is not privileged. Target v2 phone identity is unique among active accounts and may be reused after soft deletion; legacy global UNIQUE(phone) is source-only.
 - Bootstrap the initial account with role `SUPERADMIN` from external credentials.
 - JWT library: Spring Security Resource Server with Nimbus JOSE/JWT, versions managed by Boot.
 
@@ -37,9 +37,11 @@ Ordinary technical decisions do not require stakeholder confirmation when they p
 - CI tests H2 in MySQL mode and MySQL 8.4.
 - V1 targets an empty schema; populated production databases require a separate reviewed migration plan.
 
-## Phase 2 decisions already implemented
+## Phase 2 decisions already implemented (legacy source implementation)
 
-- Flyway V2 adds UNIQUE(phone) and seeds ADMIN/SUPERADMIN roles.
+> Historical runtime note: this subsection documents the existing V1–V6 implementation. For target ERD v2, phone is unique among active accounts and may be reused after soft deletion; align the target Account entity/service rather than copying legacy global UNIQUE(phone).
+
+- Legacy Flyway V2 adds UNIQUE(phone) and seeds ADMIN/SUPERADMIN roles.
 - JWT uses HS256 with externally configured Base64 secret; role/permission data is reloaded from DB rather than trusted from JWT claims.
 - System roles cannot be deleted.
 - RBAC writes protect the last SUPERADMIN assignment.
@@ -331,19 +333,21 @@ The live consolidated API (`1WNaHu6g_-XINTVcUvGX9vSJnpSyLff-PebkkDk_9mMk`, Appen
 
 Therefore only the receipt-command wiring is MATERIAL_DECISION_REQUIRED: approve an explicit representation for the actual receipt/inspection result and whether it covers the whole order or selected sellable quantities. Until then #8 is PARTIAL: the return window is implemented, CUSTOMER_RETURN_IN is not exposed or claimed implemented. No unused speculative internal write method is added.
 
-### Explicit exclusions retained
+### Explicit exclusions retained (legacy source notes versus target owner approvals)
 
-#2 COD collection/cancellation policy; #6 create-order idempotency strategy; #14 phone canonical format; #23 phone-change authentication remain material decisions. #16/#17/#21/#22/#24/#25 are not changed merely to satisfy the old report. #26 DB environment variables are already wired in application-dev.properties. No schema, phone normalization, payment state rules or capability assignments are changed.
+The source-era #2 COD collection/cancellation and #6 create-order idempotency notes are superseded for target ERD v2 by the 2026-10-23 owner approval: COD lifecycle/full-refund defaults and durable account-scoped order idempotency are approved; implementation/tests remain pending. The older phone canonical format (#14) and phone-change authentication (#23) still require separate review and must not be invented from schema changes. #16/#17/#21/#22/#24/#25 are not changed merely to satisfy the old report. #26 DB environment variables are already wired in application-dev.properties. This owner-approval record authorizes the target behavior, not any unreviewed auth/API expansion.
 
-## 2026-10-09 — Cart consumption and final checkout confirmation
+## 2026-10-09 — Legacy cart consumption and checkout confirmation (source runtime)
 
 - API #20 now acquires the existing account/current-cart mutation locks through `CartCommandService.lockForCheckout` before calculating the order. The locks are held by the order transaction until commit. Order/items/payment, cart clearing and audit therefore commit or roll back together. Cart persistence stays in `cart`; no API, schema, inventory or guest-authentication changes.
-- An add serialized before checkout is included; an add serialized after checkout remains in the cart. Quantity replacement of a consumed item returns the existing 404. Repeated/concurrent submissions against the same unmodified cart produce one order and an empty-cart rejection. This is **not durable request idempotency**: retry after cart repopulation or an ambiguous response still requires the unresolved API #20 dedupe contract.
-- FE waits for its cart mutation queue, excludes new local mutations during quotation/order submission, discards stale cart reads, and synchronizes the cart after successful order creation. The confirmation dialog shows the quoted lines, recipient and COD totals. Opening/cancelling never creates an order. A synchronous submission guard prevents double clicks.
-- FE reuses API #19 immediately before POST #20 and requires another confirmation when quoted lines or money changed. This reduces stale purchases but **does not guarantee atomic quote-to-order consistency**; a catalog/cart change between the two requests remains possible. Approval is needed for a server-validated quote/version/token or equivalent contract. No client-authoritative total or hidden fingerprint has been introduced.
-- Voucher Customer/Admin remain blocked by docs/12: discount/value, dates/minimum/scope, usage/stacking, lifecycle/allocation, redemption/cancellation semantics and the corresponding approved management API/schema. No placeholder management or fake discount was added.
+- Historical runtime behavior: an add serialized before checkout is included; an add serialized after checkout remains in the cart. Quantity replacement of a consumed item returns the existing 404. Repeated/concurrent submissions against the same unmodified cart produce one order and an empty-cart rejection. This is **not durable request idempotency**. Target API #20 now has an owner-approved durable idempotency contract; implement account-scoped fingerprint/replay/conflict and rollback tests.
+- Historical FE behavior waits for the cart mutation queue, excludes new local mutations during quotation/order submission, discards stale cart reads, and synchronizes the cart after order creation. Opening/cancelling never creates an order. These client behaviors do not replace target server-side idempotency.
+- Historical FE behavior reused API #19 before POST #20 and asked for confirmation when lines/money changed. The target DB-05 contract intentionally uses a stateless advisory quote and server-side repricing at order placement; do not add a persisted quote_id/table or treat client confirmation as stock/price authority.
+- Target Voucher behavior is owner-approved: one order-wide, non-stackable voucher; no Product/Category targeting or per-account usage ledger; global limit; atomic consumption on successful order placement and at-most-once restoration on eligible cancellation. Existing Customer/Admin code still exposes the legacy scoped-voucher shape and must be remapped to the target, not copied as target behavior.
 
-## Voucher V1 and checkout quote persistence (2026-10-09)
+## Legacy Voucher V1 and persisted checkout quote runtime (2026-10-09) — superseded for target ERD v2
+
+> The remainder of this section documents the old V1–V6 implementation only. The target contract uses a global order-level voucher quota with no Product/Category scope or per-account usage ledger, and a stateless advisory quote with no persisted quote table. Do not reintroduce the historical scope tables, customer limits, persistent quote_id/15-minute expiry, two-decimal money, or old replay behavior into ERD v2.
 
 Approved scope supersedes the earlier voucher deferral: FIXED_AMOUNT/PERCENTAGE
 (with required percentage cap), ALL/PRODUCT/CATEGORY including descendants,

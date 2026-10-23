@@ -1,6 +1,6 @@
 # FIDO P1 — ERD v2 / UC / API Contract Reconciliation
 
-- **Status: PARTIAL — Phase 2 Clean Schema Reset is NOT AUTHORIZED.**
+- **Status: PARTIAL — owner-approved contracts are recorded; P2 implementation is authorized under the disposable-database safety gate.**
 - Repository: https://github.com/quangson2809/FIDO
 - Verified base: origin/demo1 at 551d91dab8b47ac709283f9222667b06c6b1b6de, fetched from GitHub on 2026-10-23.
 - Working branch: docs/p1-contract-reconciliation-20261023, created from that exact SHA.
@@ -16,37 +16,37 @@ The current P1 inventory records 31 logical tables, 228 logical ERD fields and 2
 
 | ID | Severity | Evidence at base SHA | Reconciliation / disposition |
 |---|---|---|---|
-| R-01 | BLOCKER | docs/05-dto-contract.md says the target ERD lacks ORDER_ITEMS.image_url_snapshot; current ERD, reset DDL and P1-data-dictionary.csv contain it. | Corrected to distinguish field existence from immutable asset retention. DB-07 remains blocked on stable object/version references, overwrite/delete policy, historical access and tests. |
+| R-01 | BLOCKER | docs/05-dto-contract.md says the target ERD lacks ORDER_ITEMS.image_url_snapshot; current ERD, reset DDL and P1-data-dictionary.csv contain it. | Corrected to distinguish field existence from immutable asset retention. DB-07 policy is approved; implementation acceptance still requires stable object/version references, overwrite/delete prevention, historical access and integration tests. Numeric retention duration remains TBD. |
 | R-02 | MAJOR | docs/03-data-model.md says not to reintroduce image_url_snapshot although the target ERD includes it. | Re-label legacy sections as source-only and state the actual target shape. |
 | R-03 | BLOCKER | docs/refactor/phase-1-physical-data-dictionary.md lists monetary fields as DECIMAL and omits newer target fields including request_fingerprint, usage_count, refund metadata and warehouse_id. | Regenerate the table inventory from canonical ERD and delegate physical details to P1-data-dictionary.csv. DB-10 selects integer VND; non-money number_value may remain DECIMAL. |
-| R-04 | MAJOR | docs/refactor/phase-1-owner-decision-questionnaire.md keeps D9 working default DECIMAL(18,2) after DB-10 owner decision selected VND-only integer money. | Mark only the money portion of D9 superseded; other physical defaults remain open. |
-| R-05 | BLOCKER | P1-api-contract-mapping.csv claims target ORDERS lacks request_fingerprint, ORDER_ITEMS lacks image snapshot, VOUCHERS lacks usage_count, and integer-money fields conflict with ERD. Those fields are present in current ERD/SQL/dictionary. | Correct false absence claims; retain DB-03/05/06/07/08 behavior blockers because field presence does not prove atomic semantics. |
+| R-04 | MAJOR | docs/refactor/phase-1-owner-decision-questionnaire.md keeps D9 working default DECIMAL(18,2) after DB-10 owner decision selected VND-only integer money. | Mark only the money portion of D9 superseded; the owner subsequently approved the proposed physical defaults on 2026-10-23, with exact implementation/verification recorded in the owner-approval record. |
+| R-05 | BLOCKER | P1-api-contract-mapping.csv claims target ORDERS lacks request_fingerprint, ORDER_ITEMS lacks image snapshot, VOUCHERS lacks usage_count, and integer-money fields conflict with ERD. Those fields are present in current ERD/SQL/dictionary. | Correct false absence claims; DB-03/05/06/07/08 owner-approved behavior still requires end-to-end atomicity, concurrency, retention and lifecycle tests. |
 | R-06 | MAJOR | reference/api-baseline-77.csv and reference/api-contract-matrix.csv retain optional/guest wording for APIs #14–20 while A-03 and docs/04-api-contract.md require authentication. | Align target access labels to JWT-required, while separating existing-runtime evidence from target readiness. |
-| R-07 | MAJOR | API #13/#33 mappings name only generic CatalogMetaDto and omit dynamic type/option/value validation. | Add target metadata/DTO proposal from target tables. Final wire names, public visibility and filter semantics remain a DB-02/API contract gate before P2. |
+| R-07 | MAJOR | API #13/#33 mappings name only generic CatalogMetaDto and omit dynamic type/option/value validation. | Freeze target metadata/DTO from target tables according to owner-approved DB-02/API defaults. Implementation must use product-facing visibility, deterministic option ordering and no unapproved filter operators or variant generation. |
 | R-08 | BLOCKER | scripts/p1/check_contract_consistency.py hard-codes expected table count 31. | Derive expected count from canonical ERD and verify exact table-set equality. Exact-SHA checker/CI must pass after change. |
-| R-09 | BLOCKER | ERD comments say child selling_price NULL means inherit while DB-01 records parent and child Products each have their own SKU, price and inventory; target DDL currently allows NULL. | Align to DB-01 by making selling_price required and non-inherited. Keep name/slug/description inheritance as field-specific candidates only; effective reads, parent-chain depth and parent-update propagation remain DB-01 blockers. |
+| R-09 | BLOCKER | ERD comments say child selling_price NULL means inherit while DB-01 records parent and child Products each have their own SKU, price and inventory; target DDL currently allows NULL. | Aligned in the target ERD/DDL: selling_price is required and row-owned. The owner further approved one-level parent-child hierarchy and no implicit inheritance from NULL for name/slug/description; runtime enforcement and acceptance tests remain pending. |
 | R-10 | MAJOR | Some business/transaction docs still describe Variant-keyed stock and DECIMAL money as target rules. | Mark legacy algorithms source-only and add Product-ID/integer-VND target gates. |
 
 ## 3. Target business / UC reconciliation
 
 | Domain / UC group | Supported target contract | Legacy disposition / remaining gate |
 |---|---|---|
-| Account, address, RBAC, bootstrap SUPERADMIN | Phone login; active-account phone uniqueness and reuse after soft delete (DB-09); bootstrap secret external to source; RBAC writes through owning service with audit and last-SUPERADMIN protection. | Current entity has global unique phone and no target soft-delete mapping. DB-12 must approve per-entity soft/hard deletion, FK actions and history retention. |
-| Category, Brand, Product hierarchy and attributes | Product IDs replace Variant IDs; parent and child Products are independently sellable with their own SKU, price and stock. Dynamic attributes are descriptive; children are created explicitly. Options must belong to the owning Attribute. | Legacy ProductVariant, SizeSystem, SizeValue and Color endpoints are breaking/target gaps. Only name/slug/description are annotated as child inheritance candidates; their effective-value and propagation rules remain blocked. No other field inherits implicitly. |
-| Cart, quote and order placement | Persisted Cart and order creation require authentication. Client totals, price and stock are untrusted. Target has no CHECKOUT_QUOTES table. | Stateless advisory quote is only a DB-05 proposal until accepted. Existing frontend sends quote_id; target idempotency/fingerprint replay/conflict rules must be approved before implementation. |
-| Voucher | Order-wide, non-stackable; no Product/Category targeting (DB-06). Target includes usage_limit and usage_count. | Atomic quota increment, scope, cancellation/return restoration and retry semantics remain blocked. |
-| Order, money and snapshots | VND only; target monetary values are integer VND; total = subtotal − all order discounts + shipping. Target order/item/address/voucher/image snapshot fields are present. | Discount allocation/rounding and line/order reconciliation need acceptance/tests. BigDecimal in legacy services is not target wire/storage type. |
-| Supplier, receipt, warehouse and ledger | One operational warehouse in v1; GOODS_RECEIPTS.warehouse_id is present; balance keys use warehouse + Product; quote/cart do not reserve stock. | DB-03 proposal is not approved: movement source/sign/reason, same-source/different-key dedupe, opening balance, cancellation/return reversal and concurrency protocol. |
-| COD, shipping, cancel, return and refund | One COD Payment aggregate per Order and manual shipping; target Payment has refund metadata fields. | DB-08 state transitions, partial/full refund, idempotency, allowed actors, return/restock and audit atomicity remain blocked. |
-| Audit, report and content | Audit belongs to the owning mutation transaction where required; reports/content remain within existing domain scope. | DB-12 deletion/FK/history retention and numeric retention periods are not approved. Do not add event/history tables without owner amendment. |
+| Account, address, RBAC, bootstrap SUPERADMIN | Phone login; active-account phone uniqueness and reuse after soft delete; bootstrap secret external to source; RBAC writes through owning service with audit and last-SUPERADMIN protection. DB-12 lifecycle/FK defaults are owner-approved; numeric retention periods remain TBD. | Current entity has global unique phone and no target soft-delete mapping; runtime mapping and bootstrap secret audit are still required. |
+| Category, Brand, Product hierarchy and attributes | Product IDs replace Variant IDs; parent and child Products are independently sellable with their own SKU, required price and stock; v1 allows one parent-child level, children are explicit, and NULL does not imply inheritance. Dynamic attributes are descriptive; options must belong to the owning Attribute. | Legacy ProductVariant, SizeSystem, SizeValue and Color endpoints are breaking/target gaps; approved rules still need runtime/API/DTO tests. |
+| Cart, quote and order placement | Persisted Cart and order creation require authentication. Quote is stateless/advisory and has no stock side effects; order placement re-prices, account-scopes idempotency, uses a canonical SHA-256 fingerprint and replays or conflicts by payload. Client totals, price and stock are untrusted. | DB-05 is approved; current frontend sends quote_id and runtime idempotency/rollback behavior still requires implementation and tests. |
+| Voucher | Order-wide, non-stackable/global limit; no Product/Category targeting. Increment usage_count atomically with successful placement; restore at most once on eligible cancellation; no per-account quota ledger. | DB-06 defaults are approved; atomic quota and cancellation retry tests remain pending. |
+| Order, money and snapshots | VND-only integer money; total = subtotal − all order discounts + shipping. Order-time item/address/voucher/image snapshots are retained. Approved rounding is HALF-UP at order discount then largest-remainder line allocation with stable product_id tie-break. | The current Java/API/frontend still uses legacy BigDecimal/quote shapes; end-to-end integer-VND and snapshot tests are pending. Image retention duration remains TBD. |
+| Supplier, receipt, warehouse and ledger | One operational warehouse; balance keys use warehouse + Product; quote/cart do not reserve stock. DB-03 movement source/sign/reason, source-derived dedupe, opening balance, reversals and transaction protocol are owner-approved. | Live service/API mapping and concurrency/ledger reconciliation tests remain pending. |
+| COD, shipping, cancel, return and refund | One COD Payment aggregate per Order and manual shipping; explicit state/actor matrix and at most one full refund per order. Detailed item-level return and partial/multiple refunds are out of v1 unless ERD scope is amended. | Runtime transitions, idempotency, authorization, stock reversal and audit atomicity tests remain pending. |
+| Audit, report and content | Audit belongs to the owning mutation transaction where required; reports/content remain within existing domain scope. DB-12 lifecycle/FK defaults are approved; numeric retention periods and anonymization exceptions remain TBD. | Implement retention-safe FK behavior and verify audit transaction/security/redaction. Do not add event/history tables without owner amendment. |
 
-## 4. Dynamic catalog metadata — target proposal
+## 4. Dynamic catalog metadata — owner-approved contract
 
 Keep existing route candidates: public GET /api/v1/catalog/meta (#13) and admin GET /api/v1/admin/catalog/meta (#33). The legacy size_systems/size_values/colors payload is not the target payload.
 
 Target metadata should expose ATTRIBUTE_TYPES, ATTRIBUTES and nested ATTRIBUTE_OPTIONS needed to render attribute controls. Definitions include attribute ID/code/name/type, is_required, is_variant_defining (informational only; no variant auto-generation) and sort_order. Options include option ID, owning attribute ID, value, label and sort_order, ordered by sort_order then stable ID. Public metadata may expose only product-facing/non-sensitive rows; because no visibility flag exists, private operational metadata must not be stored in these master tables.
 
-For value input/read, the candidate mapping is exactly one of OPTION → option_id, TEXT → text_value, NUMBER → number_value, BOOLEAN → boolean_value. Validate type match and same-attribute option ownership. number_value is descriptive numeric data, not money. Do not invent attribute filter operators or auto-create Product rows from option combinations. Exact enum literals, public JSON casing, response envelope and filtering capabilities are a proposal to freeze before P2, not implemented behavior.
+For value input/read, the approved mapping is exactly one of OPTION → option_id, TEXT → text_value, NUMBER → number_value, BOOLEAN → boolean_value. Validate type match and same-attribute option ownership. number_value is descriptive numeric data, not money. Do not invent attribute filter operators or auto-create Product rows from option combinations. These metadata defaults are owner-approved on 2026-10-23; implementation must retain deterministic option ordering and must not invent filter operators or variant generation.
 
 ## 5. Product field-by-field inheritance register
 
@@ -54,12 +54,12 @@ For value input/read, the candidate mapping is exactly one of OPTION → option_
 |---|---|
 | sku | Unique identity per Product; never inherits. |
 | selling_price | Each parent and child owns a price per DB-01; required and non-inherited in target DDL after this reconciliation. |
-| name | ERD marks child NULL as an inheritance candidate; effective value and parent-update propagation are undecided. |
-| slug | ERD marks child NULL as an inheritance candidate; uniqueness and effective URL behavior are undecided. |
-| description | ERD marks child NULL as an inheritance candidate; fallback and propagation are undecided. |
-| category_id, brand_id | No inheritance annotation. Do not infer parent values; nullability/requiredness remain DB-01/DB-09 contract items. |
-| status, deleted_at, cost_price, images, attribute values, inventory | No inheritance behavior is approved; use row-owned value and explicit lifecycle rules. |
-| parent_product_id | Parent must exist and hierarchy must be acyclic. Maximum depth and whether a parent may itself be a child remain DB-01 blockers. |
+| name | Explicit row-owned value; NULL does not trigger a parent fallback. |
+| slug | Separately defined for each Product; no parent fallback. |
+| description | Explicit row-owned value; NULL does not trigger implicit parent fallback. |
+| category_id, brand_id | Each reference belongs to the current Product row; never infer a parent value. Requiredness/nullability follows the approved target DDL and FK contract. |
+| status, deleted_at, cost_price, images, attribute values, inventory | No inheritance; use row-owned values and the approved explicit lifecycle rules. |
+| parent_product_id | Parent must exist and hierarchy must be acyclic; v1 permits one parent-child level only. |
 
 ## 6. API/DTO inventory reconciliation
 
@@ -72,7 +72,7 @@ For value input/read, the candidate mapping is exactly one of OPTION → option_
 ## 7. Roadmap and design-pattern decision
 
 1. Finish document reconciliation and owner review.
-2. Close DB-03, DB-05, DB-12 and remaining DB-01/02/07/08/09/10 physical/API details. Do not start a destructive reset before this gate.
+2. Implement the owner-approved DB-01–DB-12 and API defaults, finalize the numeric retention durations, and pass the required mapping/security/concurrency tests. P2 implementation may proceed; destructive reset is limited to a verified disposable development/test database.
 3. Run Clean Schema Reset only in a verified disposable, empty development/test MySQL database; keep the location isolated until target mappings are ready.
 4. Implement backend foundation/auth/RBAC and owning-module boundaries.
 5. Implement Catalog + dynamic attributes + parent/child Product rules.
@@ -88,6 +88,6 @@ P1 does not implement patterns. Source review identifies an Adapter-style image-
 - Base SHA and branch creation: verified via GitHub API.
 - Static checker result is reported by the GitHub Actions step **Run P1 contract consistency checker** for PR #26; use only the run whose head SHA matches the current PR HEAD.
 - Disposable MySQL schema verification is reported by the **Clean Schema Reset target verification** workflow on PR #26; earlier successful runs at older SHAs remain historical and do not prove a later revision.
-- Passing these checks does not imply P1 PASS: DB-03, DB-05 and DB-12 remain hard owner-decision blockers, and application Entity/service/API/DTO/frontend alignment is not implemented.
+- Passing these checks does not imply P1 PASS. DB-03/DB-05 designs and DB-12 lifecycle defaults were owner-approved on 2026-10-23, but application Entity/service/API/DTO/frontend alignment and the behavioral/security/concurrency acceptance suite are not complete. Numeric retention periods remain TBD.
 - Target Entities/Repositories/services/API/DTO/frontend: NOT ALIGNED / NOT IMPLEMENTED; P1 documentation does not claim these pass.
-- DB-03, DB-05 and DB-12 remain hard blockers; P1 is PARTIAL and P2 is NOT AUTHORIZED until owner decisions and exact-SHA evidence are complete.
+- P1 remains PARTIAL until runtime mapping, required acceptance tests and exact-SHA CI pass. P2 implementation is authorized only with the clean-reset database isolation constraints above; no reset is authorized for production/shared/persistent data.

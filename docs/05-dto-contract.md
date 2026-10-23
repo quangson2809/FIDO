@@ -38,9 +38,9 @@ Target type convention: ID int64; quantity integer; monetary values are integer 
 PATCH: omitted field means unchanged. `null` may clear a field only where the field is nullable and the specific API permits it.
 
 
-## Target dynamic-attribute DTO contract (proposal; legacy DTOs above remain source evidence)
+## Target dynamic-attribute DTO contract (owner-approved target; legacy DTOs above remain source evidence)
 
-CatalogMetaDtoV2 should expose categories, brands, attribute_types and attributes. Each attribute definition contains id, attribute_type_id, code, name, data_type, is_required, is_variant_defining, sort_order and options. Each option contains id, attribute_id, value, label and sort_order. The example below illustrates the proposed shape; it is not a claim about current runtime JSON:
+CatalogMetaDtoV2 should expose categories, brands, attribute_types and attributes. Each attribute definition contains id, attribute_type_id, code, name, data_type, is_required, is_variant_defining, sort_order and options. Each option contains id, attribute_id, value, label and sort_order. The example below defines the target shape, not current runtime JSON; service/controller/frontend implementation remains pending:
 
     {
       "data": {
@@ -176,7 +176,7 @@ The nullable Product summary `thumbnail` is live presentation data resolved from
 
 Order image fields are historical in the current/legacy contract: `OrderItemDto.image_url` comes from `order_items.image_url_snapshot`, and `OrderSummaryDto.image_url` comes from the first OrderItem snapshot by smallest `order_item_id`. Historical Order reads must not query the current Product gallery; existing null snapshots remain null rather than being backfilled from current catalog state.
 
-> **DB-07 snapshot clarification:** ORDER_ITEMS.image_url_snapshot is present in the current canonical ERD, draft DDL and field-level dictionary. The active legacy OrderItem mapping must still be remapped. Persisting a URL/reference does not guarantee immutable bytes; stable asset versioning, overwrite/deletion prevention, access and retention remain blocked pending policy and tests.
+> **DB-07 snapshot clarification:** ORDER_ITEMS.image_url_snapshot is present in the target ERD/DDL and its immutable-image policy is owner-approved. The active legacy OrderItem mapping still needs remapping; a URL alone does not guarantee immutable bytes. Implement a stable object/version reference and historical access tests. Numeric asset-retention duration remains TBD under DB-12; do not schedule purging yet.
 ### inventory/audit/report/content
 
 `SupplierDto`, `GoodsReceiptItemDto`, `GoodsReceiptSummaryDto`, `GoodsReceiptDetailDto`, `InventoryRowDto`, `InventoryTransactionDto`, `AuditLogDto`, `ReportOverviewDto`, `PublicContentPageDto`, `ContentPageDto`, `CustomerSummaryDto`, `CustomerDetailDto` follow the fields in Analyst API Appendix A; do not expose persistence-only secrets.
@@ -252,7 +252,7 @@ Transcribed field contracts from the current consolidated API (checked 2026-09-2
 
 ### Target ERD v2 — P1 contract addendum (proposal; owner acceptance required)
 
-- **Money (DB-10):** all target request/response monetary values are integer VND. Java uses checked integer arithmetic; no JSON floating-point money. Canonical total is `subtotal - discount + shipping_fee`. The proposed percentage-discount rounding and line allocation algorithm is specified in `docs/refactor-v2/p1/P1-design-proposals-DB-03-DB-05.md`; it is not approved until the owner accepts it.
+- **Money (DB-10):** all target request/response monetary values are integer VND. Use checked integer arithmetic; no JSON floating-point money. Canonical total is `subtotal - discount + shipping_fee`. Owner-approved rounding: round the order discount HALF-UP to whole VND, then allocate line discounts with largest remainder and a stable ascending `product_id` tie-break; allocated line discounts must reconcile exactly to the order discount.
 - **Quote (DB-05):** quote is stateless preview only; it does not reserve stock or create an Order. At placement, recalculate current price, sellability, stock, voucher and shipping. A material change returns conflict/requote without creating an Order. A durable idempotency guarantee is only valid if the approved 31-table schema can persist key scope, canonical payload hash and resulting Order with database-level concurrency arbitration. In-memory locks are not sufficient across instances/restarts.
 - **Inventory (DB-03):** cart/quote never changes stock. Goods receipt posting, order stock deduction, cancellation/accepted-return restock, inventory balance and ledger movement must share a transaction. Lock inventory rows in deterministic order and recheck availability under lock. The exact ledger direction/source/reversal mapping must use existing ERD columns/relations; no new column/table is implied.
 - **Historical images (DB-07):** Order image DTOs must not resolve from the current Product gallery. The target ERD lacks an explicit ORDER_ITEMS image snapshot field, so the implementation cannot promise an independently persisted immutable image URL unless an existing approved column/relationship can store it or the owner amends the ERD. A product-image reference alone is not immutable if the referenced asset can be replaced/deleted; immutable retention must be proven by storage policy and reference lifecycle.

@@ -1,6 +1,6 @@
 # Clean Schema Reset — target baseline
 
-> **P1 gate — do not execute (2026-10-23):** This is a future Phase 2 runbook, not an instruction to reset a database in Phase 1. P1 remains PARTIAL and Clean Schema Reset is NOT AUTHORIZED until the owner reviews DB-03, DB-05, DB-12 and the remaining exit-gate details. The target monetary convention is integer VND/BIGINT per DB-10; older DECIMAL(18,2) text is superseded for money. Never point this runbook at a persistent/shared environment.
+> **Owner approval recorded (2026-10-23):** Clean Schema Reset is approved for a verified disposable local/development/test database. Discard all existing disposable development/test rows and recreate/seed from the approved 31-table ERD v2; do not migrate legacy test records. This is not an instruction to reset an unspecified database and does not authorize any production, staging, shared-integration or real/persistent data deletion. No reset was executed by recording this decision. P1 remains PARTIAL pending runtime mapping and acceptance evidence; numeric retention periods remain TBD under DB-12. Money is integer VND/BIGINT per DB-10.
 
 ## Scope
 
@@ -22,10 +22,10 @@ This directory holds the owner-confirmed 31-table target schema in a separate Fl
 6. The initial payment method is COD; one payment aggregate per order.
 7. Order address is an immutable snapshot copied at placement.
 8. New order and inventory writes require unique idempotency keys; same key/same payload replays, same key/conflicting payload returns conflict.
-9. BIGINT IDs, integer-VND/BIGINT monetary columns per DB-10 (DECIMAL is non-money only), TIMESTAMP(6) UTC. Restrictive FK actions are a draft default, not an approved deletion/retention policy; DB-12 must freeze the per-entity FK/delete matrix before P2.
-10. Required roles/permissions are Flyway-seeded; demo data is a separate non-migration fixture.
+9. BIGINT IDs, integer-VND/BIGINT monetary columns per DB-10 (DECIMAL is non-money only), TIMESTAMP(6) UTC. DB-12 approved RESTRICT as the default for business/history rows, with CASCADE limited to approved disposable dependent working data. Numeric retention durations/anonymization exceptions remain TBD; do not schedule purges until they are approved.
+10. Required roles/permissions are Flyway-seeded; bootstrap SUPERADMIN is configured by an external secret/configuration path; demo data is a separate non-migration development/test fixture with no committed account credentials. The reset does not preserve old fixture rows; load the approved fixture again after creating the clean target baseline.
 
-These are implementation defaults selected to make progress and still require review during implementation. They do not expand the 31-table model. Any business change should update the contract and tests before activating the target migration.
+These defaults are owner-approved target behavior and do not expand the 31-table model. Implementation must still prove them through schema/application tests. Any business change must be recorded as an explicit contract/ERD amendment before implementation.
 
 ## Run the schema tests
 

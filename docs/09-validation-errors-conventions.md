@@ -45,7 +45,7 @@ Codex must:
 - Java class names: normal Java conventions.
 - JSON: snake_case according to API Appendix A.
 - DB: snake_case.
-- Target money: integer VND in BIGINT columns/DTO fields (1 stored unit = 1 VND); reject fractional VND. BigDecimal/DECIMAL money in active Java/API logic is legacy behavior and must be migrated only after the target formula and rounding contract is approved. DECIMAL remains suitable for non-money descriptive data such as PRODUCT_ATTRIBUTE_VALUES.number_value.
+- Target money: integer VND in BIGINT columns/DTO fields (1 stored unit = 1 VND); reject fractional VND. BigDecimal/DECIMAL money in active Java/API logic is legacy behavior and must be migrated to the owner-approved integer-VND/HALF-UP/largest-remainder contract. DECIMAL remains suitable for non-money descriptive data such as PRODUCT_ATTRIBUTE_VALUES.number_value.
 - Do not map persistence Entity directly to JSON.
 
 ## 5. Search and pagination
@@ -60,6 +60,6 @@ Use physical DELETE only where the baseline endpoint explicitly allows deleting 
 ## P1 target validation notes
 
 - Product attribute values must contain exactly one typed value compatible with the authoritative Attribute type; OPTION must reference an option owned by that same Attribute. The final type literals/ranges are DB-02 contract items.
-- Parent and child Products each own their required selling_price. Only name/slug/description are inheritance candidates from the ERD annotation, and their effective-value/propagation rules remain open; do not treat arbitrary NULL as inherit.
+- Parent and child Products are independently sellable with row-owned SKU, required selling_price and stock; v1 permits one parent-child level. `name`, `slug` and `description` never implicitly fall back to parent values when NULL; do not treat arbitrary NULL as inherit.
 - The target includes ORDER_ITEMS.image_url_snapshot. Historical images must not be reconstructed from the current product gallery, and a URL alone does not guarantee retained immutable bytes (DB-07).
-- DB-12 deletion rules, FK delete actions and history retention are not approved. Do not infer CASCADE or hard-delete history based only on relationship structure.
+- DB-12 lifecycle/FK defaults are owner-approved: RESTRICT for business/history references, CASCADE only for approved disposable dependent data, and preserve posted Order/Payment/ledger/audit history. Numeric retention durations/anonymization exceptions remain TBD; do not infer automatic purging.

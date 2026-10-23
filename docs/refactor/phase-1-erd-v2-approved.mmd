@@ -2,6 +2,8 @@
 %% Base: owner-confirmed 31-table ERD supplied 2026-10-22.
 %% Revision authorized by the owner's instruction to resolve P1 blockers with the smallest coherent contract change.
 %% Retains 31 tables; adds explicit fields only where required to express already-recorded business decisions.
+%% Owner-approved contract defaults recorded 2026-10-23: one-level Product parent/child; descriptive attributes only; DB-03/DB-05 mechanics approved; clean reset only for disposable development/test databases.
+%% Numeric audit/image/personal-data retention periods remain TBD under DB-12.
 %% Physical nullability, generated columns, indexes, defaults, constraints and status literals are specified separately.
 erDiagram
     ACCOUNTS {
@@ -72,15 +74,17 @@ erDiagram
         varchar status
     }
 
+    %% Service invariant: v1 permits one parent-child level only; reject grandchild and cyclic parent links.
+    %% No field inherits implicitly from NULL; each child Product is created explicitly with its own identity.
     PRODUCTS {
         bigint id PK
         bigint parent_product_id FK
         bigint category_id FK
         bigint brand_id FK
-        varchar name "NULL for child if inherited"
-        varchar slug "NULL for child if inherited"
-        varchar sku UK
-        text description "NULL for child if inherited"
+        varchar name "Row-owned value; NULL does not fall back to parent"
+        varchar slug "Each Product has its own slug; no parent fallback"
+        varchar sku UK "Unique identity owned by this Product; never inherited"
+        text description "Row-owned value; NULL does not fall back to parent"
         bigint selling_price "Integer VND; each parent/child Product owns its own required price; never inherited"
         bigint cost_price "Integer VND; nullable"
         varchar status
