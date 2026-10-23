@@ -1,260 +1,78 @@
-# 05 — JWT, JSON, DTO & Request/Response Contract
+# 05 — Target JSON, DTO and Request/Response Contract
 
-> **P1 target contract status (2026-10-23):** DTO definitions below are the legacy wire baseline unless the target map explicitly supersedes them. The target uses Product IDs rather than ProductVariant IDs and integer VND. ORDER_ITEMS.image_url_snapshot exists in the target ERD/DDL; immutable asset retention is a separate DB-07 requirement. API DTOs must be explicit and never inferred directly from JPA entities.
+## 1. General rules
 
+- JSON properties use `snake_case`; controller DTOs are explicit and are not serialized JPA entities.
+- The standard response is `{ "data": ... }`. Paged lists also include `meta: { page, page_size, total, total_pages }`.
+- Authenticated actor/account scope comes from the access token. Never accept `account_id`, actor IDs, prices, totals, stock values or workflow state as authoritative client input.
+- All monetary values are whole VND integers from request through response. Do not emit JSON floating-point money.
+- A nullable field may be cleared only when the specific request contract explicitly allows it. Omitted and explicit null are not interchangeable by default.
 
-## 1. JWT minimum
+## 2. Account and RBAC DTOs
 
-- Public: `/api/v1/auth/register`, `/api/v1/auth/login`, `/api/v1/catalog/**`, `/api/v1/content-pages/**`.
-- Authenticated: `/api/v1/me/**`, `/api/v1/admin/**` with `Authorization: Bearer <access_token>`.
-- Minimum token claims: `sub = account_id`, `iat`, `exp`.
-- Business actor for authenticated commands is server-derived from `JWT.sub`.
-- Do not add a refresh endpoint: baseline only locks access-token login.
+- `AccountDto`: `id, full_name, phone, email, status`; never exposes password hashes or secret configuration.
+- `AddressDto`: `id, recipient_name, recipient_phone, province, district, ward, address_line, is_default`.
+- `RoleDto`: `id, code, name, description, status`.
+- `PermissionDto`: `id, code, name, description`.
+- `MeDto`: `account, addresses[], roles[], permissions[]`.
+- Staff and access-control DTOs expose only the approved Account, Role, Permission and grant fields.
 
-## 2. API envelopes
+## 3. Product/catalog DTOs
 
-```json
-{ "data": {} }
-```
+- `ProductDto` / `AdminProductDto`: Product `id`, `parent_product_id`, `category_id`, `brand_id`, `name`, `slug`, `sku`, `description`, `selling_price`, `status`, and the fields permitted for the caller. Cost information is restricted to authorized administration.
+- `ProductSummaryDto`: Product identity/name, primary image, category/brand projection, selling price and status required for a list card.
+- `ProductDetailDto`: Product summary plus description, images and descriptive attribute values.
+- `ProductImageDto`: `id, image_url, is_primary, sort_order`.
+- `AttributeTypeDto`: `id, code, name, data_type`.
+- `AttributeDto`: `id, attribute_type_id, code, name, is_required, is_variant_defining, sort_order, options[]`.
+- `AttributeOptionDto`: `id, attribute_id, value, label, sort_order`.
+- `ProductAttributeValueDto`: `attribute_id` plus exactly one of `option_id`, `text_value`, `number_value`, `boolean_value`, matching the authoritative Attribute type. An option must belong to the same Attribute. `is_variant_defining` is informational only; attribute values never create Products.
 
-List:
+A Product is the catalog sale unit. A child Product has a normal Product ID and independently owns SKU, required selling price and inventory. Do not encode a Product option-combination ID as a saleable item ID.
 
-```json
-{
-  "data": [],
-  "meta": {
-    "page": 1,
-    "page_size": 20,
-    "total": 0,
-    "total_pages": 0
-  }
-}
-```
+## 4. Cart and checkout DTOs
 
-Pagination defaults: page 1, page_size 20, maximum 100.
+- `CartItemDto`: `id, product_id, quantity`, with server-derived Product display, current unit price, line total and availability where the endpoint requires them.
+- `CartDto`: `id, items[], subtotal`. It represents only the authenticated account's Cart. The subtotal is computed by the server.
+- Add/update Cart request: `product_id` for a new line and `quantity > 0`; updates to an existing line identify it by `cartItemId`.
+- `CheckoutQuoteDto`: item calculation details, `subtotal`, `discount_amount`, `shipping_fee`, `total_amount`, and applicable voucher summary, all integer VND. It has **no** persisted quote identifier.
+- A quote is advisory. At order creation, the server reloads current data and revalidates the calculation.
 
-Target type convention: ID int64; quantity integer; monetary values are integer VND (1 stored unit = 1 VND, no fractional units); date YYYY-MM-DD; timestamp ISO-8601. Target ERD and DDL use BIGINT for money. BigDecimal/DECIMAL in active Java/API notes describes legacy behavior or non-money number_value, not target money.
+## 5. Order, voucher, Payment and shipping DTOs
 
-PATCH: omitted field means unchanged. `null` may clear a field only where the field is nullable and the specific API permits it.
+- `OrderSummaryDto`: `id, order_number, status, total_amount, currency, placed_at`.
+- `OrderItemDto`: `id, product_id, sku_snapshot, product_name_snapshot, attribute_snapshot, image_url_snapshot, quantity, unit_price, discount_amount, line_total`.
+- `OrderAddressDto`: `recipient_name, recipient_phone, province, district, ward, address_line`.
+- `OrderVoucherSnapshotDto`: order-time voucher code, discount type/value and allocated discount facts.
+- `OrderDetailDto`: order identity/state, immutable items/address/voucher snapshots, integer-VND totals, COD Payment, manual shipping and permitted actions.
+- `PaymentDto`: `method, payment_status, amount, currency, collected_by_account_id, collected_at, refund_amount, refunded_by_account_id, refunded_at, refund_reason`, with actor/time fields returned only to authorized users.
+- `ShippingInfoDto`: `shipping_status`, recipient/carrier/tracking fields present in the target contract and lifecycle timestamps. The v1 operational workflow is manual shipping.
+- `VoucherDto`: code, status/window, approved discount configuration and quota information permitted to the caller. It does not expose a per-account usage ledger.
+- Order-create requests supply recipient/order inputs and optional voucher input plus the documented idempotency key. Client-computed monetary values are not accepted as authoritative.
 
+The target Order stores Product ID and order-time snapshots. Reading an existing Order must not resolve name, SKU, attributes or image content from mutable current catalog fields.
 
-## Target dynamic-attribute DTO contract (owner-approved target; legacy DTOs above remain source evidence)
+## 6. Procurement and inventory DTOs
 
-CatalogMetaDtoV2 should expose categories, brands, attribute_types and attributes. Each attribute definition contains id, attribute_type_id, code, name, data_type, is_required, is_variant_defining, sort_order and options. Each option contains id, attribute_id, value, label and sort_order. The example below defines the target shape, not current runtime JSON; service/controller/frontend implementation remains pending:
+- `SupplierDto`: target Supplier identity/code/contact/status fields.
+- `GoodsReceiptItemDto`: `product_id, quantity_received, unit_cost` (unit cost is integer VND).
+- `GoodsReceiptDto`: receipt identity/number/status, Supplier, server-resolved warehouse, items and audit-relevant actor/timestamps.
+- `InventoryRowDto`: `warehouse_id, product_id, quantity_on_hand, version` plus Product display fields required by the authorized UI.
+- `InventoryTransactionDto`: `id, warehouse_id, product_id, transaction_type, quantity_delta, goods_receipt_item_id, order_item_id, idempotency_key, reason_code, reverses_transaction_id, created_by, created_at`.
 
-    {
-      "data": {
-        "categories": [],
-        "brands": [],
-        "attribute_types": [
-          {"id": 1, "code": "TEXT", "name": "Text", "data_type": "TEXT"}
-        ],
-        "attributes": [
-          {
-            "id": 10,
-            "attribute_type_id": 1,
-            "code": "fabric",
-            "name": "Fabric",
-            "data_type": "TEXT",
-            "is_required": false,
-            "is_variant_defining": false,
-            "sort_order": 10,
-            "options": []
-          }
-        ]
-      }
-    }
+Inventory quantities and ledger movements are Product-based. Every adjustment has a non-zero signed delta, authenticated actor and reason code. Ledger entries are append-only.
 
-ProductAttributeValue request/read DTOs carry the owning attribute ID and exactly one compatible typed value (option_id, text_value, number_value or boolean_value). The client must not override the Attribute's authoritative data_type. An OPTION must refer to an option owned by that Attribute. Attribute values remain descriptive and must not generate SKUs or child Products.
+## 7. Audit, report and content DTOs
 
-Freeze final wire casing, exact response fields/envelope, type enum values, public visibility policy and filter behavior before P2.
+- `AuditLogDto`: target fields `id, actor_account_id, action, entity_type, entity_id, before_data, after_data, correlation_id, created_at`; redact sensitive fields and secrets.
+- `ReportOverviewDto`: `from, to, completed_sales, returned_adjustment, net_sales, orders_by_status`; currency values are integer VND and use the approved reporting timezone/formulas.
+- `ContentPageDto`: `id, slug, title, content, status, updated_by, updated_at`. Public reads return published pages only.
+- Customer DTOs summarize only real Accounts, addresses and associated Orders.
 
-## 3. Server-derived fields
+## 8. Validation and conflicts
 
-Never trust/accept these from clients unless a source explicitly makes them configurable input:
+Reject invalid typed attribute values, cross-Attribute options, duplicate active phone, duplicate Product SKU, invalid Product hierarchy, non-positive Cart/receipt quantities, insufficient stock, invalid voucher use and forbidden state transitions. Use stable typed errors for authorization, validation, stock conflicts and idempotency conflicts.
 
-- generated IDs/codes;
-- password hash;
-- actor account ID;
-- timestamps;
-- workflow state transitions;
-- cart subtotal;
-- checkout/order subtotal, discount, shipping fee and total;
-- effective price;
-- availability.
+For order idempotency, the server scopes the key to the authenticated account and fingerprints the canonical semantic payload with SHA-256. Same key/same payload replays; same key/different payload conflicts; one account cannot read another account's result. The exact HTTP transport for this key must be explicitly set before runtime implementation.
 
-## 4. Core DTO inventory
-
-### account/RBAC
-
-`PaginationMeta(page,page_size,total,total_pages)`
-
-`AccountDto(account_id,phone?,email?,created_at,updated_at)`
-
-`AddressDto(address_id,address_text,created_at)`
-
-`RoleDto(role_id,code,name,description?)`
-
-`PermissionDto(permission_id,code,name)`
-
-`RoleDetailDto(role_id,code,name,description?,permissions[])`
-
-`MeDto(account,addresses[],roles[],permissions[])`
-
-`StaffAccountSummaryDto(account,roles[])`
-
-`StaffAccountDetailDto(account,roles[],permissions[])`
-
-`AccessControlDto(roles[],permissions[])`
-
-### product/catalog
-
-`CategoryDto(category_id,parent_category_id?,name)`
-
-`BrandDto(brand_id,name)`
-
-`SizeValueDto(size_value_id,size_system_id,code,display_name,sort_order)`
-
-`SizeSystemDto(size_system_id,code,name,size_values[])`
-
-`ColorDto(color_id,code,name)`
-
-`ProductImageDto(image_id,image_url,alt_text?,sort_order)`
-
-`ProductImageInput(image_url,alt_text?,sort_order)` — used by Product PATCH image replacement only; `sort_order` is required.
-
-`ProductVariantDto(variant_id,size,color,sku?,effective_price,sale_status,available_quantity)`
-
-`ProductSummaryDto(product_id,name,thumbnail?,category,brand?,base_price,sale_status,material_care?,sizes[])`
-
-`ProductDetailDto(product_id,name,description?,category,brand?,size_system,gender?,season?,style?,material_care?,base_price,sale_status,images[],variants[])`
-
-`AdminProductSummaryDto(product_id,name,thumbnail?,category_id,brand_id?,size_system_id,base_price,sale_status,created_at,updated_at)`
-
-API #11 addendum (2026-10-10): `material_care` is the managed Product field verbatim,
-including care instructions; it is not a separate extracted material name. `sizes` contains
-unique SizeValueDto values from ON_SALE variants, ordered by `sort_order`, then `size_value_id`.
-It covers all selling variants of each returned Product, independently of filter matches and stock.
-The page query already restricts Products to ON_SALE with an ON_SALE variant. Empty lists remain
-arrays. Existing `base_price` and detail effective-price semantics remain unchanged.
-
-`AdminVariantDto(variant_id,product_id,size_value_id,color_id,sku?,override_price?,sale_status,available_quantity,created_at,updated_at)`
-
-`CatalogMetaDto(categories[],brands[],size_systems[],colors[],genders[],seasons[],styles[])`; last three are derived from managed catalog values.
-
-The nullable Product summary `thumbnail` is live presentation data resolved from the ProductImage at `sort_order = 0`. A Product with no image returns `thumbnail = null`. Detail `images[]` remains the complete image collection ordered by `sort_order`.
-
-### cart/checkout/order
-
-`CartItemDto(cart_item_id,variant_id,quantity,product_name,image_url?,size,color,unit_price,line_total,available_quantity)`
-
-> **ERD v2 compatibility gap:** `variant_id` and the cart's nullable `image_url` belong to the current/legacy API contract. Target CartItems point to `product_id` and do not persist variant identity; DB-01 must approve the public-ID adaptation before the target contract is frozen. Cart images are live presentation data resolved from the current Product cover, not a Cart snapshot.
-
-`CartDto(cart_id?,account_id?,items[],subtotal,created_at?,updated_at?)` — for an authenticated account without a persisted cart, return the same fields with null cart ID/timestamps, an empty item list and zero subtotal; GET does not create a cart.
-
-`VoucherDto(voucher_id,code)` — do not add rule fields.
-
-`CheckoutQuoteDto(items[],subtotal,discount,shipping_fee,total,voucher?)` — every monetary field is integer VND. Quote is a non-authoritative preview; order placement re-reads Cart/catalog/stock/voucher/shipping data and recalculates on the server. If the confirmed total changes, the proposed contract returns a typed conflict/requote result and creates no Order. — proposed as a non-persistent, advisory calculation; order placement must recalculate all values from current server-side state. No durable quote ID/reservation is implied by the target ERD.
-
-`RecipientDto(phone,email?,address)`
-
-`OrderItemDto(order_item_id,variant_id,product_name,image_url?,sku?,size,color,unit_price,quantity,line_total)` — `image_url?` is part of the legacy snapshot contract; the target storage gap is tracked under DB-07 below.
-
-`PaymentPublicDto(payment_status,amount_due,amount_received,amount_refunded)`
-
-`PaymentAdminDto` adds collection/refund actor/time.
-
-`ShippingInfoDto(delivery_mode,carrier_name?)`
-
-`OrderSummaryDto(order_id,order_code,order_status,payment_status,image_url?,total,created_at,completed_at?,returned_at?)`
-
-`OrderConfirmationDto(order_id,order_code,PENDING,payment,subtotal,discount,shipping_fee,total,recipient,created_at)`
-
-`OrderCustomerDetailDto`: recipient + items + money + payment + shipping + lifecycle timestamps.
-
-`OrderAdminDetailDto`: customer/voucher references, service note, cancel reason, admin payment and `allowed_actions` derived from state + permission.
-
-Order image fields are historical in the current/legacy contract: `OrderItemDto.image_url` comes from `order_items.image_url_snapshot`, and `OrderSummaryDto.image_url` comes from the first OrderItem snapshot by smallest `order_item_id`. Historical Order reads must not query the current Product gallery; existing null snapshots remain null rather than being backfilled from current catalog state.
-
-> **DB-07 snapshot clarification:** ORDER_ITEMS.image_url_snapshot is present in the target ERD/DDL and its immutable-image policy is owner-approved. The active legacy OrderItem mapping still needs remapping; a URL alone does not guarantee immutable bytes. Implement a stable object/version reference and historical access tests. Numeric asset-retention duration remains TBD under DB-12; do not schedule purging yet.
-### inventory/audit/report/content
-
-`SupplierDto`, `GoodsReceiptItemDto`, `GoodsReceiptSummaryDto`, `GoodsReceiptDetailDto`, `InventoryRowDto`, `InventoryTransactionDto`, `AuditLogDto`, `ReportOverviewDto`, `PublicContentPageDto`, `ContentPageDto`, `CustomerSummaryDto`, `CustomerDetailDto` follow the fields in Analyst API Appendix A; do not expose persistence-only secrets.
-
-## 5. High-risk request contracts
-
-### Register
-
-`phone?`, `email?`, `password` required. Login identifier/uniqueness/verification policy is still physical-design TBD. Never accept `role` or `account_id` from public registration.
-
-### Login
-
-`identifier`, `password` -> access token + AccountDto. Do not infer whether identifier is phone/email/both until physical design/repo configuration locks it.
-
-### Add/update cart item
-
-`variant_id`, `quantity > 0`; quantity zero is not delete.
-
-### Checkout quote/create Order
-
-Receiver phone/address required, email optional, voucher code optional. Server owns all totals/state/snapshots.
-
-### Product create — Phase 10 breaking contract
-
-**Legacy/current source contract (not yet the ERD v2 target contract):** required fields are category, SizeSystem, name, base price and sale status. Optional Product metadata and nested variants follow the source request DTO. Validate the source-model leaf Category and SizeSystem/SizeValue relationship before the target mapping is changed.
-
-> **ERD v2 compatibility gap (DB-01/02):** the target has no SizeSystem, SizeValue, Color or ProductVariant table. The target API must map the current concepts to parent/child Products and typed attributes, or obtain an explicit owner-approved contract amendment. Do not add the legacy tables back implicitly.
-
-`POST /api/v1/admin/products` is JSON-only and does **not** accept an image collection or multipart files. The old JSON `images[]` and multipart create representations are intentionally removed. Create Product first, then use the dedicated binary image-upload command.
-
-### Product binary image upload
-
-`POST /api/v1/admin/products/{productId}/images` consumes `multipart/form-data` with one or more repeated `images` file parts. The backend validates all files, uploads them through the Product-owned storage gateway and persists provider-returned direct URLs. Files are appended to the current collection; the first image of an image-less Product gets `sort_order = 0`.
-
-### Product PATCH image replacement
-
-`PATCH /api/v1/admin/products/{productId}` may include an authoritative `images: ProductImageInput[]` collection:
-
-- field omitted -> preserve current collection;
-- field present -> replace the entire collection;
-- `images: []` -> remove all Product images;
-- each item requires `image_url` and `sort_order`; `alt_text` is optional/nullable;
-- `sort_order` must be unique, non-negative and contiguous `0..n-1`; `0` is the cover.
-
-This URL-based replacement is distinct from binary upload and is not a compatibility path for Product creation. Provider credentials remain backend-only; provider-side remote deletion/compensation is unsupported unless the provider exposes a verified contract.
-
-### Inventory adjustment
-
-`variant_id`, non-zero `quantity_delta`, non-empty `reason`; server derives adjustment direction and actor.
-
-## 6. Error contract warning
-
-Analyst Docs require understandable business errors with no technical leakage, but do not lock a specific JSON error envelope/status-code matrix. Implement centralized exception handling according to the existing repository contract; do not invent a public error schema and declare it baseline without an explicit decision.
-
-## 7. Phase 7 Appendix A details
-
-Transcribed field contracts from the current consolidated API (checked 2026-09-27):
-
-| API | DTO | Fields |
-|---|---|---|
-| #70 | AuditLogDto | audit_id, actor_account_id, action, target_type, target_id (string), description?, created_at |
-| #72 | PublicContentPageDto | page_code, title, content, updated_at |
-| #73–75 | ContentPageDto | page_id, page_code, title, content, updated_by_account_id, updated_at |
-| #76 | CustomerSummaryDto | account_id, phone?, email?, order_count, last_order_at? |
-| #77 | CustomerDetailDto | account: AccountDto, addresses: AddressDto[], orders: OrderSummaryDto[] |
-
-#70 filters: actor_account_id, action, target_type, target_id, from, to, page, page_size. #76 filters: q, page, page_size. Both return data plus PaginationMeta.
-
-#73 specifically returns the full small content-page list as `{data: ContentPageDto[]}` without paging parameters. #74 requires page_code/title/content. #75 accepts only optional title/content, neither nullable; page_code stays stable. Public content never includes the internal page ID or actor ID.
-
-#71 requires from/to dates and returns ReportOverviewDto: from, to, completed_sales, returned_adjustment, net_sales and orders_by_status. The user-approved formulas, Vietnam timezone and completion/creation date bases are documented in docs/15 (2026-09-28). orders_by_status maps all eight baseline status codes to integer counts.
-
-
-### Target ERD v2 — P1 contract addendum (proposal; owner acceptance required)
-
-- **Money (DB-10):** all target request/response monetary values are integer VND. Use checked integer arithmetic; no JSON floating-point money. Canonical total is `subtotal - discount + shipping_fee`. Owner-approved rounding: round the order discount HALF-UP to whole VND, then allocate line discounts with largest remainder and a stable ascending `product_id` tie-break; allocated line discounts must reconcile exactly to the order discount.
-- **Quote (DB-05):** quote is stateless preview only; it does not reserve stock or create an Order. At placement, recalculate current price, sellability, stock, voucher and shipping. A material change returns conflict/requote without creating an Order. A durable idempotency guarantee is only valid if the approved 31-table schema can persist key scope, canonical payload hash and resulting Order with database-level concurrency arbitration. In-memory locks are not sufficient across instances/restarts.
-- **Inventory (DB-03):** cart/quote never changes stock. Goods receipt posting, order stock deduction, cancellation/accepted-return restock, inventory balance and ledger movement must share a transaction. Lock inventory rows in deterministic order and recheck availability under lock. The exact ledger direction/source/reversal mapping must use existing ERD columns/relations; no new column/table is implied.
-- **Historical images (DB-07):** Order image DTOs must not resolve from the current Product gallery. The target ERD lacks an explicit ORDER_ITEMS image snapshot field, so the implementation cannot promise an independently persisted immutable image URL unless an existing approved column/relationship can store it or the owner amends the ERD. A product-image reference alone is not immutable if the referenced asset can be replaced/deleted; immutable retention must be proven by storage policy and reference lifecycle.
-- **Phone (DB-09):** active accounts only must have unique normalized phone values; a deleted account's phone can be reused. Global `UNIQUE(phone)` is incompatible. A physical strategy and MySQL 8.4 verification are required before migration.
-- **Voucher and COD (DB-06/08):** voucher is order-wide and non-stackable with no Product/Category conditions. Do not promise redemption limits/counters unless represented and atomically enforceable in the approved schema. COD refund/return actions must not be exposed as complete workflows until states, allowed transitions and persisted refund/return facts are reconciled with existing columns; no new table/column is implied.
+This is the target DTO contract. Any old response shape not represented here must be deliberately retired or remapped; it must not be kept as a parallel persistence contract.
