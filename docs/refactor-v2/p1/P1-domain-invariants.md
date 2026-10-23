@@ -7,7 +7,7 @@
 - INV-ACC-02: /me resources, saved addresses and customer orders are scoped to authenticated principal. Client account IDs never authorize access.
 - INV-RBAC-01: Resolve effective grants from the database; never trust role claims from the client. Role/permission replacement and audit are atomic; preserve last-SUPERADMIN protection.
 - INV-ACC-03: Target Account status literals and their login/session effects are not approved; do not invent a new lifecycle.
-- INV-SEED-01: Required system roles/permissions and the initial SUPERADMIN bootstrap path must be deterministic and separate from demo fixtures; credentials remain external and are never committed. DB-11 must approve the seed inventory and bootstrap boundary.
+- INV-SEED-01: Seed roles/permissions through Flyway; bootstrap SUPERADMIN separately using secret configuration external to source control; keep demo fixtures separate (owner decision DB-11, 2026-10-23). No credentials may be hardcoded or committed.
 
 ## Product, Attribute and Image
 - INV-PROD-01: Parent references must exist and graph must be acyclic; permitted hierarchy depth remains DB-01.
