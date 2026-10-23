@@ -1,7 +1,8 @@
-%% FIDO ERD v2 — owner-confirmed target model
-%% Canonical source: the exact ERD supplied by the project owner on 2026-10-22.
-%% This version supersedes the earlier 38-table draft. It contains 31 target tables.
-%% Logical ERD: unspecified physical nullability, data lengths, defaults, constraints and status literals must be documented separately.
+%% FIDO ERD v2 — contract-freeze revision, 2026-10-23
+%% Base: owner-confirmed 31-table ERD supplied 2026-10-22.
+%% Revision authorized by the owner's instruction to resolve P1 blockers with the smallest coherent contract change.
+%% Retains 31 tables; adds explicit fields only where required to express already-recorded business decisions.
+%% Physical nullability, generated columns, indexes, defaults, constraints and status literals are specified separately.
 erDiagram
     ACCOUNTS {
         bigint id PK
@@ -79,8 +80,8 @@ erDiagram
         varchar slug "NULL for child if inherited"
         varchar sku UK
         text description "NULL for child if inherited"
-        decimal selling_price "NULL on child means inherit"
-        decimal cost_price "Nullable"
+        bigint selling_price "Integer VND; NULL on child means inherit"
+        bigint cost_price "Integer VND; nullable"
         varchar status
         timestamp deleted_at
         timestamp created_at
@@ -117,7 +118,7 @@ erDiagram
         bigint attribute_id PK,FK
         bigint option_id FK
         varchar text_value
-        decimal number_value
+        decimal number_value "Descriptive numeric attribute; not money"
         boolean boolean_value
     }
 
@@ -151,12 +152,13 @@ erDiagram
         bigint id PK
         varchar code UK
         varchar discount_type
-        decimal discount_value
-        decimal minimum_order_value
-        decimal maximum_discount
+        bigint discount_value "Integer VND for FIXED; integer percent basis points for PERCENT"
+        bigint minimum_order_value "Integer VND"
+        bigint maximum_discount "Integer VND; nullable"
         timestamp starts_at
         timestamp ends_at
         int usage_limit
+        int usage_count "Atomically incremented on successful placement; never exceeds usage_limit"
         varchar status
     }
 
@@ -166,11 +168,12 @@ erDiagram
         bigint voucher_id FK
         varchar order_number UK
         varchar idempotency_key UK
+        varchar request_fingerprint "Canonical hash of semantic checkout input"
         varchar status
-        decimal subtotal
-        decimal discount_amount
-        decimal shipping_fee
-        decimal total_amount
+        bigint subtotal "Integer VND"
+        bigint discount_amount "Integer VND"
+        bigint shipping_fee "Integer VND"
+        bigint total_amount "Integer VND"
         varchar currency
         timestamp placed_at
         timestamp created_at
@@ -184,10 +187,11 @@ erDiagram
         varchar sku_snapshot
         varchar product_name_snapshot
         varchar attribute_snapshot
+        varchar image_url_snapshot "Immutable retained asset reference"
         int quantity
-        decimal unit_price
-        decimal discount_amount
-        decimal line_total
+        bigint unit_price "Integer VND"
+        bigint discount_amount "Integer VND"
+        bigint line_total "Integer VND"
     }
 
     ORDER_ADDRESSES {
@@ -204,18 +208,22 @@ erDiagram
         bigint order_id PK,FK
         varchar voucher_code_snapshot
         varchar discount_type_snapshot
-        decimal discount_value_snapshot
-        decimal discount_amount_snapshot
+        bigint discount_value_snapshot "Integer VND or integer percent basis points"
+        bigint discount_amount_snapshot "Integer VND"
     }
 
     PAYMENTS {
         bigint order_id PK,FK
         varchar method
         varchar payment_status
-        decimal amount
-        varchar currency
+        bigint amount "Integer VND"
+        varchar currency "VND only"
         bigint collected_by_account_id FK
         timestamp collected_at
+        bigint refund_amount "Integer VND; default zero"
+        bigint refunded_by_account_id FK
+        timestamp refunded_at
+        varchar refund_reason
         timestamp created_at
         timestamp updated_at
     }
@@ -260,7 +268,7 @@ erDiagram
         bigint goods_receipt_id FK
         bigint product_id FK
         int quantity_received
-        decimal unit_cost
+        bigint unit_cost "Integer VND"
     }
 
     WAREHOUSES {
@@ -287,6 +295,8 @@ erDiagram
         bigint goods_receipt_item_id FK
         bigint order_item_id FK
         varchar idempotency_key UK
+        varchar reason_code "Required for manual adjustments and reversals"
+        bigint reverses_transaction_id FK "Nullable; reversal references original movement"
         bigint created_by FK
         timestamp created_at
     }
