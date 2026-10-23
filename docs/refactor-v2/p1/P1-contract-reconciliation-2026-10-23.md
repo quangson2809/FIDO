@@ -86,7 +86,8 @@ P1 does not implement patterns. Source review identifies an Adapter-style image-
 ## 8. Verification and acceptance state
 
 - Base SHA and branch creation: verified via GitHub API.
-- Static checker after reconciliation: PENDING; this report does not claim it ran.
-- MySQL clean-reset/backend CI: prior green runs quoted in older records are historical evidence, not proof for the reconciliation commit. Exact-SHA rerun is required.
+- Static checker result is reported by the GitHub Actions step **Run P1 contract consistency checker** for PR #26; use only the run whose head SHA matches the current PR HEAD.
+- Disposable MySQL schema verification is reported by the **Clean Schema Reset target verification** workflow on PR #26; earlier successful runs at older SHAs remain historical and do not prove a later revision.
+- Passing these checks does not imply P1 PASS: DB-03, DB-05 and DB-12 remain hard owner-decision blockers, and application Entity/service/API/DTO/frontend alignment is not implemented.
 - Target Entities/Repositories/services/API/DTO/frontend: NOT ALIGNED / NOT IMPLEMENTED; P1 documentation does not claim these pass.
 - DB-03, DB-05 and DB-12 remain hard blockers; P1 is PARTIAL and P2 is NOT AUTHORIZED until owner decisions and exact-SHA evidence are complete.

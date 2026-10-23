@@ -1,6 +1,6 @@
 # P1 Data Dictionary — coverage and status
 
-**Status: PARTIAL until static consistency and MySQL 8.4 target execution pass.**
+**Status: PARTIAL.** Static consistency and the disposable MySQL 8.4 schema test are necessary checks, not sufficient evidence of cross-layer target acceptance. Their current result must be read from the workflow run whose head SHA matches the PR HEAD. Owner/business and entity/API/DTO/frontend blockers remain separate.
 
 The canonical source is P1-data-dictionary.csv (RFC 4180 CSV). Use a real CSV parser rather than splitting lines on commas.
 
