@@ -122,7 +122,7 @@ The nullable Product summary `thumbnail` is live presentation data resolved from
 
 `VoucherDto(voucher_id,code)` — do not add rule fields.
 
-`CheckoutQuoteDto(items[],subtotal,discount,shipping_fee,total,voucher?)` — proposed as a non-persistent, advisory calculation; order placement must recalculate all values from current server-side state. No durable quote ID/reservation is implied by the target ERD.
+`CheckoutQuoteDto(items[],subtotal,discount,shipping_fee,total,voucher?)` — every monetary field is integer VND. Quote is a non-authoritative preview; order placement re-reads Cart/catalog/stock/voucher/shipping data and recalculates on the server. If the confirmed total changes, the proposed contract returns a typed conflict/requote result and creates no Order. — proposed as a non-persistent, advisory calculation; order placement must recalculate all values from current server-side state. No durable quote ID/reservation is implied by the target ERD.
 
 `RecipientDto(phone,email?,address)`
 
@@ -216,3 +216,13 @@ Transcribed field contracts from the current consolidated API (checked 2026-09-2
 #73 specifically returns the full small content-page list as `{data: ContentPageDto[]}` without paging parameters. #74 requires page_code/title/content. #75 accepts only optional title/content, neither nullable; page_code stays stable. Public content never includes the internal page ID or actor ID.
 
 #71 requires from/to dates and returns ReportOverviewDto: from, to, completed_sales, returned_adjustment, net_sales and orders_by_status. The user-approved formulas, Vietnam timezone and completion/creation date bases are documented in docs/15 (2026-09-28). orders_by_status maps all eight baseline status codes to integer counts.
+
+
+### Target ERD v2 — P1 contract addendum (proposal; owner acceptance required)
+
+- **Money (DB-10):** all target request/response monetary values are integer VND. Java uses checked integer arithmetic; no JSON floating-point money. Canonical total is `subtotal - discount + shipping_fee`. The proposed percentage-discount rounding and line allocation algorithm is specified in `docs/refactor-v2/p1/P1-design-proposals-DB-03-DB-05.md`; it is not approved until the owner accepts it.
+- **Quote (DB-05):** quote is stateless preview only; it does not reserve stock or create an Order. At placement, recalculate current price, sellability, stock, voucher and shipping. A material change returns conflict/requote without creating an Order. A durable idempotency guarantee is only valid if the approved 31-table schema can persist key scope, canonical payload hash and resulting Order with database-level concurrency arbitration. In-memory locks are not sufficient across instances/restarts.
+- **Inventory (DB-03):** cart/quote never changes stock. Goods receipt posting, order stock deduction, cancellation/accepted-return restock, inventory balance and ledger movement must share a transaction. Lock inventory rows in deterministic order and recheck availability under lock. The exact ledger direction/source/reversal mapping must use existing ERD columns/relations; no new column/table is implied.
+- **Historical images (DB-07):** Order image DTOs must not resolve from the current Product gallery. The target ERD lacks an explicit ORDER_ITEMS image snapshot field, so the implementation cannot promise an independently persisted immutable image URL unless an existing approved column/relationship can store it or the owner amends the ERD. A product-image reference alone is not immutable if the referenced asset can be replaced/deleted; immutable retention must be proven by storage policy and reference lifecycle.
+- **Phone (DB-09):** active accounts only must have unique normalized phone values; a deleted account's phone can be reused. Global `UNIQUE(phone)` is incompatible. A physical strategy and MySQL 8.4 verification are required before migration.
+- **Voucher and COD (DB-06/08):** voucher is order-wide and non-stackable with no Product/Category conditions. Do not promise redemption limits/counters unless represented and atomically enforceable in the approved schema. COD refund/return actions must not be exposed as complete workflows until states, allowed transitions and persisted refund/return facts are reconciled with existing columns; no new table/column is implied.
