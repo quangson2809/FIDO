@@ -11,7 +11,7 @@
 
 ## Product, Attribute and Image
 - INV-PROD-01: Parent references must exist and graph must be acyclic; permitted hierarchy depth remains DB-01.
-- INV-PROD-02: Cart/Order/receipt/Inventory target Product IDs replace legacy Variant IDs. Sale-unit and public ID adaptation require owner decision.
+- INV-PROD-02: Both parent and child Products are sellable and each has its own SKU, price and inventory (owner decision DB-01, 2026-10-23). Cart/Order/receipt/Inventory target Product IDs replace legacy Variant IDs; public API compatibility mapping still requires documentation and tests.
 - INV-PROD-03: Only child name/slug/description/selling_price have explicit inherit-on-NULL annotations. Do not implicitly inherit category, brand, status, SKU or images.
 - INV-PROD-04: Preserve leaf Category assignment unless explicitly amended; protect in-use categories.
 - INV-ATTR-01: OPTION/TEXT/NUMBER/BOOLEAN are candidate data types. Each row needs one compatible typed value; an option must belong to the same Attribute.
