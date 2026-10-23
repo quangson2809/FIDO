@@ -1,65 +1,48 @@
-# 09 — Validation, Errors & Backend Conventions
-
-> **ERD v2 compatibility boundary (2026-10-22):** The examples below were written against the existing implementation/API. Variant, SizeSystem/SizeValue, Color and legacy field validation are source behavior, not automatic target-schema requirements. Reconcile DTO and service validators against the approved 31-table model and the frozen API/business contract; do not silently preserve or remove externally observable validation behavior.
+# 09 — Validation, Errors and Backend Conventions
 
 ## 1. Validation layers
 
-Use layered validation:
+1. **Request validation:** required fields, string bounds, valid enum literals, integer-VND amounts, positive quantities and request shape.
+2. **Business validation:** ownership, permissions, account lifecycle, Product hierarchy, typed attribute values, price/stock eligibility, voucher rules and state transitions.
+3. **Database invariants:** PK/FK/unique/check constraints, optimistic version guards and source-derived uniqueness. Database checks reinforce but do not replace service validation.
 
-1. **DTO syntactic validation**: required fields, positive/non-zero numeric constraints, max lengths where schema defines them.
-2. **Service business validation**: ownership, state transition, leaf Category, SizeSystem match, permissions, stock availability.
-3. **Database invariant**: FK/UQ/CHECK/atomic condition for constraints that must survive concurrent requests.
+Cross-module writes must go through the owning module service. Validation and mutation that protect the same business invariant must run in one transaction or use database concurrency controls that make the invariant atomic.
 
-Do not place business rules only in controller annotations.
+## 2. Target-specific validation
 
-## 2. Mandatory examples
+### Accounts and authorization
+- Registration and authentication must not reveal whether an account identifier exists.
+- Active phone identity is unique; the phone may be reused after the account is soft-deleted.
+- Never accept an account ID, role/grant assignment or actor identity from an unauthenticated/public request.
+- Protect role/permission changes with the approved RBAC policy, audit record and last-SUPERADMIN guard.
 
-- cart/order/receipt quantity > 0;
-- adjustment delta != 0;
-- money >= 0;
-- receiver phone + address required at checkout;
-- Variant SizeValue belongs to Product SizeSystem;
-- Product Category is leaf;
-- Category parent update creates no self-parent/cycle;
-- cannot delete Category with children/Product;
-- cannot delete Brand/Size/Color while referenced;
-- recipient update rejected from SHIPPING onward;
-- state transition not in state machine rejected without partial write;
-- COMPLETE rejected when payment is not PAID;
-- inventory update rejected if result would be negative.
+### Product and attributes
+- Product SKU is unique according to the target database contract.
+- Parent/child depth is limited to one; reject self-parenting, cycles and invalid referenced parents.
+- Each Product owns its required selling price and stock. No nullable field silently inherits from a parent.
+- Attribute values must match the Attribute's authoritative type: `OPTION`, `TEXT`, `NUMBER` or `BOOLEAN`. Exactly one compatible value is populated. A selected option must belong to the same Attribute.
+- Attribute metadata is descriptive; it must not generate Product rows automatically.
+- A Product image operation validates ownership, supported media/URL contract and ordering rules from the approved image API contract.
 
-## 3. Business errors
+### Cart, orders and money
+- Cart and order operations require an authenticated account and enforce ownership of each Cart/line/Order.
+- Cart and receipt quantities must be positive integers. Inventory adjustment delta must be non-zero with a valid reason code.
+- All money is integer VND. Reject fractional-VND inputs; do not accept client-computed total/price/discount/shipping values as authoritative.
+- Order creation revalidates current Product status, selling price, stock, voucher and server-owned shipping input.
+- Same scoped idempotency key + same semantic payload replays. Same key + different payload conflicts. Cross-account result access is forbidden.
 
-SRS requires errors to be understandable and must not leak technical internals. The public error JSON envelope/status matrix is not locked in Analyst docs.
+### Inventory, payment and lifecycle
+- Inventory balance must never be negative. Every successful movement has the matching source, balance update, ledger row and required audit in one transaction.
+- Prevent repeated receipt confirmation, duplicate source movements, repeated stock reversal, duplicate COD collection and duplicate refund.
+- Apply the approved actor/state matrix to Order, Payment, ShippingInfo and GoodsReceipt transitions.
+- Do not hard-delete placed Orders, Payment facts, ledger entries, snapshots or audit history through ordinary catalog/account deletion.
 
-Codex must:
+## 3. HTTP error convention
 
-- use the repository's established exception/error response convention;
-- centralize exception translation;
-- avoid returning stack traces/SQL details/class names;
-- distinguish validation/not-found/authorization/conflict/business-state conditions using the existing API standard;
-- not introduce a new incompatible error schema without explicit approval.
+Return a stable public envelope with a machine-readable error code and safe user-facing message. Map request validation to a client validation error, authentication to 401, authorization to 403, missing resources to 404, and state/stock/idempotency conflicts to the agreed conflict status. Preserve the existing global error envelope unless an explicit API-contract change is approved.
 
-## 4. Naming and serialization
+Never return SQL text, database/provider errors, stack traces, credentials, JWTs or secret configuration. Logs must exclude raw request bodies and query strings where they may contain credentials or personal data; retain safe route template, method, status, internal exception category and correlation ID.
 
-- Java class names: normal Java conventions.
-- JSON: snake_case according to API Appendix A.
-- DB: snake_case.
-- Target money: integer VND in BIGINT columns/DTO fields (1 stored unit = 1 VND); reject fractional VND. BigDecimal/DECIMAL money in active Java/API logic is legacy behavior and must be migrated to the owner-approved integer-VND/HALF-UP/largest-remainder contract. DECIMAL remains suitable for non-money descriptive data such as PRODUCT_ATTRIBUTE_VALUES.number_value.
-- Do not map persistence Entity directly to JSON.
+## 4. Test requirements
 
-## 5. Search and pagination
-
-Do not create separate search endpoints when the baseline uses query parameters. Implement default `page=1`, `page_size=20`, maximum 100. Sorting behavior not explicitly locked should follow an existing repository convention or remain an explicit decision rather than silently invented.
-
-## 6. Deletion semantics
-
-Use physical DELETE only where the baseline endpoint explicitly allows deleting master data and reference checks prove it is unused (e.g. empty Category, unused Brand/Size/Color/Role/Permission). Historical business records are immutable/lifecycle-driven and must not be hard-deleted.
-
-
-## P1 target validation notes
-
-- Product attribute values must contain exactly one typed value compatible with the authoritative Attribute type; OPTION must reference an option owned by that same Attribute. The final type literals/ranges are DB-02 contract items.
-- Parent and child Products are independently sellable with row-owned SKU, required selling_price and stock; v1 permits one parent-child level. `name`, `slug` and `description` never implicitly fall back to parent values when NULL; do not treat arbitrary NULL as inherit.
-- The target includes ORDER_ITEMS.image_url_snapshot. Historical images must not be reconstructed from the current product gallery, and a URL alone does not guarantee retained immutable bytes (DB-07).
-- DB-12 lifecycle/FK defaults are owner-approved: RESTRICT for business/history references, CASCADE only for approved disposable dependent data, and preserve posted Order/Payment/ledger/audit history. Numeric retention durations/anonymization exceptions remain TBD; do not infer automatic purging.
+For each target rule, test both invalid requests and concurrency/replay paths where applicable: hierarchy/cycle races, duplicate active phone, same-Attribute option ownership, Product SKU conflicts, Cart ownership, last-stock race, receipt double-confirm, source-key duplication, voucher final-use race, order idempotency replay/conflict, full transaction rollback, state authorization and retained snapshot stability. Report real test results; a documentation change does not establish runtime acceptance.
