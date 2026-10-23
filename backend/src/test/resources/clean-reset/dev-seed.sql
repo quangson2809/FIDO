@@ -10,7 +10,7 @@ INSERT INTO products (id,parent_product_id,category_id,brand_id,name,slug,sku,de
 VALUES (30001,NULL,10001,20001,'Áo thun cơ bản','ao-thun-co-ban-demo','DEMO-TSHIRT',
  'Sản phẩm cha minh họa cho mô hình Product cha/con.',250000,100000,'ACTIVE');
 INSERT INTO products (id,parent_product_id,category_id,brand_id,name,slug,sku,description,selling_price,cost_price,status)
-VALUES (30002,30001,NULL,NULL,NULL,NULL,'DEMO-TSHIRT-WHT-S',NULL,NULL,NULL,'ACTIVE');
+VALUES (30002,30001,NULL,NULL,NULL,NULL,'DEMO-TSHIRT-WHT-S',NULL,195000,NULL,'ACTIVE');
 
 INSERT INTO attribute_types (id,code,name,data_type) VALUES
  (40001,'SIZE','Kích thước','OPTION'),(40002,'COLOR','Màu sắc','OPTION');

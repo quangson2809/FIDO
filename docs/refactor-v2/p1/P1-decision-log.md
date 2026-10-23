@@ -1,5 +1,7 @@
 # P1 — Decision Log
 
+> **Reconciliation note — 2026-10-23:** The approved target currently includes ORDERS.request_fingerprint, ORDER_ITEMS.image_url_snapshot, VOUCHERS.usage_count, GOODS_RECEIPTS.warehouse_id, PAYMENTS refund metadata, and integer-VND monetary columns. The target fields exist; presence does not approve DB-03/05/06/07/08 transaction, quota, retention or refund semantics. DB-03 and DB-05 remain unapproved owner-requested design proposals; DB-12 has no owner-approved deletion/FK/retention matrix. Do not authorize P2 reset from schema-only evidence.
+
 **Status: PARTIAL.** The logical ERD is owner-confirmed. Owner choices recorded on 2026-10-23 resolve the direction for DB-01, DB-02 and DB-06 through DB-11. Detailed DB-03/DB-05 proposals are in docs/refactor-v2/p1/P1-design-proposals-DB-03-DB-05.md; they remain unapproved until explicit owner acceptance. Contract synchronization and reviewer evidence remain required before P1 can PASS.
 
 ## APPROVED

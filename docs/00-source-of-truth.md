@@ -8,22 +8,20 @@ Codex must distinguish **locked business requirements** from **implementation ch
 
 | Priority | Source | Authority |
 |---:|---|---|
-| 1 | `docs/refactor/phase-1-erd-v2-approved.mmd` + `docs/refactor/phase-1-erd-v2-contract.md` | Owner-confirmed target persistence model for refactor: 31 logical tables; authoritative for target table/column/key shape |
-| 2 | `07_Thiet_ke_du_lieu_CSDL_Website_Ban_Quan_Ao_v1.3.0_catalog_final.docx` + repository migrations V1–V6 | Pre-refactor schema and source-data semantics only; the full current chain defines 32 application tables, distinct from the 31-table target |
-| 3 | `DANH MỤC API TINH GỌN THEO CSDL` | Current consolidated HTTP/JWT/DTO contract; latest baseline is **77 APIs** |
-| 4 | `02_SRS_Website_Ban_Quan_Ao.docx` | FR/NFR, business rules, state machine, acceptance criteria |
-| 5 | `03_FRS_Website_Ban_Quan_Ao.docx` | Functional processing rules and error/transaction expectations |
-| 6 | `04_Use Case_Website_Ban_Quan_Ao.docx` | Preconditions, happy path, alternatives, rejection flows |
-| 7 | `05_Process_Flow_Website_Ban_Quan_Ao.docx` | Operational workflow visualization |
-| 8 | `06_User_Story_Backlog_Website_Ban_Quan_Ao.docx` | Story/AC traceability and refinement flags |
-| 9 | `mo_hinh_hoa_Website_ban_quan_ao.docx` | Conceptual class/component/package boundaries; target persistence follows owner-confirmed ERD v2 |
-| 10 | `01_BRD_Website_Ban_Quan_Ao.docx` | Business scope and high-level decisions |
+| 1 | Explicit, dated owner-approved business decisions in docs/refactor/phase-1-owner-decision-questionnaire.md and APPROVED rows of docs/refactor-v2/p1/P1-decision-log.md | Business behavior and accepted product constraints. A proposal or working DDL default is not owner approval. |
+| 2 | docs/refactor/phase-1-erd-v2-approved.mmd | Canonical target logical tables, columns, keys and relationships, interpreted within approved owner decisions. |
+| 3 | docs/refactor/phase-1-erd-v2-contract.md and docs/refactor-v2/p1/P1-contract-reconciliation-2026-10-23.md | Target meaning, cross-document discrepancies, compatibility disposition and explicit blockers. Conflicts between the two higher authorities must be recorded, not silently resolved. |
+| 4 | docs/refactor-v2/p1/P1-data-dictionary.csv, backend/src/main/resources/db/clean-reset/V1__clean_schema.sql and V2__system_seed.sql | Physical SQL draft and column-level evidence. DDL is not approved merely because it exists or passes a static/runtime test. |
+| 5 | docs/04-api-contract.md, docs/05-dto-contract.md and reference/api-baseline-77.csv | Existing 77-endpoint API inventory and legacy wire contract, subject to target dispositions in the P1 API mapping and reconciliation report. |
+| 6 | SRS/FRS/UC/process-flow/story documents under repository root and reference/ | Business context and legacy behavior evidence; check conflicts against current approved decisions. |
+| 7 | Active code and migrations V1–V6 | Evidence of current legacy behavior, not automatic target specification. |
+| 8 | docs/archive/ and reports captured at earlier SHAs | Traceability only; never overwrite a newer approved decision or claim current verification. |
 
-`Danh_muc_API_Website_Ban_Quan_Ao_v5_CSDL_v1.3.0_Tinh_gon.docx` is an older condensed API snapshot and contains 73 endpoints. It is useful for history, but the live consolidated API document now contains 77 baseline endpoints, including Permission CRUD. Do not regress the contract to 73.
+This file maps authority but does not approve unresolved rules. A field/API remains PROPOSED or BLOCKED until approval and evidence are recorded.
 
 ## 3. Conflict rules
 
-1. **Target schema conflict:** the owner-confirmed 31-table ERD v2 and its data contract win for the post-refactor persistence shape. DB v1.3.0 and migrations V1–V6 describe the current/source schema only.
+1. **Target schema conflict:** approved owner decisions govern business meaning; the owner-confirmed ERD v2 defines target logical shape within those decisions. If semantics conflict (including null/inheritance rules), record a HARD BLOCK and amend an artifact only after the approved decision is explicit. DB v1.3.0 and migrations V1–V6 describe source schema only.
 2. **Endpoint conflict:** latest consolidated API document wins for URL, method, DTO and JWT rules.
 3. **Business-state conflict:** use the locked SRS state model and DB invariants. The canonical successful delivery terminal state is `COMPLETED`; `DELIVERED` from older wording must not be introduced as an extra OrderStatus.
 4. **Technology conflict:** Analyst Docs deliberately do not lock DBMS/framework version. Preserve the repository's existing technology; do not upgrade or replace it without an explicit task.
@@ -52,6 +50,7 @@ The post-refactor persistence shape is the owner-confirmed 31-table ERD in docs/
 - stock balance is keyed by warehouse and Product with quantity_on_hand and version; there is no reservation table or reserved-quantity column;
 - an Order has one PAYMENTS row and optional SHIPPING_INFOS; there are no payment transaction/refund event, shipment event/line or return tables;
 - VOUCHERS and ORDER_VOUCHER_SNAPSHOTS exist, but voucher target joins, usage ledger and checkout_quotes are not target tables;
+- ORDER_ITEMS.image_url_snapshot, ORDERS.request_fingerprint, ORDERS.currency, VOUCHERS.usage_count, GOODS_RECEIPTS.warehouse_id and refund metadata are present in the current target ERD/DDL draft; their application semantics or retention policy may still be blocked;
 - omitted source fields/history require an explicit migration transform/archive/retirement disposition;
 - target schema changes do not automatically authorize public API/DTO or business-state changes. Use the consolidated API contract and SRS for those semantics, and document compatibility gates when the current behavior needs a persistence concept absent from the target.
 

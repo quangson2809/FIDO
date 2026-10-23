@@ -19,7 +19,7 @@ This decision closes legacy-only questions about mapping old source values, old 
 
 ## Working defaults in the target draft — not a record of owner approval
 
-The target draft encodes options **D1-A through D10-A** as implementation defaults, but not all of those defaults are owner-approved. **D2-A is already confirmed** by the owner decision dated 2026-10-05 requiring login before use of persisted Cart and before order placement; see `frontend/CONTRACT_ALIGNMENT.md`. D1 and D3–D10 remain working defaults until explicitly accepted or changed. Keep this distinction in downstream status tables and update the contract, physical data dictionary, DDL and tests together when a material decision changes.
+The target draft encodes options **D1-A through D10-A** as implementation defaults, but not all of those defaults are owner-approved. The monetary-type part of D9-A (DECIMAL(18,2)) is superseded by DB-10's owner-approved integer-VND decision; this does not approve all other D9 physical details. **D2-A is already confirmed** by the owner decision dated 2026-10-05 requiring login before use of persisted Cart and before order placement; see `frontend/CONTRACT_ALIGNMENT.md`. D1 and D3–D10 remain working defaults until explicitly accepted or changed. Keep this distinction in downstream status tables and update the contract, physical data dictionary, DDL and tests together when a material decision changes.
 
 | Decision | Working default applied |
 |---|---|
@@ -31,7 +31,7 @@ The target draft encodes options **D1-A through D10-A** as implementation defaul
 | D6 | COD initially; one payment aggregate per order. |
 | D7 | Copy recipient/address to an immutable order-address snapshot at placement. |
 | D8 | Unique idempotency keys for new order/inventory commands; same-payload retry replays, conflicting payload returns conflict. |
-| D9 | BIGINT IDs, DECIMAL(18,2), TIMESTAMP(6) UTC, checks/indexes and restrictive FKs by default. |
+| D9 | BIGINT IDs; integer VND for all monetary fields per owner decision DB-10 (2026-10-23); TIMESTAMP(6) UTC, checks/indexes and restrictive FKs by default. Other physical defaults remain subject to DB-09 review. |
 | D10 | Required roles/permissions in Flyway; demo catalog/inventory fixture separate from system seed and without accounts/secrets. |
 
 ## How to respond

@@ -1,5 +1,7 @@
 # P1 Exit Gate — ERD v2 & Data Contract Freeze
 
+> **Latest reconciliation note — 2026-10-23:** Current work starts from `origin/demo1` SHA `551d91dab8b47ac709283f9222667b06c6b1b6de`. The baseline counts (31 logical tables / 228 logical fields / 229 physical columns including generated `accounts.phone_active_key`) are snapshot observations, not checker constants. Prior successful MySQL/backend runs listed below are historical evidence at previous commits; exact-SHA checks must run against the reconciliation PR. Status remains PARTIAL / P2 NOT AUTHORIZED while DB-03, DB-05 and DB-12 and other listed contract details remain open.
+
 **STATUS: PARTIAL. P2 is NOT AUTHORIZED.** Static schema and isolated MySQL clean-reset verification have passed for the current target draft, but the whole contract is not approved or implemented across the application.
 
 ## Baseline and verification evidence

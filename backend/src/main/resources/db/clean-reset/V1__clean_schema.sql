@@ -102,7 +102,7 @@ CREATE INDEX ix_attribute_options_order ON attribute_options (attribute_id, sort
 CREATE TABLE products (
  id BIGINT NOT NULL AUTO_INCREMENT, parent_product_id BIGINT NULL, category_id BIGINT NULL, brand_id BIGINT NULL,
  name VARCHAR(255) NULL, slug VARCHAR(200) NULL, sku VARCHAR(100) NOT NULL, description TEXT NULL,
- selling_price BIGINT NULL, cost_price BIGINT NULL,
+ selling_price BIGINT NOT NULL, cost_price BIGINT NULL,
  status VARCHAR(20) NOT NULL DEFAULT 'DRAFT', deleted_at TIMESTAMP(6) NULL,
  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
  updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -110,7 +110,7 @@ CREATE TABLE products (
  CONSTRAINT fk_products_parent FOREIGN KEY (parent_product_id) REFERENCES products (id),
  CONSTRAINT fk_products_category FOREIGN KEY (category_id) REFERENCES categories (id),
  CONSTRAINT fk_products_brand FOREIGN KEY (brand_id) REFERENCES brands (id),
- CONSTRAINT ck_products_selling_price CHECK (selling_price IS NULL OR selling_price >= 0),
+ CONSTRAINT ck_products_selling_price CHECK (selling_price >= 0),
  CONSTRAINT ck_products_cost_price CHECK (cost_price IS NULL OR cost_price >= 0),
  CONSTRAINT ck_products_status CHECK (status IN ('DRAFT','ACTIVE','INACTIVE','ARCHIVED'))
 );

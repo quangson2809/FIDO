@@ -1,6 +1,6 @@
 # 06 — Business Rules & State Machines
 
-> **ERD v2 scope boundary (2026-10-22):** The state machine and ProductVariant rules below describe existing business/runtime behavior. The target ERD has one parent/child PRODUCTS table and no RETURNS/RETURN_ITEMS tables. Preserve confirmed business behavior where compatible, but do not infer new target persistence objects or synthesize return rows from status alone; unresolved incompatibility is a refactor gate.
+> **P1 target status (2026-10-23):** The Order/Payment/GoodsReceipt state tables below are legacy/source behavior, not automatically approved target transition semantics. Target persistence has Product parent/child rows, one COD Payment aggregate, manual ShippingInfo and no separate return tables. DB-03/DB-08 state/stock/refund effects remain blocked until owner-approved transition and transaction contracts exist. Do not add legacy Variant/return persistence back to ERD v2 by implication.
 
 
 ## 1. Order state machine
@@ -96,3 +96,13 @@ Baseline has no independent after-sales case resource.
 - `RETURN`: accepted full return may set Order `RETURNED`; refund through Payment if applicable; inventory movement only for physically received goods that can be returned to sellable stock.
 - `EXCHANGE_SIZE`: must not automatically set Order to RETURNED. When applied, old/new variant movements reflect actual returned/supplied quantities and stock checks.
 - Item-level/partial-return structured workflow is Phase later/TBD.
+
+
+## Target-state reconciliation (P1; not runtime implementation)
+
+- Cart and order placement require an authenticated account; guest identity, guest checkout, lookup-by-phone and cart merge are out of scope under owner decision A-03.
+- Parent and child Product records are independently sellable and each owns SKU, selling price and inventory. Dynamic attributes are descriptive and never auto-generate child Products.
+- Target money is integer VND. Exact percentage rounding and line/order discount allocation remain blocked; legacy BigDecimal rules do not become target rules by being present in the old examples.
+- Stock is represented by INVENTORIES(warehouse_id, product_id, quantity_on_hand, version) and INVENTORY_TRANSACTIONS. DB-03 still needs an approved source/movement/reversal/deduplication and concurrency policy before applying transition side effects.
+- Target PAYMENTS has one order-owned COD aggregate and refund metadata. Those columns do not approve partial/full refund rules, authorization, replay semantics, or return/restock effects; see DB-08.
+- Product inheritance is field-specific: only name, slug and description are annotated as possible child inheritance candidates in the ERD; effective values and parent-update propagation remain open. selling_price is non-inherited and required per DB-01. Do not infer inheritance for other fields.

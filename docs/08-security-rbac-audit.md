@@ -52,15 +52,6 @@ Collect only necessary phone/email/address/profile data. Order receiver snapshot
 
 Sensitive traffic requires HTTPS in deployment. DB access follows least privilege.
 
-## 7. Guest lookup warning
+## 7. Guest lookup — out of target scope
 
-Guest order lookup is required, but token/OTP/secret, TTL, rate limit, masking and verification channel remain TBD. Do not release a final phone-only authorization mechanism.
-
-## 8. Security testing
-
-- negative authentication/authorization tests;
-- ownership tests for `/me/**`;
-- input validation and safe errors;
-- secret/PII logging checks;
-- capability revocation/reload tests;
-- OWASP ASVS-aligned checks within project scope.
+The older guest-order lookup wording is superseded. Owner decision A-03 requires login before persisted Cart use and order placement, and the current 77-endpoint API inventory does not include `/api/v1/orders/lookup`. Do not implement guest lookup, phone-only authorization, an OTP challenge, anonymous sessions or cart merge unless the owner explicitly amends target scope.

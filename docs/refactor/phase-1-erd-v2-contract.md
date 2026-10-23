@@ -1,3 +1,5 @@
+> **P1 reconciliation update (2026-10-23):** This is the long-form target contract, but older appended source inventories and pre-decision defaults must not override current owner decisions. The live target ERD/DDL include integer-VND money, ORDERS.request_fingerprint, VOUCHERS.usage_count, GOODS_RECEIPTS.warehouse_id, PAYMENTS refund metadata and ORDER_ITEMS.image_url_snapshot. Parent and child Products each own a required price under DB-01; only name/slug/description are annotated as potential child inheritance fields. See docs/refactor-v2/p1/P1-contract-reconciliation-2026-10-23.md. P1 remains PARTIAL; DB-03, DB-05 and DB-12 remain open.
+
 # FIDO — Phase 1: Owner-confirmed ERD v2 & Data Contract
 
 - **Status: PARTIAL.** The owner has supplied the finalized logical schema directly in the 2026-10-22 conversation. The canonical target is **31 tables**, not the 38-table draft previously recorded here. The diagram and this contract now match the owner-supplied scope.
@@ -135,7 +137,7 @@ The target scope is frozen to the exact diagram in [phase-1-erd-v2-approved.mmd]
 - Attributes use ATTRIBUTE_TYPES, ATTRIBUTES, ATTRIBUTE_OPTIONS and PRODUCT_ATTRIBUTE_VALUES. The composite PK (product_id, attribute_id) permits at most one row for each Product/Attribute pair. The exact rule for selecting option_id versus text_value/number_value/boolean_value, including mutual-exclusion validation, still needs physical/service-level specification.
 - CART_ITEMS, ORDER_ITEMS, GOODS_RECEIPT_ITEMS, INVENTORIES and INVENTORY_TRANSACTIONS point to PRODUCT IDs, not the old Variant IDs.
 - INVENTORIES has the composite key (warehouse_id, product_id), quantity_on_hand and version. The target does **not** contain quantity_reserved or INVENTORY_RESERVATIONS.
-- ORDER_ITEMS snapshots SKU, product name and attribute text. It does **not** contain image_url_snapshot.
+- ORDER_ITEMS snapshots SKU, product name, attribute text and image_url_snapshot. The image snapshot field exists in the approved target; immutable asset retention/versioning is a separate DB-07 policy and test requirement.
 - A single PAYMENTS row is related 1:1 to an order; the listed fields represent payment method/status/amount and COD collection attribution. The target does not contain PAYMENT_TRANSACTIONS or REFUNDS.
 - SHIPPING_INFOS is a 1:0..1 order-side shipping record. The target does **not** contain SHIPMENTS, SHIPMENT_ITEMS or SHIPMENT_TRACKING_EVENTS.
 - The target has no RETURNS or RETURN_ITEMS. An order status value alone must not be converted into a detailed return record.

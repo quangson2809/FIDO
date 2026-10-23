@@ -5,13 +5,15 @@ Base: `main` @ `cdc04a7d3743dd1d9cc47c755acafd202fa33b32`
 
 ## Source of truth
 
-For frontend integration work, use this order:
+For target refactor contract work, use this authority order:
 
-1. Actual backend Controller + request/response DTO + current state literals.
-2. Explicit project-owner decisions that intentionally supersede an older documented baseline.
-3. `docs/04-api-contract.md` and domain docs when the backend implementation is incomplete or a behavior is explicitly deferred.
-4. Frontend types/services.
-5. UI presentation.
+1. Explicit, dated project-owner decisions for business semantics.
+2. `docs/refactor/phase-1-erd-v2-approved.mmd` for target logical persistence shape, within approved business decisions.
+3. `docs/refactor-v2/p1/P1-api-contract-mapping.csv`, `docs/04-api-contract.md` and `docs/05-dto-contract.md` for accepted target API/DTO decisions and recorded blockers.
+4. Actual backend Controller + request/response DTO + current state literals as evidence of **legacy runtime behavior**, not as a reason to override target decisions.
+5. Frontend types/services, then UI presentation.
+
+Current backend/frontend fields such as ProductVariant IDs, `quote_id` and BigDecimal money remain legacy until target decisions and implementation are accepted; P1 documentation does not imply that they have been migrated.
 
 Do not add fields, workflows, payment methods, shipping capabilities, loyalty behavior, showroom behavior, or state transitions because a screen/template expects them.
 

@@ -10,7 +10,6 @@ ROOT = Path(__file__).resolve().parents[2]
 ERD = ROOT / "docs/refactor/phase-1-erd-v2-approved.mmd"
 SQL = ROOT / "backend/src/main/resources/db/clean-reset/V1__clean_schema.sql"
 DICT = ROOT / "docs/refactor-v2/p1/P1-data-dictionary.csv"
-EXPECTED = 31
 
 
 def close_paren(text, start):
@@ -206,10 +205,8 @@ def main():
     }
     if required - set(headers):
         issues.append("Dictionary missing headers: " + ", ".join(sorted(required - set(headers))))
-    if len(erd) != EXPECTED:
-        issues.append("ERD table count is " + str(len(erd)) + "; expected 31")
-    if len(sql) != EXPECTED:
-        issues.append("SQL table count is " + str(len(sql)) + "; expected 31")
+    if len(sql) != len(erd):
+        issues.append("SQL table count is " + str(len(sql)) + "; canonical ERD table count is " + str(len(erd)))
     if set(erd) != set(sql):
         issues.append("ERD/SQL table set differs: ERD-only=" + repr(sorted(set(erd) - set(sql))) + ", SQL-only=" + repr(sorted(set(sql) - set(erd))))
 

@@ -1,5 +1,7 @@
 # Implementation decisions — 2026-09-26
 
+> **Target contract addendum (2026-10-23):** DB-10 owner decision supersedes legacy Phase 5 monetary implementation notes: target money is integer VND stored/exposed in whole VND units using BIGINT, not BigDecimal/DECIMAL money. DECIMAL remains valid for non-monetary descriptive numbers such as PRODUCT_ATTRIBUTE_VALUES.number_value. DB-01 also confirms parent and child Products each own SKU, selling price and inventory. Current phase implementation bullets and earlier decisions below remain historical source-code evidence where they describe ProductVariant, BigDecimal or the pre-reset schema; do not use them to override the target ERD or owner decision log.
+
 > **ERD v2 scope boundary (2026-10-22):** This is a chronological decision log for the current implementation. Existing V1–V6, ProductVariant, inventory and image-snapshot decisions describe the source baseline unless explicitly re-approved for the refactor. The owner-confirmed target persistence model is the 31-table ERD and contract under docs/refactor; earlier schema statements here must not override it. Preserve the existing public/business contract or flag a compatibility blocker rather than silently broadening the target schema.
 
 This file contains **technical implementation decisions** approved by the project owner or safely chosen to encode already-approved source semantics. It must not be used to invent new business rules.
@@ -390,7 +392,7 @@ Only authored rejection reasons from these endpoints are exposed to clients.
 - Product totals aggregate all variants before the one-row thumbnail join. Existing restrictive OrderItem→Variant→Product FKs
   preserve historical identity; report applies no sale-status filter. Name/thumbnail are current catalog metadata (not a historical name snapshot).
   Completed units include COMPLETED and RETURNED cohorts; returned units subtract full order quantities. Ranking has explicit deterministic tie-breakers.
-- No new chart dependency: feature-owned SVG displays server values; VND arithmetic stays in backend BigDecimal.
+- No new chart dependency: feature-owned SVG displays server values. **Legacy Phase 5 note:** VND arithmetic used backend BigDecimal at that phase; this implementation detail is superseded for the target by DB-10 integer-VND/BIGINT.
   Reports uses URL-owned tab/from/to/granularity and existing useRemoteQuery to suppress stale requests. Only the active tab loads its data.
 - Dashboard report requests mount only for report-authorized users; existing work queues retain their own module permissions.
   Order drill-down uses UTC instants and the inclusive upper boundary `16:59:59.999999Z` for the last Vietnam day.
