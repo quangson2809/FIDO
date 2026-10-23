@@ -1,6 +1,6 @@
 # 06 — Business Rules & State Machines
 
-> **P1 target status (2026-10-23):** The Order/Payment/GoodsReceipt state tables below are legacy/source behavior, not automatically approved target transition semantics. Target persistence has Product parent/child rows, one COD Payment aggregate, manual ShippingInfo and no separate return tables. DB-03/DB-08 state/stock/refund effects remain blocked until owner-approved transition and transaction contracts exist. Do not add legacy Variant/return persistence back to ERD v2 by implication.
+> **P1 target status (2026-10-23):** The state tables below are legacy/source examples and are not themselves the target state machine. The owner approved DB-03/DB-08 target defaults on 2026-10-23: one COD Payment aggregate, manual ShippingInfo, explicit authorized Order/Payment/Shipping transitions, atomic stock/payment/audit effects and at most one full refund. Implementation must derive and test the target transition matrix; do not add legacy Variant, refund-event or return tables back to ERD v2 by implication.
 
 
 ## 1. Order state machine
@@ -102,7 +102,7 @@ Baseline has no independent after-sales case resource.
 
 - Cart and order placement require an authenticated account; guest identity, guest checkout, lookup-by-phone and cart merge are out of scope under owner decision A-03.
 - Parent and child Product records are independently sellable and each owns SKU, selling price and inventory. Dynamic attributes are descriptive and never auto-generate child Products.
-- Target money is integer VND. Exact percentage rounding and line/order discount allocation remain blocked; legacy BigDecimal rules do not become target rules by being present in the old examples.
-- Stock is represented by INVENTORIES(warehouse_id, product_id, quantity_on_hand, version) and INVENTORY_TRANSACTIONS. DB-03 still needs an approved source/movement/reversal/deduplication and concurrency policy before applying transition side effects.
+- Target money is integer VND. Owner-approved discount rounding/allocation is HALF-UP at the order discount followed by largest-remainder allocation to lines with ascending `product_id` tie-break; legacy BigDecimal rules do not override that contract.
+- Stock is represented by INVENTORIES(warehouse_id, product_id, quantity_on_hand, version) and INVENTORY_TRANSACTIONS. DB-03 source/movement/reversal/deduplication and concurrency policy is owner-approved; apply it through atomic service transactions and test it on MySQL.
 - Target PAYMENTS has one order-owned COD aggregate and refund metadata. Those columns do not approve partial/full refund rules, authorization, replay semantics, or return/restock effects; see DB-08.
-- Product inheritance is field-specific: only name, slug and description are annotated as possible child inheritance candidates in the ERD; effective values and parent-update propagation remain open. selling_price is non-inherited and required per DB-01. Do not infer inheritance for other fields.
+- Product hierarchy is one parent-child level in v1. Parent and child are independently sellable with row-owned SKU, required price and inventory. `name`, `slug` and `description` do not fall back to parent when NULL; no other field inherits. `selling_price` is required and never inherited. Enforce this in target DDL/service/DTO and tests.
