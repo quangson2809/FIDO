@@ -1,6 +1,6 @@
 # P1 Exit Gate — ERD v2 & Data Contract Freeze
 
-**STATUS: PARTIAL — DB-03/DB-05 design proposals are documented; owner acceptance, contract reconciliation and reviewer evidence are still missing.**
+**STATUS: PARTIAL — DB-03/DB-05 proposals and cross-document acceptance requirements are documented; owner approval, verified schema fit and reviewer evidence are still missing.**
 
 - Branch under review: `demo1`
 - Review date: 2026-10-23
@@ -24,7 +24,7 @@
 
 1. Proposal package exists at docs/refactor-v2/p1/P1-design-proposals-DB-03-DB-05.md. Obtain explicit owner acceptance or revisions for DB-03 inventory/receipt/ledger/concurrency and DB-05 quote/idempotency/retry/recalculation. The document identifies ERD limitations; it does not imply approval.
 2. Reconcile all dependent documents with recorded decisions: ERD-compatible image snapshot strategy, active-only phone uniqueness, integer-VND types/formulas, voucher scope/usage semantics, order/refund state contracts and API DTO mappings. Current ERD conflicts remain for DB-07 image history, DB-10 decimal-labelled money fields, DB-06 usage caps and DB-08 complete return/refund persistence.
-3. Recompute and review the Data Dictionary and API mapping after reconciliation; no stale OPEN_BLOCKED labels for decided items, no unsupported schema columns/tables, and no conflict markers.
+3. Recompute and review the Data Dictionary and API mapping after reconciliation; no stale OPEN_BLOCKED labels for decided items, no unsupported schema columns/tables, and no conflict markers. Ensure API #19/#20, DTO contract, integer-VND arithmetic, stock transitions, image history, phone uniqueness and voucher/return/refund behavior tell one consistent story.
 4. Reviewer verifies each gate against the owner-approved ERD and records acceptance evidence. P0 runtime/MySQL verification is reported separately and must not be represented as passed by this documentation work.
 
 ## 4. Deliverable inventory
@@ -35,9 +35,9 @@
 | Per-column dictionary | `P1-data-dictionary.csv`, `P1-data-dictionary.md` | PARTIAL | 217 logical-column rows across 31 tables; SQL/null/default values copied from isolated DDL are expressly proposals. Several semantic rules still depend on owner decisions below. |
 | Constraint inventory | `P1-schema-constraints.md` | PARTIAL | ERD keys are mapped; extracted SQL CHECK/index/FK actions are not owner-approved and have not been proven on MySQL 8.4. |
 | API-to-schema map | `P1-api-contract-mapping.csv` | PARTIAL | Maps the 77 numbered API baseline plus 10 source extensions (3 Product image commands, 3 analytics routes, 4 voucher CRUD routes). Legacy ProductVariant/SizeSystem/Color and voucher-scope behavior do not map directly to the 31-table target. Rows label source/controller DTO gaps instead of inventing contracts. |
-| Domain invariants | `P1-domain-invariants.md` | PARTIAL | Source-confirmed rules are separated from proposed target behavior; blocked decisions must be resolved before implementation. |
+| Domain invariants | `P1-domain-invariants.md` | PARTIAL | DB-03/DB-05 proposal invariants are documented, but schema-fit limitations and owner acceptance remain open. |
 | Acceptance matrix | `P1-test-matrix.md` | PASS as a plan, NOT as executed tests | These are P2 acceptance requirements. They are not evidence that P2 behavior already passes. |
-| Decision log | `P1-decision-log.md` | PARTIAL | Approved decisions, technical decisions, proposals and owner blockers are separated. DB-03 and DB-05 require design proposals and explicit acceptance; DB-01/02/06/07/08/09/10/11 are recorded owner decisions whose dependent contracts still need reconciliation. |
+| Decision log | `P1-decision-log.md` | PARTIAL | DB-03/DB-05 proposals exist but are not owner-approved; DB-01/02/06/07/08/09/10/11 choices are recorded, with dependent contract/schema-fit checks still open. |
 | Physical SQL | `backend/src/main/resources/db/clean-reset` | BLOCKED | Isolated target DDL is a working draft, not an approved/fresh-MySQL-verified physical contract. It must not replace the active migration path during P1. |
 
 ## 2. Decisions already resolved — do not reopen as blockers
@@ -80,3 +80,7 @@ The API map also flags legacy contracts with no direct target table or field map
 P1 may be accepted as a **documentation checkpoint** only when a reviewer confirms the deliverables and compatibility map are complete for the intended scope. It is **not approved as a frozen implementable data contract** while DB-03/DB-05 proposals lack explicit owner acceptance or the identified schema/API contradictions remain unresolved.
 
 **P2 readiness: BLOCKED.** Before P2 starts, obtain owner answers for DB-01/02/03/05/06/07/08/09/10/11, synchronize the logical contract, physical data dictionary, SQL proposal, API/DTO compatibility and invariant matrix, then verify the target on an explicitly disposable MySQL 8.4 database. Do not reset or switch any non-disposable/shared database as part of that verification.
+
+## 5. Design proposals — not approval evidence
+
+`P1-design-proposals-DB-03-DB-05.md` now specifies proposed stock movement timing, ledger semantics, row locking/atomicity, receipt/cancellation retry, stateless quote lifecycle, order-time recalculation, integer-VND arithmetic and idempotency behavior. It also explicitly identifies capabilities that may not fit the owner-approved 31-table ERD. No schema/runtime changes or MySQL tests were performed as part of this documentation update. Therefore P1 remains PARTIAL pending owner decision and reviewer evidence; P2 is not authorized by this status.
