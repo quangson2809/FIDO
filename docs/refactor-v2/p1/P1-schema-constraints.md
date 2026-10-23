@@ -1,6 +1,6 @@
 # P1 — Schema Constraints and Persistence Invariants
 
-**Status: PARTIAL.** ERD key annotations are logical authority; constraints extracted from the isolated target DDL are proposals, not approved SQL and not MySQL-verified.
+**Status: PARTIAL.** ERD key annotations are logical authority; constraints extracted from isolated target DDL are proposals, not approved SQL and not MySQL-verified. Owner decisions recorded 2026-10-23 supersede the old DECIMAL(18,2) money proposal: VND-only integer amounts are required. Active-only phone uniqueness must allow reuse after soft deletion; do not implement a global UNIQUE(phone) without a compatible physical strategy.
 
 ## Owner ERD primary/foreign-key annotations
 
