@@ -67,14 +67,14 @@ Detailed named PK/FK/UNIQUE/CHECK/index definitions are extracted in the per-col
 - Target has no CHECKOUT_QUOTES table. If quote is approved as a nonpersistent preview, order creation must re-compute all authoritative price/discount/shipping and check stock at transaction time.
 
 ### Money and snapshots
-- Target DDL proposes DECIMAL(18,2), VND and total = subtotal - discount + shipping. Those are not owner-approved accounting/rounding rules.
+- Target DDL proposes DECIMAL(18,2), VND and total = subtotal - discount + shipping. These are proposals, not owner-approved accounting/rounding rules; DB-10 must freeze currency, scale, rounding point and line-discount allocation/reconciliation.
 - A row CHECK cannot reconcile summed OrderItems with order subtotal or reconcile line-discount allocation to Order-level discount and voucher snapshot. Application/service validation must do so once formulas and rounding are approved.
 - Order history must not rebuild old Product facts from current catalog. Image history remains blocked by DB-07.
 
 ### Inventory and goods receipts
 - INVENTORIES uses (warehouse_id, product_id); a version column only helps if writes compare/guard version or lock the row and check affected-row count.
 - Balance, immutable inventory movement, relevant Order/Receipt state and required audit must commit or roll back together.
-- GOODS_RECEIPTS does not persist destination warehouse (P1-PROP-04). Existing adjustment API requires a reason but the target ledger has no reason column (P1-PROP-05).
+- A-04 approves one operational warehouse in v1, but GOODS_RECEIPTS does not persist a destination warehouse; DB-03 must decide the service assignment/receipt contract. Existing adjustment API requires a reason but the target ledger has no reason column (P1-PROP-05); DB-03 must approve persistence or another auditable representation.
 - Candidate inbound movement: exactly one GoodsReceiptItem source with positive delta. Candidate outbound movement: exactly one OrderItem source with outbound delta. Opening/adjustment/cancel/return/reversal semantics require DB-03/08 approval.
 - Unique idempotency_key does not prevent the same source event from being recorded twice using different keys.
 
