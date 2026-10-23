@@ -9,6 +9,7 @@
 | T-ACC-01 | Duplicate phone/register/login | Approved login identity remains unambiguous | Duplicate or ambiguous login behavior | DB/service | MySQL and authentication HTTP tests | DB-09 |
 | T-ACC-02 | Anonymous Cart/Quote/Order | Reject unauthenticated calls | Persistent guest Cart/Order | Security | Tests for API #14–20 | A-03 |
 | T-RBAC-01 | Permission change/last SUPERADMIN | Authorized atomic change | Privilege escalation or partial assignment | Service/security | RBAC integration + architecture suite | TD-01 |
+| T-SEED-01 | Fresh target installation/system bootstrap | Deterministic required roles/permissions exist; demo fixtures stay separate | Missing grants, duplicate seed, hard-coded credentials or demo account in system seed | Flyway/bootstrap/auth | Fresh MySQL install, repeatable seed check, privilege matrix, source scan for credentials and no-account demo fixture check | DB-11 |
 | T-PROD-01 | Missing parent/self-parent/cycle | Reject invalid tree atomically | Dangling or circular hierarchy | FK/service | Unit + MySQL + concurrent reparent tests | DB-01 |
 | T-PROD-02 | Null inherited fields | Only approved fields inherit | Implicit category/brand/status/SKU/image inheritance | Product service | PATCH omitted-vs-clear contract tests | DB-01 |
 | T-PROD-03 | Duplicate SKU/option set under race | One unique combination per approved policy | Concurrent duplicates | Unique guard/service | MySQL concurrent Product create | DB-01/02 |
@@ -19,9 +20,10 @@
 | T-PRICE-01 | Product price changes after quote | Reprice at Order commit | Trust client quote total | Order transaction | Price-race integration | DB-05/06/07 |
 | T-IDEM-01 | Same key/payload after response loss | Replay committed Order | Duplicate Order/items/payment/stock/usage | Unique key/transaction | Concurrent MySQL HTTP retry | DB-05 |
 | T-IDEM-02 | Same key/different payload or account | Deterministic conflict and account isolation | Payload mutation or cross-account leak | Service/security | API contract security tests | DB-05 |
-| T-MONEY-01 | Multi-line discount/shipping/rounding | Approved formula reconciles | Negative or inconsistent totals | CHECK/service | BigDecimal property tests + MySQL | DB-05/06/07 |
+| T-MONEY-01 | Multi-line discount/shipping/rounding/currency | Approved formula and currency reconcile | Negative/inconsistent totals or undocumented rounding | CHECK/service | BigDecimal property tests + MySQL: currency, precision/scale, half-way values, order-vs-line discount allocation and quote/order/report reconciliation | DB-06/07/10 |
 | T-VOUCH-01 | Date/min/max/type/scope/stacking | Only approved voucher rules redeem | Legacy scope silently dropped/invented | Voucher service | Parameterized eligibility tests | DB-06 |
 | T-VOUCH-02 | Concurrent final-use/cancel retry | Respect approved cap/restoration | Over-redemption/double restoration | Lock/conditional update | Real MySQL concurrency | DB-06 |
+| T-VOUCH-03 | Legacy voucher-management DTO against target ERD | Only explicitly approved target-representable behavior is exposed | Silent scope/usage feature loss or implicit voucher_products/voucher_categories/voucher_usages tables | Voucher contract + schema | DTO-to-target metadata comparison; contract tests for scope/limits/active_usage and owner-approved reduced-vs-amended schema behavior | DB-06 |
 | T-STOCK-01 | Confirm order with enough/insufficient stock | One deduction at approved transition | Pending deduction/negative/double deduction | Lock/version + transaction | MySQL concurrency; balance=ledger | DB-03 |
 | T-STOCK-02 | Confirm receipt twice | One inbound movement | Retry increments twice | State guard + ledger | MySQL concurrent receipt confirm | DB-03 |
 | T-STOCK-03 | Same source movement with different keys | No duplicate semantic movement | Duplicate source event | Source guard/unique movement | Concurrent transaction test | DB-03 |
