@@ -4,6 +4,8 @@ Status: PARTIAL; all logical columns enumerated, but physical SQL/nullability/de
 Logical source: docs/refactor/phase-1-erd-v2-approved.mmd. SQL type/null/default values below are copied from the isolated target DDL and are proposals, not approvals.
 Table count: 31; logical columns/CSV rows: 217 / 217.
 
+The CSV is the row-level field register: every column has a field-specific meaning and a validation gate. Where the ERD or current approved source does not define a value domain, range, null/clear behavior, formula or cross-row invariant, the CSV names the relevant DB decision and leaves it unresolved rather than promoting the isolated DDL draft into approval. Repository/service/transaction ownership remains a proposed mapping to review against the owning modules before P2.
+
 ## Nullability and physical-contract rules
 
 - If the ERD is silent, the CSV says NOT_SPECIFIED_BY_ERD; do not convert a type annotation into NOT NULL by assumption.
