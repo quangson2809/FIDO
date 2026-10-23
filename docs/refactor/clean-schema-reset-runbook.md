@@ -22,7 +22,7 @@ This directory holds the owner-confirmed 31-table target schema in a separate Fl
 6. The initial payment method is COD; one payment aggregate per order.
 7. Order address is an immutable snapshot copied at placement.
 8. New order and inventory writes require unique idempotency keys; same key/same payload replays, same key/conflicting payload returns conflict.
-9. BIGINT IDs, integer-VND/BIGINT monetary columns per DB-10 (DECIMAL is non-money only), TIMESTAMP(6) UTC. Restrictive FK actions are a draft default, not an approved deletion/retention policy; DB-12 must freeze the per-entity FK/delete matrix before P2.
+9. BIGINT IDs, integer-VND/BIGINT monetary columns per DB-10 (DECIMAL is non-money only), TIMESTAMP(6) UTC. DB-12 approved RESTRICT as the default for business/history rows, with CASCADE limited to approved disposable dependent working data. Numeric retention durations/anonymization exceptions remain TBD; do not schedule purges until they are approved.
 10. Required roles/permissions are Flyway-seeded; bootstrap SUPERADMIN is configured by an external secret/configuration path; demo data is a separate non-migration development/test fixture with no committed account credentials. The reset does not preserve old fixture rows; load the approved fixture again after creating the clean target baseline.
 
 These defaults are owner-approved target behavior and do not expand the 31-table model. Implementation must still prove them through schema/application tests. Any business change must be recorded as an explicit contract/ERD amendment before implementation.
