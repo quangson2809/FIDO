@@ -333,9 +333,9 @@ The live consolidated API (`1WNaHu6g_-XINTVcUvGX9vSJnpSyLff-PebkkDk_9mMk`, Appen
 
 Therefore only the receipt-command wiring is MATERIAL_DECISION_REQUIRED: approve an explicit representation for the actual receipt/inspection result and whether it covers the whole order or selected sellable quantities. Until then #8 is PARTIAL: the return window is implemented, CUSTOMER_RETURN_IN is not exposed or claimed implemented. No unused speculative internal write method is added.
 
-### Explicit exclusions retained
+### Explicit exclusions retained (legacy source notes versus target owner approvals)
 
-#2 COD collection/cancellation policy; #6 create-order idempotency strategy; #14 phone canonical format; #23 phone-change authentication remain material decisions. #16/#17/#21/#22/#24/#25 are not changed merely to satisfy the old report. #26 DB environment variables are already wired in application-dev.properties. No schema, phone normalization, payment state rules or capability assignments are changed.
+The source-era #2 COD collection/cancellation and #6 create-order idempotency notes are superseded for target ERD v2 by the 2026-10-23 owner approval: COD lifecycle/full-refund defaults and durable account-scoped order idempotency are approved; implementation/tests remain pending. The older phone canonical format (#14) and phone-change authentication (#23) still require separate review and must not be invented from schema changes. #16/#17/#21/#22/#24/#25 are not changed merely to satisfy the old report. #26 DB environment variables are already wired in application-dev.properties. This owner-approval record authorizes the target behavior, not any unreviewed auth/API expansion.
 
 ## 2026-10-09 — Legacy cart consumption and checkout confirmation (source runtime)
 
@@ -346,6 +346,8 @@ Therefore only the receipt-command wiring is MATERIAL_DECISION_REQUIRED: approve
 - Target Voucher behavior is owner-approved: one order-wide, non-stackable voucher; no Product/Category targeting or per-account usage ledger; global limit; atomic consumption on successful order placement and at-most-once restoration on eligible cancellation. Existing Customer/Admin code still exposes the legacy scoped-voucher shape and must be remapped to the target, not copied as target behavior.
 
 ## Legacy Voucher V1 and persisted checkout quote runtime (2026-10-09) — superseded for target ERD v2
+
+> The remainder of this section documents the old V1–V6 implementation only. The target contract uses a global order-level voucher quota with no Product/Category scope or per-account usage ledger, and a stateless advisory quote with no persisted quote table. Do not reintroduce the historical scope tables, customer limits, persistent quote_id/15-minute expiry, two-decimal money, or old replay behavior into ERD v2.
 
 Approved scope supersedes the earlier voucher deferral: FIXED_AMOUNT/PERCENTAGE
 (with required percentage cap), ALL/PRODUCT/CATEGORY including descendants,
