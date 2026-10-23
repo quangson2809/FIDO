@@ -1,6 +1,6 @@
 # P1 — Invariant and Test Matrix
 
-**Status: PARTIAL.** These are acceptance requirements, not tests executed in this P1 documentation pass. Historical P0 baseline recorded 196 H2 tests, 3 failures and 1 skipped. The MySQL target schema workflow passed on SHA 5801dbd for 31-table/229-column metadata and clean-reset seed checks; the subsequent commit dbd7cb6 adds soft-delete phone reuse and negative constraint tests, whose result is pending at the time of this document draft. DB-03/DB-05 mechanics remain unapproved proposals; documenting test cases does not mean they have been executed or passed.
+**Status: PARTIAL.** These are acceptance requirements, not tests executed in this P1 documentation pass. Historical P0 baseline recorded 196 H2 tests, 3 failures and 1 skipped. MySQL target schema workflow passed on SHA dbd7cb6a8293068c9939c3c06707c1d182c47030: fresh MySQL 8.4.13 clean-reset, 31-table/229-column inventory, clean/reseed assertions, active phone duplicate rejection and reuse after soft delete, negative inventory rejection, voucher usage limit and mismatched attribute-option FK checks. Backend verification on the same SHA passed H2 and MySQL migration/mapping stages. Checkout/ledger concurrency, refund lifecycle and API authorization remain unverified. DB-03/DB-05 mechanics remain unapproved proposals; documenting test cases does not mean they have been executed or passed.
 
 | Test | Condition | Allowed | Forbidden | Protection | Acceptance evidence | Decision |
 |---|---|---|---|---|---|---|
