@@ -22,7 +22,8 @@
 - `ProductDto` / `AdminProductDto`: Product `id`, `parent_product_id`, `category_id`, `brand_id`, `name`, `slug`, `sku`, `description`, `selling_price`, `status`, and the fields permitted for the caller. Cost information is restricted to authorized administration.
 - `ProductSummaryDto`: Product identity/name, primary image, category/brand projection, selling price and status required for a list card.
 - `ProductDetailDto`: Product summary plus description, images and descriptive attribute values.
-- `ProductImageDto`: `id, image_url, is_primary, sort_order`.
+- `ProductImageDto`: `id, image_url, is_primary, sort_order`. `image_url` must identify stable/immutable object-version content when used for an Order snapshot; do not rely on a mutable overwriteable URL.
+- Product image upload accepts multipart image files under the owning Product ID. Reorder accepts `images[]` entries `image_id, sort_order`; reject IDs belonging to another Product, duplicate positions, gaps or invalid positions. Image removal detaches it from the current gallery but must preserve content/version references required by placed Orders.
 - `AttributeTypeDto`: `id, code, name, data_type`.
 - `AttributeDto`: `id, attribute_type_id, code, name, is_required, is_variant_defining, sort_order, options[]`.
 - `AttributeOptionDto`: `id, attribute_id, value, label, sort_order`.
@@ -66,6 +67,9 @@ Inventory quantities and ledger movements are Product-based. Every adjustment ha
 
 - `AuditLogDto`: target fields `id, actor_account_id, action, entity_type, entity_id, before_data, after_data, correlation_id, created_at`; redact sensitive fields and secrets.
 - `ReportOverviewDto`: `from, to, completed_sales, returned_adjustment, net_sales, orders_by_status`; currency values are integer VND and use the approved reporting timezone/formulas.
+- `SalesTrendDto`: `from, to, granularity, timezone, points[]`; each point contains `period_start, completed_sales, returned_adjustment, net_sales`, with monetary values in integer VND.
+- `OrdersTrendDto`: `from, to, granularity, timezone, points[]`; each point contains `period_start, total_orders, orders_by_status`, including every approved Order status with zero-fill for empty buckets.
+- `ProductPerformanceDto`: `from, to, limit, items[]`; each item contains `product_id, product_name, thumbnail, completed_units, returned_units, net_units`. Use Product IDs, deterministic ranking/ties and a bounded limit (1–100; default 10).
 - `ContentPageDto`: `id, slug, title, content, status, updated_by, updated_at`. Public reads return published pages only.
 - Customer DTOs summarize only real Accounts, addresses and associated Orders.
 
