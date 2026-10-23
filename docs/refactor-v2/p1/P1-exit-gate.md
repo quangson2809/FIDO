@@ -2,7 +2,7 @@
 
 > **Latest reconciliation note — 2026-10-23:** Current work starts from `origin/demo1` SHA `551d91dab8b47ac709283f9222667b06c6b1b6de`. The baseline counts (31 logical tables / 228 logical fields / 229 physical columns including generated `accounts.phone_active_key`) are snapshot observations, not checker constants. Prior successful MySQL/backend runs listed below are historical evidence at previous commits; exact-SHA checks must run against the reconciliation PR. Status remains PARTIAL / P2 NOT AUTHORIZED while DB-03, DB-05 and DB-12 and other listed contract details remain open.
 
-**STATUS: PARTIAL. P2 is NOT AUTHORIZED.** Static schema and isolated MySQL clean-reset verification have passed for the current target draft, but the whole contract is not approved or implemented across the application.
+**STATUS: PARTIAL. P2 is NOT AUTHORIZED.** Static schema and isolated MySQL clean-reset verification passed at previously audited SHAs only. Exact-commit verification for this reconciliation PR is tracked by its current workflow run; it must not be inferred from historical runs. The whole contract is not approved or implemented across the application.
 
 ## Baseline and verification evidence
 
@@ -31,7 +31,7 @@
 
 1. **DB-03:** detailed inventory/receipt/ledger movement types, source shape, same-source/different-key deduplication, reversal rules, opening balance and concurrency behavior are proposals, not owner-approved mechanics.
 2. **DB-05:** idempotency/fingerprint scope, same-key replay versus changed-payload conflict, retention, retry/error contract and atomic checkout behavior remain proposed and are not implemented in current Order/API/frontend flow.
-3. **Product hierarchy/inheritance:** permitted hierarchy depth and field-by-field requiredness/NULL meaning/propagation for `name`, `slug`, `description`, `selling_price`, `category_id` and `brand_id` have not been decided. NULL does not imply inheritance.
+3. **Product hierarchy/inheritance:** DB-01 confirms parent and child each own a required, non-inherited `selling_price`. Permitted hierarchy depth and effective-value/parent-update propagation for `name`, `slug`, `description` remain open; `category_id` / `brand_id` requiredness and FK NULL semantics also remain open. NULL does not otherwise imply inheritance.
 4. **DB-06:** `usage_count` and a database bound check exist, but atomic quota use, global/per-account scope, cancellation/return restoration and retry behavior remain open.
 5. **DB-07:** `image_url_snapshot` exists; stable asset versioning, overwrite/deletion prevention and historical access/retention are not established.
 6. **DB-08:** refund amount/actor/time/reason columns exist; partial/full refund, idempotency, authorized state transitions, return/restock and audit atomicity are not defined or tested end-to-end.

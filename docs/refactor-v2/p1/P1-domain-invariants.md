@@ -62,4 +62,4 @@ The clean-reset SQL remains isolated from active Flyway migrations. Current lega
 
 ## Product hierarchy fields — decision still required
 
-DB-01 confirms parent and child Product rows can each sell independently and own SKU, price and inventory. It does not decide hierarchy depth or whether child name, slug, description, selling_price, category_id and brand_id are required, independent or inherited. Treat NULL as its actual persisted value until each field's NULL meaning and parent-update propagation are explicitly decided; never implement silent inheritance from current nullable columns.
+DB-01 confirms parent and child Product rows can each sell independently and own SKU, required selling_price and inventory. selling_price is non-inherited and required in the target DDL. Hierarchy depth, effective-value fallback and parent-update propagation for the ERD-annotated child name, slug and description remain open; category_id and brand_id requiredness/FK null semantics also remain open. Treat NULL as persisted NULL unless an approved field-specific rule says otherwise; never implement silent inheritance from arbitrary nullable columns.
