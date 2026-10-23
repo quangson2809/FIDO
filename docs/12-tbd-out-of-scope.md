@@ -12,7 +12,7 @@ Until these rules are approved, do not implement scheduled purging of audit hist
 
 ## 2. Implementation contracts still requiring acceptance evidence
 
-- Current Cart selection uses the most recently updated Cart with a deterministic Cart-ID tie-break. Do not infer a one-active-Cart uniqueness constraint or Cart merge; test the selection rule if an Account has multiple Cart rows.
+- If an Account has multiple Cart rows, the current-Cart resolution policy must be explicitly defined before implementing Cart/quote/Order flows. The target schema does not imply one-active-Cart uniqueness or Cart merge; do not silently choose by update time. This is an API/workflow contract gap, not a reason to reintroduce the legacy schema.
 
 These items are engineering acceptance gates, not open choices about the approved database model:
 
