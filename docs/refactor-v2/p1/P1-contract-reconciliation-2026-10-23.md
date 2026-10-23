@@ -16,15 +16,15 @@ The current P1 inventory records 31 logical tables, 228 logical ERD fields and 2
 
 | ID | Severity | Evidence at base SHA | Reconciliation / disposition |
 |---|---|---|---|
-| R-01 | BLOCKER | docs/05-dto-contract.md says the target ERD lacks ORDER_ITEMS.image_url_snapshot; current ERD, reset DDL and P1-data-dictionary.csv contain it. | Corrected to distinguish field existence from immutable asset retention. DB-07 remains blocked on stable object/version references, overwrite/delete policy, historical access and tests. |
+| R-01 | BLOCKER | docs/05-dto-contract.md says the target ERD lacks ORDER_ITEMS.image_url_snapshot; current ERD, reset DDL and P1-data-dictionary.csv contain it. | Corrected to distinguish field existence from immutable asset retention. DB-07 policy is approved; implementation acceptance still requires stable object/version references, overwrite/delete prevention, historical access and integration tests. Numeric retention duration remains TBD. |
 | R-02 | MAJOR | docs/03-data-model.md says not to reintroduce image_url_snapshot although the target ERD includes it. | Re-label legacy sections as source-only and state the actual target shape. |
 | R-03 | BLOCKER | docs/refactor/phase-1-physical-data-dictionary.md lists monetary fields as DECIMAL and omits newer target fields including request_fingerprint, usage_count, refund metadata and warehouse_id. | Regenerate the table inventory from canonical ERD and delegate physical details to P1-data-dictionary.csv. DB-10 selects integer VND; non-money number_value may remain DECIMAL. |
-| R-04 | MAJOR | docs/refactor/phase-1-owner-decision-questionnaire.md keeps D9 working default DECIMAL(18,2) after DB-10 owner decision selected VND-only integer money. | Mark only the money portion of D9 superseded; other physical defaults remain open. |
-| R-05 | BLOCKER | P1-api-contract-mapping.csv claims target ORDERS lacks request_fingerprint, ORDER_ITEMS lacks image snapshot, VOUCHERS lacks usage_count, and integer-money fields conflict with ERD. Those fields are present in current ERD/SQL/dictionary. | Correct false absence claims; retain DB-03/05/06/07/08 behavior blockers because field presence does not prove atomic semantics. |
+| R-04 | MAJOR | docs/refactor/phase-1-owner-decision-questionnaire.md keeps D9 working default DECIMAL(18,2) after DB-10 owner decision selected VND-only integer money. | Mark only the money portion of D9 superseded; the owner subsequently approved the proposed physical defaults on 2026-10-23, with exact implementation/verification recorded in the owner-approval record. |
+| R-05 | BLOCKER | P1-api-contract-mapping.csv claims target ORDERS lacks request_fingerprint, ORDER_ITEMS lacks image snapshot, VOUCHERS lacks usage_count, and integer-money fields conflict with ERD. Those fields are present in current ERD/SQL/dictionary. | Correct false absence claims; DB-03/05/06/07/08 owner-approved behavior still requires end-to-end atomicity, concurrency, retention and lifecycle tests. |
 | R-06 | MAJOR | reference/api-baseline-77.csv and reference/api-contract-matrix.csv retain optional/guest wording for APIs #14–20 while A-03 and docs/04-api-contract.md require authentication. | Align target access labels to JWT-required, while separating existing-runtime evidence from target readiness. |
-| R-07 | MAJOR | API #13/#33 mappings name only generic CatalogMetaDto and omit dynamic type/option/value validation. | Add target metadata/DTO proposal from target tables. Final wire names, public visibility and filter semantics remain a DB-02/API contract gate before P2. |
+| R-07 | MAJOR | API #13/#33 mappings name only generic CatalogMetaDto and omit dynamic type/option/value validation. | Freeze target metadata/DTO from target tables according to owner-approved DB-02/API defaults. Implementation must use product-facing visibility, deterministic option ordering and no unapproved filter operators or variant generation. |
 | R-08 | BLOCKER | scripts/p1/check_contract_consistency.py hard-codes expected table count 31. | Derive expected count from canonical ERD and verify exact table-set equality. Exact-SHA checker/CI must pass after change. |
-| R-09 | BLOCKER | ERD comments say child selling_price NULL means inherit while DB-01 records parent and child Products each have their own SKU, price and inventory; target DDL currently allows NULL. | Align to DB-01 by making selling_price required and non-inherited. Keep name/slug/description inheritance as field-specific candidates only; effective reads, parent-chain depth and parent-update propagation remain DB-01 blockers. |
+| R-09 | BLOCKER | ERD comments say child selling_price NULL means inherit while DB-01 records parent and child Products each have their own SKU, price and inventory; target DDL currently allows NULL. | Aligned in the target ERD/DDL: selling_price is required and row-owned. The owner further approved one-level parent-child hierarchy and no implicit inheritance from NULL for name/slug/description; runtime enforcement and acceptance tests remain pending. |
 | R-10 | MAJOR | Some business/transaction docs still describe Variant-keyed stock and DECIMAL money as target rules. | Mark legacy algorithms source-only and add Product-ID/integer-VND target gates. |
 
 ## 3. Target business / UC reconciliation
@@ -40,13 +40,13 @@ The current P1 inventory records 31 logical tables, 228 logical ERD fields and 2
 | COD, shipping, cancel, return and refund | One COD Payment aggregate per Order and manual shipping; explicit state/actor matrix and at most one full refund per order. Detailed item-level return and partial/multiple refunds are out of v1 unless ERD scope is amended. | Runtime transitions, idempotency, authorization, stock reversal and audit atomicity tests remain pending. |
 | Audit, report and content | Audit belongs to the owning mutation transaction where required; reports/content remain within existing domain scope. DB-12 lifecycle/FK defaults are approved; numeric retention periods and anonymization exceptions remain TBD. | Implement retention-safe FK behavior and verify audit transaction/security/redaction. Do not add event/history tables without owner amendment. |
 
-## 4. Dynamic catalog metadata — target proposal
+## 4. Dynamic catalog metadata — owner-approved contract
 
 Keep existing route candidates: public GET /api/v1/catalog/meta (#13) and admin GET /api/v1/admin/catalog/meta (#33). The legacy size_systems/size_values/colors payload is not the target payload.
 
 Target metadata should expose ATTRIBUTE_TYPES, ATTRIBUTES and nested ATTRIBUTE_OPTIONS needed to render attribute controls. Definitions include attribute ID/code/name/type, is_required, is_variant_defining (informational only; no variant auto-generation) and sort_order. Options include option ID, owning attribute ID, value, label and sort_order, ordered by sort_order then stable ID. Public metadata may expose only product-facing/non-sensitive rows; because no visibility flag exists, private operational metadata must not be stored in these master tables.
 
-For value input/read, the candidate mapping is exactly one of OPTION → option_id, TEXT → text_value, NUMBER → number_value, BOOLEAN → boolean_value. Validate type match and same-attribute option ownership. number_value is descriptive numeric data, not money. Do not invent attribute filter operators or auto-create Product rows from option combinations. These metadata defaults are owner-approved on 2026-10-23; implementation must retain deterministic option ordering and must not invent filter operators or variant generation.
+For value input/read, the approved mapping is exactly one of OPTION → option_id, TEXT → text_value, NUMBER → number_value, BOOLEAN → boolean_value. Validate type match and same-attribute option ownership. number_value is descriptive numeric data, not money. Do not invent attribute filter operators or auto-create Product rows from option combinations. These metadata defaults are owner-approved on 2026-10-23; implementation must retain deterministic option ordering and must not invent filter operators or variant generation.
 
 ## 5. Product field-by-field inheritance register
 
@@ -57,8 +57,8 @@ For value input/read, the candidate mapping is exactly one of OPTION → option_
 | name | Explicit row-owned value; NULL does not trigger a parent fallback. |
 | slug | Separately defined for each Product; no parent fallback. |
 | description | Explicit row-owned value; NULL does not trigger implicit parent fallback. |
-| category_id, brand_id | No inheritance annotation. Do not infer parent values; nullability/requiredness remain DB-01/DB-09 contract items. |
-| status, deleted_at, cost_price, images, attribute values, inventory | No inheritance behavior is approved; use row-owned value and explicit lifecycle rules. |
+| category_id, brand_id | Each reference belongs to the current Product row; never infer a parent value. Requiredness/nullability follows the approved target DDL and FK contract. |
+| status, deleted_at, cost_price, images, attribute values, inventory | No inheritance; use row-owned values and the approved explicit lifecycle rules. |
 | parent_product_id | Parent must exist and hierarchy must be acyclic; v1 permits one parent-child level only. |
 
 ## 6. API/DTO inventory reconciliation
