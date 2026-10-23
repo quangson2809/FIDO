@@ -1,6 +1,6 @@
 # 05 — JWT, JSON, DTO & Request/Response Contract
 
-> **ERD v2 compatibility boundary (2026-10-22):** This file describes the existing API/DTO contract. The owner-confirmed target schema changes persistence identity and omits some baseline fields, but does not automatically authorize DTO or endpoint changes. Document and test every snapshot-field/ID compatibility decision before changing response shapes.
+> **P1 target contract status (2026-10-23):** DTO definitions below are the legacy wire baseline unless the target map explicitly supersedes them. The target uses Product IDs rather than ProductVariant IDs and integer VND. ORDER_ITEMS.image_url_snapshot exists in the target ERD/DDL; immutable asset retention is a separate DB-07 requirement. API DTOs must be explicit and never inferred directly from JPA entities.
 
 
 ## 1. JWT minimum
@@ -33,9 +33,41 @@ List:
 
 Pagination defaults: page 1, page_size 20, maximum 100.
 
-Type convention: ID `int64`; quantity integer; money follows DB-10 as integer VND (whole VND units); date `YYYY-MM-DD`; timestamp ISO-8601. This is an owner decision, but physical SQL/JPA and every dependent DTO still require reconciliation with decimal-labelled ERD fields before freeze.
+Target type convention: ID int64; quantity integer; monetary values are integer VND (1 stored unit = 1 VND, no fractional units); date YYYY-MM-DD; timestamp ISO-8601. Target ERD and DDL use BIGINT for money. BigDecimal/DECIMAL in active Java/API notes describes legacy behavior or non-money number_value, not target money.
 
 PATCH: omitted field means unchanged. `null` may clear a field only where the field is nullable and the specific API permits it.
+
+
+## Target dynamic-attribute DTO contract (proposal; legacy DTOs above remain source evidence)
+
+CatalogMetaDtoV2 should expose categories, brands, attribute_types and attributes. Each attribute definition contains id, attribute_type_id, code, name, data_type, is_required, is_variant_defining, sort_order and options. Each option contains id, attribute_id, value, label and sort_order. The example below illustrates the proposed shape; it is not a claim about current runtime JSON:
+
+    {
+      "data": {
+        "categories": [],
+        "brands": [],
+        "attribute_types": [
+          {"id": 1, "code": "TEXT", "name": "Text", "data_type": "TEXT"}
+        ],
+        "attributes": [
+          {
+            "id": 10,
+            "attribute_type_id": 1,
+            "code": "fabric",
+            "name": "Fabric",
+            "data_type": "TEXT",
+            "is_required": false,
+            "is_variant_defining": false,
+            "sort_order": 10,
+            "options": []
+          }
+        ]
+      }
+    }
+
+ProductAttributeValue request/read DTOs carry the owning attribute ID and exactly one compatible typed value (option_id, text_value, number_value or boolean_value). The client must not override the Attribute's authoritative data_type. An OPTION must refer to an option owned by that Attribute. Attribute values remain descriptive and must not generate SKUs or child Products.
+
+Freeze final wire casing, exact response fields/envelope, type enum values, public visibility policy and filter behavior before P2.
 
 ## 3. Server-derived fields
 
@@ -144,7 +176,7 @@ The nullable Product summary `thumbnail` is live presentation data resolved from
 
 Order image fields are historical in the current/legacy contract: `OrderItemDto.image_url` comes from `order_items.image_url_snapshot`, and `OrderSummaryDto.image_url` comes from the first OrderItem snapshot by smallest `order_item_id`. Historical Order reads must not query the current Product gallery; existing null snapshots remain null rather than being backfilled from current catalog state.
 
-> **ERD v2 compatibility gap (DB-07):** the owner-confirmed target ERD does not contain `ORDER_ITEMS.image_url_snapshot`. This is a deliberate contract blocker, not permission to add the column silently. The owner must either approve an ERD amendment or explicitly accept that Order history has no persisted image guarantee. Until then, preserve the existing source contract as evidence and do not claim it is implementable against target schema.
+> **DB-07 snapshot clarification:** ORDER_ITEMS.image_url_snapshot is present in the current canonical ERD, draft DDL and field-level dictionary. The active legacy OrderItem mapping must still be remapped. Persisting a URL/reference does not guarantee immutable bytes; stable asset versioning, overwrite/deletion prevention, access and retention remain blocked pending policy and tests.
 ### inventory/audit/report/content
 
 `SupplierDto`, `GoodsReceiptItemDto`, `GoodsReceiptSummaryDto`, `GoodsReceiptDetailDto`, `InventoryRowDto`, `InventoryTransactionDto`, `AuditLogDto`, `ReportOverviewDto`, `PublicContentPageDto`, `ContentPageDto`, `CustomerSummaryDto`, `CustomerDetailDto` follow the fields in Analyst API Appendix A; do not expose persistence-only secrets.

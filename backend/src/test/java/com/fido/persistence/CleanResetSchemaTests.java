@@ -217,8 +217,11 @@ class CleanResetSchemaTests {
                     "SELECT COUNT(*) FROM products WHERE parent_product_id IS NULL AND sku='DEMO-TSHIRT'",
                     Integer.class));
             assertEquals(1, jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM products WHERE parent_product_id=30001 AND name IS NULL AND selling_price IS NULL",
+                    "SELECT COUNT(*) FROM products WHERE parent_product_id=30001 AND name IS NULL AND selling_price=195000",
                     Integer.class));
+            assertThrows(DataAccessException.class, () -> jdbc.update(
+                    "INSERT INTO products(sku,selling_price,status) VALUES (?,?,?)",
+                    "NO-PRICE", null, "ACTIVE"));
             assertEquals(2, jdbc.queryForObject(
                     "SELECT COUNT(*) FROM product_attribute_values WHERE product_id=30002",
                     Integer.class));

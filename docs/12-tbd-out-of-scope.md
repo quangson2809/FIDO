@@ -115,3 +115,14 @@ The approved policy recorded in `15-technical-decisions.md` resolves discount,
 time window, eligible merchandise minimum, product/category scope, usage limits,
 non-stacking, enable/disable and cancellation/return semantics for Voucher V1.
 Personal wallets/allocation and variant-specific promotions remain out of scope.
+
+
+## P1 contract blockers confirmed at 2026-10-23
+
+- **DB-03 — inventory/receipt/ledger:** the target includes warehouse+Product inventory, source item IDs, idempotency key, reason code and reversal reference. Movement type/source semantics, same-source retries under another key, opening balance, cancellation/return reversal, lock order and atomic consistency remain a proposed protocol, not owner approval.
+- **DB-05 — quote/order idempotency:** the target has ORDERS.idempotency_key and request_fingerprint and no CHECKOUT_QUOTES table. Key scope, canonical fingerprint, replay vs changed-payload conflict, account isolation, retention and advisory quote/repricing behavior remain unapproved.
+- **DB-12 — deletion and retention:** no owner-approved per-entity soft/hard-delete matrix, FK delete action or historical retention matrix was found. The draft DDL is not authority to assume CASCADE, hard deletion or a numeric retention period.
+- **DB-01 — Product inheritance:** parent and child Products each own selling_price; only name/slug/description are marked as possible child inheritance. Their effective-value and parent-update rules and hierarchy depth remain open; NULL elsewhere does not imply inherit.
+- **DB-07/08/09/10 details:** asset retention, refund state/idempotency/authorization, remaining physical type/default/FK decisions, and discount rounding/allocation still require explicit contract evidence.
+
+**Gate:** Do not execute Clean Schema Reset or enable the target migration location until the required owner decisions and their derived dictionary/DDL/API/DTO changes are reviewed and P1 exit checks pass.

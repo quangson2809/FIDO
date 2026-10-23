@@ -1,5 +1,7 @@
 # Clean Schema Reset — target baseline
 
+> **P1 gate — do not execute (2026-10-23):** This is a future Phase 2 runbook, not an instruction to reset a database in Phase 1. P1 remains PARTIAL and Clean Schema Reset is NOT AUTHORIZED until the owner reviews DB-03, DB-05, DB-12 and the remaining exit-gate details. The target monetary convention is integer VND/BIGINT per DB-10; older DECIMAL(18,2) text is superseded for money. Never point this runbook at a persistent/shared environment.
+
 ## Scope
 
 This directory holds the owner-confirmed 31-table target schema in a separate Flyway location while the application entity/API rewrite is in progress. It is intentionally not the default application migration location yet: activating it before JPA mappings and service contracts are aligned would make the current application fail schema validation.
@@ -20,7 +22,7 @@ This directory holds the owner-confirmed 31-table target schema in a separate Fl
 6. The initial payment method is COD; one payment aggregate per order.
 7. Order address is an immutable snapshot copied at placement.
 8. New order and inventory writes require unique idempotency keys; same key/same payload replays, same key/conflicting payload returns conflict.
-9. BIGINT IDs, DECIMAL(18,2), TIMESTAMP(6) UTC, restrictive foreign-key actions by default.
+9. BIGINT IDs, integer-VND/BIGINT monetary columns per DB-10 (DECIMAL is non-money only), TIMESTAMP(6) UTC. Restrictive FK actions are a draft default, not an approved deletion/retention policy; DB-12 must freeze the per-entity FK/delete matrix before P2.
 10. Required roles/permissions are Flyway-seeded; demo data is a separate non-migration fixture.
 
 These are implementation defaults selected to make progress and still require review during implementation. They do not expand the 31-table model. Any business change should update the contract and tests before activating the target migration.

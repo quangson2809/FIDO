@@ -98,7 +98,7 @@ These concurrency and semantic tests are not yet evidenced as passing. The MySQL
 
 ## 3. Other open decisions that prevent P1 PASS
 
-1. Product parent/child depth and inheritance of name, slug, description, selling_price, category_id and brand_id are not resolved. NULL does not implicitly mean inherit; requiredness and parent-update propagation must be specified per field.
+1. Product parent/child hierarchy depth, fallback and parent-update propagation for name, slug and description remain unresolved. DB-01 confirms each parent/child owns its own required selling_price; it is not inherited. category_id and brand_id requiredness/FK null semantics remain open. NULL does not implicitly mean inherit.
 2. DB-06 defines voucher scope but still needs quota scope and cancellation/restoration policy consistent with usage_count.
 3. DB-07 defines snapshots but still needs retained image asset/version policy and historical access tests.
 4. DB-08 defines COD/order lifecycle/refund direction but still needs partial/full refund semantics, idempotency, state transitions, return/restock, actor authorization and audit behavior.

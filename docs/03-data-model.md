@@ -1,9 +1,9 @@
 # 03 — Data Model, Entity Rules & Persistence Contract
 
-> **ERD v2 scope boundary (2026-10-22):** The inventory and persistence rules in this document describe the pre-refactor runtime schema. They remain useful as source-behavior/migration evidence but are not the target data model. For target table/column/key shape, follow the owner-confirmed 31-table ERD in docs/refactor/phase-1-erd-v2-approved.mmd and its contract. Do not reintroduce ProductVariant, image_url_snapshot, reservation, payment/refund event or return tables into the target without an explicit owner change.
+> **P1 reconciliation (2026-10-23):** Sections marked legacy/source below describe pre-refactor behavior, not the target contract. The target ERD includes ORDER_ITEMS.image_url_snapshot, ORDERS.request_fingerprint, integer-VND monetary columns, VOUCHERS.usage_count, GOODS_RECEIPTS.warehouse_id and refund metadata in PAYMENTS. A stored image URL does not by itself prove immutable asset retention. See docs/refactor-v2/p1/P1-contract-reconciliation-2026-10-23.md.
 
 
-## 1. Baseline data conventions
+## 1. Legacy source conventions (not the target physical contract)
 
 - Relational model; DBMS is not locked by Analyst Docs.
 - Technical PK: `BIGINT`.
@@ -136,7 +136,7 @@
 - Confirmed GoodsReceipt stock-affecting items are immutable.
 - Historical Order/Payment/InventoryTransaction/Audit data is not hard-deleted.
 
-## 5. Java mapping guidance
+## 5. Legacy Java mapping guidance (target money mapping follows DB-10: integer VND)
 
 This section is an implementation convention, not a new business rule:
 

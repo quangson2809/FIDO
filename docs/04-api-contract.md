@@ -1,6 +1,6 @@
 # 04 — API Contract Baseline (77 Endpoints)
 
-> **ERD v2 compatibility boundary (2026-10-22):** This document preserves the 77-endpoint baseline as an API starting point, not as proof that every legacy access annotation remains valid for the target. The owner decision dated 2026-10-05 requires login before using a persisted cart or placing an order; JWT-optional/guest-TBD annotations on APIs #14–20 below are superseded and must not be implemented for the target. The 31-table ERD does not by itself approve route, DTO or ID changes. Any public-ID adaptation from legacy `variant_id` to target child `product_id` still needs an explicit compatibility decision and tests. Clean Schema Reset does not preserve or map old row IDs.
+> **P1 target contract status (2026-10-23):** The 77 rows below are the existing endpoint inventory, not proof that all routes or DTOs are target-ready. APIs #14–20 require JWT under owner decision A-03. Product-variant, size-system and color endpoints (#31–32, #40–45) are legacy routes that cannot be backed by target tables absent from ERD v2. Target readiness is recorded in the P1 API mapping; current controller/DTO behavior is legacy evidence. See docs/refactor-v2/p1/P1-contract-reconciliation-2026-10-23.md.
 
 
 ## 1. Global contract
@@ -13,6 +13,21 @@
 - Target Cart, checkout and order placement require an authenticated account, per owner decision dated 2026-10-05 and the account-owned target ERD. Do not implement guest sessions, anonymous accounts or guest-cart persistence. The legacy endpoint table below is retained as the 77-API starting inventory; access labels for APIs #14–20 have been aligned to this decision.
 - List/search/filter are deliberately consolidated through query parameters; do not split them into extra endpoints.
 - State-changing commands are deliberately separate from ordinary PATCH where transaction/state-machine semantics matter.
+
+
+## 1A. Target catalog metadata and dynamic attributes (P1 contract)
+
+The target schema replaces legacy SizeSystem/SizeValue/Color masters with ATTRIBUTE_TYPES, ATTRIBUTES and ATTRIBUTE_OPTIONS. Dynamic attributes are descriptive: they do not generate Product child rows or variants. A child Product is created explicitly.
+
+Target metadata responsibilities for existing routes:
+- GET /api/v1/catalog/meta (API #13): return navigation metadata plus product-facing attribute definitions and selectable options required by the public UI.
+- GET /api/v1/admin/catalog/meta (API #33): return the same attribute/type/option model for authorized administration, with management operations owned by the Product module.
+- Attribute definitions expose identity, code, name, data_type, is_required, is_variant_defining (informational only; never auto-generates variants) and sort_order. Options expose id, attribute_id, value, label and sort_order. Sort deterministically by sort_order then stable ID.
+- Attribute values are keyed by (product_id, attribute_id). The candidate mapping is OPTION → option_id, TEXT → text_value, NUMBER → number_value, BOOLEAN → boolean_value. Exactly one typed value is populated and it matches the authoritative Attribute type. An OPTION must belong to that same Attribute. number_value is descriptive numeric data, never money.
+- The four type literals are a target-compatible proposal based on the physical value columns; final enum/wire names and detailed range rules must be confirmed under DB-02 before P2. Public metadata may contain only product-facing/non-sensitive rows because the target schema has no visibility flag.
+- Do not infer filter operators from metadata or is_variant_defining. Supported attribute filters remain an explicit API decision.
+
+The existing 77-row endpoint list is retained as the legacy starting inventory. It is not a frozen target request/response contract, and current controllers/DTOs are evidence of legacy behavior only. Product-variant, size-system and color endpoints must not be implemented by adding tables absent from ERD v2.
 
 ## 2. Baseline endpoint map
 

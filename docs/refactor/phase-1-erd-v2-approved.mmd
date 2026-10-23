@@ -81,7 +81,7 @@ erDiagram
         varchar slug "NULL for child if inherited"
         varchar sku UK
         text description "NULL for child if inherited"
-        bigint selling_price "Integer VND; NULL on child means inherit"
+        bigint selling_price "Integer VND; each parent/child Product owns its own required price; never inherited"
         bigint cost_price "Integer VND; nullable"
         varchar status
         timestamp deleted_at

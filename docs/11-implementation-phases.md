@@ -11,7 +11,7 @@
 | Target DDL and system seed | Present under `backend/src/main/resources/db/clean-reset/` | Isolated; not yet the default runtime Flyway location |
 | Application integration | Not complete | Entities, repositories, services, DTOs, API and frontend still need alignment |
 | P0 audit deliverable | PASS for audit scope on the separate audit branch | Does not mean backend CI passed |
-| Exact-SHA backend CI | FAIL: 196 tests completed, 3 failed, 1 skipped | Failures are in `CleanResetSchemaTests`; see the P0 test baseline |
+| Exact-SHA backend CI | Historical P0 result: 196 tests completed, 3 failed, 1 skipped on the audited P0 SHA | This is not the current `demo1` verification result; exact-SHA CI for this reconciliation PR is required |
 | Target-schema MySQL verification | NOT RUN for the audited SHA | Do not claim the new target passes MySQL until an exact-SHA run succeeds |
 
 Detailed evidence: [P0 baseline audit](refactor-v2/p0/P0-baseline-audit.md), [test baseline](refactor-v2/p0/P0-test-baseline.md), [risk register](refactor-v2/p0/P0-risk-register.md), and [exit gate](refactor-v2/p0/P0-exit-gate.md).
@@ -44,7 +44,7 @@ Required evidence:
 - exact-SHA test/CI result with failures and unrun checks reported truthfully;
 - no target runtime migration activation or destructive database operation.
 
-**Gate:** audit artifacts are complete and traceable. This gate is distinct from application CI. The current P0 audit deliverable is PASS; backend CI is FAIL and target-schema MySQL verification is NOT RUN.
+**Historical P0 gate record:** the audit deliverable was marked PASS for its own scope, while backend CI failed on that audited SHA and target-schema MySQL had not yet been run. Do not apply this old result to the current reconciliation branch; require current exact-SHA checks.
 
 ## 4. P1 — Freeze target contract and physical schema
 
@@ -110,3 +110,12 @@ DEFERRED / OUT OF SCOPE:
 NEXT GATE READY: YES | NO
 ```
 
+
+
+## 1A. P1 reconciliation snapshot — 2026-10-23
+
+- Verified base: `origin/demo1` SHA `551d91dab8b47ac709283f9222667b06c6b1b6de`; reconciliation branch starts from that exact commit.
+- Current draft inventory at base: 31 target tables, 228 logical fields, 229 physical SQL columns including generated `accounts.phone_active_key`.
+- Earlier MySQL/backend runs `39904931447` and `39904931498` are historical evidence at prior commits, not validation of the reconciliation changes.
+- The current exact-commit checker/workflow result is pending until the reconciliation PR runs. No current PASS is implied here.
+- Status remains **PARTIAL / P2 NOT AUTHORIZED** because DB-03, DB-05 and DB-12 are open, as are specified product inheritance, monetary allocation, asset retention and refund behavior details.

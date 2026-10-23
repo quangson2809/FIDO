@@ -1,122 +1,69 @@
-# Phase 1 — Physical Data Dictionary (Clean Schema Reset target)
+# Phase 1 — Physical Data Dictionary (current target reconciliation)
 
-- Status: **PARTIAL / target DDL added in isolated Flyway location; CI verification pending; default application migration location not switched**
-- Target: owner-confirmed ERD v2, exactly 31 tables
-- Authority: docs/refactor/phase-1-erd-v2-approved.mmd
-- Legacy comparison only: repository Flyway V1–V6, currently 32 application tables
-- Owner-approved strategy: Clean Schema Reset for disposable development/test databases; do not preserve old test rows
-- Date: 2026-10-22
+- **Status: PARTIAL.** This file is regenerated from the canonical target ERD at baseline 551d91dab8b47ac709283f9222667b06c6b1b6de and is not evidence that the active application is migrated.
+- **Logical authority:** docs/refactor/phase-1-erd-v2-approved.mmd
+- **Physical column evidence:** docs/refactor-v2/p1/P1-data-dictionary.csv (RFC 4180)
+- **Draft DDL:** backend/src/main/resources/db/clean-reset/V1__clean_schema.sql (isolated, not the active Flyway migration location)
+- **Legacy comparison only:** active Flyway V1–V6 and current JPA entities.
+- **P1 reconciliation:** docs/refactor-v2/p1/P1-contract-reconciliation-2026-10-23.md
 
-## 1. Rules for this document
+## 1. Counting rules and authority
 
-This dictionary enumerates the exact columns and key annotations supplied in the approved ERD. It does **not** silently fill unspecified SQL details. PK, FK, UK and the explicit inherited/nullable comments are copied from the diagram. Other nullability must not be inferred solely from the SQL type or column name. Relationship cardinalities may guide a proposed nullability value but do not replace an explicit physical data dictionary decision.
+The canonical diagram currently parses to 31 logical tables and 228 logical fields. The isolated DDL has one additional generated physical-only column, accounts.phone_active_key, used for active-account phone uniqueness. These counts are snapshot metadata; the static checker derives expected table count from the ERD and checks the exact table set.
 
-The ERD supplies SQL type families such as BIGINT, VARCHAR, TEXT, DECIMAL, INT, BOOLEAN, TIMESTAMP and JSON. It does not generally supply VARCHAR lengths, DECIMAL precision/scale, physical nullability, default values, timestamp precision/time-zone policy, foreign-key actions, secondary indexes, or most CHECK constraints. Those fields remain open below. This is an evidence register, not a generated DDL script.
+The canonical ERD describes logical fields, key annotations and comments. The field-level CSV is the row-per-physical-column register for SQL type, physical nullability/default/generated expression, constraint/index references, owner module, lifecycle, validation and implementation status. If the CSV, DDL or ERD disagree, P1 is blocked until a source-backed correction is made; passing a checker alone does not approve an unapproved physical choice.
 
-## 2. Target columns by table
+## 2. Canonical target table/field inventory
 
-| Table | Columns exactly in target ERD |
+The following inventory is derived directly from the canonical Mermaid ERD. Type family and PK/FK/UK marks are logical diagram metadata; physical lengths, nullability, defaults, generated expressions, secondary indexes and FK delete actions must be read from the physical CSV and draft SQL.
+
+| Table | Canonical logical fields |
 |---|---|
-| ACCOUNTS | id BIGINT PK; full_name VARCHAR; email VARCHAR; phone VARCHAR; password_hash VARCHAR; status VARCHAR; created_at TIMESTAMP; updated_at TIMESTAMP |
-| ADDRESSES | id BIGINT PK; account_id BIGINT FK; recipient_name VARCHAR; recipient_phone VARCHAR; province VARCHAR; district VARCHAR; ward VARCHAR; address_line VARCHAR; is_default BOOLEAN; created_at TIMESTAMP; updated_at TIMESTAMP |
-| ROLES | id BIGINT PK; code VARCHAR UK; name VARCHAR; description VARCHAR; status VARCHAR |
-| PERMISSIONS | id BIGINT PK; code VARCHAR UK; name VARCHAR; description VARCHAR |
-| ACCOUNT_ROLES | account_id BIGINT PK,FK; role_id BIGINT PK,FK |
-| ROLE_PERMISSIONS | role_id BIGINT PK,FK; permission_id BIGINT PK,FK |
-| CATEGORIES | id BIGINT PK; parent_category_id BIGINT FK; name VARCHAR; slug VARCHAR UK; status VARCHAR; created_at TIMESTAMP; updated_at TIMESTAMP |
-| BRANDS | id BIGINT PK; name VARCHAR; slug VARCHAR UK; status VARCHAR |
-| PRODUCTS | id BIGINT PK; parent_product_id BIGINT FK; category_id BIGINT FK; brand_id BIGINT FK; name VARCHAR; slug VARCHAR; sku VARCHAR UK; description TEXT; selling_price DECIMAL; cost_price DECIMAL; status VARCHAR; deleted_at TIMESTAMP; created_at TIMESTAMP; updated_at TIMESTAMP |
-| ATTRIBUTE_TYPES | id BIGINT PK; code VARCHAR UK; name VARCHAR; data_type VARCHAR |
-| ATTRIBUTES | id BIGINT PK; attribute_type_id BIGINT FK; code VARCHAR UK; name VARCHAR; is_required BOOLEAN; is_variant_defining BOOLEAN; sort_order INT |
-| ATTRIBUTE_OPTIONS | id BIGINT PK; attribute_id BIGINT FK; value VARCHAR; label VARCHAR; sort_order INT |
-| PRODUCT_ATTRIBUTE_VALUES | product_id BIGINT PK,FK; attribute_id BIGINT PK,FK; option_id BIGINT FK; text_value VARCHAR; number_value DECIMAL; boolean_value BOOLEAN |
-| PRODUCT_IMAGES | id BIGINT PK; product_id BIGINT FK; image_url VARCHAR; is_primary BOOLEAN; sort_order INT; created_at TIMESTAMP |
-| CARTS | id BIGINT PK; account_id BIGINT FK; status VARCHAR; created_at TIMESTAMP; updated_at TIMESTAMP |
-| CART_ITEMS | id BIGINT PK; cart_id BIGINT FK; product_id BIGINT FK; quantity INT; added_at TIMESTAMP; updated_at TIMESTAMP |
-| VOUCHERS | id BIGINT PK; code VARCHAR UK; discount_type VARCHAR; discount_value DECIMAL; minimum_order_value DECIMAL; maximum_discount DECIMAL; starts_at TIMESTAMP; ends_at TIMESTAMP; usage_limit INT; status VARCHAR |
-| ORDERS | id BIGINT PK; account_id BIGINT FK; voucher_id BIGINT FK; order_number VARCHAR UK; idempotency_key VARCHAR UK; status VARCHAR; subtotal DECIMAL; discount_amount DECIMAL; shipping_fee DECIMAL; total_amount DECIMAL; currency VARCHAR; placed_at TIMESTAMP; created_at TIMESTAMP; updated_at TIMESTAMP |
-| ORDER_ITEMS | id BIGINT PK; order_id BIGINT FK; product_id BIGINT FK; sku_snapshot VARCHAR; product_name_snapshot VARCHAR; attribute_snapshot VARCHAR; quantity INT; unit_price DECIMAL; discount_amount DECIMAL; line_total DECIMAL |
-| ORDER_ADDRESSES | order_id BIGINT PK,FK; recipient_name VARCHAR; recipient_phone VARCHAR; province VARCHAR; district VARCHAR; ward VARCHAR; address_line VARCHAR |
-| ORDER_VOUCHER_SNAPSHOTS | order_id BIGINT PK,FK; voucher_code_snapshot VARCHAR; discount_type_snapshot VARCHAR; discount_value_snapshot DECIMAL; discount_amount_snapshot DECIMAL |
-| PAYMENTS | order_id BIGINT PK,FK; method VARCHAR; payment_status VARCHAR; amount DECIMAL; currency VARCHAR; collected_by_account_id BIGINT FK; collected_at TIMESTAMP; created_at TIMESTAMP; updated_at TIMESTAMP |
-| SHIPPING_INFOS | order_id BIGINT PK,FK; recipient_name VARCHAR; recipient_phone VARCHAR; carrier_name VARCHAR; tracking_number VARCHAR; shipping_status VARCHAR; shipped_at TIMESTAMP; delivered_at TIMESTAMP; updated_at TIMESTAMP |
-| SUPPLIERS | id BIGINT PK; code VARCHAR UK; name VARCHAR; phone VARCHAR; email VARCHAR; status VARCHAR; created_at TIMESTAMP; updated_at TIMESTAMP |
-| GOODS_RECEIPTS | id BIGINT PK; supplier_id BIGINT FK; receipt_number VARCHAR UK; status VARCHAR; created_by BIGINT FK; confirmed_by BIGINT FK; confirmed_at TIMESTAMP; created_at TIMESTAMP; updated_at TIMESTAMP |
-| GOODS_RECEIPT_ITEMS | id BIGINT PK; goods_receipt_id BIGINT FK; product_id BIGINT FK; quantity_received INT; unit_cost DECIMAL |
-| WAREHOUSES | id BIGINT PK; code VARCHAR UK; name VARCHAR; status VARCHAR |
-| INVENTORIES | warehouse_id BIGINT PK,FK; product_id BIGINT PK,FK; quantity_on_hand INT; version INT; updated_at TIMESTAMP |
-| INVENTORY_TRANSACTIONS | id BIGINT PK; warehouse_id BIGINT FK; product_id BIGINT FK; transaction_type VARCHAR; quantity_delta INT; goods_receipt_item_id BIGINT FK; order_item_id BIGINT FK; idempotency_key VARCHAR UK; created_by BIGINT FK; created_at TIMESTAMP |
-| AUDIT_LOGS | id BIGINT PK; actor_account_id BIGINT FK; action VARCHAR; entity_type VARCHAR; entity_id VARCHAR; before_data JSON; after_data JSON; correlation_id VARCHAR; created_at TIMESTAMP |
-| CONTENT_PAGES | id BIGINT PK; slug VARCHAR UK; title VARCHAR; content TEXT; status VARCHAR; updated_by BIGINT FK; updated_at TIMESTAMP |
+| ACCOUNTS | id BIGINT [PK]; full_name VARCHAR; email VARCHAR; phone VARCHAR; password_hash VARCHAR; status VARCHAR; deleted_at TIMESTAMP — NULL means active; soft-deleted accounts release phone; created_at TIMESTAMP; updated_at TIMESTAMP |
+| ADDRESSES | id BIGINT [PK]; account_id BIGINT [FK]; recipient_name VARCHAR; recipient_phone VARCHAR; province VARCHAR; district VARCHAR; ward VARCHAR; address_line VARCHAR; is_default BOOLEAN; created_at TIMESTAMP; updated_at TIMESTAMP |
+| ROLES | id BIGINT [PK]; code VARCHAR [UK]; name VARCHAR; description VARCHAR; status VARCHAR |
+| PERMISSIONS | id BIGINT [PK]; code VARCHAR [UK]; name VARCHAR; description VARCHAR |
+| ACCOUNT_ROLES | account_id BIGINT [PK,FK]; role_id BIGINT [PK,FK] |
+| ROLE_PERMISSIONS | role_id BIGINT [PK,FK]; permission_id BIGINT [PK,FK] |
+| CATEGORIES | id BIGINT [PK]; parent_category_id BIGINT [FK]; name VARCHAR; slug VARCHAR [UK]; status VARCHAR; created_at TIMESTAMP; updated_at TIMESTAMP |
+| BRANDS | id BIGINT [PK]; name VARCHAR; slug VARCHAR [UK]; status VARCHAR |
+| PRODUCTS | id BIGINT [PK]; parent_product_id BIGINT [FK]; category_id BIGINT [FK]; brand_id BIGINT [FK]; name VARCHAR — NULL for child if inherited; slug VARCHAR — NULL for child if inherited; sku VARCHAR [UK]; description TEXT — NULL for child if inherited; selling_price BIGINT — Integer VND; each parent/child Product owns its own required price; never inherited; cost_price BIGINT — Integer VND; nullable; status VARCHAR; deleted_at TIMESTAMP; created_at TIMESTAMP; updated_at TIMESTAMP |
+| ATTRIBUTE_TYPES | id BIGINT [PK]; code VARCHAR [UK]; name VARCHAR; data_type VARCHAR |
+| ATTRIBUTES | id BIGINT [PK]; attribute_type_id BIGINT [FK]; code VARCHAR [UK]; name VARCHAR; is_required BOOLEAN; is_variant_defining BOOLEAN; sort_order INT |
+| ATTRIBUTE_OPTIONS | id BIGINT [PK]; attribute_id BIGINT [FK]; value VARCHAR; label VARCHAR; sort_order INT |
+| PRODUCT_ATTRIBUTE_VALUES | product_id BIGINT [PK,FK]; attribute_id BIGINT [PK,FK]; option_id BIGINT [FK]; text_value VARCHAR; number_value DECIMAL — Descriptive numeric attribute; not money; boolean_value BOOLEAN |
+| PRODUCT_IMAGES | id BIGINT [PK]; product_id BIGINT [FK]; image_url VARCHAR; is_primary BOOLEAN; sort_order INT; created_at TIMESTAMP |
+| CARTS | id BIGINT [PK]; account_id BIGINT [FK]; status VARCHAR; created_at TIMESTAMP; updated_at TIMESTAMP |
+| CART_ITEMS | id BIGINT [PK]; cart_id BIGINT [FK]; product_id BIGINT [FK]; quantity INT; added_at TIMESTAMP; updated_at TIMESTAMP |
+| VOUCHERS | id BIGINT [PK]; code VARCHAR [UK]; discount_type VARCHAR; discount_value BIGINT — Integer VND for FIXED; integer percent basis points for PERCENT; minimum_order_value BIGINT — Integer VND; maximum_discount BIGINT — Integer VND; nullable; starts_at TIMESTAMP; ends_at TIMESTAMP; usage_limit INT; usage_count INT — Atomically incremented on successful placement; never exceeds usage_limit; status VARCHAR |
+| ORDERS | id BIGINT [PK]; account_id BIGINT [FK]; voucher_id BIGINT [FK]; order_number VARCHAR [UK]; idempotency_key VARCHAR [UK]; request_fingerprint CHAR(64) — Canonical hash of semantic checkout input; status VARCHAR; subtotal BIGINT — Integer VND; discount_amount BIGINT — Integer VND; shipping_fee BIGINT — Integer VND; total_amount BIGINT — Integer VND; currency CHAR(3); placed_at TIMESTAMP; created_at TIMESTAMP; updated_at TIMESTAMP |
+| ORDER_ITEMS | id BIGINT [PK]; order_id BIGINT [FK]; product_id BIGINT [FK]; sku_snapshot VARCHAR; product_name_snapshot VARCHAR; attribute_snapshot VARCHAR; image_url_snapshot VARCHAR — Immutable retained asset reference; quantity INT; unit_price BIGINT — Integer VND; discount_amount BIGINT — Integer VND; line_total BIGINT — Integer VND |
+| ORDER_ADDRESSES | order_id BIGINT [PK,FK]; recipient_name VARCHAR; recipient_phone VARCHAR; province VARCHAR; district VARCHAR; ward VARCHAR; address_line VARCHAR |
+| ORDER_VOUCHER_SNAPSHOTS | order_id BIGINT [PK,FK]; voucher_code_snapshot VARCHAR; discount_type_snapshot VARCHAR; discount_value_snapshot BIGINT — Integer VND or integer percent basis points; discount_amount_snapshot BIGINT — Integer VND |
+| PAYMENTS | order_id BIGINT [PK,FK]; method VARCHAR; payment_status VARCHAR; amount BIGINT — Integer VND; currency CHAR(3) — VND only; collected_by_account_id BIGINT [FK]; collected_at TIMESTAMP; refund_amount BIGINT — Integer VND; default zero; refunded_by_account_id BIGINT [FK]; refunded_at TIMESTAMP; refund_reason VARCHAR; created_at TIMESTAMP; updated_at TIMESTAMP |
+| SHIPPING_INFOS | order_id BIGINT [PK,FK]; recipient_name VARCHAR; recipient_phone VARCHAR; carrier_name VARCHAR; tracking_number VARCHAR; shipping_status VARCHAR; shipped_at TIMESTAMP; delivered_at TIMESTAMP; updated_at TIMESTAMP |
+| SUPPLIERS | id BIGINT [PK]; code VARCHAR [UK]; name VARCHAR; phone VARCHAR; email VARCHAR; status VARCHAR; created_at TIMESTAMP; updated_at TIMESTAMP |
+| GOODS_RECEIPTS | id BIGINT [PK]; supplier_id BIGINT [FK]; warehouse_id BIGINT [FK] — Destination warehouse for this receipt; receipt_number VARCHAR [UK]; status VARCHAR; created_by BIGINT [FK]; confirmed_by BIGINT [FK]; confirmed_at TIMESTAMP; created_at TIMESTAMP; updated_at TIMESTAMP |
+| GOODS_RECEIPT_ITEMS | id BIGINT [PK]; goods_receipt_id BIGINT [FK]; product_id BIGINT [FK]; quantity_received INT; unit_cost BIGINT — Integer VND |
+| WAREHOUSES | id BIGINT [PK]; code VARCHAR [UK]; name VARCHAR; status VARCHAR |
+| INVENTORIES | warehouse_id BIGINT [PK,FK]; product_id BIGINT [PK,FK]; quantity_on_hand INT; version INT; updated_at TIMESTAMP |
+| INVENTORY_TRANSACTIONS | id BIGINT [PK]; warehouse_id BIGINT [FK]; product_id BIGINT [FK]; transaction_type VARCHAR; quantity_delta INT; goods_receipt_item_id BIGINT [FK]; order_item_id BIGINT [FK]; idempotency_key VARCHAR [UK]; reason_code VARCHAR — Required for manual adjustments and reversals; reverses_transaction_id BIGINT [FK] — Nullable; reversal references original movement; created_by BIGINT [FK]; created_at TIMESTAMP |
+| AUDIT_LOGS | id BIGINT [PK]; actor_account_id BIGINT [FK]; action VARCHAR; entity_type VARCHAR; entity_id VARCHAR; before_data JSON; after_data JSON; correlation_id VARCHAR; created_at TIMESTAMP |
+| CONTENT_PAGES | id BIGINT [PK]; slug VARCHAR [UK]; title VARCHAR; content TEXT; status VARCHAR; updated_by BIGINT [FK]; updated_at TIMESTAMP |
 
-### Explicit nullability/inheritance notes from the ERD
+## 3. Target/legacy boundaries and physical decisions
 
-- PRODUCTS.name, PRODUCTS.slug and PRODUCTS.description may be NULL for a child if inherited; PRODUCTS.selling_price may be NULL on a child to mean inherited price.
-- PRODUCTS.cost_price is nullable.
-- PRODUCT_ATTRIBUTE_VALUES.option_id is shown as an optional relationship to ATTRIBUTE_OPTIONS. Whether each typed value is nullable and whether exactly one of option_id/text_value/number_value/boolean_value must be set still requires a constraint contract.
-- Root-vs-child nullability for PRODUCTS.parent_product_id, optional category/brand associations, optional voucher links, draft GOODS_RECEIPTS.confirmed_by, optional transaction source links and optional timestamps must be translated from the ERD relationships into physical NULL/NOT NULL explicitly before DDL. The diagram marks each CARTS and ORDERS row as belonging to one account; reconcile this with the legacy schema's nullable guest-cart/guest-order references.
-- A column not listed in an explicit nullability comment is **not** deemed NOT NULL just because it has a value-like name.
+- Target monetary values are integer VND (1 unit = 1 VND) and use BIGINT columns. DECIMAL remains valid for non-money descriptive numeric values such as PRODUCT_ATTRIBUTE_VALUES.number_value; legacy BigDecimal money types are not the target contract.
+- ORDERS.currency and PAYMENTS.currency are constrained to VND in the current draft. DB-10 resolves currency/storage units; discount rounding/allocation and full cross-field formula acceptance remain separately gated.
+- accounts.phone_active_key is a generated physical-only column, not an ERD entity property. It derives from phone while deleted_at is NULL and is NULL after soft deletion, supporting active-account-only uniqueness.
+- GOODS_RECEIPTS.warehouse_id is required and references WAREHOUSES. One operational warehouse is the v1 business boundary; receiving/ledger transaction behavior remains under DB-03.
+- ORDERS.request_fingerprint, VOUCHERS.usage_count, ORDER_ITEMS.image_url_snapshot and Payment refund metadata are in the target ERD/DDL/dictionary. Their presence does not complete idempotency, quota, immutable asset retention or refund policies.
+- Under DB-01, parent and child Products are independently sellable and each has its own SKU, selling price and inventory. selling_price is therefore NOT NULL in the isolated DDL draft and is never inherited. name/slug/description are the only fields annotated as child inheritance candidates; their effective read, hierarchy depth and parent-update propagation rules remain open. Do not infer inheritance for category_id, brand_id, status, cost_price, images, attributes or inventory.
+- Do not add ProductVariant, SizeSystem, SizeValue, Color, CHECKOUT_QUOTES, voucher-scope, inventory-reservation, payment/refund-event, shipment-event or return tables unless a later owner decision explicitly amends the target model.
+- FK deletion actions and per-entity retention must be frozen under DB-12 before P2 schema reset. Draft DDL constraints/indexes outside approved decisions remain proposals until acceptance.
 
-## 3. Key and uniqueness constraints explicitly shown
+## 4. Verification
 
-### Primary keys
-- Single-column: every table with an id PK, plus order_id PK/FK in ORDER_ADDRESSES, ORDER_VOUCHER_SNAPSHOTS, PAYMENTS and SHIPPING_INFOS.
-- Composite: ACCOUNT_ROLES(account_id, role_id); ROLE_PERMISSIONS(role_id, permission_id); PRODUCT_ATTRIBUTE_VALUES(product_id, attribute_id); INVENTORIES(warehouse_id, product_id).
+Run from repository root: python scripts/p1/check_contract_consistency.py. This script checks ERD/DDL table and field sets, SQL/dictionary field coverage, type/nullability/default/generated-expression consistency, key annotations, constraint/index evidence and selected critical constraints.
 
-### Unique keys
-Only the following fields are marked UK in the owner-provided ERD:
-- ROLES.code
-- PERMISSIONS.code
-- CATEGORIES.slug
-- BRANDS.slug
-- PRODUCTS.sku
-- ATTRIBUTE_TYPES.code
-- ATTRIBUTES.code
-- VOUCHERS.code
-- ORDERS.order_number
-- ORDERS.idempotency_key
-- SUPPLIERS.code
-- GOODS_RECEIPTS.receipt_number
-- WAREHOUSES.code
-- INVENTORY_TRANSACTIONS.idempotency_key
-- CONTENT_PAGES.slug
-
-Do not silently add a unique key on ACCOUNTS.email, ACCOUNTS.phone, or PRODUCTS.slug: those columns are not marked UK in this ERD version. **The isolated target DDL currently makes phone NOT NULL and UNIQUE despite that ERD annotation.** Treat this as a working default, not an approved schema rule; resolve TGT-01 with the login/API contract, then align the ERD decision record, dictionary, DDL and tests.
-
-## 4. Target behavior and physical decisions
-
-Clean Schema Reset means legacy-source rows do not need to be mapped. The isolated target DDL draft contains the following working defaults; their presence in SQL is not proof that MySQL verification or application integration passed. Application-level enforcement and final acceptance tests remain pending.
-
-| ID | Topic | Target decision required | Status |
-|---|---|---|---|
-| TGT-01 | Account identity | Draft DDL applies required+unique phone and nullable/non-unique email, but the ERD does not mark phone/email unique. Treat uniqueness as an unresolved working default until the owner approves the login and physical schema contract. | WORKING DEFAULT / DECISION OPEN |
-| TGT-02 | Nullability and lengths | Bounded lengths and required/nullable fields are encoded in target DDL; cross-check each against DTO validation during integration. | DDL DRAFT / REVIEW |
-| TGT-03 | Monetary contract | Draft uses DECIMAL(18,2), VND, line/order discount snapshots, and total = subtotal − all discounts + shipping as working defaults. | PRESENT IN DRAFT DDL / SERVICE OPEN |
-| TGT-04 | Attribute system | Draft models typed TEXT/NUMBER/BOOLEAN/OPTION values; the development fixture uses option-backed, variant-defining Size/Color attributes. | PRESENT IN DRAFT DDL / CATALOG OPEN |
-| TGT-05 | Product hierarchy | Draft uses shared parent/child PRODUCTS, nullable inherited fields and SKU uniqueness. MySQL 8.4 rejects a CHECK that references the AUTO_INCREMENT id, so self-parent and multi-row cycle prevention must be enforced by the product service and tests. | PRESENT IN DRAFT DDL / SERVICE OPEN |
-| TGT-06 | Inventory | Draft contains composite warehouse/product key, non-negative quantity, version and idempotency uniqueness; locking and ledger/balance atomicity remain service-level work. | PRESENT IN DRAFT DDL / SERVICE OPEN |
-| TGT-07 | Cart and guest behavior | Draft requires an account for target carts/orders. Owner decision 2026-10-05 resolves authenticated-only behavior; API #14–20 docs are aligned, while code integration still needs verification. | PRESENT IN DRAFT DDL / API INTEGRATION OPEN |
-| TGT-08 | Voucher/checkout | Draft has target-shaped vouchers and order voucher snapshots; scope links and persisted checkout_quotes are excluded. Voucher capability, limit enforcement and atomic redemption remain unresolved. | PRESENT IN DRAFT DDL / BUSINESS + SERVICE OPEN |
-| TGT-09 | Payment and shipping | Draft models COD-only initial method and one payment per order; status transitions, authorization and shipping API behavior remain open. | PRESENT IN DRAFT DDL / API + SERVICE OPEN |
-| TGT-10 | Address snapshots | Draft contains required order-address snapshot fields. Service-level copy-on-place and immutability tests remain pending. | PRESENT IN DRAFT DDL / SERVICE OPEN |
-| TGT-11 | Idempotency | Draft declares mandatory unique keys for new orders and inventory transactions; same-payload replay and conflicting-payload handling remain service-level requirements. | PRESENT IN DRAFT DDL / SERVICE OPEN |
-| TGT-12 | Status/default rules | Allowed values/defaults are encoded in target CHECK constraints for the principal status fields; service transitions must be aligned. | DDL DRAFT / REVIEW |
-| TGT-13 | Referential actions | Draft uses restrictive/default foreign-key behavior and defines no cascading deletes. | PRESENT IN DRAFT DDL / REVIEW |
-| TGT-14 | Operational SQL | BIGINT, DECIMAL(18,2), TIMESTAMP(6), checks and supporting indexes are drafted in SQL; MySQL 8 verification and complete metadata review remain pending. | DDL DRAFT / CI PENDING |
-| TGT-15 | Seed separation | The system RBAC seed file exists in the isolated Flyway location. Catalog/attribute/warehouse demo rows are separate, account-free test/dev SQL; first-admin provisioning remains environment-configured. | SEED FILE PRESENT / INTEGRATION OPEN |
-
-Applied defaults are working choices in the isolated target draft, not a claim that application behavior has already been integrated. The target DDL is kept in a separate Flyway location until entity mappings and services are compatible. Review physical nullability/lengths and align each status literal with API validators before activating it.
-
-The owner-confirmed target ERD is the table/relationship authority. The existing V1–V6 schema is used only to locate legacy code that must be updated or removed; no source row mapping, populated-source migration, legacy archive or historical crosswalk is a release gate for disposable development/test data.
-
-## 5. Approval and exit gate
-
-The physical dictionary is ready to drive implementation only after the active TGT-01–TGT-15 decisions are recorded or their proposed defaults are explicitly accepted. Then:
-
-1. Pass `CleanResetSchemaTests` against the isolated DDL/seed location.
-2. Verify the SQL on the supported MySQL version using an ephemeral empty database; this has not yet been run here.
-3. Refactor entity/repository/service mappings and the API/frontend contracts to the target model.
-4. Only after those mappings pass JPA validate and integration tests, switch the default Flyway location to the new clean baseline.
-5. Keep demo data separate from system seeds and execute it only on disposable local/dev/test databases. Never reset production/shared environments under this decision.
-
-Do not claim DDL readiness or test success until the target migration and actual test suite have been run.
+The current P1 branch still requires an exact-commit run after reconciliation. A static PASS does not prove MySQL behavior, service/entity/API/DTO/frontend alignment, RBAC, state transitions, race safety or retention behavior. See P1-exit-gate.md for the acceptance status.

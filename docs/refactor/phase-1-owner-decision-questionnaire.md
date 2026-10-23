@@ -19,7 +19,7 @@ This decision closes legacy-only questions about mapping old source values, old 
 
 ## Working defaults in the target draft — not a record of owner approval
 
-The target draft encodes options **D1-A through D10-A** as implementation defaults, but not all of those defaults are owner-approved. **D2-A is already confirmed** by the owner decision dated 2026-10-05 requiring login before use of persisted Cart and before order placement; see `frontend/CONTRACT_ALIGNMENT.md`. D1 and D3–D10 remain working defaults until explicitly accepted or changed. Keep this distinction in downstream status tables and update the contract, physical data dictionary, DDL and tests together when a material decision changes.
+The D1–D10 options below are historical decision inputs and proposed physical defaults, not an authoritative current approval matrix. As of 2026-10-23, use `docs/refactor-v2/p1/P1-decision-log.md` and `P1-exit-gate.md` for current disposition: owner directions are recorded for DB-01, DB-02, DB-04 and DB-06–DB-11 within the explicit scope of each decision; DB-03 and DB-05 remain unapproved requests for proposal; DB-12 deletion/FK/history retention remains open. DB-02/A-03 requires authentication before persisted Cart use and order placement, superseding legacy guest wording. DB-10 fixes monetary storage to integer VND/BIGINT; any DECIMAL(18,2) money recommendation in the D9 section below is superseded. Other D9 physical defaults are still proposals and do not close DB-09/DB-12.
 
 | Decision | Working default applied |
 |---|---|
@@ -31,7 +31,7 @@ The target draft encodes options **D1-A through D10-A** as implementation defaul
 | D6 | COD initially; one payment aggregate per order. |
 | D7 | Copy recipient/address to an immutable order-address snapshot at placement. |
 | D8 | Unique idempotency keys for new order/inventory commands; same-payload retry replays, conflicting payload returns conflict. |
-| D9 | BIGINT IDs, DECIMAL(18,2), TIMESTAMP(6) UTC, checks/indexes and restrictive FKs by default. |
+| D9 | BIGINT IDs; integer VND for all monetary fields per owner decision DB-10 (2026-10-23); TIMESTAMP(6) UTC, checks/indexes and restrictive FKs by default. Other physical defaults remain subject to DB-09 review. |
 | D10 | Required roles/permissions in Flyway; demo catalog/inventory fixture separate from system seed and without accounts/secrets. |
 
 ## How to respond
@@ -121,7 +121,7 @@ The target marks `ORDERS.idempotency_key` and `INVENTORY_TRANSACTIONS.idempotenc
 
 The ERD does not specify every column length, nullable constraint, default, timestamp precision, index, CHECK or FK delete action.
 
-- **A — Recommended:** use BIGINT IDs, DECIMAL(18,2) for monetary values, TIMESTAMP(6) with an explicit UTC storage policy, bounded VARCHAR lengths based on API limits, explicit status checks where appropriate, useful query indexes, and restrictive FK deletion by default. Record exceptions in the physical dictionary before generating DDL.
+- **A — Initial physical proposal (money portion superseded):** use BIGINT IDs, integer-VND/BIGINT for monetary values per DB-10, TIMESTAMP(6) with an explicit UTC storage policy, bounded VARCHAR lengths based on API limits, explicit status checks where appropriate, useful query indexes, and restrictive FK deletion as a draft default only. DECIMAL may be used for non-monetary numeric attributes. DB-09/DB-12 must still review physical nullability/default/status constraints and per-entity FK deletion/retention before P2.
 - B: the owner provides a complete physical matrix.
 - C: review each table's physical DDL individually before implementation.
 

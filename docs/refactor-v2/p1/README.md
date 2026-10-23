@@ -31,3 +31,9 @@ No P2 implementation is included: no new baseline migration, no database reset, 
 - P1-api-breaking-changes.md — target-vs-legacy breaking-change inventory.
 - scripts/p1/check_contract_consistency.py — deterministic static consistency gate; nonzero means static alignment fails.
 - P1-exit-gate.md — current evidence and explicit P2 authorization.
+
+
+## 2026-10-23 contract reconciliation
+
+- [P1 ERD / Use Case / API Contract Reconciliation](P1-contract-reconciliation-2026-10-23.md) — latest verified baseline, discrepancy register, target inheritance rules, metadata contract proposal, roadmap and explicit open gates.
+- [Target Use-Case Mapping](P1-use-case-target-mapping.md) — actors, preconditions, target flow, failure handling, read/write scope, transaction and API acceptance status by domain.
