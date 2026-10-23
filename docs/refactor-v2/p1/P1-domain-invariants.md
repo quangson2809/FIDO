@@ -16,7 +16,7 @@
 - INV-PROD-04: Preserve leaf Category assignment unless explicitly amended; protect in-use categories.
 - INV-ATTR-01: OPTION/TEXT/NUMBER/BOOLEAN are candidate data types. Each row needs one compatible typed value; an option must belong to the same Attribute.
 - INV-ATTR-02: Unique SKU does not guarantee a unique variant-defining option combination. Approve a signature/unique guard or explicitly accept the weaker behavior.
-- INV-IMG-01: Never reconstruct historical Order images from the current gallery. The approved 31-table ERD has no explicit ORDER_ITEMS image snapshot field; do not claim immutable image history until an existing schema-compatible storage/retention mechanism is evidenced or the owner formally amends the ERD.
+- INV-IMG-01: Never reconstruct historical Order images from the current gallery. ORDER_ITEMS.image_url_snapshot is present in the target ERD/SQL draft. Do not claim immutable image history until retained asset versioning, deletion/overwrite policy and historical access are evidenced.
 
 ## Cart, Price, Checkout and Order
 - INV-CART-01: A-03 approves JWT-required Cart, quote and Create Order. No guest session/cart merge.
@@ -35,7 +35,7 @@
 - INV-VOUCHER-02: Snapshot voucher code/type/value/discount so future edits do not rewrite old Orders.
 - INV-VOUCHER-03: Any usage limit needs serialized consumption/restoration; unique voucher code is insufficient.
 - INV-PAY-01: COD only is the source baseline; collector identity/time are server-derived by authorized command.
-- INV-PAY-02: Target lacks refund amount/actor/time. Do not claim auditable partial refunds before DB-08 approval.
+- INV-PAY-02: Target draft contains refund amount/actor/time/reason fields, but partial/full semantics, durable refund idempotency, allowed transitions and authorization remain DB-08 blockers.
 - INV-SHIP-01: Carrier/tracking fields are not an integration contract; approve status transitions/timestamps and recipient source.
 
 ## Inventory, Supplier and Goods Receipt
@@ -53,3 +53,8 @@
 - INV-CONTENT-01: Slug unique in ERD; public endpoint serves only approved published content; pageCode-to-slug compatibility is open.
 - INV-SOFTDELETE-01: Product status and deleted_at are separate. Define visibility/parent history; never cascade-delete Order, ledger or audit.
 - INV-REPORT-01: Follow docs/15 approved formulas: include shipping in received sales, subtract returns in original completion period, group current states by Order creation date and use Asia/Ho_Chi_Minh boundaries.
+
+
+## Implementation traceability boundary
+
+The clean-reset SQL remains isolated from active Flyway migrations. Current legacy Entity/Repository/API code has not been migrated to the target Product/attribute, warehouse/inventory, Order, Payment and integer-VND contracts. Use P1-traceability-matrix.csv and P1-api-breaking-changes.md for the exact layer-by-layer statuses. DB-03/DB-05 details remain unapproved proposals. Listed tests are acceptance requirements unless a separate CI run explicitly passes them.

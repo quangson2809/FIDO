@@ -1,6 +1,6 @@
 # P1 Design Proposals — DB-03 Inventory and DB-05 Checkout Quote
 
-**Status: ACCEPTED FOR P1 CONTRACT FREEZE under the owner's instruction on 2026-10-23 to resolve blockers with the simplest coherent schema changes.**  
+**Status: PROPOSED — NOT OWNER-APPROVED.** DB-03 and DB-05 were selected as requests for a design proposal, not approval of every mechanic below.  
 Branch: demo1 · Date: 2026-10-23  
 Authority: owner-confirmed 31-table ERD docs/refactor/phase-1-erd-v2-approved.mmd, decision log and explicit owner choices. The P1 contract-freeze revision retains 31 tables and adds explicit columns where required; the isolated SQL remains a draft until MySQL 8.4 verification.
 
@@ -146,7 +146,7 @@ Review this proposal and accept/revise DB-03 and DB-05 explicitly. Resolve the c
 
 ## P1 contract-freeze decisions (2026-10-23)
 
-The owner's instruction to resolve the listed blockers authorizes the following minimum contract alignment, retaining 31 tables:
+The following are candidate contract-alignment recommendations that retain 31 tables. Their presence in the ERD/SQL draft does not imply owner approval; explicit acceptance and runtime evidence remain required:
 - `ORDERS.request_fingerprint` binds an idempotency key to canonical semantic input; same key + same fingerprint replays the committed order, same key + different fingerprint conflicts.
 - `ORDER_ITEMS.image_url_snapshot` stores the immutable asset reference used at placement. The referenced object must be retained for historical order display.
 - All monetary fields use integer VND. Percentage voucher values use integer basis points (1 basis point = 0.01 percentage point); fixed values and all totals are integer VND. Rounding uses largest remainder for allocating an order-wide discount across lines; sum of allocated line discounts must equal the order discount.

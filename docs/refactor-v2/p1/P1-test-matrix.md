@@ -1,6 +1,6 @@
 # P1 — Invariant and Test Matrix
 
-**Status: PARTIAL.** These are acceptance requirements, not tests executed in this P1 documentation pass. Historical P0 baseline recorded 196 H2 tests, 3 failures and 1 skipped; target MySQL verification did not run. The DB-03/DB-05 design proposal is not owner-approved, and P1 does not claim these tests pass.
+**Status: PARTIAL.** These are acceptance requirements, not tests executed in this P1 documentation pass. Historical P0 baseline recorded 196 H2 tests, 3 failures and 1 skipped; target MySQL verification did not run. DB-03/DB-05 mechanics remain unapproved proposals; documenting test cases does not mean they have been executed or passed.
 
 | Test | Condition | Allowed | Forbidden | Protection | Acceptance evidence | Decision |
 |---|---|---|---|---|---|---|
@@ -56,3 +56,15 @@
 | T-PHONE-01 | Soft-delete account then register same normalized phone | Reuse succeeds; concurrent active duplicates fail | MySQL 8.4 integration test, not H2-only | DB-09 |
 
 These are acceptance requirements, not executed-test evidence. P1 documentation review does not imply P0 runtime/MySQL verification has passed.
+
+
+## Additional target-contract gates
+
+| ID | Scenario | Required observable result | Verification | Gate |
+|---|---|---|---|---|
+| T-WH-01 | Create/confirm a goods receipt | Receipt persists a real WAREHOUSES FK; v1 service resolves the active single warehouse and rejects an unavailable destination | MySQL schema and receipt API/service tests | DB-04 |
+| T-DICT-01 | ERD/SQL/CSV static consistency | Exactly 31 tables; all SQL columns/types/nullability/defaults and generated fields match the dictionary; only documented generated physical fields may be SQL-only | scripts/p1/check_contract_consistency.py | P1 static consistency |
+| T-PHONE-02 | Active-only phone uniqueness | Two active accounts cannot share the phone; deleted account releases it; old deleted accounts may retain same phone with NULL generated key | MySQL 8.4 integration, not H2-only | DB-09 |
+| T-REFUND-01 | Partial/full refund and retry | Amount/actor/time/reason and state stay consistent; retry cannot refund twice; actor must be authorized | API security and concurrent MySQL tests | DB-08 |
+
+These rows are acceptance requirements, not completed test evidence.
