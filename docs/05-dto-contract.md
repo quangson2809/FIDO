@@ -126,7 +126,7 @@ The nullable Product summary `thumbnail` is live presentation data resolved from
 
 `RecipientDto(phone,email?,address)`
 
-`OrderItemDto(order_item_id,variant_id,product_name,sku?,size,color,unit_price,quantity,line_total)`
+`OrderItemDto(order_item_id,variant_id,product_name,image_url?,sku?,size,color,unit_price,quantity,line_total)` — `image_url?` is part of the legacy snapshot contract; the target storage gap is tracked under DB-07 below.
 
 `PaymentPublicDto(payment_status,amount_due,amount_received,amount_refunded)`
 
