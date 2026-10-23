@@ -169,13 +169,13 @@ erDiagram
         bigint voucher_id FK
         varchar order_number UK
         varchar idempotency_key UK
-        varchar request_fingerprint "Canonical hash of semantic checkout input"
+        char(64) request_fingerprint "Canonical hash of semantic checkout input"
         varchar status
         bigint subtotal "Integer VND"
         bigint discount_amount "Integer VND"
         bigint shipping_fee "Integer VND"
         bigint total_amount "Integer VND"
-        varchar currency
+        char(3) currency
         timestamp placed_at
         timestamp created_at
         timestamp updated_at
@@ -218,7 +218,7 @@ erDiagram
         varchar method
         varchar payment_status
         bigint amount "Integer VND"
-        varchar currency "VND only"
+        char(3) currency "VND only"
         bigint collected_by_account_id FK
         timestamp collected_at
         bigint refund_amount "Integer VND; default zero"
