@@ -7,6 +7,7 @@
 - INV-ACC-02: /me resources, saved addresses and customer orders are scoped to authenticated principal. Client account IDs never authorize access.
 - INV-RBAC-01: Resolve effective grants from the database; never trust role claims from the client. Role/permission replacement and audit are atomic; preserve last-SUPERADMIN protection.
 - INV-ACC-03: Target Account status literals and their login/session effects are not approved; do not invent a new lifecycle.
+- INV-SEED-01: Required system roles/permissions and the initial SUPERADMIN bootstrap path must be deterministic and separate from demo fixtures; credentials remain external and are never committed. DB-11 must approve the seed inventory and bootstrap boundary.
 
 ## Product, Attribute and Image
 - INV-PROD-01: Parent references must exist and graph must be acyclic; permitted hierarchy depth remains DB-01.
@@ -24,13 +25,13 @@
 - INV-PRICE-01: The server controls effective price, discount, shipping fee, subtotal and total.
 - INV-QUOTE-01: CHECKOUT_QUOTES is absent. Approve nonpersistent preview with order-time recalculation or amend ERD formally.
 - INV-ORDER-01: Same key + same normalized payload replays one committed Order; changed payload conflicts; cross-account reuse never leaks another Order. DB-05 must define exact scope/retention.
-- INV-ORDER-02: Draft total = subtotal - discount + shipping and line_total = unit_price * quantity - line discount are proposals until rounding/allocation is approved.
+- INV-ORDER-02: Draft total = subtotal - discount + shipping and line_total = unit_price * quantity - line discount are proposals until DB-10 approves currency, decimal precision/scale, rounding point and allocation/reconciliation.
 - INV-ORDER-03: Capture SKU/name/attributes/quantity/unit price/discount/line total at placement; never query live catalog to recreate historical facts.
 - INV-ORDER-04: Only approved state transitions are allowed. Order and Payment status remain separate.
 - INV-ADDR-01: Saved Address differs from OrderAddress. Recipient PATCH through PREPARING and duplicated ShippingInfo receiver fields need DB-07/08 resolution.
 
 ## Voucher, Payment and Shipping
-- INV-VOUCHER-01: Discount type/formula/date/min/max/scope/stacking/limits and cancellation restoration need DB-06 approval; target lacks scope joins and usage ledger.
+- INV-VOUCHER-01: Discount type/formula/date/min/max/scope/stacking/limits and cancellation restoration need DB-06 approval; currency/scale/rounding interaction needs DB-10. Target lacks scope joins and usage ledger.
 - INV-VOUCHER-02: Snapshot voucher code/type/value/discount so future edits do not rewrite old Orders.
 - INV-VOUCHER-03: Any usage limit needs serialized consumption/restoration; unique voucher code is insufficient.
 - INV-PAY-01: COD only is the source baseline; collector identity/time are server-derived by authorized command.
