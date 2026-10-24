@@ -6,7 +6,7 @@
 
 | Entity | Approved status/type literals | Invariant |
 |---|---|---|
-| Account | `ACTIVE`, `PENDING_APPROVAL`, `LOCKED`, `SUSPENDED` | Public registration and staff-account creation start at `ACTIVE`; only `ACTIVE` may authenticate or access protected routes. Non-ACTIVE credentials receive no token; protected requests re-check current account status. Active phone identity is canonicalized and unique; it may be reused after soft deletion. |
+| Account | `ACTIVE`, `PENDING_APPROVAL`, `LOCKED`, `SUSPENDED` | Registration/staff creation starts at `ACTIVE`; only `ACTIVE` may authenticate or access protected routes. Wrong credentials return generic `401 INVALID_CREDENTIALS`; valid credentials for any non-ACTIVE Account return `403 ACCOUNT_NOT_ACTIVE` without disclosing exact status. Protected requests re-check status. Phone is canonicalized and unique among non-soft-deleted Accounts; reuse follows soft deletion. |
 | Role, Category, Brand, Supplier, Warehouse | `ACTIVE`, `INACTIVE` | Disabling does not erase historical references or bypass FK policy. The server resolves the one operational warehouse in v1. |
 | Product | `DRAFT`, `ACTIVE`, `INACTIVE`, `ARCHIVED` | Only eligible active Products sell; parent/child depth is one level; each Product owns its SKU, required selling price and stock. |
 | Cart | `OPEN`, `CHECKOUT`, `COMPLETED`, `ABANDONED` | Authenticated owner only. Order placement mutates Cart atomically; Cart never reserves stock. |
