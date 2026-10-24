@@ -45,13 +45,18 @@
 
 ## Inventory, Supplier and Goods Receipt
 
-- **INV-STOCK-01:** INVENTORIES is keyed by (warehouse_id, product_id), tracks quantity_on_hand and version, and never becomes negative. v1 uses one operational warehouse resolved by the server.
-- **INV-STOCK-02:** Every movement updates source state, Product balance, append-only INVENTORY_TRANSACTIONS and required audit in one transaction.
-- **INV-STOCK-03:** Approved movement types are OPENING, GOODS_RECEIPT, ORDER, ORDER_CANCEL_REVERSAL, RETURN_RESTOCK and ADJUSTMENT. Enforce source/sign rules and semantic-source dedupe independently of client request keys.
-- **INV-STOCK-04:** Lock stock rows in deterministic ascending Product ID order. Guard balance/version updates and check affected-row count; @Transactional alone is insufficient to prevent lost updates.
-- **INV-STOCK-05:** Correct mistakes with linked compensating movements. Never update/delete an original ledger entry. Receipt confirmation, Order placement/cancellation, eligible restock and adjustment must be atomic with source state and audit.
-- **INV-RECEIPT-01:** GoodsReceipt is DRAFT/CONFIRMED/CANCELLED; only DRAFT is editable and CONFIRMED posts stock once. Confirmed stock-affecting lines are immutable.
-- **INV-STOCK-06:** ADJUSTMENT requires a non-zero delta, authenticated actor and reason code; reject invalid/duplicate source movements and insufficient stock.
+- **INV-STOCK-01:** INVENTORIES uses composite key `(warehouse_id, product_id)`; `quantity_on_hand` is `0..2,147,483,647`, and `version` is server-owned/non-negative. v1 uses one operational ACTIVE warehouse resolved by the server.
+- **INV-STOCK-02:** Missing balance reads quantity 0/version 0. A positive first movement inserts a zero row if absent, then locks/re-reads and applies the delta within the transaction; a negative movement against missing/zero stock fails without residue.
+- **INV-STOCK-03:** Every committed non-zero movement changes balance, increments version exactly once, appends one matching immutable INVENTORY_TRANSACTIONS row and writes required audit in one transaction. No balance write without a ledger movement.
+- **INV-STOCK-04:** Only OPENING, GOODS_RECEIPT, ORDER, ORDER_CANCEL_REVERSAL, RETURN_RESTOCK and ADJUSTMENT are approved. Type/sign/source/actor/reason/reversal rules follow [P1.4 Inventory Contract](P1.4-inventory-contract.md).
+- **INV-STOCK-05:** Source identity is deduplicated independently of the HTTP retry key. Receipt-item, OrderItem, reversal and accepted return-event identities remain stable across retries. ADJUSTMENT has a stable `source_operation_id` separate from transport idempotency.
+- **INV-STOCK-06:** Lock source aggregate first, source lines in stable order, then balances by ascending product_id. Use row lock or guarded version update, enforce both quantity bounds, check affected-row count and roll back source/balance/ledger/audit together.
+- **INV-STOCK-07:** Ledger is append-only. ORDER_CANCEL_REVERSAL and RETURN_RESTOCK link to the original ORDER deduction. An exact full correction has the opposite signed delta; never modify/delete the original movement.
+- **INV-STOCK-08:** From a zero baseline where initial stock is represented by OPENING, `quantity_on_hand = SUM(quantity_delta)` by warehouse/Product; version equals the count of committed balance-changing movements. Reconciliation reports and never silently rewrites.
+- **INV-STOCK-09:** ADJUSTMENT requires non-zero delta, authorized actor, controlled reason_code and stable source_operation_id. Same ID/same payload replays; same ID/different payload conflicts. Negative adjustment cannot overdraw stock.
+- **INV-RECEIPT-01:** GoodsReceipt is DRAFT/CONFIRMED/CANCELLED; only DRAFT is editable. CONFIRM requires at least one valid positive-quantity Product line and atomically posts one GOODS_RECEIPT movement per item. CANCEL is DRAFT-only and posts no movement.
+- **INV-RECEIPT-02:** Concurrent/retried confirmation is guarded by source identity and DRAFT→CONFIRMED. confirmed_by/confirmed_at are set once; confirmed facts/lines are immutable. Corrections require a new authorized movement.
+- **INV-WH-01:** In v1 callers cannot pick an arbitrary warehouse. Missing/ambiguous operational warehouse resolution fails closed; receipt, balance and movement must use the same resolved/stored warehouse.
 
 ## Audit, content, soft deletion and reports
 

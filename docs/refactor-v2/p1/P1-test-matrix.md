@@ -27,6 +27,15 @@
 | T-STOCK-02 | Receipt confirm retry/race | One stock increase and one logical GOODS_RECEIPT movement. | Concurrent receipt-confirm integration. |
 | T-STOCK-03 | Duplicate semantic source under different request keys | One logical movement only; request-key uniqueness alone is not the only dedupe guard. | MySQL source-key and concurrency tests. |
 | T-STOCK-04 | Cancellation / return / adjustment | Approved positive/negative movement, reason/source constraints, linked reversal and at-most-once restore. | Inventory/Order integration and audit assertions. |
+| T-STOCK-05 | Missing balance read / negative movement | Read returns 0/version 0 with no writes; negative command fails and leaves no row, ledger or audit residue. | API/MySQL transaction test |
+| T-STOCK-06 | Concurrent first positive movements on one missing balance | One balance row, no lost quantity/version update, one ledger row per accepted semantic source. | Real MySQL concurrency test |
+| T-STOCK-07 | Quantity/version bounds and stale expected_version | Reject underflow, signed-INT overflow, version overflow and stale precondition without partial writes. | API/MySQL boundary tests |
+| T-STOCK-08 | Same receipt item/OrderItem/reversal/return event replayed with different transport keys | Exactly one semantic movement; same source with changed canonical payload conflicts. | Real MySQL source-dedupe test |
+| T-STOCK-09 | Adjustment source_operation_id reused under different transport keys | Same payload replays one result; source-operation key prevents a second movement. | API/integration test |
+| T-STOCK-10 | Adjustment source_operation_id reused with a changed Product/delta/reason | Deterministic source/idempotency conflict and no second balance/ledger update. | API/integration test |
+| T-STOCK-11 | Receipt edit/confirm/cancel race or empty receipt confirmation | One legal state transition wins; empty confirm fails; cancel posts no stock; confirmed data is immutable. | Real MySQL concurrency test |
+| T-STOCK-12 | Inject failure after balance update, ledger insert or audit | Full rollback; source state, balance/version and ledger remain consistent. | Failure-injection integration test |
+| T-STOCK-13 | Reconcile all warehouse/Product pairs | quantity_on_hand equals ledger delta sum; version equals committed balance-movement count from zero baseline. | MySQL reconciliation test |
 | T-TX-01 | Inject failure midway through write set | No partial Order/items/Payment/Cart/stock/ledger/voucher/audit state. | Failure-injection rollback test on MySQL. |
 | T-STATE-01 | Order/Payment/ShippingInfo/GoodsReceipt | Approved status/actor matrix only; invalid transitions and duplicate COD collection/refund rejected. | API authorization and state-machine tests. |
 | T-SNAP-01 | Product/address/voucher/image changed after order | Order-time snapshots remain stable; image snapshot resolves immutable object/version content. | Persistence and storage-version integration. |
