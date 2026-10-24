@@ -107,7 +107,13 @@ Order-time Product, address, voucher, money, COD Payment and image facts are imm
 | POST | `/admin/inventory/adjustments` | JWT + inventory-write permission |
 | GET | `/admin/inventory/transactions` | JWT + inventory-read permission |
 
-Receipt line and inventory requests identify Products, not option combinations. The v1 server resolves the single operational warehouse; callers cannot select an arbitrary warehouse. Adjustments require a non-zero delta and a reason code. A successful command atomically updates source state, Product stock, the ledger and required audit.
+Receipt line and inventory requests identify Products, not option combinations. The v1 server resolves exactly one operational ACTIVE warehouse; callers cannot select an arbitrary warehouse. Missing or ambiguous resolution fails closed.
+
+Receipt lines use `product_id`, positive `quantity_received` and non-negative integer-VND `unit_cost`. Receipt states are DRAFT/CONFIRMED/CANCELLED: only DRAFT is editable; CONFIRM requires at least one valid line and posts one positive GOODS_RECEIPT movement per line; CANCEL is DRAFT-only and has no stock effect. Receipt state, balance/version, ledger and required audit commit atomically. Confirmed receipts and lines are immutable; corrections use a new authorized movement.
+
+Inventory uses balance key `(warehouse_id, product_id)`. A missing row reads as quantity 0/version 0. `version` is read-only and increments once per committed non-zero movement. Only OPENING, GOODS_RECEIPT, ORDER, ORDER_CANCEL_REVERSAL, RETURN_RESTOCK and ADJUSTMENT are accepted. Type/sign/source/actor/reversal, semantic deduplication and lock order are defined in [P1.4 Inventory Contract](refactor-v2/p1/P1.4-inventory-contract.md).
+
+POST `/api/v1/admin/inventory/adjustments` requires non-zero `quantity_delta`, controlled `reason_code` and stable `source_operation_id`; it may accept `expected_version` as an optional precondition. Reuse the source operation ID across transport retries; same ID with a changed canonical command conflicts. Successful stock-changing commands update source state, balance/version, one matching immutable ledger movement and required audit atomically. Client-provided warehouse, actor, final balance, movement type and source fields are not authoritative.
 
 ### Staff, RBAC, audit, reports, content and customers
 

@@ -1,6 +1,6 @@
 # 06 — Business Rules & State Machines
 
-> **Owner-approved target contract (2026-10-23):** the 31-table ERD v2 and DB-01..DB-12 defaults are approved except where a specific artifact records an unresolved approval conflict below. This document defines target behavior; runtime enforcement and acceptance tests remain pending. Do not introduce persistence outside the approved target without an explicit owner amendment.
+> **Owner-approved target contract (2026-10-23):** the 31-table ERD v2 and DB-01..DB-12 defaults are approved except where a specific artifact records an unresolved approval conflict below. This document defines target behavior; runtime enforcement and acceptance tests remain pending. Inventory balance, source/sign, receipt, concurrency and reconciliation details are governed by [P1.4 Inventory Contract](refactor-v2/p1/P1.4-inventory-contract.md). Do not introduce persistence outside the approved target without an explicit owner amendment.
 
 ## 1. Target status/type literals and approval caveats
 
@@ -57,7 +57,7 @@ Allowed transitions:
 
 Payment: `UNPAID → PAID → REFUNDED`. Only COD is in scope. Collection/refund requires an authorized actor, amount, timestamp and replay protection. A cancelled uncollected order remains UNPAID.
 
-GoodsReceipt: `DRAFT → CONFIRMED`, or `DRAFT → CANCELLED`. Confirming posts the receipt once and records actor/time. Confirmed stock-affecting lines are immutable; corrections are separate authorized inventory movements.
+GoodsReceipt: `DRAFT → CONFIRMED`, or `DRAFT → CANCELLED`. CONFIRM requires at least one valid line and atomically records one positive movement per line, balance/version, confirmed actor/time and audit; concurrent/repeated confirm cannot post twice. CANCEL is DRAFT-only and has no stock effect. Confirmed/cancelled receipts and confirmed lines are immutable; corrections use an authorized new movement. Full lock/source/deduplication rules are P1.4.
 
 ## 4. Business rules
 
@@ -67,7 +67,7 @@ GoodsReceipt: `DRAFT → CONFIRMED`, or `DRAFT → CANCELLED`. Confirming posts 
 | Price | Each Product owns its required integer-VND selling price; no implicit parent fallback. |
 | Total | `total_amount = subtotal - discount_amount + shipping_fee`; baseline shipping fee is 30,000 VND unless changed by explicit configuration. |
 | Voucher | Authenticated order-wide non-stackable voucher; global usage count; no catalog targeting or per-account usage ledger. |
-| Inventory | Cart and quote do not reserve stock. Deduct at the approved order transition; never allow negative on-hand quantity. |
+| Inventory | Cart and quote do not reserve stock. Deduct only when requested by the approved Order-owning command; balance is keyed by (warehouse_id, product_id), missing balance reads as zero, version increments per committed movement, bounds are enforced, and every balance change has an atomic ledger movement/audit. See P1.4; Order transition timing remains P1.7. |
 | Receipt | Only successful first confirmation adds stock; every movement has a source, actor and time. |
 | COD | No payment gateway callback. Collection/refund must be bound to the correct Order and authorized actor. |
 | Recipient snapshot | Order address facts are immutable once placed; editing the account address must not affect the Order. |

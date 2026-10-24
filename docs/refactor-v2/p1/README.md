@@ -32,6 +32,8 @@ Baseline: `demo1`; owner approvals recorded 2026-10-23. This folder documents de
 | `P1-use-case-target-mapping.md` | Target use-case flow and acceptance mapping. |
 | `P1-contract-reconciliation-2026-10-23.md` | Summary of approved target rules, retired legacy concepts and remaining implementation gates. |
 
+| `P1.4-inventory-contract.md` | Inventory balance/version, warehouse and receipt lifecycle, signed movement/source, reversals, semantic deduplication, lock order and reconciliation. |
+
 ## Frozen target rules
 
 - Exactly 31 target logical tables; no unapproved legacy or new tables.

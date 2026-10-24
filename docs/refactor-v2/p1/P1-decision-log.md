@@ -48,6 +48,10 @@ The following technical defaults were accepted by the owner on 2026-10-23. "Appr
 - DB-12 entity lifecycle/FK defaults are APPROVED. Numeric data, audit and image-retention durations remain TBD; automatic purging must not be implemented until those durations are decided.
 - The confirmed business scope stays single-merchant, COD-only, one operational warehouse, manual shipping, authenticated Cart/order placement, Product-ID inventory and integer-VND money.
 
+## DB-03 Inventory contract handoff
+
+The approved inventory/warehouse/receipt details for balance bounds, missing balances, versioning, signed movement/source, semantic deduplication, reversals, lock order, atomicity and ledger reconciliation are consolidated in [P1.4 Inventory Contract](P1.4-inventory-contract.md). This is a normative elaboration of the approved DB-03 decision, not approval to add tables, indexes, movement types or DDL. Runtime acceptance remains pending.
+
 ## APPROVED TARGET CONTRACT DETAILS — IMPLEMENTATION ACCEPTANCE REQUIRED
 
 | ID | Approved target contract | Remaining acceptance evidence |
