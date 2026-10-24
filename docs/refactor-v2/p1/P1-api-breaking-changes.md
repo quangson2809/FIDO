@@ -38,3 +38,12 @@ These breaking changes follow recorded owner decisions. Discrepancies in current
 - Voucher APIs use `discount_type=FIXED|PERCENT`; FIXED values are VND, PERCENT values are integer basis points (100 bps = 1%). `maximum_discount` and `minimum_order_value` are VND. All applied monetary outputs are whole VND.
 - Use target admin Voucher APIs API-83–86 and the P1.5 DTO contract. Legacy PUT DTO/routes are source evidence only; they must not reintroduce targeting, stacking or per-account quota.
 - Quote does not consume quota. Successful Order placement consumes one global use atomically; eligible cancellation release is invoked at the timing P1.7 defines. No release on refund/return by default. P1.6 continues to own Order-create idempotency/replay.
+ 
+## P1.7 Order, COD, shipping and refund contract changes
+
+- The target Order lifecycle is the explicit P1.7 state/actor/precondition/effect matrix. Order placement creates `PENDING`, COD Payment `UNPAID` and ShippingInfo `PENDING`; Inventory is not deducted until the guarded `PENDING → CONFIRMED` transition.
+- Replace generic status mutation with explicit `POST /api/v1/admin/orders/{orderId}/actions` commands. COD collection is only `COMPLETE_DELIVERY_AND_COLLECT_COD` and atomically updates Order, Payment, ShippingInfo and AuditLog. `RETURN_AND_REFUND_FULL` requires both `ORDER_AFTER_SALES` and `ORDER_PAYMENT`, pairs `COMPLETED → RETURNED` with one full offline COD refund and has no client-supplied refund amount.
+- `PATCH /api/v1/me/orders/{orderId}/recipient` is not part of the target API because `ORDER_ADDRESSES` is an immutable order-time snapshot. Do not mutate snapshot rows when saved addresses change.
+- Payment remains COD-only; one Payment per Order; no payment gateway, partial/multiple refund, refund-event table, automatic carrier callback, delivery-event table or Order timeline table.
+- Cancellation is allowed only from `PENDING`, `CONFIRMED`, `PREPARING` or `DELIVERY_FAILED` while Payment is `UNPAID`. Reverse already-posted stock deductions and release an applicable Voucher use at most once in the same transaction. `DELIVERY_FAILED` itself does not restore stock. `RETURNED` does not imply return-item sellability or automatic restock.
+- See [P1.7 Order/Payment Contract](P1.7-order-payment-contract.md) for full schema mapping, immutable snapshot policy, API/DTO actions, stable errors and P3.10 acceptance gates. These are documentation requirements, not claims that current runtime code conforms.
