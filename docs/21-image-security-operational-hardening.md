@@ -1,5 +1,7 @@
 # 21 — Phase 12 Image security & operational hardening — 2026-10-05
 
+> **Implementation-history boundary:** This document describes hardening work on the then-current backend. It is not the target ERD/API contract for the refactor. For target Product/image persistence, Cart/quote, Order-time snapshot and retention rules, follow `docs/00-source-of-truth.md`, the approved ERD v2, `docs/18-cart-checkout-image-integration.md`, `docs/19-order-image-snapshot.md` and `docs/20-image-retention-policy.md`.
+
 ## Scope
 
 Phase 12 hardens the existing backend-owned Product image upload/mutation flow. It does not add a new public API, schema, storage provider, asset registry or garbage collector.

@@ -1,5 +1,7 @@
 # 22 — Phase 13 Product Image Test Suite — 2026-10-05
 
+> **Historical test boundary:** These tests describe verification of the earlier Product-image implementation on its original schema/code. Reuse/adapt useful test intent, but do not treat old routes, Entities, migrations or image behavior as the target contract. The approved ERD v2 and current docs/18–20 define target behavior.
+
 ## Scope
 
 Phase 13 adds risk-based verification for the Product-image refinement already implemented in the backend. It does **not** introduce a new API, schema, storage provider, authorization rule, image lifecycle, or Order behavior.

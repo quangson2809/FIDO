@@ -1,81 +1,56 @@
-# 10 — Testing Strategy & Acceptance Matrix
+# 10 — Testing Strategy and ERD v2 Acceptance Matrix
 
-> **ERD v2 scope boundary (2026-10-22):** Existing test inventories include legacy V1–V6 persistence assumptions. Treat schema-specific tests as candidates to update for the 31-table target, while preserving tests for approved business invariants. Current evidence is recorded in [P0 test baseline](refactor-v2/p0/P0-test-baseline.md): backend CI failed on the audited SHA and the dedicated target-schema MySQL run was not run.
+This is the target testing plan for the approved 31-table ERD v2. Historical P0/Phase reports record results on their original code revisions only; they do not prove the target runtime has passed.
 
 ## 1. Test levels
 
 ### Unit
+- Order, COD Payment, ShippingInfo and GoodsReceipt transition/actor policy.
+- Product parent/child depth and cycle validation.
+- Typed Attribute value matching and same-Attribute option ownership.
+- Integer-VND calculation, HALF-UP order discount and largest-remainder line allocation with Product-ID tie-break.
+- Request mapping, safe error codes and DTO projection without persistence.
 
-- pure price selection;
-- Order transition policy;
-- Payment transition policy;
-- GoodsReceipt transition policy;
-- Category tree/leaf rules where implemented as pure logic;
-- mapper conversions without persistence.
+### Schema and persistence
+- Fresh isolated MySQL install creates exactly the 31 target tables and required system seed.
+- Assert SQL types, nullability, defaults, generated active-phone key, PK/FK, uniqueness, checks and indexes against the target dictionary.
+- Validate every JPA Entity, composite key and Repository query against the target schema; do not use the old schema as a compatibility baseline.
+- Run checker plus MySQL tests on the exact candidate SHA. H2-only results do not prove MySQL locking, generated columns or concurrency behavior.
 
-### Service/integration
+### API/security
+- JSON snake_case, standard response envelope, pagination and typed errors.
+- Public versus JWT access, Account ownership isolation, permission enforcement, last-SUPERADMIN guard and server-derived actor IDs.
+- No secret/entity leakage; no request-supplied authoritative price, total, stock, state or actor identity.
+- Product, Cart, quote, Order, receiving, inventory, report and content API fields match docs/04 and docs/05.
 
-- repository constraints and queries;
-- transaction rollback;
-- state + side-effect coupling;
-- inventory ledger creation;
-- role/permission mappings;
-- snapshot immutability.
+### Service/integration and transaction behavior
+- Transaction rollback covers the source aggregate, stock balance/ledger, voucher usage, Payment/state changes and required audit.
+- Snapshot immutability for Product, SKU/name/attributes/image, voucher and recipient address.
+- Test the actual target database and exact schema, not only mocks or controller unit tests.
 
-### API/controller
+## 2. Required target acceptance matrix
 
-- path/method/request binding;
-- JSON snake_case and envelope;
-- pagination;
-- JWT/public access boundaries;
-- ownership and permission rejection;
-- response DTO does not leak secrets/entities.
-
-### Concurrency
-
-Use real transactional integration testing appropriate to the configured DB stack for Order confirm, GoodsReceipt confirm and payment/idempotent commands. Mock-only tests are insufficient for locking behavior.
-
-## 2. Analyst acceptance criteria AC-01..AC-10
-
-| AC | Required automated behavior |
+| ID | Required automated behavior |
 |---|---|
-| AC-01 | Variant override price is used; otherwise Product base price; Order snapshot preserves chosen price |
-| AC-02 | Guest can logically create valid COD Order; status PENDING; no inventory decrement |
-| AC-03 | Concurrent PENDING confirmation beyond stock: only stock-feasible confirms succeed, no negative/duplicate deduction |
-| AC-04 | Recipient editable in PENDING/CONFIRMED/PREPARING, rejected from SHIPPING |
-| AC-05 | Invalid Order transition rejected; DELIVERY_FAILED only retries to SHIPPING or cancels |
-| AC-06 | UNPAID Order cannot COMPLETE; repeated PAID recording does not duplicate collection |
-| AC-07 | Cancellation after deduction restores exact quantity with ledger; PENDING cancellation leaves stock unchanged |
-| AC-08 | GoodsReceipt CONFIRMED increments stock once; repeated confirm has no second increment |
-| AC-09 | Return policy behavior/recorded outcome follows 2-day + tags baseline; accepted full return -> RETURNED |
-| AC-10 | Revenue counts COMPLETED; RETURNED adjusts retained sales |
+| T-01 | Parent/child Products have independent IDs, SKUs, required prices and stock; depth > 1, self-parent and cycles are rejected. |
+| T-02 | Attributes support OPTION/TEXT/NUMBER/BOOLEAN; exactly one matching typed value is accepted; cross-Attribute options are rejected; attributes never generate Products. |
+| T-03 | Duplicate Product SKU and duplicate active phone are rejected; a phone becomes reusable after Account soft deletion. |
+| T-04 | Authenticated Cart lines use product_id; non-positive quantity and foreign Cart/item ownership are rejected. If multiple Cart rows exist, the current-Cart selection policy must be explicitly agreed and tested; do not infer one-active-Cart uniqueness or a merge from the schema. |
+| T-05 | Quote is stateless/advisory: no quote row/ID, stock reservation, voucher use or Order side effect. Order placement re-reads and reprices current data. |
+| T-06 | Same Account-scoped idempotency key and same semantic payload replays the committed Order; changed payload conflicts; cross-Account access is isolated; concurrent duplicates commit once. |
+| T-07 | Integer-VND totals reconcile; HALF-UP and largest-remainder allocation are deterministic with ascending Product-ID tie-break. |
+| T-08 | Inventory balance/ledger remains consistent under last-stock race, receipt double-confirm, same source event with different request keys, cancellation reversal, eligible return restock and adjustment. |
+| T-09 | Voucher global quota cannot be exceeded under concurrent final-use requests; eligible cancellation restores use at most once. No catalog targeting or per-account usage ledger is introduced. |
+| T-10 | Approved Order/Payment/ShippingInfo state and actor transitions pass; duplicate COD collection/refund is rejected; one full refund maximum in v1. |
+| T-11 | Injected order/receipt/cancellation failures roll back source state, balance, ledger, voucher/Payment changes and audit atomically. |
+| T-12 | Product/image changes do not rewrite a placed Order's image snapshot; snapshot points to immutable versioned content for the applicable retention window. |
+| T-13 | Report calculations, timezone/date boundaries, content publication and audit redaction match the target contracts. |
+| T-14 | Frontend lint/type-check/build and representative 375/768/1024/1440 product, Cart, checkout, inventory and admin workflows use target DTOs. |
 
-AC-02's guest identity/session plumbing may remain blocked by the explicit guest-session security TBD; keep the business service tests separate from the unresolved authentication/session mechanism.
+## 3. Inventory and money evidence
 
-## 3. Critical catalog tests
+For every stock-changing command, assert the resulting balance and exactly one expected append-only ledger movement; validate semantic source deduplication independently of request idempotency keys. Reconcile every Order/line/payment/refund report total in integer VND.
 
-- self-parent Category rejected;
-- cycle rejected;
-- Product cannot use non-leaf Category;
-- cannot add child under Category containing Product until Product moved;
-- Variant SizeValue from wrong SizeSystem rejected;
-- duplicate Product+Size+Color rejected;
-- referenced Variant identity cannot be repurposed;
-- effective availability combines sale status + inventory.
+## 4. Completion gate
 
-## 4. Inventory ledger tests
-
-For every stock-changing command, assert both current inventory and exactly one expected ledger movement. Never verify only final quantity.
-
-## 5. Security tests
-
-- public vs JWT routes;
-- `/me` ownership isolation;
-- admin/employee permission isolation;
-- password_hash absent from responses/logs;
-- invalid JWT/expired JWT behavior follows current security stack;
-- audit actor always server-derived.
-
-## 6. Phase gate
-
-A phase is not complete merely because compilation passes. It must pass its relevant rule/contract/integration tests and leave no known speculative business behavior hidden behind defaults.
+Compilation alone does not close a phase. Acceptance must pass on the exact candidate SHA with schema, module, security, transaction, concurrency and client evidence. Report tests as PASS only when the run and tested SHA are verified; state untested behaviors explicitly.

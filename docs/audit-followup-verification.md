@@ -1,5 +1,7 @@
 # FIDO audit follow-up — 2026-10-10
 
+> **Historical branch evidence:** This report records findings and browser/code verification on `feature/client-storefront-ui-ux-improvements` at the SHAs listed below. It is not the target schema/API contract for the ERD v2 refactor. For the current Product, Cart, order and money model, use the owner-approved ERD v2 and active target contracts linked from `docs/README.md`.
+
 ## Revision and finding validation
 
 - Branch: `feature/client-storefront-ui-ux-improvements`.

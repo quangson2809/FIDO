@@ -1,33 +1,32 @@
-# 18 — Phase 8 Cart / Checkout image integration — 2026-10-04
+# 18 — Cart / Checkout Product Image Contract
 
-> **Pre-refactor behavior note (2026-10-22):** This document records the current Variant-based Cart/Checkout image behavior. The approved ERD v2 has no checkout_quotes table and ORDER_ITEMS has no image_url_snapshot column. Do not assume this baseline image/snapshot implementation is the target persistence contract; follow the approved 31-table ERD and its migration-retention gate.
+> This target-aligned document supersedes the original Phase 8 implementation notes wherever they depended on ProductVariant or the legacy quote contract. The owner-approved ERD v2 stores Cart lines by Product ID and includes ORDER_ITEMS.image_url_snapshot. See docs/00, docs/03–07 and docs/19–20 for the controlling target rules.
 
-## Scope
+## 1. Cart and quote image behavior
 
-This refinement integrates the current Product cover into Cart and Checkout presentation without changing Cart persistence or historical Order image semantics.
+- CART_ITEMS.product_id identifies the Product directly. An image lookup must not pass through a variant/option-combination identity.
+- Cart and stateless checkout quote read the current primary image from Product/Image data. They do not snapshot images, reserve stock or persist quote records.
+- If no current primary image is available, the response follows the nullable primary-image contract in docs/05; do not synthesize a variant-specific image.
+- Image projection fields in Cart/quote must match the target response DTO. Do not preserve old image_url/thumbnail fields solely as legacy compatibility fields without adding them to the target DTO contract.
 
-## Locked behavior
+## 2. Order-time image snapshot
 
-- `CartItemDto` adds nullable `thumbnail`.
-- `CheckoutItemDto` adds nullable `thumbnail`.
-- `CartItemDto.image_url` is retained for backward compatibility; `image_url` and `thumbnail` resolve from the same current Product cover.
-- Cover resolution follows `ProductVariant -> Product -> ProductImage(sort_order = 0)`.
-- A Product with no current cover returns `thumbnail = null`.
-- Cart and checkout quote are live views: Product cover changes are visible on the next read/quote.
-- Cart does not persist or snapshot an image URL.
-- Checkout quote does not create an image snapshot; it uses the current cover while recalculating the live Cart view.
-- Historical OrderItem image behavior is unchanged and remains snapshot-based.
+- When an Order is placed, target ORDER_ITEMS.image_url_snapshot records the image reference used at that point according to DB-07.
+- The saved reference must resolve to immutable object/version content for the required history window. A URL pointing at mutable/overwriteable content is not an immutable snapshot.
+- Later Product cover edits, image reordering or asset replacement must not change what an existing Order displays.
+- Numeric retention duration and legal deletion/anonymization exceptions remain TBD under DB-12. No scheduled asset purge is allowed before approval.
 
-## Required verification
+## 3. Verification
 
-- current cover exists -> Cart and Checkout return it as `thumbnail`;
-- no Product image -> `thumbnail = null`;
-- changing the Product cover -> the next Cart read and Checkout quote return the new cover;
-- deleting the previous cover and promoting the next image to `sort_order = 0` -> the next Cart read and Checkout quote return the promoted cover.
+- Product has a primary image -> Cart and quote expose the target Product image projection.
+- Product has no primary image -> target nullable behavior is returned without inventing a placeholder.
+- Updating the current primary image affects the next Cart/quote read but not an existing Order snapshot.
+- Replacing/deleting a referenced current asset must not break the history window of a placed Order.
+- Cross-account Cart/Order access is rejected, and image selection does not bypass Product visibility or permission checks.
 
-## Architecture boundary
+## 4. Architecture boundary
 
-- `product` owns Product/Image persistence and resolves the current cover through its read contract.
-- `cart` consumes the Product read contract; it does not access Product repositories directly.
-- `order` receives the recalculated checkout Cart view and exposes the same current-cover thumbnail in the quote response.
-- No Cart/Checkout schema change, cache, snapshot column, new endpoint or cross-module Repository dependency is introduced.
+- product owns Product/Image persistence and primary-image resolution.
+- cart reads the Product contract and owns Cart lines.
+- order owns quote orchestration and Order-time image snapshot writes.
+- Cross-module writes call the owning service; no direct cross-module Repository access.

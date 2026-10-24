@@ -1,122 +1,51 @@
-# 11 — ERD v2 Implementation Roadmap (Clean Schema Reset)
+# 11 — FIDO ERD v2 Implementation Phases
 
-> **Current execution authority — 2026-10-22.** This roadmap replaces the pre-ERD v2 nine-phase plan. The previous version is preserved at [docs/archive/11-implementation-phases-pre-erd-v2.md](archive/11-implementation-phases-pre-erd-v2.md) for historical context only. Do not use its 28-table baseline or ProductVariant-era implementation instructions as target requirements.
+> **Current authority — 2026-10-23:** the owner-approved 31-table ERD v2, target business defaults and Clean Schema Reset policy are recorded. This roadmap describes delivery against that target only. Historical audit reports are evidence, not target requirements.
 
-## 1. Baseline and status
+## 1. Current status
 
-| Area | Verified current state | Meaning |
-|---|---|---|
-| Legacy implementation | Flyway V1–V6 describe 32 application tables | Source-code and API dependency evidence only; not the target schema |
-| Target model | Owner-confirmed ERD v2 defines 31 logical tables | Schema authority for the refactor |
-| Target DDL and system seed | Present under `backend/src/main/resources/db/clean-reset/` | Isolated; not yet the default runtime Flyway location |
-| Application integration | Not complete | Entities, repositories, services, DTOs, API and frontend still need alignment |
-| P0 audit deliverable | PASS for audit scope on the separate audit branch | Does not mean backend CI passed |
-| Exact-SHA backend CI | Historical P0 result: 196 tests completed, 3 failed, 1 skipped on the audited P0 SHA | This is not the current `demo1` verification result; exact-SHA CI for this reconciliation PR is required |
-| Target-schema MySQL verification | NOT RUN for the audited SHA | Do not claim the new target passes MySQL until an exact-SHA run succeeds |
+- Target schema and owner decisions: **approved**.
+- Clean-reset DDL/system seed: isolated and subject to exact-SHA schema verification.
+- Entity, Repository, Service, API/DTO, frontend and workflow alignment: **implementation acceptance open**.
+- Numeric retention durations and anonymization exceptions: **TBD**.
+- No database reset was performed by documenting or approving the target.
 
-Detailed evidence: [P0 baseline audit](refactor-v2/p0/P0-baseline-audit.md), [test baseline](refactor-v2/p0/P0-test-baseline.md), [risk register](refactor-v2/p0/P0-risk-register.md), and [exit gate](refactor-v2/p0/P0-exit-gate.md).
+## 2. P2 — Implement the target model
 
-## 2. Authority and decision rules
+**Goal:** make the application use the approved target model end-to-end without retaining obsolete persistence concepts merely for compatibility.
 
-Use the following order when documents conflict:
+1. Reconfirm the target commit and work from a new feature branch based on the exact remote `demo1` SHA. Preserve unrelated work; do not use force-push or rewrite unrelated history.
+2. Apply the target-first schema and required system seed to an empty, isolated disposable MySQL database. Keep the destructive reset path explicitly gated by environment and database identity.
+3. Align package-by-feature Entities, composite keys, Repositories, owning Services and transactions to the target table/column contract.
+4. Align catalog and APIs to Product identity, explicit parent/child Products, typed descriptive attributes, row-owned SKU/price/stock and active-phone lifecycle.
+5. Align Cart, checkout, Order, voucher, Payment, shipping and snapshots to the authenticated, stateless-quote, integer-VND and idempotency contracts.
+6. Align procurement and inventory to Product IDs, the resolved operational warehouse, guarded balances, append-only movements, source deduplication and atomic audit.
+7. Align public/admin DTOs and frontend types/API clients/screens. Do not keep a parallel wire contract whose identifiers or money semantics contradict the target.
+8. Seed system roles/permissions through migrations. Keep demo fixtures separate; use external configuration for bootstrap SUPERADMIN credentials.
 
-1. [Owner-confirmed target ERD](refactor/phase-1-erd-v2-approved.mmd) — target tables and relationships.
-2. [Target contract](refactor/phase-1-erd-v2-contract.md) — source/target compatibility gaps and target boundaries.
-3. [Target physical data dictionary](refactor-v2/p1/P1-data-dictionary.csv) and [owner approval record](refactor-v2/p1/P1-owner-approval-2026-10-23.md) — target columns/constraints plus accepted physical defaults.
-4. [Owner decision questionnaire](refactor/phase-1-owner-decision-questionnaire.md) — working defaults and decisions that still need explicit approval.
-5. [Clean Schema Reset runbook](refactor/clean-schema-reset-runbook.md) — safe test/reset procedure.
-6. [Source of truth](00-source-of-truth.md), [business/TBD register](12-tbd-out-of-scope.md), and [technical decision log](15-technical-decisions.md) — API/business compatibility and historical decisions.
+## 3. P3 — Acceptance and hardening
 
-The legacy implementation and V1–V6 migrations identify code paths and current behavior; they do not override the target ERD. Clean Schema Reset means **do not migrate or preserve disposable development/test rows**. It does not remove the need to decide which API/business behaviors the rewritten application must support.
+Required evidence on the exact candidate SHA:
 
-Classify open items as:
-- **HARD BLOCK** — requires an owner/business/API/security/data-semantics decision before the affected behavior can be implemented.
-- **TECHNICAL DECISION** — semantics are fixed; record and test the implementation choice.
-- **DEFERRED / OUT OF SCOPE** — explicitly excluded from this delivery; do not implement it indirectly through schema or endpoint additions.
+- Fresh MySQL install creates precisely the approved logical table set and passes PK/FK/unique/check/default/index assertions.
+- Backend entity and repository mappings validate against the created schema.
+- Auth/RBAC, Product/attribute, Cart ownership, checkout repricing, idempotency, voucher limits, Order/COD/shipping, receiving, stock ledger and audit pass unit/integration tests.
+- Concurrent stock changes, duplicate receipt confirmation, same-key order requests, conflicting payloads, voucher final-use race and injected rollback are tested on MySQL.
+- Integer-VND totals and discount allocation reconcile across line, order, payment, refund, report and frontend display.
+- Order-time Product/address/voucher/image snapshots remain stable after source records change.
+- Frontend lint, type-check, build and representative responsive workflows pass using the target DTOs.
+- CI verifies the exact candidate SHA. Report each workflow/test result and any unverified item accurately.
 
-## 3. P0 — Baseline audit and documentation
+## 4. P4 — Integrate and close
 
-**Goal:** establish a reliable source baseline, inventory the migration and module dependencies, and record incompatible assumptions before runtime changes.
+- Review the full diff for duplicate abstractions, direct cross-module Repository writes, dead code, unneeded compatibility branches and secrets.
+- Confirm no test relies on an unapproved table/field or old contract.
+- Open a focused PR into `demo1`, attach exact-SHA checks and acceptance evidence, and merge only through the repository's accepted process.
+- Reconfirm the merged SHA and rerun required checks against it.
 
-Required evidence:
-- exact source commit and complete V1–V6 inventory;
-- 31-target-table impact matrix, module dependency map and risk register;
-- exact-SHA test/CI result with failures and unrun checks reported truthfully;
-- no target runtime migration activation or destructive database operation.
+## 5. Scope and safety constraints
 
-**Historical P0 gate record:** the audit deliverable was marked PASS for its own scope, while backend CI failed on that audited SHA and target-schema MySQL had not yet been run. Do not apply this old result to the current reconciliation branch; require current exact-SHA checks.
-
-## 4. P1 — Freeze target contract and physical schema
-
-**Goal:** close or explicitly disposition every material decision before the target schema becomes the default runtime schema.
-
-Owner decision review completed on 2026-10-23: DB-03/05 proposals, DB-12 lifecycle/FK defaults and the proposed DB-01/02/06–DB-11/API defaults were approved. Keep numeric retention duration/anonymization exceptions TBD and do not schedule purges until approved.
-
-Required engineering work carried forward into P2:
-- synchronize target ERD, physical dictionary, SQL and all data/UC/API/DTO documentation with the approval record;
-- implement active-phone soft delete, one-level parent/child Product semantics, typed attributes and Product-ID DTOs;
-- implement inventory source/sign/dedupe/reversal/concurrency semantics and idempotent order placement;
-- implement global voucher quota, immutable order snapshots, COD transitions/full refund and integer-VND rounding/allocation;
-- implement target-first Flyway and seed/bootstrap; keep legacy V1–V6 history unchanged;
-- validate physical DDL, FK lifecycle, UTC timestamps, allowed literals and field nullability against MySQL;
-- preserve clear separation between owner-approved decisions and implementation/test acceptance.
-
-**Gate:** every material decision is either approved with traceable evidence or explicitly excluded/deferred without contradicting the target ERD. No unresolved HARD BLOCK may be treated as a technical default.
-
-## 5. P2 — Implement the clean target persistence and align the application
-
-**Goal:** replace legacy assumptions with the approved 31-table target while preserving only the API/business behaviors still in scope.
-
-Required work:
-- establish the approved target-first Flyway baseline and system seed; do not rewrite historical V1–V6 files and expect existing Flyway histories to upgrade;
-- align entity/repository mappings, module-owned services, transaction boundaries and architecture tests;
-- update controllers, DTOs, validation, error behavior, authorization and frontend API callers as one contract-aligned change;
-- remove or rewrite tests that assert superseded storage details, while retaining tests for approved business invariants;
-- preserve atomicity and retry/concurrency behavior for order placement, inventory movements and goods-receipt confirmation;
-- keep demo fixtures separate from system seeds and free of credentials.
-
-**Safety boundary:** never run Clean Schema Reset against production, shared integration, staging, or any database containing data that must remain. A reset is permitted only after the exact database is verified disposable.
-
-**Gate:** clean target DDL and seed are applied successfully to a disposable, empty supported MySQL database; target mappings and relevant service/API tests pass; no unresolved contract blocker is hidden by schema changes.
-
-## 6. P3 — Acceptance and release evidence
-
-**Goal:** prove the integrated target works rather than relying on compilation or a schema table count alone.
-
-Required evidence:
-- an exact-commit MySQL clean-install test and full backend test/build result;
-- table, column, key, CHECK, index, seed and Flyway validation for the target;
-- representative end-to-end tests for authentication/RBAC, catalog, cart/checkout, orders/COD, inventory/receiving, reporting/content and error/authorization paths;
-- rollback, duplicate request, concurrency, stock and money invariants where applicable;
-- architecture-boundary checks and frontend typecheck/tests/build for the changed contract;
-- review of the final diff, credentials/secrets, dead code and out-of-scope changes.
-
-**Gate:** publish exact SHA, commands, test results, unresolved issues and scope. Do not label the target accepted while a required test failed or was not run.
-
-## 7. Phase report template
-
-```text
-PHASE:
-STATUS: PASS | PARTIAL | BLOCKED | FAIL
-BASE SHA:
-FINAL SHA:
-SOURCE / API CONTRACTS CHANGED:
-SCHEMA / MIGRATION CHANGES:
-DECISIONS APPROVED:
-TESTS RUN + EXACT RESULTS:
-MYSQL TARGET VERIFICATION:
-ARCHITECTURE REVIEW:
-OPEN HARD BLOCKS:
-DEFERRED / OUT OF SCOPE:
-NEXT GATE READY: YES | NO
-```
-
-
-
-## 1A. P1 reconciliation snapshot — 2026-10-23
-
-- Verified base: `origin/demo1` SHA `551d91dab8b47ac709283f9222667b06c6b1b6de`; reconciliation branch starts from that exact commit.
-- Current draft inventory at base: 31 target tables, 228 logical fields, 229 physical SQL columns including generated `accounts.phone_active_key`.
-- Earlier MySQL/backend runs `39904931447` and `39904931498` are historical evidence at prior commits, not validation of the reconciliation changes.
-- The current exact-commit checker/workflow result is pending until the reconciliation PR runs. No current PASS is implied here.
-- Status remains **PARTIAL / P2 IMPLEMENTATION AUTHORIZED UNDER THE DISPOSABLE-DB GATE**. The owner decision portion of P1 is recorded; runtime mappings, business/security/concurrency acceptance tests, exact-SHA CI and numeric retention durations/anonymization exceptions remain outstanding.
+- The target is single-merchant, COD-only, one operational warehouse in v1 and manual shipping.
+- Guest checkout, persistent checkout quotes, stock reservations, catalog-targeted vouchers, per-account voucher quota ledgers, payment/shipping event tables, detailed item-level return workflows and other unapproved tables are out of scope.
+- Clean Schema Reset authorizes destructive work only against a specifically verified disposable development/test database. It never authorizes resetting production, staging, shared integration or persistent business data.
+- Owner approval freezes behavior; it does not imply implementation or tests have passed.

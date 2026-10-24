@@ -1,57 +1,43 @@
-# 08 — Security, RBAC, Audit & Personal Data
+# 08 — Security, RBAC, Audit and Personal Data
 
-> **ERD v2 scope boundary (2026-10-22):** Existing account/security behavior remains the source contract. The ERD does not mark ACCOUNTS.phone or email unique, while the isolated target DDL currently makes phone required+unique as a working default. Resolve this discrepancy before accepting or activating the target DDL; do not silently assume uniqueness or weaken login identity guarantees.
+## 1. Authentication and Account lifecycle
 
+- Protected routes use Bearer JWT. The authenticated Account/actor ID is derived from the security principal, never trusted from the request body.
+- Phone is the login identifier. Enforce uniqueness among active Accounts; the phone may be reused after soft deletion through the approved active-phone key/index. Do not impose email uniqueness absent an approved constraint.
+- Account statuses are ACTIVE, PENDING_APPROVAL, LOCKED and SUSPENDED. Soft deletion is represented separately by the approved lifecycle field.
+- Store only a password hash. Never log or return password hashes, tokens, OTP values, secrets or raw Authorization headers.
+- Public routes are limited to approved registration/login and public catalog/content reads. Persisted Cart operations and order placement require authentication. Guest Cart, guest checkout, phone-only order lookup and guest-Cart merging are out of target scope.
+- Do not create a refresh-token, OTP or other authentication API unless it is included in the current approved API contract.
 
-## 1. Authentication
+## 2. Authorization and RBAC
 
-- Store only `password_hash`; never log or return it.
-- Authenticated endpoints use Bearer JWT.
-- Minimum claims: `sub=account_id`, `iat`, `exp`.
-- Actor fields for commands come from authenticated context, never request body.
-- Repository decision: phone is the current login identifier.
-- No refresh-token API is baseline.
+- Enforce permission checks in backend services, not only through UI visibility.
+- The target uses ACCOUNTS, ROLES, PERMISSIONS, ACCOUNT_ROLES and ROLE_PERMISSIONS relationships.
+- Required system roles/permissions are seeded through Flyway. SUPERADMIN bootstrap credentials come from external secret/configuration, never committed source or demo seed.
+- Protect the last-SUPERADMIN invariant under concurrent role updates. Privileged role/permission changes are audited in the same transaction as the owning mutation.
+- SUPERADMIN is the highest technical administrator. Do not silently grant business capabilities to ADMIN or employee roles; role grants must follow approved configuration.
+- Catalog capabilities include CATALOG_READ and CATALOG_WRITE. Define permissions in the target role/permission model and test each protected route; a permission code is not itself a grant.
 
-## 2. Authorization
+## 3. Account and data ownership
 
-- Authorization is enforced in backend, not only through UI visibility.
-- Business requirement: highest administrator has highest privilege; employees can perform only granted operations.
-- Repository decision: `SUPERADMIN` is the highest technical administrator; `ADMIN` identifies employees but does not automatically inherit business capabilities.
-- The detailed employee role/group -> capability matrix remains business TBD.
-- Technical capability identifiers needed to encode already-required endpoint authorization may be defined in `docs/15-technical-decisions.md`; defining a code is not the same as granting it to a role.
-- Role/Permission mappings live in the `account` module.
+- Every /me resource is scoped to the authenticated Account. Reject cross-account reads and writes.
+- Account addresses are mutable Account-owned records. Placed ORDER_ADDRESSES are immutable snapshots and must not change when an Account address is edited.
+- Staff/customer administration uses actual Accounts and linked Orders; do not create synthetic guest identities.
+- Do not hard-delete Accounts, placed Orders, COD Payment facts, inventory ledger rows or audit history through ordinary CRUD operations. Apply the approved FK defaults: RESTRICT for business/history references; CASCADE only for explicitly disposable dependent data.
 
-## 3. RBAC administration
+## 4. Audit
 
-Current API supports staff account list/detail/create/update role set, access-control view, Role CRUD and Permission CRUD.
+Audit important privileged and transactional operations, including role/permission changes, Product/catalog changes, stock adjustments/receipt confirmation, Order transitions, COD collection/refund and eligible returns.
 
-Rules:
-- account role update uses full `role_ids` replacement when provided; staff updates must retain ADMIN or SUPERADMIN, and cannot remove the last SUPERADMIN;
-- role permission update uses full `permission_ids` replacement when provided;
-- Role delete only when no Account references it;
-- Permission delete only when no Role references it;
-- schema has no account enabled/status lifecycle; do not implement disable endpoint.
+The target audit record captures actor, action, entity identity, before/after data and correlation information as approved by the data dictionary. Redact password/hash, tokens, OTP, cookies/session IDs, secrets, raw Authorization headers and unnecessary PII.
 
-## 4. Catalog capabilities
+## 5. Personal data, retention and transport
 
-Phase 3 technical identifiers:
-- `CATALOG_READ`: admin Catalog read APIs #27, #28, #33;
-- `CATALOG_WRITE`: Catalog mutation APIs #29–32 and #34–45.
+- Collect only necessary phone/email/address/profile information.
+- Order recipient and other approved order-time snapshots remain stable for transaction/history needs.
+- Numeric retention periods for audit, images and personal/business data, and legal anonymization/deletion exceptions, remain TBD under DB-12. Do not run scheduled purging until approved.
+- Use HTTPS in deployed environments, least-privilege database access and safe typed errors. Never return SQL details, stack traces or secrets.
 
-`SUPERADMIN` may perform both. Do not automatically assign either permission to `ADMIN` or any employee role.
+## 6. Acceptance requirements
 
-## 5. Audit
-
-Audit important operations including role/permission changes, product/price/catalog changes, inventory adjustments/receipt confirmation, Order transitions, COD/refund and return/exchange outcomes.
-
-Audit minimum: actor, timestamp, action, target type/id, safe description. Never log clear password, token, secret or unnecessary PII.
-
-## 6. PII
-
-Collect only necessary phone/email/address/profile data. Order receiver snapshots are preserved for transaction/history requirements. Retention/deletion periods are not numerically locked.
-
-Sensitive traffic requires HTTPS in deployment. DB access follows least privilege.
-
-## 7. Guest lookup — out of target scope
-
-The older guest-order lookup wording is superseded. Owner decision A-03 requires login before persisted Cart use and order placement, and the current 77-endpoint API inventory does not include `/api/v1/orders/lookup`. Do not implement guest lookup, phone-only authorization, an OTP challenge, anonymous sessions or cart merge unless the owner explicitly amends target scope.
+Test generic credential failures, each Account lifecycle status, active-phone uniqueness and reuse after soft delete, JWT expiry/invalidity, /me ownership, permission isolation, last-SUPERADMIN concurrent changes, audit atomicity and sensitive-data redaction. A schema-only or documentation check does not prove these runtime guarantees.

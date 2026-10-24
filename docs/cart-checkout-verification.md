@@ -1,15 +1,15 @@
 # Cart reset and checkout confirmation — focused verification
 
-> **Scope update (2026-10-22):** The guest-flow note in the original verification report is historical wording. The owner decision dated 2026-10-05 requires login before persisted Cart use or Order placement. Guest sessions/verification are out of target scope unless explicitly re-approved; do not treat guest flow as a pending implementation slice.
+> **Historical implementation boundary:** This report was produced against the named legacy branch/baseline. Its code observations and pre-approval design notes are historical evidence, not the ERD v2 target contract. Owner approval dated 2026-10-23 and current `docs/04–07`/`docs/15` define current Cart, Product-ID, quote, voucher and order-idempotency rules. The guest-flow note below remains historical: authenticated Cart/order placement is the target; guest flows are out of scope.
 
 Base: `feature/admin-ui-ux-improvements` at `88d1e1d599c309a85c47b16864f11fe41605ff83`.
 Branch: `feature/cart-checkout-voucher-improvements`. Overall status: **PARTIAL** (material decisions below).
 
 ## Scope and design
 
-Observed from repository code on 2026-10-09: `/checkout` called order creation directly; creation did not consume its cart. Voucher has only identifier/code; latest docs/12 and docs/15 still defer voucher and durable create-order dedupe.
+Observed from repository code on 2026-10-09: `/checkout` called order creation directly and creation did not consume its Cart. At that baseline, voucher/deduplication contracts were still being resolved; that status is superseded by owner approval dated 2026-10-23 and the current docs/06–07/15 target rules. Runtime alignment and acceptance tests remain pending.
 
-Design: keep the FIDO storefront colors/typography and existing API service. A feature-owned native dialog separates reviewing a quote from creating an order; recipient, variant/quantity and all COD amounts precede cancel/confirm controls. Busy, stale quote, changed price, backend error and success are explicit states. Native modal focus/Escape behavior follows the existing Admin modal pattern without importing Admin-only styles. No external reference branding/assets or new production dependencies.
+Design: keep the FIDO storefront colors/typography and existing API service. A feature-owned native dialog separates reviewing a quote from creating an order; recipient, Product/quantity and all COD amounts precede cancel/confirm controls. Busy, stale quote, changed price, backend error and success are explicit states. Native modal focus/Escape behavior follows the existing Admin modal pattern without importing Admin-only styles. No external reference branding/assets or new production dependencies.
 
 ## Verification evidence
 

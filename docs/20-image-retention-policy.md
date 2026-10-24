@@ -1,55 +1,33 @@
-# 20 — Phase 11 Image retention policy — 2026-10-05
+# 20 — Image Retention and Historical Access Policy
 
-> **Pre-refactor behavior note (2026-10-22):** The snapshot assumptions below describe the current source schema. Target ERD v2 has no ORDER_ITEMS.image_url_snapshot field; historical URLs therefore require an explicit archive/retention decision during migration. This document does not override the owner-confirmed 31-table target.
+> This is the target image policy summary. Earlier Phase 11 notes are superseded where they conflict with the approved ERD v2 or owner decision DB-07/DB-12.
 
-## Scope
+## 1. Required behavior
 
-Phase 11 locks the lifecycle boundary for ProductImage removal. It does not introduce remote-asset cleanup infrastructure.
+- ORDER_ITEMS.image_url_snapshot is part of the target order-time snapshot contract.
+- A snapshot reference must identify immutable object/version content. A mutable URL alone is insufficient if the referenced content can be overwritten or deleted.
+- Changing a Product's current primary image must not alter the image associated with an already-placed OrderItem.
+- Asset access for placed Orders must follow the same Account ownership and administrative permission checks as the corresponding Order.
 
-## Locked MVP behavior
+## 2. Retention status
 
-```text
-REMOVE ProductImage
--> delete the ProductImage catalog/DB association
--> normalize remaining ProductImage sort_order where applicable
--> do not delete the remote asset
-```
+The owner approved immutable order-time image snapshots and stable content/version access. The numeric retention duration for image assets remains TBD, as do numeric audit and personal/business data retention periods and legal anonymization/deletion exceptions.
 
-This applies to the dedicated image removal flow and to existing catalog replacement flows that remove ProductImage rows. Remote storage is not part of the ProductImage removal transaction.
+Until those values are approved:
+- do not schedule automatic asset deletion/purging;
+- do not overwrite or delete a referenced object/version in a way that breaks an existing Order snapshot;
+- do not invent retention durations in application configuration, background jobs or storage lifecycle rules;
+- document any storage lifecycle policy and verify it cannot delete referenced Order snapshots prematurely.
 
-## Rationale
+## 3. Safe removal and cleanup
 
-OrderItem image URLs are historical snapshots. An Order created while a Product image URL is current may continue to expose that same URL after the Product gallery is reordered, replaced or the ProductImage association is removed.
+An image no longer referenced by a current Product is not automatically safe to delete: it may still be referenced by an OrderItem snapshot. A cleanup process, if introduced later, must prove that no retained Order snapshot depends on the object/version and must obey the approved DB-12 retention/anonymization policy.
 
-Deleting the remote asset during catalog removal would therefore make an otherwise valid historical snapshot point at a missing resource. Catalog cleanup and historical media retention are separate concerns.
+Clean Schema Reset is independent from image retention and is permitted only for a verified disposable development/test database. It never authorizes resetting production, staging, shared integration or persistent business data.
 
-## Architecture boundary
+## 4. Verification
 
-- `product_images` owns the current catalog association only.
-- `order_items.image_url_snapshot` owns the historical URL captured at Order creation.
-- `ProductImageAdminService.removeImage(...)` removes only catalog persistence and reorders the remaining gallery.
-- `ImageStorageGateway` remains upload-only in this phase; no remote delete capability is exposed to catalog removal code.
-- ImgBB/provider delete tokens or provider asset IDs are not persisted for cleanup.
-- No new table, migration, scheduler, background job or cross-module reference tracker is introduced.
-
-The existing Order image snapshot regression test proves that removing an image from the current Product gallery does not rewrite historical Order detail/list image URLs. The Product image admin tests separately prove that the ProductImage DB association is actually removed and the remaining gallery order is normalized.
-
-## Deferred by YAGNI
-
-Do not implement these until cleanup becomes a real requirement with an approved lifecycle:
-
-- asset registry;
-- reference tracking;
-- retention period;
-- garbage-collection job;
-- remote provider deletion workflow.
-
-A future cleanup phase must first define what constitutes an unreferenced asset, how historical references are tracked, the retention window, failure/retry behavior and provider deletion semantics. Phase 11 intentionally makes none of those decisions.
-
-## Compatibility
-
-- No API contract change.
-- No schema change.
-- No Order snapshot/backfill change.
-- No remote provider contract change.
-- Existing ProductImage delete authorization and transaction boundary remain unchanged.
+- Snapshot version remains accessible after Product image replacement.
+- Cleanup never removes an object/version referenced by a protected Order snapshot.
+- Asset URL/object permissions do not expose another Account's Order.
+- Retention behavior is tested only against approved policy values; until then, automatic purging remains disabled.

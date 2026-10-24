@@ -1,5 +1,7 @@
 # Confirmed backend hardening — verification record
 
+> **Historical verification record:** This report is tied to its named branch, base SHA, implementation commits and test environment. It does not describe acceptance of the owner-approved ERD v2 or current `demo1` target runtime. Current target behavior is defined by the canonical ERD, P1 owner approval and active target contracts.
+
 Status: **PARTIAL — H2 compile/test/check passed; MySQL gate and #8 receipt command remain open**.
 
 Branch: `fix/backend-confirmed-findings-20261007`.

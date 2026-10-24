@@ -1,55 +1,32 @@
-# 19 — Phase 9 Order image snapshot — 2026-10-04
+# 19 — Order-Time Product Image Snapshot
 
-> **Pre-refactor behavior note (2026-10-22):** This document records the implemented source-schema behavior using order_items.image_url_snapshot. The owner-confirmed target ORDER_ITEMS deliberately does not contain that column. Preserve historical values through an owner-approved archive/retention disposition before contracting the source schema; do not add the column back to the target ERD without explicit approval.
+> This document defines the target snapshot invariant and supersedes prior Phase 9 implementation notes where they depend on the legacy ProductVariant path or claim the target lacks an image snapshot column.
 
-## Scope
+## 1. Target contract
 
-Order item images are historical data. This phase connects the existing `order_items.image_url_snapshot` persistence column to Order creation, Order detail reads, and the representative image returned by Order list summaries.
+- A placed OrderItem records its Product ID and approved order-time facts, including the image reference in ORDER_ITEMS.image_url_snapshot.
+- The snapshot refers to immutable object/version content, not merely a mutable Product image URL. The referenced content must remain resolvable for the approved history/retention window.
+- Product images are resolved from the Product identified by product_id. ProductVariant is not a target persistence concept.
+- Changing the Product's primary image, ordering, metadata or current URL after placement must not rewrite a saved OrderItem snapshot.
+- The snapshot is written in the same order-placement transaction as the OrderItem and other approved order-time snapshots. A failed placement must not leave partial snapshots.
 
-## Locked behavior
+## 2. Source-image selection
 
-- Order creation snapshots the Product cover that is current for the Variant at creation time.
-- The snapshot source is the recalculated checkout Cart view: `ProductVariant -> Product -> ProductImage(sort_order = 0)`.
-- `OrderItem.imageUrlSnapshot` is nullable. A Product with no cover at Order creation stores `null`.
-- Customer and admin Order detail expose the stored snapshot through `OrderItemDto.image_url`.
-- Customer and admin Order list expose one nullable preview through `OrderSummaryDto.image_url`.
-- The list preview is the `imageUrlSnapshot` of the OrderItem with the smallest `order_item_id` for that Order.
-- If that first OrderItem has a null snapshot, the summary preview is null; do not fall through to a later item or the current Product gallery.
-- Order reads must not query the current Product gallery to reconstruct historical images.
-- Reordering, replacing or removing Product images after Order creation must not change an existing OrderItem image or Order summary preview.
-- Existing historical OrderItems with `image_url_snapshot = null` remain null; do not backfill them from the current catalog because that would fabricate history.
+- Use the Product's approved primary-image selection contract from docs/03 and docs/18; do not infer an image from a variant/option combination.
+- When a Product has no eligible primary image, follow the nullability/fallback behavior in the target DDL and DTO contract. Do not fabricate a placeholder or persist a non-versioned URL unless explicitly approved.
+- Reordering or replacing current Product images affects future Cart/quote views; it does not change prior OrderItems.
 
-## Regression invariant
+## 3. Retention and deletion boundary
 
-```text
-create Order while cover = A
--> order_items.image_url_snapshot = A
--> admin changes current cover to B
--> admin removes A from Product gallery
--> customer/admin GET Order detail: OrderItem.image_url = A
--> customer/admin GET Order list: OrderSummaryDto.image_url = A
-```
+- Preserve the content addressed by an OrderItem image snapshot until the applicable retention requirement expires.
+- Numeric retention periods for image assets, audit logs and personal/business data, and legally required anonymization/deletion exceptions, remain TBD under DB-12.
+- Until those decisions are approved, do not schedule automatic purging or delete a referenced object/version in a way that breaks Order history.
+- Clean Schema Reset applies only to verified disposable development/test databases and does not authorize deleting persistent production/shared history.
 
-## Architecture boundary
+## 4. Acceptance tests
 
-- `product` owns current Product/Image presentation state.
-- `cart` exposes the current cover in the recalculated checkout view.
-- `order` owns the historical snapshot from the moment Order creation persists the OrderItem.
-- Historical Order reads depend only on Order-owned persistence and do not call Product read services.
-- Order list preview images are loaded in one OrderItem batch query for the current page rather than one query per Order.
-- No new schema migration is required because Flyway V4 already introduced `order_items.image_url_snapshot`.
-
-## Order list preview contract
-
-`GET /api/v1/me/orders` and `GET /api/v1/admin/orders` return the existing `OrderSummaryDto` plus nullable `image_url`.
-
-The preview rule is deterministic and intentionally narrow:
-
-```text
-Order
--> OrderItem with minimum order_item_id
--> image_url_snapshot
--> OrderSummaryDto.image_url
-```
-
-The summary does not embed `items[]` and does not depend on Product/Catalog state. This keeps list payloads bounded while preserving historical image semantics.
+- Place an Order using a Product with a primary image and confirm ORDER_ITEMS.image_url_snapshot identifies the selected immutable version.
+- Change/reorder/replace the Product's current image and assert the existing Order snapshot remains unchanged.
+- Simulate asset read of a placed Order after the Product image changes; verify the snapshot's version remains resolvable.
+- Inject an order-placement failure and verify the OrderItem/snapshot does not commit partially.
+- Verify no target route, Entity or query requires ProductVariant to resolve the snapshot.

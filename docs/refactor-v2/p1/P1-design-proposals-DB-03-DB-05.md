@@ -1,8 +1,8 @@
-# P1 Design Proposals — DB-03 Inventory and DB-05 Checkout
+# P1 — Approved DB-03 Inventory and DB-05 Checkout Contract
 
-**STATUS: OWNER-APPROVED TARGET CONTRACT (2026-10-23); IMPLEMENTATION/TESTS PENDING.** The owner explicitly approved DB-03 and DB-05 proposals. This freezes the target rules below; it does not imply that runtime code or concurrency/acceptance tests already pass.
+**STATUS: OWNER-APPROVED TARGET CONTRACT (2026-10-23); IMPLEMENTATION/TESTS PENDING.** The owner explicitly approved the DB-03 and DB-05 target contracts recorded here. This freezes the target rules below; it does not imply that runtime code or concurrency/acceptance tests already pass.
 
-Current target draft: 31 logical tables; SQL includes warehouse destination, inventory ledger reason/reversal references, order idempotency key + request fingerprint, integer-VND totals, voucher usage counter, order image snapshot, and refund metadata. Runtime schema verification is a separate gate. Live backend and frontend still implement legacy Variant/BigDecimal/quote-ID contracts.
+Current target DDL snapshot: 31 logical tables; SQL includes warehouse destination, inventory ledger reason/reversal references, order idempotency key + request fingerprint, integer-VND totals, voucher usage counter, order image snapshot, and refund metadata. Runtime schema verification is a separate gate. Live backend and frontend still implement legacy Variant/BigDecimal/quote-ID contracts.
 
 ## 1. DB-03 — Inventory, receipt, ledger and concurrency
 
@@ -10,12 +10,12 @@ Current target draft: 31 logical tables; SQL includes warehouse destination, inv
 
 - v1 has one operational warehouse (decision A-04). WAREHOUSES exists; GOODS_RECEIPTS.warehouse_id is NOT NULL and references WAREHOUSES. The service should resolve the active single warehouse, not trust an arbitrary public-client warehouse ID.
 - INVENTORIES has composite primary key (warehouse_id, product_id), a nonnegative quantity check and version field. The balance has no reservation column; quote/cart actions must not reserve stock.
-- INVENTORY_TRANSACTIONS has warehouse_id, product_id, signed quantity_delta, transaction_type, nullable goods_receipt_item_id/order_item_id, unique idempotency_key, reason_code and nullable self-FK reverses_transaction_id. Its current draft CHECK accepts OPENING, GOODS_RECEIPT, ORDER, ORDER_CANCEL_REVERSAL, RETURN_RESTOCK and ADJUSTMENT; do not use a different literal set without updating ERD, SQL, dictionary, services and tests together.
+- INVENTORY_TRANSACTIONS has warehouse_id, product_id, signed quantity_delta, transaction_type, nullable goods_receipt_item_id/order_item_id, unique idempotency_key, reason_code and nullable self-FK reverses_transaction_id. The target DDL CHECK accepts OPENING, GOODS_RECEIPT, ORDER, ORDER_CANCEL_REVERSAL, RETURN_RESTOCK and ADJUSTMENT; do not use a different literal set without updating ERD, SQL, dictionary, services and tests together.
 - Current draft has no CHECK that enforces the source-column shape for each movement type, no unique constraint on the semantic source event independent of client/server key, and no constraint equating inventory balances to ledger sums. Those are behavioral/transaction invariants, not proven by field presence.
 
 ### Approved movement semantics — owner accepted 2026-10-23
 
-| Draft type | Proposed effect | Expected source | Proposed requirements |
+| Movement type | Approved effect | Expected source | Required invariants |
 |---|---:|---|---|
 | OPENING | positive | no receipt/order item | explicit opening movement; never silently seed a balance without ledger evidence |
 | GOODS_RECEIPT | positive | exactly one goods_receipt_item_id | only on the first successful receipt confirmation |
@@ -53,7 +53,7 @@ These concurrency and semantic tests are not yet evidenced as passing. The MySQL
 
 - The target ERD has no CHECKOUT_QUOTES table. The approved target quote is stateless/advisory and has no stock or voucher side effects. The legacy backend has CheckoutQuote Entity/Repository/service and the frontend submits quote_id; removing/replacing that contract is an intentional API-breaking change to implement against this approval record.
 - ORDERS currently has a globally unique idempotency_key and request_fingerprint CHAR(64). The fingerprint field therefore exists in the target schema; it is not mapped into the current legacy Order entity/service/API. Its canonicalization, replay rules, retention and typed conflict response are approved by the 2026-10-23 owner decision; runtime mapping/tests remain pending.
-- Proposed client key scope is one logical create-order operation per authenticated account. Derive the persisted key namespace from the authenticated account and the client operation key (for example, a deterministic hash of both) so the globally unique stored key is account-scoped. Never trust an account ID from the request body. Another account reusing the same client key produces a different stored namespace and cannot discover the first account's Order.
+- Approved client key scope is one logical create-order operation per authenticated account. Derive the persisted key namespace from the authenticated account and the client operation key (for example, a deterministic hash of both) so the globally unique stored key is account-scoped. Never trust an account ID from the request body. Another account reusing the same client key produces a different stored namespace and cannot discover the first account's Order.
 - A unique key plus fingerprint does not by itself create correct retry behavior. Application code must distinguish same-key/same-payload replay from same-key/changed-payload conflict, roll back a losing concurrent transaction, and never reveal another account's Order.
 
 ### Approved retry contract — owner accepted 2026-10-23

@@ -1,62 +1,40 @@
-# 00 — Source of Truth & Conflict Resolution
+# FIDO — Source of Truth
 
-## 1. Purpose
+## 1. Authority order
 
-Codex must distinguish **locked business requirements** from **implementation choices** and **TBD**. This document defines which Analyst source wins when files overlap.
+Use the following artifacts as the current development contract, in this order:
 
-## 2. Source precedence
+1. **Owner decisions:** [P1 owner approval](refactor-v2/p1/P1-owner-approval-2026-10-23.md) and approved rows in [P1 Decision Log](refactor-v2/p1/P1-decision-log.md).
+2. **Logical data model:** [Owner-approved ERD v2](refactor/phase-1-erd-v2-approved.mmd).
+3. **Physical data contract:** [P1 Data Dictionary](refactor-v2/p1/P1-data-dictionary.csv), validated clean-reset DDL and required system seed under `backend/src/main/resources/db/clean-reset/`.
+4. **HTTP and wire contracts:** [API Contract](04-api-contract.md) and [DTO Contract](05-dto-contract.md).
+5. **Business and transaction invariants:** [Business Rules](06-business-rules-state-machines.md) and [Transactions, Concurrency and Idempotency](07-transactions-concurrency-idempotency.md).
+6. **Implementation status:** P1 API/use-case mapping and traceability artifacts under `docs/refactor-v2/p1/`. These describe delivery status and gaps; they do not override approved behavior.
+7. **Current code and migrations:** evidence of what must be aligned, never an automatic specification for the target design.
+8. **P0 reports and archived documents:** historical evidence only. Do not copy a superseded rule into a current contract.
 
-| Priority | Source | Authority |
-|---:|---|---|
-| 1 | Explicit, dated owner approvals in docs/refactor-v2/p1/P1-owner-approval-2026-10-23.md, docs/refactor/phase-1-owner-decision-questionnaire.md and APPROVED/OWNER-APPROVED rows of docs/refactor-v2/p1/P1-decision-log.md | Business behavior and accepted product constraints. The 2026-10-23 approval freezes DB-03/05, DB-12 lifecycle/FK defaults and the approved DB-01/02/06–11/API defaults; retention durations/anonymization exceptions remain TBD. |
-| 2 | docs/refactor/phase-1-erd-v2-approved.mmd | Canonical target logical tables, columns, keys and relationships, interpreted within approved owner decisions. |
-| 3 | docs/refactor/phase-1-erd-v2-contract.md and docs/refactor-v2/p1/P1-contract-reconciliation-2026-10-23.md | Target meaning, cross-document discrepancies, compatibility disposition and explicit blockers. Conflicts between the two higher authorities must be recorded, not silently resolved. |
-| 4 | docs/refactor-v2/p1/P1-data-dictionary.csv, backend/src/main/resources/db/clean-reset/V1__clean_schema.sql and V2__system_seed.sql | Approved target physical defaults and column-level evidence. The SQL/dictionary still require exact-SHA static/MySQL verification and application mapping; passing DDL checks alone does not prove runtime behavior. |
-| 5 | docs/04-api-contract.md, docs/05-dto-contract.md and reference/api-baseline-77.csv | Existing 77-endpoint API inventory and legacy wire contract, subject to target dispositions in the P1 API mapping and reconciliation report. |
-| 6 | SRS/FRS/UC/process-flow/story documents under repository root and reference/ | Business context and legacy behavior evidence; check conflicts against current approved decisions. |
-| 7 | Active code and migrations V1–V6 | Evidence of current legacy behavior, not automatic target specification. |
-| 8 | docs/archive/ and reports captured at earlier SHAs | Traceability only; never overwrite a newer approved decision or claim current verification. |
+The older decision questionnaire is superseded by the dated owner approval. It is not a source of open choices. If an active document conflicts with an authority above, update that document; do not preserve both alternatives in the current contract.
 
-This file maps authority but does not approve unresolved rules. Owner approval freezes target decisions; a field/API still cannot be marked accepted in implementation until runtime mappings and the required tests pass. Numeric data/image/audit retention duration and anonymization exceptions remain TBD.
+## 2. Frozen target profile
 
-## 3. Conflict rules
+- The target logical model is the approved **31-table ERD v2**.
+- A sellable catalog record is a row in `PRODUCTS`. Parent and child Products are explicit, independently sellable records. v1 permits one parent-child level; each row owns its SKU, required selling price and stock. NULL never means “inherit from parent.”
+- Catalog metadata uses `ATTRIBUTE_TYPES`, `ATTRIBUTES`, `ATTRIBUTE_OPTIONS` and `PRODUCT_ATTRIBUTE_VALUES`. Types are `OPTION`, `TEXT`, `NUMBER`, `BOOLEAN`. Attribute data is descriptive; it never creates Product records automatically. An option must belong to the Attribute that uses it.
+- `CART_ITEMS`, `ORDER_ITEMS`, `GOODS_RECEIPT_ITEMS`, `INVENTORIES` and `INVENTORY_TRANSACTIONS` refer to Product IDs. Stock balance is keyed by warehouse and Product.
+- Persisted Cart and order placement require an authenticated account. A quote is stateless/advisory and does not persist a quote identifier, reserve stock or consume a voucher.
+- Monetary values are whole VND, stored as integer values. The approved discount rule is order-level HALF-UP rounding followed by largest-remainder allocation to lines, with ascending Product ID as the stable tie-break.
+- v1 uses one operational warehouse, one COD Payment aggregate per Order and manual shipping. Approved stock, voucher, order, payment, snapshot and audit effects must be transactional.
+- Preserve order-time Product, address, voucher and image facts. A URL alone is not proof that image content is immutable.
+- The Clean Schema Reset policy applies only to a verified disposable development/test database. It never authorizes resetting production, staging, shared integration or persistent business data.
 
-1. **Target schema conflict:** approved owner decisions govern business meaning; the owner-confirmed ERD v2 defines target logical shape within those decisions. If semantics conflict (including null/inheritance rules), record a HARD BLOCK and amend an artifact only after the approved decision is explicit. DB v1.3.0 and migrations V1–V6 describe source schema only.
-2. **Endpoint conflict:** latest consolidated API document wins for URL, method, DTO and JWT rules.
-3. **Business-state conflict:** use the locked SRS state model and DB invariants. The canonical successful delivery terminal state is `COMPLETED`; `DELIVERED` from older wording must not be introduced as an extra OrderStatus.
-4. **Technology conflict:** Analyst Docs deliberately do not lock DBMS/framework version. Preserve the repository's existing technology; do not upgrade or replace it without an explicit task.
-5. **Missing rule:** mark `BLOCKED/TBD`; do not infer from generic e-commerce practice.
-6. **Target scope boundary:** do not reintroduce tables absent from the 31-table ERD (including payment/refund transaction history, shipment event/line tables, return tables, stock reservations, voucher scope joins, usage ledger or checkout quote) without an explicit owner change. If the current code/data depends on one, track a compatibility/retention blocker; do not silently broaden the target model.
+## 3. Document maintenance rules
 
-## 4. Baseline implementation profile (pre-refactor)
+- Current contracts describe the target model only. Do not embed superseded table layouts, old column definitions, old money types or old DTOs as alternative target designs.
+- Where implementation still differs, record the mismatch as an implementation blocker in the P1 mapping/traceability artifacts, not as a competing schema or API contract.
+- Historical baseline reports may retain evidence needed to understand past work, but must be clearly historical and must not be referenced as target requirements.
+- Do not add tables, fields, routes or behavior absent from the approved target without an explicit owner-approved scope change.
+- Mark unresolved retention duration/anonymization policy as TBD. Do not schedule deletion or purging until it is approved.
 
-The following bullets describe the existing implementation/business baseline and must not be read as the target database shape:
+## 4. Acceptance status
 
-- single merchant;
-- COD only;
-- one warehouse in the source inventory model;
-- older API/implementation text described guest checkout as supported/TBD. **Legacy-only:** this wording is superseded for the target by the owner decision dated 2026-10-05 requiring login before using a persisted cart or placing an order; do not implement guest checkout unless that decision is explicitly amended;
-- no automatic shipping tracking integration in the current implementation;
-- existing Order/Payment state behavior remains the business/API compatibility baseline;
-- Catalog v1.3.0 uses Product SizeSystem and ProductVariant = Product + SizeValue + Color;
-- V1 began with 28 tables, while the full current migration chain V1–V6 defines 32 application tables;
-- the consolidated API baseline has 77 endpoints.
-
-## 5. Owner-confirmed target database profile
-
-The post-refactor persistence shape is the owner-confirmed 31-table ERD in docs/refactor/phase-1-erd-v2-approved.mmd:
-
-- product parent and child records share PRODUCTS; the target has no ProductVariant, SizeSystem, SizeValue or Color tables;
-- stock balance is keyed by warehouse and Product with quantity_on_hand and version; there is no reservation table or reserved-quantity column;
-- an Order has one PAYMENTS row and optional SHIPPING_INFOS; there are no payment transaction/refund event, shipment event/line or return tables;
-- VOUCHERS and ORDER_VOUCHER_SNAPSHOTS exist, but voucher target joins, usage ledger and checkout_quotes are not target tables;
-- ORDER_ITEMS.image_url_snapshot, ORDERS.request_fingerprint, ORDERS.currency, VOUCHERS.usage_count, GOODS_RECEIPTS.warehouse_id and refund metadata are present in the current target ERD/DDL draft; their application semantics or retention policy may still be blocked;
-- omitted source fields/history require an explicit migration transform/archive/retirement disposition;
-- target schema changes do not automatically authorize public API/DTO or business-state changes. Use the consolidated API contract and SRS for those semantics, and document compatibility gates when the current behavior needs a persistence concept absent from the target.
-
-## 6. Trace notation in this kit
-
-- `SRS FR-xx`, `NFR-xx`, `BRULE-xx`, `AC-xx` refer to SRS IDs.
-- `DB C-xx` refers to constraints in DD-DB-01.
-- `API #xx` refers to current 77-endpoint consolidated contract.
-- `TBD` means no production behavior may be invented.
+The target owner decisions are recorded. That does not mean runtime migration is complete. Entity/repository/service, API/DTO, frontend, seed, security, transaction/concurrency and end-to-end acceptance must all be verified before the refactor is considered complete. No database reset is implied by this document.
