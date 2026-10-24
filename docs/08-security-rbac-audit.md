@@ -27,9 +27,9 @@
 
 ## 4. Audit
 
-Audit important privileged and transactional operations, including role/permission changes, Product/catalog changes, stock adjustments/receipt confirmation, Order transitions, COD collection/refund and eligible returns.
+The normative audit schema, actor/correlation policy, allowlisted before/after payloads, redaction rules, minimum required events, transaction boundary and admin audit-read behavior are owned by [P1.8 Operations, Audit, Content/Report and Seed Contract](refactor-v2/p1/P1.8-operations-seed-contract.md).
 
-The target audit record captures actor, action, entity identity, before/after data and correlation information as approved by the data dictionary. Redact password/hash, tokens, OTP, cookies/session IDs, secrets, raw Authorization headers and unnecessary PII.
+At minimum, audit successful privileged and transactional mutations including role/permission changes, Product/catalog/image changes, stock adjustments/receipt confirmation, Order transitions, COD collection/refund and eligible returns. Each domain owns its exact business event vocabulary. Derive human actor identity from the authenticated principal; NULL actor is allowed only for a trusted system event. When audit is required, the audit insert commits with the business write set or the whole command rolls back. Redact secrets and minimize PII before persistence and before audit-log DTO serialization.
 
 ## 5. Personal data, retention and transport
 
@@ -40,4 +40,4 @@ The target audit record captures actor, action, entity identity, before/after da
 
 ## 6. Acceptance requirements
 
-Test generic credential failures; `ACTIVE` versus non-ACTIVE login/session behavior; canonical phone uniqueness and reuse after soft delete; JWT expiry/invalidity; `/me` ownership; permission isolation; full-replacement grant semantics; last-SUPERADMIN concurrent changes; atomic address default switching/deletion; audit atomicity and sensitive-data redaction. These are agreed target requirements; runtime acceptance remains pending until code/tests exercise them.
+Test generic credential failures; `ACTIVE` versus non-ACTIVE login/session behavior; canonical phone uniqueness and reuse after soft delete; JWT expiry/invalidity; `/me` ownership; permission isolation; full-replacement grant semantics; last-SUPERADMIN concurrent changes; atomic address default switching/deletion; audit atomicity/failure rollback, actor provenance, correlation propagation and secret/PII redaction. Content/report and audit operation acceptance is defined in [P1.8](refactor-v2/p1/P1.8-operations-seed-contract.md); runtime acceptance remains pending until code/tests exercise it.
