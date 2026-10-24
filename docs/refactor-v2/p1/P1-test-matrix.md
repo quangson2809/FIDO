@@ -21,8 +21,23 @@
 | T-IDEM-01 | Same key and same semantic payload | Concurrent duplicate requests produce one committed Order and replay the same result. | Real MySQL multi-transaction/API retry test. |
 | T-IDEM-02 | Changed payload / cross-account key | Changed payload conflicts; another Account cannot observe the result. | API/security integration. |
 | T-MONEY-01 | Multi-line integer money | All money is whole VND; HALF-UP order discount and largest-remainder allocation reconcile exactly using ascending Product ID tie-break. | Property/boundary tests plus Order/report reconciliation. |
+| T-MONEY-02 | Order money reconciliation | subtotal=sum(unit_price×quantity); line_total=gross−line discount; Order discount=sum(line discounts); total=subtotal−discount+shipping; Payment.amount=total. | Formula and persistence integration tests |
+| T-MONEY-03 | HALF_UP boundary | subtotal=5, percent=1000 bps yields raw 0.5 and discount=1 VND; line gross 2/3 allocates 0/1. | Exact expected-output unit test |
+| T-MONEY-04 | Largest-remainder tie | Three gross-10 lines with Product IDs 30/10/20 and fixed discount 1 assign it to Product ID 10 regardless of input order. | Deterministic allocation test |
+| T-MONEY-05 | Percentage cap | subtotal=4,997, rate=1,500 bps gives 749.55→750 HALF_UP; cap 700; allocations 560/140; shipping 30,000 yields total 34,297. | Exact expected-output integration test |
+| T-MONEY-06 | Discount cannot exceed subtotal | subtotal 8 and FIXED 20 gives discount 8, line total 0, and total equals shipping fee. | Boundary/property test |
+| T-MONEY-07 | Fraction/overflow rejection | Reject fractional VND, overflow in unit_price×quantity/sums/intermediates and any negative total without partial writes. | API/integration test |
 | T-VOUCH-01 | Global quota final-use race | Usage limit is not exceeded; usage_count increments atomically with placement. No catalog targeting or per-account usage ledger. | Real MySQL concurrency. |
 | T-VOUCH-02 | Eligible cancellation/retry | Usage is restored at most once and rollback is complete if cancellation fails. | Sequential/concurrent cancellation and injected-failure tests. |
+| T-VOUCH-03 | Voucher window boundaries | starts_at is inclusive, ends_at exclusive, NULL bounds are open; all comparisons use UTC and both bounds require start<end. | Clock-controlled API test |
+| T-VOUCH-04 | Minimum subtotal | Subtotal equal to minimum passes; below minimum fails; shipping is excluded and discount is applied after eligibility. | Pricing/eligibility unit test |
+| T-VOUCH-05 | FIXED/PERCENT units and cap | FIXED is VND; PERCENT is bps; HALF_UP occurs before optional VND cap; final discount never exceeds subtotal. | Exact arithmetic test |
+| T-VOUCH-06 | Status/stacking/scope | DRAFT/INACTIVE/EXPIRED reject; only ACTIVE plus eligible time/quota is redeemable; no stacking, Product/Category scope or per-account cap. | Voucher service test |
+| T-VOUCH-07 | Concurrent final global use | Concurrent successful placements for the last limited use yield at most one consumption; usage_count never exceeds usage_limit. | Real MySQL concurrency test |
+| T-VOUCH-08 | Quote then quota changes | Quote causes no counter writes/reservation; if another order consumes the last use, placement rechecks and rejects the now-ineligible voucher. | API/database write-set test |
+| T-VOUCH-09 | Retry and failed placement | Same logical Order replay does not increment twice; any failure before commit rolls back usage_count and snapshots. | Idempotency/rollback integration test |
+| T-VOUCH-10 | Cancellation release once | When P1.7 invokes eligible cancellation release, counter decrements once in same transaction; repeated retry does not decrement twice; refund/return does not release by default. | MySQL transaction/state test |
+| T-VOUCH-11 | Unlimited quota and no per-account cap | NULL usage_limit permits repeated uses; count remains server-owned; account can redeem distinct Orders subject to global rules; no usage-ledger table is introduced. | Contract/API integration test |
 | T-STOCK-01 | Competing for final stock | No oversell/negative balance; losing command rolls back. | MySQL concurrent transaction and ledger reconciliation. |
 | T-STOCK-02 | Receipt confirm retry/race | One stock increase and one logical GOODS_RECEIPT movement. | Concurrent receipt-confirm integration. |
 | T-STOCK-03 | Duplicate semantic source under different request keys | One logical movement only; request-key uniqueness alone is not the only dedupe guard. | MySQL source-key and concurrency tests. |

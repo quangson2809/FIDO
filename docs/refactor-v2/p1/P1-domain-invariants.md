@@ -29,19 +29,22 @@
 - **INV-PRICE-01:** The server controls Product price, discount, shipping fee, subtotal and total. At Order placement, reload/reprice current server-side Product, stock, voucher and shipping inputs.
 - **INV-QUOTE-01:** Quote is stateless/advisory: no CHECKOUT_QUOTES row, quote_id, stock reservation, voucher mutation or Order side effect.
 - **INV-ORDER-01:** Create-order idempotency is scoped to authenticated Account plus operation and key, with a canonical SHA-256 semantic-request fingerprint. Same key/payload replays the committed result; changed payload conflicts; a different Account cannot access another result. The HTTP transport for the key must be specified in the API contract.
-- **INV-ORDER-02:** Money is whole VND in integer storage. Calculate order discount using HALF-UP rounding once at order level, then allocate by largest remainder with ascending Product ID tie-break. Line discounts sum exactly to the order discount; totals are reconciled and non-negative.
+- **INV-ORDER-02:** Money is VND-only whole integer storage. `subtotal = Σ(unit_price × quantity)` before discount/shipping; calculate one order-wide Voucher discount using FIXED VND or PERCENT basis points (100 bps=1%), HALF_UP the PERCENT result, apply optional VND cap and subtotal bound, then allocate by largest remainder with ascending Product ID tie-break. Line discounts sum exactly to Order.discount_amount; line_total = gross − allocated discount; total_amount = subtotal − discount_amount + shipping_fee; Payment.amount equals Order.total_amount. See P1.5.
 - **INV-ORDER-03:** Capture Product/SKU/name/attribute/quantity/price/discount/line/image facts and recipient/voucher snapshots at placement. Later source edits never rewrite placed Order facts.
 - **INV-ORDER-04:** Use the approved Order state/actor matrix; Order, Payment, inventory and required audit side effects commit atomically.
 - **INV-ADDR-01:** Saved Address and ORDER_ADDRESSES are different aggregates. Editing a saved Address must not rewrite an OrderAddress snapshot. If saved addresses exist, exactly one is default; the first address defaults automatically and switching/deleting/unsetting promotes the most recently updated remaining address atomically (tie-break ID descending).
 
 ## Voucher, COD and shipping
 
-- **INV-VOUCHER-01:** Voucher is order-wide and non-stackable. There is one global usage limit; no Product/Category targeting and no per-account usage ledger.
-- **INV-VOUCHER-02:** Increment voucher usage atomically with successful Order placement; restore at most once on eligible cancellation. A quote never consumes usage.
-- **INV-VOUCHER-03:** Snapshot voucher code/type/value/discount so later voucher edits cannot rewrite historical Orders. Test the concurrent final-use race and cancellation retries.
+- **INV-VOUCHER-01:** One Voucher may be applied to an Order; voucher discounts are order-wide and non-stacking. No Product/Category targeting, per-account usage cap or per-account usage ledger is part of v1.
+- **INV-VOUCHER-02:** Eligibility requires normalized code, ACTIVE status, UTC time in `[starts_at, ends_at)` with NULL as an open bound, merchandise subtotal before discount/excluding shipping ≥ minimum_order_value, and `usage_limit IS NULL OR usage_count < usage_limit`.
+- **INV-VOUCHER-03:** FIXED discount_value is VND; PERCENT discount_value is integer basis points (100 bps=1%). Calculate order discount once; HALF_UP percent calculation, optional VND cap and subtotal bound follow P1.5. Allocate via largest remainder with ascending Product ID tie-break; no per-line rounding.
+- **INV-VOUCHER-04:** Quote is advisory and does not consume/reserve quota. Successful Order placement increments global usage_count once atomically with Order and immutable snapshot. Counter guard protects the final global use and must not exceed usage_limit.
+- **INV-VOUCHER-05:** usage_count is net committed uses not released by eligible cancellation. P1.7 determines when to invoke a release; P1.5 defines one guarded decrement in the same cancellation transaction. No release on quote, failed Order placement, refund or return by default.
+- **INV-VOUCHER-06:** Order snapshot stores normalized code, discount_type, raw discount_value (VND or bps according to type) and actual applied VND discount. Later Voucher edits never rewrite Order snapshots. Same logical Order retry cannot consume quota twice under P1.6 idempotency.
 - **INV-PAY-01:** COD only. Collection/refund actor and time are server-derived by an authorized command.
 - **INV-PAY-02:** One Payment aggregate per Order; at most one full refund per Order in v1. Partial/multiple refunds are out of target. Duplicate collection/refund is rejected and side effects are atomic.
-- **INV-SHIP-01:** Shipping is manual; no carrier API or automatic tracking integration. Use the approved ShippingInfo state/actor matrix and preserve order-time receiver facts.
+- **INV-SHIP-01:** Shipping is manual; no carrier API or automatic tracking integration. Use approved ShippingInfo state/actor matrix and preserve order-time receiver facts.
 
 ## Inventory, Supplier and Goods Receipt
 

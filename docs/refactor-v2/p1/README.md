@@ -33,6 +33,7 @@ Baseline: `demo1`; owner approvals recorded 2026-10-23. This folder documents de
 | `P1-contract-reconciliation-2026-10-23.md` | Summary of approved target rules, retired legacy concepts and remaining implementation gates. |
 
 | `P1.4-inventory-contract.md` | Inventory balance/version, warehouse and receipt lifecycle, signed movement/source, reversals, semantic deduplication, lock order and reconciliation. |
+| `P1.5-pricing-voucher-contract.md` | VND money formula, HALF_UP and largest-remainder examples, Voucher units/eligibility/state, global quota consume/release and API/DTO contract. |
 
 ## Frozen target rules
 

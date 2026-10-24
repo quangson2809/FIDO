@@ -28,7 +28,11 @@
 | Payment/shipping | COD-only; at most one full refund; manual shipping; approved state/actor matrix. | Authorization, legal transitions, duplicate collection/refund rejection and atomic side effects. |
 | FK/deletion policy | RESTRICT by default for business/history references; CASCADE only for approved disposable dependent data. | Verify FKs and prove ordinary deletes cannot erase posted Order/Payment/ledger/audit history. |
 
-## 3. Exact-SHA verification requirements
+## 3. Money and Voucher contract
+
+The detailed normative calculation is [P1.5 Pricing and Voucher Contract](P1.5-pricing-voucher-contract.md). The physical schema constraints and runtime validation must jointly maintain: `subtotal=Σ(unit_price×quantity)`; Order discount equals allocated line discounts; each line total equals gross less allocation; `total_amount=subtotal-discount_amount+shipping_fee`; Payment amount/currency equals Order total/VND. Voucher `discount_value` is FIXED VND or PERCENT basis points; `maximum_discount`/`minimum_order_value` are VND. Status, UTC window, minimum subtotal and global quota must be guarded on redemption; `usage_count` cannot exceed a configured `usage_limit`. Schema-only checks do not prove HALF_UP, largest-remainder, concurrent final-use, replay, rollback or cancellation compensation behavior.
+
+## 4. Exact-SHA verification requirements
 
 1. Parse the dictionary as RFC 4180 CSV and ensure all records have the header column count.
 2. Run `scripts/p1/check_contract_consistency.py` against the canonical ERD and target DDL.
