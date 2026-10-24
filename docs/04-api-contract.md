@@ -20,7 +20,7 @@ Global rules:
 
 | Method | Route | Access | Target request/response contract |
 |---|---|---|---|
-| POST | `/auth/register` | Public | `phone, full_name, password (8–128 characters, not trimmed), email?`; normalize phone before uniqueness checks. Create Account as `ACTIVE` and return `AuthResponseDto(access_token, account)`; no email/OTP verification in this phone-login flow. |
+| POST | `/auth/register` | Public | `phone, full_name, password (8–128 characters, not trimmed), email?`; normalize phone before uniqueness checks. Create Account as `ACTIVE`, atomically assign the seeded `CUSTOMER` Role, and return `AuthResponseDto(access_token, account)`; client cannot submit role IDs, and no email/OTP verification is required in this phone-login flow. |
 | POST | `/auth/login` | Public | `phone, password`; successful `ACTIVE` Account returns `AuthResponseDto(access_token, account)`. Wrong credentials return generic `401 INVALID_CREDENTIALS`; valid credentials for non-ACTIVE Accounts return typed `403` without a token. |
 | GET | `/me` | JWT | Returns `MeDto(account, addresses[], roles[], permissions[])`; scope is derived from the authenticated principal. |
 | PATCH | `/me` | JWT | Patch `full_name?` and `email?` only. Do not accept `account_id`, `id`, `status`, role/grant fields, timestamps, `password_hash` or `phone` without an approved phone-change/verification flow. |
