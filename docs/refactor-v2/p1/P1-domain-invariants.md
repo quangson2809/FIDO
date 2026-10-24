@@ -6,7 +6,7 @@
 
 - **INV-ACC-01:** Phone is the login identity and is unique among active Accounts. Soft deletion releases the phone for reuse. Generic credential-failure messaging must not reveal whether an account exists.
 - **INV-ACC-02:** /me resources, saved addresses and customer Orders are scoped to the authenticated principal. Request-supplied Account IDs do not grant access.
-- **INV-ACC-03:** Account status literals are ACTIVE, PENDING_APPROVAL, LOCKED and SUSPENDED. Status-specific login/session effects must follow the API/security contract.
+- **INV-ACC-03:** Current target state documentation lists `ACTIVE`, `PENDING_APPROVAL`, `LOCKED` and `SUSPENDED`, but the `ACCOUNTS.status` Data Dictionary row records exact status/login-session effects as not owner-approved. Initial registration/staff-created status, token issuance and status-specific login/session effects are blocked by `ACC-STATUS-01`; do not infer them.
 - **INV-RBAC-01:** Resolve effective grants from target role/permission data. Role/permission mutation and required audit are atomic; preserve the last-SUPERADMIN invariant under concurrent updates.
 - **INV-SEED-01:** Seed system roles/permissions through Flyway; keep demo fixtures separate. Bootstrap SUPERADMIN credentials come from external secret/configuration and are never committed.
 
