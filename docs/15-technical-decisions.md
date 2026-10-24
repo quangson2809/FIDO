@@ -40,20 +40,20 @@
 - `INVENTORIES` is keyed by `(warehouse_id, product_id)` and stores `quantity_on_hand` plus a concurrency version. A successful movement updates source state, balance, append-only `INVENTORY_TRANSACTIONS` and required audit in one transaction.
 - Approved movements are `OPENING`, `GOODS_RECEIPT`, `ORDER`, `ORDER_CANCEL_REVERSAL`, `RETURN_RESTOCK` and `ADJUSTMENT`. Use source-derived uniqueness, deterministic Product-ID lock order, guarded non-negative updates and linked reversal rows.
 - Adjustments require a non-zero delta, actor, reason code and idempotency/correlation evidence. No ledger row may be edited/deleted to correct history.
-- Audit rows record actor/action/entity, before/after data and correlation ID where applicable. Redact passwords, tokens, secrets and sensitive payload values from logs and public errors.
+- Audit fields, actor provenance, correlation propagation, allowlisted before/after JSON, redaction and required event/transaction behavior follow [P1.8 Operations, Audit, Content/Report and Seed Contract](refactor-v2/p1/P1.8-operations-seed-contract.md). Do not serialize whole entities/raw requests or log secrets/unnecessary PII; audit failure rolls back the associated required business write set.
 
 ## 6. Order states, shipping and reporting
 
 - Enforce the normative [P1.7 Order/Payment/Shipping contract](refactor-v2/p1/P1.7-order-payment-contract.md) and its summary in `docs/06-business-rules-state-machines.md`; validate actor, preconditions, state, transaction and errors under lock. Duplicate collection/refund and illegal replays must not repeat side effects.
 - Shipping is manual; do not introduce carrier API, automatic tracking integration or a dedicated event/timeline table in v1. Order, Payment and ShippingInfo state changes plus required audit are atomic.
-- Reports use Asia/Ho_Chi_Minh date boundaries. Sales include the approved received amount with shipping; returned value is adjusted in its original completion period. Current status counts use Order creation date. Keep report formulas consistent with the Order/Payment contract and test inclusive date boundaries.
+- Report query periods, bucket boundaries, zero-filled status metrics, source tables and deterministic Product ranking follow [P1.8](refactor-v2/p1/P1.8-operations-seed-contract.md). Money and Order/Payment/return semantics remain owned by P1.5/P1.7; use Asia/Ho_Chi_Minh inclusive business dates and adjust a whole-Order return in its original completion period. Current status counts use Order creation date.
 
 ## 7. Image history, retention and deletion
 
 - Order image references must resolve to immutable object/version content for the required retention window. Later Product image changes must not rewrite historical order image results.
 - Prefer soft-delete/disable for referenced Account/catalog/voucher/warehouse records. Use RESTRICT by default for business/history foreign keys; CASCADE only for explicitly disposable working data.
 - Posted Orders, snapshots, Payment facts, inventory ledger and audit history are not cascade-deleted.
-- Numeric retention duration and anonymization/deletion exceptions remain TBD. Do not implement scheduled purge until they are approved.
+- The lifecycle/FK matrix and system-seed manifest are specified in [P1.8](refactor-v2/p1/P1.8-operations-seed-contract.md); numeric audit/image/personal-business retention durations and legal anonymization/deletion exceptions remain TBD. Do not implement scheduled purge until they are approved. Current DDL lacks an explicit CartItems CASCADE; P1.9 must reconcile it, and code must delete child rows explicitly until then.
 
 ## 8. Delivery status
 

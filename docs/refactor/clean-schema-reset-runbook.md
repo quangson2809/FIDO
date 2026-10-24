@@ -7,7 +7,7 @@
 - Logical schema: [owner-approved ERD v2](phase-1-erd-v2-approved.mmd).
 - Physical schema: [canonical P1 data dictionary](../refactor-v2/p1/P1-data-dictionary.csv).
 - Required system seed: `backend/src/main/resources/db/clean-reset/V2__system_seed.sql`.
-- Approved rules: [P1 owner approval](../refactor-v2/p1/P1-owner-approval-2026-10-23.md) and [decision log](../refactor-v2/p1/P1-decision-log.md).
+- Approved rules: [P1 owner approval](../refactor-v2/p1/P1-owner-approval-2026-10-23.md), [decision log](../refactor-v2/p1/P1-decision-log.md), [P1.8 seed/audit/deletion contract](../refactor-v2/p1/P1.8-operations-seed-contract.md) and [P1.8 operator requirements](../refactor-v2/p1/P1.8-operations-seed-runbook.md).
 
 The clean-reset Flyway location is isolated from the active default migration path until application mappings and acceptance gates are ready. Do not activate it merely to make a schema reset happen.
 
@@ -36,8 +36,8 @@ Before any destructive action:
 
 1. Validate the canonical ERD, target SQL, dictionary and consistency checker agree on the same table/column/key set.
 2. Apply the target baseline to a newly created empty isolated MySQL database, not to a database whose history or contents are unknown.
-3. Apply required system roles/permissions and reference data through the approved migration seed.
-4. Load demo fixtures only through an explicit development/test mechanism after target mappings are ready. Demo seed must not contain secrets or reusable plaintext passwords.
+3. Apply required system roles/permissions through the approved migration seed and compare it with the exact P1.8 manifest. Resolve IDs by immutable codes; the seed must contain no Accounts or credentials. External-secret SUPERADMIN bootstrap is a separate provisioning step, not V2 SQL.
+4. Load demo fixtures only through an explicit development/test mechanism after target mappings are ready. Demo seed must not contain secrets or reusable plaintext passwords. Verify SUPERADMIN grants all current permissions; do not implicitly grant business permissions to ADMIN or CUSTOMER.
 5. Start the application only after JPA/entity mappings are aligned to the target schema; validate startup and module-level behavior.
 6. Verify the installed table set, keys, foreign keys, checks, defaults, indexes and seed contents. Run API, security, transaction, concurrency and frontend acceptance tests on the exact candidate SHA.
 
@@ -47,6 +47,6 @@ Do not preserve, migrate or crosswalk disposable legacy test records solely for 
 
 The reset is not complete until a fresh install and its schema/seed checks are evidenced. Runtime acceptance remains separate: Entity/Repository/Service/API/DTO/frontend, auth/RBAC, Product attributes, Cart/order, integer-VND math, inventory/ledger, voucher quota, Payment/shipping and snapshot behavior must be verified.
 
-**Retention caveat:** numeric audit/image/personal-data retention periods and anonymization exceptions remain TBD. Do not schedule a purge of retained history or assets until those decisions are approved.
+**Retention caveat:** numeric audit/image/personal/business-data retention periods and anonymization exceptions remain TBD. Do not schedule a purge of audit/history/content data or image assets until those decisions are approved. The current clean-reset DDL does not explicitly encode CartItems CASCADE; follow P1.8/P1.9 and delete dependent working rows explicitly until the FK policy is reconciled.
 
 **Current state:** the clean-reset DDL and system seed remain isolated; this runbook is not an execution log. No database was reset by this documentation work.

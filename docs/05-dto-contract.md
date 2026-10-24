@@ -96,12 +96,12 @@ Inventory quantities and ledger movements are Product-based. Every adjustment ha
 
 ## 7. Audit, report and content DTOs
 
-- `AuditLogDto`: target fields `id, actor_account_id, action, entity_type, entity_id, before_data, after_data, correlation_id, created_at`; redact sensitive fields and secrets.
-- `ReportOverviewDto`: `from, to, completed_sales, returned_adjustment, net_sales, orders_by_status`; currency values are integer VND and use the approved reporting timezone/formulas.
+- `AuditLogDto`: target fields `id, actor_account_id, action, entity_type, entity_id, before_data, after_data, correlation_id, created_at`. Apply P1.8 allowlist/redaction recursively before serialization; never expose credentials, tokens, signed URLs, raw payloads or unnecessary PII. Audit query permission/filter/order behavior is normative in [P1.8](refactor-v2/p1/P1.8-operations-seed-contract.md).
+- `ReportOverviewDto`: `from, to, completed_sales, returned_adjustment, net_sales, orders_by_status`; currency values are integer VND. Inclusive business-date bounds, source data, date basis, timezone and zero-fill behavior follow [P1.8](refactor-v2/p1/P1.8-operations-seed-contract.md); formulas and Order/Payment semantics remain P1.5/P1.7 owned.
 - `SalesTrendDto`: `from, to, granularity, timezone, points[]`; each point contains `period_start, completed_sales, returned_adjustment, net_sales`, with monetary values in integer VND.
 - `OrdersTrendDto`: `from, to, granularity, timezone, points[]`; each point contains `period_start, total_orders, orders_by_status`, including every approved Order status with zero-fill for empty buckets.
 - `ProductPerformanceDto`: `from, to, limit, items[]`; each item contains `product_id, product_name, thumbnail, completed_units, returned_units, net_units`. Use Product IDs, deterministic ranking/ties and a bounded limit (1–100; default 10).
-- `ContentPageDto`: `id, slug, title, content, status, updated_by, updated_at`. Public reads return published pages only.
+- `ContentPageDto` (admin): `id, slug, title, content, status, updated_by, updated_at`. Admin response requires the corresponding `CONTENT_READ`/`CONTENT_WRITE` action permission. Public `GET /content-pages/{slug}` uses `PublishedContentPageDto(slug, title, content)` for `PUBLISHED` pages only; it must not expose `updated_by` or other admin metadata. Content lifecycle, slug rules and sanitized rendering are specified by [P1.8](refactor-v2/p1/P1.8-operations-seed-contract.md).
 - Customer DTOs summarize only real Accounts, addresses and associated Orders.
 
 ## 8. Validation and conflicts
