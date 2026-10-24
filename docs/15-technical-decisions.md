@@ -30,9 +30,9 @@
 - Current Cart is the sole account-owned OPEN row. No OPEN row means empty read/create-on-mutation; more than one OPEN row fails closed with CART_SELECTION_AMBIGUOUS and no mutation/merge. No updated_at selection or one-active-Cart schema constraint is inferred; P3.8 serializes Account-scoped creation/mutations.
 - Quote is stateless/advisory: no CHECKOUT_QUOTES, quote_id, stock reservation or Voucher use. Order placement reloads/reprices Product eligibility, price, stock, Voucher eligibility/quota and server-owned shipping inputs.
 - POST /orders requires Idempotency-Key; the stored key is Account-namespaced and the normalized semantic request gets a canonical SHA-256 fingerprint. Same committed key/payload replays; changed payload conflicts; another Account cannot discover the result. Details are normative in P1.6.
-- Order, OrderItems, immutable address/Product/Voucher/image snapshots, COD Payment, applicable Voucher counter, Cart consumption, audit and all Inventory effects required by approved placement lifecycle commit or roll back as one operation. P1.7 owns Order transition timing.
+- P1.6 placement atomically writes Order PENDING, OrderItems and immutable address/Product/Voucher/image snapshots, COD Payment UNPAID, ShippingInfo PENDING, applicable Voucher counter, Cart consumption and audit. It does not deduct stock. P1.7 requires stock deduction at PENDING→CONFIRMED and linked one-time reversal for eligible cancellation, with the Order/Inventory/audit write set atomic.
 - v1 vouchers are order-wide, non-stackable and use one global limit. Consume usage atomically with successful order placement and restore at most once on eligible cancellation. No catalog-targeting joins or per-account usage ledger.
-- Payment is COD-only with one Payment aggregate per Order. v1 allows at most one full refund per Order; partial/multiple refunds and detailed item-level return workflows need a future approved scope change.
+- Payment is COD-only with one Payment aggregate per Order. Collect COD only atomically with SHIPPING→COMPLETED after manual delivery verification; v1 allows one whole-order full offline refund paired with COMPLETED→RETURNED. Partial/multiple refunds, automated disbursement and detailed item-level return workflows require an approved scope change.
 
 ## 5. Inventory, receiving and audit
 
@@ -44,8 +44,8 @@
 
 ## 6. Order states, shipping and reporting
 
-- Enforce the state/actor matrix in `docs/06-business-rules-state-machines.md`; reject unknown states, illegal transitions and replays.
-- Shipping is manual; do not introduce carrier API or automatic tracking integration in v1.
+- Enforce the normative [P1.7 Order/Payment/Shipping contract](refactor-v2/p1/P1.7-order-payment-contract.md) and its summary in `docs/06-business-rules-state-machines.md`; validate actor, preconditions, state, transaction and errors under lock. Duplicate collection/refund and illegal replays must not repeat side effects.
+- Shipping is manual; do not introduce carrier API, automatic tracking integration or a dedicated event/timeline table in v1. Order, Payment and ShippingInfo state changes plus required audit are atomic.
 - Reports use Asia/Ho_Chi_Minh date boundaries. Sales include the approved received amount with shipping; returned value is adjusted in its original completion period. Current status counts use Order creation date. Keep report formulas consistent with the Order/Payment contract and test inclusive date boundaries.
 
 ## 7. Image history, retention and deletion

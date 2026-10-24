@@ -11,55 +11,53 @@
 | Role, Category, Brand, Supplier, Warehouse | `ACTIVE`, `INACTIVE` | Disabling does not erase historical references or bypass FK policy. The server resolves the one operational warehouse in v1. |
 | Product | `DRAFT`, `ACTIVE`, `INACTIVE`, `ARCHIVED` | Only eligible active Products sell; parent/child depth is one level; each Product owns its SKU, required selling price and stock. |
 | Cart | `OPEN`, `CHECKOUT`, `COMPLETED`, `ABANDONED` | Authenticated owner only. Order placement mutates Cart atomically; Cart never reserves stock. |
-| Voucher | `DRAFT`, `ACTIVE`, `INACTIVE`, `EXPIRED` | Only ACTIVE is potentially redeemable; additionally require UTC `starts_at ≤ now < ends_at` for non-null bounds, subtotal before discount and excluding shipping ≥ minimum_order_value, and remaining global quota. One non-stacking order-wide Voucher only; no Product/Category targeting or per-account quota ledger. Consume once at successful Order placement; P1.7 decides whether/when cancellation calls the one-time release operation. See P1.5. |
+| Voucher | `DRAFT`, `ACTIVE`, `INACTIVE`, `EXPIRED` | Only ACTIVE is potentially redeemable; additionally require UTC `starts_at ≤ now < ends_at` for non-null bounds, subtotal before discount and excluding shipping ≥ minimum_order_value, and remaining global quota. One non-stacking order-wide Voucher only; no Product/Category targeting or per-account quota ledger. Consume once at successful Order placement; P1.7 specifies that eligible cancellation from PENDING, CONFIRMED, PREPARING or DELIVERY_FAILED releases that consumed use once, atomically with cancellation. Refund/return does not release quota by default. See P1.5. |
 | Voucher type | `PERCENT`, `FIXED` | FIXED `discount_value` is VND; PERCENT is integer basis points (100 bps=1%). Compute one order-wide discount, HALF_UP the percentage amount, apply optional VND cap and subtotal bound, then largest-remainder allocation with ascending Product ID tie-break. See P1.5. |
-| Order | `PENDING`, `CONFIRMED`, `PREPARING`, `SHIPPING`, `COMPLETED`, `DELIVERY_FAILED`, `CANCELLED`, `RETURNED` | Follow the transition graph below. State, Payment/shipping effects, stock movements and required audit are atomic. |
-| COD Payment | `UNPAID`, `PAID`, `REFUNDED` | One Payment aggregate per Order; at most one full refund in v1. |
-| ShippingInfo | `PENDING`, `SHIPPED`, `DELIVERED`, `FAILED`, `CANCELLED` | Manual shipping; reject illegal or duplicated transitions. |
+| Order | `PENDING`, `CONFIRMED`, `PREPARING`, `SHIPPING`, `COMPLETED`, `DELIVERY_FAILED`, `CANCELLED`, `RETURNED` | P1.7 defines actor and transition matrix. Placement creates PENDING without stock deduction; confirmation deducts; eligible cancellation reverses; completion collects COD; RETURNED is combined with one full refund. |
+| COD Payment | `UNPAID`, `PAID`, `REFUNDED` | One Payment per Order. Collection is atomic with delivery completion; v1 allows one full refund only, manually attested with whole-order return. |
+| ShippingInfo | `PENDING`, `SHIPPED`, `DELIVERED`, `FAILED`, `CANCELLED` | Manual status aligned with Order transitions; retry is allowed only after FAILED; no carrier API or event timeline. |
 | GoodsReceipt | `DRAFT`, `CONFIRMED`, `CANCELLED` | Only DRAFT is editable. CONFIRMED posts stock once; confirmed receipt lines are immutable. |
 | Inventory movement | `OPENING`, `GOODS_RECEIPT`, `ORDER`, `ORDER_CANCEL_REVERSAL`, `RETURN_RESTOCK`, `ADJUSTMENT` | Source-linked, signed movement; append-only ledger; deterministic locking and source-derived duplicate prevention. |
 
 Unknown literals and illegal transitions must return stable typed errors. SQL constraints validate data shape but do not replace authorization, transition checks, idempotency or transaction enforcement.
 
-Pricing and Voucher configuration, eligibility/time-window boundaries, integer-VND calculations, line allocation and global quota consume/release semantics are normative in [P1.5 Pricing and Voucher Contract](refactor-v2/p1/P1.5-pricing-voucher-contract.md). This does not change the Order transition graph: P1.7 owns the cancellation timing that invokes quota release.
+Pricing and Voucher configuration, eligibility/time-window boundaries, integer-VND calculations, line allocation and global quota consume/release semantics are normative in [P1.5 Pricing and Voucher Contract](refactor-v2/p1/P1.5-pricing-voucher-contract.md). The normative P1.7 transition matrix specifies which eligible cancellation invokes the one-time quota-release operation.
 
 ## 2. Order state machine
 
+The normative transition, actor, precondition, side-effect and retry matrix is [P1.7 Order/Payment Contract](refactor-v2/p1/P1.7-order-payment-contract.md). The approved graph is summarized here; runtime acceptance remains pending P3.10.
+
 ```text
-PENDING -------> CONFIRMED -------> PREPARING -------> SHIPPING -------> COMPLETED -------> RETURNED
-   |                  |                   |                 |
-   |                  |                   |                 +----------> DELIVERY_FAILED
-   |                  |                   |                                |          |
-   |                  |                   +-----------------------------> CANCELLED   +--> SHIPPING
-   |                  +------------------------------------------------> CANCELLED
-   +-------------------------------------------------------------------> CANCELLED
+PENDING -> CONFIRMED -> PREPARING -> SHIPPING -> COMPLETED -> RETURNED
+   |           |            |           |
+   v           v            v           v
+CANCELLED   CANCELLED    CANCELLED   DELIVERY_FAILED -> SHIPPING
+                                         |
+                                         v
+                                      CANCELLED
 ```
 
-Allowed transitions:
+| From | To | Key precondition/effect |
+|---|---|---|
+| Initial placement | PENDING | P1.6 creates immutable snapshots, COD Payment UNPAID and ShippingInfo PENDING; no stock reservation or deduction at placement. |
+| PENDING | CONFIRMED | Authorized operator; recheck stock and deduct once atomically with Order state, balance, ledger and audit. |
+| CONFIRMED | PREPARING | Authorized operator; stock deduction already exists; no further stock effect. |
+| PREPARING | SHIPPING | Authorized manual dispatch; ShippingInfo becomes SHIPPED in the same transaction. |
+| SHIPPING | DELIVERY_FAILED | Authorized manual failure; Payment remains UNPAID; no stock reversal or Voucher release. |
+| DELIVERY_FAILED | SHIPPING | Authorized manual retry; no second stock deduction. |
+| PENDING / CONFIRMED / PREPARING / DELIVERY_FAILED | CANCELLED | Payment must be UNPAID and dispatch must not be active. Reverse each existing stock deduction exactly once, if present; release an applicable consumed Voucher once; set ShippingInfo CANCELLED; audit atomically. |
+| SHIPPING | COMPLETED | Only the combined manual-delivery/COD-collection command; Order, ShippingInfo DELIVERED, Payment PAID and audit commit together. |
+| COMPLETED | RETURNED | Only a verified whole-order return with a manually completed full COD refund; Order and Payment REFUNDED plus audit commit together. No automatic restock. |
+| CANCELLED / RETURNED | — | Terminal. |
 
-| From | To |
-|---|---|
-| PENDING | CONFIRMED, CANCELLED |
-| CONFIRMED | PREPARING, CANCELLED |
-| PREPARING | SHIPPING, CANCELLED |
-| SHIPPING | COMPLETED, DELIVERY_FAILED |
-| DELIVERY_FAILED | SHIPPING, CANCELLED |
-| COMPLETED | RETURNED |
-| CANCELLED | none |
-| RETURNED | none |
+All other transitions are rejected. Cancellation is not allowed directly from SHIPPING or COMPLETED; a shipping failure must be recorded first. COMPLETED → RETURNED does not prove goods are sellable and does not trigger a stock movement. See P1.7 for actor rights, error codes, transaction boundaries and the exact API action vocabulary.
 
-- PENDING → CONFIRMED rechecks and deducts stock atomically.
-- SHIPPING → COMPLETED requires PaymentStatus = PAID.
-- Cancellation after deduction restores stock exactly once through a new linked movement.
-- Cancelling before deduction does not affect stock.
-- DELIVERY_FAILED alone does not restore stock.
-- COMPLETED → RETURNED does not itself prove the goods are sellable and does not automatically restock them.
+## 3. Payment, shipping and receipt state machines
 
-## 3. Payment and receipt state machines
-
-Payment: `UNPAID → PAID → REFUNDED`. Only COD is in scope. Collection/refund requires an authorized actor, amount, timestamp and replay protection. A cancelled uncollected order remains UNPAID.
-
-GoodsReceipt: `DRAFT → CONFIRMED`, or `DRAFT → CANCELLED`. CONFIRM requires at least one valid line and atomically records one positive movement per line, balance/version, confirmed actor/time and audit; concurrent/repeated confirm cannot post twice. CANCEL is DRAFT-only and has no stock effect. Confirmed/cancelled receipts and confirmed lines are immutable; corrections use an authorized new movement. Full lock/source/deduplication rules are P1.4.
+- **COD Payment:** `UNPAID → PAID → REFUNDED`. Payment collection is permitted only as part of the atomic `SHIPPING → COMPLETED` command after physical delivery and COD collection are manually verified. `PAID → REFUNDED` is a staff-attested offline full refund combined with `COMPLETED → RETURNED`. One full refund maximum; no gateway, partial or multiple-refund flow.
+- **ShippingInfo:** create as `PENDING`; manual dispatch sets `SHIPPED`; failed delivery sets `FAILED`; authorized retry returns it to `SHIPPED`; completion sets `DELIVERED` together with COD collection; eligible cancellation sets `CANCELLED`. Current status/last-transition fields are not a delivery-attempt timeline.
+- **Transaction/retry rules:** lock and re-read the Order before checking transition preconditions. Payment collection/refund and each source-linked Inventory movement must not occur twice on retry. A repeated committed operation receives a stable conflict instead of duplicating effects. Every successful state change and required AuditLog commit or roll back as a unit. Exact contracts are in [P1.7](refactor-v2/p1/P1.7-order-payment-contract.md).
+- **GoodsReceipt:** `DRAFT → CONFIRMED`, or `DRAFT → CANCELLED`. CONFIRM requires at least one valid line and atomically records one positive movement per line, balance/version, confirmed actor/time and audit; repeated confirm cannot post twice. CANCEL is DRAFT-only and has no stock effect. Confirmed/cancelled receipts and confirmed lines are immutable; corrections use an authorized new movement. Full lock/source/deduplication rules are P1.4.
 
 ## 4. Business rules
 
@@ -68,13 +66,13 @@ GoodsReceipt: `DRAFT → CONFIRMED`, or `DRAFT → CANCELLED`. CONFIRM requires 
 | Sale unit | A Product row with explicit Product ID; parent and child records are independently sellable. |
 | Price | Each Product owns its required integer-VND selling price; no implicit parent fallback. |
 | Total | `subtotal = Σ(unit_price × quantity)` before discount/shipping; line total = gross − allocated line discount; `total_amount = subtotal - discount_amount + shipping_fee`; `PAYMENTS.amount = ORDERS.total_amount`. Baseline shipping is 30,000 VND unless explicit server configuration overrides it. See P1.5. |
-| Voucher | Single order-wide non-stackable Voucher; no Product/Category targeting, per-account limit or usage ledger. Minimum is evaluated against pre-discount merchandise subtotal excluding shipping. Quote does not consume usage; only committed placement increments global usage_count atomically. Eligible cancellation release is invoked according to P1.7; refunds/returns do not release by default. See P1.5. |
-| Inventory | Cart and quote do not reserve stock. Deduct only when requested by the approved Order-owning command; balance is keyed by (warehouse_id, product_id), missing balance reads as zero, version increments per committed movement, bounds are enforced, and every balance change has an atomic ledger movement/audit. See P1.4; Order transition timing remains P1.7. |
+| Voucher | Single order-wide non-stackable Voucher; no Product/Category targeting, per-account limit or usage ledger. Minimum is evaluated against pre-discount merchandise subtotal excluding shipping. Quote does not consume usage; only committed placement increments global usage_count atomically. P1.7 invokes a one-time quota release for eligible cancellation; refunds/returns do not release by default. See P1.5. |
+| Inventory | Cart and quote do not reserve stock. Deduct only when requested by the approved Order-owning command; balance is keyed by (warehouse_id, product_id), missing balance reads as zero, version increments per committed movement, bounds are enforced, and every balance change has an atomic ledger movement/audit. See P1.4 for mechanics and P1.7 for the specified transition timing; runtime acceptance remains pending. |
 | Receipt | Only successful first confirmation adds stock; every movement has a source, actor and time. |
 | COD | No payment gateway callback. Collection/refund must be bound to the correct Order and authorized actor. |
 | Recipient snapshot | Order address facts are immutable once placed; editing the account address must not affect the Order. |
 | Saved Address default | An Account may have zero saved addresses; if any remain, exactly one is default. The first address defaults automatically; switching/unsetting/deleting the current default promotes the most recently updated remaining address atomically, tie-break by descending ID. Deleting the last address leaves no default. |
-| Return | v1 allows at most one full refund. Restock only after an authorized decision confirms the returned goods are sellable. |
+| Return | v1 supports one whole-order return with one full COD refund. RETURNED does not automatically restock; no per-line return quantity/inspection persistence or item-level workflow is in scope. |
 | History | Later Product, price, address and voucher edits cannot rewrite an existing Order's snapshots. |
 | Authorization | Backend permission checks protect each administrative mutation; privileged changes are audited. |
 | Revenue | Report calculations follow the approved completion/return accounting rule and Asia/Ho_Chi_Minh date boundaries. |

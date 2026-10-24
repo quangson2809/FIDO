@@ -74,15 +74,15 @@ A Product is the catalog sale unit. A child Product has a normal Product ID and 
 - `OrderItemDto`: `id, product_id, sku_snapshot, product_name_snapshot, attribute_snapshot, image_url_snapshot, quantity, unit_price, discount_amount, line_total`. `discount_amount` is the allocated whole-VND share of the order Voucher; `line_total = unit_price*quantity - discount_amount`.
 - `OrderAddressDto`: `recipient_name, recipient_phone, province, district, ward, address_line`.
 - `OrderVoucherSnapshotDto`: order-time voucher code, discount type/value and allocated discount facts.
-- `OrderDetailDto`: order identity/state, immutable items/address/voucher snapshots, integer-VND totals, COD Payment, manual shipping and permitted actions.
-- `PaymentDto`: `method, payment_status, amount, currency, collected_by_account_id, collected_at, refund_amount, refunded_by_account_id, refunded_at, refund_reason`, with actor/time fields returned only to authorized users.
-- `ShippingInfoDto`: `shipping_status`, recipient/carrier/tracking fields present in the target contract and lifecycle timestamps. The v1 operational workflow is manual shipping.
+- `OrderDetailDto`: order identity/current state, immutable items/address/voucher snapshots, integer-VND totals, COD Payment, manual ShippingInfo and server-permitted actions. The allowed actions and transition preconditions come from [P1.7](refactor-v2/p1/P1.7-order-payment-contract.md), not from a client-writable status field.
+- `PaymentDto`: `method, payment_status, amount, currency, collected_by_account_id, collected_at, refund_amount, refunded_by_account_id, refunded_at, refund_reason`, with actor/time fields returned only to authorized users. COD collection is atomic with `SHIPPING → COMPLETED`; a full refund is a manually attested offline COD action combined with `COMPLETED → RETURNED`. One Payment/one full refund maximum; never accept client amount or actor/time.
+- `ShippingInfoDto`: `shipping_status`, recipient/carrier/tracking fields present in the approved target schema and available lifecycle timestamps. The v1 operational workflow is manual shipping; current fields are not an attempt-event timeline. State transitions follow [P1.7](refactor-v2/p1/P1.7-order-payment-contract.md).
 - `VoucherDto`: `id, code, discount_type, discount_value, minimum_order_value, maximum_discount, starts_at, ends_at, usage_limit, usage_count, status`, only for authorized admin reads. FIXED `discount_value` is VND; PERCENT is basis points. `usage_count` is server-owned and no per-account usage ledger exists.
 - `VoucherCreateRequest`: `code, discount_type, discount_value, minimum_order_value?, maximum_discount?, starts_at?, ends_at?, usage_limit?`; status begins DRAFT and usage_count begins zero.
 - `VoucherPatchRequest`: patch only allowed configuration/status fields; never accepts `usage_count`, IDs, actor or audit timestamps.
 - `POST /api/v1/orders` requires the `Idempotency-Key` HTTP header (1–128 ASCII characters matching `[A-Za-z0-9._~-]+`). The key is not in the JSON body. Response/replay status, canonical request fingerprint, Account namespace and conflict behavior are normative in [P1.6](refactor-v2/p1/P1.6-cart-checkout-contract.md). Client-computed monetary values are not authoritative.
 
-The target Order stores Product ID and order-time snapshots. Reading an existing Order must not resolve name, SKU, attributes or image content from mutable current catalog fields.
+The target Order stores Product ID and order-time snapshots. Reading an existing Order must not resolve name, SKU, attributes or image content from mutable current catalog fields. `ORDER_ADDRESSES` is immutable after placement; the target does not expose recipient-snapshot PATCH. P1.7 limits `COMPLETED → RETURNED` to one full COD refund and explicitly excludes per-line return quantities/history.
 
 ## 6. Procurement and inventory DTOs
 
@@ -108,7 +108,7 @@ Inventory quantities and ledger movements are Product-based. Every adjustment ha
 
 Reject invalid typed attribute values, cross-Attribute options, duplicate active phone, duplicate Product SKU, invalid Product hierarchy, non-positive Cart/receipt quantities, insufficient stock, invalid voucher use and forbidden state transitions. Use stable typed errors for authorization, validation, stock conflicts and idempotency conflicts.
 
-For order idempotency, the server scopes the key to the authenticated account and fingerprints the canonical semantic payload with SHA-256. Same key/same payload replays; same key/different payload conflicts; one account cannot read another account's result. The exact HTTP transport for this key must be explicitly set before runtime implementation.
+For order-creation idempotency, require the `Idempotency-Key` HTTP header on `POST /api/v1/orders`; scope the stored key to the authenticated account and fingerprint the canonical semantic payload with SHA-256. Same key/same payload replays; same key/different payload conflicts; another account cannot read the result. P1.6 is normative for transport/replay details. Post-create transition retries are guarded by locked state preconditions and source-deduplicated Inventory effects; they do not imply a new command-id table.
 
 This is the target DTO contract. Any old response shape not represented here must be deliberately retired or remapped; it must not be kept as a parallel persistence contract.
 
