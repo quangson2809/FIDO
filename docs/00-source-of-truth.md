@@ -9,9 +9,10 @@ Use the following artifacts as the current development contract, in this order:
 3. **Physical data contract:** [P1 Data Dictionary](refactor-v2/p1/P1-data-dictionary.csv), validated clean-reset DDL and required system seed under `backend/src/main/resources/db/clean-reset/`.
 4. **HTTP and wire contracts:** [API Contract](04-api-contract.md) and [DTO Contract](05-dto-contract.md).
 5. **Business and transaction invariants:** [Business Rules](06-business-rules-state-machines.md) and [Transactions, Concurrency and Idempotency](07-transactions-concurrency-idempotency.md).
-6. **Implementation status:** P1 API/use-case mapping and traceability artifacts under `docs/refactor-v2/p1/`. These describe delivery status and gaps; they do not override approved behavior.
-7. **Current code and migrations:** evidence of what must be aligned, never an automatic specification for the target design.
-8. **P0 reports and archived documents:** historical evidence only. Do not copy a superseded rule into a current contract.
+6. **Operations policy:** [P1.8 Operations, Audit, Content/Report and Seed Contract](refactor-v2/p1/P1.8-operations-seed-contract.md) plus its [operator runbook requirements](refactor-v2/p1/P1.8-operations-seed-runbook.md). It governs audit fields/correlation/redaction, content/report use cases, deletion/FK lifecycle, seed manifest and unresolved retention blockers; it does not override P1.2/P1.3/P1.5/P1.7 domain ownership.
+7. **Implementation status:** P1 API/use-case mapping and traceability artifacts under `docs/refactor-v2/p1/`. These describe delivery status and gaps; they do not override approved behavior.
+8. **Current code and migrations:** evidence of what must be aligned, never an automatic specification for the target design.
+9. **P0 reports and archived documents:** historical evidence only. Do not copy a superseded rule into a current contract.
 
 The older decision questionnaire is superseded by the dated owner approval. It is not a source of open choices. If an active document conflicts with an authority above, update that document; do not preserve both alternatives in the current contract.
 
