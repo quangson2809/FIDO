@@ -19,8 +19,8 @@
 - `PermissionDto`: `id, code, name, description`; the target Permission entity has no status field.
 - `RolePermissionDto`: `role_id, permission_id`; both IDs identify an existing grant relation, not a caller-supplied actor identity.
 - `MeDto`: `account, addresses[], roles[], permissions[]`. Roles/permissions are effective grants resolved for the authenticated principal; never use this payload as the source for authorizing a mutation.
-- `AccessControlDto`: `roles[], permissions[]`, matching the current target API mapping. The selected Role's grants are represented by `RoleDetailDto`; do not add a separate top-level grant shape unless the owner approves an API change.
-- `RoleDetailDto`: `role, permissions[]`, with permissions representing the selected Role's current grants.
+- `AccessControlDto`: `roles[], permissions[]`, matching the current target API mapping; it currently describes the role and permission catalogues but does not describe the `ROLE_PERMISSIONS` links for each role.
+- `RoleDetailDto`: `role, permissions[]`, used by the existing role mutation mapping where specified. The current route map has no `GET /admin/roles/{roleId}` and `GET /admin/access-control` does not return role grants, so the read contract needed to load existing grants before editing remains blocked by `RBAC-READ-01`. Do not add a route or extend the response shape without owner approval.
 - `StaffAccountSummaryDto`: `account, roles[]`; `StaffAccountDetailDto`: `account, roles[], permissions[]`. Neither DTO contains password/hash, bootstrap secret or credential issuance data.
 - `MutationResultDto` for a successful delete: `id, deleted`; errors preserve the existing global error envelope.
 
