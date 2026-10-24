@@ -11,10 +11,12 @@ Cross-module writes must go through the owning module service. Validation and mu
 ## 2. Target-specific validation
 
 ### Accounts and authorization
-- Registration and authentication must not reveal whether an account identifier exists.
-- Active phone identity is unique; the phone may be reused after the account is soft-deleted.
-- Never accept an account ID, role/grant assignment or actor identity from an unauthenticated/public request.
-- Protect role/permission changes with the approved RBAC policy, audit record and last-SUPERADMIN guard.
+- Registration and authentication must not reveal whether an account identifier exists. The target login identifier is phone; do not retain the legacy generic `identifier`/email-login contract.
+- Active phone identity is unique; the phone may be reused after the account is soft-deleted. Phone canonicalization remains blocked by `PHONE-NORM-01`; don't invent an accepted character set or normalization algorithm.
+- Do not freeze status-specific registration, token or login behavior until `ACC-STATUS-01` is approved. The Data Dictionary flags the initial status/login-session effects as unresolved even though a status list appears in target state documentation.
+- Never accept an account ID, role/grant assignment or actor identity from an unauthenticated/public request. `/me` and saved Address operations derive ownership from the authenticated principal.
+- Saved Address reads/writes are scoped to their owner. Updating/deleting a saved Address must never change `ORDER_ADDRESSES` snapshots. Single-default-per-account and atomic default replacement remain blocked by `ADDR-DEFAULT-01`.
+- Protect role/permission changes with the approved RBAC policy, audit record and concurrency-safe last-SUPERADMIN guard. Exact grant mutation shape (full replacement versus delta) remains blocked by `RBAC-GRANT-01`.
 
 ### Product and attributes
 - Product SKU is unique according to the target database contract.
@@ -39,7 +41,9 @@ Cross-module writes must go through the owning module service. Validation and mu
 
 ## 3. HTTP error convention
 
-Return a stable public envelope with a machine-readable error code and safe user-facing message. Map request validation to a client validation error, authentication to 401, authorization to 403, missing resources to 404, and state/stock/idempotency conflicts to the agreed conflict status. Preserve the existing global error envelope unless an explicit API-contract change is approved.
+Return a stable public envelope with a machine-readable error code and safe user-facing message. Map request validation to 400, authentication to 401, authorization to 403, missing resources to 404, and state/stock/idempotency conflicts to 409 where that matches the approved API contract. Preserve the existing global error envelope unless an explicit API-contract change is approved.
+
+Account/RBAC target error codes defined by P1.2: `VALIDATION_ERROR` (400), `UNAUTHENTICATED` (401), `INVALID_CREDENTIALS` (401, generic login message), `FORBIDDEN` (403), `RESOURCE_NOT_FOUND` (404), `PHONE_ALREADY_IN_USE` (409), `ROLE_CODE_ALREADY_EXISTS` / `PERMISSION_CODE_ALREADY_EXISTS` (409), `LAST_SUPERADMIN_REQUIRED` (409), `ROLE_IN_USE` / `PERMISSION_IN_USE` (409), and `ACCOUNT_STATE_CONFLICT` (409). Keep the current global envelope unchanged. The use of status-specific errors and messages remains blocked by `ACC-STATUS-01`; never reveal whether the account exists during credential failure.
 
 Never return SQL text, database/provider errors, stack traces, credentials, JWTs or secret configuration. Logs must exclude raw request bodies and query strings where they may contain credentials or personal data; retain safe route template, method, status, internal exception category and correlation ID.
 
