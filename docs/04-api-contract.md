@@ -135,3 +135,17 @@ Receipt line and inventory requests identify Products, not option combinations. 
 - Order snapshots must not be rewritten by later catalog, account-address or voucher changes.
 - Do not expose CRUD routes for concepts outside the target schema. Retire routes that rely on removed persistence concepts rather than inventing replacement tables.
 - Exact request/response fields and mutation semantics must agree with docs/05-dto-contract.md. Any still-open API detail is listed in docs/12-tbd-out-of-scope.md; do not infer it from the old runtime.
+
+
+## P1.3 target Product / metadata conformance
+
+The target Product model is row-based, not variant-based. Every Product has a generated Product ID, unique required SKU, required whole-VND selling price, row-owned nullable category/brand references and explicit nullable descriptive fields. Parent-child depth is one; no row implicitly supplies another row's values. See [P1.3 Catalog Metadata Contract](refactor-v2/p1/P1.3-catalog-metadata-contract.md) for hierarchy, validation, filters, image ordering and breaking changes.
+
+Attribute filter query parameters:
+- **attribute_filters[ATTRIBUTE_CODE]=value** applies typed equality for OPTION (using an option value belonging to that Attribute), TEXT or BOOLEAN.
+- **attribute_min[ATTRIBUTE_CODE]** and **attribute_max[ATTRIBUTE_CODE]** apply only to NUMBER attributes.
+- Unknown codes, wrong types/operators and conflicting bounds fail validation; different Attribute predicates combine with AND. is_variant_defining never changes filtering into Product generation.
+
+Image gallery writes are Product-scoped and atomic. Positions are contiguous from zero; position zero is the single primary image whenever the gallery is non-empty. Order-time image snapshots refer to stable immutable object/version content; numeric retention and legal deletion exceptions remain P1.8 decisions.
+
+Admin Attribute/Option write routes use CATALOG_WRITE: POST/PATCH /admin/catalog/attributes and /admin/catalog/attributes/{attributeId}, plus POST/PATCH /admin/catalog/attributes/{attributeId}/options and /admin/catalog/attributes/{attributeId}/options/{optionId}. Attribute type kinds are controlled lookup data; Attribute/Option DELETE routes are intentionally undefined until P1.8 resolves lifecycle.
