@@ -1,12 +1,12 @@
 # 06 — Business Rules & State Machines
 
-> **Owner-approved target contract (2026-10-23):** the 31-table ERD v2 and DB-01..DB-12 target defaults are approved. This document defines target behavior; runtime enforcement and acceptance tests remain pending. Do not introduce persistence outside the approved target without an explicit owner amendment.
+> **Owner-approved target contract (2026-10-23):** the 31-table ERD v2 and DB-01..DB-12 defaults are approved except where a specific artifact records an unresolved approval conflict below. This document defines target behavior; runtime enforcement and acceptance tests remain pending. Do not introduce persistence outside the approved target without an explicit owner amendment.
 
-## 1. Approved target status/type defaults
+## 1. Target status/type literals and approval caveats
 
 | Entity | Approved status/type literals | Invariant |
 |---|---|---|
-| Account | `ACTIVE`, `PENDING_APPROVAL`, `LOCKED`, `SUSPENDED` | Only authorized commands change status; active phone identity is unique and may be reused after soft deletion. |
+| Account | Current target docs list `ACTIVE`, `PENDING_APPROVAL`, `LOCKED`, `SUSPENDED` | Active phone identity is unique and may be reused after soft deletion. **Approval caveat:** the Data Dictionary flags exact Account status semantics and login/session effects as unapproved; initial state, token issuance and status-specific login behavior remain blocked by `ACC-STATUS-01`. |
 | Role, Category, Brand, Supplier, Warehouse | `ACTIVE`, `INACTIVE` | Disabling does not erase historical references or bypass FK policy. The server resolves the one operational warehouse in v1. |
 | Product | `DRAFT`, `ACTIVE`, `INACTIVE`, `ARCHIVED` | Only eligible active Products sell; parent/child depth is one level; each Product owns its SKU, required selling price and stock. |
 | Cart | `OPEN`, `CHECKOUT`, `COMPLETED`, `ABANDONED` | Authenticated owner only. Order placement mutates Cart atomically; Cart never reserves stock. |
