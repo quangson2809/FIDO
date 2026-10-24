@@ -3,7 +3,7 @@
 ## 1. Authentication and Account lifecycle
 
 - Protected routes use Bearer JWT. The authenticated Account/actor ID is derived from the security principal, never trusted from the request body.
-- Phone is the login identifier. Enforce uniqueness among active Accounts; the phone may be reused after soft deletion through the approved active-phone key/index. Do not impose email uniqueness absent an approved constraint.
+- Phone is the login identifier. Normalize Vietnamese input (`0` + 9 digits or `+84` + 9 digits; optional whitespace/`-()` separators) to canonical `+84` + 9 digits before lookup and uniqueness checks. Enforce uniqueness among active Accounts; reuse is allowed only after soft deletion. Do not impose email uniqueness absent an approved constraint.
 - Current target state documentation lists `ACTIVE`, `PENDING_APPROVAL`, `LOCKED` and `SUSPENDED`; however, the `ACCOUNTS.status` Data Dictionary row says the exact status/login-session effects are not yet owner-approved. Do not freeze registration initial state, token issuance or per-status login/session behavior until `ACC-STATUS-01` is resolved. Soft deletion remains separate through `deleted_at`.
 - Store only a password hash. Never log or return password hashes, tokens, OTP values, secrets or raw Authorization headers.
 - Public routes are limited to approved registration/login and public catalog/content reads. Persisted Cart operations and order placement require authentication. Guest Cart, guest checkout, phone-only order lookup and guest-Cart merging are out of target scope.
@@ -14,14 +14,14 @@
 - Enforce permission checks in backend services, not only through UI visibility.
 - The target uses ACCOUNTS, ROLES, PERMISSIONS, ACCOUNT_ROLES and ROLE_PERMISSIONS relationships.
 - Required system roles/permissions are seeded through Flyway. SUPERADMIN bootstrap credentials come from external secret/configuration, never committed source or demo seed.
-- Protect the last-SUPERADMIN invariant under concurrent role updates. Privileged role/permission changes are audited in the same transaction as the owning mutation. The exact request semantics for role-permission grant mutations (full replacement versus delta/add-remove) remain open under `RBAC-GRANT-01`; do not infer them from legacy controllers.
+- Protect the last-SUPERADMIN invariant under concurrent role updates. Privileged role/permission changes are audited in the same transaction as the owning mutation. `PATCH /admin/roles/{roleId}` permission grant semantics are full replacement: omitted `permission_ids` retains grants, `[]` clears all, non-empty replaces the full set; duplicate/missing IDs are rejected. Role/Permission codes are immutable after creation.
 - SUPERADMIN is the highest technical administrator. Do not silently grant business capabilities to ADMIN or employee roles; role grants must follow approved configuration.
 - Catalog capabilities include CATALOG_READ and CATALOG_WRITE. Define permissions in the target role/permission model and test each protected route; a permission code is not itself a grant.
 
 ## 3. Account and data ownership
 
 - Every /me resource is scoped to the authenticated Account. Reject cross-account reads and writes.
-- Account addresses are mutable Account-owned records. Placed `ORDER_ADDRESSES` are immutable snapshots and must not change when an Account address is edited. The one-default-address-per-account and atomic default-replacement policy is unresolved under `ADDR-DEFAULT-01`; the `is_default` boolean and non-unique index do not by themselves establish uniqueness.
+- Account addresses are mutable Account-owned records. Placed `ORDER_ADDRESSES` are immutable snapshots and must not change when an Account address is edited. If an Account has saved addresses, exactly one must be default; the first address defaults automatically and switching/deleting/unsetting the current default atomically promotes the most recently updated remaining address, tie-break descending ID. This cross-row invariant is enforced in the service transaction; the non-unique index is not sufficient.
 - Staff/customer administration uses actual Accounts and linked Orders; do not create synthetic guest identities.
 - Do not hard-delete Accounts, placed Orders, COD Payment facts, inventory ledger rows or audit history through ordinary CRUD operations. Apply the approved FK defaults: RESTRICT for business/history references; CASCADE only for explicitly disposable dependent data.
 
@@ -40,4 +40,4 @@ The target audit record captures actor, action, entity identity, before/after da
 
 ## 6. Acceptance requirements
 
-Test generic credential failures, owner-approved Account lifecycle/session outcomes, active-phone uniqueness and reuse after soft delete, phone canonicalization, JWT expiry/invalidity, `/me` ownership, permission isolation, last-SUPERADMIN concurrent changes, address default switching (after approval), audit atomicity and sensitive-data redaction. `ACC-STATUS-01`, `PHONE-NORM-01` and `ADDR-DEFAULT-01` are contract blockers; do not use guessed expected results as acceptance assertions. A schema-only or documentation check does not prove these runtime guarantees.
+Test generic credential failures; `ACTIVE` versus non-ACTIVE login/session behavior; canonical phone uniqueness and reuse after soft delete; JWT expiry/invalidity; `/me` ownership; permission isolation; full-replacement grant semantics; last-SUPERADMIN concurrent changes; atomic address default switching/deletion; audit atomicity and sensitive-data redaction. These are agreed target requirements; runtime acceptance remains pending until code/tests exercise them.
