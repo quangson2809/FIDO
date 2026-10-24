@@ -4,7 +4,7 @@
 
 - Protected routes use Bearer JWT. The authenticated Account/actor ID is derived from the security principal, never trusted from the request body.
 - Phone is the login identifier. Normalize Vietnamese input (`0` + 9 digits or `+84` + 9 digits; optional whitespace/`-()` separators) to canonical `+84` + 9 digits before lookup and uniqueness checks. Enforce uniqueness among active Accounts; reuse is allowed only after soft deletion. Do not impose email uniqueness absent an approved constraint.
-- Account registration and staff-account creation begin at `ACTIVE`. Only `ACTIVE` Accounts receive tokens or use protected APIs; `PENDING_APPROVAL` receives `ACCOUNT_NOT_ACTIVE`, while `LOCKED`/`SUSPENDED` receive `ACCOUNT_STATE_CONFLICT` after valid credentials. Protected requests re-check status; soft deletion remains separate through `deleted_at`.
+- Account registration and staff-account creation begin at `ACTIVE`. Only `ACTIVE` Accounts receive tokens or use protected APIs. Wrong credentials return generic `401 INVALID_CREDENTIALS`; valid credentials for any non-ACTIVE Account receive the same `403 ACCOUNT_NOT_ACTIVE` without disclosing exact status. Protected requests re-check status; soft deletion remains separate through `deleted_at`.
 - Store only a password hash. Never log or return password hashes, tokens, OTP values, secrets or raw Authorization headers.
 - Public routes are limited to approved registration/login and public catalog/content reads. Persisted Cart operations and order placement require authentication. Guest Cart, guest checkout, phone-only order lookup and guest-Cart merging are out of target scope.
 - Do not create a refresh-token, OTP or other authentication API unless it is included in the current approved API contract.
