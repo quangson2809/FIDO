@@ -12,7 +12,7 @@ Until these rules are approved, do not implement scheduled purging of audit hist
 
 ## 2. Implementation contracts still requiring acceptance evidence
 
-- If an Account has multiple Cart rows, the current-Cart resolution policy must be explicitly defined before implementing Cart/quote/Order flows. The target schema does not imply one-active-Cart uniqueness or Cart merge; do not silently choose by update time. This is an API/workflow contract gap, not a reason to reintroduce the legacy schema.
+- P1.6 now specifies fail-closed current-Cart resolution: zero OPEN rows yields an empty read/create-on-mutation; exactly one is current; multiple OPEN rows return CART_SELECTION_AMBIGUOUS with no mutation or merge. The approved schema still has no one-active-Cart unique constraint. P3.8 runtime enforcement and concurrency tests remain pending.
 
 These items are engineering acceptance gates, not open choices about the approved database model:
 
@@ -25,7 +25,7 @@ These items are engineering acceptance gates, not open choices about the approve
 - Inventory source/sign/deduplication, deterministic locking, append-only reversal and atomic source/balance/ledger/audit behavior.
 - Voucher usage concurrency, order/payment/shipping transitions, authorization and historical snapshot stability.
 - Explicit APIs for authoring Attribute/AttributeOption metadata must be designed and approved before implementing those write operations. The current metadata-read routes do not by themselves define such CRUD contracts.
-- The transport location and exact wire representation of the order-creation idempotency key must be specified in the API contract before implementation. Its account scope and fingerprint/replay/conflict behavior are already approved.
+- P1.6 specifies the required Idempotency-Key HTTP header, Account-scoped stored key namespace, canonical SHA-256 fingerprint, replay response, changed-payload conflict and concurrent-loser behavior. P3.9 implementation and runtime acceptance tests remain pending.
 
 ## 3. Out of scope for the current target
 

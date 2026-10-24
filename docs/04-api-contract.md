@@ -46,19 +46,19 @@ Account contract rules:
 | GET | `/catalog/products` | Public | Product search/list; supported filters must be explicitly defined against Product fields and approved attribute behavior. |
 | GET | `/catalog/products/{productId}` | Public | Product detail and descriptive attribute values. |
 | GET | `/catalog/meta` | Public | Product-facing metadata definitions/options, with deterministic ordering. |
-| GET | `/cart` | JWT | Return the authenticated account's current Cart according to the explicit current-Cart selection policy. If multiple Cart rows may exist, define that policy before runtime implementation; monetary fields are server-derived. |
-| POST | `/cart/items` | JWT | Request contains `product_id` and positive `quantity`. |
-| PATCH | `/cart/items/{cartItemId}` | JWT | Update positive quantity on the caller's own line. |
-| DELETE | `/cart/items/{cartItemId}` | JWT | Remove the caller's own line. |
-| DELETE | `/cart` | JWT | Clear Cart items; Cart ownership remains with the account. |
-| POST | `/checkout/quote` | JWT | Return a stateless/advisory quote; no persistent quote ID, stock reservation or voucher side effect. |
-| POST | `/orders` | JWT | Re-read and reprice current state; atomically place the order using account-scoped idempotency. |
+| GET | `/cart` | JWT | Read the sole account-owned `OPEN` Cart. If none exists, return `CartDto(id=null, items=[], subtotal=0)` without writing. Multiple OPEN rows return `409 CART_SELECTION_AMBIGUOUS`; do not merge/select arbitrarily. |
+| POST | `/cart/items` | JWT | Request `product_id, quantity>0`. Add quantity to an existing same-Product line or insert if absent; create an OPEN Cart atomically if none exists. Product must be ACTIVE/non-deleted. Cart does not reserve stock. |
+| PATCH | `/cart/items/{cartItemId}` | JWT | Replace the selected current Cart line quantity with the supplied positive SQL INT exactly; do not increment. |
+| DELETE | `/cart/items/{cartItemId}` | JWT | Remove the line only from the sole current OPEN Cart. An absent/foreign/non-current line returns `404 CART_ITEM_NOT_FOUND`; multiple OPEN rows fail closed. |
+| DELETE | `/cart` | JWT | Clear all lines of the sole current OPEN Cart but preserve the Cart row/status; if none exists return empty view without creating one. Multiple OPEN rows return `409 CART_SELECTION_AMBIGUOUS`. |
+| POST | `/checkout/quote` | JWT | Body: recipient/address fields plus optional `voucher_code`; calculate the current Cart using current server state. Stateless/advisory only; no `quote_id`, persistence, reservation or mutation. |
+| POST | `/orders` | JWT | Same recipient/address/Voucher fields as quote plus required `Idempotency-Key` header. Revalidate/reprice current Cart; no `quote_id`, client lines or totals. First commit returns `201 Created`; same-key/same-payload replay preserves the original response and adds `Idempotency-Replayed: true`. |
 
 A Cart line identifies one Product row. Use `product_id` consistently through Cart, quote, order line, receiving and inventory requests. Product parent/child structure is explicit; metadata never creates Products.
 
-The target schema does not impose a one-active-Cart uniqueness constraint or Cart merge. Before Cart/quote/Order runtime implementation, define how the application resolves an Account that has multiple Cart rows; do not silently choose by update time or merge them.
+The schema has no one-active-Cart unique constraint and no Cart merge. P1.6 specifies fail-closed resolution: zero OPEN rows yields an empty read/create-on-mutation; exactly one OPEN row is current; multiple OPEN rows return `409 CART_SELECTION_AMBIGUOUS` without writes. Do not infer selection from `updated_at`. P3.8 must serialize Account-scoped Cart creation/mutations. See [P1.6](refactor-v2/p1/P1.6-cart-checkout-contract.md).
 
-Order creation revalidates Product status, price, stock, voucher quota and server-owned shipping input. Same account-scoped idempotency key plus the same canonical payload replays the committed result; a changed payload returns a typed conflict. The exact transport location of the key must be frozen before implementation.
+Order creation revalidates Product status, price, stock, Voucher eligibility/quota and server-owned shipping inputs. `Idempotency-Key` is required on `POST /orders`; derive its stored namespace from authenticated Account and persist the canonical semantic request's SHA-256 fingerprint with the Order. Same key/payload replays a committed Order; changed payload returns `409 IDEMPOTENCY_PAYLOAD_MISMATCH`; concurrent losers roll back then replay/conflict after reading the winner. Exact canonicalization and response semantics are normative in [P1.6](refactor-v2/p1/P1.6-cart-checkout-contract.md).
 
 Money reconciliation is fixed: `subtotal = Σ(unit_price × quantity)`, `discount_amount = Σ(line discounts)`, `line_total = unit_price × quantity − line discount`, and `total_amount = subtotal − discount_amount + shipping_fee`. `PAYMENTS.amount` equals the persisted Order total in VND. See P1.5 for exact rounding/allocation examples.
 
