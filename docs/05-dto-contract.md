@@ -34,7 +34,7 @@
 - `RoleCreateRequest`: `code, name, description?`; code is required/unique (max 80), name required (max 150), description optional (max 500).
 - `RolePatchRequest`: the target supports updating approved Role fields and its permission grants, but whether grant mutation is full replacement or delta/add-remove is not yet specified by the current authoritative contract. Freeze the exact request shape only after resolving `RBAC-GRANT-01`. Role code mutation semantics also need explicit confirmation before being offered by PATCH.
 - `PermissionCreateRequest`: `code, name, description?`; code required/unique (max 120), name required (max 200), description optional (max 500).
-- `PermissionPatchRequest`: `name?, description?`. Permission code is a technical key and is not changed by ordinary PATCH.
+- `PermissionPatchRequest`: proposed editable fields are `name?` and `description?`; whether Permission `code` may be changed by PATCH remains unapproved under `RBAC-GRANT-01`, so do not expose code mutation until its compatibility behavior is decided.
 - `StaffAccountCreateRequest` cannot be frozen until `ACC-CREDENTIAL-01` decides how the required password credential is established. Do not invent an invitation/password-reset/OTP endpoint or accept a plaintext password in audit/logs.
 - `StaffAccountPatchRequest` may update approved profile fields; grant mutation semantics remain blocked by `RBAC-GRANT-01`, and account-status mutation remains blocked by `ACC-STATUS-01`. No request may assign actor identity or change the authenticated principal's scope.
 
