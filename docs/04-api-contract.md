@@ -101,11 +101,13 @@ An optional voucher code on quote/order is evaluated against pre-discount mercha
 |---|---|---|
 | GET | `/admin/orders` | JWT + `ORDER_READ` |
 | GET | `/admin/orders/{orderId}` | JWT + `ORDER_READ` |
-| PATCH | `/admin/orders/{orderId}` | JWT + `ORDER_EDIT`; only approved non-snapshot fields/commands |
-| POST | `/admin/orders/{orderId}/actions` | JWT + action-specific permission |
-| POST | `/admin/orders/{orderId}/after-sales` | JWT + `ORDER_AFTER_SALES`; `RETURN` only in v1 |
+| POST | `/admin/orders/{orderId}/actions` | JWT + `ORDER_EDIT`; `CONFIRM`, `START_PREPARING`, `DISPATCH`, `MARK_DELIVERY_FAILED`, `RETRY_DELIVERY`, `CANCEL` |
+| POST | `/admin/orders/{orderId}/payment-actions` | JWT + `ORDER_PAYMENT`; `COMPLETE_DELIVERY_AND_COLLECT_COD` only |
+| POST | `/admin/orders/{orderId}/after-sales` | JWT + `ORDER_AFTER_SALES` + `ORDER_PAYMENT`; `RETURN_AND_REFUND_FULL` only |
 
-Order-time Product, address, voucher, money, COD Payment and image facts are immutable historical facts. v1 supports COD, manual shipping and at most one full refund per order; partial/multiple refunds and detailed item-level return/exchange flows are outside the target scope. State, Payment, inventory and audit changes follow the atomic transaction rules in docs/06 and docs/07.
+The normative actor, precondition, state, side-effect and error matrix is [P1.7 Order/Payment Contract](refactor-v2/p1/P1.7-order-payment-contract.md). A new Order starts `PENDING`, its Payment starts COD/`UNPAID`, and its ShippingInfo starts `PENDING`. **No Inventory deduction is posted at placement**; `PENDING → CONFIRMED` rechecks and deducts stock atomically. Order-state mutation must use explicit action commands, not generic status PATCH. Manual COD collection is atomic with delivery completion; return is limited to one whole-order offline full refund.
+
+`PATCH /api/v1/me/orders/{orderId}/recipient` is legacy-only and is not part of the target v1 API: the placed `ORDER_ADDRESSES` snapshot is immutable. No customer-side cancellation route, partial/multiple refund, item-level return/exchange flow, payment gateway, carrier API or dedicated Order timeline is included. Snapshot reads must use order-time Product, SKU, attribute, image, address, money and Voucher facts, not current catalog/address-book/Voucher values.
 
 ### Supplier, receiving and inventory
 
