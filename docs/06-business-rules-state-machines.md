@@ -6,7 +6,7 @@
 
 | Entity | Approved status/type literals | Invariant |
 |---|---|---|
-| Account | Current target docs list `ACTIVE`, `PENDING_APPROVAL`, `LOCKED`, `SUSPENDED` | Active phone identity is unique and may be reused after soft deletion. **Approval caveat:** the Data Dictionary flags exact Account status semantics and login/session effects as unapproved; initial state, token issuance and status-specific login behavior remain blocked by `ACC-STATUS-01`. |
+| Account | `ACTIVE`, `PENDING_APPROVAL`, `LOCKED`, `SUSPENDED` | Public registration and staff-account creation start at `ACTIVE`; only `ACTIVE` may authenticate or access protected routes. Non-ACTIVE credentials receive no token; protected requests re-check current account status. Active phone identity is canonicalized and unique; it may be reused after soft deletion. |
 | Role, Category, Brand, Supplier, Warehouse | `ACTIVE`, `INACTIVE` | Disabling does not erase historical references or bypass FK policy. The server resolves the one operational warehouse in v1. |
 | Product | `DRAFT`, `ACTIVE`, `INACTIVE`, `ARCHIVED` | Only eligible active Products sell; parent/child depth is one level; each Product owns its SKU, required selling price and stock. |
 | Cart | `OPEN`, `CHECKOUT`, `COMPLETED`, `ABANDONED` | Authenticated owner only. Order placement mutates Cart atomically; Cart never reserves stock. |
