@@ -64,3 +64,4 @@
 - A static schema pass cannot prove API authorization, transaction rollback, idempotency, locking, concurrency, asset retention or user-flow behavior.
 - A test not run on the reported SHA must not be marked PASS. Report skips/failures and their impact explicitly.
 - Clean Schema Reset is prohibited on production, staging, shared integration and persistent business data. No reset is performed by maintaining this matrix.
+| T-VOUCH-12 | Voucher result is zero after subtotal bound, percentage rounding or cap | Reject the voucher as ineligible; do not create a Voucher snapshot or increment usage_count. | Boundary/transaction test |
