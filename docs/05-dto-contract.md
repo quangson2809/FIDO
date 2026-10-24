@@ -8,14 +8,35 @@
 - All monetary values are whole VND integers from request through response. Do not emit JSON floating-point money.
 - A nullable field may be cleared only when the specific request contract explicitly allows it. Omitted and explicit null are not interchangeable by default.
 
-## 2. Account and RBAC DTOs
+## 2. Account, Address and RBAC DTOs
 
-- `AccountDto`: `id, full_name, phone, email, status`; never exposes password hashes or secret configuration.
-- `AddressDto`: `id, recipient_name, recipient_phone, province, district, ward, address_line, is_default`.
-- `RoleDto`: `id, code, name, description, status`.
-- `PermissionDto`: `id, code, name, description`.
-- `MeDto`: `account, addresses[], roles[], permissions[]`.
-- Staff and access-control DTOs expose only the approved Account, Role, Permission and grant fields.
+### Response DTOs
+
+- `AccountDto`: `id, full_name, phone, email, status`. Never expose `password_hash`, credential material, JWTs or secret configuration.
+- `AuthResponseDto`: `access_token, account: AccountDto`; returned after successful registration/login only when Account status is `ACTIVE`. Registration creates `ACTIVE` and returns this DTO without phone/email verification.
+- `AddressDto`: `id, recipient_name, recipient_phone, province, district, ward, address_line, is_default`. It describes a saved Address, not the immutable `ORDER_ADDRESSES` snapshot.
+- `RoleDto`: `id, code, name, description, status`; status values are `ACTIVE|INACTIVE`.
+- `PermissionDto`: `id, code, name, description`; the target Permission entity has no status field.
+- `RolePermissionDto`: `role_id, permission_id`; both IDs identify an existing grant relation, not a caller-supplied actor identity.
+- `MeDto`: `account, addresses[], roles[], permissions[]`. Roles/permissions are effective grants resolved for the authenticated principal; never use this payload as the source for authorizing a mutation.
+- `AccessControlDto`: `roles[], permissions[]`, matching the current target API mapping; it currently describes the role and permission catalogues but does not describe the `ROLE_PERMISSIONS` links for each role.
+- `RoleDetailDto`: `role, permissions[]`; returned from `GET /admin/roles/{roleId}` and relevant role create/patch operations. This read route allows the client to inspect current grants before editing.
+- `StaffAccountSummaryDto`: `account, roles[]`; `StaffAccountDetailDto`: `account, roles[], permissions[]`. Neither DTO contains password/hash, bootstrap secret or credential issuance data.
+- `MutationResultDto` for a successful delete: `id, deleted`; errors preserve the existing global error envelope.
+
+### Request DTOs
+
+- `RegisterRequest`: required fields are `phone` (max 20), `full_name` (max 150), and `password` (8–128 characters, do not trim); `email` optional (max 254). Normalize Vietnamese phone input before lookup/uniqueness: accept `0` + 9 digits or `+84` + 9 digits, allowing whitespace and `-()` separators; canonical stored form is `+84` + 9 digits. Registration creates `ACTIVE`, assigns the seeded `CUSTOMER` Role server-side in the same transaction, and returns `AuthResponseDto`; never accept `id`, `status`, `account_id`, `role_ids` or `password_hash` from the request.
+- `LoginRequest`: `phone, password`. Phone is the login identifier; canonicalize it by the same rule as registration before account lookup. Wrong credentials return generic `401 INVALID_CREDENTIALS`; valid credentials for any non-ACTIVE Account return `403 ACCOUNT_NOT_ACTIVE` without a token or disclosure of the exact state.
+- `ProfilePatchRequest`: target profile fields are `full_name?` and `email?`; `phone`, `status`, `id`, `role_ids`, timestamps and password/hash are excluded. Omitted fields retain the current value; explicit `null` is rejected for both fields because this endpoint does not explicitly allow clearing them. This follows the general DTO rule in §1; non-null `full_name` is required by the target schema.
+- `AddressCreateRequest`: `recipient_name, recipient_phone, province, district, ward, address_line, is_default?`. Required strings must be nonblank and fit bounds: recipient name 150, phone 20, province/district/ward 120 each, address line 500. `account_id`, IDs and timestamps are server/database-owned. If this is the first saved address, it becomes default automatically; explicit `true` switches default atomically.
+- `AddressPatchRequest`: partial form of `AddressCreateRequest`, excluding `account_id`, ID and timestamps. Omitted fields mean no requested change; explicit null is rejected for target non-null fields. At most one default is allowed; where at least one saved address remains, exactly one is default. Switch/unset/delete operations promote the most recently updated remaining address atomically; tie-break by descending ID.
+- `RoleCreateRequest`: `code, name, description?`; code is required/unique (max 80), name required (max 150), description optional (max 500).
+- `RolePatchRequest`: `name?, description?, status?, permission_ids?`. Omitted fields retain current values; `description: null` clears description; null for `name`/`status`/`permission_ids` is rejected. `permission_ids` omitted means retain grants, `[]` clears all grants, and a non-empty array replaces the full set atomically. Reject duplicate/missing IDs. For `SUPERADMIN`, an explicit set must equal the complete Permission catalogue and its status stays ACTIVE; each new Permission is granted to SUPERADMIN atomically. Role `code` is immutable after create.
+- `PermissionCreateRequest`: `code, name, description?`; code required/unique (max 120), name required (max 200), description optional (max 500).
+- `PermissionPatchRequest`: editable fields are `name?` and `description?`; Permission `code` is immutable after creation. Omitted fields retain values; `description: null` clears description; `name: null` is rejected.
+- `StaffAccountCreateRequest`: `phone, full_name, email?, password, role_ids[]`. Password is 8–128 characters and is not trimmed. SUPERADMIN sets the initial password; the server hashes it immediately and creates the Account as `ACTIVE`. Validate role IDs; commit Account, grants and audit atomically. Never return/log/audit plaintext password or hash.
+- `StaffAccountPatchRequest` may update approved profile/status fields and `role_ids?`; omitted roles retain assignments and a provided role ID list replaces assignments atomically. Account status is server-managed; no request may assign actor identity or change the authenticated principal's scope.
 
 ## 3. Product/catalog DTOs
 

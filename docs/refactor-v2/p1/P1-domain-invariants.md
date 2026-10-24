@@ -4,10 +4,10 @@
 
 ## Account and RBAC
 
-- **INV-ACC-01:** Phone is the login identity and is unique among active Accounts. Soft deletion releases the phone for reuse. Generic credential-failure messaging must not reveal whether an account exists.
+- **INV-ACC-01:** Phone is the login identity; canonicalize Vietnamese `0` + 9 digit or `+84` + 9 digit inputs (allow common whitespace/`-()` separators) to `+84` + 9 digits before lookup and uniqueness enforcement. The canonical phone is unique among active Accounts; soft deletion releases it for reuse. Generic wrong-credential messaging must not reveal account existence.
 - **INV-ACC-02:** /me resources, saved addresses and customer Orders are scoped to the authenticated principal. Request-supplied Account IDs do not grant access.
-- **INV-ACC-03:** Account status literals are ACTIVE, PENDING_APPROVAL, LOCKED and SUSPENDED. Status-specific login/session effects must follow the API/security contract.
-- **INV-RBAC-01:** Resolve effective grants from target role/permission data. Role/permission mutation and required audit are atomic; preserve the last-SUPERADMIN invariant under concurrent updates.
+- **INV-ACC-03:** Public registration creates an `ACTIVE` Account and atomically assigns the seeded `CUSTOMER` Role; staff-account creation starts `ACTIVE` with SUPERADMIN-assigned roles. Only `ACTIVE` may receive tokens/use protected APIs. Wrong credentials return generic `401 INVALID_CREDENTIALS`; valid credentials for any non-ACTIVE Account return `403 ACCOUNT_NOT_ACTIVE` without disclosing exact status. Protected requests re-check current status.
+- **INV-RBAC-01:** Resolve grants through target role data. For ordinary Roles, `permission_ids` omitted retains, `[]` clears, non-empty replaces the full set atomically with audit. The `SUPERADMIN` Role always remains ACTIVE and has every Permission; create Permission + SUPERADMIN grant atomically. Seed Permissions are undeletable; custom Permission cannot be deleted while granted to a non-SUPERADMIN Role. At least one non-soft-deleted ACTIVE Account must retain the ACTIVE SUPERADMIN Role under concurrent updates. Role/Permission technical codes are immutable.
 - **INV-SEED-01:** Seed system roles/permissions through Flyway; keep demo fixtures separate. Bootstrap SUPERADMIN credentials come from external secret/configuration and are never committed.
 
 ## Product, attributes and images
@@ -30,7 +30,7 @@
 - **INV-ORDER-02:** Money is whole VND in integer storage. Calculate order discount using HALF-UP rounding once at order level, then allocate by largest remainder with ascending Product ID tie-break. Line discounts sum exactly to the order discount; totals are reconciled and non-negative.
 - **INV-ORDER-03:** Capture Product/SKU/name/attribute/quantity/price/discount/line/image facts and recipient/voucher snapshots at placement. Later source edits never rewrite placed Order facts.
 - **INV-ORDER-04:** Use the approved Order state/actor matrix; Order, Payment, inventory and required audit side effects commit atomically.
-- **INV-ADDR-01:** Saved Address and ORDER_ADDRESSES are different aggregates. Editing a saved Address must not rewrite an OrderAddress snapshot.
+- **INV-ADDR-01:** Saved Address and ORDER_ADDRESSES are different aggregates. Editing a saved Address must not rewrite an OrderAddress snapshot. If saved addresses exist, exactly one is default; the first address defaults automatically and switching/deleting/unsetting promotes the most recently updated remaining address atomically (tie-break ID descending).
 
 ## Voucher, COD and shipping
 

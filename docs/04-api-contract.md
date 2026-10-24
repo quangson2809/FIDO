@@ -18,17 +18,25 @@ Global rules:
 
 ### Authentication and account
 
-| Method | Route | Access |
-|---|---|---|
-| POST | `/auth/register` | Public |
-| POST | `/auth/login` | Public |
-| GET, PATCH | `/me` | JWT |
-| POST | `/me/addresses` | JWT |
-| PATCH, DELETE | `/me/addresses/{addressId}` | JWT |
-| GET | `/me/orders` | JWT |
-| GET | `/me/orders/{orderId}` | JWT |
+| Method | Route | Access | Target request/response contract |
+|---|---|---|---|
+| POST | `/auth/register` | Public | `phone, full_name, password (8–128 characters, not trimmed), email?`; normalize phone before uniqueness checks. Create Account as `ACTIVE`, atomically assign the seeded `CUSTOMER` Role, and return `AuthResponseDto(access_token, account)`; client cannot submit role IDs, and no email/OTP verification is required in this phone-login flow. |
+| POST | `/auth/login` | Public | `phone, password`; successful `ACTIVE` Account returns `AuthResponseDto(access_token, account)`. Wrong credentials return generic `401 INVALID_CREDENTIALS`; valid credentials for non-ACTIVE Accounts return typed `403` without a token. |
+| GET | `/me` | JWT | Returns `MeDto(account, addresses[], roles[], permissions[])`; scope is derived from the authenticated principal. |
+| PATCH | `/me` | JWT | Patch `full_name?` and `email?` only. Do not accept `account_id`, `id`, `status`, role/grant fields, timestamps, `password_hash` or `phone` without an approved phone-change/verification flow. |
+| POST | `/me/addresses` | JWT | Create a saved address owned by the principal; `account_id` is server-derived. Address field lengths/nullability follow the target Data Dictionary. |
+| PATCH | `/me/addresses/{addressId}` | JWT | Patch only the caller's saved address. Omitted fields retain existing values; null is rejected for non-null fields. If `is_default=true`, atomically replace the old default; unsetting/deleting the current default promotes the most recently updated remaining address (tie-break by descending ID). |
+| DELETE | `/me/addresses/{addressId}` | JWT | Delete only the caller's saved address; must not mutate historical `ORDER_ADDRESSES` snapshots. |
+| GET | `/me/orders` | JWT | Read only Orders belonging to the authenticated account. |
+| GET | `/me/orders/{orderId}` | JWT | Read only the authenticated account's Order and immutable order-time snapshots. |
 
-Account addresses are mutable account-owned records. An Order's `ORDER_ADDRESSES` row is an immutable order-time snapshot; APIs must not rewrite it after placement. Do not offer an Order-recipient mutation route that changes the snapshot.
+Account contract rules:
+
+- Phone is the login identity and is canonicalized before lookup/uniqueness: accept Vietnam format `0` + 9 digits or `+84` + 9 digits, allow whitespace and `-()` separators, normalize to `+84` + 9 digits, and reject other characters/lengths. Store/compare only canonical values; uniqueness applies to non-soft-deleted Accounts, and reuse is allowed only after soft deletion.
+- `full_name` is required and limited to 150 characters. `email` is optional, limited to 254 characters, and is not unique under the target schema.
+- `password_hash`, Account status, actor identity, grants and server timestamps are server-owned. New customer registration creates an `ACTIVE` Account and assigns the seeded `CUSTOMER` Role atomically; new staff Accounts start `ACTIVE`; only ACTIVE may authenticate or call protected endpoints. `PENDING_APPROVAL`, `LOCKED` and `SUSPENDED` receive no token and all use `403 ACCOUNT_NOT_ACTIVE` after valid credentials; protected requests re-check current Account status. Never return/log/audit plaintext passwords or password hashes.
+- Account status is server-managed: register/staff-create sets `ACTIVE`; only an ACTIVE Account can receive a token. Wrong credentials return generic `401 INVALID_CREDENTIALS`; valid credentials for any non-ACTIVE Account return the same `403 ACCOUNT_NOT_ACTIVE`, without revealing the exact state. Protected requests reject Accounts changed from ACTIVE.
+- Saved `ADDRESSES` are mutable Account-owned records. `ORDER_ADDRESSES` is a separate immutable order-time snapshot; editing/deleting a saved address must not rewrite an Order. If an Account has saved addresses, exactly one is default. The first address is default automatically; switching/deleting/unsetting the current default promotes the most recently updated remaining address atomically (tie-break descending ID); deleting the last address leaves none.
 
 ### Public catalog and authenticated Cart/checkout
 
@@ -103,8 +111,12 @@ Receipt line and inventory requests identify Products, not option combinations. 
 
 ### Staff, RBAC, audit, reports, content and customers
 
-- Staff-account routes: `GET/POST /admin/staff-accounts`, `GET/PATCH /admin/staff-accounts/{accountId}`; access requires the approved SUPERADMIN policy.
-- Access control: `GET /admin/access-control`; role and permission management routes under `/admin/roles` and `/admin/permissions`; writes use the owning account/RBAC service, audit changes and preserve the last-SUPERADMIN invariant.
+- Staff-account routes: `GET/POST /admin/staff-accounts`, `GET/PATCH /admin/staff-accounts/{accountId}`; all require SUPERADMIN. Create request includes `phone, full_name, email?, password (8–128 characters, not trimmed), role_ids[]`; SUPERADMIN sets the initial password, the server stores only its hash, and the response/log/audit never contain password/hash. New staff Accounts start `ACTIVE`.
+- Access control: `GET /admin/access-control`; role detail: `GET /admin/roles/{roleId}`; role mutations use `POST/PATCH/DELETE /admin/roles` and permission mutations use `GET/POST/PATCH/DELETE /admin/permissions`. These routes require SUPERADMIN. Writes are owned by Account/RBAC and must atomically record required audit. The `SUPERADMIN` Role stays ACTIVE with every Permission; creating a Permission auto-grants it to SUPERADMIN. Seed-manifest Permissions return `SYSTEM_PERMISSION_PROTECTED`; custom Permission referenced by any non-SUPERADMIN Role returns `PERMISSION_IN_USE`. If only the SUPERADMIN system grant exists, remove it and delete the custom Permission atomically.
+- `GET /admin/roles/{roleId}` returns `RoleDetailDto(role, permissions[])` so administrators can inspect current grants before editing. `PATCH /admin/roles/{roleId}` accepts `name?, description?, status?, permission_ids?`: omitted retains; `description: null` clears it; null for `name`/`status`/`permission_ids` is rejected. `permission_ids` omitted retains grants, `[]` clears, and a non-empty list replaces all grants atomically with audit. Reject duplicate/missing IDs. For the `SUPERADMIN` Role, an explicit list must equal the full current Permission catalogue and its status remains ACTIVE. Creating any Permission adds its grant to SUPERADMIN atomically. `ROLES.code` and `PERMISSIONS.code` are immutable after creation.
+- `ROLES.code` (≤80) and `PERMISSIONS.code` (≤120) are required unique technical keys and immutable after creation. Role status is `ACTIVE|INACTIVE`; inactive roles cannot be newly assigned or contribute effective permission grants. `RolePatchRequest.description: null` clears description; omitted means retain. Permission has no status column in the target model; `PermissionPatchRequest.description: null` clears description.
+- Assignment/grant writes validate all referenced IDs, prevent duplicate composite-key grants and enforce the last-SUPERADMIN invariant under concurrency. Never delete system roles (`CUSTOMER`, `ADMIN`, `SUPERADMIN`). The `SUPERADMIN` Role stays ACTIVE and must retain every Permission grant; creating a Permission adds its `ROLE_PERMISSIONS` link to SUPERADMIN atomically. Seed-manifest Permissions cannot be deleted (`SYSTEM_PERMISSION_PROTECTED`). A custom Permission cannot be deleted while granted to any non-SUPERADMIN role (`PERMISSION_IN_USE`); if it is only granted to SUPERADMIN, remove that system grant and delete it atomically. Permission has no `status` column.
+- Error codes remain stable and the existing global error wrapper is preserved. The Account/RBAC code mapping is documented in `docs/refactor-v2/p1/P1.2-account-address-rbac-contract.md`; it does not claim runtime behavior is already implemented.
 - Audit: `GET /admin/audit-logs` with approved actor/action/entity/time filters and pagination. DTO fields must map to the target audit columns; do not expose secrets or sensitive payloads.
 - Reporting (all routes require JWT + `REPORT_READ`):
   - `GET /admin/reports/overview?from=...&to=...` returns the overview aggregates defined in the DTO contract.

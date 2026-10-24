@@ -1,12 +1,13 @@
 # 06 — Business Rules & State Machines
 
-> **Owner-approved target contract (2026-10-23):** the 31-table ERD v2 and DB-01..DB-12 target defaults are approved. This document defines target behavior; runtime enforcement and acceptance tests remain pending. Do not introduce persistence outside the approved target without an explicit owner amendment.
+> **Owner-approved target contract (2026-10-23):** the 31-table ERD v2 and DB-01..DB-12 defaults are approved except where a specific artifact records an unresolved approval conflict below. This document defines target behavior; runtime enforcement and acceptance tests remain pending. Do not introduce persistence outside the approved target without an explicit owner amendment.
 
-## 1. Approved target status/type defaults
+## 1. Target status/type literals and approval caveats
 
 | Entity | Approved status/type literals | Invariant |
 |---|---|---|
-| Account | `ACTIVE`, `PENDING_APPROVAL`, `LOCKED`, `SUSPENDED` | Only authorized commands change status; active phone identity is unique and may be reused after soft deletion. |
+| Account | `ACTIVE`, `PENDING_APPROVAL`, `LOCKED`, `SUSPENDED` | Public registration creates an `ACTIVE` Account and atomically assigns the seeded `CUSTOMER` Role; staff creation starts `ACTIVE` with SUPERADMIN-supplied roles. Only `ACTIVE` may authenticate or access protected routes. Wrong credentials return generic `401 INVALID_CREDENTIALS`; valid credentials for any non-ACTIVE Account return `403 ACCOUNT_NOT_ACTIVE` without disclosing exact status. Protected requests re-check status. Phone is canonicalized and unique among non-soft-deleted Accounts; reuse follows soft deletion. |
+| RBAC and system permissions | Role: `ACTIVE`/`INACTIVE`; Permission has no status | The `SUPERADMIN` Role must stay `ACTIVE` and retain every current Permission. New Permission creation grants it to `SUPERADMIN` in the same transaction. At least one non-soft-deleted `ACTIVE` Account must retain that Role; role/account/grant changes and audit enforce this invariant atomically. Seed Permission rows are protected. Custom Permission may be deleted only when no non-SUPERADMIN Role uses it; remove its SUPERADMIN grant atomically with deletion. |
 | Role, Category, Brand, Supplier, Warehouse | `ACTIVE`, `INACTIVE` | Disabling does not erase historical references or bypass FK policy. The server resolves the one operational warehouse in v1. |
 | Product | `DRAFT`, `ACTIVE`, `INACTIVE`, `ARCHIVED` | Only eligible active Products sell; parent/child depth is one level; each Product owns its SKU, required selling price and stock. |
 | Cart | `OPEN`, `CHECKOUT`, `COMPLETED`, `ABANDONED` | Authenticated owner only. Order placement mutates Cart atomically; Cart never reserves stock. |
@@ -70,6 +71,7 @@ GoodsReceipt: `DRAFT → CONFIRMED`, or `DRAFT → CANCELLED`. Confirming posts 
 | Receipt | Only successful first confirmation adds stock; every movement has a source, actor and time. |
 | COD | No payment gateway callback. Collection/refund must be bound to the correct Order and authorized actor. |
 | Recipient snapshot | Order address facts are immutable once placed; editing the account address must not affect the Order. |
+| Saved Address default | An Account may have zero saved addresses; if any remain, exactly one is default. The first address defaults automatically; switching/unsetting/deleting the current default promotes the most recently updated remaining address atomically, tie-break by descending ID. Deleting the last address leaves no default. |
 | Return | v1 allows at most one full refund. Restock only after an authorized decision confirms the returned goods are sellable. |
 | History | Later Product, price, address and voucher edits cannot rewrite an existing Order's snapshots. |
 | Authorization | Backend permission checks protect each administrative mutation; privileged changes are audited. |
