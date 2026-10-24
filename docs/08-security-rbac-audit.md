@@ -14,7 +14,7 @@
 - Enforce permission checks in backend services, not only through UI visibility.
 - The target uses ACCOUNTS, ROLES, PERMISSIONS, ACCOUNT_ROLES and ROLE_PERMISSIONS relationships.
 - Required system roles/permissions are seeded through Flyway. SUPERADMIN bootstrap credentials come from external secret/configuration, never committed source or demo seed.
-- Protect the last-SUPERADMIN invariant under concurrent role updates. Privileged role/permission changes are audited in the same transaction as the owning mutation. `PATCH /admin/roles/{roleId}` permission grant semantics are full replacement: omitted `permission_ids` retains grants, `[]` clears all, non-empty replaces the full set; duplicate/missing IDs are rejected. Role/Permission codes are immutable after creation.
+- Protect the last-SUPERADMIN invariant under concurrent role/account updates: at least one non-soft-deleted ACTIVE Account must retain the ACTIVE `SUPERADMIN` Role. The `SUPERADMIN` Role cannot be deactivated or stripped of Permission grants; its grant set equals the full Permission catalogue. Creating a Permission adds its grant to SUPERADMIN atomically. Privileged changes and audit share one transaction. For other Roles, `PATCH /admin/roles/{roleId}` uses full replacement: omitted `permission_ids` retains, `[]` clears, non-empty replaces; duplicate/missing IDs are rejected. Role/Permission codes are immutable.
 - SUPERADMIN is the highest technical administrator. Do not silently grant business capabilities to ADMIN or employee roles; role grants must follow approved configuration.
 - Catalog capabilities include CATALOG_READ and CATALOG_WRITE. Define permissions in the target role/permission model and test each protected route; a permission code is not itself a grant.
 
