@@ -63,7 +63,7 @@ Wire format and semantics are normative in [P1.6 Cart and Checkout Contract](ref
 4. Same scoped key + same fingerprint + committed Order returns the original `201 Created`, body and `Location`, with `Idempotency-Replayed: true`, before Cart resolution. Same key + changed fingerprint returns `409 IDEMPOTENCY_PAYLOAD_MISMATCH` without mutation.
 5. Concurrent duplicate requests commit at most once. The loser rolls back, then reads the winner to replay or conflict. A uniqueness race must not leave side effects or surface avoidable untyped failure.
 6. Retry a lost response with the exact key/body. Use a new key for a different purchase. Keep key/fingerprint for at least the Order lifetime; replay cannot duplicate Order, Cart consumption, Voucher use or Inventory effects.
-7. Order + item/snapshot rows + COD Payment + Voucher counter + Cart consumption + audit + applicable Inventory effects are one transaction. Any required write failure rolls it all back.
+7. Order placement commits Order + item/address/Product/Voucher/image snapshots + COD Payment UNPAID + ShippingInfo PENDING + Voucher counter + Cart consumption + audit in one transaction, with no Inventory movement. P1.7 confirmation is a separate transaction that deducts stock; eligible cancellation is a separate transaction that reverses existing movements and releases Voucher quota once. Each command's full write set rolls back on any required-write failure.
 
 ## 5. Money and voucher atomicity
 
