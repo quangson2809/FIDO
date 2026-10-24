@@ -67,11 +67,15 @@ One transaction covers the Order, OrderItems, order address/Product/voucher/imag
 
 ## 5. Money and voucher atomicity
 
-- Money is integer VND end-to-end.
-- Calculate the order-level discount with HALF-UP rounding to whole VND. Allocate to lines with the largest-remainder method and ascending `product_id` tie-break. Allocated discounts must sum exactly to the order discount; no line or order total may be negative.
-- v1 vouchers are order-wide, non-stackable and governed by one global usage limit. Consume usage in the successful order transaction; restore at most once on eligible cancellation. A quote never consumes usage.
-- Test the concurrent final-voucher race and repeated cancellation on MySQL.
+Normative arithmetic and Voucher eligibility rules are in [P1.5 Pricing and Voucher Contract](refactor-v2/p1/P1.5-pricing-voucher-contract.md).
 
+- All currency values are whole VND integers. FIXED Voucher `discount_value` is VND; PERCENT `discount_value` is integer basis points (100 bps=1%). Use exact integer arithmetic and overflow-safe intermediates.
+- `subtotal = Σ(unit_price × quantity)` before discount/shipping. Calculate one order-level Voucher discount: FIXED candidate is the configured VND value; PERCENT candidate is `ROUND_HALF_UP(subtotal × bps / 10,000)`. Apply an optional VND `maximum_discount` cap, then cap by subtotal.
+- Allocate that integer discount by largest remainder proportional to line gross; ties use ascending `product_id`. Each line total is gross minus allocated line discount. `ORDERS.discount_amount = Σ(ORDER_ITEMS.discount_amount)`, `ORDERS.total_amount = subtotal - discount_amount + shipping_fee`, and `PAYMENTS.amount = ORDERS.total_amount`; all totals are non-negative.
+- Voucher eligibility at placement requires normalized code, ACTIVE status, `starts_at ≤ now < ends_at` for non-null UTC bounds, subtotal before discount/excluding shipping ≥ minimum_order_value, and remaining global quota. One Voucher per order; no stacking, Product/Category targeting, per-account caps or usage ledger.
+- Quote never reserves or mutates voucher quota. Successful placement guards and increments `usage_count` exactly once inside the Order transaction together with snapshots, Payment, Cart, inventory and audit. A race for the final global use has at most one winner; rollback of Order creation rolls back the increment.
+- `usage_count` is net committed uses not released by an eligible cancellation. P1.7 decides when cancellation invokes the P1.5 release operation; when invoked, decrement once in the same guarded cancellation transaction. Repeat cancellation cannot decrement twice. Refund/return does not release quota by default.
+- Order-time Voucher snapshots preserve normalized code, type, configured value and actual applied discount. Later Voucher edits only affect future placements. No per-account usage ledger or other persistence is implied.
 ## 6. Verification gates
 
 Acceptance tests must cover last-stock races, receipt double-confirm, identical source events with different request keys, cancellation/return reversal, same-key order concurrency, changed-payload conflict, cross-account isolation, lost-response replay, voucher quota races, transaction rollback and ledger-to-balance reconciliation. Documentation or schema-only tests do not prove runtime transaction behavior.

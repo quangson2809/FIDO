@@ -52,6 +52,10 @@ The following technical defaults were accepted by the owner on 2026-10-23. "Appr
 
 The approved inventory/warehouse/receipt details for balance bounds, missing balances, versioning, signed movement/source, semantic deduplication, reversals, lock order, atomicity and ledger reconciliation are consolidated in [P1.4 Inventory Contract](P1.4-inventory-contract.md). This is a normative elaboration of the approved DB-03 decision, not approval to add tables, indexes, movement types or DDL. Runtime acceptance remains pending.
 
+## DB-06 / DB-10 Pricing and Voucher contract handoff
+
+The owner-approved DB-06/DB-10 target behavior is consolidated in [P1.5 Pricing and Voucher Contract](P1.5-pricing-voucher-contract.md): VND-only integer money; formula reconciliation across line, Order and Payment; PERCENT basis-point unit; HALF_UP order-level calculation; largest-remainder allocation with ascending Product ID tie-break; single order-wide non-stacking Voucher; normalized code/time/minimum/quota eligibility; atomic global usage counter and one-time release when P1.7 invokes cancellation compensation. This does not authorize new targeting fields, per-account quota/usage ledgers or changes to the approved 31-table ERD. Runtime acceptance remains pending.
+
 ## APPROVED TARGET CONTRACT DETAILS — IMPLEMENTATION ACCEPTANCE REQUIRED
 
 | ID | Approved target contract | Remaining acceptance evidence |
@@ -64,7 +68,7 @@ The approved inventory/warehouse/receipt details for balance bounds, missing bal
 | DB-07 | Order-time address/product/voucher/image snapshots; stable immutable image content; historical order remains stable after source edits. | Asset immutability/history integration tests; numeric retention duration remains TBD. |
 | DB-08 | COD, one Payment aggregate, manual shipping, explicit state/actor matrix; at most one full refund; no partial/multiple refund or detailed item-level return workflow in v1. | State-transition, authorization, duplicate collection/refund, stock reversal and audit atomicity tests. |
 | DB-09 | Active-phone uniqueness with reuse after soft delete; physical nullability/defaults/indexes/checks/FKs follow approved dictionary and lifecycle rules. | JPA/service mapping, schema-validation and delete/FK tests. |
-| DB-10 | VND-only integer money; HALF-UP order discount rounding; largest-remainder line allocation with stable product_id tie-break; all totals reconcile exactly. | Multi-line/boundary allocation and API/Java/frontend/report reconciliation tests. |
+| DB-10 | VND-only integer money; one HALF_UP order-level percent calculation; largest-remainder allocation with stable product_id tie-break; line/Order/Payment formulas and worked examples are in P1.5. | Multi-line/boundary allocation and API/Java/frontend/report reconciliation tests. |
 | DB-11 | Flyway seeds required roles/permissions; SUPERADMIN bootstrap uses external secret/config; demo fixture is separate and contains no credentials. | Fresh-install, seed repeatability, external bootstrap and secret scan. |
 | DB-12 | Approved soft-delete/immutable-history/FK defaults; RESTRICT except approved disposable dependent working data; no hard deletion of posted Order/Payment/ledger/audit history. | Per-module delete/FK tests; numeric retention periods and anonymization exceptions remain TBD. |
 ## DEFERRED

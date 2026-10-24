@@ -1,5 +1,7 @@
 # P1 — Target Use-Case Reconciliation Matrix
 
+> Pricing formulas, voucher eligibility/state, UTC window boundaries, global quota consume/release and exact money examples are normative in [P1.5 Pricing and Voucher Contract](P1.5-pricing-voucher-contract.md). P1.6 owns Order-create idempotency; P1.7 owns Order transitions and the timing of cancellation quota release.
+
 > Inventory balance/version, warehouse resolution, receipt and adjustment use cases, semantic source deduplication, reversal, transaction/locking and reconciliation are governed by [P1.4 Inventory Contract](P1.4-inventory-contract.md). P1.7 owns Order transition timing; Inventory is called through its owning service.
 
 - **Status: PARTIAL.** This matrix defines target behavior and implementation gates; it does not assert that the use cases are implemented.
@@ -32,3 +34,14 @@
 - Money is integer VND; apply order-level HALF-UP then largest-remainder line allocation with ascending Product ID tie-break.
 - Owner approval closes the design-choice gate, not runtime acceptance. P1/P2 remains open until exact-SHA schema, module, security, rollback, concurrency and frontend tests pass.
 - Numeric data/audit/image retention and anonymization exceptions remain TBD; do not purge automatically.
+
+
+## P1.5 Voucher use cases
+
+| Use case | Contract | Owner boundary |
+|---|---|---|
+| Maintain Voucher | Admin creates DRAFT and updates allowed config/status fields; normalized code is unique; usage_count is never client-writable; usage_limit cannot be below current usage_count. | P1.5 defines contract; RBAC/permission seeds are P1.8; runtime service is P3.7. |
+| Evaluate Voucher | At order/quote evaluation, require ACTIVE, UTC time-window eligibility, pre-discount merchandise subtotal ≥ minimum and available global quota. | Quote is advisory; P1.6 owns checkout request flow. |
+| Consume quota | Increment once in successful Order transaction with immutable Voucher snapshot; atomic global cap guard. | P1.5 owns behavior; P1.6 owns Order idempotency; P3.9 orchestrates. |
+| Release quota | Decrement once for an eligible cancellation; no release on refund/return by default. | P1.7 decides which cancellation transition calls this operation; P1.5 owns the operation semantics. |
+| Calculate totals | One order-level Voucher discount, HALF_UP percentage calculation, largest-remainder line allocation, Order/Payment reconciliation. | P1.5 owns calculation; P3.6 implements; reports use persisted monetary facts and their own approved state-inclusion rules. |

@@ -8,6 +8,13 @@
 - All monetary values are whole VND integers from request through response. Do not emit JSON floating-point money.
 - A nullable field may be cleared only when the specific request contract explicitly allows it. Omitted and explicit null are not interchangeable by default.
 
+### Money and Voucher DTO rules
+
+- Every monetary JSON value is a whole-VND integer; no JSON float/decimal money. `unit_price`, line/order/payment totals, shipping and applied discount are VND. `discount_value`/`discount_value_snapshot` are VND for FIXED but basis points for PERCENT (100 bps=1%).
+- `CheckoutQuoteDto` and Order responses use the same subtotal/discount/shipping/total formulas and P1.5 HALF_UP plus largest-remainder allocation; the quote is not persisted and cannot mutate quota.
+- `VoucherDto` exposes `id, code, discount_type, discount_value, minimum_order_value, maximum_discount, starts_at, ends_at, usage_limit, usage_count, status` only to authorized admin reads. `usage_count` is read-only; do not expose per-account usage history. Dates are ISO-8601 instants normalized to UTC.
+- Create Voucher starts `status=DRAFT`, `usage_count=0`; clients cannot set `id` or `usage_count`. Patch may not lower `usage_limit` below current `usage_count`; EXPIRED is terminal. Historical Order snapshots do not change after Voucher edits.
+
 ## 2. Account, Address and RBAC DTOs
 
 ### Response DTOs
@@ -57,19 +64,21 @@ A Product is the catalog sale unit. A child Product has a normal Product ID and 
 - `CartItemDto`: `id, product_id, quantity`, with server-derived Product display, current unit price, line total and availability where the endpoint requires them.
 - `CartDto`: `id, items[], subtotal`. It represents only the authenticated account's Cart. The subtotal is computed by the server.
 - Add/update Cart request: `product_id` for a new line and `quantity > 0`; updates to an existing line identify it by `cartItemId`.
-- `CheckoutQuoteDto`: item calculation details, `subtotal`, `discount_amount`, `shipping_fee`, `total_amount`, and applicable voucher summary, all integer VND. It has **no** persisted quote identifier.
+- `CheckoutQuoteDto`: item calculation details, `subtotal`, order `discount_amount`, `shipping_fee`, `total_amount`, per-line allocated `discount_amount` and `line_total`, plus applicable Voucher summary. Monetary fields are integer VND and reconcile under P1.5. It has **no** persisted quote identifier or quota side effect.
 - A quote is advisory. At order creation, the server reloads current data and revalidates the calculation.
 
 ## 5. Order, voucher, Payment and shipping DTOs
 
 - `OrderSummaryDto`: `id, order_number, status, total_amount, currency, placed_at`.
-- `OrderItemDto`: `id, product_id, sku_snapshot, product_name_snapshot, attribute_snapshot, image_url_snapshot, quantity, unit_price, discount_amount, line_total`.
+- `OrderItemDto`: `id, product_id, sku_snapshot, product_name_snapshot, attribute_snapshot, image_url_snapshot, quantity, unit_price, discount_amount, line_total`. `discount_amount` is the allocated whole-VND share of the order Voucher; `line_total = unit_price*quantity - discount_amount`.
 - `OrderAddressDto`: `recipient_name, recipient_phone, province, district, ward, address_line`.
 - `OrderVoucherSnapshotDto`: order-time voucher code, discount type/value and allocated discount facts.
 - `OrderDetailDto`: order identity/state, immutable items/address/voucher snapshots, integer-VND totals, COD Payment, manual shipping and permitted actions.
 - `PaymentDto`: `method, payment_status, amount, currency, collected_by_account_id, collected_at, refund_amount, refunded_by_account_id, refunded_at, refund_reason`, with actor/time fields returned only to authorized users.
 - `ShippingInfoDto`: `shipping_status`, recipient/carrier/tracking fields present in the target contract and lifecycle timestamps. The v1 operational workflow is manual shipping.
-- `VoucherDto`: code, status/window, approved discount configuration and quota information permitted to the caller. It does not expose a per-account usage ledger.
+- `VoucherDto`: `id, code, discount_type, discount_value, minimum_order_value, maximum_discount, starts_at, ends_at, usage_limit, usage_count, status`, only for authorized admin reads. FIXED `discount_value` is VND; PERCENT is basis points. `usage_count` is server-owned and no per-account usage ledger exists.
+- `VoucherCreateRequest`: `code, discount_type, discount_value, minimum_order_value?, maximum_discount?, starts_at?, ends_at?, usage_limit?`; status begins DRAFT and usage_count begins zero.
+- `VoucherPatchRequest`: patch only allowed configuration/status fields; never accepts `usage_count`, IDs, actor or audit timestamps.
 - Order-create requests supply recipient/order inputs and optional voucher input plus the documented idempotency key. Client-computed monetary values are not accepted as authoritative.
 
 The target Order stores Product ID and order-time snapshots. Reading an existing Order must not resolve name, SKU, attributes or image content from mutable current catalog fields.

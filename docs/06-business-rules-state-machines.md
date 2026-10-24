@@ -11,8 +11,8 @@
 | Role, Category, Brand, Supplier, Warehouse | `ACTIVE`, `INACTIVE` | Disabling does not erase historical references or bypass FK policy. The server resolves the one operational warehouse in v1. |
 | Product | `DRAFT`, `ACTIVE`, `INACTIVE`, `ARCHIVED` | Only eligible active Products sell; parent/child depth is one level; each Product owns its SKU, required selling price and stock. |
 | Cart | `OPEN`, `CHECKOUT`, `COMPLETED`, `ABANDONED` | Authenticated owner only. Order placement mutates Cart atomically; Cart never reserves stock. |
-| Voucher | `DRAFT`, `ACTIVE`, `INACTIVE`, `EXPIRED` | Order-wide, non-stackable, global usage limit; no catalog targeting or per-account quota ledger. Consume usage atomically at order placement and restore at most once on eligible cancellation. |
-| Voucher type | `PERCENT`, `FIXED` | Money is integer VND. Round order discount HALF-UP, then allocate by largest remainder with ascending Product ID tie-break. |
+| Voucher | `DRAFT`, `ACTIVE`, `INACTIVE`, `EXPIRED` | Only ACTIVE is potentially redeemable; additionally require UTC `starts_at ≤ now < ends_at` for non-null bounds, subtotal before discount and excluding shipping ≥ minimum_order_value, and remaining global quota. One non-stacking order-wide Voucher only; no Product/Category targeting or per-account quota ledger. Consume once at successful Order placement; P1.7 decides whether/when cancellation calls the one-time release operation. See P1.5. |
+| Voucher type | `PERCENT`, `FIXED` | FIXED `discount_value` is VND; PERCENT is integer basis points (100 bps=1%). Compute one order-wide discount, HALF_UP the percentage amount, apply optional VND cap and subtotal bound, then largest-remainder allocation with ascending Product ID tie-break. See P1.5. |
 | Order | `PENDING`, `CONFIRMED`, `PREPARING`, `SHIPPING`, `COMPLETED`, `DELIVERY_FAILED`, `CANCELLED`, `RETURNED` | Follow the transition graph below. State, Payment/shipping effects, stock movements and required audit are atomic. |
 | COD Payment | `UNPAID`, `PAID`, `REFUNDED` | One Payment aggregate per Order; at most one full refund in v1. |
 | ShippingInfo | `PENDING`, `SHIPPED`, `DELIVERED`, `FAILED`, `CANCELLED` | Manual shipping; reject illegal or duplicated transitions. |
@@ -20,6 +20,8 @@
 | Inventory movement | `OPENING`, `GOODS_RECEIPT`, `ORDER`, `ORDER_CANCEL_REVERSAL`, `RETURN_RESTOCK`, `ADJUSTMENT` | Source-linked, signed movement; append-only ledger; deterministic locking and source-derived duplicate prevention. |
 
 Unknown literals and illegal transitions must return stable typed errors. SQL constraints validate data shape but do not replace authorization, transition checks, idempotency or transaction enforcement.
+
+Pricing and Voucher configuration, eligibility/time-window boundaries, integer-VND calculations, line allocation and global quota consume/release semantics are normative in [P1.5 Pricing and Voucher Contract](refactor-v2/p1/P1.5-pricing-voucher-contract.md). This does not change the Order transition graph: P1.7 owns the cancellation timing that invokes quota release.
 
 ## 2. Order state machine
 
@@ -65,8 +67,8 @@ GoodsReceipt: `DRAFT → CONFIRMED`, or `DRAFT → CANCELLED`. CONFIRM requires 
 |---|---|
 | Sale unit | A Product row with explicit Product ID; parent and child records are independently sellable. |
 | Price | Each Product owns its required integer-VND selling price; no implicit parent fallback. |
-| Total | `total_amount = subtotal - discount_amount + shipping_fee`; baseline shipping fee is 30,000 VND unless changed by explicit configuration. |
-| Voucher | Authenticated order-wide non-stackable voucher; global usage count; no catalog targeting or per-account usage ledger. |
+| Total | `subtotal = Σ(unit_price × quantity)` before discount/shipping; line total = gross − allocated line discount; `total_amount = subtotal - discount_amount + shipping_fee`; `PAYMENTS.amount = ORDERS.total_amount`. Baseline shipping is 30,000 VND unless explicit server configuration overrides it. See P1.5. |
+| Voucher | Single order-wide non-stackable Voucher; no Product/Category targeting, per-account limit or usage ledger. Minimum is evaluated against pre-discount merchandise subtotal excluding shipping. Quote does not consume usage; only committed placement increments global usage_count atomically. Eligible cancellation release is invoked according to P1.7; refunds/returns do not release by default. See P1.5. |
 | Inventory | Cart and quote do not reserve stock. Deduct only when requested by the approved Order-owning command; balance is keyed by (warehouse_id, product_id), missing balance reads as zero, version increments per committed movement, bounds are enforced, and every balance change has an atomic ledger movement/audit. See P1.4; Order transition timing remains P1.7. |
 | Receipt | Only successful first confirmation adds stock; every movement has a source, actor and time. |
 | COD | No payment gateway callback. Collection/refund must be bound to the correct Order and authorized actor. |

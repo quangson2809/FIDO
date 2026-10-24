@@ -13,6 +13,7 @@ Global rules:
 - Persisted Cart, quote and order creation require login. There are no guest sessions, anonymous carts or guest-cart merging.
 - Monetary request/response values are whole VND integers. The server calculates prices, discounts, shipping, totals, status transitions and stock effects.
 - Use stable typed error codes for validation, ownership, authorization, state conflicts, stock conflicts and idempotency conflicts. Never expose SQL details or secrets.
+- Pricing and Voucher arithmetic follows [P1.5 Pricing and Voucher Contract](refactor-v2/p1/P1.5-pricing-voucher-contract.md): whole-VND integer math, HALF_UP for percentage discounts, largest-remainder line allocation and exact Order/Payment reconciliation.
 
 ## 2. Target route groups
 
@@ -59,6 +60,8 @@ The target schema does not impose a one-active-Cart uniqueness constraint or Car
 
 Order creation revalidates Product status, price, stock, voucher quota and server-owned shipping input. Same account-scoped idempotency key plus the same canonical payload replays the committed result; a changed payload returns a typed conflict. The exact transport location of the key must be frozen before implementation.
 
+Money reconciliation is fixed: `subtotal = Σ(unit_price × quantity)`, `discount_amount = Σ(line discounts)`, `line_total = unit_price × quantity − line discount`, and `total_amount = subtotal − discount_amount + shipping_fee`. `PAYMENTS.amount` equals the persisted Order total in VND. See P1.5 for exact rounding/allocation examples.
+
 ### Admin catalog
 
 | Method | Route | Access |
@@ -80,6 +83,18 @@ The target contract does not contain variant-creation/update routes or separate 
 
 Image management uses the Product ID and the `PRODUCT_IMAGES` collection. Upload validates the entire request and image policy before persistence; every saved image reference must be version-stable/immutable for order history. Removal detaches an image from the current Product gallery but must not delete object/version content still referenced by any Order snapshot. Reorder validates ownership of every image ID and writes a unique, contiguous order atomically; a concurrent reorder must not create duplicate positions. Provider/database partial failures must be handled without losing existing Order image history.
 
+### Admin Voucher management
+
+| Method | Route | Access |
+|---|---|---|
+| GET | `/admin/vouchers` | JWT + RBAC-defined voucher-read permission |
+| GET | `/admin/vouchers/{voucherId}` | JWT + RBAC-defined voucher-read permission |
+| POST | `/admin/vouchers` | JWT + RBAC-defined voucher-write permission; creates DRAFT |
+| PATCH | `/admin/vouchers/{voucherId}` | JWT + RBAC-defined voucher-write permission; no `usage_count` writes |
+
+Target Voucher fields are `id, code, discount_type, discount_value, minimum_order_value, maximum_discount, starts_at, ends_at, usage_limit, usage_count, status`. FIXED `discount_value` is VND; PERCENT is integer basis points (100 bps=1%). `maximum_discount` is a VND cap. Normalize code by trim+uppercase; no Product/Category scope or per-account usage limit/ledger is supported. Detailed eligibility, `[starts_at, ends_at)` window, global quota and status semantics are in [P1.5](refactor-v2/p1/P1.5-pricing-voucher-contract.md).
+
+An optional voucher code on quote/order is evaluated against pre-discount merchandise subtotal, excluding shipping. Quote only estimates current eligibility; it does not reserve or increment quota. Successful order placement consumes one global use atomically with Order and snapshot creation. P1.7 decides when an eligible cancellation calls the one-time quota-release operation; refund/return does not release quota by default.
 ### Orders, COD and after-sales
 
 | Method | Route | Access |
