@@ -8,14 +8,35 @@
 - All monetary values are whole VND integers from request through response. Do not emit JSON floating-point money.
 - A nullable field may be cleared only when the specific request contract explicitly allows it. Omitted and explicit null are not interchangeable by default.
 
-## 2. Account and RBAC DTOs
+## 2. Account, Address and RBAC DTOs
 
-- `AccountDto`: `id, full_name, phone, email, status`; never exposes password hashes or secret configuration.
-- `AddressDto`: `id, recipient_name, recipient_phone, province, district, ward, address_line, is_default`.
-- `RoleDto`: `id, code, name, description, status`.
-- `PermissionDto`: `id, code, name, description`.
-- `MeDto`: `account, addresses[], roles[], permissions[]`.
-- Staff and access-control DTOs expose only the approved Account, Role, Permission and grant fields.
+### Response DTOs
+
+- `AccountDto`: `id, full_name, phone, email, status`. Never expose `password_hash`, credential material, JWTs or secret configuration.
+- `AuthResponseDto`: `access_token, account: AccountDto`; used only for a successful authentication result. Registration's initial-status/token behavior remains blocked by `ACC-STATUS-01`.
+- `AddressDto`: `id, recipient_name, recipient_phone, province, district, ward, address_line, is_default`. It describes a saved Address, not the immutable `ORDER_ADDRESSES` snapshot.
+- `RoleDto`: `id, code, name, description, status`; status values are `ACTIVE|INACTIVE`.
+- `PermissionDto`: `id, code, name, description`; the target Permission entity has no status field.
+- `RolePermissionDto`: `role_id, permission_id`; both IDs identify an existing grant relation, not a caller-supplied actor identity.
+- `MeDto`: `account, addresses[], roles[], permissions[]`. Roles/permissions are effective grants resolved for the authenticated principal; never use this payload as the source for authorizing a mutation.
+- `AccessControlDto`: `roles[], permissions[], role_permissions[]`. `role_permissions` is needed to represent the existing ROLE_PERMISSIONS junction without creating an alternate grant model.
+- `RoleDetailDto`: `role, permissions[]`, with permissions representing the selected Role's current grants.
+- `StaffAccountSummaryDto`: `account, roles[]`; `StaffAccountDetailDto`: `account, roles[], permissions[]`. Neither DTO contains password/hash, bootstrap secret or credential issuance data.
+- `MutationResultDto` for a successful delete: `id, deleted`; errors preserve the existing global error envelope.
+
+### Request DTOs
+
+- `RegisterRequest`: `phone` (required, max 20), `full_name` (required, max 150), `password` (required), `email?` (optional, max 254). Never accept `id`, `status`, `account_id`, `role_ids` or `password_hash` on public registration. Status/token outcome is not frozen until `ACC-STATUS-01) is approved.
+- `LoginRequest`: `phone, password`. Do not accept an email/ambiguous `identifier` as the login key in the target contract. The exact phone normalization rule remains `PHONE-NORM-01).
+- `ProfilePatchRequest`: `full_name?, email?`. Omitted means unchanged. `full_name: null` is invalid. `email: null` explicitly clears the optional field; an email value must be valid and ≤254 characters. `phone`, `status`, `id`, `role_ids`, timestamps and password/hash are not allowed.
+- `AddressCreateRequest`: `recipient_name, recipient_phone, province, district, ward, address_line, is_default?`. Required strings must be nonblank and fit their Data Dictionary bounds: recipient name 150, recipient phone 20, province/district/ward 120 each, address line 500. `account_id`, IDs and timestamps are server/database-owned. Default-switch semantics remain `ADDR-DEFAULT-01).
+- `AddressPatchRequest`: partial form of `AddressCreateRequest`, excluding `account_id`, ID and timestamps. Omitted means retain; explicit null is rejected for non-null fields. The policy for setting `is_default=true) is not final until `ADDR-DEFAULT-01) is approved.
+- `RoleCreateRequest`: `code, name, description?`; code is required/unique (max 80), name required (max 150), description optional (max 500).
+- `RolePatchRequest`: `name?, description?, status?, permission_ids[]?`. `permission_ids`, when present, means full replacement of the Role's permission grants in one transaction. Role code is a stable technical key; changing it is not part of ordinary PATCH.
+- `PermissionCreateRequest`: `code, name, description?`; code required/unique (max 120), name required (max 200), description optional (max 500).
+- `PermissionPatchRequest`: `name?, description?`. Permission code is a technical key and is not changed by ordinary PATCH.
+- `StaffAccountCreateRequest` cannot be frozen until `ACC-CREDENTIAL-01) decides how the required password credential is established. Do not invent an invitation/password-reset/OTP endpoint or accept a plaintext password in audit/logs.
+- `StaffAccountPatchRequest` can update approved profile fields and replace `role_ids[]); account-status mutation remains blocked until `ACC-STATUS-01) is approved. No request may assign actor identity or change the authenticated principal's scope.
 
 ## 3. Product/catalog DTOs
 
