@@ -4,10 +4,10 @@
 
 ## Account and RBAC
 
-- **INV-ACC-01:** Phone is the login identity and is unique among active Accounts. Soft deletion releases the phone for reuse. Generic credential-failure messaging must not reveal whether an account exists.
+- **INV-ACC-01:** Phone is the login identity; canonicalize Vietnamese `0` + 9 digit or `+84` + 9 digit inputs (allow common whitespace/`-()` separators) to `+84` + 9 digits before lookup and uniqueness enforcement. The canonical phone is unique among active Accounts; soft deletion releases it for reuse. Generic wrong-credential messaging must not reveal account existence.
 - **INV-ACC-02:** /me resources, saved addresses and customer Orders are scoped to the authenticated principal. Request-supplied Account IDs do not grant access.
-- **INV-ACC-03:** Current target state documentation lists `ACTIVE`, `PENDING_APPROVAL`, `LOCKED` and `SUSPENDED`, but the `ACCOUNTS.status` Data Dictionary row records exact status/login-session effects as not owner-approved. Initial registration/staff-created status, token issuance and status-specific login/session effects are blocked by `ACC-STATUS-01`; do not infer them.
-- **INV-RBAC-01:** Resolve effective grants from target role/permission data. Role/permission mutation and required audit are atomic; preserve the last-SUPERADMIN invariant under concurrent updates.
+- **INV-ACC-03:** Registration and staff-account creation start at `ACTIVE`. Only `ACTIVE` may receive tokens/use protected APIs; `PENDING_APPROVAL` receives `ACCOUNT_NOT_ACTIVE`, while `LOCKED`/`SUSPENDED` receive `ACCOUNT_STATE_CONFLICT` after valid credentials. Protected requests re-check the current Account status.
+- **INV-RBAC-01:** Resolve effective grants from target role/permission data. `permission_ids` omitted means retain; `[]` clears; a non-empty list replaces all Role grants atomically with audit. Role/Permission codes are immutable after creation. Protect seeded system roles/permissions and the last-SUPERADMIN invariant under concurrent updates.
 - **INV-SEED-01:** Seed system roles/permissions through Flyway; keep demo fixtures separate. Bootstrap SUPERADMIN credentials come from external secret/configuration and are never committed.
 
 ## Product, attributes and images
@@ -30,7 +30,7 @@
 - **INV-ORDER-02:** Money is whole VND in integer storage. Calculate order discount using HALF-UP rounding once at order level, then allocate by largest remainder with ascending Product ID tie-break. Line discounts sum exactly to the order discount; totals are reconciled and non-negative.
 - **INV-ORDER-03:** Capture Product/SKU/name/attribute/quantity/price/discount/line/image facts and recipient/voucher snapshots at placement. Later source edits never rewrite placed Order facts.
 - **INV-ORDER-04:** Use the approved Order state/actor matrix; Order, Payment, inventory and required audit side effects commit atomically.
-- **INV-ADDR-01:** Saved Address and ORDER_ADDRESSES are different aggregates. Editing a saved Address must not rewrite an OrderAddress snapshot.
+- **INV-ADDR-01:** Saved Address and ORDER_ADDRESSES are different aggregates. Editing a saved Address must not rewrite an OrderAddress snapshot. If saved addresses exist, exactly one is default; the first address defaults automatically and switching/deleting/unsetting promotes the most recently updated remaining address atomically (tie-break ID descending).
 
 ## Voucher, COD and shipping
 
