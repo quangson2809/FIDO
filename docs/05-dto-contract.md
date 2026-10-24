@@ -26,7 +26,7 @@
 
 ### Request DTOs
 
-- `RegisterRequest`: proposed required fields are `phone` (max 20), `full_name` (max 150), and `password`; `email` is optional (max 254). Never accept `id`, `status`, `account_id`, `role_ids` or `password_hash` on public registration. The request field mapping needs to be synchronized with the authoritative target API map. Initial status and token issuance remain blocked by `ACC-STATUS-01`.
+- `RegisterRequest`: proposed required fields are `phone` (max 20), `full_name` (max 150), and `password`; `email` is optional (max 254). Never accept `id`, `status`, `account_id`, `role_ids` or `password_hash` on public registration. The request fields are synchronized with the P1.2 target API map; initial status and token issuance remain blocked by `ACC-STATUS-01`.
 - `LoginRequest`: `phone, password`. Phone is the approved login identifier; do not keep the legacy email/ambiguous `identifier` contract. Accepted phone characters and canonicalization remain blocked by `PHONE-NORM-01`.
 - `ProfilePatchRequest`: target profile fields are `full_name?` and `email?`; `phone`, `status`, `id`, `role_ids`, timestamps and password/hash are excluded. Omitted fields do not request a mutation. Explicit-null/clear semantics for optional `email` must be confirmed under `PROFILE-NULL-01`; non-null `full_name` is required by the target schema.
 - `AddressCreateRequest`: `recipient_name, recipient_phone, province, district, ward, address_line, is_default?`. Required strings must be nonblank and fit their Data Dictionary bounds: recipient name 150, recipient phone 20, province/district/ward 120 each, address line 500. `account_id`, IDs and timestamps are server/database-owned. Default-switch semantics remain blocked by `ADDR-DEFAULT-01`.
