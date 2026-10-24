@@ -29,3 +29,11 @@ The target clean-reset schema remains isolated from the active legacy Flyway mig
 - Target schema static consistency and isolated MySQL checks have passed on previously recorded SHAs. The latest documentation candidate must still pass its exact-SHA workflow; no runtime acceptance is inferred from a prior schema run.
 
 These breaking changes follow recorded owner decisions. Discrepancies in current code are implementation issues, not open choices to preserve the old data model.
+
+
+## P1.5 Pricing and Voucher contract changes
+
+- Replace legacy Voucher fields `scope`, `product_ids`, `category_ids`, `customer_limit`, `active_usage`, `ever_used`, `enabled` and any `voucher_usages` ledger with the owner-approved global-quota `VOUCHERS` row plus immutable `ORDER_VOUCHER_SNAPSHOTS`. These legacy features are not target fields.
+- Voucher APIs use `discount_type=FIXED|PERCENT`; FIXED values are VND, PERCENT values are integer basis points (100 bps = 1%). `maximum_discount` and `minimum_order_value` are VND. All applied monetary outputs are whole VND.
+- Use target admin Voucher APIs API-83–86 and the P1.5 DTO contract. Legacy PUT DTO/routes are source evidence only; they must not reintroduce targeting, stacking or per-account quota.
+- Quote does not consume quota. Successful Order placement consumes one global use atomically; eligible cancellation release is invoked at the timing P1.7 defines. No release on refund/return by default. P1.6 continues to own Order-create idempotency/replay.
