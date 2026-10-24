@@ -23,17 +23,18 @@ These items are engineering acceptance gates, not open choices about the approve
 - Product/Attribute typed-value validation, including same-Attribute option ownership and the rule that metadata never creates Products.
 - Product hierarchy validation, independent parent/child sellability, row-owned SKU/price/stock and no implicit NULL inheritance.
 - Inventory source/sign/deduplication, deterministic locking, append-only reversal and atomic source/balance/ledger/audit behavior.
-- Voucher usage concurrency, order/payment/shipping transitions, authorization and historical snapshot stability.
+- Voucher usage concurrency, Order/Payment/Shipping transition enforcement, authorization and historical snapshot stability; P1.7 defines the target contract, while P3.10 runtime evidence remains pending.
 - Explicit APIs for authoring Attribute/AttributeOption metadata must be designed and approved before implementing those write operations. The current metadata-read routes do not by themselves define such CRUD contracts.
-- P1.6 specifies the required Idempotency-Key HTTP header, Account-scoped stored key namespace, canonical SHA-256 fingerprint, replay response, changed-payload conflict and concurrent-loser behavior. P3.9 implementation and runtime acceptance tests remain pending.
+- P1.6 specifies the required Idempotency-Key HTTP header, Account-scoped stored key namespace, canonical SHA-256 fingerprint, replay response, changed-payload conflict and concurrent-loser behavior. P3.9 implementation/runtime acceptance remains pending.
+- P1.7 specifies the Order, Payment and ShippingInfo state/actor matrix; confirmation-time stock deduction, one-time cancellation compensation/Voucher release, immutable snapshots, manual COD collection, and one whole-order full refund only. P3.10 implementation/runtime acceptance remains pending.
 
 ## 3. Out of scope for the current target
 
 Unless the owner formally amends the ERD/API scope, do not add:
 
 - Guest sessions, anonymous Cart persistence, guest checkout, guest order lookup or guest-Cart merge.
-- Online payment gateways, partial refunds, multiple refunds per Order, or automated carrier integrations/tracking events.
-- A detailed item-level return/exchange workflow or separate return/refund event persistence.
+- Online payment gateways, partial refunds, multiple refunds per Order, automated carrier integrations/tracking events, or generic post-create command-id persistence.
+- A detailed item-level return/exchange workflow, persisted return inspection/quantities, or separate return/refund event persistence. Order status alone cannot establish return sellability or trigger restocking.
 - Automatic creation of saleable Product rows from attribute combinations.
 - Persisted checkout quotes, stock reservations, voucher Product/Category targeting, or a per-account voucher usage ledger.
 - New event/timeline tables or other tables absent from the approved 31-table ERD.
