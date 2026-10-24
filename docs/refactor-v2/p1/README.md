@@ -34,6 +34,10 @@ Baseline: `demo1`; owner approvals recorded 2026-10-23. This folder documents de
 
 | `P1.4-inventory-contract.md` | Inventory balance/version, warehouse and receipt lifecycle, signed movement/source, reversals, semantic deduplication, lock order and reconciliation. |
 | `P1.5-pricing-voucher-contract.md` | VND money formula, HALF_UP and largest-remainder examples, Voucher units/eligibility/state, global quota consume/release and API/DTO contract. |
+| `P1.6-cart-checkout-contract.md` | Authenticated Cart, stateless quote, order creation and account-scoped idempotency/replay contract. |
+| `P1.7-order-payment-contract.md` | Order/Payment/Shipping state matrices, immutable snapshots, cancellation compensation and full COD refund contract. |
+| `P1.8-operations-seed-contract.md` | Normative audit/redaction/correlation, content/report use cases, 31-table deletion/FK matrix, seed manifest and retention blockers. |
+| `P1.8-operations-seed-runbook.md` | Operator requirements for safe fresh install, seed/bootstrap verification, audit/content/report readiness and retention/deletion gates. |
 
 ## Frozen target rules
 
@@ -49,4 +53,4 @@ Baseline: `demo1`; owner approvals recorded 2026-10-23. This folder documents de
 
 ## Acceptance boundary
 
-The recorded owner approvals close design-choice gates for DB-01/02/03/05/06–11 and the DB-12 lifecycle/FK defaults; only numeric retention/anonymization values remain TBD. That is **not** runtime acceptance. Entity/Repository/Service, API/DTO, frontend, security, transaction, concurrency, seed and end-to-end evidence must pass on the exact candidate SHA before P1/P2 work is considered complete.
+The recorded owner approvals close design-choice gates for DB-01/02/03/05/06–11 and the DB-12 lifecycle/FK defaults; numeric retention/anonymization values remain TBD. P1.8 documents safe defaults but does not authorize purge or claim privacy retention is fully frozen. P1.9 must pass cross-artifact/FK/seed consistency before P2.1 begins. That is **not** runtime acceptance. Entity/Repository/Service, API/DTO, frontend, security, transaction, concurrency, seed and end-to-end evidence must pass on the exact candidate SHA before P1/P2 work is considered complete.
