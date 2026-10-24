@@ -13,9 +13,11 @@ on:
       - feature/customer-shopping-journey-ux-improvements
       - feature/admin-dashboard-analytics
       - feature/client-storefront-ui-ux-improvements
+      - "fix/**"
   pull_request:
     branches:
       - main
+      - demo1
     paths:
       - "backend/**"
       - "reference/**"
