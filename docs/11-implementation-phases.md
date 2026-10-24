@@ -4,13 +4,16 @@
 
 ## 1. Current status
 
-- Target schema and owner decisions: **approved**.
-- Clean-reset DDL/system seed: isolated and subject to exact-SHA schema verification.
+- Target schema and scoped owner decisions: recorded, but the **P1.9 cross-domain exit gate is BLOCKED** on the Product image ordering constraint decision and seed-permission mapping.
+- P1.9 documentation reconciliation report: [P1.9-contract-consistency-report.md](refactor-v2/p1/P1.9-contract-consistency-report.md).
+- Clean-reset DDL/system seed: isolated; exact-SHA checker and MySQL workflow must pass before their acceptance is claimed.
 - Entity, Repository, Service, API/DTO, frontend and workflow alignment: **implementation acceptance open**.
-- Numeric retention durations and anonymization exceptions: **TBD**.
+- Numeric retention durations and anonymization exceptions: **TBD**; no automatic purge.
 - No database reset was performed by documenting or approving the target.
 
 ## 2. P2 — Implement the target model
+
+**Entry gate:** P2.1 seed SQL is **not authorized** until P1.9 is PASS and the exact-SHA consistency/schema checks are green. The current P1 exit gate is BLOCKED; do not interpret historical owner approval or a prior SHA's green workflow as permission to start P2.1.
 
 **Goal:** make the application use the approved target model end-to-end without retaining obsolete persistence concepts merely for compatibility.
 
