@@ -71,6 +71,7 @@ GoodsReceipt: `DRAFT → CONFIRMED`, or `DRAFT → CANCELLED`. Confirming posts 
 | Receipt | Only successful first confirmation adds stock; every movement has a source, actor and time. |
 | COD | No payment gateway callback. Collection/refund must be bound to the correct Order and authorized actor. |
 | Recipient snapshot | Order address facts are immutable once placed; editing the account address must not affect the Order. |
+| Saved Address default | An Account may have zero saved addresses; if any remain, exactly one is default. The first address defaults automatically; switching/unsetting/deleting the current default promotes the most recently updated remaining address atomically, tie-break by descending ID. Deleting the last address leaves no default. |
 | Return | v1 allows at most one full refund. Restock only after an authorized decision confirms the returned goods are sellable. |
 | History | Later Product, price, address and voucher edits cannot rewrite an existing Order's snapshots. |
 | Authorization | Backend permission checks protect each administrative mutation; privileged changes are audited. |
