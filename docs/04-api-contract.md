@@ -94,7 +94,7 @@ Image management uses the Product ID and the `PRODUCT_IMAGES` collection. Upload
 
 Target Voucher fields are `id, code, discount_type, discount_value, minimum_order_value, maximum_discount, starts_at, ends_at, usage_limit, usage_count, status`. FIXED `discount_value` is VND; PERCENT is integer basis points (100 bps=1%). `maximum_discount` is a VND cap. Normalize code by trim+uppercase; no Product/Category scope or per-account usage limit/ledger is supported. Detailed eligibility, `[starts_at, ends_at)` window, global quota and status semantics are in [P1.5](refactor-v2/p1/P1.5-pricing-voucher-contract.md).
 
-An optional voucher code on quote/order is evaluated against pre-discount merchandise subtotal, excluding shipping. Quote only estimates current eligibility; it does not reserve or increment quota. Successful order placement consumes one global use atomically with Order and snapshot creation. P1.7 decides when an eligible cancellation calls the one-time quota-release operation; refund/return does not release quota by default.
+An optional voucher code on quote/order is evaluated against pre-discount merchandise subtotal, excluding shipping. Quote only estimates current eligibility; it does not reserve or increment quota. Successful order placement consumes one global use atomically with Order and snapshot creation. P1.7 specifies one-time quota release for eligible cancellation from PENDING, CONFIRMED, PREPARING or DELIVERY_FAILED; refund/return does not release quota by default.
 ### Orders, COD and after-sales
 
 | Method | Route | Access |
