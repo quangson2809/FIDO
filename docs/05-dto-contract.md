@@ -19,24 +19,24 @@
 - `PermissionDto`: `id, code, name, description`; the target Permission entity has no status field.
 - `RolePermissionDto`: `role_id, permission_id`; both IDs identify an existing grant relation, not a caller-supplied actor identity.
 - `MeDto`: `account, addresses[], roles[], permissions[]`. Roles/permissions are effective grants resolved for the authenticated principal; never use this payload as the source for authorizing a mutation.
-- `AccessControlDto`: `roles[], permissions[], role_permissions[]`. `role_permissions` is needed to represent the existing ROLE_PERMISSIONS junction without creating an alternate grant model.
+- `AccessControlDto`: `roles[], permissions[]`, matching the current target API mapping. The selected Role's grants are represented by `RoleDetailDto`; do not add a separate top-level grant shape unless the owner approves an API change.
 - `RoleDetailDto`: `role, permissions[]`, with permissions representing the selected Role's current grants.
 - `StaffAccountSummaryDto`: `account, roles[]`; `StaffAccountDetailDto`: `account, roles[], permissions[]`. Neither DTO contains password/hash, bootstrap secret or credential issuance data.
 - `MutationResultDto` for a successful delete: `id, deleted`; errors preserve the existing global error envelope.
 
 ### Request DTOs
 
-- `RegisterRequest`: `phone` (required, max 20), `full_name` (required, max 150), `password` (required), `email?` (optional, max 254). Never accept `id`, `status`, `account_id`, `role_ids` or `password_hash` on public registration. Status/token outcome is not frozen until `ACC-STATUS-01) is approved.
-- `LoginRequest`: `phone, password`. Do not accept an email/ambiguous `identifier` as the login key in the target contract. The exact phone normalization rule remains `PHONE-NORM-01).
-- `ProfilePatchRequest`: `full_name?, email?`. Omitted means unchanged. `full_name: null` is invalid. `email: null` explicitly clears the optional field; an email value must be valid and ≤254 characters. `phone`, `status`, `id`, `role_ids`, timestamps and password/hash are not allowed.
-- `AddressCreateRequest`: `recipient_name, recipient_phone, province, district, ward, address_line, is_default?`. Required strings must be nonblank and fit their Data Dictionary bounds: recipient name 150, recipient phone 20, province/district/ward 120 each, address line 500. `account_id`, IDs and timestamps are server/database-owned. Default-switch semantics remain `ADDR-DEFAULT-01).
-- `AddressPatchRequest`: partial form of `AddressCreateRequest`, excluding `account_id`, ID and timestamps. Omitted means retain; explicit null is rejected for non-null fields. The policy for setting `is_default=true) is not final until `ADDR-DEFAULT-01) is approved.
+- `RegisterRequest`: proposed required fields are `phone` (max 20), `full_name` (max 150), and `password`; `email` is optional (max 254). Never accept `id`, `status`, `account_id`, `role_ids` or `password_hash` on public registration. The request field mapping needs to be synchronized with the authoritative target API map. Initial status and token issuance remain blocked by `ACC-STATUS-01`.
+- `LoginRequest`: `phone, password`. Phone is the approved login identifier; do not keep the legacy email/ambiguous `identifier` contract. Accepted phone characters and canonicalization remain blocked by `PHONE-NORM-01`.
+- `ProfilePatchRequest`: target profile fields are `full_name?` and `email?`; `phone`, `status`, `id`, `role_ids`, timestamps and password/hash are excluded. Omitted fields do not request a mutation. Explicit-null/clear semantics for optional `email` must be confirmed under `PROFILE-NULL-01`; non-null `full_name` is required by the target schema.
+- `AddressCreateRequest`: `recipient_name, recipient_phone, province, district, ward, address_line, is_default?`. Required strings must be nonblank and fit their Data Dictionary bounds: recipient name 150, recipient phone 20, province/district/ward 120 each, address line 500. `account_id`, IDs and timestamps are server/database-owned. Default-switch semantics remain blocked by `ADDR-DEFAULT-01`.
+- `AddressPatchRequest`: partial form of `AddressCreateRequest`, excluding `account_id`, ID and timestamps. Omitted fields mean no requested change; explicit null is rejected for target non-null fields. The policy for setting `is_default=true` and whether changing default clears another row is not final until `ADDR-DEFAULT-01` is approved.
 - `RoleCreateRequest`: `code, name, description?`; code is required/unique (max 80), name required (max 150), description optional (max 500).
-- `RolePatchRequest`: `name?, description?, status?, permission_ids[]?`. `permission_ids`, when present, means full replacement of the Role's permission grants in one transaction. Role code is a stable technical key; changing it is not part of ordinary PATCH.
+- `RolePatchRequest`: the target supports updating approved Role fields and its permission grants, but whether grant mutation is full replacement or delta/add-remove is not yet specified by the current authoritative contract. Freeze the exact request shape only after resolving `RBAC-GRANT-01`. Role code mutation semantics also need explicit confirmation before being offered by PATCH.
 - `PermissionCreateRequest`: `code, name, description?`; code required/unique (max 120), name required (max 200), description optional (max 500).
 - `PermissionPatchRequest`: `name?, description?`. Permission code is a technical key and is not changed by ordinary PATCH.
-- `StaffAccountCreateRequest` cannot be frozen until `ACC-CREDENTIAL-01) decides how the required password credential is established. Do not invent an invitation/password-reset/OTP endpoint or accept a plaintext password in audit/logs.
-- `StaffAccountPatchRequest` can update approved profile fields and replace `role_ids[]); account-status mutation remains blocked until `ACC-STATUS-01) is approved. No request may assign actor identity or change the authenticated principal's scope.
+- `StaffAccountCreateRequest` cannot be frozen until `ACC-CREDENTIAL-01` decides how the required password credential is established. Do not invent an invitation/password-reset/OTP endpoint or accept a plaintext password in audit/logs.
+- `StaffAccountPatchRequest` may update approved profile fields; grant mutation semantics remain blocked by `RBAC-GRANT-01`, and account-status mutation remains blocked by `ACC-STATUS-01`. No request may assign actor identity or change the authenticated principal's scope.
 
 ## 3. Product/catalog DTOs
 
