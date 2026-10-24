@@ -18,17 +18,25 @@ Global rules:
 
 ### Authentication and account
 
-| Method | Route | Access |
-|---|---|---|
-| POST | `/auth/register` | Public |
-| POST | `/auth/login` | Public |
-| GET, PATCH | `/me` | JWT |
-| POST | `/me/addresses` | JWT |
-| PATCH, DELETE | `/me/addresses/{addressId}` | JWT |
-| GET | `/me/orders` | JWT |
-| GET | `/me/orders/{orderId}` | JWT |
+| Method | Route | Access | Target request/response contract |
+|---|---|---|---|
+| POST | `/auth/register` | Public | `phone, full_name, password, email?`; returns the registration/auth result only after account-initial-state and token-issuance policy is approved. See P1.2 blocker `ACC-STATUS-01`. |
+| POST | `/auth/login` | Public | `phone, password`; successful authentication returns `AuthResponseDto(access_token, account)`. Login failures use a generic credential message and never reveal whether the account exists. Status-specific eligibility/response remains blocked by `ACC-STATUS-01`. |
+| GET | `/me` | JWT | Returns `MeDto(account, addresses[], roles[], permissions[])`; scope is derived from the authenticated principal. |
+| PATCH | `/me` | JWT | Patch `full_name?` and `email?` only. Do not accept `account_id`, `id`, `status`, role/grant fields, timestamps, `password_hash` or `phone` without an approved phone-change/verification flow. |
+| POST | `/me/addresses` | JWT | Create a saved address owned by the principal; `account_id` is server-derived. Address field lengths/nullability follow the target Data Dictionary. |
+| PATCH | `/me/addresses/{addressId}` | JWT | Patch only the caller's saved address. Omitted fields retain existing values; null is rejected for required non-null fields. Default-address switching remains blocked by `ADDR-DEFAULT-01`. |
+| DELETE | `/me/addresses/{addressId}` | JWT | Delete only the caller's saved address; must not mutate historical `ORDER_ADDRESSES` snapshots. |
+| GET | `/me/orders` | JWT | Read only Orders belonging to the authenticated account. |
+| GET | `/me/orders/{orderId}` | JWT | Read only the authenticated account's Order and immutable order-time snapshots. |
 
-Account addresses are mutable account-owned records. An Order's `ORDER_ADDRESSES` row is an immutable order-time snapshot; APIs must not rewrite it after placement. Do not offer an Order-recipient mutation route that changes the snapshot.
+Account contract rules:
+
+- Phone is the login identity, length is bounded by the target SQL column, and uniqueness applies to accounts that have not been soft-deleted. A deleted phone can be reused. The accepted phone character set/canonicalization still requires owner resolution (`PHONE-NORM-01`); do not invent a normalizer or regex.
+- `full_name` is required and limited to 150 characters. `email` is optional, limited to 254 characters, and is not unique under the target schema.
+- `password_hash`, account status, actor identity, grants and server timestamps are server-owned. Never return or audit password hashes or credential secrets.
+- Account status literals appear in current target state documentation, but the Data Dictionary flags their initial-state and login/session effects as not owner-approved. Do not infer registration activation, token issuance or status-specific client messages until `ACC-STATUS-01` is approved.
+- Saved `ADDRESSES` are mutable Account-owned records. `ORDER_ADDRESSES` is a separate immutable order-time snapshot; editing or deleting a saved address must not rewrite an existing Order. The single-default-per-account and default-replacement policy remains unresolved (`ADDR-DEFAULT-01`).
 
 ### Public catalog and authenticated Cart/checkout
 
@@ -103,8 +111,11 @@ Receipt line and inventory requests identify Products, not option combinations. 
 
 ### Staff, RBAC, audit, reports, content and customers
 
-- Staff-account routes: `GET/POST /admin/staff-accounts`, `GET/PATCH /admin/staff-accounts/{accountId}`; access requires the approved SUPERADMIN policy.
-- Access control: `GET /admin/access-control`; role and permission management routes under `/admin/roles` and `/admin/permissions`; writes use the owning account/RBAC service, audit changes and preserve the last-SUPERADMIN invariant.
+- Staff-account routes: `GET/POST /admin/staff-accounts`, `GET/PATCH /admin/staff-accounts/{accountId}`; all require SUPERADMIN. Staff creation contract remains blocked until a credential-issuance source is approved (`ACC-CREDENTIAL-01`); do not invent an invite, reset-password or OTP endpoint.
+- Access control: `GET /admin/access-control`; role mutations use `POST/PATCH/DELETE /admin/roles` and permission mutations use `GET/POST/PATCH/DELETE /admin/permissions`, subject to the target route mapping. Writes are owned by the Account/RBAC service and must atomically record required audit.
+- `ROLES.code` (≤80) and `PERMISSIONS.code` (≤120) are required unique technical keys. Role status is `ACTIVE|INACTIVE`; inactive roles cannot be newly assigned or contribute effective permission grants. Permission has no status column in the target model.
+- Assignment/grant writes validate all referenced IDs, prevent duplicate composite-key grants and enforce the last-SUPERADMIN invariant under concurrency. System roles and referenced records cannot be hard-deleted; seeded/system permission deletion policy remains blocked pending `RBAC-DELETE-01`.
+- Error codes remain stable and the existing global error wrapper is preserved. The Account/RBAC code mapping is documented in `docs/refactor-v2/p1/P1.2-account-address-rbac-contract.md`; it does not claim runtime behavior is already implemented.
 - Audit: `GET /admin/audit-logs` with approved actor/action/entity/time filters and pagination. DTO fields must map to the target audit columns; do not expose secrets or sensitive payloads.
 - Reporting (all routes require JWT + `REPORT_READ`):
   - `GET /admin/reports/overview?from=...&to=...` returns the overview aggregates defined in the DTO contract.
