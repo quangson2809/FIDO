@@ -20,23 +20,23 @@ Global rules:
 
 | Method | Route | Access | Target request/response contract |
 |---|---|---|---|
-| POST | `/auth/register` | Public | `phone, full_name, password, email?`; returns the registration/auth result only after account-initial-state and token-issuance policy is approved. See P1.2 blocker `ACC-STATUS-01`. |
-| POST | `/auth/login` | Public | `phone, password`; successful authentication returns `AuthResponseDto(access_token, account)`. Login failures use a generic credential message and never reveal whether the account exists. Status-specific eligibility/response remains blocked by `ACC-STATUS-01`. |
+| POST | `/auth/register` | Public | `phone, full_name, password, email?`; normalize phone before uniqueness checks. Create Account as `ACTIVE` and return `AuthResponseDto(access_token, account)`; no email/OTP verification in this phone-login flow. |
+| POST | `/auth/login` | Public | `phone, password`; successful `ACTIVE` Account returns `AuthResponseDto(access_token, account)`. Wrong credentials return generic `401 INVALID_CREDENTIALS`; valid credentials for non-ACTIVE Accounts return typed `403` without a token. |
 | GET | `/me` | JWT | Returns `MeDto(account, addresses[], roles[], permissions[])`; scope is derived from the authenticated principal. |
 | PATCH | `/me` | JWT | Patch `full_name?` and `email?` only. Do not accept `account_id`, `id`, `status`, role/grant fields, timestamps, `password_hash` or `phone` without an approved phone-change/verification flow. |
 | POST | `/me/addresses` | JWT | Create a saved address owned by the principal; `account_id` is server-derived. Address field lengths/nullability follow the target Data Dictionary. |
-| PATCH | `/me/addresses/{addressId}` | JWT | Patch only the caller's saved address. Omitted fields retain existing values; null is rejected for required non-null fields. Default-address switching remains blocked by `ADDR-DEFAULT-01`. |
+| PATCH | `/me/addresses/{addressId}` | JWT | Patch only the caller's saved address. Omitted fields retain existing values; null is rejected for non-null fields. If `is_default=true`, atomically replace the old default; unsetting/deleting the current default promotes the most recently updated remaining address (tie-break by descending ID). |
 | DELETE | `/me/addresses/{addressId}` | JWT | Delete only the caller's saved address; must not mutate historical `ORDER_ADDRESSES` snapshots. |
 | GET | `/me/orders` | JWT | Read only Orders belonging to the authenticated account. |
 | GET | `/me/orders/{orderId}` | JWT | Read only the authenticated account's Order and immutable order-time snapshots. |
 
 Account contract rules:
 
-- Phone is the login identity, length is bounded by the target SQL column, and uniqueness applies to accounts that have not been soft-deleted. A deleted phone can be reused. The accepted phone character set/canonicalization still requires owner resolution (`PHONE-NORM-01`); do not invent a normalizer or regex.
+- Phone is the login identity and is canonicalized before lookup/uniqueness: accept Vietnam format `0` + 9 digits or `+84` + 9 digits, allow whitespace and `-()` separators, normalize to `+84` + 9 digits, and reject other characters/lengths. Store/compare only canonical values; uniqueness applies to non-soft-deleted Accounts, and reuse is allowed only after soft deletion.
 - `full_name` is required and limited to 150 characters. `email` is optional, limited to 254 characters, and is not unique under the target schema.
-- `password_hash`, account status, actor identity, grants and server timestamps are server-owned. Never return or audit password hashes or credential secrets.
-- Account status literals appear in current target state documentation, but the Data Dictionary flags their initial-state and login/session effects as not owner-approved. Do not infer registration activation, token issuance or status-specific client messages until `ACC-STATUS-01` is approved.
-- Saved `ADDRESSES` are mutable Account-owned records. `ORDER_ADDRESSES` is a separate immutable order-time snapshot; editing or deleting a saved address must not rewrite an existing Order. The single-default-per-account and default-replacement policy remains unresolved (`ADDR-DEFAULT-01`).
+- `password_hash`, Account status, actor identity, grants and server timestamps are server-owned. New customer registration and staff Accounts start `ACTIVE`; only ACTIVE may authenticate or call protected endpoints. `PENDING_APPROVAL`, `LOCKED` and `SUSPENDED` receive no token; protected requests re-check current Account status. Never return/log/audit plaintext passwords or password hashes.
+- Account status is server-managed: register/staff-create sets `ACTIVE`; only an ACTIVE Account can receive a token. Wrong credentials remain generic `401 INVALID_CREDENTIALS`; valid credentials for `PENDING_APPROVAL` return `403 ACCOUNT_NOT_ACTIVE`, while `LOCKED`/`SUSPENDED` return `403 ACCOUNT_STATE_CONFLICT`. Protected requests reject Accounts changed from ACTIVE.
+- Saved `ADDRESSES` are mutable Account-owned records. `ORDER_ADDRESSES` is a separate immutable order-time snapshot; editing/deleting a saved address must not rewrite an Order. If an Account has saved addresses, exactly one is default. The first address is default automatically; switching/deleting/unsetting the current default promotes the most recently updated remaining address atomically (tie-break descending ID); deleting the last address leaves none.
 
 ### Public catalog and authenticated Cart/checkout
 
@@ -111,11 +111,11 @@ Receipt line and inventory requests identify Products, not option combinations. 
 
 ### Staff, RBAC, audit, reports, content and customers
 
-- Staff-account routes: `GET/POST /admin/staff-accounts`, `GET/PATCH /admin/staff-accounts/{accountId}`; all require SUPERADMIN. Staff creation contract remains blocked until a credential-issuance source is approved (`ACC-CREDENTIAL-01`); do not invent an invite, reset-password or OTP endpoint.
-- Access control: `GET /admin/access-control`; role mutations use `POST/PATCH/DELETE /admin/roles` and permission mutations use `GET/POST/PATCH/DELETE /admin/permissions`, subject to the target route mapping. Writes are owned by the Account/RBAC service and must atomically record required audit.
-- Read-model blocker `RBAC-READ-01`: `GET /admin/access-control` currently returns only `AccessControlDto(roles[], permissions[])`, not each role's `ROLE_PERMISSIONS` assignments, and the route mapping has no `GET /admin/roles/{roleId}`. A `RoleDetailDto` mutation response cannot serve as the initial read model. Do not lock grant-edit payloads or add a route/field until the owner approves the read shape.
+- Staff-account routes: `GET/POST /admin/staff-accounts`, `GET/PATCH /admin/staff-accounts/{accountId}`; all require SUPERADMIN. Create request includes `phone, full_name, email?, password, role_ids[]`; SUPERADMIN sets the initial password, the server stores only its hash, and the response/log/audit never contain password/hash. New staff Accounts start `ACTIVE`.
+- Access control: `GET /admin/access-control`; role detail: `GET /admin/roles/{roleId}`; role mutations use `POST/PATCH/DELETE /admin/roles` and permission mutations use `GET/POST/PATCH/DELETE /admin/permissions`. These routes require SUPERADMIN. Writes are owned by Account/RBAC and must atomically record required audit.
+- `GET /admin/roles/{roleId}` returns `RoleDetailDto(role, permissions[])` so administrators can inspect current grants before editing. `PATCH /admin/roles/{roleId}` accepts `permission_ids?`: omitted retains the current set; `[]` clears all; a non-empty list replaces the entire set atomically with audit. Reject duplicate or missing IDs. `ROLES.code` and `PERMISSIONS.code` are immutable after creation.
 - `ROLES.code` (≤80) and `PERMISSIONS.code` (≤120) are required unique technical keys. Role status is `ACTIVE|INACTIVE`; inactive roles cannot be newly assigned or contribute effective permission grants. Permission has no status column in the target model.
-- Assignment/grant writes validate all referenced IDs, prevent duplicate composite-key grants and enforce the last-SUPERADMIN invariant under concurrency. System roles and referenced records cannot be hard-deleted; seeded/system permission deletion policy remains blocked pending `RBAC-DELETE-01`.
+- Assignment/grant writes validate all referenced IDs, prevent duplicate composite-key grants and enforce the last-SUPERADMIN invariant under concurrency. Never delete system roles (`CUSTOMER`, `ADMIN`, `SUPERADMIN`) or referenced records. Seed-catalogue permissions are protected by the P1.8 seed code manifest; only unseeded, unreferenced permissions may be deleted. The target Permission has no `status` field, so do not create a deactivation state.
 - Error codes remain stable and the existing global error wrapper is preserved. The Account/RBAC code mapping is documented in `docs/refactor-v2/p1/P1.2-account-address-rbac-contract.md`; it does not claim runtime behavior is already implemented.
 - Audit: `GET /admin/audit-logs` with approved actor/action/entity/time filters and pagination. DTO fields must map to the target audit columns; do not expose secrets or sensitive payloads.
 - Reporting (all routes require JWT + `REPORT_READ`):
