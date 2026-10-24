@@ -26,10 +26,11 @@
 
 ## 4. Cart, checkout, Order and vouchers
 
-- Persisted Cart and Order creation require authentication. Account ownership comes from the security principal.
-- Quote is stateless/advisory: no quote persistence, stock reservation or voucher use. Order placement re-reads and reprices Product eligibility, price, stock, voucher and server-owned shipping inputs.
-- Order creation idempotency is scoped to the authenticated account. Persist a canonical SHA-256 semantic-request fingerprint with the Order. Same key/payload replays; changed payload conflicts; a different account cannot access the result.
-- One transaction covers Order, OrderItems, immutable address/Product/voucher/image snapshots, COD Payment, voucher usage, stock/ledger effects, Cart mutation and required audit.
+- Persisted Cart and Order creation require authentication; Account scope comes from the security principal; guest Cart, checkout and merge are excluded.
+- Current Cart is the sole account-owned OPEN row. No OPEN row means empty read/create-on-mutation; more than one OPEN row fails closed with CART_SELECTION_AMBIGUOUS and no mutation/merge. No updated_at selection or one-active-Cart schema constraint is inferred; P3.8 serializes Account-scoped creation/mutations.
+- Quote is stateless/advisory: no CHECKOUT_QUOTES, quote_id, stock reservation or Voucher use. Order placement reloads/reprices Product eligibility, price, stock, Voucher eligibility/quota and server-owned shipping inputs.
+- POST /orders requires Idempotency-Key; the stored key is Account-namespaced and the normalized semantic request gets a canonical SHA-256 fingerprint. Same committed key/payload replays; changed payload conflicts; another Account cannot discover the result. Details are normative in P1.6.
+- Order, OrderItems, immutable address/Product/Voucher/image snapshots, COD Payment, applicable Voucher counter, Cart consumption, audit and all Inventory effects required by approved placement lifecycle commit or roll back as one operation. P1.7 owns Order transition timing.
 - v1 vouchers are order-wide, non-stackable and use one global limit. Consume usage atomically with successful order placement and restore at most once on eligible cancellation. No catalog-targeting joins or per-account usage ledger.
 - Payment is COD-only with one Payment aggregate per Order. v1 allows at most one full refund per Order; partial/multiple refunds and detailed item-level return workflows need a future approved scope change.
 

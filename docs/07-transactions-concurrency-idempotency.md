@@ -45,25 +45,25 @@ A transaction includes applicable source state, guarded balance/version update, 
 
 ## 3. Cart and checkout quote
 
-- Cart reads and changes do not reserve stock.
-- `POST /api/v1/checkout/quote` is a stateless, advisory calculation. It must not write a quote row, reserve stock, increment voucher usage or create an Order.
-- At order placement, reload the authenticated account's Cart and current Product eligibility, selling prices, stock, voucher eligibility/quota and server-owned shipping inputs. Ignore client totals and re-calculate.
-- If the current server-calculated result is no longer valid under the accepted order contract, return a typed conflict/requote response and create no Order.
-- A quote identifier is not persisted or required by the target contract.
+The normative Cart API, quantity semantics, ambiguity handling and request-key/replay protocol are in [P1.6 Cart and Checkout Contract](refactor-v2/p1/P1.6-cart-checkout-contract.md).
+
+- Guest Cart/order placement is excluded by owner-approved A-03. The current Cart is the sole Cart owned by the authenticated Account with `status=OPEN`. If none exists, reads return empty without writing; mutations may create one atomically. If multiple OPEN rows exist, return `409 CART_SELECTION_AMBIGUOUS` without selecting, merging or mutating any Cart. The schema has no one-active-Cart uniqueness constraint; P3.8 must serialize Account-scoped creation/mutations.
+- Cart add/update/remove/clear never reserve or deduct stock. Quantity is intent only. Product state/availability can change; quote and Order creation revalidate.
+- `POST /api/v1/checkout/quote` is stateless/advisory: no quote row, `quote_id`, stock reservation, Cart/Voucher mutation or Order write. It is not an optimistic lock or authorization to place an Order.
+- `POST /api/v1/orders` has no `quote_id` dependency. The server resolves and locks the current Cart, re-loads current Product eligibility/price/stock, Voucher eligibility/quota and server-owned shipping inputs, recalculates through P1.5 and writes the approved create effects atomically. Failure rolls back the entire write set.
+- P1.6 defines idempotency transport/fingerprint/replay. P1.4 owns Inventory mechanics, P1.5 owns money/Voucher rules, P1.7 owns Order lifecycle timing. P3.8 implements Cart; P3.9 implements quote and Order creation.
 
 ## 4. Order creation idempotency
 
-Order creation uses the authenticated account scope and a canonical SHA-256 fingerprint of the semantic request:
+Wire format and semantics are normative in [P1.6 Cart and Checkout Contract](refactor-v2/p1/P1.6-cart-checkout-contract.md).
 
-1. Authenticate the caller and derive account scope from the security principal.
-2. Canonicalize the semantic request and calculate its fingerprint server-side.
-3. If the scoped key is already committed with the same fingerprint, return the prior result without repeating side effects.
-4. If the scoped key exists with a different fingerprint, return a deterministic typed conflict without modifying the prior Order.
-5. For concurrent duplicate requests, permit one commit. The losing transaction rolls back and then reads the winner to replay or conflict.
-6. A key used by another account must not reveal another account's Order.
-7. Keep the key/fingerprint associated with the Order for at least the Order's lifetime.
-
-One transaction covers the Order, OrderItems, order address/Product/voucher/image snapshots, COD Payment, voucher counter, inventory balance/ledger, Cart mutation and required audit. Failure injection must prove complete rollback.
+1. Require `Idempotency-Key` on `POST /api/v1/orders`; validate the 1–128 ASCII character grammar and treat values as case-sensitive.
+2. Store an Account-scoped key as decimal authenticated Account ID + `:` + lowercase hexadecimal SHA-256 of the raw client key. Do not store the raw key or accept Account ID from the body. The stored value fits `ORDERS.idempotency_key VARCHAR(120)`.
+3. Normalize semantic request fields (recipient/address and optional normalized Voucher code), deterministically canonicalize, and persist lowercase hexadecimal SHA-256 to `ORDERS.request_fingerprint`. Exclude the key, token, Cart lines, quote and live server price/stock/quota/shipping calculations.
+4. Same scoped key + same fingerprint + committed Order returns the original `201 Created`, body and `Location`, with `Idempotency-Replayed: true`, before Cart resolution. Same key + changed fingerprint returns `409 IDEMPOTENCY_PAYLOAD_MISMATCH` without mutation.
+5. Concurrent duplicate requests commit at most once. The loser rolls back, then reads the winner to replay or conflict. A uniqueness race must not leave side effects or surface avoidable untyped failure.
+6. Retry a lost response with the exact key/body. Use a new key for a different purchase. Keep key/fingerprint for at least the Order lifetime; replay cannot duplicate Order, Cart consumption, Voucher use or Inventory effects.
+7. Order + item/snapshot rows + COD Payment + Voucher counter + Cart consumption + audit + applicable Inventory effects are one transaction. Any required write failure rolls it all back.
 
 ## 5. Money and voucher atomicity
 
