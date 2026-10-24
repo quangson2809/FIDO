@@ -4,6 +4,8 @@
 
 ## Canonical sources
 
+- **P1.3 Product/catalog contract:** [P1.3 Catalog Metadata Contract](P1.3-catalog-metadata-contract.md) defines Product ID/parent-child/SKU/price ownership, typed attributes, metadata filters, image-primary semantics and the documented legacy call-site inventory. It does not alter or supersede the canonical ERD/physical dictionary.
+
 - **Logical ERD:** [phase-1-erd-v2-approved.mmd](../../refactor/phase-1-erd-v2-approved.mmd)
 - **Physical field contract:** [P1-data-dictionary.csv](P1-data-dictionary.csv)
 - **Owner decisions:** [P1 owner approval](P1-owner-approval-2026-10-23.md) and [decision log](P1-decision-log.md)

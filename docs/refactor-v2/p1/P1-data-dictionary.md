@@ -13,6 +13,8 @@ Use a real CSV parser. The CSV records logical meaning, physical SQL proposal/nu
 
 ## Approved contract interpretation
 
+- Catalog-specific meanings and validation rules are detailed in [P1.3 Catalog Metadata Contract](P1.3-catalog-metadata-contract.md). The CSV remains the physical-column contract; P1.3 current-runtime statuses are evidence of migration work, not proof of runtime alignment.
+
 - Target logical table count is 31. The physical DDL has a generated active-phone key that is not a separate logical table or owner-facing domain field.
 - Money amounts use whole integer VND. DECIMAL is permitted only where the target dictionary explicitly defines a descriptive numeric attribute, not as the application money type.
 - `product_id` is the item identity for Cart, OrderItems, GoodsReceiptItems, inventory balances and stock ledger.

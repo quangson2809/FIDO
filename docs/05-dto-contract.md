@@ -101,3 +101,13 @@ Reject invalid typed attribute values, cross-Attribute options, duplicate active
 For order idempotency, the server scopes the key to the authenticated account and fingerprints the canonical semantic payload with SHA-256. Same key/same payload replays; same key/different payload conflicts; one account cannot read another account's result. The exact HTTP transport for this key must be explicitly set before runtime implementation.
 
 This is the target DTO contract. Any old response shape not represented here must be deliberately retired or remapped; it must not be kept as a parallel persistence contract.
+
+
+## P1.3 target DTO validation and ownership
+
+- A Product is one sale-unit record identified by id. Parent and child records each expose their own sku, required integer-VND selling_price, status and stock relationship. A child is created by setting parent_product_id; no variants[], variant_id or option-combination identity is part of the target DTO.
+- category_id, brand_id, name, slug and description follow target nullability and never inherit from the parent. PATCH omission retains the current value; explicit null clears only a nullable target field. For attribute_values, omission retains the set and a supplied array replaces the complete set.
+- ProductAttributeValueDto contains attribute_id plus exactly one type-matching value: option_id, text_value, number_value or boolean_value. OPTION references must belong to the same Attribute; required values must exist before activation; values never generate Products.
+- AttributeDto exposes id, attribute_type_id, code, name, is_required, is_variant_defining, sort_order and options[]. AttributeOptionDto exposes id, attribute_id, value, label and sort_order. Attribute code/type and Option machine value are immutable under the target write contract; display label/order may change.
+- ProductImageDto exposes id, image_url, is_primary and sort_order. A non-empty gallery has exactly one primary image at sort_order zero; writes atomically renumber the full gallery. Order snapshots never resolve through mutable current gallery state.
+- Exact routes, typed filter operators, errors and evidence are owned by [P1.3 Catalog Metadata Contract](refactor-v2/p1/P1.3-catalog-metadata-contract.md). This is target documentation, not a claim that current runtime DTOs conform.
