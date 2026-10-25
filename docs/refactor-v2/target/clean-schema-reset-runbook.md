@@ -2,7 +2,14 @@
 
 > **Authorization boundary:** The owner approved a clean reset only for a verified disposable local/development/test database. Discard disposable test data and create/reseed from the approved 31-table ERD v2. This does not authorize resetting production, staging, shared integration or any database with persistent business data. No database reset was performed by this documentation change.
 
-## 1. Target authority
+## 1. Execution gate — P2.3 DEFERRED
+
+A real reset of an existing development database is **DEFERRED to P5.2**. Do not execute it during P2.1/P2.2 or use the successful isolated schema workflow as authorization to reset a development database. P5.2 may be opened only after P3.17 PASS, every P4 phase PASS and P5.1 PASS on the relevant exact candidate SHA.
+
+The exact-SHA P2.2 evidence is [Verify target schema from an empty database](https://github.com/quangson2809/FIDO/actions/runs/40160466959) on `demo1@eccac61bab04c7ffb6a2810d37c90a039d2f600a`. The workflow provisions its own local disposable MySQL service; its Flyway clean/rebuild operations are confined to that isolated test database. They are not operations against an existing developer database.
+
+**No development database target is verified.** The host, port, database/schema, active profile/connection target, disposability confirmation, recovery policy and reviewed reset command remain unknown here. Do not infer them from generic env-var names/placeholders. Continue to enforce the preflight below; if any item is not proven, stop. No reset was run, no reset script was created and no runtime configuration was changed.
+## 2. Target authority
 
 - Logical schema: [owner-approved ERD v2](erd-v2-approved.mmd).
 - Physical schema: [canonical P1 data dictionary](../p1/P1-data-dictionary.csv).
@@ -11,7 +18,7 @@
 
 The clean-reset Flyway location is isolated from the active default migration path until application mappings and acceptance gates are ready. Do not activate it merely to make a schema reset happen.
 
-## 2. Preflight — mandatory
+## 3. Preflight — mandatory
 
 Before any destructive action:
 
@@ -21,7 +28,7 @@ Before any destructive action:
 4. Review the actual reset command and database credentials; do not derive a reset target from an unspecified environment variable.
 5. Stop if the database identity or disposability cannot be proven. Never attempt an exploratory reset against an unknown database.
 
-## 3. Target model invariants
+## 4. Target model invariants
 
 - The target contains exactly the 31 logical tables in the canonical ERD.
 - Parent/child Products share `PRODUCTS`, with one parent-child level. Children are explicit Product records; each owns its Product ID, SKU, required integer-VND selling price and stock. No implicit NULL inheritance exists.
@@ -32,7 +39,7 @@ Before any destructive action:
 - Money is integer VND. Order placement re-prices current data and uses authenticated account-scoped idempotency.
 - One COD Payment aggregate per Order and manual shipping. Preserve placed-order snapshots, payment facts, stock ledger and audit according to the approved lifecycle/FK rules.
 
-## 4. Schema and seed sequence
+## 5. Schema and seed sequence
 
 1. Validate the canonical ERD, target SQL, dictionary and consistency checker agree on the same table/column/key set.
 2. Apply the target baseline to a newly created empty isolated MySQL database, not to a database whose history or contents are unknown.
@@ -43,7 +50,7 @@ Before any destructive action:
 
 Do not preserve, migrate or crosswalk disposable legacy test records solely for the reset.
 
-## 5. Verification and status
+## 6. Verification and status
 
 The reset is not complete until a fresh install and its schema/seed checks are evidenced. Runtime acceptance remains separate: Entity/Repository/Service/API/DTO/frontend, auth/RBAC, Product attributes, Cart/order, integer-VND math, inventory/ledger, voucher quota, Payment/shipping and snapshot behavior must be verified.
 
