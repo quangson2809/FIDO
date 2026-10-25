@@ -4,17 +4,17 @@
 
 Use the following artifacts as the current development contract, in this order:
 
-1. **Owner decisions:** [P1 owner approval](refactor-v2/p1/P1-owner-approval-2026-10-23.md) and approved rows in [P1 Decision Log](refactor-v2/p1/P1-decision-log.md).
+1. **Owner decisions:** [P1 owner approval](refactor-v2/p1/P1-owner-approval-2026-10-23.md), the [P1.9 owner amendment](refactor-v2/p1/P1-owner-amendment-2026-10-25.md), and approved rows in [P1 Decision Log](refactor-v2/p1/P1-decision-log.md).
 2. **Logical data model:** [Owner-approved ERD v2](refactor/phase-1-erd-v2-approved.mmd).
 3. **Physical data contract:** [P1 Data Dictionary](refactor-v2/p1/P1-data-dictionary.csv), validated clean-reset DDL and required system seed under `backend/src/main/resources/db/clean-reset/`.
 4. **HTTP and wire contracts:** [API Contract](04-api-contract.md) and [DTO Contract](05-dto-contract.md).
 5. **Business and transaction invariants:** [Business Rules](06-business-rules-state-machines.md) and [Transactions, Concurrency and Idempotency](07-transactions-concurrency-idempotency.md).
 6. **Operations policy:** [P1.8 Operations, Audit, Content/Report and Seed Contract](refactor-v2/p1/P1.8-operations-seed-contract.md) plus its [operator runbook requirements](refactor-v2/p1/P1.8-operations-seed-runbook.md). It governs audit fields/correlation/redaction, content/report use cases, deletion/FK lifecycle, seed manifest and unresolved retention blockers; it does not override P1.2/P1.3/P1.5/P1.7 domain ownership.
-7. **Cross-domain gate and implementation status:** [P1.9 consistency report](refactor-v2/p1/P1.9-contract-consistency-report.md), [P1 exit gate](refactor-v2/p1/P1-exit-gate.md), and P1 API/use-case mapping and traceability artifacts under `docs/refactor-v2/p1/`. These describe delivery status and gaps; they do not override approved behavior. Current P1.9 status is BLOCKED; P2.1 cannot start before P1.9 PASS.
+7. **Cross-domain gate and implementation status:** [P1.9 consistency report](refactor-v2/p1/P1.9-contract-consistency-report.md), [P1 exit gate](refactor-v2/p1/P1-exit-gate.md), and P1 API/use-case mapping and traceability artifacts under `docs/refactor-v2/p1/`. These describe delivery status and gaps; they do not override approved behavior. The image-order and target Order permission decisions are recorded; P1.9 remains BLOCKED pending exact-SHA validation. P2.1 cannot start before P1.9 PASS.
 8. **Current code and migrations:** evidence of what must be aligned, never an automatic specification for the target design.
 9. **P0 reports and archived documents:** historical evidence only. Do not copy a superseded rule into a current contract.
 
-The older decision questionnaire is superseded by the dated owner approval. It is not a source of open choices. If an active document conflicts with an authority above, update that document; do not preserve both alternatives in the current contract.
+The older decision questionnaire is superseded by the dated owner approval and later owner amendments. It is not a source of open choices. If an active document conflicts with an authority above, update that document; do not preserve both alternatives in the current contract.
 
 ## 2. Frozen target profile
 
@@ -38,4 +38,4 @@ The older decision questionnaire is superseded by the dated owner approval. It i
 
 ## 4. Acceptance status
 
-The scoped target owner decisions are recorded, but the [P1.9 cross-domain gate](refactor-v2/p1/P1-exit-gate.md) remains BLOCKED on two documented decisions and exact-SHA verification. P2.1 must not start before P1.9 PASS. This does not mean runtime migration is complete: Entity/Repository/Service, API/DTO, frontend, seed, security, transaction/concurrency and end-to-end acceptance must still be verified. No database reset is implied by this document.
+The [P1.9 owner amendment](refactor-v2/p1/P1-owner-amendment-2026-10-25.md) records the gallery unique-index and target Order permission decisions; both are reflected in isolated target artifacts. The [P1.9 cross-domain gate](refactor-v2/p1/P1-exit-gate.md) remains BLOCKED pending exact-SHA checker/MySQL/backend verification. P2.1 must not start before P1.9 PASS. Runtime Entity/Repository/Service, API/DTO, frontend, authorization, transaction/concurrency and end-to-end acceptance remain separate implementation gates. No live database reset is implied.

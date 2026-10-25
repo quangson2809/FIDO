@@ -1,10 +1,10 @@
 # 11 — FIDO ERD v2 Implementation Phases
 
-> **Current authority — 2026-10-23:** the owner-approved 31-table ERD v2, target business defaults and Clean Schema Reset policy are recorded. This roadmap describes delivery against that target only. Historical audit reports are evidence, not target requirements.
+> **Current authority — 2026-10-25:** the owner-approved 31-table ERD v2, original target business defaults and P1.9 owner amendment are recorded. This roadmap describes delivery against that target only. Historical audit reports are evidence, not target requirements.
 
 ## 1. Current status
 
-- Target schema and scoped owner decisions: recorded, but the **P1.9 cross-domain exit gate is BLOCKED** on the Product image ordering constraint decision and seed-permission mapping.
+- Target schema and the two P1.9 owner decisions: **recorded and applied to isolated target artifacts**. The **P1.9 cross-domain exit gate remains BLOCKED pending exact-SHA checker, isolated MySQL schema and backend verification**.
 - P1.9 documentation reconciliation report: [P1.9-contract-consistency-report.md](refactor-v2/p1/P1.9-contract-consistency-report.md).
 - Clean-reset DDL/system seed: isolated; exact-SHA checker and MySQL workflow must pass before their acceptance is claimed.
 - Entity, Repository, Service, API/DTO, frontend and workflow alignment: **implementation acceptance open**.
@@ -13,7 +13,7 @@
 
 ## 2. P2 — Implement the target model
 
-**Entry gate:** P2.1 seed SQL is **not authorized** until P1.9 is PASS and the exact-SHA consistency/schema checks are green. The current P1 exit gate is BLOCKED; do not interpret historical owner approval or a prior SHA's green workflow as permission to start P2.1.
+**Entry gate:** P2.1 seed SQL is **not authorized** until P1.9 is PASS and the exact current-SHA consistency/schema/backend checks are green. The two owner decisions are resolved, but the updated target schema/seed candidate still requires successful exact-SHA workflows; prior runs do not authorize starting P2.1.
 
 **Goal:** make the application use the approved target model end-to-end without retaining obsolete persistence concepts merely for compatibility.
 

@@ -1,6 +1,6 @@
 # P1 Exit Gate — ERD v2 and Cross-domain Contract Freeze
 
-> Owner decisions recorded 2026-10-23 approve DB-03/DB-05 design proposals, DB-12 lifecycle/FK defaults and the stated DB-01/02/06–11/API defaults. On 2026-10-25, the owner additionally approved a unique `(product_id, sort_order)` gallery index and using `ORDER_EDIT` instead of `ORDER_PROCESS`, `ORDER_FULFILLMENT` and `ORDER_EXCEPTION` in the target seed. Numeric audit/image/personal-business retention and lawful anonymization exceptions remain TBD. See [owner approval](P1-owner-approval-2026-10-23.md) and [decision log](P1-decision-log.md) plus the P1.9 report for the later dispositions.
+> Owner decisions recorded 2026-10-23 approve DB-03/DB-05 design proposals, DB-12 lifecycle/FK defaults and the stated DB-01/02/06–11/API defaults. The [P1.9 owner amendment](P1-owner-amendment-2026-10-25.md) records the later approval of the unique `(product_id, sort_order)` gallery index and `ORDER_EDIT` replacing `ORDER_PROCESS`, `ORDER_FULFILLMENT` and `ORDER_EXCEPTION` in the target seed. Numeric audit/image/personal-business retention and lawful anonymization exceptions remain TBD. See [owner approval](P1-owner-approval-2026-10-23.md), [decision log](P1-decision-log.md) and [P1.9 report](P1.9-contract-consistency-report.md).
 
 **STATUS: BLOCKED — both owner decisions have been recorded and applied to isolated target artifacts; exact-SHA checker/MySQL/backend verification is the remaining P1.9 gate. P2.1 must not start before the current gate passes.**
 
@@ -9,8 +9,8 @@
 - Source baseline for P1.9: `demo1@6b7c759dd0931fccff98645331cd72e6970ad16f`.
 - Canonical logical model: `docs/refactor/phase-1-erd-v2-approved.mmd`.
 - Physical target: `docs/refactor-v2/p1/P1-data-dictionary.csv` + isolated `backend/src/main/resources/db/clean-reset/V1__clean_schema.sql`.
-- Required system seed specification: [P1.8 operations/seed contract](P1.8-operations-seed-contract.md); SQL remains in isolated `V2__system_seed.sql` and is not modified in P1.9.
-- Cross-domain evidence and blockers: [P1.9 consistency report](P1.9-contract-consistency-report.md).
+- Required system seed specification: [P1.8 operations/seed contract](P1.8-operations-seed-contract.md); target `V2__system_seed.sql` was updated to match the approved 13-code manifest. It remains isolated from the active Flyway chain.
+- Cross-domain evidence and remaining validation gate: [P1.9 consistency report](P1.9-contract-consistency-report.md).
 - The active Flyway migration chain and runtime Java/frontend code were not changed by P1.9. No database was reset.
 
 ## Cross-domain inventory and documentation verification

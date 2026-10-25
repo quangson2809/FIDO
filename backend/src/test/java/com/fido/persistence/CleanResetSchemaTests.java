@@ -173,7 +173,7 @@ class CleanResetSchemaTests {
             assertEquals(0, jdbc.queryForObject(
                     "SELECT COUNT(*) FROM categories WHERE slug='disposable-category'", Integer.class));
             assertEquals(3, jdbc.queryForObject("SELECT COUNT(*) FROM roles", Integer.class));
-            assertEquals(16, jdbc.queryForObject("SELECT COUNT(*) FROM permissions", Integer.class));
+            assertEquals(13, jdbc.queryForObject("SELECT COUNT(*) FROM permissions", Integer.class));
         } finally {
             flyway.clean();
         }
@@ -188,7 +188,13 @@ class CleanResetSchemaTests {
             migrate(flyway);
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
             assertEquals(3, jdbc.queryForObject("SELECT COUNT(*) FROM roles", Integer.class));
-            assertEquals(16, jdbc.queryForObject("SELECT COUNT(*) FROM permissions", Integer.class));
+            assertEquals(13, jdbc.queryForObject("SELECT COUNT(*) FROM permissions", Integer.class));
+            assertEquals(
+                    Set.of(
+                            "CATALOG_READ", "CATALOG_WRITE", "INVENTORY_READ", "INVENTORY_WRITE",
+                            "ORDER_READ", "ORDER_EDIT", "ORDER_PAYMENT", "ORDER_AFTER_SALES",
+                            "AUDIT_READ", "CONTENT_READ", "CONTENT_WRITE", "CUSTOMER_READ", "REPORT_READ"),
+                    new TreeSet<>(jdbc.queryForList("SELECT code FROM permissions", String.class)));
             assertEquals(
                     jdbc.queryForObject("SELECT COUNT(*) FROM permissions", Integer.class),
                     jdbc.queryForObject(

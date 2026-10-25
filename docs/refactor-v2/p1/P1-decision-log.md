@@ -1,6 +1,6 @@
 # P1 — Decision Log
 
-> **Owner approval recorded — 2026-10-23:** DB-03, DB-05 and DB-12 proposals and the proposed DB-01/02/06–11/API defaults were approved. The development/test data policy is Clean Schema Reset: discard disposable legacy test data and rebuild/seed from the 31-table target ERD. DB-12 numeric retention periods remain TBD. See [P1-owner-approval-2026-10-23.md](P1-owner-approval-2026-10-23.md).
+> **Owner approval recorded — 2026-10-23; P1.9 amendment — 2026-10-25:** DB-03, DB-05 and DB-12 proposals and the proposed DB-01/02/06–11/API defaults were approved. The development/test data policy is Clean Schema Reset: discard disposable legacy test data and rebuild/seed from the 31-table target ERD. The later amendment records the Product gallery unique index and target Order permission catalogue disposition. DB-12 numeric retention periods remain TBD. See [P1-owner-approval-2026-10-23.md](P1-owner-approval-2026-10-23.md) and [P1-owner-amendment-2026-10-25.md](P1-owner-amendment-2026-10-25.md).
 
 **Status: PARTIAL — owner decision gates are recorded, but implementation acceptance remains open.** Clean-reset work may proceed only against a verified disposable development/test database. No reset has been executed. Do not activate target migrations in the app until entity/service/API/DTO/frontend mapping and acceptance evidence are ready.
 
@@ -47,6 +47,14 @@ The following technical defaults were accepted by the owner on 2026-10-23. "Appr
 - DB-03 and DB-05 design proposals are explicitly APPROVED on 2026-10-23; their implementation and behavioral/concurrency tests are not yet accepted as passing.
 - DB-12 entity lifecycle/FK defaults are APPROVED. Numeric data, audit and image-retention durations remain TBD; automatic purging must not be implemented until those durations are decided.
 - The confirmed business scope stays single-merchant, COD-only, one operational warehouse, manual shipping, authenticated Cart/order placement, Product-ID inventory and integer-VND money.
+
+## P1.9 owner amendment — 2026-10-25
+
+The following target-contract decisions are recorded in the [P1 owner amendment](P1-owner-amendment-2026-10-25.md):
+
+- **Product gallery order:** isolated clean-reset target DDL uses unique (product_id, sort_order) named uq_product_images_product_order. Application transaction/locking still enforces zero-based contiguous ordering and the primary-image invariant. Existing-data rollout requires a separately approved preflight/repair migration.
+- **Order permissions:** ORDER_EDIT replaces ORDER_PROCESS, ORDER_FULFILLMENT and ORDER_EXCEPTION in the target seed catalogue. ORDER_PAYMENT and ORDER_AFTER_SALES stay separate. P1.7 owns the Order action set; P1.2 owns role grants. No implicit grant to ADMIN/CUSTOMER/custom Roles is approved.
+- **Boundary:** the isolated clean-reset schema/seed and target docs are updated, but runtime code, active Flyway migrations and live databases are untouched. P1.9 remains BLOCKED until exact-SHA checker, MySQL schema and backend workflows pass.
 
 ## DB-03 Inventory contract handoff
 
