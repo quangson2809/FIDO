@@ -10,9 +10,10 @@ import com.fido.modules.account.repository.AccountRepository;
 import com.fido.modules.account.repository.AccountRoleRepository;
 import com.fido.modules.account.repository.RoleRepository;
 import com.fido.modules.audit.service.AuditAction;
-import com.fido.modules.audit.service.AuditEvent;
-import com.fido.modules.audit.service.AuditService;
-import com.fido.modules.audit.service.AuditTargetType;
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEntityType;
+import com.fido.modules.audit.service.AuditWriteEvent;
+import com.fido.modules.audit.service.AuditWriteService;
 
 import jakarta.persistence.EntityManager;
 
@@ -24,6 +25,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -37,7 +39,7 @@ public class StaffCommandService {
     private final AccountAccessService access;
     private final AuthenticationService authentication;
     private final PhoneNumberCanonicalizer phoneNumbers;
-    private final AuditService audit;
+    private final AuditWriteService audit;
     private final EntityManager em;
 
     public StaffCommandService(
@@ -47,7 +49,7 @@ public class StaffCommandService {
             AccountAccessService access,
             AuthenticationService authentication,
             PhoneNumberCanonicalizer phoneNumbers,
-            AuditService audit,
+            AuditWriteService audit,
             EntityManager em) {
         this.accounts = accounts;
         this.roles = roles;
@@ -79,8 +81,12 @@ public class StaffCommandService {
         em.flush();
 
         audit.record(
-                AuditEvent.of(
-                        actor, AuditAction.STAFF_CREATE, AuditTargetType.ACCOUNT, account.getAccountId()));
+                AuditWriteEvent.withChanges(
+                        AuditAction.STAFF_CREATE,
+                        AuditEntityType.ACCOUNT,
+                        account.getAccountId().toString(),
+                        Map.of(),
+                        Map.of("status", "ACTIVE", "active", true, "role_count", selectedRoles.size())));
 
         return access.findAccess(account.getAccountId()).orElseThrow();
     }
@@ -97,6 +103,9 @@ public class StaffCommandService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
 
+        int oldRoleCount = access.findAccess(accountId).map(detail -> detail.roles().size()).orElse(0);
+        String oldStatus = account.getStatus();
+        boolean oldActive = account.isActive();
         List<Role> selectedRoles =
                 request.role_ids() == null ? null : resolveCreateRoles(request.role_ids());
         boolean finalSuperadmin =
@@ -120,8 +129,14 @@ public class StaffCommandService {
         }
 
         em.flush();
+        int newRoleCount = access.findAccess(accountId).map(detail -> detail.roles().size()).orElse(0);
         audit.record(
-                AuditEvent.of(actor, AuditAction.STAFF_UPDATE, AuditTargetType.ACCOUNT, accountId));
+                AuditWriteEvent.withChanges(
+                        AuditAction.STAFF_UPDATE,
+                        AuditEntityType.ACCOUNT,
+                        accountId.toString(),
+                        Map.of("status", oldStatus, "active", oldActive, "role_count", oldRoleCount),
+                        Map.of("status", account.getStatus(), "active", account.isActive(), "role_count", newRoleCount)));
 
         return access.findAccess(accountId).orElseThrow();
     }

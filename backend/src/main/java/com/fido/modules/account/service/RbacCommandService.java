@@ -15,9 +15,10 @@ import com.fido.modules.account.repository.PermissionRepository;
 import com.fido.modules.account.repository.RolePermissionRepository;
 import com.fido.modules.account.repository.RoleRepository;
 import com.fido.modules.audit.service.AuditAction;
-import com.fido.modules.audit.service.AuditEvent;
-import com.fido.modules.audit.service.AuditService;
-import com.fido.modules.audit.service.AuditTargetType;
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEntityType;
+import com.fido.modules.audit.service.AuditWriteEvent;
+import com.fido.modules.audit.service.AuditWriteService;
 
 import jakarta.persistence.EntityManager;
 
@@ -29,6 +30,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -60,7 +62,7 @@ public class RbacCommandService {
     private final PermissionRepository permissions;
     private final RolePermissionRepository mappings;
     private final AccountRoleRepository assignments;
-    private final AuditService audit;
+    private final AuditWriteService audit;
     private final EntityManager entityManager;
 
     public RbacCommandService(
@@ -68,7 +70,7 @@ public class RbacCommandService {
             PermissionRepository permissions,
             RolePermissionRepository mappings,
             AccountRoleRepository assignments,
-            AuditService audit,
+            AuditWriteService audit,
             EntityManager entityManager) {
         this.roles = roles;
         this.permissions = permissions;
@@ -92,7 +94,11 @@ public class RbacCommandService {
 
         entityManager.flush();
         audit.record(
-                AuditEvent.of(actor, AuditAction.ROLE_CREATE, AuditTargetType.ROLE, role.getRoleId()));
+                AuditWriteEvent.withChanges(
+                        AuditAction.ROLE_CREATE, AuditEntityType.ROLE, role.getRoleId().toString(),
+                        Map.of(), Map.of("code", role.getCode(), "status", role.getStatus(),
+                                "active", "ACTIVE".equals(role.getStatus()), "permission_count",
+                                permissions.findByRole(role.getRoleId()).size())));
 
         return detail(role);
     }
@@ -100,6 +106,10 @@ public class RbacCommandService {
     public RoleDetailDto updateRole(Long actor, Long roleId, RolePatchRequest request) {
         lockSuperadminRole();
         Role role = role(roleId);
+        Map<String, Object> before = Map.of(
+                "code", role.getCode(), "status", role.getStatus(),
+                "active", "ACTIVE".equals(role.getStatus()),
+                "permission_count", permissions.findByRole(roleId).size());
 
         if (request.getName() != null) {
             role.setName(request.getName().trim());
@@ -116,7 +126,12 @@ public class RbacCommandService {
 
         replacePermissions(role, request.getPermissionIds());
         entityManager.flush();
-        audit.record(AuditEvent.of(actor, AuditAction.ROLE_UPDATE, AuditTargetType.ROLE, roleId));
+        audit.record(
+                AuditWriteEvent.withChanges(
+                        AuditAction.ROLE_UPDATE, AuditEntityType.ROLE, roleId.toString(), before,
+                        Map.of("code", role.getCode(), "status", role.getStatus(),
+                                "active", "ACTIVE".equals(role.getStatus()),
+                                "permission_count", permissions.findByRole(roleId).size())));
 
         return detail(role);
     }
@@ -125,6 +140,10 @@ public class RbacCommandService {
         lockSuperadminRole();
         Role role = role(roleId);
 
+        Map<String, Object> before = Map.of(
+                "code", role.getCode(), "status", role.getStatus(),
+                "active", "ACTIVE".equals(role.getStatus()),
+                "permission_count", permissions.findByRole(roleId).size());
         if (SYSTEM_ROLE_CODES.contains(role.getCode()) || assignments.existsByRoleId(roleId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
@@ -132,7 +151,8 @@ public class RbacCommandService {
         mappings.deleteByRoleId(roleId);
         entityManager.flush();
         roles.delete(role);
-        audit.record(AuditEvent.of(actor, AuditAction.ROLE_DELETE, AuditTargetType.ROLE, roleId));
+        audit.record(AuditWriteEvent.withChanges(
+                AuditAction.ROLE_DELETE, AuditEntityType.ROLE, roleId.toString(), before, Map.of()));
     }
 
     public PermissionDto createPermission(Long actor, PermissionCreateRequest request) {
@@ -153,10 +173,10 @@ public class RbacCommandService {
         mappings.save(grant);
         entityManager.flush();
 
-        audit.record(
-                AuditEvent.of(
-                        actor, AuditAction.PERMISSION_CREATE, AuditTargetType.PERMISSION,
-                        permission.getPermissionId()));
+        audit.record(AuditWriteEvent.withChanges(
+                AuditAction.PERMISSION_CREATE, AuditEntityType.PERMISSION,
+                permission.getPermissionId().toString(), Map.of(),
+                Map.of("code", permission.getCode(), "active", true)));
 
         return AccountMapper.permission(permission);
     }
@@ -165,6 +185,7 @@ public class RbacCommandService {
             Long actor, Long permissionId, PermissionPatchRequest request) {
         lockSuperadminRole();
         Permission permission = permission(permissionId);
+        Map<String, Object> before = Map.of("code", permission.getCode(), "active", true);
 
         if (request.name() != null) {
             permission.setName(request.name().trim());
@@ -174,9 +195,10 @@ public class RbacCommandService {
         }
 
         entityManager.flush();
-        audit.record(
-                AuditEvent.of(
-                        actor, AuditAction.PERMISSION_UPDATE, AuditTargetType.PERMISSION, permissionId));
+        audit.record(AuditWriteEvent.withChanges(
+                AuditAction.PERMISSION_UPDATE, AuditEntityType.PERMISSION,
+                permissionId.toString(), before,
+                Map.of("code", permission.getCode(), "active", true)));
 
         return AccountMapper.permission(permission);
     }
@@ -184,6 +206,7 @@ public class RbacCommandService {
     public void deletePermission(Long actor, Long permissionId) {
         Role superadmin = lockSuperadminRole();
         Permission permission = permission(permissionId);
+        Map<String, Object> before = Map.of("code", permission.getCode(), "active", true);
 
         if (SYSTEM_PERMISSION_CODES.contains(permission.getCode())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "SYSTEM_PERMISSION_PROTECTED");
@@ -201,9 +224,9 @@ public class RbacCommandService {
         permissions.delete(permission);
         entityManager.flush();
 
-        audit.record(
-                AuditEvent.of(
-                        actor, AuditAction.PERMISSION_DELETE, AuditTargetType.PERMISSION, permissionId));
+        audit.record(AuditWriteEvent.withChanges(
+                AuditAction.PERMISSION_DELETE, AuditEntityType.PERMISSION,
+                permissionId.toString(), before, Map.of()));
     }
 
     private void replacePermissions(Role role, List<Long> permissionIds) {

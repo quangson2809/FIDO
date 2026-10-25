@@ -7,14 +7,16 @@ import com.fido.modules.account.repository.AccountRepository;
 import com.fido.modules.account.repository.AccountRoleRepository;
 import com.fido.modules.account.repository.RoleRepository;
 import com.fido.modules.audit.service.AuditAction;
-import com.fido.modules.audit.service.AuditEvent;
-import com.fido.modules.audit.service.AuditService;
-import com.fido.modules.audit.service.AuditTargetType;
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEntityType;
+import com.fido.modules.audit.service.AuditWriteEvent;
+import com.fido.modules.audit.service.AuditWriteService;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class SuperadminBootstrapService {
@@ -25,7 +27,7 @@ public class SuperadminBootstrapService {
     private final AuthenticationService authentication;
     private final AccountAccessService access;
     private final PhoneNumberCanonicalizer phoneNumbers;
-    private final AuditService audit;
+    private final AuditWriteService audit;
 
     public SuperadminBootstrapService(
             RoleRepository roles,
@@ -34,7 +36,7 @@ public class SuperadminBootstrapService {
             AuthenticationService authentication,
             AccountAccessService access,
             PhoneNumberCanonicalizer phoneNumbers,
-            AuditService audit) {
+            AuditWriteService audit) {
         this.roles = roles;
         this.accounts = accounts;
         this.assignments = assignments;
@@ -91,11 +93,12 @@ public class SuperadminBootstrapService {
 
         assignments.save(mapping);
 
-        audit.record(
-                AuditEvent.of(
-                        account.getAccountId(),
+        audit.recordSystemEvent(
+                AuditWriteEvent.withChanges(
                         AuditAction.SUPERADMIN_BOOTSTRAP,
-                        AuditTargetType.ACCOUNT,
-                        account.getAccountId()));
+                        AuditEntityType.ACCOUNT,
+                        account.getAccountId().toString(),
+                        Map.of(),
+                        Map.of("status", "ACTIVE", "active", true, "role_count", 1)));
     }
 }

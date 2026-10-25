@@ -12,7 +12,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import java.time.Instant;
+import java.util.List;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.UUID;
@@ -26,8 +31,12 @@ class RbacTransactionTests {
     @Autowired JdbcTemplate jdbc;
 
     @Test
-    @WithMockUser(authorities = "ROLE_SUPERADMIN")
     void failedAuditRollsBackPermissionAndSuperadminGrant() {
+        Jwt jwt = Jwt.withTokenValue("test-token").header("alg", "HS256")
+                .subject("-999").issuedAt(Instant.now()).expiresAt(Instant.now().plusSeconds(60)).build();
+        SecurityContextHolder.getContext().setAuthentication(
+                new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority("ROLE_SUPERADMIN"))));
+        try {
         String code = "test.rollback." + UUID.randomUUID();
 
         assertThrows(
@@ -52,10 +61,13 @@ class RbacTransactionTests {
                         """,
                         Integer.class,
                         code));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     @Test
-    @WithMockUser(authorities = "ROLE_ADMIN")
+    @org.springframework.security.test.context.support.WithMockUser(authorities = "ROLE_ADMIN")
     void serviceRejectsEmployeeEvenWhenBypassingHttp() {
         assertThrows(
                 AccessDeniedException.class,
