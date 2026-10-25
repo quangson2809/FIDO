@@ -14,7 +14,7 @@ public class DevSeedStateInspector {
 
     private static final List<SeedProbe> PROBES =
             List.of(
-                    probe("accounts", "account_id BETWEEN 900001 AND 900008", 8),
+                    probe("accounts", "id BETWEEN 900001 AND 900008", 8),
                     probe("addresses", "address_id BETWEEN 910001 AND 910003", 3),
                     probe("roles", "role_id BETWEEN 900101 AND 900104", 4),
                     probe("permissions", "permission_id BETWEEN 900201 AND 900215", 15),

@@ -12,14 +12,14 @@ public class DevSeedIdentityData {
 
     private static final List<ReservedNaturalKey> RESERVED_NATURAL_KEYS =
             List.of(
-                    reserved("accounts", "account_id", 900001L, "phone", "0909000001"),
-                    reserved("accounts", "account_id", 900002L, "phone", "0909000002"),
-                    reserved("accounts", "account_id", 900003L, "phone", "0909000003"),
-                    reserved("accounts", "account_id", 900004L, "phone", "0909000004"),
-                    reserved("accounts", "account_id", 900005L, "phone", "0909000005"),
-                    reserved("accounts", "account_id", 900006L, "phone", "0909000006"),
-                    reserved("accounts", "account_id", 900007L, "phone", "0909000007"),
-                    reserved("accounts", "account_id", 900008L, "phone", "0909000008"),
+                    reserved("accounts", "id", 900001L, "phone", "0909000001"),
+                    reserved("accounts", "id", 900002L, "phone", "0909000002"),
+                    reserved("accounts", "id", 900003L, "phone", "0909000003"),
+                    reserved("accounts", "id", 900004L, "phone", "0909000004"),
+                    reserved("accounts", "id", 900005L, "phone", "0909000005"),
+                    reserved("accounts", "id", 900006L, "phone", "0909000006"),
+                    reserved("accounts", "id", 900007L, "phone", "0909000007"),
+                    reserved("accounts", "id", 900008L, "phone", "0909000008"),
                     reserved("roles", "role_id", 900101L, "code", "FIDO_SEED_CATALOG"),
                     reserved("roles", "role_id", 900102L, "code", "FIDO_SEED_INVENTORY"),
                     reserved("roles", "role_id", 900103L, "code", "FIDO_SEED_ORDER"),
@@ -161,7 +161,7 @@ public class DevSeedIdentityData {
         jdbc.update(
                 """
                 INSERT INTO accounts(
-                    account_id,password_hash,phone,email,created_at,updated_at
+                    id,password_hash,phone,email,created_at,updated_at
                 ) VALUES
                 (900001,?,'0909000001','superadmin@fido.local',
                     '2026-09-01 00:00:00','2026-09-01 00:00:00'),

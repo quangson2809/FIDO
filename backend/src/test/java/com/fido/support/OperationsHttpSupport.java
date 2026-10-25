@@ -104,7 +104,7 @@ public abstract class OperationsHttpSupport {
             db.update("DELETE FROM audit_logs WHERE actor_account_id=?", id);
             db.update("DELETE FROM addresses WHERE account_id=?", id);
             db.update("DELETE FROM account_roles WHERE account_id=?", id);
-            db.update("DELETE FROM accounts WHERE account_id=?", id);
+            db.update("DELETE FROM accounts WHERE id=?", id);
         }
         for (long role : roles) {
             db.update("DELETE FROM role_permissions WHERE role_id=?", role);

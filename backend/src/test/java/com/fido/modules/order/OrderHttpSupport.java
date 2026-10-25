@@ -443,7 +443,7 @@ abstract class OrderHttpSupport {
 
             db.update("DELETE FROM addresses WHERE account_id=?", accountId);
 
-            db.update("DELETE FROM accounts WHERE account_id=?", accountId);
+            db.update("DELETE FROM accounts WHERE id=?", accountId);
         }
 
         for (Long roleId : customRoles) {

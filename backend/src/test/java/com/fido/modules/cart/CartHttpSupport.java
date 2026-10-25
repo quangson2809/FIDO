@@ -282,7 +282,7 @@ abstract class CartHttpSupport {
 
             db.update("DELETE FROM audit_logs WHERE actor_account_id=?", accountId);
 
-            db.update("DELETE FROM accounts WHERE account_id=?", accountId);
+            db.update("DELETE FROM accounts WHERE id=?", accountId);
         }
     }
 }

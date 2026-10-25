@@ -136,7 +136,7 @@ abstract class AccountHttpSupport {
             db.update("DELETE FROM audit_logs WHERE actor_account_id=?", accountId);
             db.update("DELETE FROM addresses WHERE account_id=?", accountId);
             db.update("DELETE FROM account_roles WHERE account_id=?", accountId);
-            db.update("DELETE FROM accounts WHERE account_id=?", accountId);
+            db.update("DELETE FROM accounts WHERE id=?", accountId);
         }
 
         for (Long roleId : roleIds) {
