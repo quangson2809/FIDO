@@ -38,4 +38,16 @@ class AddressHttpTests extends AccountHttpSupport {
         assertFalse(db.queryForObject("SELECT is_default FROM addresses WHERE id=?",Boolean.class,firstId));
         assertTrue(db.queryForObject("SELECT is_default FROM addresses WHERE id=?",Boolean.class,secondId));
     }
+    @Test void soleAddressCannotBeUnsetAsDefault() throws Exception {
+        String phone=phone(); register(phone); String token=login(phone);
+        var created=call("POST","/api/v1/me/addresses",token,address("Only address"));
+        assertEquals(201,created.status(),created.body());
+        long id=created.data().get("data").get("id").asLong();
+        var patch=call("PATCH","/api/v1/me/addresses/"+id,token,Map.of("is_default",false));
+        assertEquals(200,patch.status(),patch.body());
+        assertTrue(patch.data().get("data").get("is_default").asBoolean());
+        assertEquals(1,db.queryForObject(
+                "SELECT COUNT(*) FROM addresses WHERE account_id=(SELECT id FROM accounts WHERE phone=?) AND is_default=TRUE",
+                Integer.class,phone));
+    }
 }

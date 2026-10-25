@@ -51,7 +51,13 @@ public class ProfileCommandService {
             if(Boolean.TRUE.equals(request.is_default())) {
                 clearDefault(addresses.findByAccountIdOrderByIdAsc(actor)); address.setDefault(true);
             } else if(address.isDefault()) {
-                address.setDefault(false); promoteMostRecentOther(actor,address.getId());
+                List<Address> all=addresses.findByAccountIdOrderByIdAsc(actor);
+                boolean hasAnotherAddress=all.stream().anyMatch(a -> !a.getId().equals(address.getId()));
+                if(hasAnotherAddress) {
+                    address.setDefault(false);
+                    promoteMostRecentOther(actor,address.getId());
+                }
+                // Preserve exactly one default when this is the Account's only saved address.
             }
         }
         address.setAddressText(legacyText(address));
