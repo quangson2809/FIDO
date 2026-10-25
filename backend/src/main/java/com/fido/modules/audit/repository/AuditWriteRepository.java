@@ -13,7 +13,7 @@ public class AuditWriteRepository {
             INSERT INTO audit_logs
                 (actor_account_id, action, entity_type, entity_id,
                  before_data, after_data, correlation_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, CAST(? AS JSON), CAST(? AS JSON), ?)
             """;
 
     private final JdbcTemplate jdbc;
