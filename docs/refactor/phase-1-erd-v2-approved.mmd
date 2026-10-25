@@ -127,6 +127,7 @@ erDiagram
         boolean boolean_value
     }
 
+    %% Physical target index: UNIQUE (product_id, sort_order); application transactions still preserve contiguous 0..n-1 positions and the primary-image invariant.
     PRODUCT_IMAGES {
         bigint id PK
         bigint product_id FK
