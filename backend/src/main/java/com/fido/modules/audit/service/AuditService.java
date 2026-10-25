@@ -1,30 +1,29 @@
 package com.fido.modules.audit.service;
 
+import com.fido.config.web.CorrelationIdContext;
 import com.fido.modules.audit.entity.AuditLog;
 import com.fido.modules.audit.repository.AuditLogRepository;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuditService {
-
     private final AuditLogRepository logs;
-
-    public AuditService(AuditLogRepository logs) {
-        this.logs = logs;
-    }
+    public AuditService(AuditLogRepository logs) { this.logs = logs; }
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void record(AuditEvent event) {
         AuditLog log = new AuditLog();
         log.setActorAccountId(event.actorAccountId());
         log.setAction(event.action().name());
+        // Preserve legacy columns during rollout and populate the target entity identity as well.
         log.setTargetType(event.targetType().name());
         log.setTargetId(event.targetId().toString());
+        log.setEntityType(event.targetType().name());
+        log.setEntityId(event.targetId().toString());
+        log.setCorrelationId(CorrelationIdContext.currentOrGenerate());
         log.setDescription(event.description());
-
         logs.save(log);
     }
 }
