@@ -10,7 +10,7 @@
 | [`implementation-history/`](implementation-history/23-phase-14-verification-architecture-review.md) | Prior implementation hardening and image test/verification reports, plus attached evidence JSON. These do not certify the current ERD v2 runtime. |
 | [`reviews/`](reviews/documentation-cleanup-2026-10-22.md) | Dated audit, Cart/Checkout and documentation cleanup reports. Treat statuses/open decisions as historical unless the current source-of-truth explicitly carries them forward. |
 | [`reviews/architecture/`](reviews/architecture/design-pattern-overlap-audit-demo1.md) | Design-pattern assessments tied to their recorded code baselines; not instructions to add patterns to current code. |
-| [`refactor-v2/`](refactor-v2/phase-1-owner-decision-questionnaire.md) | Superseded owner questionnaire retained for provenance. The approved owner record, amendment and decision log take precedence. |
+| [`phase-1-owner-decision-questionnaire.md`](refactor-v2/phase-1-owner-decision-questionnaire.md) | Superseded owner questionnaire retained for provenance. The approved owner record, amendment and decision log take precedence. |
 | [`legacy-plans/`](legacy-plans/11-implementation-phases-pre-erd-v2.md) | Pre-ERD-v2 implementation roadmap, kept only to explain the historical plan. |
 
 ## Rules for archived artifacts
