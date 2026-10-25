@@ -82,7 +82,7 @@ class AuditWriteServiceTransactionTests {
     }
 
     @Test
-    void writesTargetColumnsWithPrincipalActorCorrelationAndAllowlistedPayloads() {
+    void writesTargetColumnsWithPrincipalActorCorrelationAndAllowlistedPayloads() throws Exception {
         authenticateAs(7L);
         AuditWriteEvent event =
                 AuditWriteEvent.withChanges(
@@ -145,13 +145,15 @@ class AuditWriteServiceTransactionTests {
                 jdbc.queryForObject(
                         "SELECT after_data FROM audit_logs WHERE entity_id = '42'",
                         String.class);
-        assertTrue(beforeJson.contains("\"status\":\"DRAFT\""));
-        assertFalse(beforeJson.contains("Safe title"));
+        var beforeNode = new ObjectMapper().readTree(beforeJson);
+        var afterNode = new ObjectMapper().readTree(afterJson);
+        assertEquals("DRAFT", beforeNode.path("status").asText());
+        assertFalse(beforeNode.has("title"));
         assertFalse(beforeJson.contains("never-store-this-marker"));
         assertFalse(beforeJson.contains("nested-secret-marker"));
-        assertTrue(afterJson.contains("\"status\":\"PUBLISHED\""));
+        assertEquals("PUBLISHED", afterNode.path("status").asText());
+        assertFalse(afterNode.has("title"));
         assertFalse(afterJson.contains("never-store-this-marker"));
-        assertFalse(afterJson.contains("Updated title"));
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM business_probe", Integer.class));
     }
 
