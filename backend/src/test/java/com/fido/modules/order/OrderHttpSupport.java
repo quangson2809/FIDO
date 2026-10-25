@@ -93,7 +93,7 @@ abstract class OrderHttpSupport {
 
         assertEquals(201, register.status(), register.body());
 
-        long accountId = register.data().get("data").get("account").get("account_id").asLong();
+        long accountId = register.data().get("data").get("account").get("id").asLong();
 
         accounts.add(accountId);
 
@@ -103,7 +103,7 @@ abstract class OrderHttpSupport {
                         "/api/v1/auth/login",
                         null,
                         Map.of(
-                                "identifier", phone,
+                                "phone", phone,
                                 "password", PASSWORD));
 
         assertEquals(200, login.status(), login.body());

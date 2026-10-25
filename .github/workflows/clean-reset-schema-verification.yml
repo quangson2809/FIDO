@@ -7,7 +7,8 @@ on:
       - feature/clean-schema-reset
     paths:
       - "backend/src/main/resources/db/clean-reset/**"
-      - "backend/src/test/java/com/fido/persistence/CleanResetSchemaTests.java"
+      - "backend/src/test/java/com/fido/persistence/CleanResetSchemaTests.java
+      - "backend/src/test/java/com/fido/persistence/CleanTargetEntityMappingTests.java""
       - ".github/workflows/clean-reset-schema-verification.yml"
       - "scripts/p1/**"
       - "docs/refactor-v2/target/**"
@@ -27,7 +28,8 @@ on:
       - docs/phase-1-erd-v2-freeze
     paths:
       - "backend/src/main/resources/db/clean-reset/**"
-      - "backend/src/test/java/com/fido/persistence/CleanResetSchemaTests.java"
+      - "backend/src/test/java/com/fido/persistence/CleanResetSchemaTests.java
+      - "backend/src/test/java/com/fido/persistence/CleanTargetEntityMappingTests.java""
       - "backend/src/test/resources/clean-reset/**"
       - ".github/workflows/clean-reset-schema-verification.yml"
       - "scripts/p1/**"
@@ -99,4 +101,4 @@ jobs:
 
       - name: Run clean-target schema tests
         working-directory: backend
-        run: ./gradlew test --tests com.fido.persistence.CleanResetSchemaTests --stacktrace
+        run: ./gradlew test --tests com.fido.persistence.CleanResetSchemaTests --tests com.fido.persistence.CleanTargetEntityMappingTests --stacktrace

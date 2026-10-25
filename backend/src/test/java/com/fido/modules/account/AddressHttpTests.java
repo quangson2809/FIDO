@@ -38,6 +38,29 @@ class AddressHttpTests extends AccountHttpSupport {
         assertFalse(db.queryForObject("SELECT is_default FROM addresses WHERE id=?",Boolean.class,firstId));
         assertTrue(db.queryForObject("SELECT is_default FROM addresses WHERE id=?",Boolean.class,secondId));
     }
+
+    @Test void legacyAddressesWithoutDefaultsAreRepairedBeforePatch() throws Exception {
+        String phone = phone();
+        long accountId = register(phone);
+        String token = login(phone);
+        db.update("INSERT INTO addresses(account_id,address_text,is_default,created_at,updated_at) "
+                + "VALUES (?, 'legacy first', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)", accountId);
+        long firstId = db.queryForObject(
+                "SELECT MAX(id) FROM addresses WHERE account_id=?", Long.class, accountId);
+        db.update("INSERT INTO addresses(account_id,address_text,is_default,created_at,updated_at) "
+                + "VALUES (?, 'legacy second', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)", accountId);
+        long secondId = db.queryForObject(
+                "SELECT MAX(id) FROM addresses WHERE account_id=?", Long.class, accountId);
+
+        var patched = call("PATCH", "/api/v1/me/addresses/" + firstId, token, address("migrated address"));
+        assertEquals(200, patched.status(), patched.body());
+        assertFalse(db.queryForObject("SELECT is_default FROM addresses WHERE id=?", Boolean.class, firstId));
+        assertTrue(db.queryForObject("SELECT is_default FROM addresses WHERE id=?", Boolean.class, secondId));
+        assertEquals(1, db.queryForObject(
+                "SELECT COUNT(*) FROM addresses WHERE account_id=? AND is_default=TRUE",
+                Integer.class, accountId));
+    }
+
     @Test void soleAddressCannotBeUnsetAsDefault() throws Exception {
         String phone=phone(); register(phone); String token=login(phone);
         var created=call("POST","/api/v1/me/addresses",token,address("Only address"));

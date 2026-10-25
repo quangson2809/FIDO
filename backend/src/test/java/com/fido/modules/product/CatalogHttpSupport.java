@@ -93,7 +93,7 @@ abstract class CatalogHttpSupport {
 
         assertEquals(201, response.status(), response.body());
 
-        long accountId = response.data().get("data").get("account").get("account_id").asLong();
+        long accountId = response.data().get("data").get("account").get("id").asLong();
 
         accounts.add(accountId);
 
@@ -107,7 +107,7 @@ abstract class CatalogHttpSupport {
                         "/api/v1/auth/login",
                         null,
                         Map.of(
-                                "identifier", phone,
+                                "phone", phone,
                                 "password", PASSWORD));
 
         assertEquals(200, response.status(), response.body());

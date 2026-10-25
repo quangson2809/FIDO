@@ -57,7 +57,7 @@ public abstract class OperationsHttpSupport {
                         null,
                         Map.of("phone", phone, "full_name", "Operations Test Account", "password", "Test-password-123"));
         assertEquals(201, created.status());
-        long id = created.body().get("data").get("account").get("account_id").asLong();
+        long id = created.body().get("data").get("account").get("id").asLong();
         accounts.add(id);
         if (role != null && !"CUSTOMER".equals(role))
             db.update(
@@ -67,7 +67,7 @@ public abstract class OperationsHttpSupport {
                         "POST",
                         "/api/v1/auth/login",
                         null,
-                        Map.of("identifier", phone, "password", "Test-password-123"));
+                        Map.of("phone", phone, "password", "Test-password-123"));
         assertEquals(200, login.status());
         return new User(id, login.body().get("data").get("access_token").asText(), phone);
     }

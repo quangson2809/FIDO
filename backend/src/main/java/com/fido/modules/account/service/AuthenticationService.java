@@ -53,7 +53,7 @@ public class AuthenticationService {
     public LoginResponse register(RegisterRequest request) {
         String phone = phoneNumbers.canonicalize(request.phone());
         if (accounts.existsByPhoneInAndNotDeleted(phoneNumbers.lookupValues(phone))) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "PHONE_ALREADY_IN_USE");
         }
 
         Account account = new Account();
@@ -110,12 +110,12 @@ public class AuthenticationService {
 
         // Unknown phone, ambiguous legacy alias, and wrong password share the same 401 envelope.
         if (account == null || !matches) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS");
         }
 
         // Do not issue a token or disclose the specific lifecycle state for non-ACTIVE accounts.
         if (!account.isActive()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is not active");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "ACCOUNT_NOT_ACTIVE");
         }
 
         return tokens.issue(AccountMapper.account(account));

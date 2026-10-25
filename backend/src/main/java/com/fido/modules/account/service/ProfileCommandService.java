@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import java.util.Comparator;
 import java.util.List;
 @Service
 @Transactional
@@ -35,16 +36,19 @@ public class ProfileCommandService {
     public AddressDto addAddress(Long actor,AddressRequest request) {
         accountLocks.lock(actor); Account account=requireActiveOwner(actor); requireCompleteAddress(request);
         List<Address> existing=addresses.findByAccountIdOrderByIdAsc(actor);
+        ensureExactlyOneDefault(existing);
         boolean makeDefault=existing.isEmpty()||Boolean.TRUE.equals(request.is_default());
         if(makeDefault) clearDefault(existing);
         Address address=new Address(); address.setAccountId(account.getAccountId());
-        applyAllFields(address,request); address.setDefault(makeDefault); address.setAddressText(legacyText(address));
+        applyAllFields(address,request); address.setDefault(makeDefault);
         return toDto(addresses.save(address));
     }
     public AddressDto updateAddress(Long actor,Long addressId,AddressRequest request) {
         accountLocks.lock(actor); requireActiveOwner(actor);
         if(!request.hasAnyField()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"EMPTY_PATCH");
         Address address=ownedAddress(actor,addressId);
+        List<Address> all=addresses.findByAccountIdOrderByIdAsc(actor);
+        ensureExactlyOneDefault(all);
         if(!address.hasStructuredAddress()) { requireCompleteAddress(request); applyAllFields(address,request); }
         else applyPresentFields(address,request);
         if(request.defaultPresent()) {
@@ -60,12 +64,14 @@ public class ProfileCommandService {
                 // Preserve exactly one default when this is the Account's only saved address.
             }
         }
-        address.setAddressText(legacyText(address));
         Address saved=addresses.save(address); entityManager.flush(); return toDto(saved);
     }
     public void deleteAddress(Long actor,Long addressId) {
         accountLocks.lock(actor); requireActiveOwner(actor);
-        Address address=ownedAddress(actor,addressId); boolean wasDefault=address.isDefault();
+        Address address=ownedAddress(actor,addressId);
+        List<Address> all=addresses.findByAccountIdOrderByIdAsc(actor);
+        ensureExactlyOneDefault(all);
+        boolean wasDefault=address.isDefault();
         addresses.delete(address); entityManager.flush();
         if(wasDefault) promoteMostRecentOther(actor,addressId);
     }
@@ -77,6 +83,29 @@ public class ProfileCommandService {
         return addresses.findByIdAndAccountId(id,actor)
                 .orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
+    /**
+     * Repairs legacy rows with missing/multiple defaults under the owning Account lock.
+     * Prefer a previous default; otherwise use latest updated_at, then highest id.
+     * Missing structured recipient/location fields are deliberately not fabricated.
+     */
+    private void ensureExactlyOneDefault(List<Address> all) {
+        if (all.isEmpty()) return;
+        List<Address> currentDefaults = all.stream().filter(Address::isDefault).toList();
+        List<Address> candidates = currentDefaults.isEmpty() ? all : currentDefaults;
+        Comparator<Address> latestFirst =
+                Comparator.comparing(Address::getUpdatedAt,
+                                     Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(Address::getId, Comparator.reverseOrder());
+        Address winner = candidates.stream().min(latestFirst).orElseThrow();
+        for (Address address : all) {
+            boolean shouldBeDefault = address.getId().equals(winner.getId());
+            if (address.isDefault() != shouldBeDefault) {
+                address.setDefault(shouldBeDefault);
+                addresses.save(address);
+            }
+        }
+    }
+
     private void clearDefault(List<Address> all) {
         all.stream().filter(Address::isDefault).forEach(a->{a.setDefault(false);addresses.save(a);});
     }
@@ -99,9 +128,6 @@ public class ProfileCommandService {
         if(r.districtPresent()) a.setDistrict(r.district().trim());
         if(r.wardPresent()) a.setWard(r.ward().trim());
         if(r.addressLinePresent()) a.setAddressLine(r.address_line().trim());
-    }
-    private static String legacyText(Address a) {
-        return String.join(", ",a.getAddressLine(),a.getWard(),a.getDistrict(),a.getProvince());
     }
     public static AddressDto toDto(Address a) {
         return new AddressDto(a.getId(),a.getRecipientName(),a.getRecipientPhone(),a.getProvince(),

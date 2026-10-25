@@ -105,7 +105,7 @@ abstract class AccountHttpSupport {
                         "POST",
                         "/api/v1/auth/login",
                         null,
-                        Map.of("identifier", phone, "password", PASSWORD));
+                        Map.of("phone", phone, "password", PASSWORD));
 
         assertEquals(200, response.status, response.body);
         return response.data.get("data").get("access_token").asText();

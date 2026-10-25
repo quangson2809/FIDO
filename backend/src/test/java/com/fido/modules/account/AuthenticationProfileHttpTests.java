@@ -22,6 +22,43 @@ import java.util.concurrent.TimeUnit;
 
 class AuthenticationProfileHttpTests extends AccountHttpSupport {
 
+
+    @Test
+    void legacyIdentifierAliasIsRejected() throws Exception {
+        var response = call("POST", "/api/v1/auth/login", null,
+                Map.of("identifier", phone(), "password", PASSWORD));
+        assertEquals(400, response.status(), response.body());
+        assertEquals("VALIDATION_ERROR", response.data().get("code").asText());
+    }
+
+    @Test
+    void authenticationErrorsReturnStableCodesAndDoNotRevealCredentialsOrStatus() throws Exception {
+        String knownPhone = phone();
+        long accountId = register(knownPhone);
+
+        var wrong = call("POST", "/api/v1/auth/login", null,
+                Map.of("phone", knownPhone, "password", "wrong-password"));
+        var unknown = call("POST", "/api/v1/auth/login", null,
+                Map.of("phone", phone(), "password", "wrong-password"));
+        assertEquals(401, wrong.status(), wrong.body());
+        assertEquals(401, unknown.status(), unknown.body());
+        assertEquals("INVALID_CREDENTIALS", wrong.data().get("code").asText());
+        assertEquals("INVALID_CREDENTIALS", unknown.data().get("code").asText());
+        assertEquals(wrong.data().get("message").asText(), unknown.data().get("message").asText());
+
+        var duplicate = call("POST", "/api/v1/auth/register", null,
+                Map.of("phone", knownPhone, "full_name", "Duplicate", "password", PASSWORD));
+        assertEquals(409, duplicate.status(), duplicate.body());
+        assertEquals("PHONE_ALREADY_IN_USE", duplicate.data().get("code").asText());
+
+        db.update("UPDATE accounts SET status='SUSPENDED' WHERE id=?", accountId);
+        var inactive = call("POST", "/api/v1/auth/login", null,
+                Map.of("phone", knownPhone, "password", PASSWORD));
+        assertEquals(403, inactive.status(), inactive.body());
+        assertEquals("ACCOUNT_NOT_ACTIVE", inactive.data().get("code").asText());
+        assertFalse(inactive.body().contains("SUSPENDED"));
+    }
+
     @Test
     void registrationLoginAndProfileContract() throws Exception {
         String phone = phone();
@@ -95,7 +132,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "POST",
                                 "/api/v1/auth/login",
                                 null,
-                                Map.of("identifier", phone, "password", "wrong"))
+                                Map.of("phone", phone, "password", "wrong"))
                         .status());
 
         assertEquals(
@@ -104,7 +141,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "POST",
                                 "/api/v1/auth/login",
                                 null,
-                                Map.of("identifier", phone(), "password", "wrong"))
+                                Map.of("phone", phone(), "password", "wrong"))
                         .status());
     }
 
@@ -128,7 +165,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                         "POST",
                         "/api/v1/auth/login",
                         null,
-                        Map.of("identifier", internationalPhone, "password", PASSWORD));
+                        Map.of("phone", internationalPhone, "password", PASSWORD));
 
         assertEquals(200, login.status(), login.body());
         assertEquals(
