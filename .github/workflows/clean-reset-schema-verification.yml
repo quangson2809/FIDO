@@ -10,6 +10,7 @@ on:
       - "backend/src/test/java/com/fido/persistence/DatabaseBaselineTests.java"
       - "backend/src/test/java/com/fido/persistence/CleanTargetEntityMappingTests.java"
       - "backend/src/test/java/com/fido/persistence/CleanMigrationTests.java"
+      - "backend/src/test/java/com/fido/persistence/ProductImageOrderingMigrationTests.java"
       - ".github/workflows/clean-reset-schema-verification.yml"
       - "scripts/p1/**"
       - "docs/refactor-v2/target/**"
@@ -84,4 +85,4 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
       - name: Verify schema, seed and composite mappings on fresh MySQL
         working-directory: backend
-        run: ./gradlew --no-daemon test --tests com.fido.persistence.DatabaseBaselineTests --tests com.fido.persistence.CleanTargetEntityMappingTests --tests com.fido.persistence.CleanMigrationTests --stacktrace
+        run: ./gradlew --no-daemon test --tests com.fido.persistence.DatabaseBaselineTests --tests com.fido.persistence.CleanTargetEntityMappingTests --tests com.fido.persistence.CleanMigrationTests --tests com.fido.persistence.ProductImageOrderingMigrationTests --stacktrace
