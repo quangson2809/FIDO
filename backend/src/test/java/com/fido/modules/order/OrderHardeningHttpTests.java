@@ -19,8 +19,7 @@ class OrderHardeningHttpTests extends OrderHttpSupport {
         User reader = employeeWithPermission("ORDER_READ");
         // Capability authorization must continue to work independently of coarse role membership.
         db.update(
-                "DELETE FROM account_roles WHERE account_id=? AND role_id IN (SELECT role_id FROM"
-                    + " roles WHERE code='ADMIN')",
+                "DELETE FROM account_roles WHERE account_id=? AND role_id IN (SELECT id FROM" + " roles WHERE code='ADMIN')",
                 reader.accountId());
         assertEquals(200, call("GET", "/api/v1/admin/orders", reader.token(), null).status());
         var variant = createVariant(5, 100000, null);

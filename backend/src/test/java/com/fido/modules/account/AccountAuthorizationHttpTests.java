@@ -41,8 +41,7 @@ class AccountAuthorizationHttpTests extends AccountHttpSupport {
                 DELETE FROM account_roles
                 WHERE account_id=?
                   AND role_id=(
-                      SELECT role_id
-                      FROM roles
+                      SELECT id FROM roles
                       WHERE code='SUPERADMIN'
                   )
                 """,
