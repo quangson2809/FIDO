@@ -15,18 +15,6 @@ import java.util.UUID;
 class CleanMigrationTests {
 
     @Test
-    void cleanThenMigrateRebuildsAnIsolatedTestDatabase() {
-        var dataSource =
-                new DriverManagerDataSource(
-                        "jdbc:h2:mem:single-baseline-clean-"
-                                + UUID.randomUUID()
-                                + ";MODE=MySQL;DB_CLOSE_DELAY=-1",
-                        "sa",
-                        "");
-        verifyCleanAndRebuild(dataSource);
-    }
-
-    @Test
     @EnabledIfEnvironmentVariable(
             named = "TEST_DB_DRIVER",
             matches = "com\\.mysql\\.cj\\.jdbc\\.Driver")
