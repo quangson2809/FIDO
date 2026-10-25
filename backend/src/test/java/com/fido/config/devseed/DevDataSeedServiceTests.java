@@ -249,7 +249,7 @@ class DevDataSeedServiceTests {
                                 """
                                 SELECT code
                                 FROM permissions
-                                WHERE permission_id BETWEEN 900201 AND 900215
+                                WHERE id BETWEEN 900201 AND 900215
                                 """,
                                 String.class));
 

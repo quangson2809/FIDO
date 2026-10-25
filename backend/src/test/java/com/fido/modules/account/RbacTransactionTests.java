@@ -56,7 +56,7 @@ class RbacTransactionTests {
                         """
                         SELECT COUNT(*)
                         FROM role_permissions rp
-                        JOIN permissions p ON p.permission_id=rp.permission_id
+                        JOIN permissions p ON p.id=rp.permission_id
                         WHERE p.code=?
                         """,
                         Integer.class,

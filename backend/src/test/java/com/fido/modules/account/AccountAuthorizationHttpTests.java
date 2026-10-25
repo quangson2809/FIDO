@@ -57,14 +57,14 @@ class AccountAuthorizationHttpTests extends AccountHttpSupport {
         long accountId = register(phone);
         long permissionId =
                 db.queryForObject(
-                        "SELECT permission_id FROM permissions WHERE code='REPORT_READ'",
+                        "SELECT id FROM permissions WHERE code='REPORT_READ'",
                         Long.class);
         String roleCode = "inactive-test-" + java.util.UUID.randomUUID();
         db.update("INSERT INTO roles(code,name,status) VALUES (?,?,'ACTIVE')", roleCode, "Inactive test");
-        long roleId = db.queryForObject("SELECT role_id FROM roles WHERE code=?", Long.class, roleCode);
+        long roleId = db.queryForObject("SELECT id FROM roles WHERE code=?", Long.class, roleCode);
         db.update("INSERT INTO role_permissions(role_id,permission_id) VALUES (?,?)", roleId, permissionId);
         db.update(
-                "INSERT INTO account_roles(account_id,role_id) SELECT ?,role_id FROM roles WHERE code='ADMIN'",
+                "INSERT INTO account_roles(account_id,role_id) SELECT ?,id FROM roles WHERE code='ADMIN'",
                 accountId);
         db.update("INSERT INTO account_roles(account_id,role_id) VALUES (?,?)", accountId, roleId);
         String token = login(phone);
@@ -72,13 +72,13 @@ class AccountAuthorizationHttpTests extends AccountHttpSupport {
 
         assertEquals(200, call("GET", reportUrl, token, null).status());
 
-        db.update("UPDATE roles SET status='INACTIVE' WHERE role_id=?", roleId);
+        db.update("UPDATE roles SET status='INACTIVE' WHERE id=?", roleId);
 
         assertEquals(403, call("GET", reportUrl, token, null).status());
 
         db.update("DELETE FROM account_roles WHERE account_id=? AND role_id=?", accountId, roleId);
         db.update("DELETE FROM role_permissions WHERE role_id=?", roleId);
-        db.update("DELETE FROM roles WHERE role_id=?", roleId);
+        db.update("DELETE FROM roles WHERE id=?", roleId);
     }
 
     @Test

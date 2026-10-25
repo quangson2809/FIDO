@@ -63,7 +63,7 @@ class AccountAccessServiceTests {
         jdbc.update(
                 """
                 INSERT INTO account_roles
-                SELECT 203, role_id
+                SELECT 203, id
                 FROM roles
                 WHERE code = 'SUPERADMIN'
                 """);
