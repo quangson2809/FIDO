@@ -1,5 +1,12 @@
 package com.fido.modules.account.dto.response;
 
-import java.time.LocalDateTime;
-
-public record AddressDto(Long address_id, String address_text, LocalDateTime created_at) {}
+/** Target Address response shape. Null structured fields indicate a legacy row awaiting replacement. */
+public record AddressDto(
+        Long id,
+        String recipient_name,
+        String recipient_phone,
+        String province,
+        String district,
+        String ward,
+        String address_line,
+        boolean is_default) {}
