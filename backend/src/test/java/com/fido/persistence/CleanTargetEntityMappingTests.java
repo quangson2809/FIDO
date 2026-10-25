@@ -9,7 +9,6 @@ import com.fido.modules.account.entity.Permission;
 import com.fido.modules.account.entity.Role;
 import com.fido.modules.account.entity.RolePermission;
 
-import org.flywaydb.core.Flyway;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
@@ -23,9 +22,45 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 import javax.sql.DataSource;
 import java.util.UUID;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.datasource.init.ScriptUtils;
 
 @EnabledIfEnvironmentVariable(named = "CLEAN_RESET_TEST_DB_URL", matches = "jdbc:mysql:.*")
 class CleanTargetEntityMappingTests {
+
+
+    private void installSchema(DataSource dataSource) {
+        dropAllTables(dataSource);
+        try (Connection connection = dataSource.getConnection()) {
+            ScriptUtils.executeSqlScript(
+                    connection, new ClassPathResource("db/install/FIDO_INSTALL.sql"));
+        } catch (SQLException failure) {
+            throw new IllegalStateException("Canonical FIDO installer failed", failure);
+        }
+    }
+
+    private void dropAllTables(DataSource dataSource) {
+        try (Connection connection = dataSource.getConnection();
+             var statement = connection.createStatement()) {
+            statement.execute("SET FOREIGN_KEY_CHECKS=0");
+            List<String> tables = new ArrayList<>();
+            try (var rows = statement.executeQuery(
+                    "SELECT TABLE_NAME FROM information_schema.tables "
+                            + "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_TYPE='BASE TABLE'")) {
+                while (rows.next()) tables.add(rows.getString(1));
+            }
+            for (String table : tables) {
+                statement.execute("DROP TABLE IF EXISTS `" + table.replace("`", "") + "`");
+            }
+            statement.execute("SET FOREIGN_KEY_CHECKS=1");
+        } catch (SQLException failure) {
+            throw new IllegalStateException("Could not reset disposable schema-test database", failure);
+        }
+    }
 
     private DataSource newDataSource() {
         DriverManagerDataSource dataSource = new DriverManagerDataSource(
@@ -40,13 +75,8 @@ class CleanTargetEntityMappingTests {
     @Test
     void accountAddressRbacAndCompositeMappingsValidateAndPersistAgainstCleanTarget() {
         DataSource dataSource = newDataSource();
-        Flyway flyway = Flyway.configure()
-                .dataSource(dataSource)
-                .locations("classpath:db/clean-reset")
-                .cleanDisabled(false)
-                .load();
         try {
-            assertEquals(1, flyway.migrate().migrationsExecuted);
+            installSchema(dataSource);
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
             assertTargetNotNull(jdbc, "accounts", "full_name");
             assertTargetNotNull(jdbc, "accounts", "phone");
@@ -131,7 +161,7 @@ class CleanTargetEntityMappingTests {
                 StandardServiceRegistryBuilder.destroy(registry);
             }
         } finally {
-            flyway.clean();
+            dropAllTables(dataSource);
         }
     }
 
