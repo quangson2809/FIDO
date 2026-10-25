@@ -59,11 +59,8 @@ public class AuditPayloadPolicy {
                             + "|private.?key|signed.?url|email|phone|address|raw|bytes).*",
                     Pattern.CASE_INSENSITIVE);
 
-    private final ObjectMapper objectMapper;
-
-    public AuditPayloadPolicy(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-    }
+    // Only allowlisted scalar values reach this serializer; no application-wide mapper bean is needed.
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     /**
      * Returns null for an empty/fully-redacted payload. Values are limited to safe code-like
@@ -95,7 +92,7 @@ public class AuditPayloadPolicy {
         }
 
         try {
-            return objectMapper.writeValueAsString(safe);
+            return OBJECT_MAPPER.writeValueAsString(safe);
         } catch (JsonProcessingException ex) {
             // Do not include the input map or serializer details in the surfaced failure.
             throw new IllegalStateException("Could not encode allowlisted audit fields");

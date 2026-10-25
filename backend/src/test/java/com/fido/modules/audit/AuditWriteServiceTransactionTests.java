@@ -284,8 +284,8 @@ class AuditWriteServiceTransactionTests {
         }
 
         @Bean
-        AuditPayloadPolicy auditPayloadPolicy(ObjectMapper objectMapper) {
-            return new AuditPayloadPolicy(objectMapper);
+        AuditPayloadPolicy auditPayloadPolicy() {
+            return new AuditPayloadPolicy();
         }
 
         @Bean
