@@ -30,7 +30,7 @@ class AccountAccessServiceTests {
         jdbc.update(
                 """
                 INSERT INTO accounts (
-                    account_id,
+                    id,
                     password_hash,
                     created_at,
                     updated_at

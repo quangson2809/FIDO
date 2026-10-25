@@ -53,7 +53,7 @@ class InventoryPhase4TransactionTests {
 
         accountId =
                 db.queryForObject(
-                        "SELECT account_id FROM accounts WHERE phone=?", Long.class, phone);
+                        "SELECT id FROM accounts WHERE phone=?", Long.class, phone);
 
         String supplierName = "Rollback supplier " + suffix;
 
@@ -269,7 +269,7 @@ class InventoryPhase4TransactionTests {
             db.update("DELETE FROM suppliers WHERE supplier_id=?", supplierId);
         }
 
-        db.update("DELETE FROM accounts WHERE account_id=?", accountId);
+        db.update("DELETE FROM accounts WHERE id=?", accountId);
     }
 
     @Test

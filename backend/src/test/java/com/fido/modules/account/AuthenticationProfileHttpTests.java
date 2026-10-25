@@ -30,7 +30,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
 
         String storedHash =
                 db.queryForObject(
-                        "SELECT password_hash FROM accounts WHERE account_id=?",
+                        "SELECT password_hash FROM accounts WHERE id=?",
                         String.class,
                         accountId);
 
@@ -51,7 +51,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
         assertEquals(
                 phone,
                 db.queryForObject(
-                        "SELECT phone FROM accounts WHERE account_id=?", String.class, accountId));
+                        "SELECT phone FROM accounts WHERE id=?", String.class, accountId));
 
         assertEquals(200, call("PATCH", "/api/v1/me", token, Map.of()).status());
 
@@ -134,7 +134,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
         assertEquals(
                 internationalPhone,
                 db.queryForObject(
-                        "SELECT phone FROM accounts WHERE account_id=?", String.class, accountId));
+                        "SELECT phone FROM accounts WHERE id=?", String.class, accountId));
     }
 
     @Test

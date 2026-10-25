@@ -103,7 +103,7 @@ class DatabaseConstraintsTests {
         rejects("UPDATE goods_receipts SET receipt_status='UNKNOWN'");
         rejects("UPDATE orders SET voucher_id=1,customer_account_id=NULL");
         rejects("DELETE FROM product_variants WHERE variant_id=1");
-        rejects("DELETE FROM accounts WHERE account_id=1");
+        rejects("DELETE FROM accounts WHERE id=1");
     }
 
     @Test

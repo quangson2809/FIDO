@@ -98,7 +98,7 @@ class StaffHttpTests extends AccountHttpSupport {
         assertEquals(
                 0,
                 db.queryForObject(
-                        "SELECT COUNT(*) FROM accounts WHERE account_id=? AND"
+                        "SELECT COUNT(*) FROM accounts WHERE id=? AND"
                             + " email='staff@example.test'",
                         Integer.class,
                         accountId));

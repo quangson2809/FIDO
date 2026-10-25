@@ -103,7 +103,7 @@ class DevDataSeedServiceTests {
         delete("DELETE FROM account_roles WHERE account_id BETWEEN 900001 AND 900008");
         delete("DELETE FROM role_permissions WHERE permission_id BETWEEN 900201 AND 900215");
         delete("DELETE FROM role_permissions WHERE role_id BETWEEN 900101 AND 900104");
-        delete("DELETE FROM accounts WHERE account_id BETWEEN 900001 AND 900008");
+        delete("DELETE FROM accounts WHERE id BETWEEN 900001 AND 900008");
         delete("DELETE FROM roles WHERE role_id BETWEEN 900101 AND 900104");
         delete("DELETE FROM permissions WHERE permission_id BETWEEN 900201 AND 900215");
         delete("DELETE FROM colors WHERE color_id BETWEEN 950001 AND 950004");
@@ -112,7 +112,7 @@ class DevDataSeedServiceTests {
         delete("DELETE FROM brands WHERE brand_id BETWEEN 930001 AND 930002");
         delete("DELETE FROM categories WHERE category_id BETWEEN 920005 AND 920008");
         delete("DELETE FROM categories WHERE category_id BETWEEN 920001 AND 920004");
-        delete("DELETE FROM accounts WHERE account_id = 899001");
+        delete("DELETE FROM accounts WHERE id = 899001");
         delete("DELETE FROM permissions WHERE permission_id = 899201");
     }
 
@@ -134,7 +134,7 @@ class DevDataSeedServiceTests {
 
         String passwordHash =
                 jdbc.queryForObject(
-                        "SELECT password_hash FROM accounts WHERE account_id=900002", String.class);
+                        "SELECT password_hash FROM accounts WHERE id=900002", String.class);
 
         assertTrue(passwords.matches(DevDataSeedService.DEFAULT_PASSWORD, passwordHash));
 
@@ -302,7 +302,7 @@ class DevDataSeedServiceTests {
         jdbc.update(
                 """
                 INSERT INTO accounts(
-                    account_id,password_hash,phone,email,created_at,updated_at
+                    id,password_hash,phone,email,created_at,updated_at
                 ) VALUES (
                     899001,?,'0909000002','conflict@fido.local',
                     CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
@@ -316,7 +316,7 @@ class DevDataSeedServiceTests {
         assertEquals(
                 0,
                 jdbc.queryForObject(
-                        "SELECT COUNT(*) FROM accounts WHERE account_id BETWEEN 900001 AND 900008",
+                        "SELECT COUNT(*) FROM accounts WHERE id BETWEEN 900001 AND 900008",
                         Integer.class));
     }
 

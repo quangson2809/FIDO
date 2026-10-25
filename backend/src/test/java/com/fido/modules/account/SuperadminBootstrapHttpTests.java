@@ -15,13 +15,13 @@ class SuperadminBootstrapHttpTests extends AccountHttpSupport {
 
         long accountId =
                 db.queryForObject(
-                        "SELECT account_id FROM accounts WHERE phone=?", Long.class, phone);
+                        "SELECT id FROM accounts WHERE phone=?", Long.class, phone);
 
         created.add(accountId);
 
         String hash =
                 db.queryForObject(
-                        "SELECT password_hash FROM accounts WHERE account_id=?",
+                        "SELECT password_hash FROM accounts WHERE id=?",
                         String.class,
                         accountId);
 
@@ -30,7 +30,7 @@ class SuperadminBootstrapHttpTests extends AccountHttpSupport {
         assertEquals(
                 hash,
                 db.queryForObject(
-                        "SELECT password_hash FROM accounts WHERE account_id=?",
+                        "SELECT password_hash FROM accounts WHERE id=?",
                         String.class,
                         accountId));
 
