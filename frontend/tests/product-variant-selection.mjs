@@ -100,8 +100,10 @@ try {
         data: {
           account: {
             account_id: 1,
+            full_name: 'Test Account',
             phone: '0900000000',
             email: null,
+            status: 'ACTIVE',
             created_at: '',
             updated_at: '',
           },

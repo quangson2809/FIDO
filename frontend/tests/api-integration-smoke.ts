@@ -16,8 +16,10 @@ import { apiClient, hasApiAccessToken } from '../src/services/http/apiClient';
 
 const account = {
   account_id: 900001,
+  full_name: 'Quản trị hệ thống',
   phone: '0909000001',
   email: 'superadmin@fido.local',
+  status: 'ACTIVE',
   created_at: '2026-09-01T00:00:00',
   updated_at: '2026-09-01T00:00:00',
 };
@@ -36,6 +38,7 @@ const requireBearer = (request: IncomingMessage): void => {
   bearerRequestCount += 1;
 };
 
+let capturedRegistrationBody: unknown;
 let capturedSizeBody: unknown;
 let capturedVoucherBody: unknown;
 let capturedQuoteBody: unknown;
@@ -143,7 +146,21 @@ const server = createServer((request, response) => {
     return;
   }
   if (request.method === 'POST' && url.pathname === '/api/v1/auth/register') {
-    writeJson(response, 201, { data: account });
+    let raw = '';
+    request.on('data', (chunk: Buffer) => {
+      raw += chunk.toString();
+    });
+    request.on('end', () => {
+      capturedRegistrationBody = JSON.parse(raw);
+      writeJson(response, 201, {
+        data: {
+          access_token: 'register-token',
+          token_type: 'Bearer',
+          expires_in: 900,
+          account,
+        },
+      });
+    });
     return;
   }
 
@@ -413,8 +430,20 @@ await new Promise<void>((resolve, reject) => {
 });
 
 try {
-  const registered = await authService.register('0909000001', 'superadmin@fido.local', 'Fido@123');
-  assert.equal(registered.account_id, account.account_id);
+  const registered = await authService.register(
+    '0909000001',
+    'Quản trị hệ thống',
+    'superadmin@fido.local',
+    'Fido@123',
+  );
+  assert.equal(registered.account.account_id, account.account_id);
+  assert.deepEqual(capturedRegistrationBody, {
+    phone: '0909000001',
+    full_name: 'Quản trị hệ thống',
+    email: 'superadmin@fido.local',
+    password: 'Fido@123',
+  });
+  assert.equal(hasApiAccessToken(), true);
 
   const login = await authService.login('0909000001', 'Fido@123');
   assert.equal(login.access_token, 'smoke-token');

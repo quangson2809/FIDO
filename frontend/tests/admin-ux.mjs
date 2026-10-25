@@ -16,7 +16,7 @@ const date = '2026-10-08T03:00:00Z';
 const permission = { permission_id: 1, code: 'CATALOG_READ', name: 'Xem danh mục' };
 const role = { role_id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null };
 let me = {
-  account: { account_id: 1, phone: '0900000000', email: null, created_at: date, updated_at: date },
+  account: { account_id: 1, full_name: 'Test Account', phone: '0900000000', email: null, status: 'ACTIVE', created_at: date, updated_at: date },
   addresses: [],
   roles: [role],
   permissions: [],

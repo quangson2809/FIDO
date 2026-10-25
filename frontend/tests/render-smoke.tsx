@@ -60,8 +60,10 @@ const asyncNoOp = async () => undefined;
 const profile: MeDto = {
   account: {
     account_id: 1,
+    full_name: 'Catalog Test Account',
     phone: '0900000000',
     email: 'catalog@fido.local',
+    status: 'ACTIVE',
     created_at: '2026-10-07T00:00:00Z',
     updated_at: '2026-10-07T00:00:00Z',
   },

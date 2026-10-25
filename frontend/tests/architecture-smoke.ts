@@ -122,8 +122,10 @@ assert.throws(() => summarySizes([{ ...numericSizes[0], size_value_id: -1 }]));
 const profileWithRole = (code: string, permissionCodes: readonly string[] = []): MeDto => ({
   account: {
     account_id: 1,
+    full_name: 'Test Account',
     phone: '0900000000',
     email: null,
+    status: 'ACTIVE',
     created_at: '2026-10-07T00:00:00Z',
     updated_at: '2026-10-07T00:00:00Z',
   },

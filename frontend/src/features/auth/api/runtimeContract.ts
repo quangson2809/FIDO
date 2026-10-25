@@ -77,8 +77,13 @@ const parseAccount = (value: unknown, endpoint: string, fieldPath: string): Acco
   const account = expectObject(value, endpoint, fieldPath);
   return {
     account_id: expectInteger(account.account_id, endpoint, `${fieldPath}.account_id`),
+    full_name:
+      account.full_name === null || account.full_name === undefined
+        ? null
+        : expectString(account.full_name, endpoint, `${fieldPath}.full_name`),
     phone: expectString(account.phone, endpoint, `${fieldPath}.phone`),
     email: expectNullableString(account.email, endpoint, `${fieldPath}.email`),
+    status: expectNonBlankString(account.status, endpoint, `${fieldPath}.status`) as AccountDto['status'],
     created_at: expectString(account.created_at, endpoint, `${fieldPath}.created_at`),
     updated_at: expectString(account.updated_at, endpoint, `${fieldPath}.updated_at`),
   };
@@ -112,8 +117,10 @@ const parsePermission = (value: unknown, endpoint: string, fieldPath: string): P
   };
 };
 
-export const parseLoginResponse = (value: unknown): LoginResponseDto => {
-  const endpoint = 'POST /auth/login';
+export const parseLoginResponse = (
+  value: unknown,
+  endpoint = 'POST /auth/login',
+): LoginResponseDto => {
   const data = expectObject(responseData(value, endpoint), endpoint, 'data');
 
   return {

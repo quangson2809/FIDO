@@ -24,8 +24,10 @@ export const meta = {
 export const me = {
   account: {
     account_id: 1,
+    full_name: 'Test Customer',
     phone: '0900000000',
     email: 'user@example.test',
+    status: 'ACTIVE',
     created_at: date,
     updated_at: date,
   },
