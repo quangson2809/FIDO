@@ -139,7 +139,7 @@ abstract class CatalogHttpSupport {
     long ensurePermission(String code) {
         var found =
                 db.query(
-                        "SELECT permission_id FROM permissions WHERE code=?",
+                        "SELECT id FROM permissions WHERE code=?",
                         (resultSet, rowNumber) -> resultSet.getLong(1),
                         code);
 
@@ -151,7 +151,7 @@ abstract class CatalogHttpSupport {
 
         long permissionId =
                 db.queryForObject(
-                        "SELECT permission_id FROM permissions WHERE code=?", Long.class, code);
+                        "SELECT id FROM permissions WHERE code=?", Long.class, code);
 
         createdPermissions.add(permissionId);
 
@@ -163,7 +163,7 @@ abstract class CatalogHttpSupport {
 
         db.update("INSERT INTO roles(code,name) VALUES (?,?)", code, "Catalog test");
 
-        long roleId = db.queryForObject("SELECT role_id FROM roles WHERE code=?", Long.class, code);
+        long roleId = db.queryForObject("SELECT id FROM roles WHERE code=?", Long.class, code);
 
         customRoles.add(roleId);
 
@@ -248,11 +248,11 @@ abstract class CatalogHttpSupport {
         for (Long roleId : customRoles) {
             db.update("DELETE FROM role_permissions WHERE role_id=?", roleId);
 
-            db.update("DELETE FROM roles WHERE role_id=?", roleId);
+            db.update("DELETE FROM roles WHERE id=?", roleId);
         }
 
         for (Long permissionId : createdPermissions) {
-            db.update("DELETE FROM permissions WHERE permission_id=?", permissionId);
+            db.update("DELETE FROM permissions WHERE id=?", permissionId);
         }
 
         for (Long accountId : accounts) {

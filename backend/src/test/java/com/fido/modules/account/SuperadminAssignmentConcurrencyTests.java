@@ -32,7 +32,7 @@ class SuperadminAssignmentConcurrencyTests extends AccountHttpSupport {
     @Test
     void simultaneousRemovalCannotRemoveBothLastSuperadminAssignments() throws Exception {
         long superadminRoleId =
-                db.queryForObject("SELECT role_id FROM roles WHERE code='SUPERADMIN'", Long.class);
+                db.queryForObject("SELECT id FROM roles WHERE code='SUPERADMIN'", Long.class);
         List<Long> previousSuperadmins =
                 db.queryForList(
                         "SELECT account_id FROM account_roles WHERE role_id=?",
@@ -48,7 +48,7 @@ class SuperadminAssignmentConcurrencyTests extends AccountHttpSupport {
         grant(secondTarget, "SUPERADMIN");
 
         long adminRoleId =
-                db.queryForObject("SELECT role_id FROM roles WHERE code='ADMIN'", Long.class);
+                db.queryForObject("SELECT id FROM roles WHERE code='ADMIN'", Long.class);
         StaffPatchRequest demoteToAdmin = new StaffPatchRequest();
         demoteToAdmin.setRole_ids(List.of(adminRoleId));
 

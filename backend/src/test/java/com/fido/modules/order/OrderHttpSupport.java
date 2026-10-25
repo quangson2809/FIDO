@@ -151,7 +151,7 @@ abstract class OrderHttpSupport {
                 "INSERT INTO roles(code,name) VALUES (?,?)", roleCode, "Order authorization test");
 
         long roleId =
-                db.queryForObject("SELECT role_id FROM roles WHERE code=?", Long.class, roleCode);
+                db.queryForObject("SELECT id FROM roles WHERE code=?", Long.class, roleCode);
 
         customRoles.add(roleId);
 
@@ -177,7 +177,7 @@ abstract class OrderHttpSupport {
     private long ensurePermission(String permissionCode) {
         var existing =
                 db.query(
-                        "SELECT permission_id FROM permissions WHERE code=?",
+                        "SELECT id FROM permissions WHERE code=?",
                         (resultSet, rowNumber) -> resultSet.getLong(1),
                         permissionCode);
 
@@ -190,7 +190,7 @@ abstract class OrderHttpSupport {
 
         long permissionId =
                 db.queryForObject(
-                        "SELECT permission_id FROM permissions WHERE code=?",
+                        "SELECT id FROM permissions WHERE code=?",
                         Long.class,
                         permissionCode);
 
@@ -449,11 +449,11 @@ abstract class OrderHttpSupport {
         for (Long roleId : customRoles) {
             db.update("DELETE FROM role_permissions WHERE role_id=?", roleId);
 
-            db.update("DELETE FROM roles WHERE role_id=?", roleId);
+            db.update("DELETE FROM roles WHERE id=?", roleId);
         }
 
         for (Long permissionId : createdPermissions) {
-            db.update("DELETE FROM permissions WHERE permission_id=?", permissionId);
+            db.update("DELETE FROM permissions WHERE id=?", permissionId);
         }
     }
 }

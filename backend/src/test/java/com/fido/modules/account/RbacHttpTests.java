@@ -25,7 +25,7 @@ class RbacHttpTests extends AccountHttpSupport {
                         .status());
 
         long superadminRoleId =
-                db.queryForObject("SELECT role_id FROM roles WHERE code='SUPERADMIN'", Long.class);
+                db.queryForObject("SELECT id FROM roles WHERE code='SUPERADMIN'", Long.class);
         assertEquals(
                 409,
                 call(
@@ -63,7 +63,7 @@ class RbacHttpTests extends AccountHttpSupport {
                         """
                         SELECT COUNT(*)
                         FROM role_permissions rp
-                        JOIN roles r ON r.role_id=rp.role_id
+                        JOIN roles r ON r.id=rp.role_id
                         WHERE r.code='SUPERADMIN' AND rp.permission_id=?
                         """,
                         Integer.class,
@@ -81,7 +81,7 @@ class RbacHttpTests extends AccountHttpSupport {
         assertEquals(
                 permissionCode,
                 db.queryForObject(
-                        "SELECT code FROM permissions WHERE permission_id=?",
+                        "SELECT code FROM permissions WHERE id=?",
                         String.class,
                         permissionId));
 
@@ -163,7 +163,7 @@ class RbacHttpTests extends AccountHttpSupport {
 
         assertEquals(
                 "Role",
-                db.queryForObject("SELECT name FROM roles WHERE role_id=?", String.class, roleId));
+                db.queryForObject("SELECT name FROM roles WHERE id=?", String.class, roleId));
 
         assertEquals(
                 1,
