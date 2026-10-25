@@ -6,7 +6,7 @@
 
 - Logical schema: [owner-approved ERD v2](erd-v2-approved.mmd).
 - Physical schema: [canonical P1 data dictionary](../p1/P1-data-dictionary.csv).
-- Single fresh-install migration: `backend/src/main/resources/db/clean-reset/V1__clean_schema.sql` (31 tables plus system roles, permissions and SUPERADMIN grants).
+- Single fresh-install installer: `backend/src/main/resources/db/clean-reset/V1__clean_schema.sql` (31 tables plus system roles, permissions and SUPERADMIN grants).
 - Approved rules: [P1 owner approval](../p1/P1-owner-approval-2026-10-23.md), [decision log](../p1/P1-decision-log.md), [P1.8 seed/audit/deletion contract](../p1/P1.8-operations-seed-contract.md) and [P1.8 operator requirements](../p1/P1.8-operations-seed-runbook.md).
 
 The clean-reset Flyway location is isolated from the active default migration path until application mappings and acceptance gates are ready. Do not activate it merely to make a schema reset happen.
@@ -36,7 +36,7 @@ Before any destructive action:
 
 1. Validate the canonical ERD, target SQL, dictionary and consistency checker agree on the same table/column/key set.
 2. Apply the target baseline to a newly created empty isolated MySQL database, not to a database whose history or contents are unknown.
-3. Apply the single baseline migration, which creates all 31 tables and applies the minimal system roles/permissions seed; compare it with the exact P1.8 manifest. Resolve IDs by immutable codes; the seed must contain no Accounts or credentials. External-secret SUPERADMIN bootstrap is a separate provisioning step, not migration SQL.
+3. Execute the single installer once against the empty database. It creates all 31 tables and applies the minimal system roles/permissions seed; compare it with the exact P1.8 manifest. Resolve IDs by immutable codes; the seed must contain no Accounts or credentials. External-secret SUPERADMIN bootstrap is a separate provisioning step, not migration SQL.
 4. Load demo fixtures only through an explicit development/test mechanism after target mappings are ready. Demo seed must not contain secrets or reusable plaintext passwords. Verify SUPERADMIN grants all current permissions; do not implicitly grant business permissions to ADMIN or CUSTOMER.
 5. Start the application only after JPA/entity mappings are aligned to the target schema; validate startup and module-level behavior.
 6. Verify the installed table set, keys, foreign keys, checks, defaults, indexes and seed contents. Run API, security, transaction, concurrency and frontend acceptance tests on the exact candidate SHA.
