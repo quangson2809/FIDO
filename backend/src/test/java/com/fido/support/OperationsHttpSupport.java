@@ -61,7 +61,7 @@ public abstract class OperationsHttpSupport {
         accounts.add(id);
         if (role != null && !"CUSTOMER".equals(role))
             db.update(
-                    "INSERT INTO account_roles SELECT ?,role_id FROM roles WHERE code=?", id, role);
+                    "INSERT INTO account_roles SELECT ?,id FROM roles WHERE code=?", id, role);
         var login =
                 call(
                         "POST",

@@ -125,8 +125,7 @@ abstract class InventoryHttpSupport {
         db.update(
                 """
                 INSERT INTO account_roles
-                SELECT ?, role_id
-                FROM roles
+                SELECT ?, id FROM roles
                 WHERE code = ?
                 """,
                 accountId,

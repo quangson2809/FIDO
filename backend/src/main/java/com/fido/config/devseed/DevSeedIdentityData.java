@@ -231,8 +231,7 @@ public class DevSeedIdentityData {
                 jdbc.update(
                         """
                         INSERT INTO account_roles(account_id,role_id)
-                        SELECT ?, role_id
-                        FROM roles
+                        SELECT ?, id FROM roles
                         WHERE code=?
                         """,
                         accountId,
