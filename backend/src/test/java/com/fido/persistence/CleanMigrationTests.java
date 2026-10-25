@@ -79,10 +79,12 @@ class CleanMigrationTests {
                             "SELECT COUNT(*) FROM permissions WHERE code='REPORT_READ'",
                             Integer.class));
             assertEquals(
-                    0,
+                    1,
                     jdbc.queryForObject(
                             "SELECT COUNT(*) FROM role_permissions rp JOIN permissions p ON"
-                                + " p.permission_id=rp.permission_id WHERE p.code='REPORT_READ'",
+                                + " p.permission_id=rp.permission_id JOIN roles r ON"
+                                + " r.role_id=rp.role_id WHERE p.code='REPORT_READ'"
+                                + " AND r.code='SUPERADMIN'",
                             Integer.class));
             assertEquals("7", flyway.info().current().getVersion().getVersion());
             assertEquals(0, flyway.info().pending().length);

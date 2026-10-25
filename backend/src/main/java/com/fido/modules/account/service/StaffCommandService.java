@@ -197,16 +197,17 @@ public class StaffCommandService {
     }
 
     private List<Role> resolve(List<Long> roleIds) {
-        return new LinkedHashSet<>(roleIds)
-                .stream()
-                        .map(
-                                roleId ->
-                                        roles.findById(roleId)
-                                                .orElseThrow(
-                                                        () ->
-                                                                new ResponseStatusException(
-                                                                        HttpStatus.NOT_FOUND)))
-                        .toList();
+        LinkedHashSet<Long> uniqueRoleIds = new LinkedHashSet<>(roleIds);
+        if (uniqueRoleIds.size() != roleIds.size()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        }
+        return uniqueRoleIds.stream()
+                .map(
+                        roleId ->
+                                roles.findById(roleId)
+                                        .orElseThrow(
+                                                () -> new ResponseStatusException(HttpStatus.NOT_FOUND)))
+                .toList();
     }
 
     private void replace(Long accountId, List<Role> selectedRoles) {

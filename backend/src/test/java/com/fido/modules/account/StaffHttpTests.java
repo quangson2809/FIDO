@@ -39,6 +39,15 @@ class StaffHttpTests extends AccountHttpSupport {
                 200,
                 call("GET", "/api/v1/admin/staff-accounts/" + accountId, token, null).status());
 
+        assertEquals(
+                400,
+                call(
+                                "PATCH",
+                                "/api/v1/admin/staff-accounts/" + accountId,
+                                token,
+                                Map.of("role_ids", List.of(adminRoleId, adminRoleId)))
+                        .status());
+
         var page =
                 call(
                         "GET",
