@@ -26,14 +26,11 @@ class RbacHttpTests extends AccountHttpSupport {
 
         long superadminRoleId =
                 db.queryForObject("SELECT id FROM roles WHERE code='SUPERADMIN'", Long.class);
-        assertEquals(
-                409,
-                call(
-                                "PATCH",
-                                "/api/v1/admin/roles/" + superadminRoleId,
-                                token,
-                                Map.of("status", "INACTIVE"))
-                        .status());
+        var protectedSuperadmin = call(
+                "PATCH", "/api/v1/admin/roles/" + superadminRoleId, token,
+                Map.of("status", "INACTIVE"));
+        assertEquals(409, protectedSuperadmin.status(), protectedSuperadmin.body());
+        assertEquals("SYSTEM_ROLE_PROTECTED", protectedSuperadmin.data().get("code").asText());
 
         assertEquals(
                 400,
@@ -148,9 +145,10 @@ class RbacHttpTests extends AccountHttpSupport {
 
         assertTrue(roleFound);
 
-        assertEquals(
-                409,
-                call("DELETE", "/api/v1/admin/permissions/" + permissionId, token, null).status());
+        var usedPermissionDelete = call(
+                "DELETE", "/api/v1/admin/permissions/" + permissionId, token, null);
+        assertEquals(409, usedPermissionDelete.status(), usedPermissionDelete.body());
+        assertEquals("PERMISSION_IN_USE", usedPermissionDelete.data().get("code").asText());
 
         assertEquals(
                 404,
