@@ -208,6 +208,32 @@ class CleanResetSchemaTests {
     }
 
     @Test
+    void productImageGalleryOrderHasUniqueCompositeIndex() {
+        var dataSource = newTestDataSource("product-image-order-index");
+        Flyway flyway = Flyway.configure().dataSource(dataSource)
+                .locations("classpath:db/clean-reset").cleanDisabled(false).load();
+        try {
+            migrate(flyway);
+            JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+            var indexRows = jdbc.queryForList(
+                    "SELECT NON_UNIQUE AS non_unique, SEQ_IN_INDEX AS seq_in_index, " +
+                            "COLUMN_NAME AS column_name FROM information_schema.statistics " +
+                            "WHERE table_schema = DATABASE() AND table_name = 'product_images' " +
+                            "AND index_name = 'uq_product_images_product_order' ORDER BY seq_in_index");
+
+            assertEquals(2, indexRows.size());
+            assertEquals(0, ((Number) indexRows.get(0).get("non_unique")).intValue());
+            assertEquals(1, ((Number) indexRows.get(0).get("seq_in_index")).intValue());
+            assertEquals("product_id", indexRows.get(0).get("column_name"));
+            assertEquals(0, ((Number) indexRows.get(1).get("non_unique")).intValue());
+            assertEquals(2, ((Number) indexRows.get(1).get("seq_in_index")).intValue());
+            assertEquals("sort_order", indexRows.get(1).get("column_name"));
+        } finally {
+            flyway.clean();
+        }
+    }
+
+    @Test
     void developmentFixtureSeedsParentChildAttributesAndInventory() throws SQLException {
         var dataSource = newTestDataSource("demo");
         Flyway flyway = Flyway.configure().dataSource(dataSource)
