@@ -12,6 +12,15 @@ on:
       - "scripts/p1/**"
       - "docs/refactor/phase-1-erd-v2-approved.mmd"
       - "docs/refactor-v2/p1/P1-data-dictionary.csv"
+      - "docs/refactor-v2/p1/P1.3-catalog-metadata-contract.md"
+      - "docs/refactor-v2/p1/P1-domain-invariants.md"
+      - "docs/refactor-v2/p1/P1-owner-amendment-2026-10-25.md"
+      - "docs/refactor-v2/p1/P1.8-operations-seed-contract.md"
+      - "docs/refactor-v2/p1/P1.8-operations-seed-runbook.md"
+      - "docs/refactor-v2/p1/P1-decision-log.md"
+      - "docs/refactor-v2/p1/P1-traceability-matrix.csv"
+      - "docs/refactor-v2/p1/P1-exit-gate.md"
+      - "docs/refactor-v2/p1/P1.9-contract-consistency-report.md"
   pull_request:
     branches:
       - demo1
@@ -24,6 +33,15 @@ on:
       - "scripts/p1/**"
       - "docs/refactor/phase-1-erd-v2-approved.mmd"
       - "docs/refactor-v2/p1/P1-data-dictionary.csv"
+      - "docs/refactor-v2/p1/P1.3-catalog-metadata-contract.md"
+      - "docs/refactor-v2/p1/P1-domain-invariants.md"
+      - "docs/refactor-v2/p1/P1-owner-amendment-2026-10-25.md"
+      - "docs/refactor-v2/p1/P1.8-operations-seed-contract.md"
+      - "docs/refactor-v2/p1/P1.8-operations-seed-runbook.md"
+      - "docs/refactor-v2/p1/P1-decision-log.md"
+      - "docs/refactor-v2/p1/P1-traceability-matrix.csv"
+      - "docs/refactor-v2/p1/P1-exit-gate.md"
+      - "docs/refactor-v2/p1/P1.9-contract-consistency-report.md"
   workflow_dispatch:
 
 permissions:

@@ -1,16 +1,19 @@
 # 11 — FIDO ERD v2 Implementation Phases
 
-> **Current authority — 2026-10-23:** the owner-approved 31-table ERD v2, target business defaults and Clean Schema Reset policy are recorded. This roadmap describes delivery against that target only. Historical audit reports are evidence, not target requirements.
+> **Current authority — 2026-10-25:** the owner-approved 31-table ERD v2, original target business defaults and P1.9 owner amendment are recorded. This roadmap describes delivery against that target only. Historical audit reports are evidence, not target requirements.
 
 ## 1. Current status
 
-- Target schema and owner decisions: **approved**.
-- Clean-reset DDL/system seed: isolated and subject to exact-SHA schema verification.
+- Target schema and the two P1.9 owner decisions: **recorded and applied to isolated target artifacts**. The **P1.9 cross-domain contract/schema exit gate is PASS**, based on green checker, isolated MySQL schema tests and backend verification on the current PR head.
+- P1.9 documentation reconciliation report: [P1.9-contract-consistency-report.md](refactor-v2/p1/P1.9-contract-consistency-report.md).
+- Clean-reset DDL/system seed: isolated; exact-SHA checker, contract-consistency gate, clean-target MySQL schema tests and backend H2/MySQL verification are green on the current PR head.
 - Entity, Repository, Service, API/DTO, frontend and workflow alignment: **implementation acceptance open**.
-- Numeric retention durations and anonymization exceptions: **TBD**.
+- Numeric retention durations and anonymization exceptions: **TBD**; no automatic purge.
 - No database reset was performed by documenting or approving the target.
 
 ## 2. P2 — Implement the target model
+
+**Entry gate:** P1.9's cross-domain contract/schema gate is **PASS** on the current PR head, so the P1.9 restriction on P2.1 entry is cleared. Start P2.1 on a focused branch from the verified remote `demo1` head and use only a separately verified disposable MySQL database for clean-reset verification. This does not claim runtime acceptance and does not resolve DB-12 retention/anonymization or historical UC-ID evidence.
 
 **Goal:** make the application use the approved target model end-to-end without retaining obsolete persistence concepts merely for compatibility.
 

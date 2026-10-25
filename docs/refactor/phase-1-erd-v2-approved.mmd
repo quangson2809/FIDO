@@ -127,6 +127,7 @@ erDiagram
         boolean boolean_value
     }
 
+    %% Physical target index: UNIQUE (product_id, sort_order); application transactions still preserve contiguous 0..n-1 positions and the primary-image invariant.
     PRODUCT_IMAGES {
         bigint id PK
         bigint product_id FK
@@ -361,7 +362,11 @@ erDiagram
     ORDERS ||--o| SHIPPING_INFOS : manual_shipping
 
     SUPPLIERS o|--o{ GOODS_RECEIPTS : supplies
+    ACCOUNTS o|--o{ PAYMENTS : collects
+    ACCOUNTS o|--o{ PAYMENTS : refunds
     ACCOUNTS ||--o{ GOODS_RECEIPTS : creates
+    ACCOUNTS o|--o{ GOODS_RECEIPTS : confirms
+    WAREHOUSES ||--o{ GOODS_RECEIPTS : destination
     GOODS_RECEIPTS ||--|{ GOODS_RECEIPT_ITEMS : contains
     PRODUCTS ||--o{ GOODS_RECEIPT_ITEMS : received_sku
 
@@ -372,6 +377,7 @@ erDiagram
     GOODS_RECEIPT_ITEMS o|--o{ INVENTORY_TRANSACTIONS : receipt_source
     ORDER_ITEMS o|--o{ INVENTORY_TRANSACTIONS : order_source
     ACCOUNTS o|--o{ INVENTORY_TRANSACTIONS : records
+    INVENTORY_TRANSACTIONS o|--o{ INVENTORY_TRANSACTIONS : original_of_reversal
 
     ACCOUNTS o|--o{ AUDIT_LOGS : performs
     ACCOUNTS o|--o{ CONTENT_PAGES : updates

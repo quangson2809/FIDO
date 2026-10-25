@@ -19,12 +19,13 @@ Baseline: `demo1`; owner approvals recorded 2026-10-23. This folder documents de
 | `P1-erd-v2.md` | Pointer and concise status for the canonical ERD; avoids a stale duplicate copy. |
 | `P1-data-dictionary.csv` | Canonical machine-readable physical field contract and current implementation discrepancy evidence. |
 | `P1-data-dictionary.md` | Rules for interpreting/validating the canonical dictionary. |
-| `P1-decision-log.md` | Approved decisions and remaining retention/anonymization TBDs. |
+| `P1-decision-log.md` | Approved decisions, including the 2026-10-25 P1.9 amendment, and remaining retention/anonymization TBDs. |
 | `P1-schema-constraints.md` | Target database constraints and exact-SHA validation gates. |
 | `P1-api-contract-mapping.csv` | Legacy API inventory mapped to target/retired route disposition for traceability; not a second active API definition. |
 | `P1-domain-invariants.md` | Approved domain, transaction and lifecycle invariants. |
 | `P1-test-matrix.md` | Required schema, API, security, transaction and concurrency acceptance cases. |
-| `P1-exit-gate.md` | P1 evidence and remaining implementation gates. |
+| `P1-exit-gate.md` | Current P1.9 cross-domain contract/schema gate status and bounded implementation/retention limitations. |
+| `P1.9-contract-consistency-report.md` | Cross-domain reconciliation evidence, owner decisions, exact-SHA validation result and runtime acceptance boundary. |
 | `P1-design-proposals-DB-03-DB-05.md` | Approved DB-03 inventory/ledger and DB-05 checkout/idempotency mechanics; runtime tests remain pending. |
 | `P1-architecture-review.md` | Current target-vs-code architecture findings; implementation mismatches remain open. |
 | `P1-api-breaking-changes.md` | Cross-layer breaking-change inventory to guide P2/P3; mismatch findings are not new owner-choice questions. |
@@ -36,8 +37,9 @@ Baseline: `demo1`; owner approvals recorded 2026-10-23. This folder documents de
 | `P1.5-pricing-voucher-contract.md` | VND money formula, HALF_UP and largest-remainder examples, Voucher units/eligibility/state, global quota consume/release and API/DTO contract. |
 | `P1.6-cart-checkout-contract.md` | Authenticated Cart, stateless quote, order creation and account-scoped idempotency/replay contract. |
 | `P1.7-order-payment-contract.md` | Order/Payment/Shipping state matrices, immutable snapshots, cancellation compensation and full COD refund contract. |
-| `P1.8-operations-seed-contract.md` | Normative audit/redaction/correlation, content/report use cases, 31-table deletion/FK matrix, seed manifest and retention blockers. |
-| `P1.8-operations-seed-runbook.md` | Operator requirements for safe fresh install, seed/bootstrap verification, audit/content/report readiness and retention/deletion gates. |
+| `P1.8-operations-seed-contract.md` | Normative audit/redaction/correlation, content/report use cases, 31-table deletion/FK matrix, 13-code target seed manifest and retention blockers. |
+| `P1-owner-amendment-2026-10-25.md` | Records the approved gallery unique index and target Order permission catalogue; documents scope and acceptance boundary. |
+| `P1.8-operations-seed-runbook.md` | Operator requirements for safe fresh install, 13-code target seed/bootstrap verification, audit/content/report readiness and retention/deletion gates. |
 
 ## Frozen target rules
 

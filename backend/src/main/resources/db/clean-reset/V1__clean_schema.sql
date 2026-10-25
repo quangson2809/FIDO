@@ -143,7 +143,7 @@ CREATE TABLE product_images (
  CONSTRAINT fk_product_images_product FOREIGN KEY (product_id) REFERENCES products (id),
  CONSTRAINT ck_product_images_sort_order CHECK (sort_order >= 0)
 );
-CREATE INDEX ix_product_images_product_order ON product_images (product_id, sort_order);
+CREATE UNIQUE INDEX uq_product_images_product_order ON product_images (product_id, sort_order);
 
 CREATE TABLE carts (
  id BIGINT NOT NULL AUTO_INCREMENT, account_id BIGINT NOT NULL,
