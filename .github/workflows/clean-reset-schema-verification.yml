@@ -74,7 +74,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-      - name: Check ERD, Data Dictionary and the single baseline
+      - name: Check 31-table ERD, single installer, FK targets and creation order
         run: python scripts/p1/check_contract_consistency.py
       - name: Set up Java 17
         uses: actions/setup-java@v4

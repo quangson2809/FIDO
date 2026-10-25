@@ -165,6 +165,40 @@ class DatabaseBaselineTests {
     }
 
     @Test
+    void canonicalBaselineCreatesAllFortyFourForeignKeysWithoutDanglingTargets() {
+        var dataSource = newTestDataSource("foreign-keys");
+
+        try {
+            installSchema(dataSource);
+            JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+            assertEquals(
+                    44,
+                    jdbc.queryForObject(
+                            "SELECT COUNT(*) FROM information_schema.REFERENTIAL_CONSTRAINTS "
+                                    + "WHERE CONSTRAINT_SCHEMA = DATABASE()",
+                            Integer.class),
+                    "All 44 approved ERD relationships must be installed as foreign keys");
+            assertEquals(
+                    0,
+                    jdbc.queryForObject(
+                            """
+                            SELECT COUNT(*)
+                            FROM information_schema.KEY_COLUMN_USAGE k
+                            LEFT JOIN information_schema.TABLES parent_table
+                              ON parent_table.TABLE_SCHEMA = k.REFERENCED_TABLE_SCHEMA
+                             AND parent_table.TABLE_NAME = k.REFERENCED_TABLE_NAME
+                            WHERE k.TABLE_SCHEMA = DATABASE()
+                              AND k.REFERENCED_TABLE_NAME IS NOT NULL
+                              AND parent_table.TABLE_NAME IS NULL
+                            """,
+                            Integer.class),
+                    "Every FK must resolve to an existing parent table");
+        } finally {
+            dropAllTables(dataSource);
+        }
+    }
+
+    @Test
     void cleanThenMigrateDropsDevelopmentRowsAndReseedsSystemRows() {
         var dataSource = newTestDataSource("rebuild");
 
