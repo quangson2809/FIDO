@@ -2,10 +2,12 @@
 
 ## 1. Authority order
 
+The [ERD v2 reconstruction index](refactor-v2/README.md) organizes target assets, P0 evidence and the ordered P1.1–P1.9 package. Archived reports are evidence only; they do not outrank current contracts.
+
 Use the following artifacts as the current development contract, in this order:
 
 1. **Owner decisions:** [P1 owner approval](refactor-v2/p1/P1-owner-approval-2026-10-23.md), the [P1.9 owner amendment](refactor-v2/p1/P1-owner-amendment-2026-10-25.md), and approved rows in [P1 Decision Log](refactor-v2/p1/P1-decision-log.md).
-2. **Logical data model:** [Owner-approved ERD v2](refactor/phase-1-erd-v2-approved.mmd).
+2. **Logical data model:** [Owner-approved ERD v2](refactor-v2/target/erd-v2-approved.mmd).
 3. **Physical data contract:** [P1 Data Dictionary](refactor-v2/p1/P1-data-dictionary.csv), validated clean-reset DDL and required system seed under `backend/src/main/resources/db/clean-reset/`.
 4. **HTTP and wire contracts:** [API Contract](04-api-contract.md) and [DTO Contract](05-dto-contract.md).
 5. **Business and transaction invariants:** [Business Rules](06-business-rules-state-machines.md) and [Transactions, Concurrency and Idempotency](07-transactions-concurrency-idempotency.md).

@@ -5,7 +5,7 @@
 ## Source of truth
 
 - The canonical physical dictionary is [P1-data-dictionary.csv](P1-data-dictionary.csv), an RFC 4180 CSV with one row per target physical column.
-- Logical model: [approved ERD v2](../../refactor/phase-1-erd-v2-approved.mmd).
+- Logical model: [approved ERD v2](../target/erd-v2-approved.mmd).
 - Owner decisions: [P1 approval record](P1-owner-approval-2026-10-23.md) and [decision log](P1-decision-log.md).
 - Target DDL and system seed: `backend/src/main/resources/db/clean-reset/V1__clean_schema.sql` and `V2__system_seed.sql`.
 

@@ -58,7 +58,7 @@ public interface ImageStorageGateway {
 }
 ```
 
-Evidence: [ImageStorageGateway.java](../backend/src/main/java/com/fido/modules/product/service/ImageStorageGateway.java), [ImgBbImageStorageClient.java](../backend/src/main/java/com/fido/modules/product/service/ImgBbImageStorageClient.java).
+Evidence: [ImageStorageGateway.java](../../../../backend/src/main/java/com/fido/modules/product/service/ImageStorageGateway.java), [ImgBbImageStorageClient.java](../../../../backend/src/main/java/com/fido/modules/product/service/ImgBbImageStorageClient.java).
 
 ### After — valid GoF-shaped candidate, only if a second implementation is introduced
 ```java
@@ -96,7 +96,7 @@ Create a compatible family of related integration objects when a provider requir
 ### Before — actual baseline
 `ImageStorageGateway.upload` is a single capability. The gateway explicitly documents upload-only behavior and defers deletion/reference tracking because order snapshots can retain image URLs.
 
-Evidence: [ImageStorageGateway.java](../backend/src/main/java/com/fido/modules/product/service/ImageStorageGateway.java).
+Evidence: [ImageStorageGateway.java](../../../../backend/src/main/java/com/fido/modules/product/service/ImageStorageGateway.java).
 
 ### After — candidate shape, not production code
 ```java
@@ -136,7 +136,7 @@ return new CheckoutQuoteDto(
     saved.getQuoteId(), saved.getExpiresAt());
 ```
 
-Evidence: [CheckoutQuoteService.java](../backend/src/main/java/com/fido/modules/order/service/CheckoutQuoteService.java).
+Evidence: [CheckoutQuoteService.java](../../../../backend/src/main/java/com/fido/modules/order/service/CheckoutQuoteService.java).
 
 ### After — correct Builder shape, illustrative only if construction becomes genuinely complex
 ```java
@@ -191,7 +191,7 @@ Create a new object from an existing template while deliberately controlling whi
 ### Before — actual baseline
 FIDO's inventory/order entities have database identity and business references. Order items also carry historical product/variant snapshots. Blindly cloning a JPA entity risks duplicating IDs, relationships, audit metadata, and historical values.
 
-Evidence: [OrderActionService.java](../backend/src/main/java/com/fido/modules/order/service/OrderActionService.java); the order action service reads persisted order items and creates typed stock lines rather than cloning entities.
+Evidence: [OrderActionService.java](../../../../backend/src/main/java/com/fido/modules/order/service/OrderActionService.java); the order action service reads persisted order items and creates typed stock lines rather than cloning entities.
 
 ```java
 return orderItems(orderId).stream()
@@ -251,7 +251,7 @@ public interface ImageStorageGateway {
 
 `ImgBbImageStorageClient` implements the gateway and owns provider HTTP handling, response validation, timeouts and safe result logging. The contract deliberately does not expose provider response DTOs.
 
-Evidence: [ImageStorageGateway.java](../backend/src/main/java/com/fido/modules/product/service/ImageStorageGateway.java), [ImgBbImageStorageClient.java](../backend/src/main/java/com/fido/modules/product/service/ImgBbImageStorageClient.java).
+Evidence: [ImageStorageGateway.java](../../../../backend/src/main/java/com/fido/modules/product/service/ImageStorageGateway.java), [ImgBbImageStorageClient.java](../../../../backend/src/main/java/com/fido/modules/product/service/ImgBbImageStorageClient.java).
 
 ### Acceptance tests
 Provider success maps to a validated URL; invalid response maps to an integration error; timeout maps to gateway timeout; missing API key fails as unavailable; logs do not contain the API key or uploaded content.
@@ -268,7 +268,7 @@ Expose a simplified interface to a complex subsystem so callers do not need to k
 ### Before — actual baseline
 The orchestration already sits in application services. Checkout quote locks the cart, calculates checkout, saves a quote and maps the response. Goods receipt coordinates receipt validation, inventory commands and audit.
 
-Evidence: [CheckoutQuoteService.java](../backend/src/main/java/com/fido/modules/order/service/CheckoutQuoteService.java), [GoodsReceiptService.java](../backend/src/main/java/com/fido/modules/inventory/service/GoodsReceiptService.java).
+Evidence: [CheckoutQuoteService.java](../../../../backend/src/main/java/com/fido/modules/order/service/CheckoutQuoteService.java), [GoodsReceiptService.java](../../../../backend/src/main/java/com/fido/modules/inventory/service/GoodsReceiptService.java).
 
 ```java
 cart.lockForCheckout(accountId);
@@ -303,7 +303,7 @@ logProviderResult("success", startedAt);
 return new UploadedImage(response.data().url());
 ```
 
-Evidence: [ImgBbImageStorageClient.java](../backend/src/main/java/com/fido/modules/product/service/ImgBbImageStorageClient.java).
+Evidence: [ImgBbImageStorageClient.java](../../../../backend/src/main/java/com/fido/modules/product/service/ImgBbImageStorageClient.java).
 
 ### After — correct Decorator shape, only if a shared metrics wrapper is needed
 ```java
@@ -354,7 +354,7 @@ public class OrderActionService { /* ... */ }
 
 The service also uses method-security interception such as `@PreAuthorize`. Spring's transaction and method-security infrastructure can intercept calls through framework-managed proxies. Repository row locking is a concurrency-control technique, **not itself the Proxy pattern**.
 
-Evidence: [OrderActionService.java](../backend/src/main/java/com/fido/modules/order/service/OrderActionService.java).
+Evidence: [OrderActionService.java](../../../../backend/src/main/java/com/fido/modules/order/service/OrderActionService.java).
 
 ### After — actual design decision
 Keep Spring's managed proxies and method security. Do not add a custom `OrderActionProxy` around a Spring service. Custom proxies risk bypassing or duplicating framework advice. Also remember that Spring proxy advice generally does not apply to self-invocation; do not move transaction annotations casually.
@@ -399,7 +399,7 @@ Separate two independent axes of change, such as image-storage abstraction and i
 ### Before — actual baseline
 The current image integration has one provider implementation and one upload-only capability. The gateway is already the integration boundary.
 
-Evidence: [ImageStorageGateway.java](../backend/src/main/java/com/fido/modules/product/service/ImageStorageGateway.java).
+Evidence: [ImageStorageGateway.java](../../../../backend/src/main/java/com/fido/modules/product/service/ImageStorageGateway.java).
 
 ### After — candidate sketch if independent axes emerge
 ```java
@@ -438,7 +438,7 @@ BigDecimal amount =
 return amount.min(subtotal).setScale(2, RoundingMode.HALF_UP);
 ```
 
-Evidence: [VoucherRedemptionService.java](../backend/src/main/java/com/fido/modules/promotion/service/VoucherRedemptionService.java).
+Evidence: [VoucherRedemptionService.java](../../../../backend/src/main/java/com/fido/modules/promotion/service/VoucherRedemptionService.java).
 
 ### After — candidate only if policies grow
 ```java
@@ -474,7 +474,7 @@ orders.save(order);
 ### After — actual baseline
 `OrderPolicy` defines the transition graph; `OrderActionPolicy` maps action names to target states, checks prerequisites such as paid status and makes already-applied actions no-ops; `OrderActionService` executes inventory, voucher and audit effects.
 
-Evidence: [OrderPolicy.java](../backend/src/main/java/com/fido/modules/order/service/OrderPolicy.java), [OrderActionPolicy.java](../backend/src/main/java/com/fido/modules/order/service/OrderActionPolicy.java), [OrderActionService.java](../backend/src/main/java/com/fido/modules/order/service/OrderActionService.java).
+Evidence: [OrderPolicy.java](../../../../backend/src/main/java/com/fido/modules/order/service/OrderPolicy.java), [OrderActionPolicy.java](../../../../backend/src/main/java/com/fido/modules/order/service/OrderActionPolicy.java), [OrderActionService.java](../../../../backend/src/main/java/com/fido/modules/order/service/OrderActionService.java).
 
 ### After — desired acceptance boundary, not a new class hierarchy
 Keep the state transition policy as the single source of legal transitions. A full GoF State implementation with one class per status should be considered only if state-specific behavior becomes sufficiently complex to justify that structure.
@@ -512,7 +512,7 @@ Order result = switch (request.action()) {
 };
 ```
 
-Evidence: [OrderActionService.java](../backend/src/main/java/com/fido/modules/order/service/OrderActionService.java).
+Evidence: [OrderActionService.java](../../../../backend/src/main/java/com/fido/modules/order/service/OrderActionService.java).
 
 ### After — decision
 The switch is explicit and type-checkable enough for the current action set. Do not introduce one class per action or a generic command bus unless actions need independent composition, scheduling, queuing, or reuse. If that happens, a typed command must carry only validated input and must not bypass `OrderActionPolicy`.
@@ -532,7 +532,7 @@ Reuse a stable algorithm skeleton while allowing a few controlled steps to vary.
 ### Before — actual baseline
 Goods receipt confirmation validates the receipt, validates stored lines, updates receipt state, calls inventory, and records audit. Order confirmation/cancellation has different stock and voucher effects.
 
-Evidence: [GoodsReceiptService.java](../backend/src/main/java/com/fido/modules/inventory/service/GoodsReceiptService.java), [OrderActionService.java](../backend/src/main/java/com/fido/modules/order/service/OrderActionService.java).
+Evidence: [GoodsReceiptService.java](../../../../backend/src/main/java/com/fido/modules/inventory/service/GoodsReceiptService.java), [OrderActionService.java](../../../../backend/src/main/java/com/fido/modules/order/service/OrderActionService.java).
 
 ### After — rejected candidate
 ```java
@@ -565,7 +565,7 @@ Run an extensible ordered pipeline of independent handlers where a request may b
 ### Before — actual baseline
 Checkout has explicit invariants for non-empty cart, purchasable items and sufficient inventory. Voucher evaluation has specific eligibility, usage limit, time window, scope and minimum amount checks.
 
-Evidence: [CheckoutCalculationService.java](../backend/src/main/java/com/fido/modules/order/service/CheckoutCalculationService.java), [VoucherRedemptionService.java](../backend/src/main/java/com/fido/modules/promotion/service/VoucherRedemptionService.java).
+Evidence: [CheckoutCalculationService.java](../../../../backend/src/main/java/com/fido/modules/order/service/CheckoutCalculationService.java), [VoucherRedemptionService.java](../../../../backend/src/main/java/com/fido/modules/promotion/service/VoucherRedemptionService.java).
 
 ### After — candidate only if validation is genuinely configurable
 ```java
@@ -604,7 +604,7 @@ public void record(AuditEvent event) {
 }
 ```
 
-Evidence: [AuditService.java](../backend/src/main/java/com/fido/modules/audit/service/AuditService.java).
+Evidence: [AuditService.java](../../../../backend/src/main/java/com/fido/modules/audit/service/AuditService.java).
 
 ### After — decision
 Do not replace transactional audit with an asynchronous in-memory observer: an order could commit without its audit record, or an event could be published for a transaction that later rolls back. If future requirements need post-commit notifications, define delivery guarantees and consider a transactional outbox with idempotent consumers; that is a separate architecture decision, not a reason to add a generic Observer today.
@@ -624,7 +624,7 @@ Reduce many-to-many dependencies when several peer components coordinate through
 ### Before — actual baseline
 `CheckoutQuoteService` coordinates cart locking, checkout calculation and quote storage. `GoodsReceiptService` coordinates receipt persistence, inventory command and audit. Each is already an application service for one use case.
 
-Evidence: [CheckoutQuoteService.java](../backend/src/main/java/com/fido/modules/order/service/CheckoutQuoteService.java), [GoodsReceiptService.java](../backend/src/main/java/com/fido/modules/inventory/service/GoodsReceiptService.java).
+Evidence: [CheckoutQuoteService.java](../../../../backend/src/main/java/com/fido/modules/order/service/CheckoutQuoteService.java), [GoodsReceiptService.java](../../../../backend/src/main/java/com/fido/modules/inventory/service/GoodsReceiptService.java).
 
 ### After — rejected candidate
 ```java
@@ -650,7 +650,7 @@ Capture and restore an object's internal state for an explicit undo/rollback fea
 ### Before — actual baseline
 FIDO persists order/item snapshots for historical fidelity. These are durable business records, not an in-memory Memento object that restores arbitrary entity state. Cancellation has explicit stock/voucher restoration logic and a legal state transition.
 
-Evidence: [OrderActionService.java](../backend/src/main/java/com/fido/modules/order/service/OrderActionService.java), [InventoryCommandService.java](../backend/src/main/java/com/fido/modules/inventory/service/InventoryCommandService.java).
+Evidence: [OrderActionService.java](../../../../backend/src/main/java/com/fido/modules/order/service/OrderActionService.java), [InventoryCommandService.java](../../../../backend/src/main/java/com/fido/modules/inventory/service/InventoryCommandService.java).
 
 ### After — candidate only if an audited draft-undo feature is specified
 ```java
@@ -673,17 +673,17 @@ Restoration changes only permitted draft fields, rejects stale versions, preserv
 
 | Evidence item | Link | What it proves |
 |---|---|---|
-| Image storage contract | [ImageStorageGateway.java](../backend/src/main/java/com/fido/modules/product/service/ImageStorageGateway.java) | Product-owned provider boundary and upload-only contract |
-| ImgBB adapter | [ImgBbImageStorageClient.java](../backend/src/main/java/com/fido/modules/product/service/ImgBbImageStorageClient.java) | Provider-specific HTTP, response validation, timeout/error mapping |
-| Order transition graph | [OrderPolicy.java](../backend/src/main/java/com/fido/modules/order/service/OrderPolicy.java) | Central allowed transition map |
-| Order action policy | [OrderActionPolicy.java](../backend/src/main/java/com/fido/modules/order/service/OrderActionPolicy.java) | Action prerequisites and repeat-action handling |
-| Order action execution | [OrderActionService.java](../backend/src/main/java/com/fido/modules/order/service/OrderActionService.java) | Transactional orchestration of inventory/voucher/audit side effects |
-| Checkout calculation | [CheckoutCalculationService.java](../backend/src/main/java/com/fido/modules/order/service/CheckoutCalculationService.java) | Checkout readiness, voucher evaluation and total calculation |
-| Checkout quote | [CheckoutQuoteService.java](../backend/src/main/java/com/fido/modules/order/service/CheckoutQuoteService.java) | Cart locking, calculation, quote persistence and DTO mapping |
-| Voucher calculation/redemption | [VoucherRedemptionService.java](../backend/src/main/java/com/fido/modules/promotion/service/VoucherRedemptionService.java) | Discount arithmetic and voucher eligibility/usage handling |
-| Inventory write boundary | [InventoryCommandService.java](../backend/src/main/java/com/fido/modules/inventory/service/InventoryCommandService.java) | Stock mutation and immutable ledger recording |
-| Goods receipt workflow | [GoodsReceiptService.java](../backend/src/main/java/com/fido/modules/inventory/service/GoodsReceiptService.java) | Receipt validation, stock command and audit orchestration |
-| Transactional audit | [AuditService.java](../backend/src/main/java/com/fido/modules/audit/service/AuditService.java) | Audit must execute inside an existing transaction |
+| Image storage contract | [ImageStorageGateway.java](../../../../backend/src/main/java/com/fido/modules/product/service/ImageStorageGateway.java) | Product-owned provider boundary and upload-only contract |
+| ImgBB adapter | [ImgBbImageStorageClient.java](../../../../backend/src/main/java/com/fido/modules/product/service/ImgBbImageStorageClient.java) | Provider-specific HTTP, response validation, timeout/error mapping |
+| Order transition graph | [OrderPolicy.java](../../../../backend/src/main/java/com/fido/modules/order/service/OrderPolicy.java) | Central allowed transition map |
+| Order action policy | [OrderActionPolicy.java](../../../../backend/src/main/java/com/fido/modules/order/service/OrderActionPolicy.java) | Action prerequisites and repeat-action handling |
+| Order action execution | [OrderActionService.java](../../../../backend/src/main/java/com/fido/modules/order/service/OrderActionService.java) | Transactional orchestration of inventory/voucher/audit side effects |
+| Checkout calculation | [CheckoutCalculationService.java](../../../../backend/src/main/java/com/fido/modules/order/service/CheckoutCalculationService.java) | Checkout readiness, voucher evaluation and total calculation |
+| Checkout quote | [CheckoutQuoteService.java](../../../../backend/src/main/java/com/fido/modules/order/service/CheckoutQuoteService.java) | Cart locking, calculation, quote persistence and DTO mapping |
+| Voucher calculation/redemption | [VoucherRedemptionService.java](../../../../backend/src/main/java/com/fido/modules/promotion/service/VoucherRedemptionService.java) | Discount arithmetic and voucher eligibility/usage handling |
+| Inventory write boundary | [InventoryCommandService.java](../../../../backend/src/main/java/com/fido/modules/inventory/service/InventoryCommandService.java) | Stock mutation and immutable ledger recording |
+| Goods receipt workflow | [GoodsReceiptService.java](../../../../backend/src/main/java/com/fido/modules/inventory/service/GoodsReceiptService.java) | Receipt validation, stock command and audit orchestration |
+| Transactional audit | [AuditService.java](../../../../backend/src/main/java/com/fido/modules/audit/service/AuditService.java) | Audit must execute inside an existing transaction |
 
 ### Verification status
 

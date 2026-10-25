@@ -1,6 +1,6 @@
 # Documentation Cleanup Review — 2026-10-22
 
-> **HISTORICAL SNAPSHOT:** This report records the repository/doc state before the owner approval dated 2026-10-23. Its open-decision lists, phone-uniqueness note, and runtime/schema status are not current requirements. Use [P1 owner approval](refactor-v2/p1/P1-owner-approval-2026-10-23.md), [current contract reconciliation](refactor-v2/p1/P1-contract-reconciliation-2026-10-23.md), the canonical ERD and current target contracts for effective requirements. This report is preserved as evidence of the earlier cleanup, not as a live specification.
+> **HISTORICAL SNAPSHOT:** This report records the repository/doc state before the owner approval dated 2026-10-23. Its open-decision lists, phone-uniqueness note, and runtime/schema status are not current requirements. Use [P1 owner approval](../../refactor-v2/p1/P1-owner-approval-2026-10-23.md), [current contract reconciliation](../../refactor-v2/p1/P1-contract-reconciliation-2026-10-23.md), the canonical ERD and current target contracts for effective requirements. This report is preserved as evidence of the earlier cleanup, not as a live specification.
 
 **Status: PASS for the 2026-10-22 documentation cleanup scope.** This result applies only to document quality and consistency; it is not an application/test acceptance result.
 
@@ -25,10 +25,10 @@
 
 ## 2. Documentation navigation
 
-- [Documentation Control Center](README.md) is the starting point for source precedence, current target status, CI evidence and read order.
-- [Current implementation roadmap](11-implementation-phases.md) defines P0–P3 gates and required evidence.
-- [Target contract](refactor/phase-1-erd-v2-contract.md), [physical data dictionary](refactor/phase-1-physical-data-dictionary.md), [owner decision questionnaire](refactor/phase-1-owner-decision-questionnaire.md) and [Clean Schema Reset runbook](refactor/clean-schema-reset-runbook.md) separate target rules, open decisions and safe test procedure.
-- [P0 baseline audit](refactor-v2/p0/P0-baseline-audit.md), [exit gate](refactor-v2/p0/P0-exit-gate.md), [risk register](refactor-v2/p0/P0-risk-register.md), [schema impact matrix](refactor-v2/p0/P0-schema-impact-matrix.csv), [module dependency map](refactor-v2/p0/P0-module-dependency-map.md) and [test baseline](refactor-v2/p0/P0-test-baseline.md) retain the evidence package.
+- [Documentation Control Center](../../README.md) is the starting point for source precedence, current target status, CI evidence and read order.
+- [Current implementation roadmap](../../11-implementation-phases.md) defines P0–P3 gates and required evidence.
+- [Target contract](../../refactor-v2/target/erd-v2-contract.md), [physical data dictionary](../../refactor-v2/target/physical-data-dictionary.md), [owner decision questionnaire](../../archive/refactor-v2/phase-1-owner-decision-questionnaire.md) and [Clean Schema Reset runbook](../../refactor-v2/target/clean-schema-reset-runbook.md) separate target rules, open decisions and safe test procedure.
+- [P0 baseline audit](../../refactor-v2/p0/P0-baseline-audit.md), [exit gate](refactor-v2/p0/P0-exit-gate.md), [risk register](refactor-v2/p0/P0-risk-register.md), [schema impact matrix](refactor-v2/p0/P0-schema-impact-matrix.csv), [module dependency map](refactor-v2/p0/P0-module-dependency-map.md) and [test baseline](refactor-v2/p0/P0-test-baseline.md) retain the evidence package.
 
 ## 3. Verification boundary
 

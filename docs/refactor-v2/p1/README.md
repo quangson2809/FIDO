@@ -6,8 +6,10 @@ Baseline: `demo1`; owner approvals recorded 2026-10-23. This folder documents de
 
 ## Authority
 
+The overall directory map is [the ERD v2 program index](../README.md); canonical target assets are grouped under [`target/`](../target/README.md), not duplicated in this P1 folder.
+
 1. [Owner approval record](P1-owner-approval-2026-10-23.md)
-2. [Canonical logical ERD](../../refactor/phase-1-erd-v2-approved.mmd)
+2. [Canonical logical ERD](../target/erd-v2-approved.mmd)
 3. [Canonical physical data dictionary](P1-data-dictionary.csv)
 4. [Decision log](P1-decision-log.md)
 5. Current API/DTO/business/transaction contracts under `docs/04–07`.
@@ -16,6 +18,12 @@ Baseline: `demo1`; owner approvals recorded 2026-10-23. This folder documents de
 
 | File | Purpose |
 |---|---|
+| `P1.1-baseline-inventory.md` | P1.1 baseline inventory, source catalog, discrepancy classifications and owner handoff. |
+| `P1.1-document-owner-map.csv` | P1.1 domain-owner responsibility and dependency map. |
+| `P1.1-erd-discrepancy-matrix.csv` | P1.1 issue register with evidence and disposition. |
+| `P1.2-account-address-rbac-contract.md` | P1.2 account lifecycle, address ownership, RBAC and authorization contract. |
+| `P1.2-role-permission-matrix.csv` | P1.2 role/permission mapping; does not grant roles outside the approved contract. |
+| `P1.3-catalog-metadata-contract.md` | P1.3 Product, hierarchy, typed metadata, image-primary and catalog API contract. |
 | `P1-erd-v2.md` | Pointer and concise status for the canonical ERD; avoids a stale duplicate copy. |
 | `P1-data-dictionary.csv` | Canonical machine-readable physical field contract and current implementation discrepancy evidence. |
 | `P1-data-dictionary.md` | Rules for interpreting/validating the canonical dictionary. |

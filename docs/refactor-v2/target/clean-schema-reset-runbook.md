@@ -4,10 +4,10 @@
 
 ## 1. Target authority
 
-- Logical schema: [owner-approved ERD v2](phase-1-erd-v2-approved.mmd).
-- Physical schema: [canonical P1 data dictionary](../refactor-v2/p1/P1-data-dictionary.csv).
+- Logical schema: [owner-approved ERD v2](erd-v2-approved.mmd).
+- Physical schema: [canonical P1 data dictionary](../p1/P1-data-dictionary.csv).
 - Required system seed: `backend/src/main/resources/db/clean-reset/V2__system_seed.sql`.
-- Approved rules: [P1 owner approval](../refactor-v2/p1/P1-owner-approval-2026-10-23.md), [decision log](../refactor-v2/p1/P1-decision-log.md), [P1.8 seed/audit/deletion contract](../refactor-v2/p1/P1.8-operations-seed-contract.md) and [P1.8 operator requirements](../refactor-v2/p1/P1.8-operations-seed-runbook.md).
+- Approved rules: [P1 owner approval](../p1/P1-owner-approval-2026-10-23.md), [decision log](../p1/P1-decision-log.md), [P1.8 seed/audit/deletion contract](../p1/P1.8-operations-seed-contract.md) and [P1.8 operator requirements](../p1/P1.8-operations-seed-runbook.md).
 
 The clean-reset Flyway location is isolated from the active default migration path until application mappings and acceptance gates are ready. Do not activate it merely to make a schema reset happen.
 

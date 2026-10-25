@@ -19,7 +19,7 @@ The revision is published on the requested branch. Push via Git CLI lacked a cre
 
 The one H2 skip is the explicitly MySQL-only clean/migrate case; that case executed successfully in the MySQL step. Pure unit tests and explicitly H2-backed tests remain such even in the MySQL-profile run.
 
-JUnit XML artifacts: H2 `11340960037`, MySQL `11340739442`. Parsed suite/case evidence and archive SHA-256 values are committed in [evidence/phase14-629c37c.json](evidence/phase14-629c37c.json). H2 logged BUILD SUCCESSFUL at `2026-10-05T10:51:44Z`; MySQL at `2026-10-05T10:53:04Z`.
+JUnit XML artifacts: H2 `11340960037`, MySQL `11340739442`. Parsed suite/case evidence and archive SHA-256 values are committed in [evidence/phase14-629c37c.json](phase14-629c37c.json). H2 logged BUILD SUCCESSFUL at `2026-10-05T10:51:44Z`; MySQL at `2026-10-05T10:53:04Z`.
 
 ## Resolve-plugin root cause and correction
 

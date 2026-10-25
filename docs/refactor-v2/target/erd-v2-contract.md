@@ -2,13 +2,13 @@
 
 ## 1. Status and authority
 
-The owner-approved target logical model contains **31 tables**. This document summarizes its invariants; exact entity relationships and columns are authoritative in [phase-1-erd-v2-approved.mmd](phase-1-erd-v2-approved.mmd), and physical definitions are authoritative in [P1-data-dictionary.csv](../refactor-v2/p1/P1-data-dictionary.csv). The dated [owner approval record](../refactor-v2/p1/P1-owner-approval-2026-10-23.md) freezes the target business defaults.
+The owner-approved target logical model contains **31 tables**. This document summarizes its invariants; exact entity relationships and columns are authoritative in [erd-v2-approved.mmd](erd-v2-approved.mmd), and physical definitions are authoritative in [P1-data-dictionary.csv](../p1/P1-data-dictionary.csv). The dated [owner approval record](../p1/P1-owner-approval-2026-10-23.md) freezes the target business defaults.
 
 This contract describes only the target. Baseline inventories and old implementation reports are not alternative table/column specifications.
 
 ## 2. Domain structure
 
-The table groups are Account/RBAC, Catalog, Cart/Voucher/Order, Procurement/Inventory, and Audit/Content. The complete table inventory is in [docs/03-data-model.md](../03-data-model.md). Schema additions require explicit owner approval.
+The table groups are Account/RBAC, Catalog, Cart/Voucher/Order, Procurement/Inventory, and Audit/Content. The complete table inventory is in [docs/03-data-model.md](../../03-data-model.md). Schema additions require explicit owner approval.
 
 ## 3. Frozen data invariants
 
