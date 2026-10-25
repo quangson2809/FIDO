@@ -77,9 +77,9 @@ abstract class AccountHttpSupport {
     }
 
     String phone() {
-        return String.format(
+        return "+84" + String.format(
                 Locale.ROOT,
-                "0%09d",
+                "%09d",
                 ThreadLocalRandom.current().nextLong(100_000_000L, 1_000_000_000L));
     }
 

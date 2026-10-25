@@ -49,7 +49,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                         .status());
 
         assertEquals(
-                "+84" + phone.substring(1),
+                phone,
                 db.queryForObject(
                         "SELECT phone FROM accounts WHERE account_id=?", String.class, accountId));
 
@@ -110,7 +110,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
 
     @Test
     void canonicalPhoneVariantsResolveToOneIdentity() throws Exception {
-        String nationalPhone = phone();
+        String nationalPhone = "0" + phone().substring(3);
         long accountId = register(nationalPhone);
         String internationalPhone = "+84" + nationalPhone.substring(1);
 
@@ -157,7 +157,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "POST",
                                 "/api/v1/auth/register",
                                 null,
-                                Map.of("phone", "+84" + phone.substring(1), "password", PASSWORD))
+                                Map.of("phone", "0" + phone.substring(3), "password", PASSWORD))
                         .status());
 
         String otherPhone = phone();
@@ -205,7 +205,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                             "SELECT COUNT(*) FROM accounts WHERE phone=? OR phone=?",
                             Integer.class,
                             concurrentPhone,
-                            "+84" + concurrentPhone.substring(1)));
+                            "0" + concurrentPhone.substring(3)));
         } finally {
             executor.shutdownNow();
         }

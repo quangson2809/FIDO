@@ -83,7 +83,7 @@ abstract class InventoryHttpSupport {
     }
 
     String phone() {
-        return "07" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+        return "+84" + java.util.concurrent.ThreadLocalRandom.current().nextLong(100_000_000L, 1_000_000_000L);
     }
 
     long register(String phone) throws Exception {
@@ -98,7 +98,7 @@ abstract class InventoryHttpSupport {
 
         assertEquals(201, response.status(), response.body());
 
-        long accountId = response.data().get("data").get("account_id").asLong();
+        long accountId = response.data().get("data").get("account").get("account_id").asLong();
 
         accounts.add(accountId);
 

@@ -49,7 +49,7 @@ public abstract class OperationsHttpSupport {
     }
 
     protected User user(String role) throws Exception {
-        String phone = "09" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+        String phone = "+84" + java.util.concurrent.ThreadLocalRandom.current().nextLong(100_000_000L, 1_000_000_000L);
         var created =
                 call(
                         "POST",
@@ -57,7 +57,7 @@ public abstract class OperationsHttpSupport {
                         null,
                         Map.of("phone", phone, "password", "Test-password-123"));
         assertEquals(201, created.status());
-        long id = created.body().get("data").get("account_id").asLong();
+        long id = created.body().get("data").get("account").get("account_id").asLong();
         accounts.add(id);
         if (role != null)
             db.update(

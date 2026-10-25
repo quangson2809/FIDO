@@ -79,7 +79,7 @@ abstract class OrderHttpSupport {
     }
 
     User user() throws Exception {
-        String phone = "04" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+        String phone = "+84" + java.util.concurrent.ThreadLocalRandom.current().nextLong(100_000_000L, 1_000_000_000L);
 
         var register =
                 call(
@@ -92,7 +92,7 @@ abstract class OrderHttpSupport {
 
         assertEquals(201, register.status(), register.body());
 
-        long accountId = register.data().get("data").get("account_id").asLong();
+        long accountId = register.data().get("data").get("account").get("account_id").asLong();
 
         accounts.add(accountId);
 
