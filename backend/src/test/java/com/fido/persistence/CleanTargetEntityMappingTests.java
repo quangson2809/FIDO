@@ -37,9 +37,9 @@ class CleanTargetEntityMappingTests {
         dropAllTables(dataSource);
         try (Connection connection = dataSource.getConnection()) {
             ScriptUtils.executeSqlScript(
-                    connection, new ClassPathResource("db/install/FIDO_INSTALL.sql"));
+                    connection, new ClassPathResource("db/migration/V1__fido_target_schema.sql"));
         } catch (SQLException failure) {
-            throw new IllegalStateException("Canonical FIDO installer failed", failure);
+            throw new IllegalStateException("Canonical FIDO database baseline failed", failure);
         }
     }
 

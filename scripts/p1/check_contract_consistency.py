@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static consistency gate for ERD v2, clean-reset SQL and RFC4180 Data Dictionary."""
+"""Static consistency gate for ERD v2, canonical baseline SQL and RFC4180 Data Dictionary."""
 from __future__ import annotations
 import csv
 import re
@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 ERD = ROOT / "docs/refactor-v2/target/erd-v2-approved.mmd"
-SQL = ROOT / "backend/src/main/resources/db/install/FIDO_INSTALL.sql"
+SQL = ROOT / "backend/src/main/resources/db/migration/V1__fido_target_schema.sql"
 DICT = ROOT / "docs/refactor-v2/p1/P1-data-dictionary.csv"
 
 

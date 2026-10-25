@@ -21,7 +21,7 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 
 @EnabledIfEnvironmentVariable(named = "CLEAN_RESET_TEST_DB_URL", matches = "jdbc:mysql:.*")
-class CleanResetSchemaTests {
+class DatabaseBaselineTests {
 
     private static final Set<String> TARGET_TABLES = Set.of(
             "accounts", "addresses", "roles", "permissions", "account_roles",
@@ -42,9 +42,9 @@ class CleanResetSchemaTests {
         dropAllTables(dataSource);
         try (Connection connection = dataSource.getConnection()) {
             ScriptUtils.executeSqlScript(
-                    connection, new ClassPathResource("db/install/FIDO_INSTALL.sql"));
+                    connection, new ClassPathResource("db/migration/V1__fido_target_schema.sql"));
         } catch (SQLException failure) {
-            throw new IllegalStateException("Canonical FIDO installer failed", failure);
+            throw new IllegalStateException("Canonical FIDO database baseline failed", failure);
         }
     }
 

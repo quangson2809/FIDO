@@ -18,7 +18,7 @@ class CleanMigrationTests {
     void cleanThenMigrateRebuildsAnIsolatedTestDatabase() {
         var dataSource =
                 new DriverManagerDataSource(
-                        "jdbc:h2:mem:phase14-clean-"
+                        "jdbc:h2:mem:single-baseline-clean-"
                                 + UUID.randomUUID()
                                 + ";MODE=MySQL;DB_CLOSE_DELAY=-1",
                         "sa",
@@ -40,7 +40,7 @@ class CleanMigrationTests {
         String username = System.getenv("TEST_DB_USERNAME");
         String password = System.getenv("TEST_DB_PASSWORD");
         var admin = new JdbcTemplate(new DriverManagerDataSource(testUrl, username, password));
-        String database = "phase14_clean_" + UUID.randomUUID().toString().replace("-", "");
+        String database = "single_baseline_clean_" + UUID.randomUUID().toString().replace("-", "");
         String isolatedUrl =
                 "jdbc:mysql://"
                         + server.getRawAuthority()
@@ -63,12 +63,12 @@ class CleanMigrationTests {
                         .cleanDisabled(false)
                         .load();
         try {
-            assertEquals(14, flyway.migrate().migrationsExecuted);
+            assertEquals(1, flyway.migrate().migrationsExecuted);
             var jdbc = new JdbcTemplate(dataSource);
-            jdbc.update("INSERT INTO categories(name) VALUES ('phase14-before-clean')");
+            jdbc.update("INSERT INTO categories(name,slug) VALUES ('baseline-before-clean','baseline-before-clean')");
 
             flyway.clean();
-            assertEquals(14, flyway.migrate().migrationsExecuted);
+            assertEquals(1, flyway.migrate().migrationsExecuted);
             flyway.validate();
             assertEquals(
                     1,
@@ -86,13 +86,13 @@ class CleanMigrationTests {
                             WHERE p.code='REPORT_READ' AND r.code='SUPERADMIN'
                             """,
                             Integer.class));
-            assertEquals("14", flyway.info().current().getVersion().getVersion());
+            assertEquals("1", flyway.info().current().getVersion().getVersion());
             assertEquals(0, flyway.info().pending().length);
             assertEquals(0, flyway.migrate().migrationsExecuted);
             assertEquals(
                     0,
                     jdbc.queryForObject(
-                            "SELECT COUNT(*) FROM categories WHERE name='phase14-before-clean'",
+                            "SELECT COUNT(*) FROM categories WHERE slug='baseline-before-clean'",
                             Integer.class));
             assertEquals(
                     0,

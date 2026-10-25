@@ -1,12 +1,10 @@
--- FIDO canonical database installer — approved ERD v2 target.
--- This is the ONLY fresh-install schema/seed SQL. It creates all 31 tables and seeds system roles/permissions.
--- Requires MySQL 8.0.16+ (CHECK constraints, generated columns and window functions).
--- Run against a NEW, EMPTY database selected by the operator, e.g. mysql --database=fido < FIDO_INSTALL.sql.
--- Never run against production/shared/persistent data. This file does not DROP existing objects.
--- Update this file only alongside the approved ERD and physical data dictionary; phases must not add schema-version files.
+-- FIDO — SINGLE canonical fresh-database baseline (approved ERD v2).
+-- Exactly 31 tables plus the approved 3-role / 13-permission seed. This is the only schema SQL.
+-- Requires MySQL 8.0.16+ (CHECK constraints and generated columns).
+-- Flyway applies this file once to a newly created, empty database. For manual install, connect to an empty database first.
+-- Never run against production/shared/persistent data. This file does not DROP existing objects or upgrade populated databases.
+-- Every future feature phase must implement against this baseline and approved docs; do not add V2/V3 SQL migrations.
 
--- Physical schema follows the owner-approved ERD v2 and P1 data dictionary.
--- Existing application migration files are legacy runtime compatibility, not an alternative fresh-install specification.
 
 CREATE TABLE accounts (
  id BIGINT NOT NULL AUTO_INCREMENT, full_name VARCHAR(150) NOT NULL, email VARCHAR(254) NULL,
