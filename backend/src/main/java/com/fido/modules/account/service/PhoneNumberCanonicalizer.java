@@ -19,7 +19,7 @@ public class PhoneNumberCanonicalizer {
             throw invalidPhone();
         }
 
-        String normalized = input.trim().replace("-", "").replace("(", "").replace(")", "");
+        String normalized = input.trim().replaceAll("\\s+", "").replace("-", "").replace("(", "").replace(")", "");
 
         Matcher national = NATIONAL.matcher(normalized);
         if (national.matches()) {

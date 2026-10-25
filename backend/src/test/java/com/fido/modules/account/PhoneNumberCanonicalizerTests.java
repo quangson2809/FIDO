@@ -16,6 +16,8 @@ class PhoneNumberCanonicalizerTests {
         assertEquals("+84912345678", phones.canonicalize("0912345678"));
         assertEquals("+84912345678", phones.canonicalize(" +84912345678 "));
         assertEquals("+84912345678", phones.canonicalize("(091)234-5678"));
+        assertEquals("+84912345678", phones.canonicalize("0 912 345 678"));
+        assertEquals("+84912345678", phones.canonicalize("+84 91 234 5678"));
     }
 
     @Test
@@ -27,7 +29,7 @@ class PhoneNumberCanonicalizerTests {
 
     @Test
     void rejectsUnsupportedPhoneFormats() {
-        for (String value : java.util.List.of("", "09123", "84912345678", "+840912345678", "09 12345678")) {
+        for (String value : java.util.List.of("", "09123", "84912345678", "+840912345678")) {
             assertThrows(ResponseStatusException.class, () -> phones.canonicalize(value), value);
         }
         assertThrows(ResponseStatusException.class, () -> phones.canonicalize(null));
