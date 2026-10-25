@@ -47,8 +47,8 @@ public class ProfileCommandService {
         accountLocks.lock(actor); requireActiveOwner(actor);
         if(!request.hasAnyField()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"EMPTY_PATCH");
         Address address=ownedAddress(actor,addressId);
-        List<Address> all=addresses.findByAccountIdOrderByIdAsc(actor);
-        ensureExactlyOneDefault(all);
+        List<Address> currentAddresses=addresses.findByAccountIdOrderByIdAsc(actor);
+        ensureExactlyOneDefault(currentAddresses);
         if(!address.hasStructuredAddress()) { requireCompleteAddress(request); applyAllFields(address,request); }
         else applyPresentFields(address,request);
         if(request.defaultPresent()) {
