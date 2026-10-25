@@ -3,17 +3,19 @@ package com.fido.modules.audit.repository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.sql.SQLException;
 import java.sql.Types;
+import java.util.Locale;
 
 @Repository
 public class AuditWriteRepository {
 
-    private static final String INSERT_SQL =
+    private static final String INSERT_SQL_TEMPLATE =
             """
             INSERT INTO audit_logs
                 (actor_account_id, action, entity_type, entity_id,
                  before_data, after_data, correlation_id)
-            VALUES (?, ?, ?, ?, CAST(? AS JSON), CAST(? AS JSON), ?)
+            VALUES (?, ?, ?, ?, %s, %s, ?)
             """;
 
     private final JdbcTemplate jdbc;
@@ -23,8 +25,9 @@ public class AuditWriteRepository {
     }
 
     /**
-     * Inserts only the columns defined by the approved target DDL.
-     * ID and created_at are database-owned; update/delete methods are intentionally absent.
+     * Inserts only the approved target columns; ID and created_at are database-owned.
+     * MySQL parses CAST(? AS JSON); H2 uses its FORMAT JSON binding syntax so a JSON object
+     * remains an object instead of being persisted as a JSON string scalar.
      */
     public void insert(
             Long actorAccountId,
@@ -36,7 +39,22 @@ public class AuditWriteRepository {
             String correlationId) {
         jdbc.update(
                 connection -> {
-                    var statement = connection.prepareStatement(INSERT_SQL);
+                    String product = connection.getMetaData().getDatabaseProductName();
+                    boolean h2 = "H2".equalsIgnoreCase(product);
+                    boolean mysql = product.toLowerCase(Locale.ROOT).contains("mysql");
+                    if (!h2 && !mysql) {
+                        throw new SQLException("Unsupported database for audit JSON binding");
+                    }
+
+                    String jsonPlaceholder = h2 ? "? FORMAT JSON" : "CAST(? AS JSON)";
+                    String beforeExpression =
+                            beforeDataJson == null ? "NULL" : jsonPlaceholder;
+                    String afterExpression =
+                            afterDataJson == null ? "NULL" : jsonPlaceholder;
+                    String sql =
+                            INSERT_SQL_TEMPLATE.formatted(beforeExpression, afterExpression);
+                    var statement = connection.prepareStatement(sql);
+
                     if (actorAccountId == null) {
                         statement.setNull(1, Types.BIGINT);
                     } else {
@@ -45,17 +63,15 @@ public class AuditWriteRepository {
                     statement.setString(2, action);
                     statement.setString(3, entityType);
                     statement.setString(4, entityId);
-                    if (beforeDataJson == null) {
-                        statement.setNull(5, Types.VARCHAR);
-                    } else {
-                        statement.setString(5, beforeDataJson);
+
+                    int parameterIndex = 5;
+                    if (beforeDataJson != null) {
+                        statement.setString(parameterIndex++, beforeDataJson);
                     }
-                    if (afterDataJson == null) {
-                        statement.setNull(6, Types.VARCHAR);
-                    } else {
-                        statement.setString(6, afterDataJson);
+                    if (afterDataJson != null) {
+                        statement.setString(parameterIndex++, afterDataJson);
                     }
-                    statement.setString(7, correlationId);
+                    statement.setString(parameterIndex, correlationId);
                     return statement;
                 });
     }
