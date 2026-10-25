@@ -54,6 +54,12 @@ class RbacHttpTests extends AccountHttpSupport {
 
         permissionIds.add(permissionId);
 
+        var duplicatePermission = call(
+                "POST", "/api/v1/admin/permissions", token,
+                Map.of("code", permissionCode, "name", "Duplicate permission"));
+        assertEquals(409, duplicatePermission.status(), duplicatePermission.body());
+        assertEquals("PERMISSION_CODE_ALREADY_EXISTS", duplicatePermission.data().get("code").asText());
+
         assertEquals(
                 1,
                 db.queryForObject(
@@ -122,6 +128,13 @@ class RbacHttpTests extends AccountHttpSupport {
                                 List.of(permissionId)));
 
         assertEquals(201, roleResponse.status(), roleResponse.body());
+
+        var duplicateRole = call(
+                "POST", "/api/v1/admin/roles", token,
+                Map.of("code", "test." + suffix, "name", "Duplicate role",
+                        "permission_ids", List.of(permissionId)));
+        assertEquals(409, duplicateRole.status(), duplicateRole.body());
+        assertEquals("ROLE_CODE_ALREADY_EXISTS", duplicateRole.data().get("code").asText());
 
         long roleId = roleResponse.data().get("data").get("id").asLong();
 
