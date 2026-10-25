@@ -33,7 +33,7 @@ class RbacTransactionTests {
     @Test
     void failedAuditRollsBackPermissionAndSuperadminGrant() {
         Jwt jwt = Jwt.withTokenValue("test-token").header("alg", "HS256")
-                .subject("-999").issuedAt(Instant.now()).expiresAt(Instant.now().plusSeconds(60)).build();
+                .subject("999999999").issuedAt(Instant.now()).expiresAt(Instant.now().plusSeconds(60)).build();
         SecurityContextHolder.getContext().setAuthentication(
                 new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority("ROLE_SUPERADMIN"))));
         try {

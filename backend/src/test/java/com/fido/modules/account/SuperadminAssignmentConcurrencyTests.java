@@ -9,7 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,6 +18,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.time.Instant;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -96,11 +98,16 @@ class SuperadminAssignmentConcurrencyTests extends AccountHttpSupport {
             CountDownLatch start)
             throws InterruptedException {
         SecurityContext context = SecurityContextHolder.createEmptyContext();
+        Instant now = Instant.now();
+        Jwt jwt = Jwt.withTokenValue("test-superadmin-token")
+                .header("alg", "HS256")
+                .subject(Long.toString(actorId))
+                .issuedAt(now)
+                .expiresAt(now.plusSeconds(60))
+                .build();
         context.setAuthentication(
-                new UsernamePasswordAuthenticationToken(
-                        "test-superadmin",
-                        "n/a",
-                        List.of(new SimpleGrantedAuthority("ROLE_SUPERADMIN"))));
+                new JwtAuthenticationToken(
+                        jwt, List.of(new SimpleGrantedAuthority("ROLE_SUPERADMIN"))));
         SecurityContextHolder.setContext(context);
 
         try {

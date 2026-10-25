@@ -201,7 +201,7 @@ class RbacHttpTests extends AccountHttpSupport {
                                 SELECT COUNT(*)
                                 FROM audit_logs
                                 WHERE action='ROLE_CREATE'
-                                  AND target_id=?
+                                  AND entity_id=?
                                 """,
                                 Integer.class,
                                 Long.toString(roleId))
