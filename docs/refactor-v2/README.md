@@ -8,7 +8,8 @@
 - **P1.1–P1.9:** contract design and cross-domain acceptance artifacts are grouped under [`p1/`](p1/README.md). P1.1 is the baseline/inventory entry point; P1.2–P1.8 own domain contracts; P1.9 reconciles cross-domain consistency.
 - **P1.9 gate:** PASS for target contract/schema consistency on the exact candidate associated with [PR #38](https://github.com/quangson2809/FIDO/pull/38), merged into `demo1` at `4dcf0b835a994230273971cbd81d6f82f321f959`.
 - **P1 overall:** PARTIAL. Runtime Entity/Repository/Service, API/DTO, authorization, frontend, transaction/concurrency and end-to-end acceptance remain implementation work. Passing target DDL checks does not certify runtime alignment.
-- **Next implementation:** P2.1 may enter from the latest verified `origin/demo1` baseline only after checking that branch SHA and workflow status. No database reset is implied by this document.
+- **P2.1/P2.2:** DDL/seed consistency and isolated fresh-MySQL verification are PASS at `demo1@eccac61bab04c7ffb6a2810d37c90a039d2f600a`; see [exact-SHA clean-schema workflow](https://github.com/quangson2809/FIDO/actions/runs/40160466959). This proves the isolated target schema/seed gate only, not runtime mapping acceptance.
+- **P2.3:** resetting an existing development database is **DEFERRED to P5.2**, and only after P3.17, all P4 phases and P5.1 are PASS and the exact database is proven disposable. No database target is currently verified; do not reset or activate the target Flyway location now.
 
 ## Directory responsibilities
 
