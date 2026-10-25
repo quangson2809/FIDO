@@ -4,16 +4,16 @@
 
 ## 1. Current status
 
-- Target schema and the two P1.9 owner decisions: **recorded and applied to isolated target artifacts**. The **P1.9 cross-domain exit gate remains BLOCKED pending exact-SHA checker, isolated MySQL schema and backend verification**.
+- Target schema and the two P1.9 owner decisions: **recorded and applied to isolated target artifacts**. The **P1.9 cross-domain contract/schema exit gate is PASS**, based on green checker, isolated MySQL schema tests and backend verification on the current PR head.
 - P1.9 documentation reconciliation report: [P1.9-contract-consistency-report.md](refactor-v2/p1/P1.9-contract-consistency-report.md).
-- Clean-reset DDL/system seed: isolated; exact-SHA checker and MySQL workflow must pass before their acceptance is claimed.
+- Clean-reset DDL/system seed: isolated; exact-SHA checker, contract-consistency gate, clean-target MySQL schema tests and backend H2/MySQL verification are green on the current PR head.
 - Entity, Repository, Service, API/DTO, frontend and workflow alignment: **implementation acceptance open**.
 - Numeric retention durations and anonymization exceptions: **TBD**; no automatic purge.
 - No database reset was performed by documenting or approving the target.
 
 ## 2. P2 — Implement the target model
 
-**Entry gate:** P2.1 seed SQL is **not authorized** until P1.9 is PASS and the exact current-SHA consistency/schema/backend checks are green. The two owner decisions are resolved, but the updated target schema/seed candidate still requires successful exact-SHA workflows; prior runs do not authorize starting P2.1.
+**Entry gate:** P1.9's cross-domain contract/schema gate is **PASS** on the current PR head, so the P1.9 restriction on P2.1 entry is cleared. Start P2.1 on a focused branch from the verified remote `demo1` head and use only a separately verified disposable MySQL database for clean-reset verification. This does not claim runtime acceptance and does not resolve DB-12 retention/anonymization or historical UC-ID evidence.
 
 **Goal:** make the application use the approved target model end-to-end without retaining obsolete persistence concepts merely for compatibility.
 

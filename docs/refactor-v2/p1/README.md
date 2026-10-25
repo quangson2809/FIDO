@@ -24,8 +24,8 @@ Baseline: `demo1`; owner approvals recorded 2026-10-23. This folder documents de
 | `P1-api-contract-mapping.csv` | Legacy API inventory mapped to target/retired route disposition for traceability; not a second active API definition. |
 | `P1-domain-invariants.md` | Approved domain, transaction and lifecycle invariants. |
 | `P1-test-matrix.md` | Required schema, API, security, transaction and concurrency acceptance cases. |
-| `P1-exit-gate.md` | Current P1 exit status; approved decisions applied and exact-SHA gate. |
-| `P1.9-contract-consistency-report.md` | Cross-domain reconciliation evidence, approved target decisions and remaining exact-SHA validation gate; does not claim runtime acceptance. |
+| `P1-exit-gate.md` | Current P1.9 cross-domain contract/schema gate status and bounded implementation/retention limitations. |
+| `P1.9-contract-consistency-report.md` | Cross-domain reconciliation evidence, owner decisions, exact-SHA validation result and runtime acceptance boundary. |
 | `P1-design-proposals-DB-03-DB-05.md` | Approved DB-03 inventory/ledger and DB-05 checkout/idempotency mechanics; runtime tests remain pending. |
 | `P1-architecture-review.md` | Current target-vs-code architecture findings; implementation mismatches remain open. |
 | `P1-api-breaking-changes.md` | Cross-layer breaking-change inventory to guide P2/P3; mismatch findings are not new owner-choice questions. |

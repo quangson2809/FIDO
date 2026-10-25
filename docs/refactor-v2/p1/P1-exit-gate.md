@@ -2,7 +2,7 @@
 
 > Owner decisions recorded 2026-10-23 approve DB-03/DB-05 design proposals, DB-12 lifecycle/FK defaults and the stated DB-01/02/06–11/API defaults. The [P1.9 owner amendment](P1-owner-amendment-2026-10-25.md) records the later approval of the unique `(product_id, sort_order)` gallery index and `ORDER_EDIT` replacing `ORDER_PROCESS`, `ORDER_FULFILLMENT` and `ORDER_EXCEPTION` in the target seed. Numeric audit/image/personal-business retention and lawful anonymization exceptions remain TBD. See [owner approval](P1-owner-approval-2026-10-23.md), [decision log](P1-decision-log.md) and [P1.9 report](P1.9-contract-consistency-report.md).
 
-**STATUS: BLOCKED — both owner decisions have been recorded and applied to isolated target artifacts; exact-SHA checker/MySQL/backend verification is the remaining P1.9 gate. P2.1 must not start before the current gate passes.**
+**STATUS: PASS — owner decisions are applied to isolated target artifacts. Contract consistency checker, isolated clean-reset MySQL schema tests, and backend H2/MySQL migration/mapping verification are green on the current PR head. Evidence: [PR checks](https://github.com/quangson2809/FIDO/pull/38/checks). This closes the P1.9 cross-domain contract/schema gate, not runtime migration or full P1 implementation acceptance.
 
 ## Current target authority and candidate
 
@@ -17,8 +17,8 @@
 
 | Gate | Result | Evidence / boundary |
 |---|---|---|
-| Canonical table inventory | DOCUMENT COMPARISON PASS; exact-SHA check pending | ERD: 31 tables / 228 logical fields. Target DDL: 31 tables / 229 physical columns. The extra generated `accounts.phone_active_key` is documented in the Data Dictionary. |
-| Data Dictionary ↔ DDL fields | Historical static PASS; current exact-SHA check pending | Dictionary has 229 physical-field rows. Re-run `scripts/p1/check_contract_consistency.py` through the required workflow against the exact P1.9 PR head. |
+| Canonical table inventory | PASS — exact-SHA contract/schema verification | ERD: 31 tables / 228 logical fields; target DDL: 31 tables / 229 physical columns. The generated `accounts.phone_active_key` explains the difference; current PR checker/MySQL tests passed. |
+| Data Dictionary ↔ DDL fields | PASS — exact-SHA check | The 229 physical-field rows agree with target DDL under `scripts/p1/check_contract_consistency.py`; checker and isolated MySQL tests passed on current PR head. |
 | ERD relationship representation | Documentation reconciled | Added diagram links for existing Payment collector/refunder, receipt warehouse/confirmer and inventory reversal FKs; no new schema rule or field was added. |
 | API contract reference matrix | PASS — documentation alignment | `reference/api-contract-matrix.csv` preserves 77 legacy runtime rows and adds separate target metadata; the authoritative `P1-api-contract-mapping.csv` has 96 entries, including target-only routes and retired/superseded aliases. |
 | Table ownership index | PASS — scoped inventory | `reference/table-ownership.csv` distinguishes 28 legacy runtime rows from 31 `TARGET_ERD_V2` rows; original legacy rows remain first for existing `SchemaMappingTests` compatibility. |
@@ -26,13 +26,13 @@
 | Frontend contract provenance | PASS — documentation only | `frontend/CONTRACT_ALIGNMENT.md` now points to the reviewed `demo1` baseline and distinguishes legacy source fields from target contracts. Frontend code/build is not asserted as aligned. |
 | Product image gallery uniqueness | PASS — schema contract aligned | Isolated clean-reset DDL/Data Dictionary specify unique `(product_id, sort_order)`; application transaction/locking still maintains contiguous `0..n-1` and the single primary image. Existing-data rollout requires preflight/repair. |
 | Order seed permissions | PASS — target manifest aligned | The 13-code target manifest and isolated V2 seed use `ORDER_EDIT` for P1.7 Order actions; `ORDER_PAYMENT` and `ORDER_AFTER_SALES` remain separate. P1.2 controls role grants. |
-| Exact-SHA consistency checker + isolated MySQL | PENDING | Prior workflow successes apply only to their historical SHAs. A fresh result is required for the P1.9 PR head. |
+| Exact-SHA consistency checker + isolated MySQL | PASS — current PR head | Contract consistency checker, isolated clean-reset MySQL schema tests, and backend H2/MySQL migration/mapping verification are green on the current PR head. Evidence: [PR checks](https://github.com/quangson2809/FIDO/pull/38/checks). |
 
-## Required validation before P1.9 PASS
+## Acceptance result and rollout boundary
 
-1. **Exact-SHA validation.** The contract checker, isolated MySQL clean-reset workflow and backend verification must pass on the exact P1.9 PR head. No ancestor SHA is accepted as evidence for the candidate.
-2. **Existing-data rollout boundary.** The unique gallery index is part of the clean-reset target schema. Any future deployment to a populated database requires an approved preflight/repair migration for duplicates, gaps and primary-image mismatch; P1.9 did not change a live database or active Flyway chain.
+1. **Exact-SHA validation: PASS.** Contract consistency checker, isolated clean-reset MySQL schema tests, and backend H2/MySQL migration/mapping verification are green on the current PR head. Evidence: [PR checks](https://github.com/quangson2809/FIDO/pull/38/checks).
+2. **Existing-data rollout remains separate.** The unique gallery index is part of the clean-reset target schema. Any future deployment to a populated database requires an approved preflight/repair migration for duplicates, gaps and primary-image mismatch; P1.9 did not change a live database or active Flyway chain.
 
 DB-12 numeric retention periods and anonymization exceptions remain TBD. This blocks purge/privacy-retention acceptance and does not authorize any default duration or scheduled deletion. Historical editable UC source documents are absent; do not invent old UC IDs.
 
-**Current gate: P1.9 BLOCKED solely pending exact-SHA checker/MySQL/backend verification; P1 overall remains PARTIAL; P2.1 must not start until the updated candidate passes.**
+**Current gate: P1.9 PASS for cross-domain contract/schema consistency; P1 overall remains PARTIAL because runtime Entity/Repository/Service, API/DTO, authorization, frontend, transaction/concurrency and end-to-end acceptance remain open. P1.9's entry restriction on P2.1 is cleared. DB-12 retention/anonymization and historical UC-ID traceability remain explicitly bounded limitations.

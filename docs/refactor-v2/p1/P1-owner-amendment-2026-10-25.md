@@ -1,6 +1,6 @@
 # P1 Owner Amendment — 2026-10-25
 
-**Status:** Owner decisions are recorded and reflected in isolated target artifacts. Implementation and exact-SHA acceptance remain pending.
+**Status:** Owner decisions are recorded and reflected in isolated target artifacts. The current P1.9 contract/schema acceptance result is maintained in `P1-exit-gate.md` and `P1.9-contract-consistency-report.md`; runtime implementation acceptance remains a later-phase task.
 
 **Parent decision record:** [P1 owner approval — 2026-10-23](P1-owner-approval-2026-10-23.md)
 **Decision log:** [P1 Decision Log](P1-decision-log.md)
@@ -37,5 +37,5 @@ Affected target artifacts: P1.8 operations/seed contract, P1.8 runbook, isolated
 
 - The changes above were applied only to isolated clean-reset target artifacts, target documentation and clean-reset schema test assertions for the 13-code target manifest.
 - Runtime application logic, the active Flyway migration chain and any live database were not changed or reset.
-- P1.9 remains BLOCKED until the contract-consistency checker, isolated MySQL schema verification and backend verification pass on the exact current candidate SHA.
+- P1.9 is recorded as PASS for the contract/schema gate only after the contract-consistency checker, isolated MySQL schema verification and backend verification pass on the exact current PR head; consult `P1-exit-gate.md` for current evidence. This amendment does not claim runtime acceptance.
 - Numeric DB-12 retention periods and lawful anonymization/deletion exceptions remain TBD. No purge schedule or destructive operation is authorized by this amendment.

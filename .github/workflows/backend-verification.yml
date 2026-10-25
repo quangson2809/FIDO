@@ -21,6 +21,10 @@ on:
     paths:
       - "backend/**"
       - "reference/**"
+      - "docs/refactor-v2/p1/P1-exit-gate.md"
+      - "docs/refactor-v2/p1/P1.9-contract-consistency-report.md"
+      - "docs/refactor-v2/p1/P1-traceability-matrix.csv"
+      - "docs/refactor-v2/p1/P1-owner-amendment-2026-10-25.md"
       - ".github/workflows/backend-verification.yml"
   workflow_dispatch:
 

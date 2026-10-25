@@ -54,7 +54,7 @@ The following target-contract decisions are recorded in the [P1 owner amendment]
 
 - **Product gallery order:** isolated clean-reset target DDL uses unique (product_id, sort_order) named uq_product_images_product_order. Application transaction/locking still enforces zero-based contiguous ordering and the primary-image invariant. Existing-data rollout requires a separately approved preflight/repair migration.
 - **Order permissions:** ORDER_EDIT replaces ORDER_PROCESS, ORDER_FULFILLMENT and ORDER_EXCEPTION in the target seed catalogue. ORDER_PAYMENT and ORDER_AFTER_SALES stay separate. P1.7 owns the Order action set; P1.2 owns role grants. No implicit grant to ADMIN/CUSTOMER/custom Roles is approved.
-- **Boundary:** the isolated clean-reset schema/seed and target docs are updated, but runtime code, active Flyway migrations and live databases are untouched. P1.9 remains BLOCKED until exact-SHA checker, MySQL schema and backend workflows pass.
+- **Boundary:** the isolated clean-reset schema/seed and target docs are updated, but runtime code, active Flyway migrations and live databases are untouched. `P1-exit-gate.md` records the current P1.9 contract/schema gate status; this decision log does not claim runtime acceptance.
 
 ## DB-03 Inventory contract handoff
 
