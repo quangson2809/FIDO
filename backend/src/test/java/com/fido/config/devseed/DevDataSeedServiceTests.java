@@ -101,6 +101,7 @@ class DevDataSeedServiceTests {
         delete("DELETE FROM content_pages WHERE page_id BETWEEN 1060001 AND 1060003");
         delete("DELETE FROM addresses WHERE address_id BETWEEN 910001 AND 910003");
         delete("DELETE FROM account_roles WHERE account_id BETWEEN 900001 AND 900008");
+        delete("DELETE FROM role_permissions WHERE permission_id BETWEEN 900201 AND 900215");
         delete("DELETE FROM role_permissions WHERE role_id BETWEEN 900101 AND 900104");
         delete("DELETE FROM accounts WHERE account_id BETWEEN 900001 AND 900008");
         delete("DELETE FROM roles WHERE role_id BETWEEN 900101 AND 900104");

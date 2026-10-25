@@ -63,6 +63,9 @@ class AccountAuthorizationHttpTests extends AccountHttpSupport {
         db.update("INSERT INTO roles(code,name,status) VALUES (?,?,'ACTIVE')", roleCode, "Inactive test");
         long roleId = db.queryForObject("SELECT role_id FROM roles WHERE code=?", Long.class, roleCode);
         db.update("INSERT INTO role_permissions(role_id,permission_id) VALUES (?,?)", roleId, permissionId);
+        db.update(
+                "INSERT INTO account_roles(account_id,role_id) SELECT ?,role_id FROM roles WHERE code='ADMIN'",
+                accountId);
         db.update("INSERT INTO account_roles(account_id,role_id) VALUES (?,?)", accountId, roleId);
         String token = login(phone);
         String reportUrl = "/api/v1/admin/reports/overview?from=2026-10-01&to=2026-10-25";

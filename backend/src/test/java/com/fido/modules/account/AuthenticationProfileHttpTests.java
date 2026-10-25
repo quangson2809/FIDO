@@ -61,7 +61,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "POST",
                                 "/api/v1/auth/register",
                                 null,
-                                Map.of("phone", phone(), "password", "x".repeat(73)))
+                                Map.of("phone", phone(), "full_name", "Validation Test Account", "password", "x".repeat(73)))
                         .status());
 
         assertEquals(
@@ -70,7 +70,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "POST",
                                 "/api/v1/auth/register",
                                 null,
-                                Map.of("phone", phone(), "password", " "))
+                                Map.of("phone", phone(), "full_name", "Validation Test Account", "password", " "))
                         .status());
 
         assertEquals(
@@ -79,7 +79,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "POST",
                                 "/api/v1/auth/register",
                                 null,
-                                Map.of("phone", phone(), "password", PASSWORD, "role", "SUPERADMIN"))
+                                Map.of("phone", phone(), "full_name", "Validation Test Account", "password", PASSWORD, "role", "SUPERADMIN"))
                         .status());
 
         assertEquals(
@@ -151,7 +151,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "POST",
                                 "/api/v1/auth/login",
                                 null,
-                                Map.of("phone", phone, "password", PASSWORD))
+                                Map.of("phone", phone, "full_name", "Duplicate Test Account", "password", PASSWORD))
                         .status());
         assertEquals(401, call("GET", "/api/v1/me", existingToken, null).status());
     }
