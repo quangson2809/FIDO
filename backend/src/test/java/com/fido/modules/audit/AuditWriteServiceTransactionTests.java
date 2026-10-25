@@ -17,6 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -25,7 +26,6 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.IllegalTransactionStateException;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -45,9 +45,9 @@ import java.util.Map;
 @ContextConfiguration(classes = AuditWriteServiceTransactionTests.TestConfiguration.class)
 class AuditWriteServiceTransactionTests {
 
-    @jakarta.annotation.Resource private JdbcTemplate jdbc;
-    @jakarta.annotation.Resource private PlatformTransactionManager transactionManager;
-    @jakarta.annotation.Resource private AuditWriteService writer;
+    @Autowired private JdbcTemplate jdbc;
+    @Autowired private PlatformTransactionManager transactionManager;
+    @Autowired private AuditWriteService writer;
 
     @BeforeEach
     void createTargetSchemaFixture() {
@@ -78,10 +78,7 @@ class AuditWriteServiceTransactionTests {
     @AfterEach
     void clearContexts() {
         SecurityContextHolder.clearContext();
-        try (CorrelationIdContext.Scope ignored = CorrelationIdContext.open(null)) {
-            // Closing restores the previous context and then the explicit cleanup below removes it.
-        }
-        CorrelationIdContext.clearForTest();
+        CorrelationIdContext.clear();
     }
 
     @Test

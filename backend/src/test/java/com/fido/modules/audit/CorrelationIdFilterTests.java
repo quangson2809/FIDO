@@ -19,7 +19,7 @@ class CorrelationIdFilterTests {
 
     @AfterEach
     void clearContext() {
-        CorrelationIdContext.clearForTest();
+        CorrelationIdContext.clear();
     }
 
     @Test

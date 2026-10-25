@@ -32,6 +32,11 @@ public final class CorrelationIdContext {
         return CURRENT.get();
     }
 
+    /** Removes context when a thread is explicitly abandoned or reset by infrastructure. */
+    public static void clear() {
+        CURRENT.remove();
+    }
+
     public static String currentOrGenerate() {
         String current = CURRENT.get();
         return current == null ? UUID.randomUUID().toString() : current;
