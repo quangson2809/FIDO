@@ -5,7 +5,7 @@ ALTER TABLE accounts ADD COLUMN full_name VARCHAR(150) NULL;
 ALTER TABLE accounts ADD COLUMN status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE';
 ALTER TABLE accounts ADD COLUMN deleted_at TIMESTAMP(6) NULL;
 ALTER TABLE accounts ADD COLUMN phone_active_key VARCHAR(20)
-    GENERATED ALWAYS AS (CASE WHEN deleted_at IS NULL THEN phone ELSE NULL END) STORED;
+    GENERATED ALWAYS AS (CASE WHEN deleted_at IS NULL THEN phone ELSE NULL END);
 
 -- Phone uniqueness follows the non-soft-deleted identity. A deleted account no longer reserves
 -- its phone; active rows remain protected by the generated-key unique index.
