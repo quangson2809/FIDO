@@ -194,11 +194,15 @@ public class DevSeedIdentityData {
         jdbc.update(
                 """
                 INSERT INTO addresses(
-                    address_id,account_id,address_text,created_at
+                    id,account_id,address_text,recipient_name,recipient_phone,province,district,ward,
+                    address_line,is_default,created_at,updated_at
                 ) VALUES
-                (910001,900002,'123 Cầu Giấy, Hà Nội','2026-09-01 00:00:00'),
-                (910002,900002,'45 Xuân Thủy, Cầu Giấy, Hà Nội','2026-09-01 00:00:00'),
-                (910003,900008,'88 Hồ Tùng Mậu, Hà Nội','2026-09-01 00:00:00')
+                (910001,900002,'123 Cầu Giấy, Dịch Vọng, Cầu Giấy, Hà Nội','Test Customer','0909000002',
+                    'Hà Nội','Cầu Giấy','Dịch Vọng','123 Cầu Giấy',TRUE,'2026-09-01 00:00:00','2026-09-01 00:00:00'),
+                (910002,900002,'45 Xuân Thủy, Dịch Vọng, Cầu Giấy, Hà Nội','Test Customer','0909000002',
+                    'Hà Nội','Cầu Giấy','Dịch Vọng','45 Xuân Thủy',FALSE,'2026-09-01 00:00:00','2026-09-01 00:00:00'),
+                (910003,900008,'88 Hồ Tùng Mậu, Mai Dịch, Nam Từ Liêm, Hà Nội','Test Customer 2','0909000008',
+                    'Hà Nội','Nam Từ Liêm','Mai Dịch','88 Hồ Tùng Mậu',TRUE,'2026-09-01 00:00:00','2026-09-01 00:00:00')
                 """);
     }
 
