@@ -55,10 +55,14 @@ class CustomerQueryApiTest extends OperationsHttpSupport {
         order(other.id(), customer.phone(), "2026-09-21 12:00:00");
         order(null, customer.phone(), "2026-09-22 12:00:00");
         db.update(
-                "INSERT INTO addresses(account_id,address_text,created_at) VALUES (?,?,'2026-09-01"
-                    + " 12:00:00')",
-                customer.id(),
-                "Customer address");
+                """
+                INSERT INTO addresses(account_id,address_text,recipient_name,recipient_phone,
+                    province,district,ward,address_line,is_default,created_at,updated_at)
+                VALUES (?,'Customer address','Customer Test','0901234567',
+                    'Hà Nội','Cầu Giấy','Dịch Vọng','Customer address',TRUE,
+                    '2026-09-01 12:00:00','2026-09-01 12:00:00')
+                """,
+                customer.id());
         String path = "/api/v1/admin/customers";
         var list =
                 call("GET", path + "?q=" + customer.phone() + "&page_size=1", root.token(), null);
