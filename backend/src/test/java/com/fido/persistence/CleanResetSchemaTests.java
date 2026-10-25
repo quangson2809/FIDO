@@ -116,7 +116,7 @@ class CleanResetSchemaTests {
         Flyway flyway = Flyway.configure().dataSource(dataSource)
                 .locations("classpath:db/clean-reset").cleanDisabled(false).load();
         try {
-            assertEquals(2, migrate(flyway).migrationsExecuted);
+            assertEquals(1, migrate(flyway).migrationsExecuted);
             flyway.validate();
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
             String currentSchemaExpression = usesMySqlTestDatabase() ? "DATABASE()" : "CURRENT_SCHEMA()";
@@ -146,7 +146,7 @@ class CleanResetSchemaTests {
                         actualColumns.computeIfAbsent(table, ignored -> new TreeSet<>()).add(column);
                     });
             assertEquals(TARGET_COLUMNS, actualColumns);
-            assertEquals("2", flyway.info().current().getVersion().getVersion());
+            assertEquals("1", flyway.info().current().getVersion().getVersion());
             assertEquals(0, flyway.info().pending().length);
         } finally {
             flyway.clean();
@@ -167,7 +167,7 @@ class CleanResetSchemaTests {
                     "SELECT COUNT(*) FROM categories WHERE slug='disposable-category'", Integer.class));
 
             flyway.clean();
-            assertEquals(2, migrate(flyway).migrationsExecuted);
+            assertEquals(1, migrate(flyway).migrationsExecuted);
             flyway.validate();
 
             assertEquals(0, jdbc.queryForObject(
