@@ -90,6 +90,13 @@ class AccountAccessServiceTests {
     void recognizesSuperadminRoleWithoutInventingPermissionGrants() {
         fixture();
 
+        // Isolate this service test from the global SUPERADMIN seed catalogue.
+        jdbc.update(
+                """
+                DELETE FROM role_permissions
+                WHERE role_id = (SELECT role_id FROM roles WHERE code = 'SUPERADMIN')
+                """);
+
         assertTrue(access.isSuperadmin(203L));
 
         assertTrue(access.findAccess(203L).orElseThrow().permissions().isEmpty());
