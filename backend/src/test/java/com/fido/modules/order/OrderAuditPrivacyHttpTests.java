@@ -94,7 +94,7 @@ class OrderAuditPrivacyHttpTests extends OrderHttpSupport {
                 WHERE target_type='ORDER'
                   AND target_id=?
                   AND action=?
-                ORDER BY audit_id DESC
+                ORDER BY id DESC
                 LIMIT 1
                 """,
                 String.class,

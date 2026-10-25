@@ -31,9 +31,9 @@ class AuditQueryApiTest extends OperationsHttpSupport {
         assertEquals(2, first.body().get("meta").get("total_pages").asInt());
         var second = call("GET", query + "&page=2", employee.token(), null);
         assertTrue(
-                first.body().get("data").get(0).get("audit_id").asLong()
-                        > second.body().get("data").get(0).get("audit_id").asLong());
-        assertEquals(7, first.body().get("data").get(0).size());
+                first.body().get("data").get(0).get("id").asLong()
+                        > second.body().get("data").get(0).get("id").asLong());
+        assertEquals(9, first.body().get("data").get(0).size());
         for (String filter :
                 new String[] {
                     "action=NO",

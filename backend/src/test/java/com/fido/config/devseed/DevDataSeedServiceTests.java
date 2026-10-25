@@ -64,7 +64,7 @@ class DevDataSeedServiceTests {
 
     @AfterEach
     void removeSeedData() {
-        delete("DELETE FROM audit_logs WHERE audit_id BETWEEN 1050001 AND 1050003");
+        delete("DELETE FROM audit_logs WHERE id BETWEEN 1050001 AND 1050003");
         delete(
                 "DELETE FROM inventory_transactions WHERE txn_id IN "
                         + "(1040001,1040002,1040003,1040004,1040005,"

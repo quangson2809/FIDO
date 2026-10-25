@@ -1,5 +1,9 @@
 INSERT INTO accounts(id,full_name,password_hash,phone,email,created_at,updated_at) VALUES (1,'Fixture account','test-only-hash','0900000001',NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
-INSERT INTO addresses VALUES (1,1,'Test address',CURRENT_TIMESTAMP);
+INSERT INTO addresses(
+    id,account_id,address_text,recipient_name,recipient_phone,province,district,ward,
+    address_line,is_default,created_at,updated_at
+) VALUES (1,1,'Test address','Fixture recipient','0900000001','Hà Nội','Cầu Giấy',
+          'Dịch Vọng','Test address',TRUE,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
 INSERT INTO roles(role_id,code,name,description) VALUES (101,'fixture-role','Fixture role',NULL);
 INSERT INTO permissions(permission_id,code,name) VALUES (1001,'fixture-permission','Fixture permission');
 INSERT INTO account_roles VALUES (1,101);
@@ -37,7 +41,11 @@ INSERT INTO goods_receipts VALUES (1,'fixture-receipt',1,'DRAFT',CURRENT_DATE,1,
 INSERT INTO goods_receipt_items VALUES (1,1,1,2);
 INSERT INTO inventories VALUES (1,10,CURRENT_TIMESTAMP);
 INSERT INTO inventory_transactions VALUES (1,1,10,'OPENING_STOCK',NULL,NULL,1,NULL,CURRENT_TIMESTAMP);
-INSERT INTO audit_logs VALUES (1,1,'fixture.action','fixture','1',NULL,CURRENT_TIMESTAMP);
+INSERT INTO audit_logs(
+    id,actor_account_id,action,target_type,target_id,description,created_at,
+    entity_type,entity_id,before_data,after_data,correlation_id
+) VALUES (1,1,'fixture.action','fixture','1',NULL,CURRENT_TIMESTAMP,
+          'fixture','1',NULL,NULL,'fixture-correlation');
 INSERT INTO content_pages VALUES (1,'fixture-page','Fixture page','Fixture content',1,CURRENT_TIMESTAMP);
 
 INSERT INTO voucher_usages(order_id,voucher_id,account_id,restored) VALUES(1,1,1,FALSE);

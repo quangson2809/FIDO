@@ -62,7 +62,7 @@ public class DevSeedStateInspector {
                                     + "1040017,1040018,1040019,1040020,1040021,1040022,1040023,"
                                     + "1040024,1040025,1040026,1040027,1040028,1040029,1040030)",
                             26),
-                    probe("audit_logs", "audit_id BETWEEN 1050001 AND 1050003", 3),
+                    probe("audit_logs", "id BETWEEN 1050001 AND 1050003", 3),
                     probe("content_pages", "page_id BETWEEN 1060001 AND 1060003", 3));
 
     private final JdbcTemplate jdbc;

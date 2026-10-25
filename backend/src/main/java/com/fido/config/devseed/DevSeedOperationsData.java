@@ -23,15 +23,15 @@ public class DevSeedOperationsData {
         jdbc.update(
                 """
                 INSERT INTO audit_logs(
-                    audit_id,actor_account_id,action,target_type,target_id,
-                    description,created_at
+                    id,actor_account_id,action,target_type,target_id,
+                    description,created_at,entity_type,entity_id,correlation_id
                 ) VALUES
                 (1050001,900005,'ORDER_CONFIRM','ORDER','1001002',
-                    'Seed audit order confirm','2026-09-08 02:10:00'),
+                    'Seed audit order confirm','2026-09-08 02:10:00','ORDER','1001002','seed-order-confirm'),
                 (1050002,900004,'GOODS_RECEIPT_CONFIRM','GOODS_RECEIPT','1010002',
-                    'Seed audit receipt confirm','2026-09-18 03:00:00'),
+                    'Seed audit receipt confirm','2026-09-18 03:00:00','GOODS_RECEIPT','1010002','seed-receipt-confirm'),
                 (1050003,900001,'CONTENT_UPDATE','CONTENT_PAGE','1060001',
-                    'Seed audit content','2026-09-01 00:00:00')
+                    'Seed audit content','2026-09-01 00:00:00','CONTENT_PAGE','1060001','seed-content-update')
                 """);
     }
 
