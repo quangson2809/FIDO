@@ -7,7 +7,7 @@
 - The canonical physical dictionary is [P1-data-dictionary.csv](P1-data-dictionary.csv), an RFC 4180 CSV with one row per target physical column.
 - Logical model: [approved ERD v2](../target/erd-v2-approved.mmd).
 - Owner decisions: [P1 approval record](P1-owner-approval-2026-10-23.md) and [decision log](P1-decision-log.md).
-- Target DDL and system seed: `backend/src/main/resources/db/install/FIDO_INSTALL.sql` (DDL and non-secret system seed in one file).
+- Target DDL and system seed: `backend/src/main/resources/db/migration/V1__fido_target_schema.sql` (DDL and non-secret system seed in one file).
 
 Use a real CSV parser. The CSV records logical meaning, physical SQL proposal/nullability/default, generated fields, keys and constraints, owner module, transaction/use-case context, current implementation status and evidence. The current-runtime columns are a discrepancy inventory, not alternative target schema requirements.
 

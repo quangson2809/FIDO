@@ -9,7 +9,7 @@
 - **Logical ERD:** [phase-1-erd-v2-approved.mmd](../target/erd-v2-approved.mmd)
 - **Physical field contract:** [P1-data-dictionary.csv](P1-data-dictionary.csv)
 - **Owner decisions:** [P1 owner approval](P1-owner-approval-2026-10-23.md) and [decision log](P1-decision-log.md)
-- **Target SQL and system seed:** `backend/src/main/resources/db/clean-reset/V1__clean_schema.sql` and `V2__system_seed.sql`
+- **Target SQL and system seed:** `backend/src/main/resources/db/migration/V1__fido_target_schema.sql` and `V2__system_seed.sql`
 - **Active implementation contract:** [source of truth](../../00-source-of-truth.md), [data model](../../03-data-model.md), [API](../../04-api-contract.md), [DTO](../../05-dto-contract.md), [business rules](../../06-business-rules-state-machines.md), [transaction rules](../../07-transactions-concurrency-idempotency.md).
 
 The canonical ERD contains exactly 31 logical tables. This file intentionally does not copy the entire diagram or list competing schemas: duplicated diagrams had become stale after approval. Change the canonical ERD and data dictionary together, then run the contract-consistency checker and fresh isolated MySQL schema workflow.
@@ -29,3 +29,6 @@ The canonical ERD contains exactly 31 logical tables. This file intentionally do
 ## Current acceptance status
 
 Owner/business decision gates are recorded, except numeric retention/anonymization values. The application remains PARTIAL until target Entities/Repositories/Services, API/DTOs, frontend, seed, security, transaction/concurrency behavior and acceptance tests are verified on the exact candidate SHA. A passing schema check alone is not runtime acceptance.
+
+
+> Current database installation authority (2026-10-26): `backend/src/main/resources/db/migration/V1__fido_target_schema.sql` is the only schema/seed SQL. Do not create per-phase SQL migrations; update the approved baseline and Data Dictionary together, then verify on a fresh disposable database.
