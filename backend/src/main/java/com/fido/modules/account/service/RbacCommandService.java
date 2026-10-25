@@ -144,8 +144,11 @@ public class RbacCommandService {
                 "code", role.getCode(), "status", role.getStatus(),
                 "active", "ACTIVE".equals(role.getStatus()),
                 "permission_count", permissions.findByRole(roleId).size());
-        if (SYSTEM_ROLE_CODES.contains(role.getCode()) || assignments.existsByRoleId(roleId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
+        if (SYSTEM_ROLE_CODES.contains(role.getCode())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "SYSTEM_ROLE_PROTECTED");
+        }
+        if (assignments.existsByRoleId(roleId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "ROLE_IN_USE");
         }
 
         mappings.deleteByRoleId(roleId);
