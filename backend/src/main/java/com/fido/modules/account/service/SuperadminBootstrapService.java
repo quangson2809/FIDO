@@ -14,6 +14,8 @@ import com.fido.modules.audit.service.AuditTargetType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 public class SuperadminBootstrapService {
 
@@ -22,6 +24,7 @@ public class SuperadminBootstrapService {
     private final AccountRoleRepository assignments;
     private final AuthenticationService authentication;
     private final AccountAccessService access;
+    private final PhoneNumberCanonicalizer phoneNumbers;
     private final AuditService audit;
 
     public SuperadminBootstrapService(
@@ -30,12 +33,14 @@ public class SuperadminBootstrapService {
             AccountRoleRepository assignments,
             AuthenticationService authentication,
             AccountAccessService access,
+            PhoneNumberCanonicalizer phoneNumbers,
             AuditService audit) {
         this.roles = roles;
         this.accounts = accounts;
         this.assignments = assignments;
         this.authentication = authentication;
         this.access = access;
+        this.phoneNumbers = phoneNumbers;
         this.audit = audit;
     }
 
@@ -43,19 +48,24 @@ public class SuperadminBootstrapService {
     public void initialize(String phone, String password) {
         if (phone == null
                 || phone.isBlank()
-                || phone.length() > 20
+                || phone.length() > 40
                 || password == null
                 || password.isBlank()) {
             throw new IllegalStateException(
                     "Bootstrap requires phone and password from configuration");
         }
 
+        String canonicalPhone = phoneNumbers.canonicalize(phone);
         Role role = roles.lockSuperadminRole().orElseThrow();
 
-        var existing = accounts.findByPhone(phone);
+        List<Account> matchingAccounts = accounts.findByPhoneIn(phoneNumbers.lookupValues(canonicalPhone));
+        if (matchingAccounts.size() > 1) {
+            throw new IllegalStateException("Bootstrap phone matches ambiguous legacy accounts");
+        }
 
-        if (existing.isPresent()) {
-            if (!access.isSuperadmin(existing.get().getAccountId())) {
+        if (!matchingAccounts.isEmpty()) {
+            Account existing = matchingAccounts.get(0);
+            if (!access.isSuperadmin(existing.getAccountId())) {
                 throw new IllegalStateException(
                         "Bootstrap phone already belongs to a non-superadmin account");
             }
@@ -69,7 +79,7 @@ public class SuperadminBootstrapService {
         }
 
         Account account = new Account();
-        account.setPhone(phone);
+        account.setPhone(canonicalPhone);
         account.setPasswordHash(authentication.hashPassword(password));
 
         accounts.save(account);

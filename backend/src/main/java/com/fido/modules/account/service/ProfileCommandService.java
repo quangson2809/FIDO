@@ -37,14 +37,6 @@ public class ProfileCommandService {
                 accounts.findById(actor)
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
 
-        if (request.phone() != null) {
-            if (accounts.existsByPhoneAndAccountIdNot(request.phone(), actor)) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT);
-            }
-
-            account.setPhone(request.phone());
-        }
-
         if (request.email() != null) {
             account.setEmail(request.email());
         }

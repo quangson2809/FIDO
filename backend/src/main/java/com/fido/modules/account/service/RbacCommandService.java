@@ -30,11 +30,29 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
 @PreAuthorize("hasAuthority('ROLE_SUPERADMIN')")
 public class RbacCommandService {
+
+    private static final Set<String> SYSTEM_ROLE_CODES = Set.of("CUSTOMER", "ADMIN", "SUPERADMIN");
+    private static final Set<String> SYSTEM_PERMISSION_CODES =
+            Set.of(
+                    "CATALOG_READ",
+                    "CATALOG_WRITE",
+                    "INVENTORY_READ",
+                    "INVENTORY_WRITE",
+                    "ORDER_READ",
+                    "ORDER_EDIT",
+                    "ORDER_PAYMENT",
+                    "ORDER_AFTER_SALES",
+                    "AUDIT_READ",
+                    "CONTENT_READ",
+                    "CONTENT_WRITE",
+                    "CUSTOMER_READ",
+                    "REPORT_READ");
 
     private final RoleRepository roles;
     private final PermissionRepository permissions;
@@ -105,9 +123,7 @@ public class RbacCommandService {
 
         Role role = role(roleId);
 
-        boolean systemRole = Set.of("ADMIN", "SUPERADMIN").contains(role.getCode());
-
-        if (systemRole || assignments.existsByRoleId(roleId)) {
+        if (SYSTEM_ROLE_CODES.contains(role.getCode()) || assignments.existsByRoleId(roleId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
@@ -120,13 +136,20 @@ public class RbacCommandService {
     }
 
     public PermissionDto createPermission(Long actor, PermissionCreateRequest request) {
-        lockSuperadminRole();
+        Role superadmin = lockSuperadminRole();
 
         Permission permission = new Permission();
         permission.setCode(request.code());
         permission.setName(request.name());
 
         permissions.save(permission);
+        entityManager.flush();
+
+        // Permission creation and the corresponding SUPERADMIN grant are one atomic mutation.
+        RolePermission grant = new RolePermission();
+        grant.setRoleId(superadmin.getRoleId());
+        grant.setPermissionId(permission.getPermissionId());
+        mappings.save(grant);
         entityManager.flush();
 
         audit.record(
@@ -145,10 +168,6 @@ public class RbacCommandService {
 
         Permission permission = permission(permissionId);
 
-        if (request.code() != null) {
-            permission.setCode(request.code());
-        }
-
         if (request.name() != null) {
             permission.setName(request.name());
         }
@@ -166,15 +185,24 @@ public class RbacCommandService {
     }
 
     public void deletePermission(Long actor, Long permissionId) {
-        lockSuperadminRole();
+        Role superadmin = lockSuperadminRole();
 
         Permission permission = permission(permissionId);
-
-        if (mappings.existsByPermissionId(permissionId)) {
+        if (SYSTEM_PERMISSION_CODES.contains(permission.getCode())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
+        List<RolePermission> references = mappings.findAllByPermissionId(permissionId);
+        boolean usedOutsideSuperadmin =
+                references.stream().anyMatch(row -> !row.getRoleId().equals(superadmin.getRoleId()));
+        if (usedOutsideSuperadmin) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT);
+        }
+
+        mappings.deleteByRoleIdAndPermissionId(superadmin.getRoleId(), permissionId);
+        entityManager.flush();
         permissions.delete(permission);
+        entityManager.flush();
 
         audit.record(
                 AuditEvent.of(
@@ -189,9 +217,22 @@ public class RbacCommandService {
             return;
         }
 
-        var uniquePermissionIds = new LinkedHashSet<>(permissionIds);
+        Set<Long> uniquePermissionIds = new LinkedHashSet<>(permissionIds);
+        if (uniquePermissionIds.size() != permissionIds.size()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        }
 
         uniquePermissionIds.forEach(this::permission);
+
+        if ("SUPERADMIN".equals(role.getCode())) {
+            Set<Long> catalogueIds =
+                    permissions.findAllByOrderByPermissionIdAsc().stream()
+                            .map(Permission::getPermissionId)
+                            .collect(Collectors.toSet());
+            if (!uniquePermissionIds.equals(catalogueIds)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT);
+            }
+        }
 
         mappings.deleteByRoleId(role.getRoleId());
         entityManager.flush();
@@ -230,8 +271,8 @@ public class RbacCommandService {
                 permissionDtos);
     }
 
-    private void lockSuperadminRole() {
-        roles.lockSuperadminRole()
+    private Role lockSuperadminRole() {
+        return roles.lockSuperadminRole()
                 .orElseThrow(() -> new IllegalStateException("System role missing"));
     }
 }

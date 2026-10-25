@@ -4,6 +4,8 @@ import com.fido.modules.account.entity.Account;
 
 import org.springframework.data.repository.Repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 /** Persistence only. Delete operations are intentionally not exposed by default. */
@@ -31,9 +33,15 @@ public interface AccountRepository extends Repository<Account, Long> {
 
     Optional<Account> findByPhone(String phone);
 
+    List<Account> findByPhoneIn(Collection<String> phones);
+
     boolean existsByPhone(String phone);
 
+    boolean existsByPhoneIn(Collection<String> phones);
+
     boolean existsByPhoneAndAccountIdNot(String phone, Long accountId);
+
+    boolean existsByPhoneInAndAccountIdNot(Collection<String> phones, Long accountId);
 
     @org.springframework.data.jpa.repository.Query(
             """

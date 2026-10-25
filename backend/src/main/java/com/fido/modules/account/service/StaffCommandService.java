@@ -36,6 +36,7 @@ public class StaffCommandService {
     private final AccountRoleRepository assignments;
     private final AccountAccessService access;
     private final AuthenticationService authentication;
+    private final PhoneNumberCanonicalizer phoneNumbers;
     private final AuditService audit;
     private final EntityManager em;
 
@@ -45,6 +46,7 @@ public class StaffCommandService {
             AccountRoleRepository assignments,
             AccountAccessService access,
             AuthenticationService authentication,
+            PhoneNumberCanonicalizer phoneNumbers,
             AuditService audit,
             EntityManager em) {
         this.accounts = accounts;
@@ -52,17 +54,19 @@ public class StaffCommandService {
         this.assignments = assignments;
         this.access = access;
         this.authentication = authentication;
+        this.phoneNumbers = phoneNumbers;
         this.audit = audit;
         this.em = em;
     }
 
     public StaffAccountDetailDto create(Long actor, StaffCreateRequest request) {
         lockSuperadminRole();
-        requireCreatePhoneAvailable(request.phone());
+        String phone = phoneNumbers.canonicalize(request.phone());
+        requireCreatePhoneAvailable(phone);
 
         List<Role> selectedRoles = resolveCreateRoles(request.role_ids());
 
-        Account account = createAccount(request);
+        Account account = createAccount(request, phone);
 
         replace(account.getAccountId(), selectedRoles);
 
@@ -97,8 +101,8 @@ public class StaffCommandService {
         return access.findAccess(accountId).orElseThrow();
     }
 
-    private void requireCreatePhoneAvailable(String phone) {
-        if (accounts.existsByPhone(phone)) {
+    private void requireCreatePhoneAvailable(String canonicalPhone) {
+        if (accounts.existsByPhoneIn(phoneNumbers.lookupValues(canonicalPhone))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
     }
@@ -127,9 +131,9 @@ public class StaffCommandService {
         }
     }
 
-    private Account createAccount(StaffCreateRequest request) {
+    private Account createAccount(StaffCreateRequest request, String canonicalPhone) {
         Account account = new Account();
-        account.setPhone(request.phone());
+        account.setPhone(canonicalPhone);
         account.setEmail(request.email());
         account.setPasswordHash(authentication.hashPassword(request.password()));
 
@@ -138,8 +142,9 @@ public class StaffCommandService {
 
     private void applyAccountPatch(Account account, StaffPatchRequest request) {
         if (request.phone() != null) {
-            requireUpdatePhoneAvailable(request.phone(), account.getAccountId());
-            account.setPhone(request.phone());
+            String canonicalPhone = phoneNumbers.canonicalize(request.phone());
+            requireUpdatePhoneAvailable(canonicalPhone, account.getAccountId());
+            account.setPhone(canonicalPhone);
         }
 
         if (request.email() != null) {
@@ -147,8 +152,9 @@ public class StaffCommandService {
         }
     }
 
-    private void requireUpdatePhoneAvailable(String phone, Long accountId) {
-        if (accounts.existsByPhoneAndAccountIdNot(phone, accountId)) {
+    private void requireUpdatePhoneAvailable(String canonicalPhone, Long accountId) {
+        if (accounts.existsByPhoneInAndAccountIdNot(
+                phoneNumbers.lookupValues(canonicalPhone), accountId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
     }
@@ -174,6 +180,7 @@ public class StaffCommandService {
                         && selectedRoles.stream()
                                 .noneMatch(role -> "SUPERADMIN".equals(role.getCode()));
 
+        // The SUPERADMIN role-row lock serializes every mutation that can change this count.
         if (removingSuperadmin && assignments.countByRoleId(superadminRole.getRoleId()) <= 1) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }

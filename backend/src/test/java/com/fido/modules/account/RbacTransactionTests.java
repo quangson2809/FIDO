@@ -27,7 +27,7 @@ class RbacTransactionTests {
 
     @Test
     @WithMockUser(authorities = "ROLE_SUPERADMIN")
-    void failedAuditRollsBackPermissionMutation() {
+    void failedAuditRollsBackPermissionAndSuperadminGrant() {
         String code = "test.rollback." + UUID.randomUUID();
 
         assertThrows(
@@ -40,6 +40,18 @@ class RbacTransactionTests {
                 0,
                 jdbc.queryForObject(
                         "SELECT COUNT(*) FROM permissions WHERE code=?", Integer.class, code));
+
+        assertEquals(
+                0,
+                jdbc.queryForObject(
+                        """
+                        SELECT COUNT(*)
+                        FROM role_permissions rp
+                        JOIN permissions p ON p.permission_id=rp.permission_id
+                        WHERE p.code=?
+                        """,
+                        Integer.class,
+                        code));
     }
 
     @Test
