@@ -1,6 +1,6 @@
 # ERD v2 Target Artifacts
 
-This directory is the **single home for target-baseline artifacts** that were previously split across `docs/refactor/` and the P1 work package. Do not duplicate these files elsewhere.
+This directory is the canonical home for the approved ERD, its human-readable summary, the dictionary pointer and the isolated clean-reset operator runbook. The machine-readable physical Data Dictionary remains at `../p1/P1-data-dictionary.csv` because it is also a P1 acceptance artifact consumed by the consistency checker. Link to that CSV; do not create a second copy.
 
 | Artifact | Authority / use |
 |---|---|
