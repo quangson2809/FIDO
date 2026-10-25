@@ -1,5 +1,6 @@
 package com.fido.modules.audit.service;
 
+import com.fido.config.web.CorrelationIdContext;
 import com.fido.modules.audit.repository.AuditWriteRepository;
 
 import org.springframework.stereotype.Service;

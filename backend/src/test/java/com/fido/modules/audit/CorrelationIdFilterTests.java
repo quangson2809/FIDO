@@ -3,7 +3,7 @@ package com.fido.modules.audit;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.fido.config.web.CorrelationIdFilter;
-import com.fido.modules.audit.service.CorrelationIdContext;
+import com.fido.config.web.CorrelationIdContext;
 
 import jakarta.servlet.FilterChain;
 

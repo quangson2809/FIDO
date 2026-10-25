@@ -10,7 +10,7 @@ import com.fido.modules.audit.service.AuditEntityType;
 import com.fido.modules.audit.service.AuditPayloadPolicy;
 import com.fido.modules.audit.service.AuditWriteEvent;
 import com.fido.modules.audit.service.AuditWriteService;
-import com.fido.modules.audit.service.CorrelationIdContext;
+import com.fido.config.web.CorrelationIdContext;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
