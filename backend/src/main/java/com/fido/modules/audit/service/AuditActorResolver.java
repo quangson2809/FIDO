@@ -10,10 +10,6 @@ import org.springframework.stereotype.Component;
 public class AuditActorResolver {
 
     /**
-     * Resolves a human actor only from the JWT authentication established by SecurityConfig.
-     * Never accepts an actor ID from an audit event, request DTO or domain method parameter.
-     */
-    /**
      * Prevents a request carrying an authenticated human identity from being recorded as a
      * NULL-actor system event. The caller of the system entry point must still be trusted code.
      */
@@ -27,6 +23,10 @@ public class AuditActorResolver {
         }
     }
 
+    /**
+     * Resolves a human actor only from the JWT authentication established by SecurityConfig.
+     * Never accepts an actor ID from an audit event, request DTO or domain method parameter.
+     */
     public Long requireAuthenticatedAccountId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken jwtAuthentication)
