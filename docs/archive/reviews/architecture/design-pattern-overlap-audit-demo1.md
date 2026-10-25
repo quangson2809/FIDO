@@ -48,7 +48,7 @@
 
 **Conclusion:** retaining the Adapter-style boundary is justified. Factory Method, Abstract Factory, Decorator and Bridge should not be added unless the actual supported integration model grows.
 
-Evidence: [ImageStorageGateway.java](../backend/src/main/java/com/fido/modules/product/service/ImageStorageGateway.java), [ImgBbImageStorageClient.java](../backend/src/main/java/com/fido/modules/product/service/ImgBbImageStorageClient.java).
+Evidence: [ImageStorageGateway.java](../../../../backend/src/main/java/com/fido/modules/product/service/ImageStorageGateway.java), [ImgBbImageStorageClient.java](../../../../backend/src/main/java/com/fido/modules/product/service/ImgBbImageStorageClient.java).
 
 ### Checkout and Goods Receipt orchestration
 
@@ -61,7 +61,7 @@ Evidence: [ImageStorageGateway.java](../backend/src/main/java/com/fido/modules/p
 
 **Conclusion:** these are coherent application-service, module-ownership and transaction boundaries. Facade/Mediator are useful comparison concepts, not proof that separate GoF classes should be added. Do not move stock or transactional audit into a generic event pipeline.
 
-Evidence: [CheckoutQuoteService.java](../backend/src/main/java/com/fido/modules/order/service/CheckoutQuoteService.java), [GoodsReceiptService.java](../backend/src/main/java/com/fido/modules/inventory/service/GoodsReceiptService.java), [InventoryCommandService.java](../backend/src/main/java/com/fido/modules/inventory/service/InventoryCommandService.java), [AuditService.java](../backend/src/main/java/com/fido/modules/audit/service/AuditService.java).
+Evidence: [CheckoutQuoteService.java](../../../../backend/src/main/java/com/fido/modules/order/service/CheckoutQuoteService.java), [GoodsReceiptService.java](../../../../backend/src/main/java/com/fido/modules/inventory/service/GoodsReceiptService.java), [InventoryCommandService.java](../../../../backend/src/main/java/com/fido/modules/inventory/service/InventoryCommandService.java), [AuditService.java](../../../../backend/src/main/java/com/fido/modules/audit/service/AuditService.java).
 
 ### Order lifecycle
 
@@ -71,7 +71,7 @@ Evidence: [CheckoutQuoteService.java](../backend/src/main/java/com/fido/modules/
 
 **Conclusion:** state transition policy and command-like dispatch complement one another but are not textbook GoF State/Command implementations. Keep the separation. A refactor should not add per-state classes or a generic command bus just to match pattern names.
 
-Evidence: [OrderPolicy.java](../backend/src/main/java/com/fido/modules/order/service/OrderPolicy.java), [OrderActionPolicy.java](../backend/src/main/java/com/fido/modules/order/service/OrderActionPolicy.java), [OrderActionService.java](../backend/src/main/java/com/fido/modules/order/service/OrderActionService.java).
+Evidence: [OrderPolicy.java](../../../../backend/src/main/java/com/fido/modules/order/service/OrderPolicy.java), [OrderActionPolicy.java](../../../../backend/src/main/java/com/fido/modules/order/service/OrderActionPolicy.java), [OrderActionService.java](../../../../backend/src/main/java/com/fido/modules/order/service/OrderActionService.java).
 
 ## 3. Corrections made to the companion study
 

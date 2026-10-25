@@ -5,7 +5,7 @@
 > Inventory balance/version, warehouse resolution, receipt and adjustment use cases, semantic source deduplication, reversal, transaction/locking and reconciliation are governed by [P1.4 Inventory Contract](P1.4-inventory-contract.md). P1.7 owns Order transition timing; Inventory is called through its owning service.
 
 - **Status: PARTIAL.** This matrix defines target behavior and implementation gates; it does not assert that the use cases are implemented.
-- Target authority: owner approval dated 2026-10-23, [canonical 31-table ERD v2](../../refactor/phase-1-erd-v2-approved.mmd), [API contract](../../04-api-contract.md) and [DTO contract](../../05-dto-contract.md).
+- Target authority: owner approval dated 2026-10-23, [canonical 31-table ERD v2](../target/erd-v2-approved.mmd), [API contract](../../04-api-contract.md) and [DTO contract](../../05-dto-contract.md).
 - Legacy code, migration and endpoint inventory are evidence for locating code that must be changed or retired, not alternative target requirements. The editable source UC documents are not present at the referenced locations; this matrix therefore does not invent or claim unverified UC IDs.
 - Owner decisions DB-01/02/03/05/06/07/08/09/10/11/12 are recorded; numeric retention/anonymization decisions and all runtime acceptance remain pending as listed in the P1 artifacts.
 

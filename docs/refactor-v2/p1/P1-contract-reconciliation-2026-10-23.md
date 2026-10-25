@@ -4,7 +4,7 @@
 
 - Repository: https://github.com/quangson2809/FIDO
 - Target branch: `demo1`
-- Target logical authority: [owner-approved ERD v2](../../refactor/phase-1-erd-v2-approved.mmd), exactly 31 tables.
+- Target logical authority: [owner-approved ERD v2](../target/erd-v2-approved.mmd), exactly 31 tables.
 - Business/physical decisions: [P1 owner approval](P1-owner-approval-2026-10-23.md) and [P1 decision log](P1-decision-log.md).
 - Physical contract: [P1 data dictionary](P1-data-dictionary.csv).
 - Contract status: [API/DTO](../../04-api-contract.md), [DTO detail](../../05-dto-contract.md), [business rules](../../06-business-rules-state-machines.md), [transactions](../../07-transactions-concurrency-idempotency.md).

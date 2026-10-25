@@ -1,5 +1,7 @@
 # 11 — FIDO ERD v2 Implementation Phases
 
+> Navigation: the detailed artifact layout and P0 → P1.1–P1.9 reconstruction sequence are maintained in [`docs/refactor-v2/README.md`](refactor-v2/README.md). This roadmap governs runtime implementation phases; historical implementation reports are indexed under `docs/archive/`.
+
 > **Current authority — 2026-10-25:** the owner-approved 31-table ERD v2, original target business defaults and P1.9 owner amendment are recorded. This roadmap describes delivery against that target only. Historical audit reports are evidence, not target requirements.
 
 ## 1. Current status

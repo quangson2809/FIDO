@@ -7,7 +7,7 @@
 ## Current target authority and candidate
 
 - Source baseline for P1.9: `demo1@6b7c759dd0931fccff98645331cd72e6970ad16f`.
-- Canonical logical model: `docs/refactor/phase-1-erd-v2-approved.mmd`.
+- Canonical logical model: `docs/refactor-v2/target/erd-v2-approved.mmd`.
 - Physical target: `docs/refactor-v2/p1/P1-data-dictionary.csv` + isolated `backend/src/main/resources/db/clean-reset/V1__clean_schema.sql`.
 - Required system seed specification: [P1.8 operations/seed contract](P1.8-operations-seed-contract.md); target `V2__system_seed.sql` was updated to match the approved 13-code manifest. It remains isolated from the active Flyway chain.
 - Cross-domain evidence and remaining validation gate: [P1.9 consistency report](P1.9-contract-consistency-report.md).

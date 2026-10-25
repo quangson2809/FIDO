@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-ERD = ROOT / "docs/refactor/phase-1-erd-v2-approved.mmd"
+ERD = ROOT / "docs/refactor-v2/target/erd-v2-approved.mmd"
 SQL = ROOT / "backend/src/main/resources/db/clean-reset/V1__clean_schema.sql"
 DICT = ROOT / "docs/refactor-v2/p1/P1-data-dictionary.csv"
 

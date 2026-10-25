@@ -2,7 +2,7 @@
 
 ## 1. Authority and scope
 
-This document describes the approved target model only. The canonical source for exact columns, keys and relationships is [ERD v2](refactor/phase-1-erd-v2-approved.mmd); the physical contract is [P1 Data Dictionary](refactor-v2/p1/P1-data-dictionary.csv). Do not infer target fields from implementation classes.
+This document describes the approved target model only. The canonical source for exact columns, keys and relationships is [ERD v2](refactor-v2/target/erd-v2-approved.mmd); the physical contract is [P1 Data Dictionary](refactor-v2/p1/P1-data-dictionary.csv). Do not infer target fields from implementation classes.
 
 ## 2. Target table inventory — 31 tables
 

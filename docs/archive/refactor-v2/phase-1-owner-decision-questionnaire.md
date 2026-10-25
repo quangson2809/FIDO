@@ -4,10 +4,10 @@
 
 ## Current authority
 
-- [Owner approval record](../refactor-v2/p1/P1-owner-approval-2026-10-23.md) — approved target business and physical defaults.
-- [P1 decision log](../refactor-v2/p1/P1-decision-log.md) — approval status and implementation evidence still required.
-- [Owner-approved ERD v2](phase-1-erd-v2-approved.mmd) — canonical 31-table logical model.
-- [P1 physical data dictionary](../refactor-v2/p1/P1-data-dictionary.csv) — canonical physical contract.
+- [Owner approval record](../../refactor-v2/p1/P1-owner-approval-2026-10-23.md) — approved target business and physical defaults.
+- [P1 decision log](../../refactor-v2/p1/P1-decision-log.md) — approval status and implementation evidence still required.
+- [Owner-approved ERD v2](../../refactor-v2/target/erd-v2-approved.mmd) — canonical 31-table logical model.
+- [P1 physical data dictionary](../../refactor-v2/p1/P1-data-dictionary.csv) — canonical physical contract.
 
 ## Decisions no longer open
 

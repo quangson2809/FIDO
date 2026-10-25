@@ -4,7 +4,7 @@
 
 ## 1. Canonical physical contract
 
-- Logical table/relationship authority: `docs/refactor/phase-1-erd-v2-approved.mmd`.
+- Logical table/relationship authority: `docs/refactor-v2/target/erd-v2-approved.mmd`.
 - Physical field/type/null/default/key/index/constraint authority: `docs/refactor-v2/p1/P1-data-dictionary.csv` plus clean-reset DDL.
 - Owner behavior authority: `P1-owner-approval-2026-10-23.md` and `P1-decision-log.md`.
 - Target SQL uses integer BIGINT for monetary VND values. DECIMAL is permitted for descriptive numeric Product attributes only where specified by the dictionary.

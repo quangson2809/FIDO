@@ -9,7 +9,7 @@
 For target refactor contract work, use this authority order:
 
 1. Explicit, dated project-owner decisions for business semantics.
-2. `docs/refactor/phase-1-erd-v2-approved.mmd` for target logical persistence shape, within approved business decisions.
+2. `docs/refactor-v2/target/erd-v2-approved.mmd` for target logical persistence shape, within approved business decisions.
 3. `docs/refactor-v2/p1/P1-api-contract-mapping.csv`, `docs/04-api-contract.md` and `docs/05-dto-contract.md` for accepted target API/DTO decisions and recorded blockers.
 4. Actual backend Controller + request/response DTO + current state literals as evidence of **legacy runtime behavior**, not as a reason to override target decisions.
 5. Frontend types/services, then UI presentation.
