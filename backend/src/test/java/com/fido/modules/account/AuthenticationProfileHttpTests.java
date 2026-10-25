@@ -151,7 +151,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "POST",
                                 "/api/v1/auth/login",
                                 null,
-                                Map.of("phone", phone, "full_name", "Duplicate Test Account", "password", PASSWORD))
+                                Map.of("phone", phone, "password", PASSWORD))
                         .status());
         assertEquals(401, call("GET", "/api/v1/me", existingToken, null).status());
     }
