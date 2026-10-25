@@ -3,6 +3,8 @@ package com.fido.persistence;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.Map;
 import java.util.TreeSet;
@@ -10,8 +12,6 @@ import java.util.UUID;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-import org.flywaydb.core.Flyway;
-import org.flywaydb.core.api.output.MigrateResult;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.core.io.ClassPathResource;
@@ -37,18 +37,33 @@ class CleanResetSchemaTests {
         return url != null && !url.isBlank();
     }
 
-    private MigrateResult migrate(Flyway flyway) {
-        try {
-            return flyway.migrate();
-        } catch (RuntimeException failure) {
-            StringBuilder details = new StringBuilder("Target Flyway migration failed");
-            Throwable current = failure;
-            while (current != null) {
-                details.append("\n - ").append(current.getClass().getName())
-                        .append(": ").append(current.getMessage());
-                current = current.getCause();
+
+    private void installSchema(javax.sql.DataSource dataSource) {
+        dropAllTables(dataSource);
+        try (Connection connection = dataSource.getConnection()) {
+            ScriptUtils.executeSqlScript(
+                    connection, new ClassPathResource("db/install/FIDO_INSTALL.sql"));
+        } catch (SQLException failure) {
+            throw new IllegalStateException("Canonical FIDO installer failed", failure);
+        }
+    }
+
+    private void dropAllTables(javax.sql.DataSource dataSource) {
+        try (Connection connection = dataSource.getConnection();
+             var statement = connection.createStatement()) {
+            statement.execute("SET FOREIGN_KEY_CHECKS=0");
+            List<String> tables = new ArrayList<>();
+            try (var rows = statement.executeQuery(
+                    "SELECT TABLE_NAME FROM information_schema.tables "
+                            + "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_TYPE='BASE TABLE'")) {
+                while (rows.next()) tables.add(rows.getString(1));
             }
-            throw new IllegalStateException(details.toString(), failure);
+            for (String table : tables) {
+                statement.execute("DROP TABLE IF EXISTS `" + table.replace("`", "") + "`");
+            }
+            statement.execute("SET FOREIGN_KEY_CHECKS=1");
+        } catch (SQLException failure) {
+            throw new IllegalStateException("Could not reset disposable schema-test database", failure);
         }
     }
 
@@ -113,11 +128,9 @@ class CleanResetSchemaTests {
     @Test
     void cleanTargetBaselineCreatesExactlyTheApprovedThirtyOneTables() {
         var dataSource = newTestDataSource("schema");
-        Flyway flyway = Flyway.configure().dataSource(dataSource)
-                .locations("classpath:db/clean-reset").cleanDisabled(false).load();
+
         try {
-            assertEquals(1, migrate(flyway).migrationsExecuted);
-            flyway.validate();
+            installSchema(dataSource);
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
             String currentSchemaExpression = usesMySqlTestDatabase() ? "DATABASE()" : "CURRENT_SCHEMA()";
             String tablesSql = """
@@ -146,46 +159,41 @@ class CleanResetSchemaTests {
                         actualColumns.computeIfAbsent(table, ignored -> new TreeSet<>()).add(column);
                     });
             assertEquals(TARGET_COLUMNS, actualColumns);
-            assertEquals("1", flyway.info().current().getVersion().getVersion());
-            assertEquals(0, flyway.info().pending().length);
         } finally {
-            flyway.clean();
+            dropAllTables(dataSource);
         }
     }
 
     @Test
     void cleanThenMigrateDropsDevelopmentRowsAndReseedsSystemRows() {
         var dataSource = newTestDataSource("rebuild");
-        Flyway flyway = Flyway.configure().dataSource(dataSource)
-                .locations("classpath:db/clean-reset").cleanDisabled(false).load();
+
         try {
-            migrate(flyway);
+            installSchema(dataSource);
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
             jdbc.update("INSERT INTO categories(name,slug,status) VALUES (?,?,?)",
                     "Disposable category", "disposable-category", "ACTIVE");
             assertEquals(1, jdbc.queryForObject(
                     "SELECT COUNT(*) FROM categories WHERE slug='disposable-category'", Integer.class));
 
-            flyway.clean();
-            assertEquals(1, migrate(flyway).migrationsExecuted);
-            flyway.validate();
+            dropAllTables(dataSource);
+            installSchema(dataSource);
 
             assertEquals(0, jdbc.queryForObject(
                     "SELECT COUNT(*) FROM categories WHERE slug='disposable-category'", Integer.class));
             assertEquals(3, jdbc.queryForObject("SELECT COUNT(*) FROM roles", Integer.class));
             assertEquals(13, jdbc.queryForObject("SELECT COUNT(*) FROM permissions", Integer.class));
         } finally {
-            flyway.clean();
+            dropAllTables(dataSource);
         }
     }
 
     @Test
     void cleanTargetSeedsSystemRolesPermissionsAndOnlyGrantsAllPermissionsToSuperadmin() {
         var dataSource = newTestDataSource("seed");
-        Flyway flyway = Flyway.configure().dataSource(dataSource)
-                .locations("classpath:db/clean-reset").cleanDisabled(false).load();
+
         try {
-            migrate(flyway);
+            installSchema(dataSource);
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
             assertEquals(3, jdbc.queryForObject("SELECT COUNT(*) FROM roles", Integer.class));
             assertEquals(13, jdbc.queryForObject("SELECT COUNT(*) FROM permissions", Integer.class));
@@ -203,17 +211,16 @@ class CleanResetSchemaTests {
             assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM accounts", Integer.class));
             assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM products", Integer.class));
         } finally {
-            flyway.clean();
+            dropAllTables(dataSource);
         }
     }
 
     @Test
     void productImageGalleryOrderHasUniqueCompositeIndex() {
         var dataSource = newTestDataSource("product-image-order-index");
-        Flyway flyway = Flyway.configure().dataSource(dataSource)
-                .locations("classpath:db/clean-reset").cleanDisabled(false).load();
+
         try {
-            migrate(flyway);
+            installSchema(dataSource);
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
             // Verify the physical composite uniqueness and column order, not just static dictionary metadata.
             var indexRows = jdbc.queryForList(
@@ -230,17 +237,16 @@ class CleanResetSchemaTests {
             assertEquals(2, ((Number) indexRows.get(1).get("seq_in_index")).intValue());
             assertEquals("sort_order", indexRows.get(1).get("column_name"));
         } finally {
-            flyway.clean();
+            dropAllTables(dataSource);
         }
     }
 
     @Test
     void developmentFixtureSeedsParentChildAttributesAndInventory() throws SQLException {
         var dataSource = newTestDataSource("demo");
-        Flyway flyway = Flyway.configure().dataSource(dataSource)
-                .locations("classpath:db/clean-reset").cleanDisabled(false).load();
+
         try {
-            migrate(flyway);
+            installSchema(dataSource);
             try (Connection connection = dataSource.getConnection()) {
                 ScriptUtils.executeSqlScript(connection, new ClassPathResource("clean-reset/dev-seed.sql"));
             }
@@ -262,17 +268,16 @@ class CleanResetSchemaTests {
                     "SELECT quantity_on_hand FROM inventories WHERE warehouse_id=50001 AND product_id=30002",
                     Integer.class));
         } finally {
-            flyway.clean();
+            dropAllTables(dataSource);
         }
     }
 
     @Test
     void phoneIsUniqueAmongActiveAccountsAndReusableAfterSoftDeleteWhileEmailMayRepeat() {
         var dataSource = newTestDataSource("constraints");
-        Flyway flyway = Flyway.configure().dataSource(dataSource)
-                .locations("classpath:db/clean-reset").cleanDisabled(false).load();
+
         try {
-            migrate(flyway);
+            installSchema(dataSource);
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
             jdbc.update("INSERT INTO accounts(full_name,email,phone,password_hash,status) VALUES (?,?,?,?,?)",
                     "Test One", "same@example.invalid", "+84900000001", "test-only-hash", "ACTIVE");
@@ -293,7 +298,7 @@ class CleanResetSchemaTests {
                     "SELECT COUNT(*) FROM accounts WHERE phone = '+84900000001' AND deleted_at IS NULL",
                     Integer.class));
         } finally {
-            flyway.clean();
+            dropAllTables(dataSource);
         }
     }
 
@@ -301,10 +306,9 @@ class CleanResetSchemaTests {
     void targetCheckConstraintsRejectNegativeInventoryOverLimitVoucherAndMismatchedAttributeOption()
             throws SQLException {
         var dataSource = newTestDataSource("check-constraints");
-        Flyway flyway = Flyway.configure().dataSource(dataSource)
-                .locations("classpath:db/clean-reset").cleanDisabled(false).load();
+
         try {
-            migrate(flyway);
+            installSchema(dataSource);
             try (Connection connection = dataSource.getConnection()) {
                 ScriptUtils.executeSqlScript(connection, new ClassPathResource("clean-reset/dev-seed.sql"));
             }
@@ -316,7 +320,7 @@ class CleanResetSchemaTests {
             assertThrows(DataAccessException.class, () -> jdbc.update(
                     "INSERT INTO product_attribute_values(product_id,attribute_id,option_id) VALUES (30001,41002,42001)"));
         } finally {
-            flyway.clean();
+            dropAllTables(dataSource);
         }
     }
 }
