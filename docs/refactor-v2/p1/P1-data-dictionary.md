@@ -7,7 +7,7 @@
 - The canonical physical dictionary is [P1-data-dictionary.csv](P1-data-dictionary.csv), an RFC 4180 CSV with one row per target physical column.
 - Logical model: [approved ERD v2](../target/erd-v2-approved.mmd).
 - Owner decisions: [P1 approval record](P1-owner-approval-2026-10-23.md) and [decision log](P1-decision-log.md).
-- Target DDL and system seed: `backend/src/main/resources/db/clean-reset/V1__clean_schema.sql` and `V2__system_seed.sql`.
+- Target DDL and system seed: `backend/src/main/resources/db/install/FIDO_INSTALL.sql` (DDL and non-secret system seed in one file).
 
 Use a real CSV parser. The CSV records logical meaning, physical SQL proposal/nullability/default, generated fields, keys and constraints, owner module, transaction/use-case context, current implementation status and evidence. The current-runtime columns are a discrepancy inventory, not alternative target schema requirements.
 
@@ -27,7 +27,7 @@ Use a real CSV parser. The CSV records logical meaning, physical SQL proposal/nu
 Before accepting a change to this CSV:
 1. Parse the full CSV and assert a consistent header/row column count.
 2. Run `scripts/p1/check_contract_consistency.py` against the canonical ERD and target DDL.
-3. Run the clean-reset schema suite on a fresh isolated MySQL instance at the exact candidate SHA.
+3. Run the canonical installer schema suite on a fresh isolated MySQL instance at the exact candidate SHA.
 4. Review Entity/API/DTO/frontend mappings as separate gates; the CSV alone does not prove they match.
 
 Never run the reset against an unidentified or persistent database. Numeric retention and anonymization exceptions remain TBD under DB-12.
