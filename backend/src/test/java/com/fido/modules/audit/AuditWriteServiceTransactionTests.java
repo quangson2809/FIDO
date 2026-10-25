@@ -117,7 +117,7 @@ class AuditWriteServiceTransactionTests {
         }
 
         assertEquals(
-                1,
+                2,
                 jdbc.queryForObject(
                         "SELECT COUNT(*) FROM audit_logs WHERE actor_account_id = 7",
                         Integer.class));
@@ -146,7 +146,7 @@ class AuditWriteServiceTransactionTests {
                         "SELECT after_data FROM audit_logs WHERE entity_id = '42'",
                         String.class);
         assertTrue(beforeJson.contains("\"status\":\"DRAFT\""));
-        assertTrue(beforeJson.contains("\"title\":\"Safe title\""));
+        assertFalse(beforeJson.contains("Safe title"));
         assertFalse(beforeJson.contains("never-store-this-marker"));
         assertFalse(beforeJson.contains("nested-secret-marker"));
         assertTrue(afterJson.contains("\"status\":\"PUBLISHED\""));
