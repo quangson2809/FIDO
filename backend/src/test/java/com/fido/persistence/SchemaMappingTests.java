@@ -108,6 +108,13 @@ class SchemaMappingTests {
                                         "%")) {
                     while (cols.next()) {
                         String name = cols.getString("COLUMN_NAME").toLowerCase(Locale.ROOT);
+                        if (table.equals("addresses") && name.equals("address_text")) {
+                            assertEquals(
+                                    DatabaseMetaData.columnNullable,
+                                    cols.getInt("NULLABLE"),
+                                    "addresses.address_text is a nullable legacy-only compatibility column");
+                            continue;
+                        }
                         actualColumns.add(name);
                         Column column = expected.get(name);
                         assertNotNull(column, table + "." + name);
