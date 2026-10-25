@@ -141,12 +141,12 @@ abstract class AccountHttpSupport {
 
         for (Long roleId : roleIds) {
             db.update("DELETE FROM role_permissions WHERE role_id=?", roleId);
-            db.update("DELETE FROM roles WHERE role_id=?", roleId);
+            db.update("DELETE FROM roles WHERE id=?", roleId);
         }
 
         for (Long permissionId : permissionIds) {
             db.update("DELETE FROM role_permissions WHERE permission_id=?", permissionId);
-            db.update("DELETE FROM permissions WHERE permission_id=?", permissionId);
+            db.update("DELETE FROM permissions WHERE id=?", permissionId);
         }
     }
 }

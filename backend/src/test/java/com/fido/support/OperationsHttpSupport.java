@@ -75,20 +75,20 @@ public abstract class OperationsHttpSupport {
     protected void capability(User user, String code) {
         Long permission =
                 db.query(
-                        "SELECT permission_id FROM permissions WHERE code=?",
+                        "SELECT id FROM permissions WHERE code=?",
                         rs -> rs.next() ? rs.getLong(1) : null,
                         code);
         if (permission == null) {
             db.update("INSERT INTO permissions(code,name) VALUES (?,?)", code, code);
             permission =
                     db.queryForObject(
-                            "SELECT permission_id FROM permissions WHERE code=?", Long.class, code);
+                            "SELECT id FROM permissions WHERE code=?", Long.class, code);
             permissions.add(permission);
         }
         String roleCode = "T" + UUID.randomUUID().toString().replace("-", "");
         db.update("INSERT INTO roles(code,name) VALUES (?,?)", roleCode, roleCode);
         long role =
-                db.queryForObject("SELECT role_id FROM roles WHERE code=?", Long.class, roleCode);
+                db.queryForObject("SELECT id FROM roles WHERE code=?", Long.class, roleCode);
         roles.add(role);
         db.update(
                 "INSERT INTO role_permissions(role_id,permission_id) VALUES (?,?)",
@@ -108,9 +108,9 @@ public abstract class OperationsHttpSupport {
         }
         for (long role : roles) {
             db.update("DELETE FROM role_permissions WHERE role_id=?", role);
-            db.update("DELETE FROM roles WHERE role_id=?", role);
+            db.update("DELETE FROM roles WHERE id=?", role);
         }
         for (long permission : permissions)
-            db.update("DELETE FROM permissions WHERE permission_id=?", permission);
+            db.update("DELETE FROM permissions WHERE id=?", permission);
     }
 }

@@ -63,12 +63,12 @@ class CleanMigrationTests {
                         .cleanDisabled(false)
                         .load();
         try {
-            assertEquals(12, flyway.migrate().migrationsExecuted);
+            assertEquals(13, flyway.migrate().migrationsExecuted);
             var jdbc = new JdbcTemplate(dataSource);
             jdbc.update("INSERT INTO categories(name) VALUES ('phase14-before-clean')");
 
             flyway.clean();
-            assertEquals(12, flyway.migrate().migrationsExecuted);
+            assertEquals(13, flyway.migrate().migrationsExecuted);
             flyway.validate();
             assertEquals(
                     1,
@@ -81,12 +81,12 @@ class CleanMigrationTests {
                             """
                             SELECT COUNT(*)
                             FROM role_permissions rp
-                            JOIN permissions p ON p.permission_id=rp.permission_id
-                            JOIN roles r ON r.role_id=rp.role_id
+                            JOIN permissions p ON p.id=rp.permission_id
+                            JOIN roles r ON r.id=rp.role_id
                             WHERE p.code='REPORT_READ' AND r.code='SUPERADMIN'
                             """,
                             Integer.class));
-            assertEquals("12", flyway.info().current().getVersion().getVersion());
+            assertEquals("13", flyway.info().current().getVersion().getVersion());
             assertEquals(0, flyway.info().pending().length);
             assertEquals(0, flyway.migrate().migrationsExecuted);
             assertEquals(

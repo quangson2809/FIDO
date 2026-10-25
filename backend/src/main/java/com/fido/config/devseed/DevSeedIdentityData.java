@@ -20,25 +20,25 @@ public class DevSeedIdentityData {
                     reserved("accounts", "id", 900006L, "phone", "0909000006"),
                     reserved("accounts", "id", 900007L, "phone", "0909000007"),
                     reserved("accounts", "id", 900008L, "phone", "0909000008"),
-                    reserved("roles", "role_id", 900101L, "code", "FIDO_SEED_CATALOG"),
-                    reserved("roles", "role_id", 900102L, "code", "FIDO_SEED_INVENTORY"),
-                    reserved("roles", "role_id", 900103L, "code", "FIDO_SEED_ORDER"),
-                    reserved("roles", "role_id", 900104L, "code", "FIDO_SEED_OPS"),
-                    reserved("permissions", "permission_id", 900201L, "code", "CATALOG_READ"),
-                    reserved("permissions", "permission_id", 900202L, "code", "CATALOG_WRITE"),
-                    reserved("permissions", "permission_id", 900203L, "code", "INVENTORY_READ"),
-                    reserved("permissions", "permission_id", 900204L, "code", "INVENTORY_WRITE"),
-                    reserved("permissions", "permission_id", 900205L, "code", "ORDER_READ"),
-                    reserved("permissions", "permission_id", 900206L, "code", "ORDER_EDIT"),
-                    reserved("permissions", "permission_id", 900207L, "code", "ORDER_PROCESS"),
-                    reserved("permissions", "permission_id", 900208L, "code", "ORDER_FULFILLMENT"),
-                    reserved("permissions", "permission_id", 900209L, "code", "ORDER_EXCEPTION"),
-                    reserved("permissions", "permission_id", 900210L, "code", "ORDER_PAYMENT"),
-                    reserved("permissions", "permission_id", 900211L, "code", "ORDER_AFTER_SALES"),
-                    reserved("permissions", "permission_id", 900212L, "code", "AUDIT_READ"),
-                    reserved("permissions", "permission_id", 900213L, "code", "CONTENT_READ"),
-                    reserved("permissions", "permission_id", 900214L, "code", "CONTENT_WRITE"),
-                    reserved("permissions", "permission_id", 900215L, "code", "CUSTOMER_READ"));
+                    reserved("roles", "id", 900101L, "code", "FIDO_SEED_CATALOG"),
+                    reserved("roles", "id", 900102L, "code", "FIDO_SEED_INVENTORY"),
+                    reserved("roles", "id", 900103L, "code", "FIDO_SEED_ORDER"),
+                    reserved("roles", "id", 900104L, "code", "FIDO_SEED_OPS"),
+                    reserved("permissions", "id", 900201L, "code", "CATALOG_READ"),
+                    reserved("permissions", "id", 900202L, "code", "CATALOG_WRITE"),
+                    reserved("permissions", "id", 900203L, "code", "INVENTORY_READ"),
+                    reserved("permissions", "id", 900204L, "code", "INVENTORY_WRITE"),
+                    reserved("permissions", "id", 900205L, "code", "ORDER_READ"),
+                    reserved("permissions", "id", 900206L, "code", "ORDER_EDIT"),
+                    reserved("permissions", "id", 900207L, "code", "ORDER_PROCESS"),
+                    reserved("permissions", "id", 900208L, "code", "ORDER_FULFILLMENT"),
+                    reserved("permissions", "id", 900209L, "code", "ORDER_EXCEPTION"),
+                    reserved("permissions", "id", 900210L, "code", "ORDER_PAYMENT"),
+                    reserved("permissions", "id", 900211L, "code", "ORDER_AFTER_SALES"),
+                    reserved("permissions", "id", 900212L, "code", "AUDIT_READ"),
+                    reserved("permissions", "id", 900213L, "code", "CONTENT_READ"),
+                    reserved("permissions", "id", 900214L, "code", "CONTENT_WRITE"),
+                    reserved("permissions", "id", 900215L, "code", "CUSTOMER_READ"));
 
     private final JdbcTemplate jdbc;
 
@@ -98,7 +98,7 @@ public class DevSeedIdentityData {
     private void seedPermissions() {
         jdbc.update(
                 """
-                INSERT INTO permissions(permission_id, code, name) VALUES
+                INSERT INTO permissions(id, code, name) VALUES
                 (900201,'CATALOG_READ','Đọc catalog quản trị'),
                 (900202,'CATALOG_WRITE','Ghi catalog quản trị'),
                 (900203,'INVENTORY_READ','Đọc tồn kho và phiếu nhập'),
@@ -120,7 +120,7 @@ public class DevSeedIdentityData {
     private void seedRoles() {
         jdbc.update(
                 """
-                INSERT INTO roles(role_id, code, name, description) VALUES
+                INSERT INTO roles(id, code, name, description) VALUES
                 (900101,'FIDO_SEED_CATALOG','Seed Catalog Staff',
                     'Dev-only: CATALOG_READ + CATALOG_WRITE'),
                 (900102,'FIDO_SEED_INVENTORY','Seed Inventory Staff',
@@ -147,12 +147,12 @@ public class DevSeedIdentityData {
         jdbc.update(
                 """
                 INSERT INTO role_permissions(role_id, permission_id)
-                SELECT r.role_id, p.permission_id
+                SELECT r.id, p.id
                 FROM roles r CROSS JOIN permissions p
                 WHERE r.code='SUPERADMIN'
                   AND NOT EXISTS (
                       SELECT 1 FROM role_permissions rp
-                      WHERE rp.role_id=r.role_id AND rp.permission_id=p.permission_id
+                      WHERE rp.role_id=r.id AND rp.permission_id=p.id
                   )
                 """);
     }

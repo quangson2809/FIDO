@@ -16,8 +16,8 @@ public class DevSeedStateInspector {
             List.of(
                     probe("accounts", "id BETWEEN 900001 AND 900008", 8),
                     probe("addresses", "id BETWEEN 910001 AND 910003", 3),
-                    probe("roles", "role_id BETWEEN 900101 AND 900104", 4),
-                    probe("permissions", "permission_id BETWEEN 900201 AND 900215", 15),
+                    probe("roles", "id BETWEEN 900101 AND 900104", 4),
+                    probe("permissions", "id BETWEEN 900201 AND 900215", 15),
                     probe("account_roles", "account_id BETWEEN 900001 AND 900008", 12),
                     probe("role_permissions", "role_id BETWEEN 900101 AND 900104", 15),
                     probe("categories", "category_id BETWEEN 920001 AND 920008", 8),

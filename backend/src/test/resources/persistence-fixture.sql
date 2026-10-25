@@ -4,8 +4,8 @@ INSERT INTO addresses(
     address_line,is_default,created_at,updated_at
 ) VALUES (1,1,'Test address','Fixture recipient','0900000001','Hà Nội','Cầu Giấy',
           'Dịch Vọng','Test address',TRUE,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
-INSERT INTO roles(role_id,code,name,description) VALUES (101,'fixture-role','Fixture role',NULL);
-INSERT INTO permissions(permission_id,code,name) VALUES (1001,'fixture-permission','Fixture permission');
+INSERT INTO roles(id,code,name,description) VALUES (101,'fixture-role','Fixture role',NULL);
+INSERT INTO permissions(id,code,name) VALUES (1001,'fixture-permission','Fixture permission');
 INSERT INTO account_roles VALUES (1,101);
 INSERT INTO role_permissions VALUES (101,1001);
 INSERT INTO categories VALUES (1,NULL,'Root');

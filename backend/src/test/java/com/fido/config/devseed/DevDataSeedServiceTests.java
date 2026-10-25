@@ -104,8 +104,8 @@ class DevDataSeedServiceTests {
         delete("DELETE FROM role_permissions WHERE permission_id BETWEEN 900201 AND 900215");
         delete("DELETE FROM role_permissions WHERE role_id BETWEEN 900101 AND 900104");
         delete("DELETE FROM accounts WHERE id BETWEEN 900001 AND 900008");
-        delete("DELETE FROM roles WHERE role_id BETWEEN 900101 AND 900104");
-        delete("DELETE FROM permissions WHERE permission_id BETWEEN 900201 AND 900215");
+        delete("DELETE FROM roles WHERE id BETWEEN 900101 AND 900104");
+        delete("DELETE FROM permissions WHERE id BETWEEN 900201 AND 900215");
         delete("DELETE FROM colors WHERE color_id BETWEEN 950001 AND 950004");
         delete("DELETE FROM size_values WHERE size_value_id BETWEEN 941001 AND 941006");
         delete("DELETE FROM size_systems WHERE size_system_id BETWEEN 940001 AND 940002");
@@ -113,7 +113,7 @@ class DevDataSeedServiceTests {
         delete("DELETE FROM categories WHERE category_id BETWEEN 920005 AND 920008");
         delete("DELETE FROM categories WHERE category_id BETWEEN 920001 AND 920004");
         delete("DELETE FROM accounts WHERE id = 899001");
-        delete("DELETE FROM permissions WHERE permission_id = 899201");
+        delete("DELETE FROM permissions WHERE id = 899201");
     }
 
     @Test
@@ -214,7 +214,7 @@ class DevDataSeedServiceTests {
                         """
                         SELECT COUNT(*)
                         FROM account_roles ar
-                        JOIN roles r ON r.role_id=ar.role_id
+                        JOIN roles r ON r.id=ar.role_id
                         WHERE ar.account_id=900001
                           AND r.code='SUPERADMIN'
                         """,
@@ -281,7 +281,7 @@ class DevDataSeedServiceTests {
     @Test
     void seedRejectsPermissionCodeOwnedByDifferentRow() {
         jdbc.update(
-                "INSERT INTO permissions(permission_id,code,name) VALUES (899201,?,?)",
+                "INSERT INTO permissions(id,code,name) VALUES (899201,?,?)",
                 CatalogPolicy.CATALOG_WRITE,
                 "Conflicting catalog permission");
 
@@ -291,7 +291,7 @@ class DevDataSeedServiceTests {
         assertEquals(
                 0,
                 jdbc.queryForObject(
-                        "SELECT COUNT(*) FROM permissions WHERE permission_id BETWEEN 900201 AND"
+                        "SELECT COUNT(*) FROM permissions WHERE id BETWEEN 900201 AND"
                             + " 900215",
                         Integer.class));
     }
@@ -326,8 +326,8 @@ class DevDataSeedServiceTests {
                         """
                         SELECT p.code
                         FROM role_permissions rp
-                        JOIN roles r ON r.role_id=rp.role_id
-                        JOIN permissions p ON p.permission_id=rp.permission_id
+                        JOIN roles r ON r.id=rp.role_id
+                        JOIN permissions p ON p.id=rp.permission_id
                         WHERE r.code=?
                         """,
                         String.class,
