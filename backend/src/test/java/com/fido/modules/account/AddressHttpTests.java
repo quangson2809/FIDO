@@ -39,28 +39,20 @@ class AddressHttpTests extends AccountHttpSupport {
         assertTrue(db.queryForObject("SELECT is_default FROM addresses WHERE id=?",Boolean.class,secondId));
     }
 
-    @Test void rowsWithoutDefaultAreRepairedBeforePatch() throws Exception {
+    @Test void legacyAddressesWithoutDefaultsAreRepairedBeforePatch() throws Exception {
         String phone = phone();
         long accountId = register(phone);
         String token = login(phone);
-        db.update("""
-                INSERT INTO addresses(account_id,recipient_name,recipient_phone,province,district,ward,
-                                      address_line,is_default,created_at,updated_at)
-                VALUES (?, 'First recipient', '0901000001', 'Hà Nội', 'Cầu Giấy', 'Dịch Vọng',
-                        'First legacy address', FALSE, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
-                """, accountId);
+        db.update("INSERT INTO addresses(account_id,address_text,is_default,created_at,updated_at) "
+                + "VALUES (?, 'legacy first', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)", accountId);
         long firstId = db.queryForObject(
                 "SELECT MAX(id) FROM addresses WHERE account_id=?", Long.class, accountId);
-        db.update("""
-                INSERT INTO addresses(account_id,recipient_name,recipient_phone,province,district,ward,
-                                      address_line,is_default,created_at,updated_at)
-                VALUES (?, 'Second recipient', '0901000002', 'Hà Nội', 'Cầu Giấy', 'Dịch Vọng',
-                        'Second legacy address', FALSE, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
-                """, accountId);
+        db.update("INSERT INTO addresses(account_id,address_text,is_default,created_at,updated_at) "
+                + "VALUES (?, 'legacy second', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)", accountId);
         long secondId = db.queryForObject(
                 "SELECT MAX(id) FROM addresses WHERE account_id=?", Long.class, accountId);
 
-        var patched = call("PATCH", "/api/v1/me/addresses/" + firstId, token, address("Updated address"));
+        var patched = call("PATCH", "/api/v1/me/addresses/" + firstId, token, address("migrated address"));
         assertEquals(200, patched.status(), patched.body());
         assertFalse(db.queryForObject("SELECT is_default FROM addresses WHERE id=?", Boolean.class, firstId));
         assertTrue(db.queryForObject("SELECT is_default FROM addresses WHERE id=?", Boolean.class, secondId));
