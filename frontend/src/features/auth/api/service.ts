@@ -4,7 +4,7 @@ import type { AuthService } from '../types';
 
 export const authService: AuthService = {
   async login(identifier, password) {
-    const response = await apiClient.post<unknown>('/auth/login', { identifier, password });
+    const response = await apiClient.post<unknown>('/auth/login', { phone: identifier, password });
     const login = parseLoginResponse(response);
     setApiAccessToken(login.access_token);
     return login;

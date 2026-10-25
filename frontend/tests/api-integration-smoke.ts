@@ -39,6 +39,7 @@ const requireBearer = (request: IncomingMessage): void => {
 };
 
 let capturedRegistrationBody: unknown;
+let capturedLoginBody: unknown;
 let capturedSizeBody: unknown;
 let capturedVoucherBody: unknown;
 let capturedQuoteBody: unknown;
@@ -165,20 +166,27 @@ const server = createServer((request, response) => {
   }
 
   if (request.method === 'POST' && url.pathname === '/api/v1/auth/login') {
-    writeJson(response, 200, {
-      data: malformedLoginResponse
-        ? {
-            access_token: 42,
-            token_type: 'Bearer',
-            expires_in: 900,
-            account,
-          }
-        : {
-            access_token: 'smoke-token',
-            token_type: 'Bearer',
-            expires_in: 900,
-            account,
-          },
+    let raw = '';
+    request.on('data', (chunk: Buffer) => {
+      raw += chunk.toString();
+    });
+    request.on('end', () => {
+      capturedLoginBody = JSON.parse(raw);
+      writeJson(response, 200, {
+        data: malformedLoginResponse
+          ? {
+              access_token: 42,
+              token_type: 'Bearer',
+              expires_in: 900,
+              account,
+            }
+          : {
+              access_token: 'smoke-token',
+              token_type: 'Bearer',
+              expires_in: 900,
+              account,
+            },
+      });
     });
     return;
   }
@@ -447,6 +455,10 @@ try {
 
   const login = await authService.login('0909000001', 'Fido@123');
   assert.equal(login.access_token, 'smoke-token');
+  assert.deepEqual(capturedLoginBody, {
+    phone: '0909000001',
+    password: 'Fido@123',
+  });
 
   const sizes = [
     { size_value_id: 21, code: 'M', display_name: 'Medium', sort_order: 2 },
