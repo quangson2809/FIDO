@@ -1,4 +1,4 @@
-name: Clean Schema Reset target verification
+name: Canonical database installer verification
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - demo1
       - feature/clean-schema-reset
     paths:
-      - "backend/src/main/resources/db/clean-reset/**"
+      - "backend/src/main/resources/db/install/**"
       - "backend/src/test/java/com/fido/persistence/CleanResetSchemaTests.java"
       - "backend/src/test/java/com/fido/persistence/CleanTargetEntityMappingTests.java"
       - ".github/workflows/clean-reset-schema-verification.yml"
@@ -27,7 +27,7 @@ on:
       - demo1
       - docs/phase-1-erd-v2-freeze
     paths:
-      - "backend/src/main/resources/db/clean-reset/**"
+      - "backend/src/main/resources/db/install/**"
       - "backend/src/test/java/com/fido/persistence/CleanResetSchemaTests.java"
       - "backend/src/test/java/com/fido/persistence/CleanTargetEntityMappingTests.java"
       - "backend/src/test/resources/clean-reset/**"
@@ -55,7 +55,7 @@ concurrency:
 
 jobs:
   target-schema:
-    name: Verify target schema from an empty database
+    name: Verify canonical 31-table installer on an empty database
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -99,6 +99,6 @@ jobs:
       - name: Run contract consistency gate
         run: python scripts/p1/check_contract_consistency.py
 
-      - name: Run clean-target schema tests
+      - name: Run canonical-installer schema tests
         working-directory: backend
         run: ./gradlew test --tests com.fido.persistence.CleanResetSchemaTests --tests com.fido.persistence.CleanTargetEntityMappingTests --stacktrace
