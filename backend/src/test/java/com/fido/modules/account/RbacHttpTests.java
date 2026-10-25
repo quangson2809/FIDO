@@ -53,7 +53,7 @@ class RbacHttpTests extends AccountHttpSupport {
 
         assertEquals(201, permissionResponse.status(), permissionResponse.body());
 
-        long permissionId = permissionResponse.data().get("data").get("permission_id").asLong();
+        long permissionId = permissionResponse.data().get("data").get("id").asLong();
 
         permissionIds.add(permissionId);
 
@@ -102,7 +102,7 @@ class RbacHttpTests extends AccountHttpSupport {
 
         boolean permissionFound = false;
         for (var permissionNode : permissionList.data().get("data")) {
-            if (permissionNode.get("permission_id").asLong() == permissionId) {
+            if (permissionNode.get("id").asLong() == permissionId) {
                 permissionFound = true;
                 break;
             }
@@ -126,7 +126,7 @@ class RbacHttpTests extends AccountHttpSupport {
 
         assertEquals(201, roleResponse.status(), roleResponse.body());
 
-        long roleId = roleResponse.data().get("data").get("role_id").asLong();
+        long roleId = roleResponse.data().get("data").get("id").asLong();
 
         roleIds.add(roleId);
 
@@ -136,14 +136,14 @@ class RbacHttpTests extends AccountHttpSupport {
 
         boolean roleFound = false;
         for (var roleNode : accessControl.data().get("data").get("roles")) {
-            if (roleNode.get("role_id").asLong() != roleId) {
+            if (roleNode.get("id").asLong() != roleId) {
                 continue;
             }
 
             roleFound = true;
             assertEquals(1, roleNode.get("permissions").size());
             assertEquals(
-                    permissionId, roleNode.get("permissions").get(0).get("permission_id").asLong());
+                    permissionId, roleNode.get("permissions").get(0).get("id").asLong());
         }
 
         assertTrue(roleFound);

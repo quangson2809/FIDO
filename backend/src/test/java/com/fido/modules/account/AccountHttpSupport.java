@@ -93,7 +93,7 @@ abstract class AccountHttpSupport {
 
         assertEquals(201, response.status, response.body);
 
-        long accountId = response.data.get("data").get("account").get("account_id").asLong();
+        long accountId = response.data.get("data").get("account").get("id").asLong();
 
         created.add(accountId);
         return accountId;

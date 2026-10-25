@@ -138,14 +138,14 @@ class AccountAccessServiceTests {
 
         assertEquals(7, tree.get("account").size());
 
-        assertEquals(201L, tree.get("account").get("account_id").asLong());
+        assertEquals(201L, tree.get("account").get("id").asLong());
 
         assertFalse(tree.toString().contains("password"));
 
         assertFalse(tree.toString().contains("never-expose-this"));
 
-        assertTrue(tree.get("roles").get(0).has("role_id"));
+        assertTrue(tree.get("roles").get(0).has("id"));
 
-        assertTrue(tree.get("permissions").get(0).has("permission_id"));
+        assertTrue(tree.get("permissions").get(0).has("id"));
     }
 }

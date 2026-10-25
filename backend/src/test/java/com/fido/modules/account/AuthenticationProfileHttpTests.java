@@ -39,7 +39,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
 
         var me = call("GET", "/api/v1/me", token, null);
         assertEquals(200, me.status());
-        assertEquals(accountId, me.data().get("data").get("account").get("account_id").asLong());
+        assertEquals(accountId, me.data().get("data").get("account").get("id").asLong());
         assertEquals(1, me.data().get("data").get("roles").size());
         assertFalse(me.body().contains("password"));
 
@@ -174,7 +174,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
 
         assertEquals(201, reRegistered.status(), reRegistered.body());
         long newAccountId =
-                reRegistered.data().get("data").get("account").get("account_id").asLong();
+                reRegistered.data().get("data").get("account").get("id").asLong();
         assertNotEquals(oldAccountId, newAccountId);
         assertEquals(
                 1,
@@ -243,7 +243,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
             for (var result : results) {
                 if (result.status() == 201) {
                     created.add(
-                            result.data().get("data").get("account").get("account_id").asLong());
+                            result.data().get("data").get("account").get("id").asLong());
                 }
             }
 

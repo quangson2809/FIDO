@@ -27,7 +27,7 @@ class StaffHttpTests extends AccountHttpSupport {
 
         assertEquals(201, added.status(), added.body());
 
-        long accountId = added.data().get("data").get("account").get("account_id").asLong();
+        long accountId = added.data().get("data").get("account").get("id").asLong();
 
         created.add(accountId);
 
@@ -133,7 +133,7 @@ class StaffHttpTests extends AccountHttpSupport {
 
         var me = call("GET", "/api/v1/me", token, null);
 
-        long rootId = me.data().get("data").get("account").get("account_id").asLong();
+        long rootId = me.data().get("data").get("account").get("id").asLong();
 
         assertEquals(
                 409,
