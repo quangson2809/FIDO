@@ -21,17 +21,13 @@ public class Account {
     @Column(name = "id", nullable = false)
     private Long accountId;
 
-    // Legacy runtime migrations can contain accounts without a backfillable name.
-    // The isolated clean-target DDL enforces NOT NULL and is verified separately.
-    @Column(name = "full_name", nullable = true, length = 150)
+    @Column(name = "full_name", nullable = false, length = 150)
     private String fullName;
 
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
-    // Legacy runtime schema still allows NULL until a safe account data disposition exists.
-    // New commands require phone; clean-target DDL enforces NOT NULL.
-    @Column(name = "phone", nullable = true, length = 20)
+    @Column(name = "phone", nullable = false, length = 20)
     private String phone;
 
     @Column(name = "phone_active_key", insertable = false, updatable = false, length = 20)
