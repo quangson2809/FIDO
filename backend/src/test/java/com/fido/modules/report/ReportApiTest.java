@@ -226,7 +226,7 @@ class ReportApiTest extends OperationsHttpSupport {
         }
         db.update(
                 """
-                DELETE FROM role_permissions WHERE permission_id=(SELECT permission_id FROM permissions WHERE code='REPORT_READ')
+                DELETE FROM role_permissions WHERE permission_id=(SELECT id FROM permissions WHERE code='REPORT_READ')
                 AND role_id IN (SELECT role_id FROM account_roles WHERE account_id=?)
                 """,
                 staff.id());

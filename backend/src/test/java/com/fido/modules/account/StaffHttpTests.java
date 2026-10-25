@@ -32,7 +32,7 @@ class StaffHttpTests extends AccountHttpSupport {
         created.add(accountId);
 
         long adminRoleId =
-                db.queryForObject("SELECT role_id FROM roles WHERE code='ADMIN'", Long.class);
+                db.queryForObject("SELECT id FROM roles WHERE code='ADMIN'", Long.class);
 
         assertEquals("ADMIN", added.data().get("data").get("roles").get(0).get("code").asText());
 
@@ -81,7 +81,7 @@ class StaffHttpTests extends AccountHttpSupport {
         db.update(
                 "INSERT INTO roles (code, name) VALUES (?, ?)", customCode, "Non-staff test role");
         long customerRoleId =
-                db.queryForObject("SELECT role_id FROM roles WHERE code=?", Long.class, customCode);
+                db.queryForObject("SELECT id FROM roles WHERE code=?", Long.class, customCode);
         roleIds.add(customerRoleId);
         assertEquals(
                 400,

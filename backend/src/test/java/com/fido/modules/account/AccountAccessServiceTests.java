@@ -43,7 +43,7 @@ class AccountAccessServiceTests {
 
         jdbc.update(
                 """
-                INSERT INTO roles (role_id, code, name)
+                INSERT INTO roles (id, code, name)
                 VALUES
                     (201, 'test-role-a', 'A'),
                     (202, 'test-role-b', 'B'),
@@ -52,7 +52,7 @@ class AccountAccessServiceTests {
 
         jdbc.update(
                 """
-                INSERT INTO permissions (permission_id, code, name)
+                INSERT INTO permissions (id, code, name)
                 VALUES
                     (201, 'test.read', 'Read'),
                     (202, 'test.write', 'Write')
@@ -94,7 +94,7 @@ class AccountAccessServiceTests {
         jdbc.update(
                 """
                 DELETE FROM role_permissions
-                WHERE role_id = (SELECT role_id FROM roles WHERE code = 'SUPERADMIN')
+                WHERE role_id = (SELECT id FROM roles WHERE code = 'SUPERADMIN')
                 """);
 
         assertTrue(access.isSuperadmin(203L));
