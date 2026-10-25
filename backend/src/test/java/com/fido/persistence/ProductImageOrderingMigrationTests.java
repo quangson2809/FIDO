@@ -22,7 +22,7 @@ class ProductImageOrderingMigrationTests {
         try {
             assertEquals(1, flyway.migrate().migrationsExecuted);
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-            jdbc.update("INSERT INTO products(sku,selling_price) VALUES (?,?)", "P1-ORDER-A", 1000L);
+            jdbc.update("INSERT INTO products(sku,selling_price,status) VALUES (?,?, 'DRAFT')", "P1-ORDER-A", 1000L);
             jdbc.update("INSERT INTO products(sku,selling_price) VALUES (?,?)", "P1-ORDER-B", 1000L);
             long a = jdbc.queryForObject("SELECT id FROM products WHERE sku='P1-ORDER-A'", Long.class);
             long b = jdbc.queryForObject("SELECT id FROM products WHERE sku='P1-ORDER-B'", Long.class);

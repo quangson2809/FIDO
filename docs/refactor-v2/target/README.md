@@ -1,6 +1,6 @@
 # ERD v2 Target Artifacts
 
-This directory is the canonical home for the approved ERD, its human-readable summary, the dictionary pointer and the isolated clean-reset operator runbook. The machine-readable physical Data Dictionary remains at `../p1/P1-data-dictionary.csv` because it is also a P1 acceptance artifact consumed by the consistency checker. Link to that CSV; do not create a second copy.
+This directory is the canonical home for the approved ERD, its human-readable summary, the dictionary pointer and the canonical baseline operator runbook. The machine-readable physical Data Dictionary remains at `../p1/P1-data-dictionary.csv` because it is also a P1 acceptance artifact consumed by the consistency checker. Link to that CSV; do not create a second copy.
 
 | Artifact | Authority / use |
 |---|---|
@@ -13,6 +13,6 @@ This directory is the canonical home for the approved ERD, its human-readable su
 
 ## Change protocol
 
-Any approved target change must update the logical ERD, physical dictionary, isolated target DDL, seed specification if affected, domain API/DTO/business/transaction contract and relevant tests/traceability in one coordinated phase. Then run the contract-consistency checker and the fresh isolated MySQL verification on the exact candidate SHA.
+Any approved target change must update the logical ERD, physical dictionary, canonical baseline SQL, seed specification if affected, domain API/DTO/business/transaction contract and relevant tests/traceability in one coordinated phase. Then run the contract-consistency checker and the fresh isolated MySQL verification on the exact candidate SHA.
 
-Do not update the active Flyway chain or reset a database merely by editing these design artifacts. Existing-data rollout requires its own approved migration/preflight.
+Do not create per-phase SQL migrations. Update the canonical baseline and Data Dictionary together after an approved ERD change, then validate on a fresh disposable database. Existing-data rollout requires a separately approved migration/preflight.

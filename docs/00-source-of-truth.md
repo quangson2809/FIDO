@@ -8,12 +8,12 @@ Use the following artifacts as the current development contract, in this order:
 
 1. **Owner decisions:** [P1 owner approval](refactor-v2/p1/P1-owner-approval-2026-10-23.md), the [P1.9 owner amendment](refactor-v2/p1/P1-owner-amendment-2026-10-25.md), and approved rows in [P1 Decision Log](refactor-v2/p1/P1-decision-log.md).
 2. **Logical data model:** [Owner-approved ERD v2](refactor-v2/target/erd-v2-approved.mmd).
-3. **Physical data contract:** [P1 Data Dictionary](refactor-v2/p1/P1-data-dictionary.csv), validated clean-reset DDL and required system seed under `backend/src/main/resources/db/clean-reset/`.
+3. **Physical data contract:** [P1 Data Dictionary](refactor-v2/p1/P1-data-dictionary.csv), the single schema-and-seed baseline `backend/src/main/resources/db/migration/V1__fido_target_schema.sql`.
 4. **HTTP and wire contracts:** [API Contract](04-api-contract.md) and [DTO Contract](05-dto-contract.md).
 5. **Business and transaction invariants:** [Business Rules](06-business-rules-state-machines.md) and [Transactions, Concurrency and Idempotency](07-transactions-concurrency-idempotency.md).
 6. **Operations policy:** [P1.8 Operations, Audit, Content/Report and Seed Contract](refactor-v2/p1/P1.8-operations-seed-contract.md) plus its [operator runbook requirements](refactor-v2/p1/P1.8-operations-seed-runbook.md). It governs audit fields/correlation/redaction, content/report use cases, deletion/FK lifecycle, seed manifest and unresolved retention blockers; it does not override P1.2/P1.3/P1.5/P1.7 domain ownership.
 7. **Cross-domain gate and implementation status:** [P1.9 consistency report](refactor-v2/p1/P1.9-contract-consistency-report.md), [P1 exit gate](refactor-v2/p1/P1-exit-gate.md), and P1 API/use-case mapping and traceability artifacts under `docs/refactor-v2/p1/`. These describe delivery status and gaps; they do not override approved behavior. The image-order and target Order permission decisions are recorded; the P1.9 contract/schema gate is PASS on the current PR head. Runtime implementation remains pending.
-8. **Current code and migrations:** evidence of what must be aligned, never an automatic specification for the target design.
+8. **Current code:** evidence of what must be aligned, never an automatic specification for the target design. The only fresh-install SQL is `backend/src/main/resources/db/migration/V1__fido_target_schema.sql`; removed V1–V14 migration files are historical implementation artifacts, not a current schema authority.
 9. **P0 reports and archived documents:** historical evidence only. Do not copy a superseded rule into a current contract.
 
 The older decision questionnaire is superseded by the dated owner approval and later owner amendments. It is not a source of open choices. If an active document conflicts with an authority above, update that document; do not preserve both alternatives in the current contract.

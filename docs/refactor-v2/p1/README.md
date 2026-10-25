@@ -8,7 +8,7 @@
 
 1. [Owner approval record](P1-owner-approval-2026-10-23.md) plus the [2026-10-25 owner amendment](P1-owner-amendment-2026-10-25.md).
 2. [Canonical logical ERD](../target/erd-v2-approved.mmd).
-3. [Canonical physical Data Dictionary CSV](P1-data-dictionary.csv) and isolated target DDL under `backend/src/main/resources/db/clean-reset/`.
+3. [Canonical physical Data Dictionary CSV](P1-data-dictionary.csv) and the single schema-and-seed baseline `backend/src/main/resources/db/migration/V1__fido_target_schema.sql`.
 4. [Decision log](P1-decision-log.md) and current contracts `docs/04–07` plus P1.2–P1.8 below.
 5. [P1.9 consistency report](P1.9-contract-consistency-report.md) and [exit gate](P1-exit-gate.md) for delivery status; neither overrides an approved business contract.
 
