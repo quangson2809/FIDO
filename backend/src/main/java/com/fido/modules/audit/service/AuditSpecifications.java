@@ -24,11 +24,11 @@ public final class AuditSpecifications {
                 predicates.add(cb.equal(root.get("action"), filter.action()));
             }
 
-            if (filter.targetType() != null) {
+            if (filter.entityType() != null) {
                 predicates.add(cb.equal(cb.coalesce(root.get("entityType"), root.get("targetType")), filter.targetType()));
             }
 
-            if (filter.targetId() != null) {
+            if (filter.entityId() != null) {
                 predicates.add(cb.equal(cb.coalesce(root.get("entityId"), root.get("targetId")), filter.targetId()));
             }
 

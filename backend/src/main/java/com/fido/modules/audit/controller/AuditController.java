@@ -27,8 +27,8 @@ public class AuditController {
     public ApiListResponse<AuditLogDto> search(
             @RequestParam(name = "actor_account_id", required = false) Long actorAccountId,
             @RequestParam(required = false) String action,
-            @RequestParam(name = "target_type", required = false) String targetType,
-            @RequestParam(name = "target_id", required = false) String targetId,
+            @RequestParam(name = "entity_type", required = false) String entityType,
+            @RequestParam(name = "entity_id", required = false) String entityId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
                     LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
@@ -37,6 +37,6 @@ public class AuditController {
             @RequestParam(name = "page_size", required = false) Integer pageSize) {
         return service.search(
                 new AuditSearchFilter(
-                        actorAccountId, action, targetType, targetId, from, to, page, pageSize));
+                        actorAccountId, action, entityType, entityId, from, to, page, pageSize));
     }
 }

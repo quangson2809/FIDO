@@ -24,8 +24,8 @@ public class AuditQueryService {
         var result=logs.findAll(AuditSpecifications.search(filter),pageable);
         var data=result.getContent().stream().map(log -> new AuditLogDto(
                 log.getAuditId(),log.getActorAccountId(),log.getAction(),
-                log.getEntityType()!=null?log.getEntityType():log.getTargetType(),
-                log.getEntityId()!=null?log.getEntityId():log.getTargetId(),
+                log.getEntityType(),
+                log.getEntityId(),
                 log.getBeforeData(),log.getAfterData(),log.getCorrelationId(),log.getCreatedAt())).toList();
         return ApiListResponse.of(data,pagination.meta(result.getTotalElements()));
     }
