@@ -83,36 +83,37 @@ public class RbacCommandService {
         role.setCode(request.code());
         role.setName(request.name());
         role.setDescription(request.description());
+        role.setStatus("ACTIVE");
 
         roles.save(role);
         replacePermissions(role, request.permission_ids());
 
         entityManager.flush();
-
         audit.record(
-                AuditEvent.of(
-                        actor, AuditAction.ROLE_CREATE, AuditTargetType.ROLE, role.getRoleId()));
+                AuditEvent.of(actor, AuditAction.ROLE_CREATE, AuditTargetType.ROLE, role.getRoleId()));
 
         return detail(role);
     }
 
     public RoleDetailDto updateRole(Long actor, Long roleId, RolePatchRequest request) {
         lockSuperadminRole();
-
         Role role = role(roleId);
 
         if (request.getName() != null) {
-            role.setName(request.getName());
+            role.setName(request.getName().trim());
         }
-
         if (request.isDescriptionPresent()) {
             role.setDescription(request.getDescription());
         }
+        if (request.getStatus() != null) {
+            if ("SUPERADMIN".equals(role.getCode()) && !"ACTIVE".equals(request.getStatus())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "SYSTEM_ROLE_PROTECTED");
+            }
+            role.setStatus(request.getStatus());
+        }
 
         replacePermissions(role, request.getPermissionIds());
-
         entityManager.flush();
-
         audit.record(AuditEvent.of(actor, AuditAction.ROLE_UPDATE, AuditTargetType.ROLE, roleId));
 
         return detail(role);
@@ -120,7 +121,6 @@ public class RbacCommandService {
 
     public void deleteRole(Long actor, Long roleId) {
         lockSuperadminRole();
-
         Role role = role(roleId);
 
         if (SYSTEM_ROLE_CODES.contains(role.getCode()) || assignments.existsByRoleId(roleId)) {
@@ -129,9 +129,7 @@ public class RbacCommandService {
 
         mappings.deleteByRoleId(roleId);
         entityManager.flush();
-
         roles.delete(role);
-
         audit.record(AuditEvent.of(actor, AuditAction.ROLE_DELETE, AuditTargetType.ROLE, roleId));
     }
 
@@ -141,6 +139,7 @@ public class RbacCommandService {
         Permission permission = new Permission();
         permission.setCode(request.code());
         permission.setName(request.name());
+        permission.setDescription(request.description());
 
         permissions.save(permission);
         entityManager.flush();
@@ -154,9 +153,7 @@ public class RbacCommandService {
 
         audit.record(
                 AuditEvent.of(
-                        actor,
-                        AuditAction.PERMISSION_CREATE,
-                        AuditTargetType.PERMISSION,
+                        actor, AuditAction.PERMISSION_CREATE, AuditTargetType.PERMISSION,
                         permission.getPermissionId()));
 
         return AccountMapper.permission(permission);
@@ -165,38 +162,36 @@ public class RbacCommandService {
     public PermissionDto updatePermission(
             Long actor, Long permissionId, PermissionPatchRequest request) {
         lockSuperadminRole();
-
         Permission permission = permission(permissionId);
 
         if (request.name() != null) {
-            permission.setName(request.name());
+            permission.setName(request.name().trim());
+        }
+        if (request.descriptionPresent()) {
+            permission.setDescription(request.description());
         }
 
         entityManager.flush();
-
         audit.record(
                 AuditEvent.of(
-                        actor,
-                        AuditAction.PERMISSION_UPDATE,
-                        AuditTargetType.PERMISSION,
-                        permissionId));
+                        actor, AuditAction.PERMISSION_UPDATE, AuditTargetType.PERMISSION, permissionId));
 
         return AccountMapper.permission(permission);
     }
 
     public void deletePermission(Long actor, Long permissionId) {
         Role superadmin = lockSuperadminRole();
-
         Permission permission = permission(permissionId);
+
         if (SYSTEM_PERMISSION_CODES.contains(permission.getCode())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "SYSTEM_PERMISSION_PROTECTED");
         }
 
         List<RolePermission> references = mappings.findAllByPermissionId(permissionId);
         boolean usedOutsideSuperadmin =
                 references.stream().anyMatch(row -> !row.getRoleId().equals(superadmin.getRoleId()));
         if (usedOutsideSuperadmin) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "PERMISSION_IN_USE");
         }
 
         mappings.deleteByRoleIdAndPermissionId(superadmin.getRoleId(), permissionId);
@@ -206,14 +201,14 @@ public class RbacCommandService {
 
         audit.record(
                 AuditEvent.of(
-                        actor,
-                        AuditAction.PERMISSION_DELETE,
-                        AuditTargetType.PERMISSION,
-                        permissionId));
+                        actor, AuditAction.PERMISSION_DELETE, AuditTargetType.PERMISSION, permissionId));
     }
 
     private void replacePermissions(Role role, List<Long> permissionIds) {
         if (permissionIds == null) {
+            if ("SUPERADMIN".equals(role.getCode())) {
+                requireSuperadminPermissionSet(role);
+            }
             return;
         }
 
@@ -221,7 +216,6 @@ public class RbacCommandService {
         if (uniquePermissionIds.size() != permissionIds.size()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         }
-
         uniquePermissionIds.forEach(this::permission);
 
         if ("SUPERADMIN".equals(role.getCode())) {
@@ -230,7 +224,10 @@ public class RbacCommandService {
                             .map(Permission::getPermissionId)
                             .collect(Collectors.toSet());
             if (!uniquePermissionIds.equals(catalogueIds)) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT);
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "SYSTEM_ROLE_PROTECTED");
+            }
+            if (!"ACTIVE".equals(role.getStatus())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "SYSTEM_ROLE_PROTECTED");
             }
         }
 
@@ -241,8 +238,24 @@ public class RbacCommandService {
             RolePermission mapping = new RolePermission();
             mapping.setRoleId(role.getRoleId());
             mapping.setPermissionId(permissionId);
-
             mappings.save(mapping);
+        }
+    }
+
+    private void requireSuperadminPermissionSet(Role role) {
+        if (!"SUPERADMIN".equals(role.getCode())) {
+            return;
+        }
+        Set<Long> actual =
+                permissions.findByRole(role.getRoleId()).stream()
+                        .map(Permission::getPermissionId)
+                        .collect(Collectors.toSet());
+        Set<Long> expected =
+                permissions.findAllByOrderByPermissionIdAsc().stream()
+                        .map(Permission::getPermissionId)
+                        .collect(Collectors.toSet());
+        if (!actual.equals(expected) || !"ACTIVE".equals(role.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "SYSTEM_ROLE_PROTECTED");
         }
     }
 
@@ -252,8 +265,7 @@ public class RbacCommandService {
     }
 
     private Permission permission(Long permissionId) {
-        return permissions
-                .findById(permissionId)
+        return permissions.findById(permissionId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
@@ -268,6 +280,7 @@ public class RbacCommandService {
                 role.getCode(),
                 role.getName(),
                 role.getDescription(),
+                role.getStatus(),
                 permissionDtos);
     }
 

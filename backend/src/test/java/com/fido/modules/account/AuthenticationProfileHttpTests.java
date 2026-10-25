@@ -120,7 +120,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "POST",
                                 "/api/v1/auth/register",
                                 null,
-                                Map.of("phone", internationalPhone, "password", PASSWORD))
+                                Map.of("phone", internationalPhone, "full_name", "Duplicate Test Account", "password", PASSWORD))
                         .status());
 
         var login =
@@ -138,6 +138,54 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
     }
 
     @Test
+    void nonActiveAccountsCannotLoginOrUseAnExistingToken() throws Exception {
+        String phone = phone();
+        long accountId = register(phone);
+        String existingToken = login(phone);
+
+        db.update("UPDATE accounts SET status='LOCKED' WHERE account_id=?", accountId);
+
+        assertEquals(
+                403,
+                call(
+                                "POST",
+                                "/api/v1/auth/login",
+                                null,
+                                Map.of("phone", phone, "password", PASSWORD))
+                        .status());
+        assertEquals(401, call("GET", "/api/v1/me", existingToken, null).status());
+    }
+
+    @Test
+    void softDeletedPhoneCanBeRegisteredAgain() throws Exception {
+        String phone = phone();
+        long oldAccountId = register(phone);
+
+        db.update(
+                "UPDATE accounts SET deleted_at=CURRENT_TIMESTAMP WHERE account_id=?",
+                oldAccountId);
+
+        var reRegistered =
+                call(
+                        "POST",
+                        "/api/v1/auth/register",
+                        null,
+                        Map.of("phone", phone, "full_name", "Replacement Account", "password", PASSWORD));
+
+        assertEquals(201, reRegistered.status(), reRegistered.body());
+        long newAccountId =
+                reRegistered.data().get("data").get("account").get("account_id").asLong();
+        assertNotEquals(oldAccountId, newAccountId);
+        assertEquals(
+                1,
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM accounts WHERE phone_active_key=?",
+                        Integer.class,
+                        phone));
+        created.add(newAccountId);
+    }
+
+    @Test
     void uniquePhoneAndConcurrentRegistration() throws Exception {
         String phone = phone();
         register(phone);
@@ -148,7 +196,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "POST",
                                 "/api/v1/auth/register",
                                 null,
-                                Map.of("phone", phone, "password", PASSWORD))
+                                Map.of("phone", phone, "full_name", "Duplicate Test Account", "password", PASSWORD))
                         .status());
 
         assertEquals(
@@ -157,7 +205,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "POST",
                                 "/api/v1/auth/register",
                                 null,
-                                Map.of("phone", "0" + phone.substring(3), "password", PASSWORD))
+                                Map.of("phone", "0" + phone.substring(3), "full_name", "Duplicate Test Account", "password", PASSWORD))
                         .status());
 
         String otherPhone = phone();
@@ -180,7 +228,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "POST",
                                 "/api/v1/auth/register",
                                 null,
-                                Map.of("phone", concurrentPhone, "password", PASSWORD));
+                                Map.of("phone", concurrentPhone, "full_name", "Concurrent Test Account", "password", PASSWORD));
                     };
 
             var first = executor.submit(task);

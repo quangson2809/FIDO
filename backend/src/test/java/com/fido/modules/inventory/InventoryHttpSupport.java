@@ -94,6 +94,7 @@ abstract class InventoryHttpSupport {
                         null,
                         Map.of(
                                 "phone", phone,
+                                "full_name", "Inventory Test Account",
                                 "password", PASSWORD));
 
         assertEquals(201, response.status(), response.body());

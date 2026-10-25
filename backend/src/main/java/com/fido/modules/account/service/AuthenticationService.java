@@ -52,33 +52,40 @@ public class AuthenticationService {
     @Transactional
     public LoginResponse register(RegisterRequest request) {
         String phone = phoneNumbers.canonicalize(request.phone());
-        if (accounts.existsByPhoneIn(phoneNumbers.lookupValues(phone))) {
+        if (accounts.existsByPhoneInAndNotDeleted(phoneNumbers.lookupValues(phone))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
         Account account = new Account();
+        account.setFullName(request.full_name().trim());
         account.setPhone(phone);
         account.setEmail(request.email());
+        account.setStatus("ACTIVE");
         account.setPasswordHash(hashPassword(request.password()));
         account = accounts.save(account);
 
         Role customerRole =
                 roles.findByCode("CUSTOMER")
+                        .filter(role -> "ACTIVE".equals(role.getStatus()))
                         .orElseThrow(
-                                () -> new IllegalStateException("Required CUSTOMER role is missing"));
+                                () -> new IllegalStateException("Required ACTIVE CUSTOMER role is missing"));
         AccountRole assignment = new AccountRole();
         assignment.setAccountId(account.getAccountId());
         assignment.setRoleId(customerRole.getRoleId());
         accountRoles.save(assignment);
 
-        // Account creation and its mandatory role assignment share this transaction.
+        // Account creation, CUSTOMER assignment, and token response share one transaction.
         AccountDto accountDto = AccountMapper.account(account);
         return tokens.issue(accountDto);
     }
 
     public String hashPassword(String raw) {
         // BCrypt has a 72-byte limit; do not silently truncate passwords.
-        if (raw == null || raw.isBlank() || raw.getBytes(StandardCharsets.UTF_8).length > 72) {
+        if (raw == null
+                || raw.isBlank()
+                || raw.length() < 8
+                || raw.length() > 128
+                || raw.getBytes(StandardCharsets.UTF_8).length > 72) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         }
 
@@ -87,8 +94,8 @@ public class AuthenticationService {
 
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
-        String phone = phoneNumbers.canonicalize(request.identifier());
-        List<Account> candidates = accounts.findByPhoneIn(phoneNumbers.lookupValues(phone));
+        String phone = phoneNumbers.canonicalize(request.phone());
+        List<Account> candidates = accounts.findByPhoneInAndNotDeleted(phoneNumbers.lookupValues(phone));
         Account account = candidates.size() == 1 ? candidates.get(0) : null;
 
         boolean matches = false;
@@ -101,12 +108,16 @@ public class AuthenticationService {
             // Invalid encoded password is handled as an unauthorized login below.
         }
 
-        // Ambiguous legacy aliases fail closed with the same public credential response.
+        // Unknown phone, ambiguous legacy alias, and wrong password share the same 401 envelope.
         if (account == null || !matches) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
 
-        // ACTIVE-state enforcement remains dependent on the target account schema migration.
+        // Do not issue a token or disclose the specific lifecycle state for non-ACTIVE accounts.
+        if (!account.isActive()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is not active");
+        }
+
         return tokens.issue(AccountMapper.account(account));
     }
 }

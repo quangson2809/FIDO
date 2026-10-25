@@ -22,6 +22,7 @@ class StaffHttpTests extends AccountHttpSupport {
                         token,
                         Map.of(
                                 "phone", phone,
+                                "full_name", "Staff Test Account",
                                 "password", PASSWORD));
 
         assertEquals(201, added.status(), added.body());
@@ -101,6 +102,34 @@ class StaffHttpTests extends AccountHttpSupport {
                             + " email='staff@example.test'",
                         Integer.class,
                         accountId));
+
+        String staffToken = login(phone);
+        assertEquals(
+                200,
+                call(
+                                "PATCH",
+                                "/api/v1/admin/staff-accounts/" + accountId,
+                                token,
+                                Map.of("full_name", "Updated Staff Name"))
+                        .status());
+
+        assertEquals(
+                200,
+                call(
+                                "PATCH",
+                                "/api/v1/admin/staff-accounts/" + accountId,
+                                token,
+                                Map.of("status", "LOCKED"))
+                        .status());
+        assertEquals(
+                403,
+                call(
+                                "POST",
+                                "/api/v1/auth/login",
+                                null,
+                                Map.of("phone", phone, "password", PASSWORD))
+                        .status());
+        assertEquals(401, call("GET", "/api/v1/me", staffToken, null).status());
 
         var me = call("GET", "/api/v1/me", token, null);
 

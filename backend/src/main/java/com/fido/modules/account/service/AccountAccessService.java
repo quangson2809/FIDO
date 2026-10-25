@@ -13,7 +13,7 @@ import java.util.Optional;
 
 /**
  * Internal read contract. Callers must supply the authenticated account ID, never a request actor
- * ID.
+ * ID. Security must use findActiveAccess; administration can inspect locked accounts via findAccess.
  */
 @Service
 @Transactional(readOnly = true)
@@ -30,13 +30,14 @@ public class AccountAccessService {
         this.permissions = permissions;
     }
 
-    /** Does not classify an account as staff or authorize an HTTP request. */
+    /** Includes lifecycle status for administrative views, but never exposes soft-deleted accounts. */
     public Optional<StaffAccountDetailDto> findAccess(Long accountId) {
         if (accountId == null) {
             return Optional.empty();
         }
 
         return accounts.findById(accountId)
+                .filter(account -> account.getDeletedAt() == null)
                 .map(
                         account -> {
                             var roleDtos =
@@ -52,6 +53,12 @@ public class AccountAccessService {
                             return new StaffAccountDetailDto(
                                     AccountMapper.account(account), roleDtos, permissionDtos);
                         });
+    }
+
+    /** Principal resolution uses this method; every protected request rechecks current DB state. */
+    public Optional<StaffAccountDetailDto> findActiveAccess(Long accountId) {
+        return findAccess(accountId)
+                .filter(detail -> "ACTIVE".equals(detail.account().status()));
     }
 
     public boolean isSuperadmin(Long accountId) {

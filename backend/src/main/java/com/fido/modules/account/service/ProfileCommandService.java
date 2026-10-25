@@ -23,47 +23,67 @@ public class ProfileCommandService {
 
     private final AccountRepository accounts;
     private final AddressRepository addresses;
+    private final AccountMutationLockService accountLocks;
     private final EntityManager entityManager;
 
     public ProfileCommandService(
-            AccountRepository accounts, AddressRepository addresses, EntityManager entityManager) {
+            AccountRepository accounts,
+            AddressRepository addresses,
+            AccountMutationLockService accountLocks,
+            EntityManager entityManager) {
         this.accounts = accounts;
         this.addresses = addresses;
+        this.accountLocks = accountLocks;
         this.entityManager = entityManager;
     }
 
     public AccountDto update(Long actor, ProfilePatch request) {
         Account account =
-                accounts.findById(actor)
+                accounts.findByIdForUpdate(actor)
+                        .filter(Account::isActive)
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
 
+        if (request.full_name() != null) {
+            account.setFullName(request.full_name().trim());
+        }
         if (request.email() != null) {
             account.setEmail(request.email());
         }
 
         accounts.save(account);
         entityManager.flush();
-
         return AccountMapper.account(account);
     }
 
     public AddressDto addAddress(Long actor, AddressRequest request) {
-        Address address = new Address();
-        address.setAccountId(actor);
-        address.setAddressText(request.address_text());
+        accountLocks.lock(actor);
+        Account account = requireActiveOwner(actor);
 
+        Address address = new Address();
+        address.setAccountId(account.getAccountId());
+        address.setAddressText(request.address_text());
         return addressDto(addresses.save(address));
     }
 
     public AddressDto updateAddress(Long actor, Long addressId, AddressRequest request) {
+        accountLocks.lock(actor);
+        requireActiveOwner(actor);
+
         Address address = ownedAddress(actor, addressId);
         address.setAddressText(request.address_text());
-
         return addressDto(addresses.save(address));
     }
 
     public void deleteAddress(Long actor, Long addressId) {
+        accountLocks.lock(actor);
+        requireActiveOwner(actor);
         addresses.delete(ownedAddress(actor, addressId));
+    }
+
+    private Account requireActiveOwner(Long actor) {
+        return accounts.findById(actor)
+                .filter(Account::isActive)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
     private Address ownedAddress(Long actor, Long addressId) {

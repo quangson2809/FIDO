@@ -23,7 +23,7 @@ public class ProfileQueryService {
 
     public MeDto me(Long actor) {
         var detail =
-                access.findAccess(actor)
+                access.findActiveAccess(actor)
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
         var addressDtos =
                 addresses.findByAccountIdOrderByAddressIdAsc(actor).stream()

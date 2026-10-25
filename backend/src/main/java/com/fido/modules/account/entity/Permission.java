@@ -25,4 +25,7 @@ public class Permission {
 
     @Column(name = "name", nullable = false, length = 200)
     private String name;
+
+    @Column(name = "description", nullable = true, length = 500)
+    private String description;
 }

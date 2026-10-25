@@ -85,6 +85,7 @@ abstract class CartHttpSupport {
                         null,
                         Map.of(
                                 "phone", phone,
+                                "full_name", "Cart Test Account",
                                 "password", PASSWORD));
 
         assertEquals(201, register.status, register.body);

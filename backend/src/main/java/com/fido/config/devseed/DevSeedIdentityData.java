@@ -142,6 +142,19 @@ public class DevSeedIdentityData {
                 (900103,900208),(900103,900209),(900103,900210),(900103,900211),
                 (900104,900212),(900104,900213),(900104,900214),(900104,900215)
                 """);
+
+        // Seeded Permission rows are added after Flyway. Reconcile every one to SUPERADMIN as well.
+        jdbc.update(
+                """
+                INSERT INTO role_permissions(role_id, permission_id)
+                SELECT r.role_id, p.permission_id
+                FROM roles r CROSS JOIN permissions p
+                WHERE r.code='SUPERADMIN'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM role_permissions rp
+                      WHERE rp.role_id=r.role_id AND rp.permission_id=p.permission_id
+                  )
+                """);
     }
 
     private void seedAccounts(String passwordHash) {
@@ -191,6 +204,7 @@ public class DevSeedIdentityData {
 
     private void seedAccountRoles() {
         assignSystemRole(900001L, "SUPERADMIN");
+        assignSystemRole(900002L, "CUSTOMER");
 
         assignSystemRole(900003L, "ADMIN");
         assignSeedRole(900003L, 900101L);
@@ -205,6 +219,7 @@ public class DevSeedIdentityData {
         assignSeedRole(900006L, 900104L);
 
         assignSystemRole(900007L, "ADMIN");
+        assignSystemRole(900008L, "CUSTOMER");
     }
 
     private void assignSystemRole(long accountId, String roleCode) {

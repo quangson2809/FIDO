@@ -24,6 +24,17 @@ class RbacHttpTests extends AccountHttpSupport {
                 call("PATCH", "/api/v1/admin/roles/not-an-id", token, Map.of("name", "Bad"))
                         .status());
 
+        long superadminRoleId =
+                db.queryForObject("SELECT role_id FROM roles WHERE code='SUPERADMIN'", Long.class);
+        assertEquals(
+                409,
+                call(
+                                "PATCH",
+                                "/api/v1/admin/roles/" + superadminRoleId,
+                                token,
+                                Map.of("status", "INACTIVE"))
+                        .status());
+
         assertEquals(
                 400,
                 call(

@@ -13,10 +13,10 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 import java.util.ArrayList;
@@ -88,7 +88,7 @@ public class SecurityConfig {
                                                 jwt.jwtAuthenticationConverter(
                                                         token -> {
                                                             var account =
-                                                                    access.findAccess(
+                                                                    access.findActiveAccess(
                                                                                     Long.valueOf(
                                                                                             token
                                                                                                     .getSubject()))

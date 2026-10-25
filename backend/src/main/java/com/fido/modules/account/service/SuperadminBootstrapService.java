@@ -58,7 +58,7 @@ public class SuperadminBootstrapService {
         String canonicalPhone = phoneNumbers.canonicalize(phone);
         Role role = roles.lockSuperadminRole().orElseThrow();
 
-        List<Account> matchingAccounts = accounts.findByPhoneIn(phoneNumbers.lookupValues(canonicalPhone));
+        List<Account> matchingAccounts = accounts.findByPhoneInAndNotDeleted(phoneNumbers.lookupValues(canonicalPhone));
         if (matchingAccounts.size() > 1) {
             throw new IllegalStateException("Bootstrap phone matches ambiguous legacy accounts");
         }
@@ -79,6 +79,7 @@ public class SuperadminBootstrapService {
         }
 
         Account account = new Account();
+        account.setFullName("Quản trị hệ thống");
         account.setPhone(canonicalPhone);
         account.setPasswordHash(authentication.hashPassword(password));
 

@@ -3,7 +3,9 @@ package com.fido.modules.account.repository;
 import com.fido.modules.account.entity.AccountRole;
 import com.fido.modules.account.entity.AccountRoleId;
 
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -22,4 +24,12 @@ public interface AccountRoleRepository extends Repository<AccountRole, AccountRo
     boolean existsByRoleId(Long roleId);
 
     long countByRoleId(Long roleId);
+
+    @Query(
+            """
+            select count(ar)
+            from AccountRole ar join Account a on a.accountId=ar.accountId
+            where ar.roleId=:roleId and a.status='ACTIVE' and a.deletedAt is null
+            """)
+    long countActiveAccountsByRoleId(@Param("roleId") Long roleId);
 }

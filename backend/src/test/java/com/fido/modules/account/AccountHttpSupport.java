@@ -89,7 +89,7 @@ abstract class AccountHttpSupport {
                         "POST",
                         "/api/v1/auth/register",
                         null,
-                        Map.of("phone", phone, "password", PASSWORD));
+                        Map.of("phone", phone, "full_name", "Test Account", "password", PASSWORD));
 
         assertEquals(201, response.status, response.body);
 

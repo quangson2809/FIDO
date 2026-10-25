@@ -55,7 +55,7 @@ public abstract class OperationsHttpSupport {
                         "POST",
                         "/api/v1/auth/register",
                         null,
-                        Map.of("phone", phone, "password", "Test-password-123"));
+                        Map.of("phone", phone, "full_name", "Operations Test Account", "password", "Test-password-123"));
         assertEquals(201, created.status());
         long id = created.body().get("data").get("account").get("account_id").asLong();
         accounts.add(id);

@@ -88,6 +88,7 @@ abstract class OrderHttpSupport {
                         null,
                         Map.of(
                                 "phone", phone,
+                                "full_name", "Order Test Account",
                                 "password", PASSWORD));
 
         assertEquals(201, register.status(), register.body());

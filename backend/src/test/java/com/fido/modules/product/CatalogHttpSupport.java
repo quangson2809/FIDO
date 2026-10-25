@@ -88,6 +88,7 @@ abstract class CatalogHttpSupport {
                         null,
                         Map.of(
                                 "phone", phone,
+                                "full_name", "Catalog Test Account",
                                 "password", PASSWORD));
 
         assertEquals(201, response.status(), response.body());

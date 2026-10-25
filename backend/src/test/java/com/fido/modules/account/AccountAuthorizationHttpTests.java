@@ -52,6 +52,33 @@ class AccountAuthorizationHttpTests extends AccountHttpSupport {
     }
 
     @Test
+    void inactiveRoleContributesNoEffectiveAuthorization() throws Exception {
+        String phone = phone();
+        long accountId = register(phone);
+        long permissionId =
+                db.queryForObject(
+                        "SELECT permission_id FROM permissions WHERE code='REPORT_READ'",
+                        Long.class);
+        String roleCode = "inactive-test-" + java.util.UUID.randomUUID();
+        db.update("INSERT INTO roles(code,name,status) VALUES (?,?,'ACTIVE')", roleCode, "Inactive test");
+        long roleId = db.queryForObject("SELECT role_id FROM roles WHERE code=?", Long.class, roleCode);
+        db.update("INSERT INTO role_permissions(role_id,permission_id) VALUES (?,?)", roleId, permissionId);
+        db.update("INSERT INTO account_roles(account_id,role_id) VALUES (?,?)", accountId, roleId);
+        String token = login(phone);
+        String reportUrl = "/api/v1/admin/reports/overview?from=2026-10-01&to=2026-10-25";
+
+        assertEquals(200, call("GET", reportUrl, token, null).status());
+
+        db.update("UPDATE roles SET status='INACTIVE' WHERE role_id=?", roleId);
+
+        assertEquals(403, call("GET", reportUrl, token, null).status());
+
+        db.update("DELETE FROM account_roles WHERE account_id=? AND role_id=?", accountId, roleId);
+        db.update("DELETE FROM role_permissions WHERE role_id=?", roleId);
+        db.update("DELETE FROM roles WHERE role_id=?", roleId);
+    }
+
+    @Test
     void jwtAuthorityClaimsAreIgnoredAndDatabaseAccessIsReloaded() throws Exception {
         String phone = phone();
         long accountId = register(phone);

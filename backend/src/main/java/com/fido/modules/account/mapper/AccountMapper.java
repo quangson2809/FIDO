@@ -14,18 +14,25 @@ public final class AccountMapper {
     public static AccountDto account(Account value) {
         return new AccountDto(
                 value.getAccountId(),
+                value.getFullName(),
                 value.getPhone(),
                 value.getEmail(),
+                value.getStatus(),
                 value.getCreatedAt(),
                 value.getUpdatedAt());
     }
 
     public static RoleDto role(Role value) {
         return new RoleDto(
-                value.getRoleId(), value.getCode(), value.getName(), value.getDescription());
+                value.getRoleId(),
+                value.getCode(),
+                value.getName(),
+                value.getDescription(),
+                value.getStatus());
     }
 
     public static PermissionDto permission(Permission value) {
-        return new PermissionDto(value.getPermissionId(), value.getCode(), value.getName());
+        return new PermissionDto(
+                value.getPermissionId(), value.getCode(), value.getName(), value.getDescription());
     }
 }

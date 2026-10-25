@@ -7,4 +7,5 @@ public record RoleDetailDto(
         String code,
         String name,
         String description,
+        String status,
         List<PermissionDto> permissions) {}

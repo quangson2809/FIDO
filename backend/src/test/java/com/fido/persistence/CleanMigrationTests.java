@@ -16,7 +16,6 @@ class CleanMigrationTests {
 
     @Test
     void cleanThenMigrateRebuildsAnIsolatedTestDatabase() {
-        // Deliberately never uses TEST_DB_URL: clean must not target a shared/external database.
         var dataSource =
                 new DriverManagerDataSource(
                         "jdbc:h2:mem:phase14-clean-"
@@ -48,8 +47,6 @@ class CleanMigrationTests {
                         + "/"
                         + database
                         + (server.getRawQuery() == null ? "" : "?" + server.getRawQuery());
-
-        // CREATE must succeed before entering the cleanup block; never reuse a pre-existing schema.
         admin.execute("CREATE DATABASE " + database);
         try {
             verifyCleanAndRebuild(new DriverManagerDataSource(isolatedUrl, username, password));
@@ -66,12 +63,12 @@ class CleanMigrationTests {
                         .cleanDisabled(false)
                         .load();
         try {
-            assertEquals(7, flyway.migrate().migrationsExecuted);
+            assertEquals(8, flyway.migrate().migrationsExecuted);
             var jdbc = new JdbcTemplate(dataSource);
             jdbc.update("INSERT INTO categories(name) VALUES ('phase14-before-clean')");
 
             flyway.clean();
-            assertEquals(7, flyway.migrate().migrationsExecuted);
+            assertEquals(8, flyway.migrate().migrationsExecuted);
             flyway.validate();
             assertEquals(
                     1,
@@ -81,12 +78,15 @@ class CleanMigrationTests {
             assertEquals(
                     1,
                     jdbc.queryForObject(
-                            "SELECT COUNT(*) FROM role_permissions rp JOIN permissions p ON"
-                                + " p.permission_id=rp.permission_id JOIN roles r ON"
-                                + " r.role_id=rp.role_id WHERE p.code='REPORT_READ'"
-                                + " AND r.code='SUPERADMIN'",
+                            """
+                            SELECT COUNT(*)
+                            FROM role_permissions rp
+                            JOIN permissions p ON p.permission_id=rp.permission_id
+                            JOIN roles r ON r.role_id=rp.role_id
+                            WHERE p.code='REPORT_READ' AND r.code='SUPERADMIN'
+                            """,
                             Integer.class));
-            assertEquals("7", flyway.info().current().getVersion().getVersion());
+            assertEquals("8", flyway.info().current().getVersion().getVersion());
             assertEquals(0, flyway.info().pending().length);
             assertEquals(0, flyway.migrate().migrationsExecuted);
             assertEquals(
