@@ -438,7 +438,7 @@ abstract class InventoryHttpSupport {
         }
 
         for (Long accountId : accounts) {
-            db.update("DELETE FROM accounts WHERE account_id=?", accountId);
+            db.update("DELETE FROM accounts WHERE id=?", accountId);
         }
     }
 }

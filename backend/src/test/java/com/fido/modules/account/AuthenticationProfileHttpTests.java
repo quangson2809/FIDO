@@ -143,7 +143,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
         long accountId = register(phone);
         String existingToken = login(phone);
 
-        db.update("UPDATE accounts SET status='LOCKED' WHERE account_id=?", accountId);
+        db.update("UPDATE accounts SET status='LOCKED' WHERE id=?", accountId);
 
         assertEquals(
                 403,
@@ -162,7 +162,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
         long oldAccountId = register(phone);
 
         db.update(
-                "UPDATE accounts SET deleted_at=CURRENT_TIMESTAMP WHERE account_id=?",
+                "UPDATE accounts SET deleted_at=CURRENT_TIMESTAMP WHERE id=?",
                 oldAccountId);
 
         var reRegistered =

@@ -1,4 +1,4 @@
-INSERT INTO accounts(account_id,full_name,password_hash,phone,email,created_at,updated_at) VALUES (1,'Fixture account','test-only-hash','0900000001',NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+INSERT INTO accounts(id,full_name,password_hash,phone,email,created_at,updated_at) VALUES (1,'Fixture account','test-only-hash','0900000001',NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
 INSERT INTO addresses VALUES (1,1,'Test address',CURRENT_TIMESTAMP);
 INSERT INTO roles(role_id,code,name,description) VALUES (101,'fixture-role','Fixture role',NULL);
 INSERT INTO permissions(permission_id,code,name) VALUES (1001,'fixture-permission','Fixture permission');
