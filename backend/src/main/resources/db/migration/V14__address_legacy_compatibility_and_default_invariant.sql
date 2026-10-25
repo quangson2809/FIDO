@@ -6,23 +6,25 @@ ALTER TABLE addresses MODIFY COLUMN address_text VARCHAR(500) NULL;
 UPDATE addresses SET updated_at = created_at WHERE updated_at IS NULL;
 ALTER TABLE addresses MODIFY COLUMN updated_at TIMESTAMP(6) NOT NULL;
 
--- Choose exactly one default for every legacy account that has addresses.
--- Prefer a previously-default row; otherwise choose latest updated_at, then highest id.
-WITH ranked AS (
-    SELECT account_id, id,
-           ROW_NUMBER() OVER (
-               PARTITION BY account_id
-               ORDER BY CASE WHEN is_default = TRUE THEN 0 ELSE 1 END,
-                        updated_at DESC,
-                        id DESC
-           ) AS row_number_in_account
-    FROM addresses
-),
-chosen AS (
-    SELECT account_id, id
-    FROM ranked
-    WHERE row_number_in_account = 1
-)
-UPDATE addresses target
-JOIN chosen ON chosen.account_id = target.account_id
-SET target.is_default = (target.id = chosen.id);
+-- Choose one default per account with addresses: preserve a current default where possible;
+-- otherwise choose latest updated_at, then highest id. The windowed derived table is materialized,
+-- so the statement is compatible with MySQL's update/read-same-table restriction and H2.
+UPDATE addresses AS target
+SET is_default = (
+    SELECT chosen.id = target.id
+    FROM (
+        SELECT ranked.account_id, ranked.id
+        FROM (
+            SELECT account_id, id,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY account_id
+                       ORDER BY CASE WHEN is_default = TRUE THEN 0 ELSE 1 END,
+                                updated_at DESC,
+                                id DESC
+                   ) AS row_number_in_account
+            FROM addresses
+        ) ranked
+        WHERE ranked.row_number_in_account = 1
+    ) chosen
+    WHERE chosen.account_id = target.account_id
+);
