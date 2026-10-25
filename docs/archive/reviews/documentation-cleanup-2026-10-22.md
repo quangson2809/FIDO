@@ -28,7 +28,7 @@
 - [Documentation Control Center](../../README.md) is the starting point for source precedence, current target status, CI evidence and read order.
 - [Current implementation roadmap](../../11-implementation-phases.md) defines P0–P3 gates and required evidence.
 - [Target contract](../../refactor-v2/target/erd-v2-contract.md), [physical data dictionary](../../refactor-v2/target/physical-data-dictionary.md), [owner decision questionnaire](../../archive/refactor-v2/phase-1-owner-decision-questionnaire.md) and [Clean Schema Reset runbook](../../refactor-v2/target/clean-schema-reset-runbook.md) separate target rules, open decisions and safe test procedure.
-- [P0 baseline audit](../../refactor-v2/p0/P0-baseline-audit.md), [exit gate](refactor-v2/p0/P0-exit-gate.md), [risk register](refactor-v2/p0/P0-risk-register.md), [schema impact matrix](refactor-v2/p0/P0-schema-impact-matrix.csv), [module dependency map](refactor-v2/p0/P0-module-dependency-map.md) and [test baseline](refactor-v2/p0/P0-test-baseline.md) retain the evidence package.
+- [P0 baseline audit](../../refactor-v2/p0/P0-baseline-audit.md), [exit gate](../../refactor-v2/p0/P0-exit-gate.md), [risk register](../../refactor-v2/p0/P0-risk-register.md), [schema impact matrix](../../refactor-v2/p0/P0-schema-impact-matrix.csv), [module dependency map](../../refactor-v2/p0/P0-module-dependency-map.md) and [test baseline](../../refactor-v2/p0/P0-test-baseline.md) retain the evidence package.
 
 ## 3. Verification boundary
 
