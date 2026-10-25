@@ -1,4 +1,4 @@
-> **ARCHIVED — HISTORICAL ROADMAP ONLY (pre-ERD v2).** This file is retained for traceability and must not be used as the current implementation plan. Its 28-table wording and ProductVariant/size/color rules describe the old implementation. The current execution plan is [docs/11-implementation-phases.md](../11-implementation-phases.md); the target schema authority is [the owner-confirmed 31-table ERD](../refactor/phase-1-erd-v2-approved.mmd).
+> **ARCHIVED — HISTORICAL ROADMAP ONLY (pre-ERD v2).** This file is retained for traceability and must not be used as the current implementation plan. Its 28-table wording and ProductVariant/size/color rules describe the old implementation. The current execution plan is [docs/11-implementation-phases.md](../../11-implementation-phases.md); the target schema authority is [the owner-confirmed 31-table ERD](../../refactor-v2/target/erd-v2-approved.mmd).
 
 ---
 
