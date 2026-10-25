@@ -42,7 +42,7 @@ class StaffHttpTests extends AccountHttpSupport {
         var page =
                 call(
                         "GET",
-                        "/api/v1/admin/staff-accounts?q=" + phone + "&role_id=" + adminRoleId,
+                        "/api/v1/admin/staff-accounts?q=" + phone.replace("+", "%2B") + "&role_id=" + adminRoleId,
                         token,
                         null);
 

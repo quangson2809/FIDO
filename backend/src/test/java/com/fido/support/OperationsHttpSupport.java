@@ -59,7 +59,7 @@ public abstract class OperationsHttpSupport {
         assertEquals(201, created.status());
         long id = created.body().get("data").get("account").get("account_id").asLong();
         accounts.add(id);
-        if (role != null)
+        if (role != null && !"CUSTOMER".equals(role))
             db.update(
                     "INSERT INTO account_roles SELECT ?,role_id FROM roles WHERE code=?", id, role);
         var login =
