@@ -228,6 +228,28 @@ class AuditWriteServiceTransactionTests {
         assertTrue(correlationId.matches("[A-Za-z0-9._:-]{1,120}"));
     }
 
+
+    @Test
+    void systemEventRejectsAnAuthenticatedHumanContext() {
+        authenticateAs(7L);
+        try (CorrelationIdContext.Scope ignored = CorrelationIdContext.open("trace:system-guard")) {
+            assertThrows(
+                    IllegalStateException.class,
+                    () ->
+                            new TransactionTemplate(transactionManager)
+                                    .execute(
+                                            status -> {
+                                                writer.recordSystemEvent(
+                                                        AuditWriteEvent.of(
+                                                                AuditAction.CONTENT_CREATE,
+                                                                AuditEntityType.CONTENT_PAGE,
+                                                                "89"));
+                                                return null;
+                                            }));
+        }
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM audit_logs", Integer.class));
+    }
+
     private void authenticateAs(long accountId) {
         Instant now = Instant.now();
         Jwt jwt =

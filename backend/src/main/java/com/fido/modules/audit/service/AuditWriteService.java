@@ -43,6 +43,7 @@ public class AuditWriteService {
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public void recordSystemEvent(AuditWriteEvent event) {
+        actorResolver.requireSystemContext();
         write(event, null);
     }
 
