@@ -143,7 +143,7 @@ public class StaffCommandService {
 
     private void requireCreatePhoneAvailable(String canonicalPhone) {
         if (accounts.existsByPhoneInAndNotDeleted(phoneNumbers.lookupValues(canonicalPhone))) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "PHONE_ALREADY_IN_USE");
         }
     }
 
@@ -175,7 +175,7 @@ public class StaffCommandService {
             String canonicalPhone = phoneNumbers.canonicalize(request.phone());
             if (accounts.existsByPhoneInAndNotDeletedAndAccountIdNot(
                     phoneNumbers.lookupValues(canonicalPhone), account.getAccountId())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT);
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "PHONE_ALREADY_IN_USE");
             }
             account.setPhone(canonicalPhone);
         }
