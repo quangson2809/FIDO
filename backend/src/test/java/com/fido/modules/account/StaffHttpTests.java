@@ -31,6 +31,12 @@ class StaffHttpTests extends AccountHttpSupport {
 
         created.add(accountId);
 
+        var duplicatePhone = call(
+                "POST", "/api/v1/admin/staff-accounts", token,
+                Map.of("phone", phone, "full_name", "Duplicate Staff", "password", PASSWORD));
+        assertEquals(409, duplicatePhone.status(), duplicatePhone.body());
+        assertEquals("PHONE_ALREADY_IN_USE", duplicatePhone.data().get("code").asText());
+
         long adminRoleId =
                 db.queryForObject("SELECT id FROM roles WHERE code='ADMIN'", Long.class);
 
@@ -66,8 +72,9 @@ class StaffHttpTests extends AccountHttpSupport {
                 400,
                 call("GET", "/api/v1/admin/staff-accounts?page_size=101", token, null).status());
 
-        assertEquals(
-                409, call("DELETE", "/api/v1/admin/roles/" + adminRoleId, token, null).status());
+        var protectedAdminDelete = call("DELETE", "/api/v1/admin/roles/" + adminRoleId, token, null);
+        assertEquals(409, protectedAdminDelete.status(), protectedAdminDelete.body());
+        assertEquals("SYSTEM_ROLE_PROTECTED", protectedAdminDelete.data().get("code").asText());
 
         assertEquals(
                 400,
@@ -135,13 +142,10 @@ class StaffHttpTests extends AccountHttpSupport {
 
         long rootId = me.data().get("data").get("account").get("id").asLong();
 
-        assertEquals(
-                409,
-                call(
-                                "PATCH",
-                                "/api/v1/admin/staff-accounts/" + rootId,
-                                token,
-                                Map.of("role_ids", List.of(adminRoleId)))
-                        .status());
+        var lastSuperadmin = call(
+                "PATCH", "/api/v1/admin/staff-accounts/" + rootId, token,
+                Map.of("role_ids", List.of(adminRoleId)));
+        assertEquals(409, lastSuperadmin.status(), lastSuperadmin.body());
+        assertEquals("LAST_SUPERADMIN_REQUIRED", lastSuperadmin.data().get("code").asText());
     }
 }
