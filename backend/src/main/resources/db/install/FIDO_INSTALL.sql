@@ -1,10 +1,12 @@
--- FIDO — canonical fresh-database installer.
--- Creates exactly 31 target tables in one execution; no phase-by-phase version upgrades.
+-- FIDO canonical database installer — approved ERD v2 target.
+-- This is the ONLY fresh-install schema/seed SQL. It creates all 31 tables and seeds system roles/permissions.
 -- Requires MySQL 8.0.16+ (CHECK constraints, generated columns and window functions).
--- Run only against a NEW, EMPTY database. This script does not drop or overwrite existing data.
--- For an existing database, do not run this installer; use the separately managed migration path.
-CREATE DATABASE IF NOT EXISTS fido CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-USE fido;
+-- Run against a NEW, EMPTY database selected by the operator, e.g. mysql --database=fido < FIDO_INSTALL.sql.
+-- Never run against production/shared/persistent data. This file does not DROP existing objects.
+-- Update this file only alongside the approved ERD and physical data dictionary; phases must not add schema-version files.
+
+-- Physical schema follows the owner-approved ERD v2 and P1 data dictionary.
+-- Existing application migration files are legacy runtime compatibility, not an alternative fresh-install specification.
 
 CREATE TABLE accounts (
  id BIGINT NOT NULL AUTO_INCREMENT, full_name VARCHAR(150) NOT NULL, email VARCHAR(254) NULL,
@@ -388,9 +390,7 @@ INSERT INTO permissions (code, name, description) VALUES
  ('CONTENT_READ', 'Đọc nội dung', 'Đọc trang nội dung quản trị'),
  ('CONTENT_WRITE', 'Sửa nội dung', 'Tạo và cập nhật trang nội dung'),
  ('CUSTOMER_READ', 'Đọc khách hàng', 'Đọc dữ liệu khách hàng trong back-office'),
- ('REPORT_READ', 'Đọc báo cáo', 'Xem báo cáo và phân tích kinh doanh'),
- ('VOUCHER_READ', 'Xem voucher', 'Đọc voucher và chính sách áp dụng'),
- ('VOUCHER_WRITE', 'Quản lý voucher', 'Quản lý cấu hình voucher');
+ ('REPORT_READ', 'Đọc báo cáo', 'Xem báo cáo và phân tích kinh doanh');
 
 -- Superadmin has all current permissions. Admin gets no implicit business permissions.
 INSERT INTO role_permissions (role_id, permission_id)
