@@ -2,7 +2,6 @@ package com.fido.modules.account.service;
 
 import com.fido.common.response.ApiListResponse;
 import com.fido.common.response.Pagination;
-import com.fido.modules.account.dto.response.AddressDto;
 import com.fido.modules.account.dto.response.CustomerDetailDto;
 import com.fido.modules.account.dto.response.CustomerSummaryDto;
 import com.fido.modules.account.mapper.AccountMapper;
@@ -69,12 +68,7 @@ public class CustomerQueryService {
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         var addressDtos =
                 addresses.findByAccountIdOrderByIdAsc(id).stream()
-                        .map(
-                                a ->
-                                        new AddressDto(
-                                                a.getAddressId(),
-                                                a.getAddressText(),
-                                                a.getCreatedAt()))
+                        .map(ProfileCommandService::toDto)
                         .toList();
         return new CustomerDetailDto(
                 AccountMapper.account(account), addressDtos, orders.summaries(id));
