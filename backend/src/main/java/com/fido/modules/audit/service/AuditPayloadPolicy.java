@@ -21,15 +21,14 @@ public class AuditPayloadPolicy {
     private static final Set<String> ACCOUNT_FIELDS =
             Set.of("status", "active", "role_count", "permission_count");
     private static final Set<String> ROLE_FIELDS =
-            Set.of("code", "name", "status", "active", "permission_count");
-    private static final Set<String> PERMISSION_FIELDS =
-            Set.of("code", "name", "active");
-    private static final Set<String> CONTENT_FIELDS = Set.of("slug", "title", "status");
+            Set.of("code", "status", "active", "permission_count");
+    private static final Set<String> PERMISSION_FIELDS = Set.of("code", "active");
+    private static final Set<String> CONTENT_FIELDS = Set.of("status");
     private static final Set<String> RECEIPT_FIELDS =
             Set.of("status", "warehouse_id", "item_count", "total_quantity");
     private static final Set<String> INVENTORY_FIELDS =
             Set.of("product_id", "warehouse_id", "quantity_delta", "reason_code");
-    private static final Set<String> SUPPLIER_FIELDS = Set.of("code", "name", "status");
+    private static final Set<String> SUPPLIER_FIELDS = Set.of("code", "status");
     private static final Set<String> ORDER_FIELDS =
             Set.of(
                     "status",
@@ -39,8 +38,21 @@ public class AuditPayloadPolicy {
                     "total_amount",
                     "refund_amount");
     private static final Set<String> CATALOG_FIELDS =
-            Set.of("code", "name", "status", "parent_product_id", "price", "image_count");
+            Set.of("code", "status", "parent_product_id", "price", "image_count");
 
+    private static final Set<String> CODE_FIELDS =
+            Set.of("code", "status", "discount_type", "reason_code",
+                    "payment_status", "shipping_status");
+    private static final Set<String> BOOLEAN_FIELDS = Set.of("active");
+    private static final Set<String> NUMERIC_FIELDS =
+            Set.of(
+                    "usage_limit", "used_count", "role_count", "permission_count",
+                    "warehouse_id", "item_count", "total_quantity", "product_id",
+                    "quantity_delta", "parent_product_id", "price", "image_count",
+                    "total_amount", "refund_amount");
+
+    private static final Pattern SAFE_CODE_VALUE =
+            Pattern.compile("[A-Za-z0-9._:-]{1,120}");
     private static final Pattern SECRET_OR_PII_KEY =
             Pattern.compile(
                     ".*(password|passwd|token|otp|secret|credential|authorization|cookie|session"
@@ -54,8 +66,9 @@ public class AuditPayloadPolicy {
     }
 
     /**
-     * Returns null for an empty/fully-redacted payload. Only allowlisted scalar values are kept;
-     * nested objects and collections are dropped rather than recursively serializing source data.
+     * Returns null for an empty/fully-redacted payload. Values are limited to safe code-like
+     * strings, booleans for active-state fields, and integral numeric business facts. Free-form
+     * text, nested objects, collections and arbitrary objects are excluded.
      */
     public String toJson(AuditAction action, Map<String, ?> source) {
         if (source == null || source.isEmpty()) {
@@ -71,7 +84,7 @@ public class AuditPayloadPolicy {
                             || SECRET_OR_PII_KEY.matcher(key).matches()) {
                         return;
                     }
-                    Object normalized = normalizeScalar(value);
+                    Object normalized = normalizeValue(key, value);
                     if (normalized != null) {
                         safe.put(key, normalized);
                     }
@@ -135,33 +148,32 @@ public class AuditPayloadPolicy {
         };
     }
 
-    private Object normalizeScalar(Object value) {
+    private Object normalizeValue(String key, Object value) {
         if (value == null) {
             return null;
         }
-        if (value instanceof String text) {
+        if (value instanceof String text && CODE_FIELDS.contains(key)) {
             String normalized = text.trim();
-            if (normalized.isEmpty()
-                    || normalized.length() > 500
-                    || normalized.chars().anyMatch(Character::isISOControl)) {
-                return null;
-            }
-            return normalized;
+            return SAFE_CODE_VALUE.matcher(normalized).matches() ? normalized : null;
         }
-        if (value instanceof Boolean
-                || value instanceof Byte
+        if (value instanceof Enum<?> enumValue && CODE_FIELDS.contains(key)) {
+            return enumValue.name();
+        }
+        if (value instanceof Boolean && BOOLEAN_FIELDS.contains(key)) {
+            return value;
+        }
+        if (value instanceof Byte
                 || value instanceof Short
                 || value instanceof Integer
                 || value instanceof Long
-                || value instanceof BigInteger
-                || value instanceof BigDecimal) {
-            return value;
+                || value instanceof BigInteger) {
+            return NUMERIC_FIELDS.contains(key) ? value : null;
         }
-        if (value instanceof Enum<?> enumValue) {
-            return enumValue.name();
+        if (value instanceof BigDecimal decimal && NUMERIC_FIELDS.contains(key)) {
+            return decimal.stripTrailingZeros().scale() <= 0 ? decimal.stripTrailingZeros() : null;
         }
 
-        // No JPA entities, DTOs, collections, nested maps, byte arrays or arbitrary objects.
+        // No free-form strings, JPA entities, DTOs, collections, nested maps or byte arrays.
         return null;
     }
 }

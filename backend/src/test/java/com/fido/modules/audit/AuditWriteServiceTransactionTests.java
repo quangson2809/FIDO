@@ -105,6 +105,13 @@ class AuditWriteServiceTransactionTests {
                             status -> {
                                 jdbc.update("INSERT INTO business_probe(id) VALUES (?)", 11L);
                                 writer.record(event);
+                                writer.record(
+                                        AuditWriteEvent.withChanges(
+                                                AuditAction.PRODUCT_UPDATE,
+                                                AuditEntityType.PRODUCT,
+                                                "43",
+                                                Map.of("status", "DRAFT"),
+                                                Map.of("status", "PUBLISHED")));
                                 return null;
                             });
         }
@@ -113,6 +120,11 @@ class AuditWriteServiceTransactionTests {
                 1,
                 jdbc.queryForObject(
                         "SELECT COUNT(*) FROM audit_logs WHERE actor_account_id = 7",
+                        Integer.class));
+        assertEquals(
+                2,
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM audit_logs WHERE correlation_id = 'trace:request-42'",
                         Integer.class));
         assertEquals(
                 "CONTENT_PAGE",
@@ -139,6 +151,7 @@ class AuditWriteServiceTransactionTests {
         assertFalse(beforeJson.contains("nested-secret-marker"));
         assertTrue(afterJson.contains("\"status\":\"PUBLISHED\""));
         assertFalse(afterJson.contains("never-store-this-marker"));
+        assertFalse(afterJson.contains("Updated title"));
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM business_probe", Integer.class));
     }
 
