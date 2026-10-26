@@ -20,4 +20,10 @@ public class Brand {
 
     @Column(name = "name", nullable = false, length = 150)
     private String name;
+
+    @Column(name = "slug", nullable = false, length = 180)
+    private String slug;
+
+    @Column(name = "status", nullable = false, length = 20)
+    private String status = "ACTIVE";
 }
