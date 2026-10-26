@@ -81,23 +81,10 @@ public class Voucher {
     @Transient
     private Set<Long> categoryIds = new HashSet<>();
 
-    public void setDiscountValue(BigDecimal value) {
-        this.discountValue = value;
-        this.discountValueAmount = value == null ? null : value.longValueExact();
-    }
-    public void setMaximumDiscount(BigDecimal value) {
-        this.maximumDiscount = value;
-        this.maximumDiscountAmount = value == null ? null : value.longValueExact();
-    }
-    public void setMinimumAmount(BigDecimal value) {
-        this.minimumAmount = value;
-        this.minimumOrderValue = value == null ? 0L : value.longValueExact();
-    }
-    public void setGlobalLimit(Long value) {
-        this.globalLimit = value;
-        if (value == null) this.usageLimit = null;
-        else if (value >= 1 && value <= Integer.MAX_VALUE) this.usageLimit = value.intValue();
-    }
+
+
+
+
 
     public void setDiscountValue(BigDecimal value) {
         this.discountValue = value;
