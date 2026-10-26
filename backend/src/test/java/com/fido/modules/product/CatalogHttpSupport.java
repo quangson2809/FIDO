@@ -39,6 +39,9 @@ abstract class CatalogHttpSupport {
     final List<Long> products = new ArrayList<>();
     final List<Long> categories = new ArrayList<>();
     final List<Long> brands = new ArrayList<>();
+    final List<Long> warehouses = new ArrayList<>();
+    final List<Long> suppliers = new ArrayList<>();
+    final List<Long> receipts = new ArrayList<>();
 
     record Result(int status, JsonNode data, String body) {}
     record Employee(long id, String token) {}
@@ -127,9 +130,21 @@ abstract class CatalogHttpSupport {
         for (Long accountId : accounts) {
             db.update("DELETE FROM audit_logs WHERE actor_account_id=?", accountId);
         }
+        for (Long receiptId : receipts) {
+            db.update(
+                    "DELETE FROM inventory_transactions WHERE goods_receipt_item_id IN "
+                            + "(SELECT id FROM goods_receipt_items WHERE goods_receipt_id=?)",
+                    receiptId);
+            db.update("DELETE FROM goods_receipt_items WHERE goods_receipt_id=?", receiptId);
+            db.update("DELETE FROM goods_receipts WHERE id=?", receiptId);
+        }
+        for (Long supplierId : suppliers) {
+            db.update("DELETE FROM suppliers WHERE id=?", supplierId);
+        }
         var productCopy = new ArrayList<>(products);
         Collections.reverse(productCopy);
         for (Long productId : productCopy) {
+            db.update("DELETE FROM inventory_transactions WHERE product_id=?", productId);
             db.update("DELETE FROM product_images WHERE product_id=?", productId);
             db.update("DELETE FROM inventories WHERE product_id=?", productId);
             db.update("DELETE FROM products WHERE id=?", productId);
@@ -138,6 +153,7 @@ abstract class CatalogHttpSupport {
         var categoryCopy = new ArrayList<>(categories);
         Collections.reverse(categoryCopy);
         for (Long categoryId : categoryCopy) db.update("DELETE FROM categories WHERE id=?", categoryId);
+        for (Long warehouseId : warehouses) db.update("DELETE FROM warehouses WHERE id=?", warehouseId);
         for (Long accountId : accounts) db.update("DELETE FROM account_roles WHERE account_id=?", accountId);
         for (Long roleId : customRoles) {
             db.update("DELETE FROM role_permissions WHERE role_id=?", roleId);
@@ -170,11 +186,6 @@ abstract class CatalogHttpSupport {
         long productId = created.data().get("data").get("product_id").asLong();
         products.add(productId);
 
-        var withImage = call("PATCH", "/api/v1/admin/products/" + productId, writer.token(),
-                Map.of("images", List.of(Map.of(
-                        "image_url", "https://example.test/product-" + productId + ".png",
-                        "alt_text", "product", "sort_order", 0))));
-        assertEquals(200, withImage.status(), withImage.body());
         return new CatalogFixture(categoryId, brandId, productId, categoryResponse, brandResponse, created);
     }
 

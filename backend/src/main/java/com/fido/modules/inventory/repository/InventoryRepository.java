@@ -14,77 +14,59 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-public interface InventoryRepository extends Repository<Inventory, Long> {
+public interface InventoryRepository extends Repository<Inventory, Inventory.InventoryId> {
 
-    Optional<Inventory> findById(Long id);
+    Optional<Inventory> findByWarehouseIdAndProductId(Long warehouseId, Long productId);
 
-    List<Inventory> findAllByVariantIdIn(Collection<Long> variantIds);
+    List<Inventory> findAllByProductIdIn(Collection<Long> productIds);
 
     Inventory save(Inventory entity);
 
     @Query(
             value =
                     """
-                    SELECT
-                        variant.variant_id AS variantId,
-                        variant.sku AS sku,
-                        product.product_id AS productId,
-                        product.name AS productName,
-                        size_value.display_name AS size,
-                        color.name AS color,
-                        variant.sale_status AS saleStatus,
-                        inventory.available_quantity AS availableQuantity,
-                        inventory.updated_at AS updatedAt
+                    SELECT inventory.warehouse_id AS warehouseId,
+                           inventory.product_id AS productId,
+                           product.sku AS sku,
+                           product.name AS productName,
+                           inventory.quantity_on_hand AS availableQuantity,
+                           inventory.updated_at AS updatedAt
                     FROM inventories inventory
-                    JOIN product_variants variant
-                        ON variant.variant_id = inventory.variant_id
-                    JOIN products product
-                        ON product.product_id = variant.product_id
-                    JOIN size_values size_value
-                        ON size_value.size_value_id = variant.size_value_id
-                    JOIN colors color
-                        ON color.color_id = variant.color_id
-                    WHERE (:variantId IS NULL OR variant.variant_id = :variantId)
-                      AND (:sku IS NULL OR variant.sku = :sku)
-                      AND (:productId IS NULL OR product.product_id = :productId)
-                      AND (:sizeValueId IS NULL OR variant.size_value_id = :sizeValueId)
-                      AND (:colorId IS NULL OR variant.color_id = :colorId)
-                    ORDER BY variant.variant_id
+                    JOIN products product ON product.id = inventory.product_id
+                    WHERE (:productId IS NULL OR inventory.product_id = :productId)
+                      AND (:sku IS NULL OR product.sku = :sku)
+                      AND (:warehouseId IS NULL OR inventory.warehouse_id = :warehouseId)
+                    ORDER BY inventory.product_id, inventory.warehouse_id
                     """,
             countQuery =
                     """
                     SELECT COUNT(*)
                     FROM inventories inventory
-                    JOIN product_variants variant
-                        ON variant.variant_id = inventory.variant_id
-                    JOIN products product
-                        ON product.product_id = variant.product_id
-                    WHERE (:variantId IS NULL OR variant.variant_id = :variantId)
-                      AND (:sku IS NULL OR variant.sku = :sku)
-                      AND (:productId IS NULL OR product.product_id = :productId)
-                      AND (:sizeValueId IS NULL OR variant.size_value_id = :sizeValueId)
-                      AND (:colorId IS NULL OR variant.color_id = :colorId)
+                    JOIN products product ON product.id = inventory.product_id
+                    WHERE (:productId IS NULL OR inventory.product_id = :productId)
+                      AND (:sku IS NULL OR product.sku = :sku)
+                      AND (:warehouseId IS NULL OR inventory.warehouse_id = :warehouseId)
                     """,
             nativeQuery = true)
     Page<InventoryRowView> search(
-            @Param("variantId") Long variantId,
-            @Param("sku") String sku,
             @Param("productId") Long productId,
-            @Param("sizeValueId") Long sizeValueId,
-            @Param("colorId") Long colorId,
+            @Param("sku") String sku,
+            @Param("warehouseId") Long warehouseId,
             Pageable pageable);
 
     @Modifying(flushAutomatically = true)
     @Query(
             """
             update Inventory inventory
-            set inventory.quantityOnHand =
-                    inventory.quantityOnHand + :quantity,
-                inventory.updatedAt = :updatedAt
-            where inventory.variantId = :variantId
+            set inventory.quantityOnHand = inventory.quantityOnHand + :quantity,
+                inventory.updatedAt = :updatedAt,
+                inventory.version = inventory.version + 1
+            where inventory.warehouseId = :warehouseId
+              and inventory.productId = :productId
             """)
     int increment(
-            @Param("variantId") Long variantId,
+            @Param("warehouseId") Long warehouseId,
+            @Param("productId") Long productId,
             @Param("quantity") int quantity,
             @Param("updatedAt") LocalDateTime updatedAt);
 
@@ -92,14 +74,16 @@ public interface InventoryRepository extends Repository<Inventory, Long> {
     @Query(
             """
             update Inventory inventory
-            set inventory.quantityOnHand =
-                    inventory.quantityOnHand + :delta,
-                inventory.updatedAt = :updatedAt
-            where inventory.variantId = :variantId
+            set inventory.quantityOnHand = inventory.quantityOnHand + :delta,
+                inventory.updatedAt = :updatedAt,
+                inventory.version = inventory.version + 1
+            where inventory.warehouseId = :warehouseId
+              and inventory.productId = :productId
               and inventory.quantityOnHand + :delta >= 0
             """)
     int adjustIfNonNegative(
-            @Param("variantId") Long variantId,
+            @Param("warehouseId") Long warehouseId,
+            @Param("productId") Long productId,
             @Param("delta") int delta,
             @Param("updatedAt") LocalDateTime updatedAt);
 }

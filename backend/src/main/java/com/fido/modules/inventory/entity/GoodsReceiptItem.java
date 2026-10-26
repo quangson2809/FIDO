@@ -24,7 +24,7 @@ public class GoodsReceiptItem {
     private Long receiptId;
 
     @Column(name = "product_id", nullable = false)
-    private Long variantId;
+    private Long productId;
 
     @Column(name = "quantity_received", nullable = false)
     private Integer quantity;

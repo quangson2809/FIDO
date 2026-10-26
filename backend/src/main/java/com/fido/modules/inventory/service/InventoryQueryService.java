@@ -36,87 +36,54 @@ public class InventoryQueryService {
 
     @PreAuthorize(READ)
     public ApiListResponse<InventoryRowDto> inventory(
-            Long variantId,
-            String sku,
-            Long productId,
-            Long sizeValueId,
-            Long colorId,
-            Integer page,
-            Integer pageSize) {
+            Long productId, String sku, Long warehouseId, Integer page, Integer pageSize) {
         Pagination pagination = Pagination.of(page, pageSize);
-
-        var result =
-                inventories.search(
-                        variantId,
-                        normalize(sku),
-                        productId,
-                        sizeValueId,
-                        colorId,
-                        pagination.toPageable());
-
+        var result = inventories.search(
+                productId, normalize(sku), warehouseId, pagination.toPageable());
         var data = result.getContent().stream().map(InventoryMapper::inventoryRow).toList();
-
         return ApiListResponse.of(data, pagination.meta(result.getTotalElements()));
     }
 
     @PreAuthorize(READ)
-    public ApiListResponse<InventoryTransactionDto> transactions(
-            InventoryTransactionFilter filter) {
+    public ApiListResponse<InventoryTransactionDto> transactions(InventoryTransactionFilter filter) {
         if (filter.from() != null && filter.to() != null && filter.from().isAfter(filter.to())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         }
-
         Pagination pagination = Pagination.of(filter.page(), filter.pageSize());
-
         var result = transactions.findAll(transactionSpec(filter), pagination.toPageable());
-
         var data = result.getContent().stream().map(InventoryMapper::transaction).toList();
-
         return ApiListResponse.of(data, pagination.meta(result.getTotalElements()));
     }
 
     private Specification<InventoryTransaction> transactionSpec(InventoryTransactionFilter filter) {
         return (root, query, cb) -> {
             var predicates = new ArrayList<Predicate>();
-
-            if (filter.variantId() != null) {
-                predicates.add(cb.equal(root.get("variantId"), filter.variantId()));
+            if (filter.productId() != null) {
+                predicates.add(cb.equal(root.get("productId"), filter.productId()));
             }
-
             if (filter.transactionType() != null && !filter.transactionType().isBlank()) {
-                predicates.add(
-                        cb.equal(root.get("transactionType"), filter.transactionType().trim()));
+                predicates.add(cb.equal(root.get("transactionType"), filter.transactionType().trim()));
             }
-
-            if (filter.orderId() != null) {
-                predicates.add(cb.equal(root.get("orderId"), filter.orderId()));
+            if (filter.orderItemId() != null) {
+                predicates.add(cb.equal(root.get("orderItemId"), filter.orderItemId()));
             }
-
-            if (filter.goodsReceiptId() != null) {
-                predicates.add(cb.equal(root.get("goodsReceiptId"), filter.goodsReceiptId()));
+            if (filter.goodsReceiptItemId() != null) {
+                predicates.add(cb.equal(root.get("goodsReceiptItemId"), filter.goodsReceiptItemId()));
             }
-
             if (filter.actorAccountId() != null) {
                 predicates.add(cb.equal(root.get("actorAccountId"), filter.actorAccountId()));
             }
-
             if (filter.from() != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), filter.from()));
             }
-
             if (filter.to() != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), filter.to()));
             }
-
             return cb.and(predicates.toArray(Predicate[]::new));
         };
     }
 
     private String normalize(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-
-        return value.trim();
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

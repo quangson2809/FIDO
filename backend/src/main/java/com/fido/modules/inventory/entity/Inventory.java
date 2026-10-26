@@ -19,11 +19,7 @@ public class Inventory {
 
     @Id
     @Column(name = "product_id", nullable = false)
-    private Long variantId;
-
-    @Transient
-    private Integer availableQuantity;
-
+    private Long productId;
 
     @Id
     @Column(name = "warehouse_id", nullable = false)
@@ -39,6 +35,7 @@ public class Inventory {
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
     private LocalDateTime updatedAt;
 
+    /** Read-only naming alias used by older stock consumers; persistence uses quantity_on_hand. */
     public Integer getAvailableQuantity() {
         return quantityOnHand;
     }
@@ -48,14 +45,14 @@ public class Inventory {
     }
 
     public static class InventoryId implements java.io.Serializable {
+        private Long productId;
         private Long warehouseId;
-        private Long variantId;
 
         public InventoryId() {}
 
-        public InventoryId(Long warehouseId, Long variantId) {
+        public InventoryId(Long warehouseId, Long productId) {
             this.warehouseId = warehouseId;
-            this.variantId = variantId;
+            this.productId = productId;
         }
 
         @Override
@@ -63,12 +60,12 @@ public class Inventory {
             if (this == other) return true;
             if (!(other instanceof InventoryId that)) return false;
             return java.util.Objects.equals(warehouseId, that.warehouseId)
-                    && java.util.Objects.equals(variantId, that.variantId);
+                    && java.util.Objects.equals(productId, that.productId);
         }
 
         @Override
         public int hashCode() {
-            return java.util.Objects.hash(warehouseId, variantId);
+            return java.util.Objects.hash(warehouseId, productId);
         }
     }
 

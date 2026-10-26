@@ -39,14 +39,12 @@ public class InventoryController {
 
     @GetMapping
     public ApiListResponse<InventoryRowDto> inventory(
-            @RequestParam(name = "variant_id", required = false) Long variantId,
-            @RequestParam(required = false) String sku,
             @RequestParam(name = "product_id", required = false) Long productId,
-            @RequestParam(name = "size_value_id", required = false) Long sizeValueId,
-            @RequestParam(name = "color_id", required = false) Long colorId,
+            @RequestParam(required = false) String sku,
+            @RequestParam(name = "warehouse_id", required = false) Long warehouseId,
             @RequestParam(required = false) Integer page,
             @RequestParam(name = "page_size", required = false) Integer pageSize) {
-        return query.inventory(variantId, sku, productId, sizeValueId, colorId, page, pageSize);
+        return query.inventory(productId, sku, warehouseId, page, pageSize);
     }
 
     @PostMapping("/adjustments")
@@ -59,10 +57,10 @@ public class InventoryController {
 
     @GetMapping("/transactions")
     public ApiListResponse<InventoryTransactionDto> transactions(
-            @RequestParam(name = "variant_id", required = false) Long variantId,
+            @RequestParam(name = "product_id", required = false) Long productId,
             @RequestParam(name = "transaction_type", required = false) String transactionType,
-            @RequestParam(name = "order_id", required = false) Long orderId,
-            @RequestParam(name = "goods_receipt_id", required = false) Long goodsReceiptId,
+            @RequestParam(name = "order_item_id", required = false) Long orderItemId,
+            @RequestParam(name = "goods_receipt_item_id", required = false) Long goodsReceiptItemId,
             @RequestParam(name = "actor_account_id", required = false) Long actorAccountId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
                     LocalDateTime from,
@@ -72,15 +70,8 @@ public class InventoryController {
             @RequestParam(name = "page_size", required = false) Integer pageSize) {
         return query.transactions(
                 new InventoryTransactionFilter(
-                        variantId,
-                        transactionType,
-                        orderId,
-                        goodsReceiptId,
-                        actorAccountId,
-                        from,
-                        to,
-                        page,
-                        pageSize));
+                        productId, transactionType, orderItemId, goodsReceiptItemId,
+                        actorAccountId, from, to, page, pageSize));
     }
 
     private Long actor(Jwt jwt) {

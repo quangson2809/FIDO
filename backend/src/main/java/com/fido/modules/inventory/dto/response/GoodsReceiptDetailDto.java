@@ -8,6 +8,7 @@ public record GoodsReceiptDetailDto(
         Long receipt_id,
         String receipt_code,
         Long supplier_id,
+        Long warehouse_id,
         String receipt_status,
         LocalDate receipt_date,
         LocalDateTime confirmed_at,

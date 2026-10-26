@@ -37,6 +37,7 @@ public class SupplierCommandService {
         InventoryPolicy.requireSupplierStatus(request.usage_status());
 
         Supplier supplier = new Supplier();
+        supplier.setCode("SUP-" + java.util.UUID.randomUUID().toString().replace("-", "").toUpperCase(java.util.Locale.ROOT));
         supplier.setName(request.name());
         supplier.setPhone(request.phone());
         supplier.setEmail(request.email());

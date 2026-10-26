@@ -37,14 +37,15 @@ public class InventoryAdjustmentService {
 
         InventoryTransaction transaction =
                 inventoryCommands.adjustManually(
-                        actor, request.variant_id(), request.quantity_delta(), request.reason());
+                        actor, request.warehouse_id(), request.product_id(),
+                        request.quantity_delta(), request.reason());
 
         audit.record(
                 AuditEvent.of(
                         actor,
                         AuditAction.INVENTORY_ADJUST,
                         AuditTargetType.INVENTORY,
-                        request.variant_id()));
+                        request.product_id()));
 
         return InventoryMapper.transaction(transaction);
     }

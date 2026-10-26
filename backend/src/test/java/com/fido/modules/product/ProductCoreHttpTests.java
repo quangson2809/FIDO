@@ -47,6 +47,9 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
         assertEquals(409, call("PATCH", "/api/v1/admin/products/" + parentId, writer.token(),
                 Map.of("parent_product_id", childId)).status(),
                 "Re-parenting a root beneath its child must be rejected");
+        assertEquals(409, call("DELETE", "/api/v1/admin/products/" + parentId,
+                writer.token(), null).status(),
+                "A Product with child Products must not be deleted");
         assertEquals(404, call("POST", "/api/v1/admin/products/" + parentId + "/variants",
                 writer.token(), Map.of("variants", List.of())).status(),
                 "The legacy variant write route must no longer exist");
@@ -122,6 +125,58 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
         var duplicateCategory = call("POST", "/api/v1/admin/categories", rootToken,
                 Map.of("name", category.data().get("data").get("name").asText()));
         assertEquals(409, duplicateCategory.status(), duplicateCategory.body());
+
+        String brandName = "Brand " + UUID.randomUUID();
+        var brand = call("POST", "/api/v1/admin/brands", rootToken, Map.of("name", brandName));
+        assertEquals(201, brand.status(), brand.body());
+        long brandId = brand.data().get("data").get("brand_id").asLong();
+        brands.add(brandId);
+        var duplicateBrand = call("POST", "/api/v1/admin/brands", rootToken, Map.of("name", brandName));
+        assertEquals(409, duplicateBrand.status(), duplicateBrand.body());
+    }
+
+    @Test
+    void productPatchUpdatesCategoryBrandPriceStatusAndDeleteUsesProductId() throws Exception {
+        Employee writer = catalogWriter();
+        CatalogFixture fixture = createCatalog(writer);
+
+        var categoryResponse = call("POST", "/api/v1/admin/categories", writer.token(),
+                Map.of("name", "Updated category " + UUID.randomUUID()));
+        assertEquals(201, categoryResponse.status(), categoryResponse.body());
+        long newCategoryId = categoryResponse.data().get("data").get("category_id").asLong();
+        categories.add(newCategoryId);
+
+        var brandResponse = call("POST", "/api/v1/admin/brands", writer.token(),
+                Map.of("name", "Updated brand " + UUID.randomUUID()));
+        assertEquals(201, brandResponse.status(), brandResponse.body());
+        long newBrandId = brandResponse.data().get("data").get("brand_id").asLong();
+        brands.add(newBrandId);
+
+        String updatedSku = "UPDATED-" + UUID.randomUUID().toString().replace("-", "");
+        var updated = call("PATCH", "/api/v1/admin/products/" + fixture.productId(), writer.token(),
+                Map.of("category_id", newCategoryId, "brand_id", newBrandId,
+                        "sku", updatedSku, "selling_price", 0, "status", "INACTIVE"));
+        assertEquals(200, updated.status(), updated.body());
+        var data = updated.data().get("data");
+        assertEquals(fixture.productId(), data.get("product_id").asLong());
+        assertEquals(newCategoryId, data.get("category_id").asLong());
+        assertEquals(newBrandId, data.get("brand_id").asLong());
+        assertEquals(updatedSku, data.get("sku").asText());
+        assertEquals(0, data.get("selling_price").asLong());
+        assertEquals("INACTIVE", data.get("status").asText());
+
+        var invalidStatus = call("PATCH", "/api/v1/admin/products/" + fixture.productId(),
+                writer.token(), Map.of("status", "ON_SALE"));
+        assertEquals(400, invalidStatus.status(), invalidStatus.body());
+
+        var decimalPrice = call("PATCH", "/api/v1/admin/products/" + fixture.productId(),
+                writer.token(), Map.of("selling_price", 999.50));
+        assertEquals(400, decimalPrice.status(), decimalPrice.body());
+
+        var deleted = call("DELETE", "/api/v1/admin/products/" + fixture.productId(), writer.token(), null);
+        assertEquals(204, deleted.status(), deleted.body());
+        assertEquals(404, call("GET", "/api/v1/admin/products/" + fixture.productId(), writer.token(), null).status());
+        assertEquals(404, call("GET", "/api/v1/catalog/products/" + fixture.productId(), null, null).status());
     }
 
 

@@ -1,9 +1,9 @@
 package com.fido.modules.inventory.service;
 
-import com.fido.modules.inventory.entity.Inventory;
 import com.fido.modules.inventory.repository.InventoryRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -26,10 +26,10 @@ public class InventoryAvailabilityService {
     public Map<Long, Integer> availableQuantities(Collection<Long> productIds) {
         Map<Long, Integer> result = new HashMap<>();
         if (productIds == null || productIds.isEmpty()) return result;
-        inventories.findAllByVariantIdIn(productIds).forEach(
+        inventories.findAllByProductIdIn(productIds).forEach(
                 inventory -> result.merge(
-                        inventory.getVariantId(),
-                        inventory.getAvailableQuantity() == null ? 0 : inventory.getAvailableQuantity(),
+                        inventory.getProductId(),
+                        inventory.getQuantityOnHand() == null ? 0 : inventory.getQuantityOnHand(),
                         Math::addExact));
         return Map.copyOf(result);
     }

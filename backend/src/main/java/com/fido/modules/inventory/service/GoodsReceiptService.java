@@ -66,6 +66,7 @@ public class GoodsReceiptService {
         GoodsReceipt receipt = new GoodsReceipt();
         receipt.setReceiptCode(generateReceiptCode());
         receipt.setSupplierId(request.supplier_id());
+        receipt.setWarehouseId(request.warehouse_id());
         receipt.setReceiptStatus(InventoryPolicy.RECEIPT_DRAFT);
         receipt.setReceiptDate(request.receipt_date());
         receipt.setCreatedByAccountId(actor);
@@ -95,6 +96,10 @@ public class GoodsReceiptService {
         if (request.getSupplierId() != null) {
             requireActiveSupplier(request.getSupplierId());
             receipt.setSupplierId(request.getSupplierId());
+        }
+
+        if (request.getWarehouseId() != null) {
+            receipt.setWarehouseId(request.getWarehouseId());
         }
 
         if (request.getReceiptDate() != null) {
@@ -163,10 +168,11 @@ public class GoodsReceiptService {
                         .map(
                                 item ->
                                         new InventoryCommandService.StockLine(
-                                                item.getVariantId(), item.getQuantity()))
+                                                item.getProductId(), item.getQuantity(), null,
+                                                item.getReceiptItemId()))
                         .toList();
 
-        inventoryCommands.receiveGoods(actor, receiptId, stockLines);
+        inventoryCommands.receiveGoods(actor, receiptId, current.getWarehouseId(), stockLines);
 
         audit.record(
                 AuditEvent.of(
@@ -206,7 +212,8 @@ public class GoodsReceiptService {
         for (var item : requested) {
             GoodsReceiptItem row = new GoodsReceiptItem();
             row.setReceiptId(receiptId);
-            row.setVariantId(item.variantId());
+            row.setProductId(item.productId());
+            row.setUnitCost(item.unitCost());
             row.setQuantity(item.quantity());
 
             items.save(row);
@@ -214,12 +221,15 @@ public class GoodsReceiptService {
     }
 
     private void validateItems(List<ReceiptItemInput> requested) {
-        var variantIds = new HashSet<Long>();
+        var productIds = new HashSet<Long>();
 
         for (var item : requested) {
-            validateVariant(item.variantId());
+            inventoryCommands.requireTrackedProduct(item.productId());
+            if (item.unitCost() == null || item.unitCost() < 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+            }
 
-            if (!variantIds.add(item.variantId())) {
+            if (!productIds.add(item.productId())) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT);
             }
         }
@@ -228,13 +238,13 @@ public class GoodsReceiptService {
     private List<ReceiptItemInput> createItems(
             List<GoodsReceiptCreateRequest.ItemInput> requested) {
         return requested.stream()
-                .map(item -> new ReceiptItemInput(item.variant_id(), item.quantity()))
+                .map(item -> new ReceiptItemInput(item.product_id(), item.quantity(), item.unit_cost()))
                 .toList();
     }
 
     private List<ReceiptItemInput> patchItems(List<GoodsReceiptPatchRequest.ItemInput> requested) {
         return requested.stream()
-                .map(item -> new ReceiptItemInput(item.variant_id(), item.quantity()))
+                .map(item -> new ReceiptItemInput(item.product_id(), item.quantity(), item.unit_cost()))
                 .toList();
     }
 
@@ -243,16 +253,16 @@ public class GoodsReceiptService {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
-        var variantIds = new HashSet<Long>();
+        var productIds = new HashSet<Long>();
 
         for (GoodsReceiptItem item : storedItems) {
             if (item.getQuantity() == null || item.getQuantity() <= 0) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT);
             }
 
-            validateVariant(item.getVariantId());
+            inventoryCommands.requireTrackedProduct(item.getProductId());
 
-            if (!variantIds.add(item.getVariantId())) {
+            if (!productIds.add(item.getProductId())) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT);
             }
         }
@@ -267,10 +277,6 @@ public class GoodsReceiptService {
         if (!InventoryPolicy.SUPPLIER_ACTIVE.equals(supplier.getUsageStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
-    }
-
-    private void validateVariant(Long variantId) {
-        inventoryCommands.requireTrackedVariant(variantId);
     }
 
     private GoodsReceipt receiptForUpdate(Long receiptId) {
@@ -288,5 +294,5 @@ public class GoodsReceiptService {
         return "GR-" + UUID.randomUUID().toString().replace("-", "").toUpperCase(Locale.ROOT);
     }
 
-    private record ReceiptItemInput(Long variantId, Integer quantity) {}
+    private record ReceiptItemInput(Long productId, Integer quantity, Long unitCost) {}
 }

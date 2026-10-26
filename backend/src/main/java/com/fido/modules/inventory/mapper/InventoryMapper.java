@@ -31,7 +31,7 @@ public final class InventoryMapper {
 
     public static GoodsReceiptItemDto receiptItem(GoodsReceiptItem item) {
         return new GoodsReceiptItemDto(
-                item.getReceiptItemId(), item.getVariantId(), item.getQuantity());
+                item.getReceiptItemId(), item.getProductId(), item.getQuantity(), item.getUnitCost());
     }
 
     public static GoodsReceiptSummaryDto receiptSummary(GoodsReceipt receipt) {
@@ -39,6 +39,7 @@ public final class InventoryMapper {
                 receipt.getReceiptId(),
                 receipt.getReceiptCode(),
                 receipt.getSupplierId(),
+                receipt.getWarehouseId(),
                 receipt.getReceiptStatus(),
                 receipt.getReceiptDate(),
                 receipt.getConfirmedAt(),
@@ -51,6 +52,7 @@ public final class InventoryMapper {
                 receipt.getReceiptId(),
                 receipt.getReceiptCode(),
                 receipt.getSupplierId(),
+                receipt.getWarehouseId(),
                 receipt.getReceiptStatus(),
                 receipt.getReceiptDate(),
                 receipt.getConfirmedAt(),
@@ -64,13 +66,10 @@ public final class InventoryMapper {
 
     public static InventoryRowDto inventoryRow(InventoryRowView row) {
         return new InventoryRowDto(
-                row.getVariantId(),
-                row.getSku(),
+                row.getWarehouseId(),
                 row.getProductId(),
+                row.getSku(),
                 row.getProductName(),
-                row.getSize(),
-                row.getColor(),
-                row.getSaleStatus(),
                 row.getAvailableQuantity(),
                 row.getUpdatedAt());
     }
@@ -78,11 +77,12 @@ public final class InventoryMapper {
     public static InventoryTransactionDto transaction(InventoryTransaction transaction) {
         return new InventoryTransactionDto(
                 transaction.getTxnId(),
-                transaction.getVariantId(),
+                transaction.getProductId(),
+                transaction.getWarehouseId(),
                 transaction.getQuantityDelta(),
                 transaction.getTransactionType(),
-                transaction.getOrderId(),
-                transaction.getGoodsReceiptId(),
+                transaction.getOrderItemId(),
+                transaction.getGoodsReceiptItemId(),
                 transaction.getActorAccountId(),
                 transaction.getReason(),
                 transaction.getCreatedAt());

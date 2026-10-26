@@ -25,13 +25,13 @@ public class InventoryTransaction {
     private Long txnId;
 
     @Column(name = "product_id", nullable = false, updatable = false)
-    private Long variantId;
-
-    @Column(name = "quantity_delta", nullable = false, updatable = false)
-    private Integer quantityDelta;
+    private Long productId;
 
     @Column(name = "warehouse_id", nullable = false, updatable = false)
     private Long warehouseId;
+
+    @Column(name = "quantity_delta", nullable = false, updatable = false)
+    private Integer quantityDelta;
 
     @Column(name = "goods_receipt_item_id", updatable = false)
     private Long goodsReceiptItemId;
@@ -48,12 +48,6 @@ public class InventoryTransaction {
     @Column(name = "transaction_type", nullable = false, length = 30, updatable = false)
     private String transactionType;
 
-    @Transient
-    private Long orderId;
-
-    @Transient
-    private Long goodsReceiptId;
-
     @Column(name = "created_by", nullable = true, updatable = false)
     private Long actorAccountId;
 
@@ -69,7 +63,6 @@ public class InventoryTransaction {
 
     @PrePersist
     void onCreate() {
-        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-        createdAt = now;
+        if (createdAt == null) createdAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 }

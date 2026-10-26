@@ -245,7 +245,7 @@ public class OrderActionService {
                 .map(
                         item ->
                                 new InventoryCommandService.StockLine(
-                                        item.getProductId(), item.getQuantity()))
+                                        item.getProductId(), item.getQuantity(), item.getOrderItemId()))
                 .toList();
     }
 

@@ -22,11 +22,11 @@ const labels: Record<string, string> = {
   ACTIVE: 'Đang sử dụng',
   INACTIVE: 'Ngừng sử dụng',
   DRAFT: 'Bản nháp',
-  RECEIPT_IN: 'Nhập hàng',
-  ADJUSTMENT_IN: 'Điều chỉnh tăng',
-  ADJUSTMENT_OUT: 'Điều chỉnh giảm',
-  ORDER_CONFIRM_OUT: 'Xuất theo đơn',
-  ORDER_CANCEL_IN: 'Hoàn kho do hủy đơn',
-  DELIVERY_RETURN_IN: 'Nhận lại hàng giao thất bại',
+  OPENING: 'Tồn đầu kỳ',
+  GOODS_RECEIPT: 'Nhập hàng',
+  ADJUSTMENT: 'Điều chỉnh tồn kho',
+  ORDER: 'Xuất theo đơn',
+  ORDER_CANCEL_REVERSAL: 'Hoàn kho do hủy đơn',
+  RETURN_RESTOCK: 'Nhận lại hàng trả về',
 };
 export const statusLabel = (status: string): string => labels[status] ?? status;
