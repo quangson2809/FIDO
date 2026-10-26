@@ -57,16 +57,9 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      - name: Build and test with H2
+      - name: Compile backend and test sources
         working-directory: backend
-        run: ./gradlew --no-daemon clean compileJava test check build
-
-      - name: Keep H2 test reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-h2-test-reports
-          path: backend/build/test-results/test
+        run: ./gradlew --no-daemon clean compileJava compileTestJava
 
       - name: Test migration and mapping with MySQL
         id: mysql-tests
