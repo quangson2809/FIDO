@@ -8,7 +8,6 @@ import java.time.Instant;
 @Getter
 @Setter
 public class CheckoutQuote {
-@Column(name = "quote_id", length = 36, nullable = false)
     private String quoteId;
 
 private Long accountId;
