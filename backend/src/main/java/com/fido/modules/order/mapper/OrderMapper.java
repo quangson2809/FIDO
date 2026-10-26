@@ -20,9 +20,16 @@ public final class OrderMapper {
     }
 
     public static OrderItemDto item(OrderItem item) {
-        return new OrderItemDto(item.getOrderItemId(), item.getProductId(),
-                item.getProductNameSnapshot(), item.getImageUrlSnapshot(), item.getSkuSnapshot(),
-                item.getUnitPriceSnapshot(), item.getQuantity(), item.getLineTotalSnapshot());
+        return new OrderItemDto(
+                item.getOrderItemId(),
+                item.getProductId(),
+                item.getProductNameSnapshot(),
+                item.getImageUrlSnapshot(),
+                item.getSkuSnapshot(),
+                item.getUnitPriceSnapshot(),
+                item.getQuantity(),
+                item.getLineTotalSnapshot(),
+                item.getDiscountAmount());
     }
 
     public static PaymentPublicDto paymentPublic(Payment payment) {
