@@ -66,23 +66,24 @@ public interface InventoryRepository extends Repository<Inventory, Inventory.Inv
             Pageable pageable);
 
     @Modifying(flushAutomatically = true)
-    @Query("""
-            update Inventory inventory
-            set inventory.quantityOnHand = :newQuantity,
-                inventory.updatedAt = :updatedAt,
-                inventory.version = inventory.version + 1
-            where inventory.warehouseId = :warehouseId
-              and inventory.productId = :productId
-              and inventory.quantityOnHand = :currentQuantity
-              and inventory.version = :expectedVersion
-              and inventory.version < :maxVersion
-            """)
-    int updateBalanceGuarded(
+    @Query(value = """
+            UPDATE inventories
+            SET quantity_on_hand = quantity_on_hand + :quantityDelta,
+                updated_at = :updatedAt,
+                version = version + 1
+            WHERE warehouse_id = :warehouseId
+              AND product_id = :productId
+              AND quantity_on_hand >= 0
+              AND version >= 0
+              AND version < :maxVersion
+              AND CAST(quantity_on_hand AS SIGNED) + :quantityDelta >= 0
+              AND CAST(quantity_on_hand AS SIGNED) + :quantityDelta <= :maxQuantity
+            """, nativeQuery = true)
+    int applyBalanceDeltaGuarded(
             @Param("warehouseId") Long warehouseId,
             @Param("productId") Long productId,
-            @Param("currentQuantity") int currentQuantity,
-            @Param("newQuantity") int newQuantity,
-            @Param("expectedVersion") int expectedVersion,
+            @Param("quantityDelta") int quantityDelta,
             @Param("updatedAt") LocalDateTime updatedAt,
+            @Param("maxQuantity") int maxQuantity,
             @Param("maxVersion") int maxVersion);
 }

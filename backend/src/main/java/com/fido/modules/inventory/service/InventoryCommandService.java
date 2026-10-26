@@ -125,8 +125,8 @@ public class InventoryCommandService {
     }
 
     /**
-     * Serializes same-Product writers before first-row creation, then locks/re-reads the
-     * composite balance row and applies a quantity/version-guarded update with SQL INT bounds.
+     * Serializes same-Product writers before first-row creation, locks/re-reads the composite
+     * balance row, and applies the delta atomically in SQL under quantity/version bounds.
      */
     private void applyBalanceDelta(
             Long warehouseId, Long productId, int quantityDelta, LocalDateTime now) {
@@ -134,33 +134,21 @@ public class InventoryCommandService {
 
         productAccess.lockTrackedProduct(productId);
 
-        if (inventories.findByWarehouseIdAndProductId(warehouseId, productId).isEmpty()) {
+        Inventory balance = inventories.findByWarehouseIdAndProductIdForUpdate(warehouseId, productId)
+                .orElse(null);
+        if (balance == null) {
             if (quantityDelta < 0) throw new ResponseStatusException(HttpStatus.CONFLICT);
             ensureInventoryRow(warehouseId, productId);
+            balance = inventories.findByWarehouseIdAndProductIdForUpdate(warehouseId, productId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT));
         }
-
-        Inventory balance = inventories.findByWarehouseIdAndProductIdForUpdate(warehouseId, productId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT));
         em.refresh(balance, LockModeType.PESSIMISTIC_WRITE);
 
-        Integer currentQuantity = balance.getQuantityOnHand();
-        Integer currentVersion = balance.getVersion();
-        if (currentQuantity == null || currentVersion == null
-                || currentQuantity < 0 || currentVersion < 0 || currentVersion >= MAX_SQL_INT) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
-        }
-
-        long nextQuantity = (long) currentQuantity + quantityDelta;
-        if (nextQuantity < 0 || nextQuantity > MAX_SQL_INT) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
-        }
-
-        int updated = inventories.updateBalanceGuarded(
-                warehouseId, productId, currentQuantity, (int) nextQuantity,
-                currentVersion, now, MAX_SQL_INT);
+        int updated = inventories.applyBalanceDeltaGuarded(
+                warehouseId, productId, quantityDelta, now, MAX_SQL_INT, MAX_SQL_INT);
         if (updated != 1) throw new ResponseStatusException(HttpStatus.CONFLICT);
 
-        // A caller may already have loaded this composite key in the current persistence context.
+        // Keep a balance entity already loaded by the caller's persistence context in sync.
         em.refresh(balance);
     }
 
@@ -172,7 +160,6 @@ public class InventoryCommandService {
     }
 
     private void ensureInventoryRow(Long warehouseId, Long productId) {
-        if (inventories.findByWarehouseIdAndProductId(warehouseId, productId).isPresent()) return;
         Inventory inventory = new Inventory();
         inventory.setWarehouseId(warehouseId);
         inventory.setProductId(productId);

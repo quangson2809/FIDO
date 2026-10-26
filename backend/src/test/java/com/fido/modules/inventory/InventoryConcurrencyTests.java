@@ -61,7 +61,9 @@ class InventoryConcurrencyTests extends InventoryHttpSupport {
             var second = executor.submit(task);
             gate.countDown();
             var results = List.of(first.get(30, TimeUnit.SECONDS), second.get(30, TimeUnit.SECONDS));
-            assertEquals(List.of(201, 201), results.stream().map(Result::status).sorted().toList());
+            assertEquals(List.of(201, 201), results.stream().map(Result::status).sorted().toList(),
+                    () -> "Concurrent increment responses: "
+                            + results.stream().map(result -> result.status() + " " + result.body()).toList());
         } finally {
             executor.shutdownNow();
         }
