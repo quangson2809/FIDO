@@ -10,9 +10,10 @@ CREATE TABLE accounts (
  id BIGINT NOT NULL AUTO_INCREMENT, full_name VARCHAR(150) NOT NULL, email VARCHAR(254) NULL,
  phone VARCHAR(20) NOT NULL, password_hash VARCHAR(255) NOT NULL,
  status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE', deleted_at TIMESTAMP(6) NULL,
+ phone_active_key VARCHAR(20) GENERATED ALWAYS AS (CASE WHEN deleted_at IS NULL THEN phone ELSE NULL END) STORED,
  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
  updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
- CONSTRAINT pk_accounts PRIMARY KEY (id), CONSTRAINT uq_accounts_phone UNIQUE (phone),
+ CONSTRAINT pk_accounts PRIMARY KEY (id), CONSTRAINT uq_accounts_phone_active UNIQUE (phone_active_key),
  CONSTRAINT ck_accounts_status CHECK (status IN ('ACTIVE','PENDING_APPROVAL','LOCKED','SUSPENDED'))
 );
 
@@ -144,7 +145,7 @@ CREATE TABLE product_images (
  CONSTRAINT fk_product_images_product FOREIGN KEY (product_id) REFERENCES products (id),
  CONSTRAINT ck_product_images_sort_order CHECK (sort_order >= 0)
 );
-CREATE INDEX ix_product_images_product_order ON product_images (product_id, sort_order);
+CREATE UNIQUE INDEX uq_product_images_product_order ON product_images (product_id, sort_order);
 
 CREATE TABLE carts (
  id BIGINT NOT NULL AUTO_INCREMENT, account_id BIGINT NOT NULL,
@@ -182,11 +183,10 @@ CREATE TABLE vouchers (
  CONSTRAINT ck_vouchers_status CHECK (status IN ('DRAFT','ACTIVE','INACTIVE','EXPIRED'))
 );
 
--- order_number is nullable at insert time so the application can first obtain AUTO_INCREMENT id,
--- then set account_id + creation timestamp + id in the same transaction before commit.
+-- The owning service generates the business Order number before inserting the row.
 CREATE TABLE orders (
  id BIGINT NOT NULL AUTO_INCREMENT, account_id BIGINT NOT NULL, voucher_id BIGINT NULL,
- order_number VARCHAR(64) NULL, idempotency_key VARCHAR(120) NOT NULL,
+ order_number VARCHAR(40) NOT NULL, idempotency_key VARCHAR(120) NOT NULL,
  request_fingerprint CHAR(64) NOT NULL,
  status VARCHAR(30) NOT NULL DEFAULT 'PENDING', subtotal BIGINT NOT NULL,
  discount_amount BIGINT NOT NULL DEFAULT 0, shipping_fee BIGINT NOT NULL DEFAULT 0,
