@@ -182,9 +182,11 @@ CREATE TABLE vouchers (
  CONSTRAINT ck_vouchers_status CHECK (status IN ('DRAFT','ACTIVE','INACTIVE','EXPIRED'))
 );
 
+-- order_number is nullable at insert time so the application can first obtain AUTO_INCREMENT id,
+-- then set account_id + creation timestamp + id in the same transaction before commit.
 CREATE TABLE orders (
  id BIGINT NOT NULL AUTO_INCREMENT, account_id BIGINT NOT NULL, voucher_id BIGINT NULL,
- order_number VARCHAR(64) NOT NULL, idempotency_key VARCHAR(120) NOT NULL,
+ order_number VARCHAR(64) NULL, idempotency_key VARCHAR(120) NOT NULL,
  request_fingerprint CHAR(64) NOT NULL,
  status VARCHAR(30) NOT NULL DEFAULT 'PENDING', subtotal BIGINT NOT NULL,
  discount_amount BIGINT NOT NULL DEFAULT 0, shipping_fee BIGINT NOT NULL DEFAULT 0,
