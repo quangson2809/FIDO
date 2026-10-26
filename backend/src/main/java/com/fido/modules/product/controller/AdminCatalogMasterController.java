@@ -1,6 +1,7 @@
 package com.fido.modules.product.controller;
 
 import com.fido.common.response.ApiResponse;
+import com.fido.modules.product.dto.request.BrandPatchRequest;
 import com.fido.modules.product.dto.request.BrandRequest;
 import com.fido.modules.product.dto.request.CategoryCreateRequest;
 import com.fido.modules.product.dto.request.CategoryPatchRequest;
@@ -75,7 +76,7 @@ public class AdminCatalogMasterController {
     public ApiResponse<BrandDto> updateBrand(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long brandId,
-            @Valid @RequestBody BrandRequest request) {
+            @Valid @RequestBody BrandPatchRequest request) {
         return ApiResponse.of(masterData.updateBrand(actor(jwt), brandId, request));
     }
 
