@@ -383,7 +383,7 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
                 java.util.stream.IntStream.range(0, orders.size()).boxed().toList(), orders);
     }
 
-    private record UploadPart(String filename, String contentType, byte[] content) {
+    private record UploadPart(String filename, String contentType, byte[] content) {}
 
     @TestConfiguration(proxyBeanMethods = false)
     static class StorageTestConfig {
