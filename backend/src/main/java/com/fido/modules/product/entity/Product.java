@@ -38,10 +38,10 @@ public class Product {
     private String sku;
 
     @Column(name = "selling_price", nullable = false)
-    private BigDecimal sellingPrice;
+    private Long sellingPrice;
 
     @Column(name = "cost_price")
-    private BigDecimal costPrice;
+    private Long costPrice;
 
     @Column(name = "status", nullable = false, length = 20)
     private String status = "DRAFT";
@@ -102,14 +102,32 @@ public class Product {
 
     @PostLoad
     void onLoad() {
-        basePrice = sellingPrice;
+        basePrice = sellingPrice == null ? null : BigDecimal.valueOf(sellingPrice);
         saleStatus = status;
     }
 
     private void syncLegacyFields() {
-        if (sellingPrice == null && basePrice != null) sellingPrice = basePrice;
-        if (status == null || status.isBlank()) {
-            status = (saleStatus == null || saleStatus.isBlank()) ? "DRAFT" : saleStatus;
+        if (sellingPrice == null && basePrice != null) {
+            sellingPrice = basePrice.longValueExact();
         }
+        if (basePrice == null && sellingPrice != null) {
+            basePrice = BigDecimal.valueOf(sellingPrice);
+        }
+        if (status == null || status.isBlank()) {
+            status = mapLegacyStatus(saleStatus);
+        }
+        if (saleStatus == null || saleStatus.isBlank()) {
+            saleStatus = status;
+        }
+    }
+
+    private static String mapLegacyStatus(String legacyStatus) {
+        if (legacyStatus == null || legacyStatus.isBlank()) return "DRAFT";
+        return switch (legacyStatus) {
+            case "ACTIVE", "INACTIVE", "DRAFT", "ARCHIVED" -> legacyStatus;
+            case "ON_SALE", "AVAILABLE" -> "ACTIVE";
+            case "OFF_SALE", "UNAVAILABLE" -> "INACTIVE";
+            default -> "DRAFT";
+        };
     }
 }
