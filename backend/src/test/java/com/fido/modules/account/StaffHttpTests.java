@@ -173,4 +173,39 @@ class StaffHttpTests extends AccountHttpSupport {
                         Integer.class,
                         phone));
     }
+
+    @Test
+    void staffUpdateRejectsPhoneOwnedBySoftDeletedAccount() throws Exception {
+        String token = root();
+        String staffPhone = phone();
+        var createdStaff = call(
+                "POST",
+                "/api/v1/admin/staff-accounts",
+                token,
+                Map.of("phone", staffPhone, "full_name", "Staff Update Test", "password", PASSWORD));
+        assertEquals(201, createdStaff.status(), createdStaff.body());
+        long staffId = createdStaff.data().get("data").get("account").get("id").asLong();
+        created.add(staffId);
+
+        String deletedPhone = phone();
+        long deletedAccountId = register(deletedPhone);
+        db.update(
+                "UPDATE accounts SET deleted_at=CURRENT_TIMESTAMP WHERE id=?",
+                deletedAccountId);
+
+        var response = call(
+                "PATCH",
+                "/api/v1/admin/staff-accounts/" + staffId,
+                token,
+                Map.of("phone", deletedPhone));
+
+        assertEquals(409, response.status(), response.body());
+        assertEquals("PHONE_ALREADY_IN_USE", response.data().get("code").asText());
+        assertEquals(
+                staffPhone,
+                db.queryForObject(
+                        "SELECT phone FROM accounts WHERE id=?",
+                        String.class,
+                        staffId));
+    }
 }
