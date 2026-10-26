@@ -8,7 +8,7 @@ import java.util.Set;
 
 public record VoucherRequest(
         @NotBlank @Size(max = 80) String code,
-        @NotNull @Pattern(regexp = "FIXED_AMOUNT|PERCENTAGE") String discount_type,
+        @NotNull @Pattern(regexp = "FIXED|PERCENT|FIXED_AMOUNT|PERCENTAGE") String discount_type,
         @NotNull @DecimalMin(value = "0", inclusive = false) @Digits(integer = 16, fraction = 2)
                 BigDecimal discount_value,
         @DecimalMin(value = "0", inclusive = false) @Digits(integer = 16, fraction = 2)

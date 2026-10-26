@@ -115,7 +115,7 @@ public class VoucherManagementService {
                             || !v.getProductIds().equals(r.product_ids())
                             || !v.getCategoryIds().equals(r.category_ids());
             if (immutableChanged
-                    || endsBefore(r.ends_at(), v.getEndsAt())
+                    || endsShortened(r.ends_at(), v.getEndsAt())
                     || decreased(v.getUsageLimit(), r.global_limit()))
                 throw new ResponseStatusException(
                         HttpStatus.CONFLICT,
@@ -135,8 +135,9 @@ public class VoucherManagementService {
         return type;
     }
 
-    private static boolean endsBefore(java.time.Instant next, java.time.Instant current) {
-        return next != null && current != null && next.isBefore(current);
+    private static boolean endsShortened(java.time.Instant next, java.time.Instant current) {
+        if (current == null) return next != null;
+        return next != null && next.isBefore(current);
     }
 
     private static boolean sameInstant(java.time.Instant a, java.time.Instant b) {
@@ -204,7 +205,7 @@ public class VoucherManagementService {
         v.getProductIds().clear();
         v.getCategoryIds().clear();
         v.setEnabled(r.enabled());
-        v.setStatus(r.enabled() ? "ACTIVE" : (v.getStatus() == null ? "DRAFT" : "INACTIVE"));
+        v.setStatus(r.enabled() ? "ACTIVE" : (v.getVoucherId() == null ? "DRAFT" : "INACTIVE"));
     }
 
     private VoucherDetailDto dto(Voucher v) {
