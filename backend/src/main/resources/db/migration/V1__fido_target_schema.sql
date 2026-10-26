@@ -1,6 +1,6 @@
 -- FIDO — SINGLE canonical fresh-database baseline (approved ERD v2).
 -- Exactly 31 tables plus the approved 3-role / 13-permission seed. This is the only schema SQL.
--- Requires MySQL 8.0.16+ (CHECK constraints and generated columns).
+-- Requires MySQL 8.0.16+ (CHECK constraints).
 -- Flyway applies this file once to a newly created, empty database. For manual install, connect to an empty database first.
 -- Never run against production/shared/persistent data. This file does not DROP existing objects or upgrade populated databases.
 -- Every future feature phase must implement against this baseline and approved docs; do not add V2/V3 SQL migrations.
@@ -10,10 +10,9 @@ CREATE TABLE accounts (
  id BIGINT NOT NULL AUTO_INCREMENT, full_name VARCHAR(150) NOT NULL, email VARCHAR(254) NULL,
  phone VARCHAR(20) NOT NULL, password_hash VARCHAR(255) NOT NULL,
  status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE', deleted_at TIMESTAMP(6) NULL,
- phone_active_key VARCHAR(20) GENERATED ALWAYS AS (CASE WHEN deleted_at IS NULL THEN phone ELSE NULL END),
  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
  updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
- CONSTRAINT pk_accounts PRIMARY KEY (id), CONSTRAINT uq_accounts_phone_active UNIQUE (phone_active_key),
+ CONSTRAINT pk_accounts PRIMARY KEY (id), CONSTRAINT uq_accounts_phone UNIQUE (phone),
  CONSTRAINT ck_accounts_status CHECK (status IN ('ACTIVE','PENDING_APPROVAL','LOCKED','SUSPENDED'))
 );
 
@@ -145,7 +144,7 @@ CREATE TABLE product_images (
  CONSTRAINT fk_product_images_product FOREIGN KEY (product_id) REFERENCES products (id),
  CONSTRAINT ck_product_images_sort_order CHECK (sort_order >= 0)
 );
-CREATE UNIQUE INDEX uq_product_images_product_order ON product_images (product_id, sort_order);
+CREATE INDEX ix_product_images_product_order ON product_images (product_id, sort_order);
 
 CREATE TABLE carts (
  id BIGINT NOT NULL AUTO_INCREMENT, account_id BIGINT NOT NULL,
@@ -185,7 +184,7 @@ CREATE TABLE vouchers (
 
 CREATE TABLE orders (
  id BIGINT NOT NULL AUTO_INCREMENT, account_id BIGINT NOT NULL, voucher_id BIGINT NULL,
- order_number VARCHAR(40) NOT NULL, idempotency_key VARCHAR(120) NOT NULL,
+ order_number VARCHAR(64) NOT NULL, idempotency_key VARCHAR(120) NOT NULL,
  request_fingerprint CHAR(64) NOT NULL,
  status VARCHAR(30) NOT NULL DEFAULT 'PENDING', subtotal BIGINT NOT NULL,
  discount_amount BIGINT NOT NULL DEFAULT 0, shipping_fee BIGINT NOT NULL DEFAULT 0,

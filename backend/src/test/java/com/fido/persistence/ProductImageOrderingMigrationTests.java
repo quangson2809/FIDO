@@ -13,7 +13,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
@@ -22,7 +21,7 @@ import org.springframework.jdbc.datasource.init.ScriptUtils;
 class ProductImageOrderingMigrationTests {
 
     @Test
-    void canonicalBaselineEnforcesUniqueImageOrderPerProductOnMySql() throws Exception {
+    void canonicalBaselineUsesNonUniqueImageOrderIndexOnMySql() throws Exception {
         String baseUrl = System.getenv("CLEAN_RESET_TEST_DB_URL");
         URI server = URI.create(baseUrl.substring("jdbc:".length()));
         if (!"mysql".equals(server.getScheme())
@@ -56,13 +55,14 @@ class ProductImageOrderingMigrationTests {
                     a, "https://example.test/a-0.png", 0, true);
             jdbc.update("INSERT INTO product_images(product_id,image_url,sort_order,is_primary) VALUES (?,?,?,?)",
                     a, "https://example.test/a-1.png", 1, false);
-            assertThrows(DataAccessException.class, () ->
-                    jdbc.update("INSERT INTO product_images(product_id,image_url,sort_order,is_primary) VALUES (?,?,?,?)",
-                            a, "https://example.test/a-duplicate.png", 1, false));
+            jdbc.update("INSERT INTO product_images(product_id,image_url,sort_order,is_primary) VALUES (?,?,?,?)",
+                    a, "https://example.test/a-duplicate.png", 1, false);
             jdbc.update("INSERT INTO product_images(product_id,image_url,sort_order,is_primary) VALUES (?,?,?,?)",
                     b, "https://example.test/b-0.png", 0, true);
-            assertEquals(2, jdbc.queryForObject(
+            assertEquals(3, jdbc.queryForObject(
                     "SELECT COUNT(*) FROM product_images WHERE product_id=?", Integer.class, a));
+            assertEquals(2, jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM product_images WHERE product_id=? AND sort_order=1", Integer.class, a));
             assertEquals(1, jdbc.queryForObject(
                     "SELECT COUNT(*) FROM product_images WHERE product_id=? AND sort_order=0", Integer.class, b));
         } finally {

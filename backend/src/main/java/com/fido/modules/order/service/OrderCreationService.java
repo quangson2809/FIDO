@@ -20,6 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -27,6 +30,9 @@ import java.util.UUID;
 @Service
 @Transactional
 public class OrderCreationService {
+
+    private static final DateTimeFormatter ORDER_CODE_TIMESTAMP =
+            DateTimeFormatter.ofPattern("yyyyMMddHHmmss", Locale.ROOT);
 
     private final CheckoutCalculationService checkout;
     private final CartCommandService cart;
@@ -96,7 +102,7 @@ public class OrderCreationService {
     private Order persistOrder(
             Long accountId, CreateOrderRequest request, CheckoutCalculation calculation) {
         Order order = new Order();
-        order.setOrderCode(generateOrderCode());
+        order.setOrderCode(generateTemporaryOrderCode());
         order.setCustomerAccountId(accountId);
         order.setRecipientPhone(request.recipient_phone());
         order.setRecipientEmail(request.recipient_email());
@@ -108,7 +114,9 @@ public class OrderCreationService {
         order.setVoucherId(calculation.voucher().voucherId());
         order.setOrderStatus(OrderPolicy.PENDING);
 
-        return orders.save(order);
+        Order persisted = orders.save(order);
+        persisted.setOrderCode(generateOrderCode(accountId, persisted));
+        return orders.save(persisted);
     }
 
     private void persistOrderItems(Long orderId, List<CheckoutCartView.Item> cartItems) {
@@ -140,7 +148,18 @@ public class OrderCreationService {
         return payments.save(payment);
     }
 
-    private String generateOrderCode() {
-        return "ORD-" + UUID.randomUUID().toString().replace("-", "").toUpperCase(Locale.ROOT);
+    private String generateTemporaryOrderCode() {
+        return "TMP-" + UUID.randomUUID().toString().replace("-", "").toUpperCase(Locale.ROOT);
+    }
+
+    private String generateOrderCode(Long accountId, Order order) {
+        if (order.getOrderId() == null) {
+            throw new IllegalStateException("Database-generated Order ID is required to build order code");
+        }
+        LocalDateTime createdAt = order.getCreatedAt();
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now(ZoneOffset.UTC);
+        }
+        return accountId + "-" + ORDER_CODE_TIMESTAMP.format(createdAt) + "-" + order.getOrderId();
     }
 }

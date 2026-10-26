@@ -273,7 +273,7 @@ def main():
 
     normalized = re.sub(r"\s+", " ", SQL.read_text(encoding="utf-8").lower())
     critical = {
-        "active phone unique": "unique (phone_active_key)",
+        "global phone unique": "unique (phone)",
         "receipt warehouse FK": "foreign key (warehouse_id) references warehouses (id)",
         "inventory composite PK": "primary key (warehouse_id, product_id)",
         "attribute option ownership": "foreign key (option_id, attribute_id) references attribute_options (id, attribute_id)",

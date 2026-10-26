@@ -52,7 +52,7 @@ public class AuthenticationService {
     @Transactional
     public LoginResponse register(RegisterRequest request) {
         String phone = phoneNumbers.canonicalize(request.phone());
-        if (accounts.existsByPhoneInAndNotDeleted(phoneNumbers.lookupValues(phone))) {
+        if (accounts.existsByPhoneIn(phoneNumbers.lookupValues(phone))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "PHONE_ALREADY_IN_USE");
         }
 
