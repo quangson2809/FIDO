@@ -26,6 +26,7 @@ class OrderImageSnapshotHttpTests extends OrderHttpSupport {
 
         long orderId = createOrder(customer, fixture, 1);
 
+        assertEquals(imageA, currentPrimaryId(fixture.productId()));
         assertEquals(
                 coverA,
                 db.queryForObject(
@@ -46,6 +47,7 @@ class OrderImageSnapshotHttpTests extends OrderHttpSupport {
 
         assertEquals(200, changedCover.status(), changedCover.body());
         assertEquals(coverB, currentCover(fixture.productId()));
+        assertEquals(imageB, currentPrimaryId(fixture.productId()));
         assertOrderImage(customer, orderId, coverA);
         assertAdminOrderImage(root, orderId, coverA);
         assertOrderListImage(customer, "/api/v1/me/orders", orderId, coverA);
@@ -60,6 +62,7 @@ class OrderImageSnapshotHttpTests extends OrderHttpSupport {
 
         assertEquals(204, deletedPreviousCover.status(), deletedPreviousCover.body());
         assertEquals(coverB, currentCover(fixture.productId()));
+        assertEquals(imageB, currentPrimaryId(fixture.productId()));
         assertOrderImage(customer, orderId, coverA);
         assertAdminOrderImage(root, orderId, coverA);
         assertOrderListImage(customer, "/api/v1/me/orders", orderId, coverA);
@@ -69,10 +72,11 @@ class OrderImageSnapshotHttpTests extends OrderHttpSupport {
     private long insertImage(long productId, String imageUrl, int sortOrder) {
         db.update(
                 """
-                INSERT INTO product_images(product_id,image_url,sort_order) VALUES (?,?,?)
+                INSERT INTO product_images(product_id,image_url,is_primary,sort_order) VALUES (?,?,?,?)
                 """,
                 productId,
                 imageUrl,
+                sortOrder == 0,
                 sortOrder);
 
         return db.queryForObject(
@@ -84,6 +88,13 @@ class OrderImageSnapshotHttpTests extends OrderHttpSupport {
                 Long.class,
                 productId,
                 imageUrl);
+    }
+
+    private Long currentPrimaryId(long productId) {
+        return db.queryForObject(
+                "SELECT id FROM product_images WHERE product_id=? AND is_primary=TRUE",
+                Long.class,
+                productId);
     }
 
     private String currentCover(long productId) {

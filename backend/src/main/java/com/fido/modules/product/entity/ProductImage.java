@@ -38,8 +38,21 @@ public class ProductImage {
 
     @PrePersist
     void onCreate() {
-        if (createdAt == null) createdAt = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
-        if (isPrimary == null) isPrimary = false;
-        if (sortOrder == null) sortOrder = 0;
+        if (createdAt == null) {
+            createdAt = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
+        }
+        if (sortOrder == null) {
+            sortOrder = 0;
+        }
+        synchronizePrimaryWithPosition();
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        synchronizePrimaryWithPosition();
+    }
+
+    private void synchronizePrimaryWithPosition() {
+        isPrimary = sortOrder != null && sortOrder == 0;
     }
 }

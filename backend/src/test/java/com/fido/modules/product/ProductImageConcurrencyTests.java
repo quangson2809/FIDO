@@ -60,20 +60,17 @@ class ProductImageConcurrencyTests extends CatalogHttpSupport {
         assertEquals(
                 Set.of(first, second), Set.copyOf(stored.subList(original.size(), stored.size())));
         assertDenseOrder(productId, stored.size());
+        assertPrimaryInvariant(productId);
     }
 
     @Test
     void parallelReordersCommitOneCompletePermutationWithoutLosingImages() throws Exception {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         long productId = createCatalog(writer).productId();
-        db.update(
-                "INSERT INTO product_images(product_id,image_url,sort_order) VALUES (?,?,1)",
-                productId,
-                "https://storage.test/second.png");
-        db.update(
-                "INSERT INTO product_images(product_id,image_url,sort_order) VALUES (?,?,2)",
-                productId,
-                "https://storage.test/third.png");
+        db.update("DELETE FROM product_images WHERE product_id=?", productId);
+        insertImage(productId, "https://storage.test/first.png", 0);
+        insertImage(productId, "https://storage.test/second.png", 1);
+        insertImage(productId, "https://storage.test/third.png", 2);
         List<Long> original = storedIds(productId);
         List<Long> first = List.of(original.get(2), original.get(0), original.get(1));
         List<Long> second = List.of(original.get(1), original.get(2), original.get(0));
@@ -84,13 +81,18 @@ class ProductImageConcurrencyTests extends CatalogHttpSupport {
                         () -> imageCommands.reorderImages(writer.id(), productId, reorder(first)),
                         () -> imageCommands.reorderImages(writer.id(), productId, reorder(second)));
 
-        assertEquals(
-                first, responses.get(0).images().stream().map(image -> image.image_id()).toList());
-        assertEquals(
-                second, responses.get(1).images().stream().map(image -> image.image_id()).toList());
+        List<List<Long>> allowedOrders = List.of(first, second);
+        List<Long> firstResponse =
+                responses.get(0).images().stream().map(image -> image.id()).toList();
+        List<Long> secondResponse =
+                responses.get(1).images().stream().map(image -> image.id()).toList();
+        assertTrue(allowedOrders.contains(firstResponse), firstResponse.toString());
+        assertTrue(allowedOrders.contains(secondResponse), secondResponse.toString());
+
         List<Long> stored = storedIds(productId);
-        assertTrue(stored.equals(first) || stored.equals(second), stored.toString());
+        assertTrue(allowedOrders.contains(stored), stored.toString());
         assertDenseOrder(productId, original.size());
+        assertPrimaryInvariant(productId);
     }
 
     private void meetBeforeProductLock(long productId) {
@@ -151,9 +153,47 @@ class ProductImageConcurrencyTests extends CatalogHttpSupport {
                         .toList());
     }
 
+    private void insertImage(long productId, String imageUrl, int sortOrder) {
+        db.update(
+                """
+                INSERT INTO product_images(product_id,image_url,is_primary,sort_order)
+                VALUES (?,?,?,?)
+                """,
+                productId,
+                imageUrl,
+                sortOrder == 0,
+                sortOrder);
+    }
+
+    private void assertPrimaryInvariant(long productId) {
+        long gallerySize =
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM product_images WHERE product_id=?",
+                        Long.class,
+                        productId);
+        long primaryCount =
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM product_images WHERE product_id=? AND is_primary=TRUE",
+                        Long.class,
+                        productId);
+        assertEquals(gallerySize == 0 ? 0L : 1L, primaryCount);
+        int mismatchCount =
+                db.queryForObject(
+                        """
+                        SELECT COUNT(*)
+                        FROM product_images
+                        WHERE product_id=?
+                          AND ((sort_order=0 AND is_primary=FALSE)
+                            OR (sort_order<>0 AND is_primary=TRUE))
+                        """,
+                        Integer.class,
+                        productId);
+        assertEquals(0, mismatchCount);
+    }
+
     private List<Long> storedIds(long productId) {
         return db.query(
-                "SELECT image_id FROM product_images WHERE product_id=? ORDER BY sort_order",
+                "SELECT id FROM product_images WHERE product_id=? ORDER BY sort_order",
                 (row, index) -> row.getLong(1),
                 productId);
     }

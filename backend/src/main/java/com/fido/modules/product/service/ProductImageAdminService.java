@@ -50,20 +50,23 @@ public class ProductImageAdminService {
     public AdminProductDetailDto appendUploadedImages(
             Long actor, Long productId, List<ImageStorageGateway.UploadedImage> uploaded) {
         references.productForUpdate(productId);
+        List<ProductImage> current = images.findAllByProductIdForUpdate(productId);
+        assertGalleryInvariant(current);
 
-        List<ProductImage> current = images.findAllByProductIdOrderBySortOrderAsc(productId);
         int nextSortOrder = current.size();
-
         for (ImageStorageGateway.UploadedImage stored : uploaded) {
-            if (!ProductImageUrlPolicy.isValid(stored.url())) {
+            if (stored == null || !ProductImageUrlPolicy.isValid(stored.url())) {
                 throw new ProductImageStorageException(
                         HttpStatus.BAD_GATEWAY, "Image storage returned an invalid HTTPS URL");
             }
+
             ProductImage image = new ProductImage();
             image.setProductId(productId);
             image.setImageUrl(stored.url());
             image.setAltText(null);
-            image.setSortOrder(nextSortOrder++);
+            image.setSortOrder(nextSortOrder);
+            image.setIsPrimary(nextSortOrder == 0);
+            nextSortOrder++;
             images.save(image);
         }
 
@@ -75,8 +78,8 @@ public class ProductImageAdminService {
     @PreAuthorize(WRITE)
     public void removeImage(Long actor, Long productId, Long imageId) {
         references.productForUpdate(productId);
-
         List<ProductImage> current = images.findAllByProductIdForUpdate(productId);
+        assertGalleryInvariant(current);
 
         ProductImage removed =
                 current.stream()
@@ -100,8 +103,8 @@ public class ProductImageAdminService {
     public AdminProductDetailDto reorderImages(
             Long actor, Long productId, ProductImageReorderRequest request) {
         references.productForUpdate(productId);
-
         List<ProductImage> current = images.findAllByProductIdForUpdate(productId);
+        assertGalleryInvariant(current);
 
         Map<Long, Integer> requestedOrders = validateRequestedOrders(current, request.images());
         List<ProductImage> finalOrder = resolveFinalOrder(current, requestedOrders);
@@ -110,6 +113,18 @@ public class ProductImageAdminService {
         recordProductUpdate(actor, productId);
 
         return query.detailInternal(productId);
+    }
+
+    private void assertGalleryInvariant(List<ProductImage> orderedImages) {
+        for (int index = 0; index < orderedImages.size(); index++) {
+            ProductImage image = orderedImages.get(index);
+            if (!Objects.equals(image.getSortOrder(), index)
+                    || !Objects.equals(image.getIsPrimary(), index == 0)) {
+                // Existing-data repair is intentionally not implicit in a gallery command.
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT, "Product image gallery requires an approved repair");
+            }
+        }
     }
 
     private Map<Long, Integer> validateRequestedOrders(
@@ -164,7 +179,6 @@ public class ProductImageAdminService {
 
     private void normalizeSortOrder(List<ProductImage> orderedImages) {
         boolean alreadyNormalized = true;
-
         for (int index = 0; index < orderedImages.size(); index++) {
             if (!Objects.equals(orderedImages.get(index).getSortOrder(), index)) {
                 alreadyNormalized = false;
@@ -173,24 +187,46 @@ public class ProductImageAdminService {
         }
 
         if (alreadyNormalized) {
+            boolean primaryChanged = false;
+            for (int index = 0; index < orderedImages.size(); index++) {
+                ProductImage image = orderedImages.get(index);
+                boolean primary = index == 0;
+                if (!Objects.equals(image.getIsPrimary(), primary)) {
+                    image.setIsPrimary(primary);
+                    primaryChanged = true;
+                }
+            }
+            if (primaryChanged) {
+                images.flush();
+            }
             return;
         }
 
-        int temporaryBase =
+        long maxSortOrder =
                 orderedImages.stream()
-                                .map(ProductImage::getSortOrder)
-                                .filter(Objects::nonNull)
-                                .max(Integer::compareTo)
-                                .orElse(-1)
-                        + 1;
+                        .map(ProductImage::getSortOrder)
+                        .filter(Objects::nonNull)
+                        .mapToLong(Integer::longValue)
+                        .max()
+                        .orElse(-1L);
+        long temporaryBase = maxSortOrder + 1L;
+        if (!orderedImages.isEmpty()
+                && temporaryBase + orderedImages.size() - 1L > Integer.MAX_VALUE) {
+            conflict();
+        }
 
+        // Vacate unique positions first, then persist the dense final permutation.
         for (int index = 0; index < orderedImages.size(); index++) {
-            orderedImages.get(index).setSortOrder(temporaryBase + index);
+            ProductImage image = orderedImages.get(index);
+            image.setSortOrder((int) (temporaryBase + index));
+            image.setIsPrimary(false);
         }
         images.flush();
 
         for (int index = 0; index < orderedImages.size(); index++) {
-            orderedImages.get(index).setSortOrder(index);
+            ProductImage image = orderedImages.get(index);
+            image.setSortOrder(index);
+            image.setIsPrimary(index == 0);
         }
         images.flush();
     }

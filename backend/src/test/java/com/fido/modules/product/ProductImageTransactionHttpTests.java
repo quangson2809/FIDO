@@ -63,11 +63,12 @@ class ProductImageTransactionHttpTests extends CatalogHttpSupport {
     private void insertImage(long productId, String url, int sortOrder) {
         db.update(
                 """
-                INSERT INTO product_images(product_id,image_url,sort_order)
-                VALUES (?,?,?)
+                INSERT INTO product_images(product_id,image_url,is_primary,sort_order)
+                VALUES (?,?,?,?)
                 """,
                 productId,
                 url,
+                sortOrder == 0,
                 sortOrder);
     }
 

@@ -93,7 +93,7 @@ public class AdminCatalogQueryService {
                         ? null
                         : CatalogMapper.brand(references.brand(product.getBrandId()));
         var productImages =
-                images.findAllByProductIdOrderBySortOrderAsc(productId).stream()
+                images.findAllByProductIdOrderBySortOrderAscImageIdAsc(productId).stream()
                         .map(CatalogMapper::image)
                         .toList();
         List<Long> childIds =

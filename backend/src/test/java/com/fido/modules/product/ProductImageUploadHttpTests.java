@@ -57,6 +57,8 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
                 List.of("https://storage.test/front.png", "https://storage.test/back.png"),
                 responseImageUrls(response));
         assertEquals(List.of(0, 1), responseSortOrders(response));
+        assertEquals(List.of(true, false), responsePrimaryFlags(response));
+        assertPrimaryInvariant(fixture.productId());
         assertEquals(List.of("front.png", "back.png"), storage.uploadedFilenames());
         assertEquals(
                 List.of("https://storage.test/front.png", "https://storage.test/back.png"),
@@ -340,7 +342,48 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
         return List.copyOf(orders);
     }
 
-    private record UploadPart(String filename, String contentType, byte[] content) {}
+    private List<Boolean> responsePrimaryFlags(Result response) {
+        var primaryFlags = new ArrayList<Boolean>();
+        for (var image : response.data().get("data").get("images")) {
+            primaryFlags.add(image.get("is_primary").asBoolean());
+        }
+        return List.copyOf(primaryFlags);
+    }
+
+    private void assertPrimaryInvariant(long productId) {
+        long gallerySize =
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM product_images WHERE product_id=?",
+                        Long.class,
+                        productId);
+        long primaryCount =
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM product_images WHERE product_id=? AND is_primary=TRUE",
+                        Long.class,
+                        productId);
+        assertEquals(gallerySize == 0 ? 0L : 1L, primaryCount);
+        int mismatchCount =
+                db.queryForObject(
+                        """
+                        SELECT COUNT(*)
+                        FROM product_images
+                        WHERE product_id=?
+                          AND ((sort_order=0 AND is_primary=FALSE)
+                            OR (sort_order<>0 AND is_primary=TRUE))
+                        """,
+                        Integer.class,
+                        productId);
+        assertEquals(0, mismatchCount);
+        List<Integer> orders =
+                db.query(
+                        "SELECT sort_order FROM product_images WHERE product_id=? ORDER BY sort_order,id",
+                        (resultSet, rowNumber) -> resultSet.getInt(1),
+                        productId);
+        assertEquals(
+                java.util.stream.IntStream.range(0, orders.size()).boxed().toList(), orders);
+    }
+
+    private record UploadPart(String filename, String contentType, byte[] content) {
 
     @TestConfiguration(proxyBeanMethods = false)
     static class StorageTestConfig {

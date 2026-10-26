@@ -78,6 +78,8 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
 
         var replaced = replaceImages(writer, fixture.productId());
         assertEquals(List.of(0, 1, 2), sortOrders(fixture.productId()));
+        assertPrimaryInvariant(fixture.productId());
+        assertEquals(List.of(imageIds(replaced).get(0)), primaryImageIds(fixture.productId()));
         List<Long> beforeInvalid = imageIds(replaced);
 
         var duplicateOrder =
@@ -115,6 +117,7 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
         assertEquals(200, cleared.status(), cleared.body());
         assertEquals(0, cleared.data().get("data").get("images").size());
         assertEquals(0, storedImageIds(fixture.productId()).size());
+        assertPrimaryInvariant(fixture.productId());
     }
 
     @Test
@@ -135,6 +138,7 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
         assertEquals(200, response.status(), response.body());
         assertEquals(before, imageIds(response));
         assertEquals(before, storedImageIds(fixture.productId()));
+        assertPrimaryInvariant(fixture.productId());
     }
 
     @Test
@@ -176,6 +180,8 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
         assertEquals(
                 List.of(imageIds.get(2), imageIds.get(0), imageIds.get(1)), imageIds(reordered));
         assertEquals(List.of(0, 1, 2), sortOrders(fixture.productId()));
+        assertPrimaryInvariant(fixture.productId());
+        assertEquals(List.of(imageIds.get(2)), primaryImageIds(fixture.productId()));
 
         var invalid =
                 call(
@@ -244,6 +250,8 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
         assertEquals(
                 List.of(imageIds.get(1), imageIds.get(2)), storedImageIds(fixture.productId()));
         assertEquals(List.of(0, 1), sortOrders(fixture.productId()));
+        assertPrimaryInvariant(fixture.productId());
+        assertEquals(List.of(imageIds.get(1)), primaryImageIds(fixture.productId()));
 
         assertEquals(
                 204,
@@ -267,6 +275,8 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                                 writer.token(),
                                 null)
                         .status());
+        assertPrimaryInvariant(fixture.productId());
+        assertEquals(List.of(imageIds.get(2)), primaryImageIds(fixture.productId()));
 
         assertEquals(
                 0,
@@ -274,6 +284,8 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                         "SELECT COUNT(*) FROM product_images WHERE product_id=?",
                         Integer.class,
                         fixture.productId()));
+        assertPrimaryInvariant(fixture.productId());
+        assertEquals(List.of(), primaryImageIds(fixture.productId()));
     }
 
     @Test
@@ -319,6 +331,7 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                         .status());
 
         assertEquals(List.of(0, 1, 2), sortOrders(fixture.productId()));
+        assertPrimaryInvariant(fixture.productId());
     }
 
     private Result replaceImages(Employee writer, long productId) throws Exception {
@@ -336,6 +349,47 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
 
         assertEquals(200, response.status(), response.body());
         return response;
+    }
+
+    private List<Long> primaryImageIds(long productId) {
+        return db.query(
+                """
+                SELECT id
+                FROM product_images
+                WHERE product_id=? AND is_primary=TRUE
+                ORDER BY sort_order,id
+                """,
+                (resultSet, rowNumber) -> resultSet.getLong(1),
+                productId);
+    }
+
+    private void assertPrimaryInvariant(long productId) {
+        List<Integer> orders = sortOrders(productId);
+        assertEquals(
+                java.util.stream.IntStream.range(0, orders.size()).boxed().toList(), orders);
+        long gallerySize =
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM product_images WHERE product_id=?",
+                        Long.class,
+                        productId);
+        long primaryCount =
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM product_images WHERE product_id=? AND is_primary=TRUE",
+                        Long.class,
+                        productId);
+        assertEquals(gallerySize == 0 ? 0L : 1L, primaryCount);
+        int mismatchCount =
+                db.queryForObject(
+                        """
+                        SELECT COUNT(*)
+                        FROM product_images
+                        WHERE product_id=?
+                          AND ((sort_order=0 AND is_primary=FALSE)
+                            OR (sort_order<>0 AND is_primary=TRUE))
+                        """,
+                        Integer.class,
+                        productId);
+        assertEquals(0, mismatchCount);
     }
 
     private Map<String, Object> image(String imageUrl, String altText, int sortOrder) {
@@ -380,13 +434,13 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                                 List.of(image("https://example.test/foreign.png", "foreign", 0))));
         assertEquals(200, withImage.status(), withImage.body());
 
-        return withImage.data().get("data").get("images").get(0).get("image_id").asLong();
+        return withImage.data().get("data").get("images").get(0).get("id").asLong();
     }
 
     private List<Long> imageIds(Result response) {
         var ids = new ArrayList<Long>();
         for (var image : response.data().get("data").get("images")) {
-            ids.add(image.get("image_id").asLong());
+            ids.add(image.get("id").asLong());
         }
         return List.copyOf(ids);
     }

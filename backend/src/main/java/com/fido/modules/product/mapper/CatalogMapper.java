@@ -31,7 +31,10 @@ public final class CatalogMapper {
 
     public static ProductImageDto image(ProductImage image) {
         return new ProductImageDto(
-                image.getImageId(), image.getImageUrl(), image.getAltText(), image.getSortOrder());
+                image.getImageId(),
+                image.getImageUrl(),
+                Boolean.TRUE.equals(image.getIsPrimary()),
+                image.getSortOrder());
     }
 
     public static AdminProductSummaryDto adminSummary(Product product, String thumbnail) {

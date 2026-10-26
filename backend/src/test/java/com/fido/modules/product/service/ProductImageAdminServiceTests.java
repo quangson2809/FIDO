@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -45,7 +46,7 @@ class ProductImageAdminServiceTests {
     void appendUploadedImagesContinuesDenseSortOrder() {
         ProductImage cover = image(1L, 0, "https://cdn.test/cover.jpg");
         ProductImage second = image(2L, 1, "https://cdn.test/second.jpg");
-        when(images.findAllByProductIdOrderBySortOrderAsc(55L)).thenReturn(List.of(cover, second));
+        when(images.findAllByProductIdForUpdate(55L)).thenReturn(List.of(cover, second));
 
         service.appendUploadedImages(
                 7L,
@@ -63,6 +64,8 @@ class ProductImageAdminServiceTests {
                 List.of("https://cdn.test/third.jpg", "https://cdn.test/fourth.jpg"),
                 saved.getAllValues().stream().map(ProductImage::getImageUrl).toList());
         assertEquals(0, cover.getSortOrder());
+        assertEquals(true, cover.getIsPrimary());
+        assertEquals(List.of(false, false), saved.getAllValues().stream().map(ProductImage::getIsPrimary).toList());
         verify(audit).record(any());
     }
 
@@ -78,6 +81,8 @@ class ProductImageAdminServiceTests {
         verify(images).delete(cover);
         assertEquals(0, second.getSortOrder());
         assertEquals(1, third.getSortOrder());
+        assertEquals(true, second.getIsPrimary());
+        assertEquals(false, third.getIsPrimary());
         verify(images, times(3)).flush();
         verify(audit).record(any());
     }
@@ -101,6 +106,9 @@ class ProductImageAdminServiceTests {
         assertEquals(0, third.getSortOrder());
         assertEquals(1, first.getSortOrder());
         assertEquals(2, second.getSortOrder());
+        assertEquals(true, third.getIsPrimary());
+        assertEquals(false, first.getIsPrimary());
+        assertEquals(false, second.getIsPrimary());
         verify(images, times(2)).flush();
         verify(audit).record(any());
     }
@@ -130,12 +138,43 @@ class ProductImageAdminServiceTests {
         assertEquals(1, second.getSortOrder());
     }
 
+    @Test
+    void appendFirstImageMakesItPrimaryWhenGalleryIsEmpty() {
+        when(images.findAllByProductIdForUpdate(55L)).thenReturn(List.of());
+
+        service.appendUploadedImages(
+                7L, 55L, List.of(new ImageStorageGateway.UploadedImage("https://cdn.test/first.jpg")));
+
+        ArgumentCaptor<ProductImage> saved = ArgumentCaptor.forClass(ProductImage.class);
+        verify(images).save(saved.capture());
+        assertEquals(0, saved.getValue().getSortOrder());
+        assertEquals(true, saved.getValue().getIsPrimary());
+    }
+
+    @Test
+    void appendRejectsGappedExistingGalleryInsteadOfSilentlyRepairingIt() {
+        ProductImage first = image(1L, 0, "https://cdn.test/first.jpg");
+        ProductImage third = image(3L, 2, "https://cdn.test/third.jpg");
+        when(images.findAllByProductIdForUpdate(55L)).thenReturn(List.of(first, third));
+
+        ResponseStatusException error =
+                assertThrows(
+                        ResponseStatusException.class,
+                        () -> service.appendUploadedImages(
+                                7L, 55L,
+                                List.of(new ImageStorageGateway.UploadedImage("https://cdn.test/new.jpg"))));
+
+        assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
+        verify(images, never()).save(any());
+    }
+
     private ProductImage image(Long id, int sortOrder, String url) {
         ProductImage image = new ProductImage();
         image.setImageId(id);
         image.setProductId(55L);
         image.setImageUrl(url);
         image.setSortOrder(sortOrder);
+        image.setIsPrimary(sortOrder == 0);
         return image;
     }
 }
