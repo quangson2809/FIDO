@@ -2,7 +2,6 @@ package com.fido.modules.order.service;
 
 import com.fido.modules.cart.service.CheckoutCartView;
 import com.fido.modules.order.entity.CheckoutQuote;
-import com.fido.modules.order.repository.CheckoutQuoteRepository;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -17,15 +16,13 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 
 @Service
 @Transactional(propagation = Propagation.MANDATORY)
 public class CheckoutQuoteStore {
-    private final CheckoutQuoteRepository quotes;
-
-    public CheckoutQuoteStore(CheckoutQuoteRepository quotes) {
-        this.quotes = quotes;
-    }
+    private final Map<String, CheckoutQuote> quotes = new ConcurrentHashMap<>();
 
     CheckoutQuote save(
             Long accountId,
@@ -38,18 +35,21 @@ public class CheckoutQuoteStore {
         q.setAccountId(accountId);
         q.setFingerprint(fingerprint(phone, email, address, calculation));
         q.setExpiresAt(Instant.now().plusSeconds(900));
-        return quotes.save(q);
+        quotes.put(q.getQuoteId(), q);
+        return q;
     }
 
     // Account mutation lock serializes quote use, cart consumption and retries.
     CheckoutQuote find(Long accountId, String quoteId) {
         if (quoteId == null) return null; // Existing non-voucher clients remain compatible.
-        return quotes.findByQuoteIdAndAccountId(quoteId, accountId)
-                .orElseThrow(
-                        () ->
-                                new ResponseStatusException(
-                                        HttpStatus.CONFLICT,
-                                        "Báo giá không hợp lệ; vui lòng tính lại"));
+        CheckoutQuote quote = quotes.get(quoteId);
+        if (quote == null || !accountId.equals(quote.getAccountId())
+                || !Instant.now().isBefore(quote.getExpiresAt())) {
+            quotes.remove(quoteId);
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Báo giá không hợp lệ; vui lòng tính lại");
+        }
+        return quote;
     }
 
     void requireMatching(
