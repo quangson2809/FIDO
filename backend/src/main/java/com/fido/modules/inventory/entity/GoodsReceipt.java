@@ -1,12 +1,10 @@
 package com.fido.modules.inventory.entity;
 
 import jakarta.persistence.*;
-
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
@@ -36,9 +34,6 @@ public class GoodsReceipt {
     @Column(name = "status", nullable = false, length = 20)
     private String receiptStatus = "DRAFT";
 
-    @Transient
-    private LocalDate receiptDate;
-
     @Column(name = "created_by", nullable = false)
     private Long createdByAccountId;
 
@@ -47,9 +42,6 @@ public class GoodsReceipt {
 
     @Column(name = "confirmed_at", columnDefinition = "TIMESTAMP(6)")
     private LocalDateTime confirmedAt;
-
-    @Transient
-    private String note;
 
     @Column(
             name = "created_at",

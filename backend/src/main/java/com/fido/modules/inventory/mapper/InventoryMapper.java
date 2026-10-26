@@ -21,12 +21,11 @@ public final class InventoryMapper {
     public static SupplierDto supplier(Supplier supplier) {
         return new SupplierDto(
                 supplier.getSupplierId(),
+                supplier.getCode(),
                 supplier.getName(),
                 supplier.getPhone(),
                 supplier.getEmail(),
-                supplier.getAddress(),
-                supplier.getUsageStatus(),
-                supplier.getNote());
+                supplier.getUsageStatus());
     }
 
     public static GoodsReceiptItemDto receiptItem(GoodsReceiptItem item) {
@@ -41,7 +40,6 @@ public final class InventoryMapper {
                 receipt.getSupplierId(),
                 receipt.getWarehouseId(),
                 receipt.getReceiptStatus(),
-                receipt.getReceiptDate(),
                 receipt.getConfirmedAt(),
                 receipt.getCreatedAt());
     }
@@ -54,12 +52,10 @@ public final class InventoryMapper {
                 receipt.getSupplierId(),
                 receipt.getWarehouseId(),
                 receipt.getReceiptStatus(),
-                receipt.getReceiptDate(),
                 receipt.getConfirmedAt(),
                 receipt.getCreatedAt(),
                 receipt.getCreatedByAccountId(),
                 receipt.getConfirmedByAccountId(),
-                receipt.getNote(),
                 items,
                 receipt.getUpdatedAt());
     }
