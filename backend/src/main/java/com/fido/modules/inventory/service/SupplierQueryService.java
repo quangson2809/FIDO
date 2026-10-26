@@ -62,10 +62,10 @@ public class SupplierQueryService {
 
                 predicates.add(
                         cb.or(
+                                cb.like(cb.lower(root.get("code")), value),
                                 cb.like(cb.lower(root.get("name")), value),
                                 cb.like(cb.lower(root.get("phone")), value),
-                                cb.like(cb.lower(root.get("email")), value),
-                                cb.like(cb.lower(root.get("address")), value)));
+                                cb.like(cb.lower(root.get("email")), value)));
             }
 
             if (usageStatus != null) {
