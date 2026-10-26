@@ -11,7 +11,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
 @Entity
-@Table(name = "products")
+@Table(
+        name = "products",
+        uniqueConstraints = @UniqueConstraint(name = "uq_products_sku", columnNames = {"sku"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,10 +24,10 @@ public class Product {
     @Column(name = "id", nullable = false)
     private Long productId;
 
-    @Column(name = "category_id", nullable = true)
+    @Column(name = "category_id")
     private Long categoryId;
 
-    @Column(name = "brand_id", nullable = true)
+    @Column(name = "brand_id")
     private Long brandId;
 
     @Column(name = "parent_product_id")
@@ -52,10 +54,10 @@ public class Product {
     @Transient
     private Long sizeSystemId;
 
-    @Column(name = "name", nullable = true, length = 255)
+    @Column(name = "name", length = 255)
     private String name;
 
-    @Column(name = "description", nullable = true, columnDefinition = "TEXT")
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
     @Transient

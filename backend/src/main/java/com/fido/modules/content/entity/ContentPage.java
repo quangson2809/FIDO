@@ -11,7 +11,9 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 
 @Entity
-@Table(name = "content_pages")
+@Table(
+        name = "content_pages",
+        uniqueConstraints = @UniqueConstraint(name = "uq_content_pages_slug", columnNames = {"slug"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -31,7 +33,7 @@ public class ContentPage {
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "updated_by", nullable = true)
+    @Column(name = "updated_by")
     private Long updatedByAccountId;
 
     @Column(name = "status", nullable = false, length = 20)
@@ -42,8 +44,8 @@ public class ContentPage {
 
     @PrePersist
     void onCreate() {
-        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
-        updatedAt = now;
+        if (status == null) status = "DRAFT";
+        updatedAt = LocalDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
     }
 
     @PreUpdate

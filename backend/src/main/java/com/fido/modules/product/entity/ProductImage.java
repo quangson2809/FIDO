@@ -31,7 +31,7 @@ public class ProductImage {
     private Boolean isPrimary = false;
 
     @Column(name = "sort_order", nullable = false)
-    private Integer sortOrder;
+    private Integer sortOrder = 0;
 
     @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP(6)", updatable = false)
     private java.time.LocalDateTime createdAt;
@@ -39,5 +39,7 @@ public class ProductImage {
     @PrePersist
     void onCreate() {
         if (createdAt == null) createdAt = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
+        if (isPrimary == null) isPrimary = false;
+        if (sortOrder == null) sortOrder = 0;
     }
 }

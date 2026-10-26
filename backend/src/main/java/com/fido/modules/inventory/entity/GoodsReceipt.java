@@ -11,7 +11,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
 @Entity
-@Table(name = "goods_receipts")
+@Table(
+        name = "goods_receipts",
+        uniqueConstraints = @UniqueConstraint(name = "uq_goods_receipts_number", columnNames = {"receipt_number"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -32,7 +34,7 @@ public class GoodsReceipt {
     private Long warehouseId;
 
     @Column(name = "status", nullable = false, length = 20)
-    private String receiptStatus;
+    private String receiptStatus = "DRAFT";
 
     @Transient
     private LocalDate receiptDate;
@@ -40,10 +42,10 @@ public class GoodsReceipt {
     @Column(name = "created_by", nullable = false)
     private Long createdByAccountId;
 
-    @Column(name = "confirmed_by", nullable = true)
+    @Column(name = "confirmed_by")
     private Long confirmedByAccountId;
 
-    @Column(name = "confirmed_at", nullable = true, columnDefinition = "TIMESTAMP(6)")
+    @Column(name = "confirmed_at", columnDefinition = "TIMESTAMP(6)")
     private LocalDateTime confirmedAt;
 
     @Transient
@@ -64,6 +66,7 @@ public class GoodsReceipt {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         createdAt = now;
         updatedAt = now;
+        if (receiptStatus == null) receiptStatus = "DRAFT";
     }
 
     @PreUpdate

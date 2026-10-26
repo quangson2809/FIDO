@@ -12,7 +12,9 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "vouchers")
+@Table(
+        name = "vouchers",
+        uniqueConstraints = @UniqueConstraint(name = "uq_vouchers_code", columnNames = {"code"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -37,10 +39,10 @@ public class Voucher {
     @Transient
     private BigDecimal minimumAmount;
 
-    @Column(name = "starts_at")
+    @Column(name = "starts_at", columnDefinition = "TIMESTAMP(6)")
     private Instant startsAt;
 
-    @Column(name = "ends_at")
+    @Column(name = "ends_at", columnDefinition = "TIMESTAMP(6)")
     private Instant endsAt;
 
     @Column(name = "minimum_order_value", nullable = false)
@@ -78,6 +80,7 @@ public class Voucher {
 
     @Transient
     private Set<Long> categoryIds = new HashSet<>();
+
     @PrePersist
     @PreUpdate
     void syncLegacyFields() {

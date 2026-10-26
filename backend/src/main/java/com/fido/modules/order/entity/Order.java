@@ -11,7 +11,12 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
 @Entity
-@Table(name = "orders")
+@Table(
+        name = "orders",
+        uniqueConstraints = {
+            @UniqueConstraint(name = "uq_orders_number", columnNames = {"order_number"}),
+            @UniqueConstraint(name = "uq_orders_idempotency_key", columnNames = {"idempotency_key"})
+        })
 @Getter
 @Setter
 @NoArgsConstructor
@@ -49,10 +54,10 @@ public class Order {
     @Transient
     private BigDecimal totalSnapshot;
 
-    @Column(name = "voucher_id", nullable = true)
+    @Column(name = "voucher_id")
     private Long voucherId;
 
-    @Column(name = "idempotency_key", nullable = false, length = 120, unique = true)
+    @Column(name = "idempotency_key", nullable = false, length = 120)
     private String idempotencyKey;
 
     @Column(name = "request_fingerprint", nullable = false, length = 64)
@@ -77,7 +82,7 @@ public class Order {
     private LocalDateTime placedAt;
 
     @Column(name = "status", nullable = false, length = 30)
-    private String orderStatus;
+    private String orderStatus = "PENDING";
 
     @Transient
     private String customerServiceNote;
@@ -106,6 +111,7 @@ public class Order {
         syncLegacyFields();
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         if (placedAt == null) placedAt = now;
+        if (orderStatus == null) orderStatus = "PENDING";
         createdAt = now;
         updatedAt = now;
     }

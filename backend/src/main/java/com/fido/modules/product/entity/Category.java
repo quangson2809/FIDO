@@ -10,7 +10,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "categories")
+@Table(
+        name = "categories",
+        uniqueConstraints = @UniqueConstraint(name = "uq_categories_slug", columnNames = {"slug"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,7 +23,7 @@ public class Category {
     @Column(name = "id", nullable = false)
     private Long categoryId;
 
-    @Column(name = "parent_category_id", nullable = true)
+    @Column(name = "parent_category_id")
     private Long parentCategoryId;
 
     @Column(name = "name", nullable = false, length = 150)
@@ -38,6 +40,7 @@ public class Category {
 
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
     private LocalDateTime updatedAt;
+
     @PrePersist
     void onCreate() {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
