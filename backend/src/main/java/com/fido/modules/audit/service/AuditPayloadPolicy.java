@@ -137,6 +137,7 @@ public class AuditPayloadPolicy {
                     COLOR_DELETE,
                     PRODUCT_CREATE,
                     PRODUCT_UPDATE,
+                    PRODUCT_DELETE,
                     VARIANT_CREATE,
                     VARIANT_UPDATE,
                     SIZE_SYSTEM_CREATE,
