@@ -1,13 +1,9 @@
 package com.fido.modules.order.repository;
 
-import com.fido.modules.order.entity.CheckoutQuote;
-
-import org.springframework.data.repository.Repository;
-
-import java.util.Optional;
-
-public interface CheckoutQuoteRepository extends Repository<CheckoutQuote, String> {
-    CheckoutQuote save(CheckoutQuote quote);
-
-    Optional<CheckoutQuote> findByQuoteIdAndAccountId(String quoteId, Long accountId);
+/**
+ * Checkout quotes are short-lived runtime data. The canonical database schema intentionally
+ * has no checkout_quotes table; persistence is handled by CheckoutQuoteStore.
+ */
+public final class CheckoutQuoteRepository {
+    private CheckoutQuoteRepository() {}
 }
