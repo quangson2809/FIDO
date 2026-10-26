@@ -38,7 +38,8 @@ public class ApiExceptionHandler {
             "VALIDATION_ERROR", "RESOURCE_NOT_FOUND", "PHONE_ALREADY_IN_USE",
             "ROLE_CODE_ALREADY_EXISTS", "PERMISSION_CODE_ALREADY_EXISTS",
             "LAST_SUPERADMIN_REQUIRED", "ROLE_IN_USE", "PERMISSION_IN_USE",
-            "SYSTEM_ROLE_PROTECTED", "SYSTEM_PERMISSION_PROTECTED", "ACCOUNT_STATE_CONFLICT");
+            "SYSTEM_ROLE_PROTECTED", "SYSTEM_PERMISSION_PROTECTED", "ACCOUNT_STATE_CONFLICT",
+            "CART_SELECTION_AMBIGUOUS", "CART_ITEM_NOT_FOUND", "PRODUCT_NOT_AVAILABLE");
 
     private final ObjectMapper json;
 
@@ -135,7 +136,13 @@ public class ApiExceptionHandler {
             return "FORBIDDEN";
         }
         if (status == 400) return "VALIDATION_ERROR";
-        if (status == 404) return "RESOURCE_NOT_FOUND";
+        if (status == 404) {
+            if (exception instanceof ResponseStatusException responseStatus) {
+                String reason = responseStatus.getReason();
+                if (reason != null && PUBLIC_CODES.contains(reason)) return reason;
+            }
+            return "RESOURCE_NOT_FOUND";
+        }
         if (status == 409) {
             if (exception instanceof ResponseStatusException responseStatus) {
                 String reason = responseStatus.getReason();
@@ -171,6 +178,9 @@ public class ApiExceptionHandler {
             case "SYSTEM_ROLE_PROTECTED" -> "The requested system role mutation is protected.";
             case "SYSTEM_PERMISSION_PROTECTED" -> "The requested system permission is protected.";
             case "ACCOUNT_STATE_CONFLICT" -> "The account state transition conflicts with current state.";
+            case "CART_SELECTION_AMBIGUOUS" -> "Exactly one OPEN cart is required for this operation.";
+            case "CART_ITEM_NOT_FOUND" -> "Cart item was not found in the current OPEN cart.";
+            case "PRODUCT_NOT_AVAILABLE" -> "Product is not available for sale.";
             case "CONFLICT" -> "Operation conflicts with the current resource state.";
             case "INTERNAL_ERROR" -> "Unexpected server failure while processing request.";
             case "NOT_IMPLEMENTED" -> "Requested operation is not implemented.";

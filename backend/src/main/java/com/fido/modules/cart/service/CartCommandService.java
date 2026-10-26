@@ -43,8 +43,16 @@ public class CartCommandService {
     }
 
     public CartDto add(Long accountId, CartItemCreateRequest request) {
-        Cart cart = currentOrCreate(accountId);
-        requirePurchasable(request.product_id());
+        Cart cart = currentOpenForMutation(accountId);
+        requireActiveProduct(request.product_id());
+
+        // Cart records intent only. Stock is advisory and is revalidated by checkout/order flows.
+        if (cart == null) {
+            cart = new Cart();
+            cart.setAccountId(accountId);
+            cart.setStatus("OPEN");
+            cart = carts.save(cart);
+        }
 
         CartItem item =
                 items.findByCartIdAndProductId(cart.getCartId(), request.product_id())
@@ -60,7 +68,7 @@ public class CartCommandService {
         try {
             item.setQuantity(Math.addExact(item.getQuantity(), request.quantity()));
         } catch (ArithmeticException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR");
         }
         items.save(item);
         touch(cart);
@@ -69,9 +77,13 @@ public class CartCommandService {
 
     public CartDto updateQuantity(
             Long accountId, Long cartItemId, CartItemQuantityRequest request) {
-        Cart cart = currentOrCreate(accountId);
+        Cart cart = currentOpenForMutation(accountId);
+        if (cart == null) {
+            throw cartItemNotFound();
+        }
+
         CartItem item = ownedItem(cart.getCartId(), cartItemId);
-        requirePurchasable(item.getProductId());
+        requireActiveProduct(item.getProductId());
         item.setQuantity(request.quantity());
         items.save(item);
         touch(cart);
@@ -79,7 +91,11 @@ public class CartCommandService {
     }
 
     public CartDto deleteItem(Long accountId, Long cartItemId) {
-        Cart cart = currentOrCreate(accountId);
+        Cart cart = currentOpenForMutation(accountId);
+        if (cart == null) {
+            throw cartItemNotFound();
+        }
+
         CartItem item = ownedItem(cart.getCartId(), cartItemId);
         items.delete(item);
         touch(cart);
@@ -87,37 +103,54 @@ public class CartCommandService {
     }
 
     public CartDto clear(Long accountId) {
-        Cart cart = currentOrCreate(accountId);
+        Cart cart = currentOpenForMutation(accountId);
+        if (cart == null) {
+            return query.emptyCart(accountId);
+        }
+
         items.deleteByCartId(cart.getCartId());
         touch(cart);
         return query.toDto(cart);
     }
 
+    /**
+     * Checkout orchestration calls this inside its transaction to serialize against Cart
+     * mutations. It deliberately does not create a Cart; quote/read paths must be no-write.
+     */
     @Transactional(propagation = Propagation.MANDATORY)
     public void lockForCheckout(Long accountId) {
-        currentOrCreate(accountId);
+        currentOpenForMutation(accountId);
     }
 
-    private void requirePurchasable(Long productId) {
-        if (!catalog.get(productId).purchasable()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Product is not purchasable");
-        }
-    }
-
-    private Cart currentOrCreate(Long accountId) {
+    private Cart currentOpenForMutation(Long accountId) {
         accountLocks.lock(accountId);
-        return carts.findFirstForUpdateByAccountIdOrderByUpdatedAtDescCartIdDesc(accountId)
-                .orElseGet(
-                        () -> {
-                            Cart cart = new Cart();
-                            cart.setAccountId(accountId);
-                            return carts.save(cart);
-                        });
+        return CartQueryService.selectSoleOpen(carts.findOpenForUpdateByAccountId(accountId));
+    }
+
+    private void requireActiveProduct(Long productId) {
+        CatalogProductReadService.ProductView product;
+        try {
+            product = catalog.get(productId);
+        } catch (ResponseStatusException exception) {
+            if (exception.getStatusCode().value() == HttpStatus.NOT_FOUND.value()) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT, "PRODUCT_NOT_AVAILABLE");
+            }
+            throw exception;
+        }
+
+        if (!"ACTIVE".equals(product.status())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "PRODUCT_NOT_AVAILABLE");
+        }
     }
 
     private CartItem ownedItem(Long cartId, Long cartItemId) {
         return items.findByCartItemIdAndCartId(cartItemId, cartId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+                .orElseThrow(CartCommandService::cartItemNotFound);
+    }
+
+    private static ResponseStatusException cartItemNotFound() {
+        return new ResponseStatusException(HttpStatus.NOT_FOUND, "CART_ITEM_NOT_FOUND");
     }
 
     private void touch(Cart cart) {
