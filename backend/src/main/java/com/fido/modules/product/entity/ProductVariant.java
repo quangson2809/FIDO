@@ -70,11 +70,10 @@ public class ProductVariant {
     @PostLoad
     void onLoad() {
         overridePrice = sellingPrice == null ? null : BigDecimal.valueOf(sellingPrice);
-        saleStatus = "ACTIVE";
     }
 
     private void syncLegacyFields() {
-        if (sellingPrice == null && overridePrice != null) sellingPrice = overridePrice.longValue();
-        if (saleStatus == null || saleStatus.isBlank()) saleStatus = "ACTIVE";
+        if (sellingPrice == null && overridePrice != null) sellingPrice = overridePrice.longValueExact();
+        if (saleStatus == null || saleStatus.isBlank()) saleStatus = "DRAFT";
     }
 }
