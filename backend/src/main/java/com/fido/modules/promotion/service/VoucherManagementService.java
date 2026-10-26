@@ -106,7 +106,7 @@ public class VoucherManagementService {
         if (usages.existsByVoucherId(id)) {
             boolean immutableChanged =
                     !v.getCode().equals(r.code().trim().toUpperCase(Locale.ROOT))
-                            || !v.getDiscountType().equals(r.discount_type())
+                            || !v.getDiscountType().equals(normalizeType(r.discount_type()))
                             || !same(v.getDiscountValue(), r.discount_value())
                             || !same(v.getMaximumDiscount(), r.maximum_discount())
                             || !same(v.getMinimumAmount(), r.minimum_amount())
@@ -115,9 +115,8 @@ public class VoucherManagementService {
                             || !v.getProductIds().equals(r.product_ids())
                             || !v.getCategoryIds().equals(r.category_ids());
             if (immutableChanged
-                    || r.ends_at().isBefore(v.getEndsAt())
-                    || decreased(v.getUsageLimit(), r.global_limit())
-                    || customerLimit(r) < v.getCustomerLimit())
+                    || endsBefore(r.ends_at(), v.getEndsAt())
+                    || decreased(v.getUsageLimit(), r.global_limit()))
                 throw new ResponseStatusException(
                         HttpStatus.CONFLICT,
                         "Voucher đã dùng chỉ được gia hạn, tăng giới hạn hoặc bật/tắt");
@@ -134,6 +133,10 @@ public class VoucherManagementService {
         if ("FIXED_AMOUNT".equals(type)) return "FIXED";
         if ("PERCENTAGE".equals(type)) return "PERCENT";
         return type;
+    }
+
+    private static boolean endsBefore(java.time.Instant next, java.time.Instant current) {
+        return next != null && current != null && next.isBefore(current);
     }
 
     private static boolean sameInstant(java.time.Instant a, java.time.Instant b) {
@@ -154,7 +157,9 @@ public class VoucherManagementService {
     }
 
     private void validate(VoucherRequest r) {
-        if (!r.ends_at().isAfter(r.starts_at())) bad("Ngày kết thúc phải sau ngày bắt đầu");
+        if (r == null) bad("VOUCHER_CONFIGURATION_INVALID");
+        if (r.starts_at() != null && r.ends_at() != null && !r.starts_at().isBefore(r.ends_at()))
+            bad("VOUCHER_WINDOW_INVALID");
         String type = normalizeType(r.discount_type());
         if (!"FIXED".equals(type) && !"PERCENT".equals(type)) bad("VOUCHER_DISCOUNT_TYPE_INVALID");
         if (r.discount_value() == null || r.discount_value().signum() <= 0
@@ -184,8 +189,10 @@ public class VoucherManagementService {
         v.setDiscountValue(r.discount_value());
         v.setMaximumDiscount(r.maximum_discount());
         v.setMinimumAmount(r.minimum_amount());
-        v.setStartsAt(r.starts_at().truncatedTo(java.time.temporal.ChronoUnit.MICROS));
-        v.setEndsAt(r.ends_at().truncatedTo(java.time.temporal.ChronoUnit.MICROS));
+        v.setStartsAt(r.starts_at() == null ? null
+                : r.starts_at().truncatedTo(java.time.temporal.ChronoUnit.MICROS));
+        v.setEndsAt(r.ends_at() == null ? null
+                : r.ends_at().truncatedTo(java.time.temporal.ChronoUnit.MICROS));
         v.setScope(r.scope());
         v.getProductIds().clear();
         v.getProductIds().addAll(r.product_ids());
