@@ -85,8 +85,9 @@ class GoodsReceiptHttpTests extends InventoryHttpSupport {
                 "SELECT COALESCE(SUM(quantity_delta),0) FROM inventory_transactions WHERE warehouse_id=? AND product_id=?",
                 Integer.class, fixture.warehouseId(), fixture.productId()));
 
-        assertEquals(409, call("PATCH", "/api/v1/admin/goods-receipts/" + receiptId,
-                writer.token(), Map.of("note", "must not mutate")).status());
+        assertEquals(409, call("PATCH", "/api/v1/admin/goods-receipts/" + receiptId, writer.token(),
+                Map.of("items", List.of(Map.of("product_id", fixture.productId(),
+                        "quantity_received", 1, "unit_cost", 0)))).status());
         var receiptPage = call("GET", "/api/v1/admin/goods-receipts?receipt_status=CONFIRMED",
                 reader.token(), null);
         assertEquals(200, receiptPage.status());
