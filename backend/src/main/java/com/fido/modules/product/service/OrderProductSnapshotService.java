@@ -1,7 +1,7 @@
 package com.fido.modules.product.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.http.HttpStatus;
@@ -21,10 +21,14 @@ import java.util.Map;
 @Service
 @Transactional(readOnly = true)
 public class OrderProductSnapshotService {
-    private static final ObjectMapper JSON = new ObjectMapper();
+    private final ObjectMapper json;
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    public OrderProductSnapshotService(ObjectMapper json) {
+        this.json = json;
+    }
 
     public Map<Long, String> attributeSnapshots(Collection<Long> productIds) {
         if (productIds == null || productIds.isEmpty()) {
@@ -97,13 +101,13 @@ public class OrderProductSnapshotService {
         Map<Long, String> result = new HashMap<>();
         for (Long id : ids) {
             try {
-                String snapshot = JSON.writeValueAsString(byProduct.get(id));
+                String snapshot = json.writeValueAsString(byProduct.get(id));
                 if (snapshot.codePointCount(0, snapshot.length()) > 2000) {
                     throw new ResponseStatusException(
                             HttpStatus.UNPROCESSABLE_ENTITY, "ORDER_ATTRIBUTE_SNAPSHOT_TOO_LARGE");
                 }
                 result.put(id, snapshot);
-            } catch (JsonProcessingException exception) {
+            } catch (JacksonException exception) {
                 throw new IllegalStateException("Could not serialize Product attribute snapshot", exception);
             }
         }

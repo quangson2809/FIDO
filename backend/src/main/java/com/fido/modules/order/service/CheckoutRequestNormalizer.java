@@ -1,7 +1,7 @@
 package com.fido.modules.order.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import com.fido.modules.account.service.PhoneNumberCanonicalizer;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -17,12 +17,12 @@ import java.util.Locale;
 /** Canonicalizes checkout's semantic input before reading mutable Cart or catalog state. */
 @Component
 public class CheckoutRequestNormalizer {
-    private static final ObjectMapper JSON = new ObjectMapper();
-
     private final PhoneNumberCanonicalizer phones;
+    private final ObjectMapper json;
 
-    public CheckoutRequestNormalizer(PhoneNumberCanonicalizer phones) {
+    public CheckoutRequestNormalizer(PhoneNumberCanonicalizer phones, ObjectMapper json) {
         this.phones = phones;
+        this.json = json;
     }
 
     public Normalized normalize(
@@ -76,7 +76,7 @@ public class CheckoutRequestNormalizer {
                     + "\"ward\":" + encode(request.ward())
                     + "}";
             return sha256(canonicalJson);
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalStateException("Could not canonicalize checkout request", exception);
         }
     }
@@ -92,8 +92,8 @@ public class CheckoutRequestNormalizer {
         return value;
     }
 
-    private String encode(String value) throws JsonProcessingException {
-        return value == null ? "null" : JSON.writeValueAsString(value);
+    private String encode(String value) throws JacksonException {
+        return value == null ? "null" : json.writeValueAsString(value);
     }
 
     private static String sha256(String value) {
