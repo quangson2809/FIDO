@@ -204,7 +204,7 @@ export const AdminInwardView: React.FC<{
     }
     if (
       !window.confirm(
-        `${action === 'CONFIRM' ? 'Xác nhận' : 'Hủy'} phiếu ${selected.receipt_code}?\n${action === 'CONFIRM' ? `${selected.items.length} dòng, tổng ${selected.items.reduce((total, item) => total + item.quantity, 0)} sản phẩm sẽ được cộng vào kho. Phiếu đã xác nhận không sửa được.` : 'Phiếu sẽ bị hủy và không cộng tồn kho.'}`,
+        `${action === 'CONFIRM' ? 'Xác nhận' : 'Hủy'} phiếu ${selected.receipt_code}?\n${action === 'CONFIRM' ? `${selected.items.length} dòng, tổng ${selected.items.reduce((total, item) => total + item.quantity_received, 0)} sản phẩm sẽ được cộng vào kho. Phiếu đã xác nhận không sửa được.` : 'Phiếu sẽ bị hủy và không cộng tồn kho.'}`,
       )
     )
       return;
