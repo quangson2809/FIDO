@@ -1,7 +1,6 @@
 package com.fido.modules.inventory;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -63,7 +62,9 @@ class InventoryAdjustmentHttpTests extends InventoryHttpSupport {
                 reader.token(), null);
         assertEquals(200, movementPage.status(), movementPage.body());
         assertEquals(2, movementPage.data().get("meta").get("total").asInt());
-        assertTrue(movementPage.data().get("data").findValuesAsText("product_id")
-                .stream().allMatch(id -> id.equals(Long.toString(fixture.productId()))));
+        assertEquals(fixture.productId(),
+                movementPage.data().get("data").get(0).get("product_id").asLong());
+        assertEquals(fixture.productId(),
+                movementPage.data().get("data").get(1).get("product_id").asLong());
     }
 }
