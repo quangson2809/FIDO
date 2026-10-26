@@ -39,7 +39,7 @@ public class Supplier {
     @Column(name = "status", nullable = false, length = 20)
     private String usageStatus;
 
-    @Column(name = "note", nullable = true, length = 500)
+    @Transient
     private String note;
 
     @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP(6)", updatable = false)
