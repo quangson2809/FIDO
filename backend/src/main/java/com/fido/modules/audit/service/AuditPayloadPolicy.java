@@ -142,7 +142,11 @@ public class AuditPayloadPolicy {
                     VARIANT_UPDATE,
                     SIZE_SYSTEM_CREATE,
                     SIZE_SYSTEM_UPDATE,
-                    SIZE_SYSTEM_DELETE -> CATALOG_FIELDS;
+                    SIZE_SYSTEM_DELETE,
+                    ATTRIBUTE_CREATE,
+                    ATTRIBUTE_UPDATE,
+                    ATTRIBUTE_OPTION_CREATE,
+                    ATTRIBUTE_OPTION_UPDATE -> CATALOG_FIELDS;
         };
     }
 
