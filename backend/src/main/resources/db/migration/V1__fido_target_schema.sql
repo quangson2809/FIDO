@@ -394,3 +394,9 @@ INSERT INTO permissions (code, name, description) VALUES
 -- Superadmin has all current permissions. Admin gets no implicit business permissions.
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r CROSS JOIN permissions p WHERE r.code = 'SUPERADMIN';
+
+INSERT INTO attribute_types (code, name, data_type) VALUES
+ ('OPTION', 'Option', 'OPTION'),
+ ('TEXT', 'Text', 'TEXT'),
+ ('NUMBER', 'Number', 'NUMBER'),
+ ('BOOLEAN', 'Boolean', 'BOOLEAN');

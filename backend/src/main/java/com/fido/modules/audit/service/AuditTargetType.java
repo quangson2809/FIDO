@@ -12,5 +12,7 @@ public enum AuditTargetType {
     ORDER,
     CATEGORY,
     BRAND,
-    PRODUCT
+    PRODUCT,
+    ATTRIBUTE,
+    ATTRIBUTE_OPTION
 }

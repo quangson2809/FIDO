@@ -22,6 +22,7 @@
 - Account phone identity is unique among active accounts and can be reused after soft deletion. Account lifecycle and generated active-phone enforcement must agree between DDL, Entity, authentication and service validation.
 - Product parent/child records share `PRODUCTS`. v1 allows one parent-child level; children are explicit, independently sellable records. Each row owns SKU, required selling price and inventory; NULL never means implicit inheritance.
 - Typed catalog attributes use `OPTION`, `TEXT`, `NUMBER` and `BOOLEAN`. Options must belong to the selected Attribute. Attribute metadata is descriptive and never creates Products automatically.
+- P3.3 seeds exactly four canonical `ATTRIBUTE_TYPES` rows in the existing baseline SQL. Typed-value validation uses an exhaustive enum switch: exactly one non-null value compatible with the Attribute type, OPTION ownership checked against that exact Attribute, and NUMBER bounded to `DECIMAL(18,4)`. No Strategy/Factory or variant generator is introduced. Only API-79–82 Attribute/Option management routes are implemented; Product POST/PATCH value persistence remains in the Product-core phase and no separate write route is added.
 - Required system roles/permissions are seeded by Flyway. Bootstrap SUPERADMIN credentials come from external secret/configuration, never committed source or demo seed. Protect the last SUPERADMIN invariant and audit privileged changes.
 
 ## 4. Cart, checkout, Order and vouchers

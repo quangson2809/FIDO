@@ -113,7 +113,7 @@ public class PublicCatalogQueryService {
     }
 
     public CatalogMetaDto publicMeta() {
-        return metaService.meta();
+        return metaService.publicMeta();
     }
 
     private void validatePriceRange(CatalogProductFilter filter) {

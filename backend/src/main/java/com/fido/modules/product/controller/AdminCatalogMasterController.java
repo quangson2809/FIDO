@@ -6,7 +6,7 @@ import com.fido.modules.product.dto.request.BrandRequest;
 import com.fido.modules.product.dto.request.CategoryCreateRequest;
 import com.fido.modules.product.dto.request.CategoryPatchRequest;
 import com.fido.modules.product.dto.response.BrandDto;
-import com.fido.modules.product.dto.response.CatalogMetaDto;
+import com.fido.modules.product.dto.response.AdminCatalogMetaDtoV2;
 import com.fido.modules.product.dto.response.CategoryDto;
 import com.fido.modules.product.service.AdminCatalogQueryService;
 import com.fido.modules.product.service.CatalogMasterDataService;
@@ -40,7 +40,7 @@ public class AdminCatalogMasterController {
     }
 
     @GetMapping("/catalog/meta")
-    public ApiResponse<CatalogMetaDto> meta() {
+    public ApiResponse<AdminCatalogMetaDtoV2> meta() {
         return ApiResponse.of(query.adminMeta());
     }
 

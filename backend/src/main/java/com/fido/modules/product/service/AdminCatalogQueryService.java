@@ -5,7 +5,7 @@ import com.fido.common.response.Pagination;
 import com.fido.modules.product.dto.response.AdminProductDetailDto;
 import com.fido.modules.product.dto.response.AdminProductSummaryDto;
 import com.fido.modules.product.dto.response.BrandDto;
-import com.fido.modules.product.dto.response.CatalogMetaDto;
+import com.fido.modules.product.dto.response.AdminCatalogMetaDtoV2;
 import com.fido.modules.product.dto.response.CategoryDto;
 import com.fido.modules.product.entity.Product;
 import com.fido.modules.product.mapper.CatalogMapper;
@@ -78,8 +78,8 @@ public class AdminCatalogQueryService {
     }
 
     @PreAuthorize(READ)
-    public CatalogMetaDto adminMeta() {
-        return metaService.meta();
+    public AdminCatalogMetaDtoV2 adminMeta() {
+        return metaService.adminMeta()
     }
 
     AdminProductDetailDto detailInternal(Long productId) {
