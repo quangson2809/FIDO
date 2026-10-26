@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+import java.util.Map;
+
 class ProductImageAuthorizationHttpTests extends CatalogHttpSupport {
 
     @Test
@@ -11,6 +14,22 @@ class ProductImageAuthorizationHttpTests extends CatalogHttpSupport {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         Employee reader = employee(customRole(ensurePermission("CATALOG_READ")));
         var fixture = createCatalog(writer);
+        var imageAdded =
+                call(
+                        "PATCH",
+                        "/api/v1/admin/products/" + fixture.productId(),
+                        writer.token(),
+                        Map.of(
+                                "images",
+                                List.of(
+                                        Map.of(
+                                                "image_url",
+                                                "https://example.test/auth-image.png",
+                                                "alt_text",
+                                                "authorization test",
+                                                "sort_order",
+                                                0))));
+        assertEquals(200, imageAdded.status(), imageAdded.body());
 
         long imageId =
                 db.queryForObject(

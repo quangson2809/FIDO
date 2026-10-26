@@ -264,6 +264,9 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                                 writer.token(),
                                 null)
                         .status());
+        assertPrimaryInvariant(fixture.productId());
+        assertEquals(List.of(imageIds.get(2)), primaryImageIds(fixture.productId()));
+
         assertEquals(
                 204,
                 call(
@@ -275,8 +278,6 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                                 writer.token(),
                                 null)
                         .status());
-        assertPrimaryInvariant(fixture.productId());
-        assertEquals(List.of(imageIds.get(2)), primaryImageIds(fixture.productId()));
 
         assertEquals(
                 0,
