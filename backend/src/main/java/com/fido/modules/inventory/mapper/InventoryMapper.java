@@ -50,6 +50,7 @@ public final class InventoryMapper {
         return new InventoryTransactionDto(transaction.getTxnId(), transaction.getProductId(),
                 transaction.getWarehouseId(), transaction.getQuantityDelta(), transaction.getTransactionType(),
                 transaction.getOrderItemId(), transaction.getGoodsReceiptItemId(),
-                transaction.getActorAccountId(), transaction.getReason(), transaction.getCreatedAt());
+                transaction.getReversesTransactionId(), transaction.getActorAccountId(),
+                transaction.getReason(), transaction.getCreatedAt());
     }
 }

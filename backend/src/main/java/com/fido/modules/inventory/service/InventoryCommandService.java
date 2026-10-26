@@ -237,18 +237,10 @@ public class InventoryCommandService {
         Long warehouseId = operationalWarehouse.requireOperationalWarehouseId();
         String semanticKey = adjustmentMovementKey(sourceOperationId);
 
-        // Fast-path committed retries, then re-check after taking the Product lock for races.
-        var prior = transactions.findByIdempotencyKey(semanticKey);
-        if (prior.isPresent()) {
-            if (matchesAdjustmentMovement(
-                    prior.get(), semanticKey, actor, warehouseId, productId, quantityDelta, reasonCode)) {
-                return prior.get();
-            }
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "INVENTORY_IDEMPOTENCY_CONFLICT");
-        }
-
+        // Serialize writers for this Product, then use a locking read so MySQL REPEATABLE_READ
+        // sees a committed winner even if warehouse resolution established an earlier snapshot.
         productAccess.lockTrackedProduct(productId);
-        prior = transactions.findByIdempotencyKey(semanticKey);
+        var prior = transactions.findByIdempotencyKeyForUpdate(semanticKey);
         if (prior.isPresent()) {
             if (matchesAdjustmentMovement(
                     prior.get(), semanticKey, actor, warehouseId, productId, quantityDelta, reasonCode)) {

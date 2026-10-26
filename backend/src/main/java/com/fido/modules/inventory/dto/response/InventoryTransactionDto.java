@@ -10,6 +10,7 @@ public record InventoryTransactionDto(
         String transaction_type,
         Long order_item_id,
         Long goods_receipt_item_id,
+        Long reverses_transaction_id,
         Long actor_account_id,
         String reason,
         LocalDateTime created_at) {}

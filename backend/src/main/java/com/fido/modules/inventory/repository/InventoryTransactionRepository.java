@@ -21,6 +21,11 @@ public interface InventoryTransactionRepository
     java.util.Optional<InventoryTransaction> findByIdempotencyKey(String idempotencyKey);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select movement from InventoryTransaction movement where movement.idempotencyKey = :idempotencyKey")
+    java.util.Optional<InventoryTransaction> findByIdempotencyKeyForUpdate(
+            @Param("idempotencyKey") String idempotencyKey);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select movement from InventoryTransaction movement where movement.txnId = :transactionId")
     java.util.Optional<InventoryTransaction> findByTxnIdForUpdate(
             @Param("transactionId") Long transactionId);
