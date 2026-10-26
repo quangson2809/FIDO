@@ -11,9 +11,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
 @Entity
-@Table(
-        name = "orders",
-        uniqueConstraints = {@UniqueConstraint(columnNames = {"order_code"})})
+@Table(name = "orders")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,52 +19,76 @@ public class Order {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "order_id", nullable = false)
+    @Column(name = "id", nullable = false)
     private Long orderId;
 
-    @Column(name = "order_code", nullable = false, length = 40)
+    @Column(name = "order_number", nullable = true, length = 64)
     private String orderCode;
 
-    @Column(name = "customer_account_id", nullable = true)
+    @Column(name = "account_id", nullable = false)
     private Long customerAccountId;
 
-    @Column(name = "recipient_phone", nullable = false, length = 20)
+    @Transient
     private String recipientPhone;
 
-    @Column(name = "recipient_email", nullable = true, length = 254)
+    @Transient
     private String recipientEmail;
 
-    @Column(name = "recipient_address", nullable = false, length = 500)
+    @Transient
     private String recipientAddress;
 
-    @Column(name = "subtotal_snapshot", nullable = false, precision = 18, scale = 2)
+    @Transient
     private BigDecimal subtotalSnapshot;
 
-    @Column(name = "discount_snapshot", nullable = false, precision = 18, scale = 2)
+    @Transient
     private BigDecimal discountSnapshot;
 
-    @Column(name = "shipping_fee_snapshot", nullable = false, precision = 18, scale = 2)
+    @Transient
     private BigDecimal shippingFeeSnapshot;
 
-    @Column(name = "total_snapshot", nullable = false, precision = 18, scale = 2)
+    @Transient
     private BigDecimal totalSnapshot;
 
     @Column(name = "voucher_id", nullable = true)
     private Long voucherId;
 
-    @Column(name = "order_status", nullable = false, length = 30)
+    @Column(name = "idempotency_key", nullable = false, length = 120, unique = true)
+    private String idempotencyKey;
+
+    @Column(name = "request_fingerprint", nullable = false, length = 64)
+    private String requestFingerprint;
+
+    @Column(name = "subtotal", nullable = false)
+    private Long subtotal;
+
+    @Column(name = "discount_amount", nullable = false)
+    private Long discountAmount = 0L;
+
+    @Column(name = "shipping_fee", nullable = false)
+    private Long shippingFee = 0L;
+
+    @Column(name = "total_amount", nullable = false)
+    private Long totalAmount;
+
+    @Column(name = "currency", nullable = false, length = 3)
+    private String currency = "VND";
+
+    @Column(name = "placed_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
+    private LocalDateTime placedAt;
+
+    @Column(name = "status", nullable = false, length = 30)
     private String orderStatus;
 
-    @Column(name = "customer_service_note", nullable = true, columnDefinition = "TEXT")
+    @Transient
     private String customerServiceNote;
 
-    @Column(name = "cancel_reason", nullable = true, length = 500)
+    @Transient
     private String cancelReason;
 
-    @Column(name = "completed_at", nullable = true, columnDefinition = "TIMESTAMP(6)")
+    @Transient
     private LocalDateTime completedAt;
 
-    @Column(name = "returned_at", nullable = true, columnDefinition = "TIMESTAMP(6)")
+    @Transient
     private LocalDateTime returnedAt;
 
     @Column(
@@ -81,13 +103,37 @@ public class Order {
 
     @PrePersist
     void onCreate() {
+        syncLegacyFields();
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        if (placedAt == null) placedAt = now;
         createdAt = now;
         updatedAt = now;
     }
 
     @PreUpdate
     void onUpdate() {
+        syncLegacyFields();
         updatedAt = LocalDateTime.now(ZoneOffset.UTC);
+    }
+
+    @PostLoad
+    void onLoad() {
+        subtotalSnapshot = subtotal == null ? null : BigDecimal.valueOf(subtotal);
+        discountSnapshot = discountAmount == null ? null : BigDecimal.valueOf(discountAmount);
+        shippingFeeSnapshot = shippingFee == null ? null : BigDecimal.valueOf(shippingFee);
+        totalSnapshot = totalAmount == null ? null : BigDecimal.valueOf(totalAmount);
+    }
+
+    private void syncLegacyFields() {
+        if (subtotal == null && subtotalSnapshot != null) subtotal = subtotalSnapshot.longValue();
+        if (discountAmount == null && discountSnapshot != null) discountAmount = discountSnapshot.longValue();
+        if (shippingFee == null && shippingFeeSnapshot != null) shippingFee = shippingFeeSnapshot.longValue();
+        if (totalAmount == null && totalSnapshot != null) totalAmount = totalSnapshot.longValue();
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            idempotencyKey = java.util.UUID.randomUUID().toString();
+        }
+        if (requestFingerprint == null || requestFingerprint.length() != 64) {
+            requestFingerprint = "0".repeat(64);
+        }
     }
 }
