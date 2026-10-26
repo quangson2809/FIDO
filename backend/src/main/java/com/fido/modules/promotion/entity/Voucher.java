@@ -74,12 +74,32 @@ public class Voucher {
 
     @Transient
     private boolean enabled;
+    @Transient private java.util.Set<Long> productIds = new java.util.HashSet<>();
+    @Transient private java.util.Set<Long> categoryIds = new java.util.HashSet<>();
 
     @Transient
     private Set<Long> productIds = new HashSet<>();
 
     @Transient
     private Set<Long> categoryIds = new HashSet<>();
+
+    public void setDiscountValue(BigDecimal value) {
+        this.discountValue = value;
+        this.discountValueAmount = value == null ? null : value.longValueExact();
+    }
+    public void setMaximumDiscount(BigDecimal value) {
+        this.maximumDiscount = value;
+        this.maximumDiscountAmount = value == null ? null : value.longValueExact();
+    }
+    public void setMinimumAmount(BigDecimal value) {
+        this.minimumAmount = value;
+        this.minimumOrderValue = value == null ? 0L : value.longValueExact();
+    }
+    public void setGlobalLimit(Long value) {
+        this.globalLimit = value;
+        if (value == null) this.usageLimit = null;
+        else if (value >= 1 && value <= Integer.MAX_VALUE) this.usageLimit = value.intValue();
+    }
 
     @PrePersist
     @PreUpdate
@@ -90,6 +110,15 @@ public class Voucher {
         if (minimumOrderValue == null) minimumOrderValue = 0L;
         if (status == null || status.isBlank()) status = enabled ? "ACTIVE" : "INACTIVE";
         if (usageCount == null) usageCount = 0;
+        if (usageCount < 0) throw new IllegalStateException("VOUCHER_USAGE_COUNT_INVALID");
+        if (globalLimit != null) {
+            if (globalLimit < 1 || globalLimit > Integer.MAX_VALUE) throw new IllegalStateException("VOUCHER_USAGE_LIMIT_INVALID");
+            usageLimit = globalLimit.intValue();
+        }
+        if (discountType != null) {
+            if ("FIXED_AMOUNT".equals(discountType)) discountType = "FIXED";
+            if ("PERCENTAGE".equals(discountType)) discountType = "PERCENT";
+        }
     }
 
     @PostLoad
@@ -98,5 +127,8 @@ public class Voucher {
         maximumDiscount = maximumDiscountAmount == null ? null : BigDecimal.valueOf(maximumDiscountAmount);
         minimumAmount = minimumOrderValue == null ? BigDecimal.ZERO : BigDecimal.valueOf(minimumOrderValue);
         enabled = "ACTIVE".equals(status);
+        globalLimit = usageLimit == null ? null : usageLimit.longValue();
+        scope = "ALL";
+        customerLimit = 1L;
     }
 }

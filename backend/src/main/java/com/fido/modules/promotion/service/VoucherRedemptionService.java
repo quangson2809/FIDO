@@ -83,15 +83,8 @@ public class VoucherRedemptionService {
             throw rejected("VOUCHER_NOT_ELIGIBLE");
         }
 
-        // Quota ownership remains in the existing voucher workflow; pricing only consumes the
-        // eligibility result and does not reserve/consume/release a use itself.
-        var active = usages.activeForUpdate(voucher.getVoucherId());
-        if (voucher.getGlobalLimit() != null && active.size() >= voucher.getGlobalLimit()) {
+        if (voucher.getUsageLimit() != null && voucher.getUsageCount() >= voucher.getUsageLimit()) {
             throw rejected("VOUCHER_USAGE_LIMIT_REACHED");
-        }
-        if (active.stream().filter(u -> u.getAccountId().equals(accountId)).count()
-                >= voucher.getCustomerLimit()) {
-            throw rejected("VOUCHER_NOT_ELIGIBLE");
         }
 
         long subtotal = pricing.sumAmounts(lines.stream().map(Line::amount).toList());
@@ -122,7 +115,7 @@ public class VoucherRedemptionService {
         long result;
         try {
             result = new PricingCalculator().calculateDiscountAmount(
-                    type,
+                    normalizeType(type),
                     value.longValueExact(),
                     maximum == null ? null : maximum.longValueExact(),
                     subtotal.longValueExact());
@@ -136,7 +129,7 @@ public class VoucherRedemptionService {
 
     public static long discount(String type, Long value, Long maximum, long subtotal) {
         try {
-            return new PricingCalculator().calculateDiscountAmount(type, value, maximum, subtotal);
+            return new PricingCalculator().calculateDiscountAmount(normalizeType(type), value, maximum, subtotal);
         } catch (com.fido.modules.pricing.PricingException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.code());
         }
@@ -144,17 +137,43 @@ public class VoucherRedemptionService {
 
     public void consume(Long orderId, Long accountId, Discount discount) {
         if (discount.voucherId() == null) return;
-        VoucherUsage usage = new VoucherUsage();
-        usage.setOrderId(orderId);
-        usage.setAccountId(accountId);
-        usage.setVoucherId(discount.voucherId());
-        usages.save(usage);
+        Voucher voucher = vouchers.lockById(discount.voucherId())
+                .orElseThrow(() -> rejected("VOUCHER_NOT_FOUND"));
+        VoucherUsage order = usages.findById(orderId)
+                .orElseThrow(() -> rejected("VOUCHER_ORDER_NOT_FOUND"));
+        if (!discount.voucherId().equals(order.getVoucherId())
+                || !accountId.equals(order.getAccountId())
+                || "CANCELLED".equals(order.getOrderStatus())) {
+            throw rejected("VOUCHER_ORDER_MISMATCH");
+        }
+        long activeOrders = usages.countByVoucherIdAndRestoredFalse(discount.voucherId());
+        int recorded = voucher.getUsageCount() == null ? 0 : voucher.getUsageCount();
+        if (recorded >= activeOrders) return;
+        if (vouchers.incrementUsageCountIfAvailable(discount.voucherId()) != 1) {
+            throw rejected("VOUCHER_USAGE_LIMIT_REACHED");
+        }
+        voucher.setUsageCount(recorded + 1);
     }
 
     public void restoreCancelledOrder(Long orderId, Long voucherId) {
         if (voucherId == null) return;
-        vouchers.lockById(voucherId).orElseThrow();
-        usages.findById(orderId).filter(u -> !u.isRestored()).ifPresent(u -> u.setRestored(true));
+        Voucher voucher = vouchers.lockById(voucherId)
+                .orElseThrow(() -> rejected("VOUCHER_NOT_FOUND"));
+        VoucherUsage order = usages.findById(orderId)
+                .orElseThrow(() -> rejected("VOUCHER_ORDER_NOT_FOUND"));
+        if (!voucherId.equals(order.getVoucherId()) || !"CANCELLED".equals(order.getOrderStatus())) return;
+        long activeOrders = usages.countByVoucherIdAndRestoredFalse(voucherId);
+        int minimumCount = Math.toIntExact(Math.min(activeOrders, Integer.MAX_VALUE));
+        int recorded = voucher.getUsageCount() == null ? 0 : voucher.getUsageCount();
+        if (vouchers.decrementUsageCountAbove(voucherId, minimumCount) == 1) {
+            voucher.setUsageCount(Math.max(0, recorded - 1));
+        }
+    }
+
+    private static String normalizeType(String type) {
+        if ("FIXED_AMOUNT".equals(type)) return "FIXED";
+        if ("PERCENTAGE".equals(type)) return "PERCENT";
+        return type;
     }
 
     private static ResponseStatusException rejected(String code) {

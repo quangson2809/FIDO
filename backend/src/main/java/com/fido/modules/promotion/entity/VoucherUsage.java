@@ -28,6 +28,9 @@ public class VoucherUsage {
     @Column(name = "account_id", nullable = false, updatable = false)
     private Long accountId;
 
-    @Formula("case when status in ('CANCELLED', 'RETURNED') then true else false end")
+    @Column(name = "status", nullable = false, updatable = false)
+    private String orderStatus;
+
+    @Formula("case when status = 'CANCELLED' then true else false end")
     private boolean restored;
 }

@@ -110,11 +110,7 @@ public class VoucherManagementService {
                             || !same(v.getDiscountValue(), r.discount_value())
                             || !same(v.getMaximumDiscount(), r.maximum_discount())
                             || !same(v.getMinimumAmount(), r.minimum_amount())
-                            || !v.getStartsAt()
-                                    .equals(
-                                            r.starts_at()
-                                                    .truncatedTo(
-                                                            java.time.temporal.ChronoUnit.MICROS))
+                            || !sameInstant(v.getStartsAt(), r.starts_at())
                             || !v.getScope().equals(r.scope())
                             || !v.getProductIds().equals(r.product_ids())
                             || !v.getCategoryIds().equals(r.category_ids());
@@ -138,6 +134,11 @@ public class VoucherManagementService {
         if ("FIXED_AMOUNT".equals(type)) return "FIXED";
         if ("PERCENTAGE".equals(type)) return "PERCENT";
         return type;
+    }
+
+    private static boolean sameInstant(java.time.Instant a, java.time.Instant b) {
+        if (a == null) return b == null;
+        return b != null && a.equals(b.truncatedTo(java.time.temporal.ChronoUnit.MICROS));
     }
 
     private static boolean same(BigDecimal a, BigDecimal b) {

@@ -7,6 +7,7 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
@@ -25,6 +26,14 @@ public interface VoucherRepository extends Repository<Voucher, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select v from Voucher v where v.voucherId = :id")
     Optional<Voucher> lockById(@Param("id") Long id);
+
+    @Modifying
+    @Query("update Voucher v set v.usageCount = v.usageCount + 1 where v.voucherId = :id and (v.usageLimit is null or v.usageCount < v.usageLimit)")
+    int incrementUsageCountIfAvailable(@Param("id") Long id);
+
+    @Modifying
+    @Query("update Voucher v set v.usageCount = v.usageCount - 1 where v.voucherId = :id and v.usageCount > :minimumCount")
+    int decrementUsageCountAbove(@Param("id") Long id, @Param("minimumCount") int minimumCount);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select v from Voucher v where lower(v.code) = lower(:code)")
