@@ -54,12 +54,15 @@ public class CartCommandService {
             cart = carts.save(cart);
         }
 
+        // Capture a stable reference for the lambda; the local variable above was reassigned
+        // while resolving or creating the current OPEN cart.
+        final Cart activeCart = cart;
         CartItem item =
-                items.findByCartIdAndProductId(cart.getCartId(), request.product_id())
+                items.findByCartIdAndProductId(activeCart.getCartId(), request.product_id())
                         .orElseGet(
                                 () -> {
                                     CartItem created = new CartItem();
-                                    created.setCartId(cart.getCartId());
+                                    created.setCartId(activeCart.getCartId());
                                     created.setProductId(request.product_id());
                                     created.setQuantity(0);
                                     return created;
@@ -71,8 +74,8 @@ public class CartCommandService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR");
         }
         items.save(item);
-        touch(cart);
-        return query.toDto(cart);
+        touch(activeCart);
+        return query.toDto(activeCart);
     }
 
     public CartDto updateQuantity(
