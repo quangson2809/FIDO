@@ -16,7 +16,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -41,6 +40,7 @@ abstract class InventoryHttpSupport {
     final List<Long> suppliers = new ArrayList<>();
     final List<Long> receipts = new ArrayList<>();
     final List<CatalogFixture> catalog = new ArrayList<>();
+    final List<Long> additionalProducts = new ArrayList<>();
 
     record Result(int status, JsonNode data, String body) {}
     record Employee(long id, String token) {}
@@ -161,16 +161,26 @@ abstract class InventoryHttpSupport {
         var response = call("POST", "/api/v1/admin/goods-receipts", token,
                 Map.of(
                         "supplier_id", supplierId,
-                        "warehouse_id", fixture.warehouseId(),
-                        "receipt_date", LocalDate.now().toString(),
                         "items", List.of(Map.of(
                                 "product_id", fixture.productId(),
-                                "quantity", quantity,
+                                "quantity_received", quantity,
                                 "unit_cost", 0))));
         assertEquals(201, response.status(), response.body());
         long receiptId = response.data().get("data").get("receipt_id").asLong();
         receipts.add(receiptId);
         return receiptId;
+    }
+
+    long createSiblingProduct(CatalogFixture fixture) {
+        String suffix = UUID.randomUUID().toString().replace("-", "");
+        db.update("INSERT INTO products(category_id,name,sku,selling_price,status) VALUES (?,?,?,100000,'ACTIVE')",
+                fixture.categoryId(), "Inventory sibling " + suffix, "INV-SIB-" + suffix);
+        long productId = db.queryForObject(
+                "SELECT id FROM products WHERE sku=?", Long.class, "INV-SIB-" + suffix);
+        db.update("INSERT INTO inventories(warehouse_id,product_id,quantity_on_hand,version) VALUES (?,?,0,0)",
+                fixture.warehouseId(), productId);
+        additionalProducts.add(productId);
+        return productId;
     }
 
     int stock(long productId) {
@@ -194,6 +204,12 @@ abstract class InventoryHttpSupport {
             db.update("DELETE FROM goods_receipts WHERE id=?", receiptId);
         }
         for (Long supplierId : suppliers) db.update("DELETE FROM suppliers WHERE id=?", supplierId);
+        for (Long productId : additionalProducts) {
+            db.update("DELETE FROM inventory_transactions WHERE product_id=?", productId);
+            db.update("DELETE FROM product_images WHERE product_id=?", productId);
+            db.update("DELETE FROM inventories WHERE product_id=?", productId);
+            db.update("DELETE FROM products WHERE id=?", productId);
+        }
         for (CatalogFixture fixture : catalog) {
             db.update("DELETE FROM inventory_transactions WHERE product_id=?", fixture.productId());
             db.update("DELETE FROM inventories WHERE product_id=?", fixture.productId());

@@ -16,6 +16,17 @@ public interface InventoryTransactionRepository
 
     InventoryTransaction save(InventoryTransaction entity);
 
+    java.util.Optional<InventoryTransaction> findByIdempotencyKey(String idempotencyKey);
+
+    List<InventoryTransaction> findAllByGoodsReceiptItemIdAndTransactionType(
+            Long goodsReceiptItemId, String transactionType);
+
+    List<InventoryTransaction> findAllByWarehouseIdAndProductIdAndTransactionType(
+            Long warehouseId, Long productId, String transactionType);
+
+    List<InventoryTransaction> findAllByWarehouseIdAndProductIdOrderByTxnIdAsc(
+            Long warehouseId, Long productId);
+
     List<InventoryTransaction> findAllByOrderItemIdInAndTransactionType(
             Collection<Long> orderItemIds, String transactionType);
 

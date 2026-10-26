@@ -13,6 +13,7 @@ public final class InventoryPolicy {
     public static final String RECEIPT_CANCELLED = "CANCELLED";
 
     // Canonical transaction_type values accepted by V1__fido_target_schema.sql.
+    public static final String OPENING = "OPENING";
     public static final String RECEIPT_IN = "GOODS_RECEIPT";
     public static final String ADJUSTMENT = "ADJUSTMENT";
     public static final String ORDER_CONFIRM_OUT = "ORDER";

@@ -110,7 +110,7 @@ public class AuditPayloadPolicy {
                     GOODS_RECEIPT_UPDATE,
                     GOODS_RECEIPT_CONFIRM,
                     GOODS_RECEIPT_CANCEL -> RECEIPT_FIELDS;
-            case INVENTORY_ADJUST -> INVENTORY_FIELDS;
+            case INVENTORY_ADJUST, INVENTORY_OPENING -> INVENTORY_FIELDS;
             case SUPPLIER_CREATE, SUPPLIER_UPDATE -> SUPPLIER_FIELDS;
             case ORDER_CREATE,
                     ORDER_RECIPIENT_UPDATE,

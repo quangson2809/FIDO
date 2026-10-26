@@ -101,10 +101,9 @@ class InventoryProductIdIntegrationTests extends CatalogHttpSupport {
         suppliers.add(supplierId);
 
         var created = call("POST", "/api/v1/admin/goods-receipts", writer.token(),
-                Map.of("supplier_id", supplierId, "warehouse_id", warehouseId,
-                        "receipt_date", "2026-10-26", "note", "P3.2 Product identity",
+                Map.of("supplier_id", supplierId,
                         "items", List.of(Map.of("product_id", fixture.productId(),
-                                "quantity", 3, "unit_cost", 55000))));
+                                "quantity_received", 3, "unit_cost", 55000))));
         assertEquals(201, created.status(), created.body());
         long receiptId = created.data().get("data").get("receipt_id").asLong();
         receipts.add(receiptId);

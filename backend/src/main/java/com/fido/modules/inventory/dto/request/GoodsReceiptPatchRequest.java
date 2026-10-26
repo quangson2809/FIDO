@@ -7,12 +7,11 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
+
 import java.util.List;
 
 public class GoodsReceiptPatchRequest {
-
     @Positive private Long supplierId;
-    @Positive private Long warehouseId;
     @Valid private List<ItemInput> items;
     private boolean itemsPresent;
 
@@ -21,21 +20,19 @@ public class GoodsReceiptPatchRequest {
     @JsonSetter(value = "supplier_id", nulls = Nulls.FAIL)
     public void setSupplierId(Long value) { supplierId = value; }
 
-    public Long getWarehouseId() { return warehouseId; }
-
-    @JsonSetter(value = "warehouse_id", nulls = Nulls.FAIL)
-    public void setWarehouseId(Long value) { warehouseId = value; }
-
     public List<ItemInput> getItems() { return items; }
 
     @JsonSetter(value = "items", nulls = Nulls.FAIL)
-    public void setItems(List<ItemInput> value) { items = value; itemsPresent = true; }
+    public void setItems(List<ItemInput> value) {
+        items = value;
+        itemsPresent = true;
+    }
 
     @JsonIgnore
     public boolean isItemsPresent() { return itemsPresent; }
 
     public record ItemInput(
             @NotNull @Positive Long product_id,
-            @NotNull @Positive Integer quantity,
+            @NotNull @Positive Integer quantity_received,
             @NotNull @PositiveOrZero Long unit_cost) {}
 }
