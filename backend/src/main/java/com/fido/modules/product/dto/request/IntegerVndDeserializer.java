@@ -12,7 +12,7 @@ public final class IntegerVndDeserializer extends ValueDeserializer<Long> {
     public Long deserialize(JsonParser parser, DeserializationContext context) throws JacksonException {
         if (parser.currentToken() != JsonToken.VALUE_NUMBER_INT) {
             return (Long) context.handleUnexpectedToken(
-                    Long.class,
+                    context.constructType(Long.class),
                     parser.currentToken(),
                     parser,
                     "VND price must be an integer number of đồng");
