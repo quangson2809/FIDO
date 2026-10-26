@@ -47,4 +47,23 @@ class SuperadminBootstrapHttpTests extends AccountHttpSupport {
         assertThrows(
                 IllegalStateException.class, () -> bootstrap.initialize(customerPhone, PASSWORD));
     }
+
+    @Test
+    void bootstrapRejectsPhoneOwnedBySoftDeletedAccount() throws Exception {
+        String phone = phone();
+        long deletedAccountId = register(phone);
+        db.update(
+                "UPDATE accounts SET deleted_at=CURRENT_TIMESTAMP WHERE id=?",
+                deletedAccountId);
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> bootstrap.initialize(phone, PASSWORD));
+        assertEquals(
+                1,
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM accounts WHERE phone=?",
+                        Integer.class,
+                        phone));
+    }
 }

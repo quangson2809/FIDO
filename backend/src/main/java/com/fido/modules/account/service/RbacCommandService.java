@@ -54,9 +54,7 @@ public class RbacCommandService {
                     "CONTENT_READ",
                     "CONTENT_WRITE",
                     "CUSTOMER_READ",
-                    "REPORT_READ",
-                    "VOUCHER_READ",
-                    "VOUCHER_WRITE");
+                    "REPORT_READ");
 
     private final RoleRepository roles;
     private final PermissionRepository permissions;

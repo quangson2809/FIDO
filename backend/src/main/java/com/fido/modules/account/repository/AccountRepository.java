@@ -36,6 +36,9 @@ public interface AccountRepository extends Repository<Account, Long> {
     @Query("select a from Account a where a.phone in :phones and a.deletedAt is null")
     List<Account> findByPhoneInAndNotDeleted(@Param("phones") Collection<String> phones);
 
+    /** Includes soft-deleted rows because the canonical schema has UNIQUE(phone) across all accounts. */
+    List<Account> findByPhoneIn(Collection<String> phones);
+
     @Query(
             """
             select case when count(a) > 0 then true else false end
@@ -43,6 +46,12 @@ public interface AccountRepository extends Repository<Account, Long> {
             where a.phone in :phones and a.deletedAt is null
             """)
     boolean existsByPhoneInAndNotDeleted(@Param("phones") Collection<String> phones);
+
+    /** Uniqueness check across all rows, including soft-deleted accounts. */
+    boolean existsByPhoneIn(Collection<String> phones);
+
+    /** Uniqueness check across all rows other than the account being updated. */
+    boolean existsByPhoneInAndAccountIdNot(Collection<String> phones, Long accountId);
 
     @Query(
             """

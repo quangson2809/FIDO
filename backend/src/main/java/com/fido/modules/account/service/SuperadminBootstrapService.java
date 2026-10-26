@@ -60,13 +60,16 @@ public class SuperadminBootstrapService {
         String canonicalPhone = phoneNumbers.canonicalize(phone);
         Role role = roles.lockSuperadminRole().orElseThrow();
 
-        List<Account> matchingAccounts = accounts.findByPhoneInAndNotDeleted(phoneNumbers.lookupValues(canonicalPhone));
+        List<Account> matchingAccounts = accounts.findByPhoneIn(phoneNumbers.lookupValues(canonicalPhone));
         if (matchingAccounts.size() > 1) {
             throw new IllegalStateException("Bootstrap phone matches ambiguous legacy accounts");
         }
 
         if (!matchingAccounts.isEmpty()) {
             Account existing = matchingAccounts.get(0);
+            if (existing.getDeletedAt() != null) {
+                throw new IllegalStateException("Bootstrap phone belongs to a deleted account");
+            }
             if (!access.isSuperadmin(existing.getAccountId())) {
                 throw new IllegalStateException(
                         "Bootstrap phone already belongs to a non-superadmin account");

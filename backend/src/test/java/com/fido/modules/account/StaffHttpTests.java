@@ -148,4 +148,29 @@ class StaffHttpTests extends AccountHttpSupport {
         assertEquals(409, lastSuperadmin.status(), lastSuperadmin.body());
         assertEquals("LAST_SUPERADMIN_REQUIRED", lastSuperadmin.data().get("code").asText());
     }
+
+    @Test
+    void staffCreationRejectsPhoneOwnedBySoftDeletedAccount() throws Exception {
+        String token = root();
+        String phone = phone();
+        long deletedAccountId = register(phone);
+        db.update(
+                "UPDATE accounts SET deleted_at=CURRENT_TIMESTAMP WHERE id=?",
+                deletedAccountId);
+
+        var response = call(
+                "POST",
+                "/api/v1/admin/staff-accounts",
+                token,
+                Map.of("phone", phone, "full_name", "Replacement Staff", "password", PASSWORD));
+
+        assertEquals(409, response.status(), response.body());
+        assertEquals("PHONE_ALREADY_IN_USE", response.data().get("code").asText());
+        assertEquals(
+                1,
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM accounts WHERE phone=?",
+                        Integer.class,
+                        phone));
+    }
 }

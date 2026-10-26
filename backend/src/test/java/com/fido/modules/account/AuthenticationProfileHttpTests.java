@@ -194,7 +194,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
     }
 
     @Test
-    void softDeletedPhoneCanBeRegisteredAgain() throws Exception {
+    void softDeletedPhoneCannotBeRegisteredAgain() throws Exception {
         String phone = phone();
         long oldAccountId = register(phone);
 
@@ -209,17 +209,22 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                         null,
                         Map.of("phone", phone, "full_name", "Replacement Account", "password", PASSWORD));
 
-        assertEquals(201, reRegistered.status(), reRegistered.body());
-        long newAccountId =
-                reRegistered.data().get("data").get("account").get("id").asLong();
-        assertNotEquals(oldAccountId, newAccountId);
+        assertEquals(409, reRegistered.status(), reRegistered.body());
+        assertEquals("PHONE_ALREADY_IN_USE", reRegistered.data().get("code").asText());
         assertEquals(
                 1,
                 db.queryForObject(
-                        "SELECT COUNT(*) FROM accounts WHERE phone_active_key=?",
+                        "SELECT COUNT(*) FROM accounts WHERE phone=?",
                         Integer.class,
                         phone));
-        created.add(newAccountId);
+        assertEquals(
+                401,
+                call(
+                                "POST",
+                                "/api/v1/auth/login",
+                                null,
+                                Map.of("phone", phone, "password", PASSWORD))
+                        .status());
     }
 
     @Test
