@@ -38,6 +38,23 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
         assertEquals(125000, parentDetail.data().get("data").get("selling_price").asLong());
         assertEquals(childId, parentDetail.data().get("data").get("child_product_ids").get(0).asLong());
 
+        String updatedParentSku = "PARENT-UPDATED-" + suffix;
+        Result parentUpdate = call("PATCH", "/api/v1/admin/products/" + parentId, writer.token(),
+                Map.of("sku", updatedParentSku, "selling_price", 149000));
+        assertEquals(200, parentUpdate.status(), parentUpdate.body());
+        assertEquals(updatedParentSku, parentUpdate.data().get("data").get("sku").asText());
+        assertEquals(149000, parentUpdate.data().get("data").get("selling_price").asLong());
+
+        Result childAfterParentUpdate = call(
+                "GET", "/api/v1/admin/products/" + childId, writer.token(), null);
+        assertEquals(200, childAfterParentUpdate.status(), childAfterParentUpdate.body());
+        assertEquals("CHILD-" + suffix,
+                childAfterParentUpdate.data().get("data").get("sku").asText());
+        assertEquals(91000,
+                childAfterParentUpdate.data().get("data").get("selling_price").asLong());
+        assertEquals(parentId,
+                childAfterParentUpdate.data().get("data").get("parent_product_id").asLong());
+
         assertEquals(409, call("PATCH", "/api/v1/admin/products/" + parentId, writer.token(),
                 Map.of("parent_product_id", parentId)).status(), "Self-parenting must be rejected");
         assertEquals(409, call("POST", "/api/v1/admin/products", writer.token(),
