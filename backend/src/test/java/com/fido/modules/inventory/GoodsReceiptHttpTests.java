@@ -52,9 +52,8 @@ class GoodsReceiptHttpTests extends InventoryHttpSupport {
         assertTrue(receiptDetail.data().get("data").get("receipt_code").asText().startsWith("GR-"));
 
         assertEquals(200, call("PATCH", "/api/v1/admin/goods-receipts/" + receiptId, writer.token(),
-                Map.of("note", "quantity updated",
-                        "items", List.of(Map.of("product_id", fixture.productId(),
-                                "quantity_received", 5, "unit_cost", 0)))).status());
+                Map.of("items", List.of(Map.of("product_id", fixture.productId(),
+                        "quantity_received", 5, "unit_cost", 0)))).status());
         assertEquals(0, stock(fixture.productId()));
 
         var confirmed = call("POST", "/api/v1/admin/goods-receipts/" + receiptId + "/actions",
