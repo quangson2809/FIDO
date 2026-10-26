@@ -111,7 +111,13 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
         categories.add(childCategoryId);
         var grandchildCategory = call("POST", "/api/v1/admin/categories", rootToken,
                 Map.of("parent_category_id", childCategoryId, "name", "Grandchild " + UUID.randomUUID()));
-        assertEquals(409, grandchildCategory.status(), grandchildCategory.body());
+        assertEquals(201, grandchildCategory.status(), grandchildCategory.body());
+        long grandchildCategoryId = grandchildCategory.data().get("data").get("category_id").asLong();
+        categories.add(grandchildCategoryId);
+
+        var categoryCycle = call("PATCH", "/api/v1/admin/categories/" + categoryId, rootToken,
+                Map.of("parent_category_id", childCategoryId));
+        assertEquals(409, categoryCycle.status(), categoryCycle.body());
 
         var duplicateCategory = call("POST", "/api/v1/admin/categories", rootToken,
                 Map.of("name", category.data().get("data").get("name").asText()));
