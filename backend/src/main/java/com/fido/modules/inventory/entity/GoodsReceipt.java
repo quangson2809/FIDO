@@ -11,9 +11,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
 @Entity
-@Table(
-        name = "goods_receipts",
-        uniqueConstraints = {@UniqueConstraint(columnNames = {"receipt_code"})})
+@Table(name = "goods_receipts")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,31 +19,34 @@ public class GoodsReceipt {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "receipt_id", nullable = false)
+    @Column(name = "id", nullable = false)
     private Long receiptId;
 
-    @Column(name = "receipt_code", nullable = false, length = 40)
+    @Column(name = "receipt_number", nullable = false, length = 40)
     private String receiptCode;
 
     @Column(name = "supplier_id", nullable = false)
     private Long supplierId;
 
-    @Column(name = "receipt_status", nullable = false, length = 20)
+    @Column(name = "warehouse_id", nullable = false)
+    private Long warehouseId;
+
+    @Column(name = "status", nullable = false, length = 20)
     private String receiptStatus;
 
-    @Column(name = "receipt_date", nullable = false)
+    @Transient
     private LocalDate receiptDate;
 
-    @Column(name = "created_by_account_id", nullable = false)
+    @Column(name = "created_by", nullable = false)
     private Long createdByAccountId;
 
-    @Column(name = "confirmed_by_account_id", nullable = true)
+    @Column(name = "confirmed_by", nullable = true)
     private Long confirmedByAccountId;
 
     @Column(name = "confirmed_at", nullable = true, columnDefinition = "TIMESTAMP(6)")
     private LocalDateTime confirmedAt;
 
-    @Column(name = "note", nullable = true, columnDefinition = "TEXT")
+    @Transient
     private String note;
 
     @Column(
