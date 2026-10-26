@@ -15,10 +15,8 @@ import com.fido.modules.order.mapper.OrderMapper;
 import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Locale;
@@ -27,7 +25,6 @@ import java.util.UUID;
 @Service
 @Transactional
 public class OrderCreationService {
-
     private final CheckoutCalculationService checkout;
     private final CartCommandService cart;
     private final OrderRepository orders;
@@ -38,14 +35,9 @@ public class OrderCreationService {
     private final com.fido.modules.promotion.service.VoucherRedemptionService vouchers;
 
     public OrderCreationService(
-            CheckoutCalculationService checkout,
-            CartCommandService cart,
-            OrderRepository orders,
-            OrderItemRepository items,
-            PaymentRepository payments,
-            AuditService audit,
-            CheckoutQuoteStore quotes,
-            com.fido.modules.promotion.service.VoucherRedemptionService vouchers) {
+            CheckoutCalculationService checkout, CartCommandService cart, OrderRepository orders,
+            OrderItemRepository items, PaymentRepository payments, AuditService audit,
+            CheckoutQuoteStore quotes, com.fido.modules.promotion.service.VoucherRedemptionService vouchers) {
         this.checkout = checkout;
         this.cart = cart;
         this.orders = orders;
@@ -60,41 +52,23 @@ public class OrderCreationService {
         cart.lockForCheckout(accountId);
         var quote = quotes.find(accountId, request.quote_id());
         if (quote != null && quote.getOrderId() != null) {
-            return OrderMapper.confirmation(
-                    orders.findById(quote.getOrderId()).orElseThrow(),
+            return OrderMapper.confirmation(orders.findById(quote.getOrderId()).orElseThrow(),
                     payments.findById(quote.getOrderId()).orElseThrow());
         }
         CheckoutCalculation calculation = checkout.calculate(accountId, request.voucher_code());
-
-        quotes.requireMatching(
-                quote,
-                request.recipient_phone(),
-                request.recipient_email(),
-                request.recipient_address(),
-                calculation);
-
+        quotes.requireMatching(quote, request.recipient_phone(), request.recipient_email(),
+                request.recipient_address(), calculation);
         Order order = persistOrder(accountId, request, calculation);
-
         persistOrderItems(order.getOrderId(), calculation.items());
-
         Payment payment = persistInitialPayment(order.getOrderId(), calculation.total());
-
         vouchers.consume(order.getOrderId(), accountId, calculation.voucher());
         if (quote != null) quote.setOrderId(order.getOrderId());
         cart.clear(accountId);
-
-        audit.record(
-                AuditEvent.of(
-                        accountId,
-                        AuditAction.ORDER_CREATE,
-                        AuditTargetType.ORDER,
-                        order.getOrderId()));
-
+        audit.record(AuditEvent.of(accountId, AuditAction.ORDER_CREATE, AuditTargetType.ORDER, order.getOrderId()));
         return OrderMapper.confirmation(order, payment);
     }
 
-    private Order persistOrder(
-            Long accountId, CreateOrderRequest request, CheckoutCalculation calculation) {
+    private Order persistOrder(Long accountId, CreateOrderRequest request, CheckoutCalculation calculation) {
         Order order = new Order();
         order.setOrderCode(generateOrderCode());
         order.setCustomerAccountId(accountId);
@@ -107,7 +81,6 @@ public class OrderCreationService {
         order.setTotalSnapshot(calculation.total());
         order.setVoucherId(calculation.voucher().voucherId());
         order.setOrderStatus(OrderPolicy.PENDING);
-
         return orders.save(order);
     }
 
@@ -115,16 +88,15 @@ public class OrderCreationService {
         for (CheckoutCartView.Item cartItem : cartItems) {
             OrderItem orderItem = new OrderItem();
             orderItem.setOrderId(orderId);
-            orderItem.setVariantId(cartItem.variantId());
-            orderItem.setProductNameSnapshot(cartItem.productName());
-            orderItem.setImageUrlSnapshot(cartItem.thumbnail());
+            orderItem.setProductId(cartItem.productId());
+            orderItem.setProductNameSnapshot(
+                    cartItem.productName() == null || cartItem.productName().isBlank()
+                            ? cartItem.sku() : cartItem.productName());
+            orderItem.setImageUrlSnapshot(cartItem.thumbnail() == null ? "" : cartItem.thumbnail());
             orderItem.setSkuSnapshot(cartItem.sku());
-            orderItem.setSizeSnapshot(cartItem.size());
-            orderItem.setColorSnapshot(cartItem.color());
             orderItem.setUnitPriceSnapshot(cartItem.unitPrice());
             orderItem.setQuantity(cartItem.quantity());
             orderItem.setLineTotalSnapshot(cartItem.lineTotal());
-
             items.save(orderItem);
         }
     }
@@ -136,7 +108,6 @@ public class OrderCreationService {
         payment.setAmountDue(total);
         payment.setAmountReceived(BigDecimal.ZERO);
         payment.setAmountRefunded(BigDecimal.ZERO);
-
         return payments.save(payment);
     }
 

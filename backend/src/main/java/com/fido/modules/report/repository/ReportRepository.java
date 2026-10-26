@@ -48,19 +48,18 @@ public class ReportRepository {
             SELECT totals.product_id, p.name AS product_name, image.image_url AS thumbnail,
                    totals.completed_units, totals.returned_units, totals.net_units
             FROM (
-                SELECT v.product_id, SUM(oi.quantity) AS completed_units,
-                       SUM(CASE WHEN o.order_status = 'RETURNED' THEN oi.quantity ELSE 0 END) AS returned_units,
-                       SUM(CASE WHEN o.order_status = 'RETURNED' THEN 0 ELSE oi.quantity END) AS net_units
-                FROM orders o JOIN order_items oi ON oi.order_id = o.order_id
-                JOIN product_variants v ON v.variant_id = oi.variant_id
-                WHERE o.order_status IN ('COMPLETED', 'RETURNED')
-                  AND o.completed_at >= ? AND o.completed_at < ?
-                GROUP BY v.product_id
+                SELECT oi.product_id, SUM(oi.quantity) AS completed_units,
+                       SUM(CASE WHEN o.status = 'RETURNED' THEN oi.quantity ELSE 0 END) AS returned_units,
+                       SUM(CASE WHEN o.status = 'RETURNED' THEN 0 ELSE oi.quantity END) AS net_units
+                FROM orders o JOIN order_items oi ON oi.order_id = o.id
+                WHERE o.status IN ('COMPLETED', 'RETURNED')
+                  AND o.placed_at >= ? AND o.placed_at < ?
+                GROUP BY oi.product_id
             ) totals
-            JOIN products p ON p.product_id = totals.product_id
+            JOIN products p ON p.id = totals.product_id
             LEFT JOIN (
                 SELECT product_id, image_url,
-                       ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY sort_order, image_id) AS image_rank
+                       ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY sort_order, id) AS image_rank
                 FROM product_images
             ) image ON image.product_id = totals.product_id AND image.image_rank = 1
             ORDER BY totals.net_units DESC, totals.completed_units DESC, totals.product_id ASC

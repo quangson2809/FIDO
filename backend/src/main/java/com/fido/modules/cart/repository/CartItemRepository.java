@@ -16,7 +16,7 @@ public interface CartItemRepository extends Repository<CartItem, Long> {
 
     Optional<CartItem> findByCartItemIdAndCartId(Long cartItemId, Long cartId);
 
-    Optional<CartItem> findByCartIdAndVariantId(Long cartId, Long variantId);
+    Optional<CartItem> findByCartIdAndProductId(Long cartId, Long productId);
 
     List<CartItem> findAllByCartIdOrderByCartItemIdAsc(Long cartId);
 
@@ -25,10 +25,6 @@ public interface CartItemRepository extends Repository<CartItem, Long> {
     void delete(CartItem entity);
 
     @Modifying(flushAutomatically = true)
-    @Query(
-            """
-            delete from CartItem item
-            where item.cartId = :cartId
-            """)
+    @Query("delete from CartItem item where item.cartId = :cartId")
     int deleteByCartId(@Param("cartId") Long cartId);
 }

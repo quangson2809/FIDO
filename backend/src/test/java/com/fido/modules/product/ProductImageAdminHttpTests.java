@@ -47,32 +47,30 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
     }
 
     @Test
-    void productCreateRejectsLegacyJsonImages() throws Exception {
-        long writePermission = ensurePermission("CATALOG_WRITE");
-        Employee writer = employee(customRole(writePermission));
+    void productCreateDoesNotWriteImagesFromLegacyCreatePayload() throws Exception {
+        Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         var fixture = createCatalog(writer);
 
-        var response =
-                call(
-                        "POST",
-                        "/api/v1/admin/products",
-                        writer.token(),
-                        Map.of(
-                                "category_id", fixture.categoryId(),
-                                "brand_id", fixture.brandId(),
-                                "size_system_id", fixture.systemId(),
-                                "name", "Legacy " + UUID.randomUUID(),
-                                "base_price", 100000,
-                                "sale_status", "ON_SALE",
-                                "images",
-                                        List.of(
-                                                Map.of(
-                                                        "image_url",
-                                                                "https://example.test/legacy.png",
-                                                        "alt_text", "legacy",
-                                                        "sort_order", 0))));
+        var response = call(
+                "POST",
+                "/api/v1/admin/products",
+                writer.token(),
+                Map.of(
+                        "category_id", fixture.categoryId(),
+                        "brand_id", fixture.brandId(),
+                        "name", "No legacy image write " + UUID.randomUUID(),
+                        "sku", "NO-IMAGE-" + UUID.randomUUID(),
+                        "selling_price", 100000,
+                        "status", "ACTIVE",
+                        "images", List.of(Map.of(
+                                "image_url", "https://example.test/legacy.png",
+                                "alt_text", "legacy",
+                                "sort_order", 0))));
 
-        assertEquals(400, response.status(), response.body());
+        assertEquals(201, response.status(), response.body());
+        long createdProductId = response.data().get("data").get("product_id").asLong();
+        products.add(createdProductId);
+        assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM product_images WHERE product_id=?", Integer.class, createdProductId));
     }
 
     @Test
@@ -362,14 +360,14 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                                 fixture.categoryId(),
                                 "brand_id",
                                 fixture.brandId(),
-                                "size_system_id",
-                                fixture.systemId(),
                                 "name",
                                 "Other " + UUID.randomUUID(),
-                                "base_price",
+                                "sku",
+                                "OTHER-" + UUID.randomUUID(),
+                                "selling_price",
                                 100000,
-                                "sale_status",
-                                "ON_SALE"));
+                                "status",
+                                "ACTIVE"));
 
         assertEquals(201, created.status(), created.body());
         long productId = created.data().get("data").get("product_id").asLong();
@@ -399,7 +397,7 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
     private List<Long> storedImageIds(long productId) {
         return db.query(
                 """
-                SELECT image_id
+                SELECT id
                 FROM product_images
                 WHERE product_id=?
                 ORDER BY sort_order

@@ -12,7 +12,9 @@ import java.time.ZoneOffset;
 @Entity
 @Table(
         name = "cart_items",
-        uniqueConstraints = {@UniqueConstraint(columnNames = {"cart_id", "product_id"})})
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_cart_items_cart_product",
+                columnNames = {"cart_id", "product_id"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -27,10 +29,11 @@ public class CartItem {
     private Long cartId;
 
     @Column(name = "product_id", nullable = false)
-    private Long variantId;
+    private Long productId;
 
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
+
     @Column(name = "added_at", nullable = false, columnDefinition = "TIMESTAMP(6)", updatable = false)
     private LocalDateTime addedAt;
 

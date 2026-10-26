@@ -80,19 +80,17 @@ class CheckoutCalculationServiceTests {
     }
 
     private CheckoutCartView.Item item(
-            Long variantId,
+            Long productId,
             int quantity,
             BigDecimal unitPrice,
             int availableQuantity,
             boolean purchasable) {
         return new CheckoutCartView.Item(
-                variantId,
+                productId,
                 quantity,
                 "Product",
                 null,
                 "SKU",
-                "M",
-                "Black",
                 unitPrice,
                 unitPrice.multiply(BigDecimal.valueOf(quantity)),
                 availableQuantity,

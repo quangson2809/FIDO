@@ -51,8 +51,6 @@ class OrderCreationImageSnapshotTests {
                         "FIDO Shirt",
                         currentCover,
                         "SKU-91",
-                        "M",
-                        "Black",
                         new BigDecimal("90000.00"),
                         new BigDecimal("180000.00"),
                         10,
@@ -79,7 +77,7 @@ class OrderCreationImageSnapshotTests {
         ArgumentCaptor<OrderItem> saved = ArgumentCaptor.forClass(OrderItem.class);
         verify(items).save(saved.capture());
         assertEquals(currentCover, saved.getValue().getImageUrlSnapshot());
-        assertEquals(91L, saved.getValue().getVariantId());
+        assertEquals(91L, saved.getValue().getProductId());
         assertEquals(2, saved.getValue().getQuantity());
     }
 }

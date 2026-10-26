@@ -4,18 +4,11 @@ import com.fido.common.response.ApiResponse;
 import com.fido.modules.product.dto.request.BrandRequest;
 import com.fido.modules.product.dto.request.CategoryCreateRequest;
 import com.fido.modules.product.dto.request.CategoryPatchRequest;
-import com.fido.modules.product.dto.request.ColorCreateRequest;
-import com.fido.modules.product.dto.request.ColorPatchRequest;
-import com.fido.modules.product.dto.request.SizeSystemCreateRequest;
-import com.fido.modules.product.dto.request.SizeSystemPatchRequest;
 import com.fido.modules.product.dto.response.BrandDto;
 import com.fido.modules.product.dto.response.CatalogMetaDto;
 import com.fido.modules.product.dto.response.CategoryDto;
-import com.fido.modules.product.dto.response.ColorDto;
-import com.fido.modules.product.dto.response.SizeSystemDto;
 import com.fido.modules.product.service.AdminCatalogQueryService;
 import com.fido.modules.product.service.CatalogMasterDataService;
-import com.fido.modules.product.service.SizeSystemAdminService;
 
 import jakarta.validation.Valid;
 
@@ -38,15 +31,11 @@ public class AdminCatalogMasterController {
 
     private final AdminCatalogQueryService query;
     private final CatalogMasterDataService masterData;
-    private final SizeSystemAdminService sizeSystems;
 
     public AdminCatalogMasterController(
-            AdminCatalogQueryService query,
-            CatalogMasterDataService masterData,
-            SizeSystemAdminService sizeSystems) {
+            AdminCatalogQueryService query, CatalogMasterDataService masterData) {
         this.query = query;
         this.masterData = masterData;
-        this.sizeSystems = sizeSystems;
     }
 
     @GetMapping("/catalog/meta")
@@ -94,49 +83,6 @@ public class AdminCatalogMasterController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteBrand(@AuthenticationPrincipal Jwt jwt, @PathVariable Long brandId) {
         masterData.deleteBrand(actor(jwt), brandId);
-    }
-
-    @PostMapping("/size-systems")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<SizeSystemDto> createSizeSystem(
-            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody SizeSystemCreateRequest request) {
-        return ApiResponse.of(sizeSystems.createSizeSystem(actor(jwt), request));
-    }
-
-    @PatchMapping("/size-systems/{sizeSystemId}")
-    public ApiResponse<SizeSystemDto> updateSizeSystem(
-            @AuthenticationPrincipal Jwt jwt,
-            @PathVariable Long sizeSystemId,
-            @Valid @RequestBody SizeSystemPatchRequest request) {
-        return ApiResponse.of(sizeSystems.updateSizeSystem(actor(jwt), sizeSystemId, request));
-    }
-
-    @DeleteMapping("/size-systems/{sizeSystemId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteSizeSystem(
-            @AuthenticationPrincipal Jwt jwt, @PathVariable Long sizeSystemId) {
-        sizeSystems.deleteSizeSystem(actor(jwt), sizeSystemId);
-    }
-
-    @PostMapping("/colors")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<ColorDto> createColor(
-            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody ColorCreateRequest request) {
-        return ApiResponse.of(masterData.createColor(actor(jwt), request));
-    }
-
-    @PatchMapping("/colors/{colorId}")
-    public ApiResponse<ColorDto> updateColor(
-            @AuthenticationPrincipal Jwt jwt,
-            @PathVariable Long colorId,
-            @Valid @RequestBody ColorPatchRequest request) {
-        return ApiResponse.of(masterData.updateColor(actor(jwt), colorId, request));
-    }
-
-    @DeleteMapping("/colors/{colorId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteColor(@AuthenticationPrincipal Jwt jwt, @PathVariable Long colorId) {
-        masterData.deleteColor(actor(jwt), colorId);
     }
 
     private Long actor(Jwt jwt) {

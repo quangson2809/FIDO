@@ -15,7 +15,7 @@ class ProductImageAuthorizationHttpTests extends CatalogHttpSupport {
         long imageId =
                 db.queryForObject(
                         """
-                        SELECT MIN(image_id)
+                        SELECT MIN(id)
                         FROM product_images
                         WHERE product_id=?
                         """,
@@ -33,7 +33,7 @@ class ProductImageAuthorizationHttpTests extends CatalogHttpSupport {
         assertEquals(
                 1,
                 db.queryForObject(
-                        "SELECT COUNT(*) FROM product_images WHERE image_id=?",
+                        "SELECT COUNT(*) FROM product_images WHERE id=?",
                         Integer.class,
                         imageId));
     }

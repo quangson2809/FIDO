@@ -69,13 +69,7 @@ class OrderImageSnapshotHttpTests extends OrderHttpSupport {
     private long insertImage(long productId, String imageUrl, int sortOrder) {
         db.update(
                 """
-                INSERT INTO product_images(
-                    product_id,
-                    image_url,
-                    alt_text,
-                    sort_order
-                )
-                VALUES (?,?,NULL,?)
+                INSERT INTO product_images(product_id,image_url,sort_order) VALUES (?,?,?)
                 """,
                 productId,
                 imageUrl,
@@ -83,7 +77,7 @@ class OrderImageSnapshotHttpTests extends OrderHttpSupport {
 
         return db.queryForObject(
                 """
-                SELECT image_id
+                SELECT id
                 FROM product_images
                 WHERE product_id=? AND image_url=?
                 """,

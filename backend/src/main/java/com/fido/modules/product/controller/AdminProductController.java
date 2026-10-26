@@ -5,11 +5,8 @@ import com.fido.common.response.ApiResponse;
 import com.fido.modules.product.dto.request.ProductCreateRequest;
 import com.fido.modules.product.dto.request.ProductImageReorderRequest;
 import com.fido.modules.product.dto.request.ProductPatchRequest;
-import com.fido.modules.product.dto.request.VariantBatchCreateRequest;
-import com.fido.modules.product.dto.request.VariantPatchRequest;
 import com.fido.modules.product.dto.response.AdminProductDetailDto;
 import com.fido.modules.product.dto.response.AdminProductSummaryDto;
-import com.fido.modules.product.dto.response.AdminVariantDto;
 import com.fido.modules.product.service.AdminCatalogQueryService;
 import com.fido.modules.product.service.ProductAdminService;
 import com.fido.modules.product.service.ProductImageAdminService;
@@ -33,8 +30,6 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/admin")
@@ -61,12 +56,11 @@ public class AdminProductController {
             @RequestParam(required = false) String q,
             @RequestParam(name = "category_id", required = false) Long categoryId,
             @RequestParam(name = "brand_id", required = false) Long brandId,
-            @RequestParam(name = "size_system_id", required = false) Long sizeSystemId,
-            @RequestParam(name = "sale_status", required = false) String saleStatus,
+            @RequestParam(name = "parent_product_id", required = false) Long parentProductId,
+            @RequestParam(required = false) String status,
             @RequestParam(required = false) Integer page,
             @RequestParam(name = "page_size", required = false) Integer pageSize) {
-        return query.adminProducts(
-                q, categoryId, brandId, sizeSystemId, saleStatus, page, pageSize);
+        return query.adminProducts(q, categoryId, brandId, parentProductId, status, page, pageSize);
     }
 
     @GetMapping("/products/{productId}")
@@ -81,6 +75,20 @@ public class AdminProductController {
         return ApiResponse.of(products.createProduct(actor(jwt), request));
     }
 
+    @PatchMapping("/products/{productId}")
+    public ApiResponse<AdminProductDetailDto> updateProduct(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long productId,
+            @Valid @RequestBody ProductPatchRequest request) {
+        return ApiResponse.of(products.updateProduct(actor(jwt), productId, request));
+    }
+
+    @DeleteMapping("/products/{productId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteProduct(@AuthenticationPrincipal Jwt jwt, @PathVariable Long productId) {
+        products.deleteProduct(actor(jwt), productId);
+    }
+
     @PostMapping(
             value = "/products/{productId}/images",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -90,14 +98,6 @@ public class AdminProductController {
             @PathVariable Long productId,
             @RequestPart("images") MultipartFile[] images) {
         return ApiResponse.of(imageUploads.upload(actor(jwt), productId, images));
-    }
-
-    @PatchMapping("/products/{productId}")
-    public ApiResponse<AdminProductDetailDto> updateProduct(
-            @AuthenticationPrincipal Jwt jwt,
-            @PathVariable Long productId,
-            @Valid @RequestBody ProductPatchRequest request) {
-        return ApiResponse.of(products.updateProduct(actor(jwt), productId, request));
     }
 
     @DeleteMapping("/products/{productId}/images/{imageId}")
@@ -115,24 +115,6 @@ public class AdminProductController {
             @PathVariable Long productId,
             @Valid @RequestBody ProductImageReorderRequest request) {
         return ApiResponse.of(productImages.reorderImages(actor(jwt), productId, request));
-    }
-
-    @PostMapping("/products/{productId}/variants")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<List<AdminVariantDto>> createVariants(
-            @AuthenticationPrincipal Jwt jwt,
-            @PathVariable Long productId,
-            @Valid @RequestBody VariantBatchCreateRequest request) {
-        return ApiResponse.of(products.createVariants(actor(jwt), productId, request));
-    }
-
-    @PatchMapping("/products/{productId}/variants/{variantId}")
-    public ApiResponse<AdminVariantDto> updateVariant(
-            @AuthenticationPrincipal Jwt jwt,
-            @PathVariable Long productId,
-            @PathVariable Long variantId,
-            @Valid @RequestBody VariantPatchRequest request) {
-        return ApiResponse.of(products.updateVariant(actor(jwt), productId, variantId, request));
     }
 
     private Long actor(Jwt jwt) {

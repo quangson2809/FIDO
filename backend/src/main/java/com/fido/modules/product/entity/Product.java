@@ -1,12 +1,18 @@
 package com.fido.modules.product.entity;
 
-import jakarta.persistence.*;
-
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
@@ -24,20 +30,26 @@ public class Product {
     @Column(name = "id", nullable = false)
     private Long productId;
 
+    @Column(name = "parent_product_id")
+    private Long parentProductId;
+
     @Column(name = "category_id")
     private Long categoryId;
 
     @Column(name = "brand_id")
     private Long brandId;
 
-    @Column(name = "parent_product_id")
-    private Long parentProductId;
+    @Column(name = "name", length = 255)
+    private String name;
 
     @Column(name = "slug", length = 200)
     private String slug;
 
     @Column(name = "sku", nullable = false, length = 100)
     private String sku;
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
 
     @Column(name = "selling_price", nullable = false)
     private Long sellingPrice;
@@ -51,38 +63,7 @@ public class Product {
     @Column(name = "deleted_at", columnDefinition = "TIMESTAMP(6)")
     private LocalDateTime deletedAt;
 
-    @Transient
-    private Long sizeSystemId;
-
-    @Column(name = "name", length = 255)
-    private String name;
-
-    @Column(name = "description", columnDefinition = "TEXT")
-    private String description;
-
-    @Transient
-    private String gender;
-
-    @Transient
-    private String season;
-
-    @Transient
-    private String style;
-
-    @Transient
-    private String materialCare;
-
-    @Transient
-    private BigDecimal basePrice;
-
-    @Transient
-    private String saleStatus;
-
-    @Column(
-            name = "created_at",
-            nullable = false,
-            columnDefinition = "TIMESTAMP(6)",
-            updatable = false)
+    @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP(6)", updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
@@ -90,46 +71,18 @@ public class Product {
 
     @PrePersist
     void onCreate() {
-        syncLegacyFields();
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        if (status == null || status.isBlank()) status = "DRAFT";
         createdAt = now;
         updatedAt = now;
     }
 
     @PreUpdate
     void onUpdate() {
-        syncLegacyFields();
         updatedAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 
-    @PostLoad
-    void onLoad() {
-        basePrice = sellingPrice == null ? null : BigDecimal.valueOf(sellingPrice);
-        saleStatus = status;
-    }
-
-    private void syncLegacyFields() {
-        if (sellingPrice == null && basePrice != null) {
-            sellingPrice = basePrice.longValueExact();
-        }
-        if (basePrice == null && sellingPrice != null) {
-            basePrice = BigDecimal.valueOf(sellingPrice);
-        }
-        if (status == null || status.isBlank()) {
-            status = mapLegacyStatus(saleStatus);
-        }
-        if (saleStatus == null || saleStatus.isBlank()) {
-            saleStatus = status;
-        }
-    }
-
-    private static String mapLegacyStatus(String legacyStatus) {
-        if (legacyStatus == null || legacyStatus.isBlank()) return "DRAFT";
-        return switch (legacyStatus) {
-            case "ACTIVE", "INACTIVE", "DRAFT", "ARCHIVED" -> legacyStatus;
-            case "ON_SALE", "AVAILABLE" -> "ACTIVE";
-            case "OFF_SALE", "UNAVAILABLE" -> "INACTIVE";
-            default -> "DRAFT";
-        };
+    public boolean isDeleted() {
+        return deletedAt != null;
     }
 }
