@@ -114,8 +114,9 @@ class GoodsReceiptHttpTests extends InventoryHttpSupport {
         assertEquals(200, call("POST", "/api/v1/admin/goods-receipts/" + cancelledReceiptId + "/actions",
                 writer.token(), Map.of("action", "CANCEL")).status());
         assertEquals(4, stock(fixture.productId()));
-        assertEquals(409, call("PATCH", "/api/v1/admin/goods-receipts/" + cancelledReceiptId,
-                writer.token(), Map.of("note", "cannot edit cancelled")).status());
+        assertEquals(409, call("PATCH", "/api/v1/admin/goods-receipts/" + cancelledReceiptId, writer.token(),
+                Map.of("items", List.of(Map.of("product_id", fixture.productId(),
+                        "quantity_received", 1, "unit_cost", 0)))).status());
 
         assertTrue(db.queryForObject(
                 "SELECT COUNT(*) FROM audit_logs WHERE actor_account_id=? "
