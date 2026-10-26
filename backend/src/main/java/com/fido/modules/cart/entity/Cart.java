@@ -18,11 +18,14 @@ public class Cart {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "cart_id", nullable = false)
+    @Column(name = "id", nullable = false)
     private Long cartId;
 
-    @Column(name = "account_id", nullable = true)
+    @Column(name = "account_id", nullable = false)
     private Long accountId;
+
+    @Column(name = "status", nullable = false, length = 20)
+    private String status = "OPEN";
 
     @Column(
             name = "created_at",
