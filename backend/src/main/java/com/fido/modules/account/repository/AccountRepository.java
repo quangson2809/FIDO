@@ -36,7 +36,7 @@ public interface AccountRepository extends Repository<Account, Long> {
     @Query("select a from Account a where a.phone in :phones and a.deletedAt is null")
     List<Account> findByPhoneInAndNotDeleted(@Param("phones") Collection<String> phones);
 
-    /** Includes soft-deleted rows because the canonical schema has UNIQUE(phone) across all accounts. */
+    /** Includes soft-deleted rows for explicit legacy/bootstrap identity checks; not for availability decisions. */
     List<Account> findByPhoneIn(Collection<String> phones);
 
     @Query(
@@ -47,10 +47,10 @@ public interface AccountRepository extends Repository<Account, Long> {
             """)
     boolean existsByPhoneInAndNotDeleted(@Param("phones") Collection<String> phones);
 
-    /** Uniqueness check across all rows, including soft-deleted accounts. */
+    /** All-row identity check for callers that must account for historical soft-deleted records. */
     boolean existsByPhoneIn(Collection<String> phones);
 
-    /** Uniqueness check across all rows other than the account being updated. */
+    /** All-row identity check excluding one ID; use the non-deleted query for target phone availability. */
     boolean existsByPhoneInAndAccountIdNot(Collection<String> phones, Long accountId);
 
     @Query(
