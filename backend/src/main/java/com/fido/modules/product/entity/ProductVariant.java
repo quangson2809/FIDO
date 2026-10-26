@@ -11,12 +11,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
 @Entity
-@Table(
-        name = "product_variants",
-        uniqueConstraints = {
-            @UniqueConstraint(columnNames = {"product_id", "size_value_id", "color_id"}),
-            @UniqueConstraint(columnNames = {"sku"})
-        })
+@Table(name = "products")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -24,25 +19,28 @@ public class ProductVariant {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "variant_id", nullable = false)
+    @Column(name = "id", nullable = false)
     private Long variantId;
 
-    @Column(name = "product_id", nullable = false)
+    @Column(name = "parent_product_id", nullable = true)
     private Long productId;
 
-    @Column(name = "size_value_id", nullable = false)
+    @Transient
     private Long sizeValueId;
 
-    @Column(name = "color_id", nullable = false)
+    @Transient
     private Long colorId;
 
-    @Column(name = "sku", nullable = true, length = 100)
+    @Column(name = "sku", nullable = false, length = 100)
     private String sku;
 
-    @Column(name = "override_price", nullable = true, precision = 18, scale = 2)
+    @Transient
     private BigDecimal overridePrice;
 
-    @Column(name = "sale_status", nullable = false, length = 30)
+    @Column(name = "selling_price", nullable = false)
+    private Long sellingPrice;
+
+    @Column(name = "status", nullable = false, length = 20)
     private String saleStatus;
 
     @Column(
@@ -57,6 +55,7 @@ public class ProductVariant {
 
     @PrePersist
     void onCreate() {
+        syncLegacyFields();
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         createdAt = now;
         updatedAt = now;
@@ -64,6 +63,18 @@ public class ProductVariant {
 
     @PreUpdate
     void onUpdate() {
+        syncLegacyFields();
         updatedAt = LocalDateTime.now(ZoneOffset.UTC);
+    }
+
+    @PostLoad
+    void onLoad() {
+        overridePrice = sellingPrice == null ? null : BigDecimal.valueOf(sellingPrice);
+        saleStatus = "ACTIVE";
+    }
+
+    private void syncLegacyFields() {
+        if (sellingPrice == null && overridePrice != null) sellingPrice = overridePrice.longValue();
+        if (saleStatus == null || saleStatus.isBlank()) saleStatus = "ACTIVE";
     }
 }
