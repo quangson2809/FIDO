@@ -23,6 +23,8 @@ public interface VoucherRepository extends Repository<Voucher, Long> {
 
     boolean existsByCodeIgnoreCaseAndVoucherIdNot(String code, Long id);
 
+    Optional<Voucher> findByCodeIgnoreCase(String code);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select v from Voucher v where v.voucherId = :id")
     Optional<Voucher> lockById(@Param("id") Long id);

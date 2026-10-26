@@ -27,7 +27,8 @@ public class CheckoutCalculationService {
             @Value("${app.checkout.shipping-fee}") Long shippingFee,
             PricingService pricing) {
         if (shippingFee == null || shippingFee < 0) {
-            throw new IllegalArgumentException("Checkout shipping fee must be a non-negative integer VND amount");
+            throw new IllegalArgumentException(
+                    "Checkout shipping fee must be a non-negative integer VND amount");
         }
         this.cart = cart;
         this.vouchers = vouchers;
@@ -35,7 +36,7 @@ public class CheckoutCalculationService {
         this.pricing = pricing;
     }
 
-    /** Compatibility adapter for old tests; production configuration uses integer VND. */
+    /** Compatibility adapter for old test fixtures; production configuration uses integer VND. */
     CheckoutCalculationService(
             CartQueryService cart,
             VoucherRedemptionService vouchers,
@@ -43,17 +44,37 @@ public class CheckoutCalculationService {
         this(cart, vouchers, exactVnd(shippingFee), new PricingService());
     }
 
+    /** Existing direct callers use the placement-safe calculation path. */
     CheckoutCalculation calculate(Long accountId, String voucherCode) {
+        return calculateForOrder(accountId, voucherCode);
+    }
+
+    CheckoutCalculation calculateForOrder(Long accountId, String voucherCode) {
+        return calculate(accountId, voucherCode, false);
+    }
+
+    CheckoutCalculation calculateForQuote(Long accountId, String voucherCode) {
+        return calculate(accountId, voucherCode, true);
+    }
+
+    private CheckoutCalculation calculate(Long accountId, String voucherCode, boolean advisoryQuote) {
         CheckoutCartView current = cart.checkoutView(accountId);
-        if (current.items().isEmpty()) throw new ResponseStatusException(HttpStatus.CONFLICT, "CART_EMPTY");
+        if (current.items().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "CART_EMPTY");
+        }
         current.items().forEach(this::requireCheckoutReady);
 
-        var voucher = voucherCode == null || voucherCode.isBlank()
-                ? new VoucherRedemptionService.Discount(null, null, 0L)
-                : vouchers.evaluate(accountId, voucherCode,
-                        current.items().stream()
-                                .map(item -> new VoucherRedemptionService.Line(item.productId(), item.lineTotal()))
-                                .toList());
+        VoucherRedemptionService.Discount voucher;
+        if (voucherCode == null) {
+            voucher = new VoucherRedemptionService.Discount(null, null, 0L);
+        } else {
+            var lines = current.items().stream()
+                    .map(item -> new VoucherRedemptionService.Line(item.productId(), item.lineTotal()))
+                    .toList();
+            voucher = advisoryQuote
+                    ? vouchers.evaluateForQuote(accountId, voucherCode, lines)
+                    : vouchers.evaluate(accountId, voucherCode, lines);
+        }
 
         var result = pricing.calculate(
                 current.items().stream()
@@ -80,7 +101,8 @@ public class CheckoutCalculationService {
                 && item.quantity() != null
                 && item.availableQuantity() >= item.quantity();
         if (!item.purchasable() || !enoughInventory) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "INVENTORY_INSUFFICIENT_STOCK");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "INVENTORY_INSUFFICIENT_STOCK");
         }
     }
 

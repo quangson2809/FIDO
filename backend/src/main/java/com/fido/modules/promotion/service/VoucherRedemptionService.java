@@ -57,32 +57,58 @@ public class VoucherRedemptionService {
         }
     }
 
-    public record Discount(Long voucherId, String code, Long amount) {
+    public record Discount(
+            Long voucherId,
+            String code,
+            Long amount,
+            String discountType,
+            Long discountValue) {
+        public Discount(Long voucherId, String code, Long amount) {
+            this(voucherId, code, amount, null, null);
+        }
+
         /** Compatibility adapter for old test fixtures; response money is integer VND. */
         public Discount(Long voucherId, String code, BigDecimal amount) {
-            this(voucherId, code, exactVnd(amount));
+            this(voucherId, code, exactVnd(amount), null, null);
         }
     }
 
+    /** Used by order placement; locks the Voucher row before eligibility is evaluated. */
     public Discount evaluate(Long accountId, String code, List<Line> lines) {
-        if (code == null || code.isBlank()) return new Discount(null, null, 0L);
+        return evaluate(accountId, code, lines, true);
+    }
+
+    /** Used by advisory quote; reads the Voucher without a write lock and never changes quota. */
+    public Discount evaluateForQuote(Long accountId, String code, List<Line> lines) {
+        return evaluate(accountId, code, lines, false);
+    }
+
+    private Discount evaluate(Long accountId, String code, List<Line> lines, boolean lockVoucher) {
+        if (code == null || code.isBlank()) {
+            return new Discount(null, null, 0L);
+        }
         boolean internalAccount = accounts.findAccess(accountId)
                 .map(access -> access.roles().stream()
                         .anyMatch(role -> "ADMIN".equals(role.code()) || "SUPERADMIN".equals(role.code())))
                 .orElse(true);
-        if (internalAccount) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "FORBIDDEN");
+        if (internalAccount) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "FORBIDDEN");
+        }
 
-        Voucher voucher = vouchers.lockByCode(code.trim())
+        Voucher voucher = (lockVoucher
+                ? vouchers.lockByCode(code.trim())
+                : vouchers.findByCodeIgnoreCase(code.trim()))
                 .orElseThrow(() -> rejected("VOUCHER_NOT_FOUND"));
         Instant now = Instant.now();
-        if (!"ACTIVE".equals(voucher.getStatus())) throw rejected("VOUCHER_NOT_ELIGIBLE");
+        if (!"ACTIVE".equals(voucher.getStatus())) {
+            throw rejected("VOUCHER_NOT_ELIGIBLE");
+        }
         if (voucher.getStartsAt() != null && now.isBefore(voucher.getStartsAt())) {
             throw rejected("VOUCHER_NOT_ELIGIBLE");
         }
         if (voucher.getEndsAt() != null && !now.isBefore(voucher.getEndsAt())) {
             throw rejected("VOUCHER_NOT_ELIGIBLE");
         }
-
         if (voucher.getUsageLimit() != null && voucher.getUsageCount() >= voucher.getUsageLimit()) {
             throw rejected("VOUCHER_USAGE_LIMIT_REACHED");
         }
@@ -99,7 +125,12 @@ public class VoucherRedemptionService {
         if (amount <= 0L) {
             throw rejected("VOUCHER_NOT_ELIGIBLE");
         }
-        return new Discount(voucher.getVoucherId(), voucher.getCode(), amount);
+        return new Discount(
+                voucher.getVoucherId(),
+                voucher.getCode(),
+                amount,
+                voucher.getDiscountType(),
+                voucher.getDiscountValueAmount());
     }
 
     /**
@@ -129,12 +160,14 @@ public class VoucherRedemptionService {
 
     public static long discount(String type, Long value, Long maximum, long subtotal) {
         try {
-            return new PricingCalculator().calculateDiscountAmount(normalizeType(type), value, maximum, subtotal);
+            return new PricingCalculator().calculateDiscountAmount(
+                    normalizeType(type), value, maximum, subtotal);
         } catch (com.fido.modules.pricing.PricingException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.code());
         }
     }
 
+    /** Increments one global use inside the caller's Order transaction, guarded by the schema counter. */
     public void consume(Long orderId, Long accountId, Discount discount) {
         if (discount.voucherId() == null) return;
         Voucher voucher = vouchers.lockById(discount.voucherId())

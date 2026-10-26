@@ -1,88 +1,10 @@
 package com.fido.modules.order.service;
 
-import com.fido.modules.cart.service.CheckoutCartView;
-import com.fido.modules.order.entity.CheckoutQuote;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.time.Instant;
-import java.util.Comparator;
-import java.util.HexFormat;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.Map;
-
-@Service
-@Transactional(propagation = Propagation.MANDATORY)
-public class CheckoutQuoteStore {
-    private final Map<String, CheckoutQuote> quotes = new ConcurrentHashMap<>();
-
-    CheckoutQuote save(Long accountId, String phone, String email, String address, CheckoutCalculation calculation) {
-        CheckoutQuote q = new CheckoutQuote();
-        q.setQuoteId(UUID.randomUUID().toString());
-        q.setAccountId(accountId);
-        q.setFingerprint(fingerprint(phone, email, address, calculation));
-        q.setExpiresAt(Instant.now().plusSeconds(900));
-        quotes.put(q.getQuoteId(), q);
-        return q;
-    }
-
-    CheckoutQuote find(Long accountId, String quoteId) {
-        if (quoteId == null) return null;
-        CheckoutQuote quote = quotes.get(quoteId);
-        if (quote == null || !accountId.equals(quote.getAccountId())
-                || !Instant.now().isBefore(quote.getExpiresAt())) {
-            quotes.remove(quoteId);
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "QUOTE_INVALID");
-        }
-        return quote;
-    }
-
-    void requireMatching(CheckoutQuote q, String phone, String email, String address, CheckoutCalculation calculation) {
-        if (q == null) {
-            if (calculation.voucher().voucherId() != null) throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "VOUCHER_QUOTE_REQUIRED");
-            return;
-        }
-        if (!Instant.now().isBefore(q.getExpiresAt())
-                || !q.getFingerprint().equals(fingerprint(phone, email, address, calculation))) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "QUOTE_STALE");
-        }
-    }
-
-    private static String fingerprint(String phone, String email, String address, CheckoutCalculation c) {
-        StringBuilder value = new StringBuilder();
-        append(value, phone); append(value, email); append(value, address);
-        append(value, c.subtotal()); append(value, c.discount()); append(value, c.shippingFee());
-        append(value, c.total()); append(value, c.voucher().voucherId()); append(value, c.voucher().code());
-        c.items().stream().sorted(Comparator.comparing(CheckoutCartView.Item::productId))
-                .forEach(item -> {
-                    var priced = c.lineFor(item.productId());
-                    append(value, item.productId());
-                    append(value, item.quantity());
-                    append(value, item.productName());
-                    append(value, item.thumbnail());
-                    append(value, item.sku());
-                    append(value, item.unitPrice());
-                    append(value, priced.grossAmount());
-                    append(value, priced.discountAmount());
-                    append(value, priced.lineTotal());
-                });
-        try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                    .digest(value.toString().getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    private static void append(StringBuilder out, Object raw) {
-        String value = String.valueOf(raw);
-        out.append(value.length()).append(':').append(value);
-    }
+/**
+ * Legacy type retained only so older source fixtures compile.
+ * Stateless CheckoutQuoteService and OrderCreationService do not inject or use this class.
+ */
+@Deprecated
+public final class CheckoutQuoteStore {
+    public CheckoutQuoteStore() {}
 }

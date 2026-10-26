@@ -116,6 +116,17 @@ public class CartCommandService {
         return query.toDto(cart);
     }
 
+    /** Consume the current Cart as part of the same transaction that commits the Order write set. */
+    public void completeForOrder(Long accountId) {
+        Cart cart = currentOpenForMutation(accountId);
+        if (cart == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "CART_EMPTY");
+        }
+        items.deleteByCartId(cart.getCartId());
+        cart.setStatus("COMPLETED");
+        touch(cart);
+    }
+
     /**
      * Checkout orchestration calls this inside its transaction to serialize against Cart
      * mutations. It deliberately does not create a Cart; quote/read paths must be no-write.

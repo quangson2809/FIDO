@@ -3,26 +3,36 @@ package com.fido.modules.order.service;
 import com.fido.modules.order.dto.request.CheckoutQuoteRequest;
 import com.fido.modules.order.dto.response.CheckoutItemDto;
 import com.fido.modules.order.dto.response.CheckoutQuoteDto;
+import com.fido.modules.order.dto.response.VoucherDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** Read-only advisory calculation. Order placement always reloads and recalculates independently. */
 @Service
-@Transactional
+@Transactional(readOnly = true)
 public class CheckoutQuoteService {
     private final CheckoutCalculationService checkout;
-    private final CheckoutQuoteStore quotes;
-    private final com.fido.modules.cart.service.CartCommandService cart;
+    private final CheckoutRequestNormalizer normalizer;
 
-    public CheckoutQuoteService(CheckoutCalculationService checkout, CheckoutQuoteStore quotes,
-            com.fido.modules.cart.service.CartCommandService cart) {
+    public CheckoutQuoteService(
+            CheckoutCalculationService checkout,
+            CheckoutRequestNormalizer normalizer) {
         this.checkout = checkout;
-        this.quotes = quotes;
-        this.cart = cart;
+        this.normalizer = normalizer;
     }
 
     public CheckoutQuoteDto quote(Long accountId, CheckoutQuoteRequest request) {
-        cart.lockForCheckout(accountId);
-        CheckoutCalculation calculation = checkout.calculate(accountId, request.voucher_code());
+        var normalized = normalizer.normalize(
+                request.recipient_name(),
+                request.recipient_phone(),
+                request.province(),
+                request.district(),
+                request.ward(),
+                request.address_line(),
+                request.voucher_code());
+        CheckoutCalculation calculation =
+                checkout.calculateForQuote(accountId, normalized.voucherCode());
+
         var quoteItems = calculation.items().stream()
                 .map(item -> {
                     var priced = calculation.lineFor(item.productId());
@@ -38,13 +48,16 @@ public class CheckoutQuoteService {
                             item.availableQuantity());
                 })
                 .toList();
-        var saved = quotes.save(accountId, request.recipient_phone(), request.recipient_email(),
-                request.recipient_address(), calculation);
-        return new CheckoutQuoteDto(quoteItems, calculation.subtotal(), calculation.discount(),
-                calculation.shippingFee(), calculation.total(),
-                calculation.voucher().voucherId() == null ? null
-                        : new com.fido.modules.order.dto.response.VoucherDto(
-                                calculation.voucher().voucherId(), calculation.voucher().code()),
-                saved.getQuoteId(), saved.getExpiresAt());
+
+        VoucherDto voucher = calculation.voucher().voucherId() == null
+                ? null
+                : new VoucherDto(calculation.voucher().voucherId(), calculation.voucher().code());
+        return new CheckoutQuoteDto(
+                quoteItems,
+                calculation.subtotal(),
+                calculation.discount(),
+                calculation.shippingFee(),
+                calculation.total(),
+                voucher);
     }
 }
