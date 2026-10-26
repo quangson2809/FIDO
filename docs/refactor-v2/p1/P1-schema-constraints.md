@@ -8,7 +8,7 @@
 - Physical field/type/null/default/key/index/constraint authority: `docs/refactor-v2/p1/P1-data-dictionary.csv` and the single installer `backend/src/main/resources/db/migration/V1__fido_target_schema.sql`.
 - Owner behavior authority: `P1-owner-approval-2026-10-23.md` and `P1-decision-log.md`.
 - Target SQL uses integer BIGINT for monetary VND values. DECIMAL is permitted for descriptive numeric Product attributes only where specified by the dictionary.
-- Account phone identity is enforced directly by `UNIQUE(accounts.phone)` across retained rows, including soft-deleted rows. The generated `phone_active_key` support column is not part of the target schema.
+- The target includes the generated physical `accounts.phone_active_key` for active-account phone uniqueness; it is not an independently writable domain field.
 - Product identity is used by Cart, OrderItems, goods receipt items, inventory balance and inventory ledger. The stock key is `(warehouse_id, product_id)`.
 - Target `ORDER_ITEMS.image_url_snapshot`, Order idempotency/fingerprint fields, voucher usage counter, inventory reversal/source fields and refund metadata are part of the approved target contract.
 
@@ -16,9 +16,8 @@
 
 | Area | Approved target invariant | Required runtime verification |
 |---|---|---|
-| Account identity | Phone unique across all retained Account rows; soft deletion does not release it for reuse. | Entity/auth mapping, concurrent registration, deleted-account phone reuse rejection and generic authentication errors. |
+| Account identity | Active phone unique; soft deletion releases the phone for reuse. | Entity/auth mapping, concurrent registration, delete/reuse and generic authentication errors. |
 | Product hierarchy | One parent-child level; self-FK; each Product row owns SKU, required selling price and stock; no implicit NULL inheritance. | Cycle/depth checks under concurrent changes; Product create/update and sale eligibility. |
-| Product gallery | A non-unique `(product_id, sort_order)` index supports ordered reads; the service enforces unique contiguous positions and the single-primary rule transactionally. | Upload/remove/reorder validation, per-Product serialization and primary-image consistency tests. |
 | Attributes | OPTION/TEXT/NUMBER/BOOLEAN; one compatible typed value; option belongs to the same Attribute; no auto-generated Products. | Service/API type checks, requiredness, cross-Attribute option rejection and update behavior. |
 | Cart/order item identity | Product foreign keys; authenticated ownership; positive quantities. | DTO/query/frontend alignment; ownership and concurrency tests. |
 | Inventory | Composite warehouse/Product key; non-negative quantity/version; append-only ledger; source-linked movements. | Real MySQL last-stock race, deterministic locks, semantic source dedupe, reversal and balance=ledger reconciliation. |

@@ -93,7 +93,7 @@ class DatabaseBaselineTests {
 
     private static final Map<String, Set<String>> TARGET_COLUMNS = Map.ofEntries(
             Map.entry("account_roles", Set.of("account_id","role_id")),
-            Map.entry("accounts", Set.of("created_at","deleted_at","email","full_name","id","password_hash","phone","status","updated_at")),
+            Map.entry("accounts", Set.of("created_at","deleted_at","email","full_name","id","password_hash","phone","phone_active_key","status","updated_at")),
             Map.entry("addresses", Set.of("account_id","address_line","created_at","district","id","is_default","province","recipient_name","recipient_phone","updated_at","ward")),
             Map.entry("attribute_options", Set.of("attribute_id","id","label","sort_order","value")),
             Map.entry("attribute_types", Set.of("code","data_type","id","name")),
@@ -250,23 +250,24 @@ class DatabaseBaselineTests {
     }
 
     @Test
-    void productImageGalleryOrderHasNonUniqueCompositeIndex() {
+    void productImageGalleryOrderHasUniqueCompositeIndex() {
         var dataSource = newTestDataSource("product-image-order-index");
 
         try {
             installSchema(dataSource);
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+            // Verify the physical composite uniqueness and column order, not just static dictionary metadata.
             var indexRows = jdbc.queryForList(
                     "SELECT NON_UNIQUE AS non_unique, SEQ_IN_INDEX AS seq_in_index, " +
                             "COLUMN_NAME AS column_name FROM information_schema.statistics " +
                             "WHERE table_schema = DATABASE() AND table_name = 'product_images' " +
-                            "AND index_name = 'ix_product_images_product_order' ORDER BY seq_in_index");
+                            "AND index_name = 'uq_product_images_product_order' ORDER BY seq_in_index");
 
             assertEquals(2, indexRows.size());
-            assertEquals(1, ((Number) indexRows.get(0).get("non_unique")).intValue());
+            assertEquals(0, ((Number) indexRows.get(0).get("non_unique")).intValue());
             assertEquals(1, ((Number) indexRows.get(0).get("seq_in_index")).intValue());
             assertEquals("product_id", indexRows.get(0).get("column_name"));
-            assertEquals(1, ((Number) indexRows.get(1).get("non_unique")).intValue());
+            assertEquals(0, ((Number) indexRows.get(1).get("non_unique")).intValue());
             assertEquals(2, ((Number) indexRows.get(1).get("seq_in_index")).intValue());
             assertEquals("sort_order", indexRows.get(1).get("column_name"));
         } finally {
@@ -306,7 +307,7 @@ class DatabaseBaselineTests {
     }
 
     @Test
-    void phoneIsUniqueAcrossAllAccountsIncludingSoftDeletedWhileEmailMayRepeat() {
+    void phoneIsUniqueAmongActiveAccountsAndReusableAfterSoftDeleteWhileEmailMayRepeat() {
         var dataSource = newTestDataSource("constraints");
 
         try {
@@ -323,13 +324,13 @@ class DatabaseBaselineTests {
             assertEquals(1, jdbc.update(
                     "UPDATE accounts SET deleted_at = CURRENT_TIMESTAMP(6) WHERE phone = ?",
                     "+84900000001"));
-            assertThrows(DataAccessException.class, () -> jdbc.update(
-                    "INSERT INTO accounts(full_name,email,phone,password_hash,status) VALUES (?,?,?,?,?)",
-                    "Phone Reuse Rejected", "reused@example.invalid", "+84900000001", "test-only-hash", "ACTIVE"));
-            assertEquals(1, jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM accounts WHERE phone = '+84900000001'", Integer.class));
+            jdbc.update("INSERT INTO accounts(full_name,email,phone,password_hash,status) VALUES (?,?,?,?,?)",
+                    "Phone Reused", "reused@example.invalid", "+84900000001", "test-only-hash", "ACTIVE");
             assertEquals(2, jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM accounts WHERE email = 'same@example.invalid'", Integer.class));
+                    "SELECT COUNT(*) FROM accounts WHERE phone = '+84900000001'", Integer.class));
+            assertEquals(1, jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM accounts WHERE phone = '+84900000001' AND deleted_at IS NULL",
+                    Integer.class));
         } finally {
             dropAllTables(dataSource);
         }

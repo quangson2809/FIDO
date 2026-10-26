@@ -33,13 +33,6 @@ public interface AccountRepository extends Repository<Account, Long> {
 
     Optional<Account> findByPhone(String phone);
 
-    @Query("select case when count(a) > 0 then true else false end from Account a where a.phone in :phones")
-    boolean existsByPhoneIn(@Param("phones") Collection<String> phones);
-
-    @Query("select case when count(a) > 0 then true else false end from Account a where a.phone in :phones and a.accountId <> :accountId")
-    boolean existsByPhoneInAndAccountIdNot(
-            @Param("phones") Collection<String> phones, @Param("accountId") Long accountId);
-
     @Query("select a from Account a where a.phone in :phones and a.deletedAt is null")
     List<Account> findByPhoneInAndNotDeleted(@Param("phones") Collection<String> phones);
 

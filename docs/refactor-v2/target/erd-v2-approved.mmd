@@ -13,7 +13,7 @@ erDiagram
         varchar phone
         varchar password_hash
         varchar status
-        timestamp deleted_at "Soft deletion does not release phone while the account row is retained"
+        timestamp deleted_at "NULL means active; soft-deleted accounts release phone"
         timestamp created_at
         timestamp updated_at
     }
@@ -127,7 +127,7 @@ erDiagram
         boolean boolean_value
     }
 
-    %% Physical target index: non-unique (product_id, sort_order); Product service transactions preserve unique contiguous positions and the primary-image invariant.
+    %% Physical target index: UNIQUE (product_id, sort_order); application transactions still preserve contiguous 0..n-1 positions and the primary-image invariant.
     PRODUCT_IMAGES {
         bigint id PK
         bigint product_id FK
@@ -172,7 +172,7 @@ erDiagram
         bigint id PK
         bigint account_id FK
         bigint voucher_id FK
-        varchar order_number UK "Generated as account ID + UTC timestamp to seconds + generated Order ID"
+        varchar order_number UK
         varchar idempotency_key UK
         char(64) request_fingerprint "Canonical hash of semantic checkout input"
         varchar status

@@ -1,7 +1,6 @@
 package com.fido.modules.order.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -66,24 +65,16 @@ class OrderCreationImageSnapshotTests {
                         new BigDecimal("30000.00"),
                         new BigDecimal("210000.00"));
         when(checkout.calculate(42L, null)).thenReturn(calculation);
-        List<String> savedOrderCodes = new java.util.ArrayList<>();
         when(orders.save(any(Order.class)))
                 .thenAnswer(
                         invocation -> {
                             Order order = invocation.getArgument(0);
-                            if (order.getOrderId() == null) {
-                                order.setOrderId(100L);
-                            }
-                            savedOrderCodes.add(order.getOrderCode());
+                            order.setOrderId(100L);
                             return order;
                         });
         when(payments.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.create(42L, new CreateOrderRequest("0900000000", null, "Hanoi", null));
-
-        assertEquals(2, savedOrderCodes.size());
-        assertTrue(savedOrderCodes.get(0).matches("TMP-[A-F0-9]{32}"));
-        assertTrue(savedOrderCodes.get(1).matches("42-\\d{14}-100"));
 
         ArgumentCaptor<OrderItem> saved = ArgumentCaptor.forClass(OrderItem.class);
         verify(items).save(saved.capture());
