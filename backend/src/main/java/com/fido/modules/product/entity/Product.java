@@ -19,40 +19,61 @@ public class Product {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "product_id", nullable = false)
+    @Column(name = "id", nullable = false)
     private Long productId;
 
-    @Column(name = "category_id", nullable = false)
+    @Column(name = "category_id", nullable = true)
     private Long categoryId;
 
     @Column(name = "brand_id", nullable = true)
     private Long brandId;
 
-    @Column(name = "size_system_id", nullable = false)
+    @Column(name = "parent_product_id")
+    private Long parentProductId;
+
+    @Column(name = "slug", length = 200)
+    private String slug;
+
+    @Column(name = "sku", nullable = false, length = 100)
+    private String sku;
+
+    @Column(name = "selling_price", nullable = false)
+    private BigDecimal sellingPrice;
+
+    @Column(name = "cost_price")
+    private BigDecimal costPrice;
+
+    @Column(name = "status", nullable = false, length = 20)
+    private String status = "DRAFT";
+
+    @Column(name = "deleted_at", columnDefinition = "TIMESTAMP(6)")
+    private LocalDateTime deletedAt;
+
+    @Transient
     private Long sizeSystemId;
 
-    @Column(name = "name", nullable = false, length = 255)
+    @Column(name = "name", nullable = true, length = 255)
     private String name;
 
     @Column(name = "description", nullable = true, columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "gender", nullable = true, length = 50)
+    @Transient
     private String gender;
 
-    @Column(name = "season", nullable = true, length = 80)
+    @Transient
     private String season;
 
-    @Column(name = "style", nullable = true, length = 100)
+    @Transient
     private String style;
 
-    @Column(name = "material_care", nullable = true, columnDefinition = "TEXT")
+    @Transient
     private String materialCare;
 
-    @Column(name = "base_price", nullable = false, precision = 18, scale = 2)
+    @Transient
     private BigDecimal basePrice;
 
-    @Column(name = "sale_status", nullable = false, length = 30)
+    @Transient
     private String saleStatus;
 
     @Column(
@@ -67,6 +88,7 @@ public class Product {
 
     @PrePersist
     void onCreate() {
+        syncLegacyFields();
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         createdAt = now;
         updatedAt = now;
@@ -74,6 +96,20 @@ public class Product {
 
     @PreUpdate
     void onUpdate() {
+        syncLegacyFields();
         updatedAt = LocalDateTime.now(ZoneOffset.UTC);
+    }
+
+    @PostLoad
+    void onLoad() {
+        basePrice = sellingPrice;
+        saleStatus = status;
+    }
+
+    private void syncLegacyFields() {
+        if (sellingPrice == null && basePrice != null) sellingPrice = basePrice;
+        if (status == null || status.isBlank()) {
+            status = (saleStatus == null || saleStatus.isBlank()) ? "DRAFT" : saleStatus;
+        }
     }
 }
