@@ -26,6 +26,27 @@ public class ShippingInfo {
     @Transient
     private String deliveryMode;
 
-    @Column(name = "carrier_name", nullable = true, length = 255)
+    @Column(name = "carrier_name", nullable = true, length = 150)
     private String carrierName;
+
+    @Column(name = "tracking_number", nullable = true, length = 120)
+    private String trackingNumber;
+
+    @Column(name = "shipping_status", nullable = false, length = 20)
+    private String shippingStatus = "PENDING";
+
+    @Column(name = "shipped_at", nullable = true, columnDefinition = "TIMESTAMP(6)")
+    private java.time.LocalDateTime shippedAt;
+
+    @Column(name = "delivered_at", nullable = true, columnDefinition = "TIMESTAMP(6)")
+    private java.time.LocalDateTime deliveredAt;
+
+    @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
+    private java.time.LocalDateTime updatedAt;
+
+    @PrePersist
+    @PreUpdate
+    void updateTimestamp() {
+        updatedAt = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
+    }
 }
