@@ -78,8 +78,8 @@ public interface InventoryRepository extends Repository<Inventory, Long> {
     @Query(
             """
             update Inventory inventory
-            set inventory.availableQuantity =
-                    inventory.availableQuantity + :quantity,
+            set inventory.quantityOnHand =
+                    inventory.quantityOnHand + :quantity,
                 inventory.updatedAt = :updatedAt
             where inventory.variantId = :variantId
             """)
@@ -92,11 +92,11 @@ public interface InventoryRepository extends Repository<Inventory, Long> {
     @Query(
             """
             update Inventory inventory
-            set inventory.availableQuantity =
-                    inventory.availableQuantity + :delta,
+            set inventory.quantityOnHand =
+                    inventory.quantityOnHand + :delta,
                 inventory.updatedAt = :updatedAt
             where inventory.variantId = :variantId
-              and inventory.availableQuantity + :delta >= 0
+              and inventory.quantityOnHand + :delta >= 0
             """)
     int adjustIfNonNegative(
             @Param("variantId") Long variantId,
