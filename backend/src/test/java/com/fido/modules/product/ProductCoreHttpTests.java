@@ -13,7 +13,7 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
 
     @Test
     void productsOwnTheirSkuAndIntegerVndPriceAndHierarchyStopsAtOneLevel() throws Exception {
-        Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
+        Employee writer = catalogWriter();
         String suffix = UUID.randomUUID().toString().replace("-", "");
         Result parentResponse = createProduct(writer, "PARENT-" + suffix, "Parent " + suffix, 125000, null);
         assertEquals(201, parentResponse.status(), parentResponse.body());
@@ -54,7 +54,7 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
 
     @Test
     void skuUniquenessAndStatusAndIntegerPriceAreValidated() throws Exception {
-        Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
+        Employee writer = catalogWriter();
         String sku = "UNIQUE-" + UUID.randomUUID().toString().replace("-", "");
         Result first = createProduct(writer, sku, "First", 100000, null);
         assertEquals(201, first.status(), first.body());
@@ -86,7 +86,7 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
 
     @Test
     void productIdQueriesAndCategoryBrandSlugsUseCanonicalRows() throws Exception {
-        Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
+        Employee writer = catalogWriter();
         CatalogFixture fixture = createCatalog(writer);
         var adminDetail = call("GET", "/api/v1/admin/products/" + fixture.productId(), writer.token(), null);
         var publicDetail = call("GET", "/api/v1/catalog/products/" + fixture.productId(), null, null);
@@ -116,6 +116,17 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
         var duplicateCategory = call("POST", "/api/v1/admin/categories", rootToken,
                 Map.of("name", category.data().get("data").get("name").asText()));
         assertEquals(409, duplicateCategory.status(), duplicateCategory.body());
+    }
+
+
+    private Employee catalogWriter() throws Exception {
+        long roleId = customRole(ensurePermission("CATALOG_WRITE"));
+        long readPermissionId = ensurePermission("CATALOG_READ");
+        db.update(
+                "INSERT INTO role_permissions(role_id,permission_id) VALUES (?,?)",
+                roleId,
+                readPermissionId);
+        return employee(roleId);
     }
 
     private Result createProduct(Employee writer, String sku, String name, long price, Long parentId)

@@ -47,7 +47,7 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
     }
 
     @Test
-    void productCreateDoesNotWriteImagesFromLegacyCreatePayload() throws Exception {
+    void productCreateRejectsImagePayloadOutsideImageEndpoints() throws Exception {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         var fixture = createCatalog(writer);
 
@@ -58,7 +58,7 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                 Map.of(
                         "category_id", fixture.categoryId(),
                         "brand_id", fixture.brandId(),
-                        "name", "No legacy image write " + UUID.randomUUID(),
+                        "name", "No image writes from create " + UUID.randomUUID(),
                         "sku", "NO-IMAGE-" + UUID.randomUUID(),
                         "selling_price", 100000,
                         "status", "ACTIVE",
@@ -67,10 +67,7 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                                 "alt_text", "legacy",
                                 "sort_order", 0))));
 
-        assertEquals(201, response.status(), response.body());
-        long createdProductId = response.data().get("data").get("product_id").asLong();
-        products.add(createdProductId);
-        assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM product_images WHERE product_id=?", Integer.class, createdProductId));
+        assertEquals(400, response.status(), response.body());
     }
 
     @Test
