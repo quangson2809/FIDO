@@ -28,6 +28,18 @@ class ApiBaselineRouteContractTests {
     private static final Route PRODUCT_CREATE = new Route("POST", "/api/v1/admin/products");
     private static final Route PRODUCT_IMAGE_UPLOAD =
             new Route("POST", "/api/v1/admin/products/{productId}/images");
+    private static final Set<Route> APPROVED_ROUTE_REMOVALS =
+            Set.of(
+                    new Route("POST", "/api/v1/admin/colors"),
+                    new Route("PATCH", "/api/v1/admin/colors/{colorId}"),
+                    new Route("DELETE", "/api/v1/admin/colors/{colorId}"),
+                    new Route("POST", "/api/v1/admin/size-systems"),
+                    new Route("PATCH", "/api/v1/admin/size-systems/{sizeSystemId}"),
+                    new Route("DELETE", "/api/v1/admin/size-systems/{sizeSystemId}"),
+                    new Route("POST", "/api/v1/admin/products/{productId}/variants"),
+                    new Route("PATCH", "/api/v1/admin/products/{productId}/variants/{variantId}"));
+    private static final Set<Route> APPROVED_ROUTE_ADDITIONS =
+            Set.of(new Route("DELETE", "/api/v1/admin/products/{productId}"));
     private static final Set<Route> APPROVED_REFINEMENT_ROUTES =
             Set.of(
                     new Route("GET", "/api/v1/admin/reports/sales-trend"),
@@ -49,15 +61,22 @@ class ApiBaselineRouteContractTests {
     void registeredApiRoutesMatchBaselineAndApprovedRefinements() throws Exception {
         Set<Route> baseline = baselineRoutes();
         Set<Route> expected =
-                Stream.concat(baseline.stream(), APPROVED_REFINEMENT_ROUTES.stream())
+                Stream.concat(
+                                baseline.stream().filter(route -> !APPROVED_ROUTE_REMOVALS.contains(route)),
+                                Stream.concat(
+                                        APPROVED_REFINEMENT_ROUTES.stream(),
+                                        APPROVED_ROUTE_ADDITIONS.stream()))
                         .collect(Collectors.toUnmodifiableSet());
         Map<Route, Long> registered = registeredApiRoutes();
 
         assertEquals(77, baseline.size(), "Analyst baseline must contain exactly 77 routes");
         assertEquals(
-                baseline.size() + APPROVED_REFINEMENT_ROUTES.size(),
+                baseline.size()
+                        - APPROVED_ROUTE_REMOVALS.size()
+                        + APPROVED_REFINEMENT_ROUTES.size()
+                        + APPROVED_ROUTE_ADDITIONS.size(),
                 expected.size(),
-                "Approved refinements must not duplicate baseline routes");
+                "Approved route additions/removals must not duplicate existing routes");
         assertEquals(
                 expected,
                 registered.keySet(),
