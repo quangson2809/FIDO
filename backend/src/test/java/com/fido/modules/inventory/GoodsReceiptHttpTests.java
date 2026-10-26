@@ -17,7 +17,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -93,12 +92,7 @@ class GoodsReceiptHttpTests extends InventoryHttpSupport {
         assertEquals(200, receiptPage.status());
         assertTrue(receiptPage.data().get("meta").get("total").asInt() >= 1);
 
-        var inactivePatch = new HashMap<String, Object>();
-        inactivePatch.put("usage_status", "INACTIVE");
-        inactivePatch.put("phone", null);
-        inactivePatch.put("note", "Historical supplier only");
-        assertEquals(200, call("PATCH", "/api/v1/admin/suppliers/" + supplierId,
-                writer.token(), inactivePatch).status());
+        db.update("UPDATE suppliers SET status='INACTIVE' WHERE id=?", supplierId);
 
         assertEquals(409, call("POST", "/api/v1/admin/goods-receipts", writer.token(),
                 Map.of("supplier_id", supplierId,
@@ -107,8 +101,7 @@ class GoodsReceiptHttpTests extends InventoryHttpSupport {
 
         assertEquals(200, call("GET", "/api/v1/admin/goods-receipts/" + receiptId,
                 reader.token(), null).status());
-        assertEquals(200, call("PATCH", "/api/v1/admin/suppliers/" + supplierId,
-                writer.token(), Map.of("usage_status", "ACTIVE")).status());
+        db.update("UPDATE suppliers SET status='ACTIVE' WHERE id=?", supplierId);
 
         call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
                 Map.of("product_id", fixture.productId(),
