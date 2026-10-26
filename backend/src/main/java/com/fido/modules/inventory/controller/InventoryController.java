@@ -8,9 +8,7 @@ import com.fido.modules.inventory.dto.response.InventoryTransactionDto;
 import com.fido.modules.inventory.service.InventoryAdjustmentService;
 import com.fido.modules.inventory.service.InventoryQueryService;
 import com.fido.modules.inventory.service.InventoryTransactionFilter;
-
 import jakarta.validation.Valid;
-
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -28,7 +26,6 @@ import java.time.LocalDateTime;
 @RestController
 @RequestMapping("/api/v1/admin/inventory")
 public class InventoryController {
-
     private final InventoryAdjustmentService service;
     private final InventoryQueryService query;
 
@@ -41,10 +38,9 @@ public class InventoryController {
     public ApiListResponse<InventoryRowDto> inventory(
             @RequestParam(name = "product_id", required = false) Long productId,
             @RequestParam(required = false) String sku,
-            @RequestParam(name = "warehouse_id", required = false) Long warehouseId,
             @RequestParam(required = false) Integer page,
             @RequestParam(name = "page_size", required = false) Integer pageSize) {
-        return query.inventory(productId, sku, warehouseId, page, pageSize);
+        return query.inventory(productId, sku, page, pageSize);
     }
 
     @PostMapping("/adjustments")

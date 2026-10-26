@@ -8,7 +8,6 @@ import com.fido.modules.inventory.dto.request.InventoryAdjustmentRequest;
 import com.fido.modules.inventory.dto.response.InventoryTransactionDto;
 import com.fido.modules.inventory.entity.InventoryTransaction;
 import com.fido.modules.inventory.mapper.InventoryMapper;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -23,30 +22,21 @@ public class InventoryAdjustmentService {
     private final InventoryCommandService inventoryCommands;
     private final AuditService audit;
 
-    public InventoryAdjustmentService(
-            InventoryCommandService inventoryCommands, AuditService audit) {
+    public InventoryAdjustmentService(InventoryCommandService inventoryCommands, AuditService audit) {
         this.inventoryCommands = inventoryCommands;
         this.audit = audit;
     }
 
     @PreAuthorize(WRITE)
     public InventoryTransactionDto adjust(Long actor, InventoryAdjustmentRequest request) {
-        if (request.quantity_delta() == 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-        }
+        if (request.quantity_delta() == 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
 
         InventoryTransaction transaction =
                 inventoryCommands.adjustManually(
-                        actor, request.warehouse_id(), request.product_id(),
-                        request.quantity_delta(), request.reason());
+                        actor, request.product_id(), request.quantity_delta(), request.reason());
 
-        audit.record(
-                AuditEvent.of(
-                        actor,
-                        AuditAction.INVENTORY_ADJUST,
-                        AuditTargetType.INVENTORY,
-                        request.product_id()));
-
+        audit.record(AuditEvent.of(
+                actor, AuditAction.INVENTORY_ADJUST, AuditTargetType.INVENTORY, request.product_id()));
         return InventoryMapper.transaction(transaction);
     }
 }

@@ -8,5 +8,6 @@ public interface InventoryRowView {
     String getSku();
     String getProductName();
     Integer getAvailableQuantity();
+    Integer getVersion();
     LocalDateTime getUpdatedAt();
 }

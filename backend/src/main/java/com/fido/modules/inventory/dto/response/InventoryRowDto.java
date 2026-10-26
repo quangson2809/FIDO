@@ -8,4 +8,5 @@ public record InventoryRowDto(
         String sku,
         String product_name,
         Integer available_quantity,
+        Integer version,
         LocalDateTime updated_at) {}

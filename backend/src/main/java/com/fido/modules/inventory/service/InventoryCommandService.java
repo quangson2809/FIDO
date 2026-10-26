@@ -4,10 +4,9 @@ import com.fido.modules.inventory.entity.Inventory;
 import com.fido.modules.inventory.entity.InventoryTransaction;
 import com.fido.modules.inventory.repository.InventoryRepository;
 import com.fido.modules.inventory.repository.InventoryTransactionRepository;
-import com.fido.modules.product.entity.Product;
-
+import com.fido.modules.product.service.InventoryProductAccessService;
 import jakarta.persistence.EntityManager;
-
+import jakarta.persistence.LockModeType;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -23,27 +22,33 @@ import java.util.UUID;
 @Service
 @Transactional(propagation = Propagation.MANDATORY)
 public class InventoryCommandService {
+    private static final int MAX_SQL_INT = Integer.MAX_VALUE;
 
     private final EntityManager em;
     private final InventoryRepository inventories;
     private final InventoryTransactionRepository transactions;
+    private final InventoryProductAccessService productAccess;
+    private final OperationalWarehouseService operationalWarehouse;
 
     public InventoryCommandService(
             EntityManager em,
             InventoryRepository inventories,
-            InventoryTransactionRepository transactions) {
+            InventoryTransactionRepository transactions,
+            InventoryProductAccessService productAccess,
+            OperationalWarehouseService operationalWarehouse) {
         this.em = em;
         this.inventories = inventories;
         this.transactions = transactions;
+        this.productAccess = productAccess;
+        this.operationalWarehouse = operationalWarehouse;
     }
 
     public void receiveGoods(
             Long actor, Long receiptId, Long warehouseId, List<StockLine> lines) {
+        operationalWarehouse.requireOperationalWarehouse(warehouseId);
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         for (StockLine line : ordered(lines)) {
-            requireTrackedProduct(line.productId());
-            ensureInventoryRow(warehouseId, line.productId());
-            increment(warehouseId, line.productId(), line.quantity(), now);
+            applyBalanceDelta(warehouseId, line.productId(), line.quantity(), now);
             record(new InventoryMovement(
                     actor, warehouseId, line.productId(), line.quantity(),
                     InventoryPolicy.RECEIPT_IN, null, line.goodsReceiptItemId(), null, null));
@@ -51,17 +56,11 @@ public class InventoryCommandService {
     }
 
     public InventoryTransaction adjustManually(
-            Long actor, Long warehouseId, Long productId, int quantityDelta, String reason) {
-        requireTrackedProduct(productId);
-        if (inventories.findByWarehouseIdAndProductId(warehouseId, productId).isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-        }
-
+            Long actor, Long productId, int quantityDelta, String reason) {
+        if (quantityDelta == 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        Long warehouseId = operationalWarehouse.requireOperationalWarehouseId();
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-        int updated = inventories.adjustIfNonNegative(warehouseId, productId, quantityDelta, now);
-        if (updated != 1) throw new ResponseStatusException(HttpStatus.CONFLICT);
-
-        refreshInventory(warehouseId, productId);
+        applyBalanceDelta(warehouseId, productId, quantityDelta, now);
         return record(new InventoryMovement(
                 actor, warehouseId, productId, quantityDelta, InventoryPolicy.ADJUSTMENT,
                 null, null, null, reason));
@@ -69,30 +68,14 @@ public class InventoryCommandService {
 
     public void deductConfirmedOrder(
             Long actor, Long orderId, List<StockLine> lines, String reason) {
+        Long warehouseId = operationalWarehouse.requireOperationalWarehouseId();
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         for (StockLine line : ordered(lines)) {
-            int remaining = line.quantity();
-            var stockRows = inventories.findAllByProductIdIn(List.of(line.productId())).stream()
-                    .sorted(Comparator.comparing(Inventory::getWarehouseId))
-                    .toList();
-
-            for (Inventory stock : stockRows) {
-                if (remaining == 0) break;
-                int available = stock.getQuantityOnHand() == null ? 0 : stock.getQuantityOnHand();
-                int quantity = Math.min(remaining, available);
-                if (quantity <= 0) continue;
-
-                int updated = inventories.adjustIfNonNegative(
-                        stock.getWarehouseId(), line.productId(), -quantity, now);
-                if (updated != 1) continue;
-
-                refreshInventory(stock.getWarehouseId(), line.productId());
-                record(new InventoryMovement(
-                        actor, stock.getWarehouseId(), line.productId(), -quantity,
-                        InventoryPolicy.ORDER_CONFIRM_OUT, line.orderItemId(), null, null, reason));
-                remaining -= quantity;
-            }
-            if (remaining > 0) throw new ResponseStatusException(HttpStatus.CONFLICT);
+            int delta = -line.quantity();
+            applyBalanceDelta(warehouseId, line.productId(), delta, now);
+            record(new InventoryMovement(
+                    actor, warehouseId, line.productId(), delta,
+                    InventoryPolicy.ORDER_CONFIRM_OUT, line.orderItemId(), null, null, reason));
         }
     }
 
@@ -114,12 +97,15 @@ public class InventoryCommandService {
 
         if (!itemIds.isEmpty()) {
             var originalMovements = transactions
-                    .findAllByOrderItemIdInAndTransactionType(
-                            itemIds, InventoryPolicy.ORDER_CONFIRM_OUT)
-                    .stream().sorted(Comparator.comparing(InventoryTransaction::getTxnId)).toList();
+                    .findAllByOrderItemIdInAndTransactionType(itemIds, InventoryPolicy.ORDER_CONFIRM_OUT)
+                    .stream()
+                    .sorted(Comparator.comparing(InventoryTransaction::getProductId)
+                            .thenComparing(InventoryTransaction::getWarehouseId)
+                            .thenComparing(InventoryTransaction::getTxnId))
+                    .toList();
             for (InventoryTransaction original : originalMovements) {
                 int quantity = Math.negateExact(original.getQuantityDelta());
-                increment(original.getWarehouseId(), original.getProductId(), quantity, now);
+                applyBalanceDelta(original.getWarehouseId(), original.getProductId(), quantity, now);
                 record(new InventoryMovement(
                         actor, original.getWarehouseId(), original.getProductId(), quantity,
                         transactionType, original.getOrderItemId(), null,
@@ -128,32 +114,61 @@ public class InventoryCommandService {
             return;
         }
 
-        // Compatibility for internal callers without order-item references.
+        // Compatibility callers without OrderItem references use the server-resolved warehouse.
+        Long warehouseId = operationalWarehouse.requireOperationalWarehouseId();
         for (StockLine line : ordered(lines)) {
-            var rows = inventories.findAllByProductIdIn(List.of(line.productId())).stream()
-                    .sorted(Comparator.comparing(Inventory::getWarehouseId)).toList();
-            if (rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-            Inventory stock = rows.get(0);
-            increment(stock.getWarehouseId(), line.productId(), line.quantity(), now);
+            applyBalanceDelta(warehouseId, line.productId(), line.quantity(), now);
             record(new InventoryMovement(
-                    actor, stock.getWarehouseId(), line.productId(), line.quantity(),
+                    actor, warehouseId, line.productId(), line.quantity(),
                     transactionType, null, null, null, reason));
         }
     }
 
-    private void increment(Long warehouseId, Long productId, int quantity, LocalDateTime now) {
-        int updated = inventories.increment(warehouseId, productId, quantity, now);
-        if (updated != 1) throw new IllegalStateException("Inventory row missing during stock mutation");
-        refreshInventory(warehouseId, productId);
+    /**
+     * Serializes same-Product writers before first-row creation, then locks/re-reads the
+     * composite balance row and applies a quantity/version-guarded update with SQL INT bounds.
+     */
+    private void applyBalanceDelta(
+            Long warehouseId, Long productId, int quantityDelta, LocalDateTime now) {
+        if (quantityDelta == 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+
+        productAccess.lockTrackedProduct(productId);
+
+        if (inventories.findByWarehouseIdAndProductId(warehouseId, productId).isEmpty()) {
+            if (quantityDelta < 0) throw new ResponseStatusException(HttpStatus.CONFLICT);
+            ensureInventoryRow(warehouseId, productId);
+        }
+
+        Inventory balance = inventories.findByWarehouseIdAndProductIdForUpdate(warehouseId, productId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT));
+        em.refresh(balance, LockModeType.PESSIMISTIC_WRITE);
+
+        Integer currentQuantity = balance.getQuantityOnHand();
+        Integer currentVersion = balance.getVersion();
+        if (currentQuantity == null || currentVersion == null
+                || currentQuantity < 0 || currentVersion < 0 || currentVersion >= MAX_SQL_INT) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT);
+        }
+
+        long nextQuantity = (long) currentQuantity + quantityDelta;
+        if (nextQuantity < 0 || nextQuantity > MAX_SQL_INT) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT);
+        }
+
+        int updated = inventories.updateBalanceGuarded(
+                warehouseId, productId, currentQuantity, (int) nextQuantity,
+                currentVersion, now, MAX_SQL_INT);
+        if (updated != 1) throw new ResponseStatusException(HttpStatus.CONFLICT);
+
+        // A caller may already have loaded this composite key in the current persistence context.
+        em.refresh(balance);
     }
 
     private List<StockLine> ordered(List<StockLine> lines) {
-        return lines.stream().sorted(Comparator.comparing(StockLine::productId)
-                .thenComparing(line -> line.orderItemId() == null ? 0L : line.orderItemId())).toList();
-    }
-
-    private void refreshInventory(Long warehouseId, Long productId) {
-        em.refresh(em.getReference(Inventory.class, new Inventory.InventoryId(warehouseId, productId)));
+        return lines.stream()
+                .sorted(Comparator.comparing(StockLine::productId)
+                        .thenComparing(line -> line.orderItemId() == null ? 0L : line.orderItemId()))
+                .toList();
     }
 
     private void ensureInventoryRow(Long warehouseId, Long productId) {
@@ -162,6 +177,7 @@ public class InventoryCommandService {
         inventory.setWarehouseId(warehouseId);
         inventory.setProductId(productId);
         inventory.setQuantityOnHand(0);
+        inventory.setVersion(0);
         inventories.save(inventory);
         em.flush();
     }
@@ -182,10 +198,7 @@ public class InventoryCommandService {
     }
 
     public void requireTrackedProduct(Long productId) {
-        Product product = em.find(Product.class, productId);
-        if (product == null || product.getDeletedAt() != null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-        }
+        productAccess.requireTrackedProduct(productId);
     }
 
     private String normalize(String reason) {
@@ -195,26 +208,18 @@ public class InventoryCommandService {
     }
 
     private record InventoryMovement(
-            Long actor,
-            Long warehouseId,
-            Long productId,
-            int quantityDelta,
-            String transactionType,
-            Long orderItemId,
-            Long goodsReceiptItemId,
-            Long reversesTransactionId,
-            String reason) {}
+            Long actor, Long warehouseId, Long productId, int quantityDelta,
+            String transactionType, Long orderItemId, Long goodsReceiptItemId,
+            Long reversesTransactionId, String reason) {}
 
     public record StockLine(
             Long productId, int quantity, Long orderItemId, Long goodsReceiptItemId) {
         public StockLine(Long productId, int quantity) {
             this(productId, quantity, null, null);
         }
-
         public StockLine(Long productId, int quantity, Long orderItemId) {
             this(productId, quantity, orderItemId, null);
         }
-
         public StockLine {
             if (productId == null || quantity <= 0) {
                 throw new IllegalArgumentException("Stock line requires Product ID and positive quantity");

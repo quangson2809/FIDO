@@ -2,8 +2,11 @@ package com.fido.modules.inventory.repository;
 
 import com.fido.modules.inventory.entity.Inventory;
 
+import jakarta.persistence.LockModeType;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
@@ -15,38 +18,46 @@ import java.util.List;
 import java.util.Optional;
 
 public interface InventoryRepository extends Repository<Inventory, Inventory.InventoryId> {
-
     Optional<Inventory> findByWarehouseIdAndProductId(Long warehouseId, Long productId);
 
-    List<Inventory> findAllByProductIdIn(Collection<Long> productIds);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select inventory from Inventory inventory
+            where inventory.warehouseId = :warehouseId
+              and inventory.productId = :productId
+            """)
+    Optional<Inventory> findByWarehouseIdAndProductIdForUpdate(
+            @Param("warehouseId") Long warehouseId,
+            @Param("productId") Long productId);
 
+    List<Inventory> findAllByProductIdIn(Collection<Long> productIds);
+    List<Inventory> findAllByWarehouseIdAndProductIdIn(Long warehouseId, Collection<Long> productIds);
     Inventory save(Inventory entity);
 
-    @Query(
-            value =
-                    """
-                    SELECT inventory.warehouse_id AS warehouseId,
-                           inventory.product_id AS productId,
-                           product.sku AS sku,
-                           product.name AS productName,
-                           inventory.quantity_on_hand AS availableQuantity,
-                           inventory.updated_at AS updatedAt
-                    FROM inventories inventory
-                    JOIN products product ON product.id = inventory.product_id
-                    WHERE (:productId IS NULL OR inventory.product_id = :productId)
-                      AND (:sku IS NULL OR product.sku = :sku)
-                      AND (:warehouseId IS NULL OR inventory.warehouse_id = :warehouseId)
-                    ORDER BY inventory.product_id, inventory.warehouse_id
-                    """,
-            countQuery =
-                    """
-                    SELECT COUNT(*)
-                    FROM inventories inventory
-                    JOIN products product ON product.id = inventory.product_id
-                    WHERE (:productId IS NULL OR inventory.product_id = :productId)
-                      AND (:sku IS NULL OR product.sku = :sku)
-                      AND (:warehouseId IS NULL OR inventory.warehouse_id = :warehouseId)
-                    """,
+    @Query(value = """
+            SELECT warehouse.id AS warehouseId,
+                   product.id AS productId,
+                   product.sku AS sku,
+                   product.name AS productName,
+                   COALESCE(inventory.quantity_on_hand, 0) AS availableQuantity,
+                   COALESCE(inventory.version, 0) AS version,
+                   inventory.updated_at AS updatedAt
+            FROM products product
+            JOIN warehouses warehouse ON (:warehouseId IS NULL OR warehouse.id = :warehouseId)
+            LEFT JOIN inventories inventory
+              ON inventory.warehouse_id = warehouse.id
+             AND inventory.product_id = product.id
+            WHERE (:productId IS NULL OR product.id = :productId)
+              AND (:sku IS NULL OR product.sku = :sku)
+            ORDER BY product.id, warehouse.id
+            """,
+            countQuery = """
+            SELECT COUNT(*)
+            FROM products product
+            JOIN warehouses warehouse ON (:warehouseId IS NULL OR warehouse.id = :warehouseId)
+            WHERE (:productId IS NULL OR product.id = :productId)
+              AND (:sku IS NULL OR product.sku = :sku)
+            """,
             nativeQuery = true)
     Page<InventoryRowView> search(
             @Param("productId") Long productId,
@@ -55,35 +66,23 @@ public interface InventoryRepository extends Repository<Inventory, Inventory.Inv
             Pageable pageable);
 
     @Modifying(flushAutomatically = true)
-    @Query(
-            """
+    @Query("""
             update Inventory inventory
-            set inventory.quantityOnHand = inventory.quantityOnHand + :quantity,
+            set inventory.quantityOnHand = :newQuantity,
                 inventory.updatedAt = :updatedAt,
                 inventory.version = inventory.version + 1
             where inventory.warehouseId = :warehouseId
               and inventory.productId = :productId
+              and inventory.quantityOnHand = :currentQuantity
+              and inventory.version = :expectedVersion
+              and inventory.version < :maxVersion
             """)
-    int increment(
+    int updateBalanceGuarded(
             @Param("warehouseId") Long warehouseId,
             @Param("productId") Long productId,
-            @Param("quantity") int quantity,
-            @Param("updatedAt") LocalDateTime updatedAt);
-
-    @Modifying(flushAutomatically = true)
-    @Query(
-            """
-            update Inventory inventory
-            set inventory.quantityOnHand = inventory.quantityOnHand + :delta,
-                inventory.updatedAt = :updatedAt,
-                inventory.version = inventory.version + 1
-            where inventory.warehouseId = :warehouseId
-              and inventory.productId = :productId
-              and inventory.quantityOnHand + :delta >= 0
-            """)
-    int adjustIfNonNegative(
-            @Param("warehouseId") Long warehouseId,
-            @Param("productId") Long productId,
-            @Param("delta") int delta,
-            @Param("updatedAt") LocalDateTime updatedAt);
+            @Param("currentQuantity") int currentQuantity,
+            @Param("newQuantity") int newQuantity,
+            @Param("expectedVersion") int expectedVersion,
+            @Param("updatedAt") LocalDateTime updatedAt,
+            @Param("maxVersion") int maxVersion);
 }

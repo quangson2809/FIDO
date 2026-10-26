@@ -37,6 +37,7 @@ class InventoryProductIdIntegrationTests extends CatalogHttpSupport {
         String suffix = UUID.randomUUID().toString().replace("-", "");
         long firstWarehouse = createWarehouse("P32-A-" + suffix, "P3.2 warehouse A");
         long secondWarehouse = createWarehouse("P32-B-" + suffix, "P3.2 warehouse B");
+        db.update("UPDATE warehouses SET status='INACTIVE' WHERE id=?", secondWarehouse);
         db.update(
                 "INSERT INTO inventories(warehouse_id,product_id,quantity_on_hand,version) VALUES (?,?,?,0)",
                 firstWarehouse, fixture.productId(), 7);
@@ -53,7 +54,7 @@ class InventoryProductIdIntegrationTests extends CatalogHttpSupport {
         assertEquals(
                 Set.of(firstWarehouse, secondWarehouse),
                 allWarehouses.getContent().stream().map(row -> row.getWarehouseId()).collect(Collectors.toSet()));
-        assertEquals(11, availability.availableQuantity(fixture.productId()));
+        assertEquals(7, availability.availableQuantity(fixture.productId()));
 
         var oneWarehouse = inventories.search(
                 fixture.productId(), null, firstWarehouse, PageRequest.of(0, 10));
@@ -61,7 +62,7 @@ class InventoryProductIdIntegrationTests extends CatalogHttpSupport {
         assertEquals(7, oneWarehouse.getContent().get(0).getAvailableQuantity());
 
         var adjustment = call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
-                Map.of("warehouse_id", firstWarehouse, "product_id", fixture.productId(),
+                Map.of("product_id", fixture.productId(),
                         "quantity_delta", 3, "reason", "P3.2 product-id adjustment"));
         assertEquals(201, adjustment.status(), adjustment.body());
         assertEquals(fixture.productId(),

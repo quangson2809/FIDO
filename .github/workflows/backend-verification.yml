@@ -3,6 +3,7 @@ name: Backend verification
 on:
   push:
     branches:
+      - feature/p3-1-account-rbac
       - demo1
       - feature/backend-phase-0-discovery
       - feature/phase-2-3-image-persistence
