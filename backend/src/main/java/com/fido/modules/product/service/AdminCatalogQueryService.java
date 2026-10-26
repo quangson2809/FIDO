@@ -79,7 +79,7 @@ public class AdminCatalogQueryService {
 
     @PreAuthorize(READ)
     public AdminCatalogMetaDtoV2 adminMeta() {
-        return metaService.adminMeta()
+        return metaService.adminMeta();
     }
 
     AdminProductDetailDto detailInternal(Long productId) {
