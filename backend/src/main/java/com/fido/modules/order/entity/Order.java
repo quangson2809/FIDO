@@ -129,11 +129,7 @@ public class Order {
         if (discountAmount == null && discountSnapshot != null) discountAmount = discountSnapshot.longValue();
         if (shippingFee == null && shippingFeeSnapshot != null) shippingFee = shippingFeeSnapshot.longValue();
         if (totalAmount == null && totalSnapshot != null) totalAmount = totalSnapshot.longValue();
-        if (idempotencyKey == null || idempotencyKey.isBlank()) {
-            idempotencyKey = java.util.UUID.randomUUID().toString();
-        }
-        if (requestFingerprint == null || requestFingerprint.length() != 64) {
-            requestFingerprint = "0".repeat(64);
-        }
+        // idempotency_key and request_fingerprint are required by the canonical schema.
+        // They must be supplied by the checkout flow; the entity must not fabricate values.
     }
 }
