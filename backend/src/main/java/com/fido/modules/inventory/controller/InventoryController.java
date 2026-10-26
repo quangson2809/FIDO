@@ -3,6 +3,9 @@ package com.fido.modules.inventory.controller;
 import com.fido.common.response.ApiListResponse;
 import com.fido.common.response.ApiResponse;
 import com.fido.modules.inventory.dto.request.InventoryAdjustmentRequest;
+import com.fido.modules.inventory.dto.request.InventoryReversalRequest;
+import com.fido.modules.inventory.dto.response.InventoryReconciliationRowDto;
+import com.fido.modules.inventory.service.InventoryReconciliationService;
 import com.fido.modules.inventory.dto.response.InventoryRowDto;
 import com.fido.modules.inventory.dto.response.InventoryTransactionDto;
 import com.fido.modules.inventory.service.InventoryAdjustmentService;
@@ -15,6 +18,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -28,10 +32,15 @@ import java.time.LocalDateTime;
 public class InventoryController {
     private final InventoryAdjustmentService service;
     private final InventoryQueryService query;
+    private final InventoryReconciliationService reconciliation;
 
-    public InventoryController(InventoryAdjustmentService service, InventoryQueryService query) {
+    public InventoryController(
+            InventoryAdjustmentService service,
+            InventoryQueryService query,
+            InventoryReconciliationService reconciliation) {
         this.service = service;
         this.query = query;
+        this.reconciliation = reconciliation;
     }
 
     @GetMapping
@@ -49,6 +58,22 @@ public class InventoryController {
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody InventoryAdjustmentRequest request) {
         return ApiResponse.of(service.adjust(actor(jwt), request));
+    }
+
+    @PostMapping("/transactions/{transactionId}/reversal")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<InventoryTransactionDto> reverse(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long transactionId,
+            @Valid @RequestBody InventoryReversalRequest request) {
+        return ApiResponse.of(service.reverse(actor(jwt), transactionId, request));
+    }
+
+    @GetMapping("/reconciliation")
+    public ApiListResponse<InventoryReconciliationRowDto> reconciliation(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(name = "page_size", required = false) Integer pageSize) {
+        return reconciliation.reconcile(page, pageSize);
     }
 
     @GetMapping("/transactions")
