@@ -120,7 +120,7 @@ public class VoucherManagementService {
                             || !v.getCategoryIds().equals(r.category_ids());
             if (immutableChanged
                     || r.ends_at().isBefore(v.getEndsAt())
-                    || decreased(v.getGlobalLimit(), r.global_limit())
+                    || decreased(v.getUsageLimit(), r.global_limit())
                     || customerLimit(r) < v.getCustomerLimit())
                 throw new ResponseStatusException(
                         HttpStatus.CONFLICT,
@@ -134,11 +134,17 @@ public class VoucherManagementService {
         return dto(v);
     }
 
+    private static String normalizeType(String type) {
+        if ("FIXED_AMOUNT".equals(type)) return "FIXED";
+        if ("PERCENTAGE".equals(type)) return "PERCENT";
+        return type;
+    }
+
     private static boolean same(BigDecimal a, BigDecimal b) {
         return a == null ? b == null : b != null && a.compareTo(b) == 0;
     }
 
-    private static boolean decreased(Long old, Long next) {
+    private static boolean decreased(Integer old, Long next) {
         return next != null && (old == null || next < old);
     }
 
@@ -148,17 +154,23 @@ public class VoucherManagementService {
 
     private void validate(VoucherRequest r) {
         if (!r.ends_at().isAfter(r.starts_at())) bad("Ngày kết thúc phải sau ngày bắt đầu");
-        if ("PERCENTAGE".equals(r.discount_type())
-                && (r.maximum_discount() == null
-                        || r.discount_value().compareTo(new BigDecimal("100")) > 0))
-            bad("Phần trăm tối đa 100 và phải có mức giảm tối đa");
-        if ("ALL".equals(r.scope()) && (!r.product_ids().isEmpty() || !r.category_ids().isEmpty())
-                || "PRODUCT".equals(r.scope())
-                        && (r.product_ids().isEmpty() || !r.category_ids().isEmpty())
-                || "CATEGORY".equals(r.scope())
-                        && (r.category_ids().isEmpty() || !r.product_ids().isEmpty()))
-            bad("Phạm vi và danh sách sản phẩm/danh mục không phù hợp");
-        catalog.validateTargets(r.product_ids(), r.category_ids());
+        String type = normalizeType(r.discount_type());
+        if (!"FIXED".equals(type) && !"PERCENT".equals(type)) bad("VOUCHER_DISCOUNT_TYPE_INVALID");
+        if (r.discount_value() == null || r.discount_value().signum() <= 0
+                || r.discount_value().stripTrailingZeros().scale() > 0) bad("VOUCHER_DISCOUNT_VALUE_INVALID");
+        if ("PERCENT".equals(type) && r.discount_value().compareTo(new BigDecimal("10000")) > 0)
+            bad("VOUCHER_PERCENT_BPS_OUT_OF_RANGE");
+        if (r.minimum_amount() == null || r.minimum_amount().signum() < 0
+                || r.minimum_amount().stripTrailingZeros().scale() > 0) bad("VOUCHER_MINIMUM_INVALID");
+        if (r.maximum_discount() != null && (r.maximum_discount().signum() < 0
+                || r.maximum_discount().stripTrailingZeros().scale() > 0)) bad("VOUCHER_MAXIMUM_INVALID");
+        if (r.global_limit() != null && (r.global_limit() < 1 || r.global_limit() > Integer.MAX_VALUE))
+            bad("VOUCHER_USAGE_LIMIT_INVALID");
+        if ((r.scope() != null && !"ALL".equals(r.scope()))
+                || (r.product_ids() != null && !r.product_ids().isEmpty())
+                || (r.category_ids() != null && !r.category_ids().isEmpty())
+                || (r.customer_limit() != null && r.customer_limit() != 1L))
+            bad("VOUCHER_TARGETING_NOT_SUPPORTED");
     }
 
     private static void bad(String reason) {
@@ -167,7 +179,7 @@ public class VoucherManagementService {
 
     private void apply(Voucher v, VoucherRequest r) {
         v.setCode(r.code().trim().toUpperCase(Locale.ROOT));
-        v.setDiscountType(r.discount_type());
+        v.setDiscountType(normalizeType(r.discount_type()));
         v.setDiscountValue(r.discount_value());
         v.setMaximumDiscount(r.maximum_discount());
         v.setMinimumAmount(r.minimum_amount());
@@ -179,8 +191,12 @@ public class VoucherManagementService {
         v.getCategoryIds().clear();
         v.getCategoryIds().addAll(r.category_ids());
         v.setGlobalLimit(r.global_limit());
-        v.setCustomerLimit(customerLimit(r));
+        v.setCustomerLimit(1L);
+        v.setScope("ALL");
+        v.getProductIds().clear();
+        v.getCategoryIds().clear();
         v.setEnabled(r.enabled());
+        v.setStatus(r.enabled() ? "ACTIVE" : (v.getStatus() == null ? "DRAFT" : "INACTIVE"));
     }
 
     private VoucherDetailDto dto(Voucher v) {
@@ -203,9 +219,9 @@ public class VoucherManagementService {
                 v.getScope(),
                 Set.copyOf(v.getProductIds()),
                 Set.copyOf(v.getCategoryIds()),
-                v.getGlobalLimit(),
+                v.getUsageLimit() == null ? null : v.getUsageLimit().longValue(),
                 v.getCustomerLimit(),
-                v.isEnabled(),
+                "ACTIVE".equals(v.getStatus()),
                 activeUsage,
                 everUsed);
     }

@@ -14,8 +14,8 @@ public record VoucherRequest(
         @DecimalMin(value = "0", inclusive = false) @Digits(integer = 16, fraction = 2)
                 BigDecimal maximum_discount,
         @NotNull @DecimalMin("0") @Digits(integer = 16, fraction = 2) BigDecimal minimum_amount,
-        @NotNull Instant starts_at,
-        @NotNull Instant ends_at,
+        Instant starts_at,
+        Instant ends_at,
         @NotNull @Pattern(regexp = "ALL|CATEGORY|PRODUCT") String scope,
         @NotNull Set<@NotNull @Positive Long> product_ids,
         @NotNull Set<@NotNull @Positive Long> category_ids,
