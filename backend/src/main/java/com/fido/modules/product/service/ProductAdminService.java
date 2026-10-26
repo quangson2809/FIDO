@@ -59,7 +59,7 @@ public class ProductAdminService {
 
     @PreAuthorize(WRITE)
     public AdminProductDetailDto createProduct(Long actor, ProductCreateRequest request) {
-        if (request.category_id() != null) references.leafCategory(request.category_id());
+        if (request.category_id() != null) references.category(request.category_id());
         if (request.brand_id() != null) references.brand(request.brand_id());
         validateParent(null, request.parent_product_id());
 
@@ -97,7 +97,7 @@ public class ProductAdminService {
             product.setParentProductId(request.getParentProductId());
         }
         if (request.isCategoryIdPresent()) {
-            if (request.getCategoryId() != null) references.leafCategory(request.getCategoryId());
+            if (request.getCategoryId() != null) references.category(request.getCategoryId());
             product.setCategoryId(request.getCategoryId());
         }
         if (request.isBrandIdPresent()) {

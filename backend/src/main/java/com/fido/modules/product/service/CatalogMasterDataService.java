@@ -157,10 +157,6 @@ public class CatalogMasterDataService {
         if (Objects.equals(categoryId, parentId)) conflict("Category cannot be its own parent");
 
         Category parent = references.category(parentId);
-        if (products.existsByCategoryId(parentId)) {
-            conflict("A category containing products cannot become a parent");
-        }
-
         Set<Long> seen = new HashSet<>();
         Long cursor = parent.getCategoryId();
         while (cursor != null) {
