@@ -19,22 +19,22 @@ import java.util.Set;
 public class Voucher {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "voucher_id", nullable = false)
+    @Column(name = "id", nullable = false)
     private Long voucherId;
 
     @Column(name = "code", nullable = false, length = 80)
     private String code;
 
-    @Column(name = "discount_type")
+    @Column(name = "discount_type", nullable = false, length = 20)
     private String discountType;
 
-    @Column(name = "discount_value", precision = 18, scale = 2)
+    @Transient
     private BigDecimal discountValue;
 
-    @Column(name = "maximum_discount", precision = 18, scale = 2)
+    @Transient
     private BigDecimal maximumDiscount;
 
-    @Column(name = "minimum_amount", precision = 18, scale = 2)
+    @Transient
     private BigDecimal minimumAmount;
 
     @Column(name = "starts_at")
@@ -43,25 +43,57 @@ public class Voucher {
     @Column(name = "ends_at")
     private Instant endsAt;
 
-    @Column(name = "scope")
+    @Column(name = "minimum_order_value", nullable = false)
+    private Long minimumOrderValue = 0L;
+
+    @Column(name = "usage_limit")
+    private Integer usageLimit;
+
+    @Column(name = "usage_count", nullable = false)
+    private Integer usageCount = 0;
+
+    @Column(name = "status", nullable = false, length = 20)
+    private String status = "DRAFT";
+
+    @Column(name = "discount_value", nullable = false)
+    private Long discountValueAmount;
+
+    @Column(name = "maximum_discount")
+    private Long maximumDiscountAmount;
+
+    @Transient
     private String scope;
 
-    @Column(name = "global_limit")
+    @Transient
     private Long globalLimit;
 
-    @Column(name = "customer_limit")
+    @Transient
     private Long customerLimit;
 
-    @Column(name = "enabled", nullable = false)
+    @Transient
     private boolean enabled;
 
-    @ElementCollection
-    @CollectionTable(name = "voucher_products", joinColumns = @JoinColumn(name = "voucher_id"))
-    @Column(name = "product_id")
+    @Transient
     private Set<Long> productIds = new HashSet<>();
 
-    @ElementCollection
-    @CollectionTable(name = "voucher_categories", joinColumns = @JoinColumn(name = "voucher_id"))
-    @Column(name = "category_id")
+    @Transient
     private Set<Long> categoryIds = new HashSet<>();
+    @PrePersist
+    @PreUpdate
+    void syncLegacyFields() {
+        if (discountValueAmount == null && discountValue != null) discountValueAmount = discountValue.longValue();
+        if (maximumDiscountAmount == null && maximumDiscount != null) maximumDiscountAmount = maximumDiscount.longValue();
+        if (minimumOrderValue == null && minimumAmount != null) minimumOrderValue = minimumAmount.longValue();
+        if (minimumOrderValue == null) minimumOrderValue = 0L;
+        if (status == null || status.isBlank()) status = enabled ? "ACTIVE" : "INACTIVE";
+        if (usageCount == null) usageCount = 0;
+    }
+
+    @PostLoad
+    void onLoad() {
+        discountValue = discountValueAmount == null ? null : BigDecimal.valueOf(discountValueAmount);
+        maximumDiscount = maximumDiscountAmount == null ? null : BigDecimal.valueOf(maximumDiscountAmount);
+        minimumAmount = minimumOrderValue == null ? BigDecimal.ZERO : BigDecimal.valueOf(minimumOrderValue);
+        enabled = "ACTIVE".equals(status);
+    }
 }
