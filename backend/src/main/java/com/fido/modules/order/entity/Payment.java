@@ -15,7 +15,6 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 public class Payment {
-
     @Id
     @Column(name = "order_id", nullable = false)
     private Long orderId;
@@ -38,14 +37,9 @@ public class Payment {
     @Column(name = "refund_reason", length = 500)
     private String refundReason;
 
-    @Transient
-    private BigDecimal amountDue;
-
-    @Transient
-    private BigDecimal amountReceived;
-
-    @Transient
-    private BigDecimal amountRefunded;
+    @Transient private Long amountDue;
+    @Transient private Long amountReceived;
+    @Transient private Long amountRefunded;
 
     @Column(name = "collected_by_account_id", nullable = true)
     private Long collectedByAccountId;
@@ -81,15 +75,26 @@ public class Payment {
 
     @PostLoad
     void onLoad() {
-        amountDue = amount == null ? null : BigDecimal.valueOf(amount);
-        amountReceived = "PAID".equals(paymentStatus) && amount != null ? BigDecimal.valueOf(amount) : BigDecimal.ZERO;
-        amountRefunded = refundAmount == null ? BigDecimal.ZERO : BigDecimal.valueOf(refundAmount);
+        amountDue = amount;
+        amountReceived = "PAID".equals(paymentStatus) ? amount : 0L;
+        amountRefunded = refundAmount == null ? 0L : refundAmount;
     }
 
     private void syncAmounts() {
-        if (amount == null && amountDue != null) amount = amountDue.longValue();
+        if (amount == null && amountDue != null) amount = amountDue;
         if (refundAmount == null || refundAmount == 0L) {
-            if (amountRefunded != null) refundAmount = amountRefunded.longValue();
+            if (amountRefunded != null) refundAmount = amountRefunded;
         }
+    }
+
+    public void setAmountDue(Long amount) { this.amountDue = amount; }
+    @Deprecated public void setAmountDue(BigDecimal amount) { this.amountDue = exactVnd(amount); }
+    public void setAmountReceived(Long amount) { this.amountReceived = amount; }
+    @Deprecated public void setAmountReceived(BigDecimal amount) { this.amountReceived = exactVnd(amount); }
+    public void setAmountRefunded(Long amount) { this.amountRefunded = amount; }
+    @Deprecated public void setAmountRefunded(BigDecimal amount) { this.amountRefunded = exactVnd(amount); }
+
+    private static Long exactVnd(BigDecimal amount) {
+        return amount == null ? null : amount.longValueExact();
     }
 }

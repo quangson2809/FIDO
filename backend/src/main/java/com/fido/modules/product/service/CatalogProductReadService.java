@@ -17,7 +17,6 @@ import java.util.Map;
 @Service
 @Transactional(readOnly = true)
 public class CatalogProductReadService {
-
     private final ProductRepository products;
     private final InventoryAvailabilityService inventory;
     private final ProductImageReadService images;
@@ -54,7 +53,6 @@ public class CatalogProductReadService {
         for (Long id : ids) {
             Product product = byId.get(id);
             int available = stockById.getOrDefault(id, 0);
-            Long price = product.getSellingPrice();
             result.put(
                     id,
                     new ProductView(
@@ -62,7 +60,7 @@ public class CatalogProductReadService {
                             product.getName(),
                             product.getSku(),
                             imageById.get(id),
-                            price == null ? null : BigDecimal.valueOf(price),
+                            product.getSellingPrice(),
                             product.getStatus(),
                             available,
                             "ACTIVE".equals(product.getStatus()) && available > 0));
@@ -75,8 +73,20 @@ public class CatalogProductReadService {
             String productName,
             String sku,
             String imageUrl,
-            BigDecimal unitPrice,
+            Long unitPrice,
             String status,
             Integer availableQuantity,
-            boolean purchasable) {}
+            boolean purchasable) {
+        /** Compatibility adapter for older test fixtures; production money stays integer VND. */
+        public ProductView(
+                Long productId, String productName, String sku, String imageUrl,
+                BigDecimal unitPrice, String status, Integer availableQuantity, boolean purchasable) {
+            this(productId, productName, sku, imageUrl, exactVnd(unitPrice), status,
+                    availableQuantity, purchasable);
+        }
+
+        private static Long exactVnd(BigDecimal amount) {
+            return amount == null ? null : amount.longValueExact();
+        }
+    }
 }

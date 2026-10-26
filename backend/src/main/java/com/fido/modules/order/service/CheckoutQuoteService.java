@@ -24,9 +24,19 @@ public class CheckoutQuoteService {
         cart.lockForCheckout(accountId);
         CheckoutCalculation calculation = checkout.calculate(accountId, request.voucher_code());
         var quoteItems = calculation.items().stream()
-                .map(item -> new CheckoutItemDto(item.productId(), item.quantity(), item.productName(),
-                        item.thumbnail(), item.sku(), item.unitPrice(), item.lineTotal(),
-                        item.availableQuantity()))
+                .map(item -> {
+                    var priced = calculation.lineFor(item.productId());
+                    return new CheckoutItemDto(
+                            item.productId(),
+                            item.quantity(),
+                            item.productName(),
+                            item.thumbnail(),
+                            item.sku(),
+                            item.unitPrice(),
+                            priced.discountAmount(),
+                            priced.lineTotal(),
+                            item.availableQuantity());
+                })
                 .toList();
         var saved = quotes.save(accountId, request.recipient_phone(), request.recipient_email(),
                 request.recipient_address(), calculation);

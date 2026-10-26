@@ -38,7 +38,7 @@ public class CheckoutQuoteStore {
         if (quote == null || !accountId.equals(quote.getAccountId())
                 || !Instant.now().isBefore(quote.getExpiresAt())) {
             quotes.remove(quoteId);
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Báo giá không hợp lệ; vui lòng tính lại");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "QUOTE_INVALID");
         }
         return quote;
     }
@@ -46,13 +46,12 @@ public class CheckoutQuoteStore {
     void requireMatching(CheckoutQuote q, String phone, String email, String address, CheckoutCalculation calculation) {
         if (q == null) {
             if (calculation.voucher().voucherId() != null) throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Áp dụng voucher cần báo giá trước khi đặt hàng");
+                    HttpStatus.CONFLICT, "VOUCHER_QUOTE_REQUIRED");
             return;
         }
         if (!Instant.now().isBefore(q.getExpiresAt())
                 || !q.getFingerprint().equals(fingerprint(phone, email, address, calculation))) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Báo giá đã hết hạn hoặc nội dung/giá đã thay đổi. Vui lòng tính lại và xác nhận");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "QUOTE_STALE");
         }
     }
 
@@ -63,13 +62,16 @@ public class CheckoutQuoteStore {
         append(value, c.total()); append(value, c.voucher().voucherId()); append(value, c.voucher().code());
         c.items().stream().sorted(Comparator.comparing(CheckoutCartView.Item::productId))
                 .forEach(item -> {
+                    var priced = c.lineFor(item.productId());
                     append(value, item.productId());
                     append(value, item.quantity());
                     append(value, item.productName());
                     append(value, item.thumbnail());
                     append(value, item.sku());
                     append(value, item.unitPrice());
-                    append(value, item.lineTotal());
+                    append(value, priced.grossAmount());
+                    append(value, priced.discountAmount());
+                    append(value, priced.lineTotal());
                 });
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
@@ -80,8 +82,7 @@ public class CheckoutQuoteStore {
     }
 
     private static void append(StringBuilder out, Object raw) {
-        String value = raw instanceof java.math.BigDecimal n
-                ? n.stripTrailingZeros().toPlainString() : String.valueOf(raw);
+        String value = String.valueOf(raw);
         out.append(value.length()).append(':').append(value);
     }
 }

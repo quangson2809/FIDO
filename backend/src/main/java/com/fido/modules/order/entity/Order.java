@@ -21,7 +21,6 @@ import java.time.ZoneOffset;
 @Setter
 @NoArgsConstructor
 public class Order {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
@@ -33,26 +32,13 @@ public class Order {
     @Column(name = "account_id", nullable = false)
     private Long customerAccountId;
 
-    @Transient
-    private String recipientPhone;
-
-    @Transient
-    private String recipientEmail;
-
-    @Transient
-    private String recipientAddress;
-
-    @Transient
-    private BigDecimal subtotalSnapshot;
-
-    @Transient
-    private BigDecimal discountSnapshot;
-
-    @Transient
-    private BigDecimal shippingFeeSnapshot;
-
-    @Transient
-    private BigDecimal totalSnapshot;
+    @Transient private String recipientPhone;
+    @Transient private String recipientEmail;
+    @Transient private String recipientAddress;
+    @Transient private Long subtotalSnapshot;
+    @Transient private Long discountSnapshot;
+    @Transient private Long shippingFeeSnapshot;
+    @Transient private Long totalSnapshot;
 
     @Column(name = "voucher_id")
     private Long voucherId;
@@ -84,23 +70,12 @@ public class Order {
     @Column(name = "status", nullable = false, length = 30)
     private String orderStatus = "PENDING";
 
-    @Transient
-    private String customerServiceNote;
+    @Transient private String customerServiceNote;
+    @Transient private String cancelReason;
+    @Transient private LocalDateTime completedAt;
+    @Transient private LocalDateTime returnedAt;
 
-    @Transient
-    private String cancelReason;
-
-    @Transient
-    private LocalDateTime completedAt;
-
-    @Transient
-    private LocalDateTime returnedAt;
-
-    @Column(
-            name = "created_at",
-            nullable = false,
-            columnDefinition = "TIMESTAMP(6)",
-            updatable = false)
+    @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP(6)", updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
@@ -124,18 +99,32 @@ public class Order {
 
     @PostLoad
     void onLoad() {
-        subtotalSnapshot = subtotal == null ? null : BigDecimal.valueOf(subtotal);
-        discountSnapshot = discountAmount == null ? null : BigDecimal.valueOf(discountAmount);
-        shippingFeeSnapshot = shippingFee == null ? null : BigDecimal.valueOf(shippingFee);
-        totalSnapshot = totalAmount == null ? null : BigDecimal.valueOf(totalAmount);
+        subtotalSnapshot = subtotal;
+        discountSnapshot = discountAmount;
+        shippingFeeSnapshot = shippingFee;
+        totalSnapshot = totalAmount;
     }
 
     private void syncLegacyFields() {
-        if (subtotal == null && subtotalSnapshot != null) subtotal = subtotalSnapshot.longValue();
-        if (discountAmount == null && discountSnapshot != null) discountAmount = discountSnapshot.longValue();
-        if (shippingFee == null && shippingFeeSnapshot != null) shippingFee = shippingFeeSnapshot.longValue();
-        if (totalAmount == null && totalSnapshot != null) totalAmount = totalSnapshot.longValue();
-        // idempotency_key and request_fingerprint are required by the canonical schema.
-        // They must be supplied by the checkout flow; the entity must not fabricate values.
+        if (subtotal == null && subtotalSnapshot != null) subtotal = subtotalSnapshot;
+        if (discountAmount == null && discountSnapshot != null) discountAmount = discountSnapshot;
+        if (shippingFee == null && shippingFeeSnapshot != null) shippingFee = shippingFeeSnapshot;
+        if (totalAmount == null && totalSnapshot != null) totalAmount = totalSnapshot;
+        // Idempotency key and request fingerprint must come from the owning Order-create flow.
+    }
+
+    // Canonical snapshots are Long integer-VND values. These setters preserve source compatibility
+    // for old tests while refusing fractional VND; production code uses the Long overloads.
+    public void setSubtotalSnapshot(Long amount) { this.subtotalSnapshot = amount; }
+    @Deprecated public void setSubtotalSnapshot(BigDecimal amount) { this.subtotalSnapshot = exactVnd(amount); }
+    public void setDiscountSnapshot(Long amount) { this.discountSnapshot = amount; }
+    @Deprecated public void setDiscountSnapshot(BigDecimal amount) { this.discountSnapshot = exactVnd(amount); }
+    public void setShippingFeeSnapshot(Long amount) { this.shippingFeeSnapshot = amount; }
+    @Deprecated public void setShippingFeeSnapshot(BigDecimal amount) { this.shippingFeeSnapshot = exactVnd(amount); }
+    public void setTotalSnapshot(Long amount) { this.totalSnapshot = amount; }
+    @Deprecated public void setTotalSnapshot(BigDecimal amount) { this.totalSnapshot = exactVnd(amount); }
+
+    private static Long exactVnd(BigDecimal amount) {
+        return amount == null ? null : amount.longValueExact();
     }
 }

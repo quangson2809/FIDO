@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Immutable;
+
 import java.math.BigDecimal;
 
 @Entity
@@ -31,8 +32,7 @@ public class OrderItem {
     @Column(name = "sku_snapshot", nullable = false, length = 100, updatable = false)
     private String skuSnapshot;
 
-    @Transient
-    private BigDecimal unitPriceSnapshot;
+    @Transient private Long unitPriceSnapshot;
 
     @Column(name = "unit_price", nullable = false, updatable = false)
     private Long unitPrice;
@@ -40,8 +40,7 @@ public class OrderItem {
     @Column(name = "quantity", nullable = false, updatable = false)
     private Integer quantity;
 
-    @Transient
-    private BigDecimal lineTotalSnapshot;
+    @Transient private Long lineTotalSnapshot;
 
     @Column(name = "discount_amount", nullable = false, updatable = false)
     private Long discountAmount = 0L;
@@ -57,8 +56,8 @@ public class OrderItem {
 
     @PrePersist
     void onCreate() {
-        if (unitPrice == null && unitPriceSnapshot != null) unitPrice = unitPriceSnapshot.longValueExact();
-        if (lineTotal == null && lineTotalSnapshot != null) lineTotal = lineTotalSnapshot.longValueExact();
+        if (unitPrice == null && unitPriceSnapshot != null) unitPrice = unitPriceSnapshot;
+        if (lineTotal == null && lineTotalSnapshot != null) lineTotal = lineTotalSnapshot;
         if (discountAmount == null) discountAmount = 0L;
         if (attributeSnapshot == null) attributeSnapshot = "{}";
         if (imageUrlSnapshot == null) imageUrlSnapshot = "";
@@ -66,7 +65,16 @@ public class OrderItem {
 
     @PostLoad
     void onLoad() {
-        unitPriceSnapshot = unitPrice == null ? null : BigDecimal.valueOf(unitPrice);
-        lineTotalSnapshot = lineTotal == null ? null : BigDecimal.valueOf(lineTotal);
+        unitPriceSnapshot = unitPrice;
+        lineTotalSnapshot = lineTotal;
+    }
+
+    public void setUnitPriceSnapshot(Long amount) { this.unitPriceSnapshot = amount; }
+    @Deprecated public void setUnitPriceSnapshot(BigDecimal amount) { this.unitPriceSnapshot = exactVnd(amount); }
+    public void setLineTotalSnapshot(Long amount) { this.lineTotalSnapshot = amount; }
+    @Deprecated public void setLineTotalSnapshot(BigDecimal amount) { this.lineTotalSnapshot = exactVnd(amount); }
+
+    private static Long exactVnd(BigDecimal amount) {
+        return amount == null ? null : amount.longValueExact();
     }
 }

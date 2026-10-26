@@ -24,7 +24,6 @@ import java.time.ZoneOffset;
 @Service
 @Transactional
 public class OrderPaymentService {
-
     private static final String PAYMENT =
             "hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_ORDER_PAYMENT')";
 
@@ -43,7 +42,6 @@ public class OrderPaymentService {
     public PaymentAdminDto action(Long actor, Long orderId, PaymentActionRequest request) {
         Order order = lockedOrder(orderId);
         Payment payment = payment(orderId);
-
         return switch (request.action()) {
             case "COLLECT_COD" -> collect(actor, order, payment);
             case "REFUND" -> refund(actor, order, payment);
@@ -55,7 +53,6 @@ public class OrderPaymentService {
         if (OrderPolicy.PAID.equals(payment.getPaymentStatus())) {
             return OrderMapper.paymentAdmin(payment);
         }
-
         if (!OrderPolicy.UNPAID.equals(payment.getPaymentStatus())
                 || OrderPolicy.CANCELLED.equals(order.getOrderStatus())
                 || OrderPolicy.RETURNED.equals(order.getOrderStatus())) {
@@ -63,22 +60,16 @@ public class OrderPaymentService {
         }
 
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-
         payment.setPaymentStatus(OrderPolicy.PAID);
         payment.setAmountReceived(payment.getAmountDue());
         payment.setCollectedByAccountId(actor);
         payment.setCollectedAt(now);
-
         payments.save(payment);
 
         audit.record(
                 AuditEvent.described(
-                        actor,
-                        AuditAction.ORDER_COD_COLLECT,
-                        AuditTargetType.ORDER,
-                        order.getOrderId(),
+                        actor, AuditAction.ORDER_COD_COLLECT, AuditTargetType.ORDER, order.getOrderId(),
                         "UNPAID -> PAID; amount=" + payment.getAmountReceived()));
-
         return OrderMapper.paymentAdmin(payment);
     }
 
@@ -86,29 +77,22 @@ public class OrderPaymentService {
         if (OrderPolicy.REFUNDED.equals(payment.getPaymentStatus())) {
             return OrderMapper.paymentAdmin(payment);
         }
-
         if (!OrderPolicy.PAID.equals(payment.getPaymentStatus())
                 || !OrderPolicy.RETURNED.equals(order.getOrderStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-
         payment.setPaymentStatus(OrderPolicy.REFUNDED);
         payment.setAmountRefunded(payment.getAmountReceived());
         payment.setRefundedByAccountId(actor);
         payment.setRefundedAt(now);
-
         payments.save(payment);
 
         audit.record(
                 AuditEvent.described(
-                        actor,
-                        AuditAction.ORDER_REFUND,
-                        AuditTargetType.ORDER,
-                        order.getOrderId(),
+                        actor, AuditAction.ORDER_REFUND, AuditTargetType.ORDER, order.getOrderId(),
                         "PAID -> REFUNDED; amount=" + payment.getAmountRefunded()));
-
         return OrderMapper.paymentAdmin(payment);
     }
 

@@ -17,7 +17,6 @@ import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -59,7 +58,7 @@ public class OrderCreationService {
         quotes.requireMatching(quote, request.recipient_phone(), request.recipient_email(),
                 request.recipient_address(), calculation);
         Order order = persistOrder(accountId, request, calculation);
-        persistOrderItems(order.getOrderId(), calculation.items());
+        persistOrderItems(order.getOrderId(), calculation);
         Payment payment = persistInitialPayment(order.getOrderId(), calculation.total());
         vouchers.consume(order.getOrderId(), accountId, calculation.voucher());
         if (quote != null) quote.setOrderId(order.getOrderId());
@@ -84,8 +83,9 @@ public class OrderCreationService {
         return orders.save(order);
     }
 
-    private void persistOrderItems(Long orderId, List<CheckoutCartView.Item> cartItems) {
-        for (CheckoutCartView.Item cartItem : cartItems) {
+    private void persistOrderItems(Long orderId, CheckoutCalculation calculation) {
+        for (CheckoutCartView.Item cartItem : calculation.items()) {
+            var priced = calculation.lineFor(cartItem.productId());
             OrderItem orderItem = new OrderItem();
             orderItem.setOrderId(orderId);
             orderItem.setProductId(cartItem.productId());
@@ -94,20 +94,21 @@ public class OrderCreationService {
                             ? cartItem.sku() : cartItem.productName());
             orderItem.setImageUrlSnapshot(cartItem.thumbnail() == null ? "" : cartItem.thumbnail());
             orderItem.setSkuSnapshot(cartItem.sku());
-            orderItem.setUnitPriceSnapshot(cartItem.unitPrice());
+            orderItem.setUnitPrice(cartItem.unitPrice());
             orderItem.setQuantity(cartItem.quantity());
-            orderItem.setLineTotalSnapshot(cartItem.lineTotal());
+            orderItem.setDiscountAmount(priced.discountAmount());
+            orderItem.setLineTotal(priced.lineTotal());
             items.save(orderItem);
         }
     }
 
-    private Payment persistInitialPayment(Long orderId, BigDecimal total) {
+    private Payment persistInitialPayment(Long orderId, long total) {
         Payment payment = new Payment();
         payment.setOrderId(orderId);
         payment.setPaymentStatus(OrderPolicy.UNPAID);
         payment.setAmountDue(total);
-        payment.setAmountReceived(BigDecimal.ZERO);
-        payment.setAmountRefunded(BigDecimal.ZERO);
+        payment.setAmountReceived(0L);
+        payment.setAmountRefunded(0L);
         return payments.save(payment);
     }
 
