@@ -21,14 +21,10 @@ import java.util.Map;
 @Service
 @Transactional(readOnly = true)
 public class OrderProductSnapshotService {
-    private final ObjectMapper json;
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     @PersistenceContext
     private EntityManager entityManager;
-
-    public OrderProductSnapshotService(ObjectMapper json) {
-        this.json = json;
-    }
 
     public Map<Long, String> attributeSnapshots(Collection<Long> productIds) {
         if (productIds == null || productIds.isEmpty()) {
@@ -101,7 +97,7 @@ public class OrderProductSnapshotService {
         Map<Long, String> result = new HashMap<>();
         for (Long id : ids) {
             try {
-                String snapshot = json.writeValueAsString(byProduct.get(id));
+                String snapshot = JSON.writeValueAsString(byProduct.get(id));
                 if (snapshot.codePointCount(0, snapshot.length()) > 2000) {
                     throw new ResponseStatusException(
                             HttpStatus.UNPROCESSABLE_ENTITY, "ORDER_ATTRIBUTE_SNAPSHOT_TOO_LARGE");

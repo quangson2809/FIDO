@@ -17,12 +17,12 @@ import java.util.Locale;
 /** Canonicalizes checkout's semantic input before reading mutable Cart or catalog state. */
 @Component
 public class CheckoutRequestNormalizer {
-    private final PhoneNumberCanonicalizer phones;
-    private final ObjectMapper json;
+    private static final ObjectMapper JSON = new ObjectMapper();
 
-    public CheckoutRequestNormalizer(PhoneNumberCanonicalizer phones, ObjectMapper json) {
+    private final PhoneNumberCanonicalizer phones;
+
+    public CheckoutRequestNormalizer(PhoneNumberCanonicalizer phones) {
         this.phones = phones;
-        this.json = json;
     }
 
     public Normalized normalize(
@@ -93,7 +93,7 @@ public class CheckoutRequestNormalizer {
     }
 
     private String encode(String value) throws JsonProcessingException {
-        return value == null ? "null" : json.writeValueAsString(value);
+        return value == null ? "null" : JSON.writeValueAsString(value);
     }
 
     private static String sha256(String value) {
