@@ -96,7 +96,7 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
                         new TransactionTemplate(transactions)
                                 .executeWithoutResult(
                                         status -> {
-                                            creation.create(
+                                            creation.createWithIdempotencyKey(
                                                     customer.accountId(),
                                                     new CreateOrderRequest(
                                                             "Test Recipient",
@@ -105,7 +105,8 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
                                                             "Cau Giay",
                                                             "Dich Vong",
                                                             "Test address",
-                                                            null));
+                                                            null),
+                                                    List.of("rollback-after-order-write"));
                                             assertEquals(
                                                     0,
                                                     db.queryForObject(
