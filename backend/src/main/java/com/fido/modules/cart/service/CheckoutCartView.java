@@ -20,4 +20,3 @@ public record CheckoutCartView(Long cartId, List<Item> items, Long subtotal) {
     }
 
 }
-}
