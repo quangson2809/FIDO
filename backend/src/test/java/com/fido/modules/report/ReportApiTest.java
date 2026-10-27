@@ -105,15 +105,11 @@ class ReportApiTest extends OperationsHttpSupport {
         assertEquals(0, new BigDecimal(expected).compareTo(result.get(field).decimalValue()), field);
     }
 
-    private void asRoot(com.fido.support.OperationsHttpSupport.User root) {
-        reportActorId = root.id();
-        reportAccountId = root.id();
-    }
-
     @Test
     void returnsRestateCompletionPeriodIncludingShippingRegardlessOfRefundTiming() throws Exception {
         var root = user("SUPERADMIN");
-        asRoot(root);
+        reportActorId = root.id();
+        reportAccountId = root.id();
         order("COMPLETED", "2025-09-01 02:00:00", "2025-09-10 02:00:00", 100, 0, 20, true);
         long returned = order("COMPLETED", "2025-08-20 02:00:00",
                 "2025-09-20 02:00:00", 250, 30, 15, true);
@@ -163,7 +159,8 @@ class ReportApiTest extends OperationsHttpSupport {
     @Test
     void vietnamDatesIncludeStartAndLastMicrosecondButExcludeNextMidnight() throws Exception {
         var root = user("SUPERADMIN");
-        asRoot(root);
+        reportActorId = root.id();
+        reportAccountId = root.id();
         order("COMPLETED", "2025-03-09 16:59:59.999999", "2025-03-09 16:59:59.999999", 100, 0, 0, true);
         order("COMPLETED", "2025-03-09 17:00:00", "2025-03-09 17:00:00", 10, 0, 0, true);
         order("COMPLETED", "2025-03-10 16:59:59.999999", "2025-03-10 16:59:59.999999", 20, 0, 0, true);
@@ -179,7 +176,8 @@ class ReportApiTest extends OperationsHttpSupport {
         var customer = user(null);
         var employee = user("ADMIN");
         var root = user("SUPERADMIN");
-        asRoot(root);
+        reportActorId = root.id();
+        reportAccountId = root.id();
         String valid = PATH + "?from=2024-01-01&to=2024-01-31";
         assertEquals(401, call("GET", valid, null, null).status());
         assertEquals(403, call("GET", valid, customer.token(), null).status());
@@ -209,7 +207,8 @@ class ReportApiTest extends OperationsHttpSupport {
         var root = user("SUPERADMIN");
         var staff = user("ADMIN");
         var customer = user("CUSTOMER");
-        asRoot(root);
+        reportActorId = root.id();
+        reportAccountId = root.id();
         capability(customer, "REPORT_READ");
         String dates = "?from=2024-01-01&to=2024-01-02";
         for (String endpoint : List.of("overview", "sales-trend", "orders-trend", "product-performance")) {
@@ -236,7 +235,8 @@ class ReportApiTest extends OperationsHttpSupport {
     @Test
     void dailyWeeklyMonthlySalesReconcileWithOverviewAndClampPartialBuckets() throws Exception {
         var root = user("SUPERADMIN");
-        asRoot(root);
+        reportActorId = root.id();
+        reportAccountId = root.id();
         order("COMPLETED", "2023-01-31 17:00:00", "2023-01-31 17:00:00", 100, 10, 20, true);
         order("RETURNED", "2023-02-05 00:00:00", "2023-02-05 17:00:00", 200, 20, 15, true);
         order("SHIPPING", "2023-02-06 00:00:00", null, 999, 0, 0, false);
@@ -267,7 +267,8 @@ class ReportApiTest extends OperationsHttpSupport {
     @Test
     void orderTrendsUseCreationDateCurrentStateAndAllEightZeroFilledCounts() throws Exception {
         var root = user("SUPERADMIN");
-        asRoot(root);
+        reportActorId = root.id();
+        reportAccountId = root.id();
         for (String status : List.of("PENDING", "CONFIRMED", "PREPARING", "SHIPPING",
                 "COMPLETED", "DELIVERY_FAILED", "CANCELLED", "RETURNED")) {
             order(status, "2022-12-31 17:00:00", "2023-04-01 00:00:00", 10, 0, 0, true);
@@ -303,7 +304,8 @@ class ReportApiTest extends OperationsHttpSupport {
     @Test
     void analyticsRejectInvalidDatesGranularityAndLimit() throws Exception {
         var root = user("SUPERADMIN");
-        asRoot(root);
+        reportActorId = root.id();
+        reportAccountId = root.id();
         for (String endpoint : List.of("sales-trend", "orders-trend", "product-performance")) {
             for (String dates : List.of("", "?from=2024-01-01", "?from=bad&to=2024-01-02",
                     "?from=2024-02-30&to=2024-03-01", "?from=2024-02-01&to=2024-01-01")) {
