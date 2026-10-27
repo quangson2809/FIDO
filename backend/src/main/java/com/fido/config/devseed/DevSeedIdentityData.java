@@ -30,9 +30,6 @@ public class DevSeedIdentityData {
                     reserved("permissions", "id", 900204L, "code", "INVENTORY_WRITE"),
                     reserved("permissions", "id", 900205L, "code", "ORDER_READ"),
                     reserved("permissions", "id", 900206L, "code", "ORDER_EDIT"),
-                    reserved("permissions", "id", 900207L, "code", "ORDER_PROCESS"),
-                    reserved("permissions", "id", 900208L, "code", "ORDER_FULFILLMENT"),
-                    reserved("permissions", "id", 900209L, "code", "ORDER_EXCEPTION"),
                     reserved("permissions", "id", 900210L, "code", "ORDER_PAYMENT"),
                     reserved("permissions", "id", 900211L, "code", "ORDER_AFTER_SALES"),
                     reserved("permissions", "id", 900212L, "code", "AUDIT_READ"),
@@ -105,9 +102,6 @@ public class DevSeedIdentityData {
                 (900204,'INVENTORY_WRITE','Ghi tồn kho và phiếu nhập'),
                 (900205,'ORDER_READ','Đọc đơn hàng quản trị'),
                 (900206,'ORDER_EDIT','Cập nhật thông tin đơn'),
-                (900207,'ORDER_PROCESS','Xác nhận và chuẩn bị đơn'),
-                (900208,'ORDER_FULFILLMENT','Xuất/giao/hoàn tất đơn'),
-                (900209,'ORDER_EXCEPTION','Hủy/giao thất bại/hàng giao quay lại'),
                 (900210,'ORDER_PAYMENT','Thu COD và hoàn tiền'),
                 (900211,'ORDER_AFTER_SALES','Xử lý sau bán'),
                 (900212,'AUDIT_READ','Đọc audit log'),
@@ -138,8 +132,7 @@ public class DevSeedIdentityData {
                 INSERT INTO role_permissions(role_id, permission_id) VALUES
                 (900101,900201),(900101,900202),
                 (900102,900203),(900102,900204),
-                (900103,900205),(900103,900206),(900103,900207),
-                (900103,900208),(900103,900209),(900103,900210),(900103,900211),
+                (900103,900205),(900103,900206),(900103,900210),(900103,900211),
                 (900104,900212),(900104,900213),(900104,900214),(900104,900215)
                 """);
 

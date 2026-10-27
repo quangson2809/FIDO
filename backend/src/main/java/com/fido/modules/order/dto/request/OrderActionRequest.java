@@ -7,7 +7,6 @@ import jakarta.validation.constraints.Size;
 public record OrderActionRequest(
         @NotBlank
                 @Pattern(
-                        regexp =
-                                "CONFIRM|PREPARE|SHIP|DELIVERY_FAILED|RETRY_DELIVERY|CANCEL|COMPLETE|DELIVERY_RETURN_IN")
+                        regexp = "CONFIRM|START_PREPARING|DISPATCH|MARK_DELIVERY_FAILED|RETRY_DELIVERY")
                 String action,
         @Size(max = 500) String reason) {}

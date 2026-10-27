@@ -58,7 +58,14 @@ public final class OrderMapper {
 
     public static ShippingInfoDto shipping(ShippingInfo shipping) {
         if (shipping == null) return null;
-        return new ShippingInfoDto(shipping.getDeliveryMode(), shipping.getCarrierName());
+        return new ShippingInfoDto(
+                shipping.getShippingStatus(),
+                shipping.getRecipientName(),
+                shipping.getRecipientPhone(),
+                shipping.getCarrierName(),
+                shipping.getTrackingNumber(),
+                shipping.getShippedAt(),
+                shipping.getDeliveredAt());
     }
 
     public static OrderSummaryDto summary(Order order, Payment payment, String imageUrl) {

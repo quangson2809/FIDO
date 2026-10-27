@@ -399,15 +399,78 @@ public class InventoryCommandService {
 
     public void deductConfirmedOrder(
             Long actor, Long orderId, List<StockLine> lines, String reason) {
+        if (actor == null || actor <= 0 || orderId == null || orderId <= 0
+                || lines == null || lines.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "INVENTORY_ORDER_SOURCE_INVALID");
+        }
+        Map<Long, StockLine> expected = orderLines(lines);
+        List<Long> itemIds = List.copyOf(expected.keySet());
+        if (!transactions.findAllByOrderItemIdInAndTransactionType(
+                itemIds, InventoryPolicy.ORDER_CONFIRM_OUT).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "INVENTORY_ORDER_MOVEMENT_CONFLICT");
+        }
+        for (StockLine line : expected.values()) {
+            if (transactions.findByIdempotencyKey(
+                    orderMovementKey(orderId, line.orderItemId(), InventoryPolicy.ORDER_CONFIRM_OUT)).isPresent()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "INVENTORY_ORDER_MOVEMENT_CONFLICT");
+            }
+        }
+
         Long warehouseId = operationalWarehouse.requireOperationalWarehouseId();
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-        for (StockLine line : ordered(lines)) {
+        for (StockLine line : ordered(expected.values().stream().toList())) {
             int delta = -line.quantity();
             applyBalanceDelta(warehouseId, line.productId(), delta, now);
             record(new InventoryMovement(
                     actor, warehouseId, line.productId(), delta,
-                    InventoryPolicy.ORDER_CONFIRM_OUT, line.orderItemId(), null, null, reason));
+                    InventoryPolicy.ORDER_CONFIRM_OUT, line.orderItemId(), null, null, "ORDER_CONFIRM"),
+                    orderMovementKey(orderId, line.orderItemId(), InventoryPolicy.ORDER_CONFIRM_OUT));
         }
+    }
+
+    /** Verifies the complete set of source-linked deductions before subsequent lifecycle transitions. */
+    public void requireConfirmedOrderMovements(Long orderId, List<StockLine> lines) {
+        if (orderId == null || orderId <= 0 || lines == null || lines.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "INVENTORY_ORDER_SOURCE_INVALID");
+        }
+        Map<Long, StockLine> expected = orderLines(lines);
+        List<InventoryTransaction> posted = transactions.findAllByOrderItemIdInAndTransactionType(
+                List.copyOf(expected.keySet()), InventoryPolicy.ORDER_CONFIRM_OUT);
+        if (posted.size() != expected.size()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "INVENTORY_ORDER_MOVEMENT_INVALID");
+        }
+        Set<Long> seen = new HashSet<>();
+        for (InventoryTransaction movement : posted) {
+            StockLine line = expected.get(movement.getOrderItemId());
+            if (line == null || !seen.add(movement.getOrderItemId())
+                    || !Objects.equals(movement.getProductId(), line.productId())
+                    || !Objects.equals(movement.getQuantityDelta(), -line.quantity())
+                    || movement.getReversesTransactionId() != null
+                    || !Objects.equals(
+                            movement.getIdempotencyKey(),
+                            orderMovementKey(orderId, line.orderItemId(), InventoryPolicy.ORDER_CONFIRM_OUT))
+                    || !transactions.findAllByReversesTransactionId(movement.getTxnId()).isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "INVENTORY_ORDER_MOVEMENT_INVALID");
+            }
+        }
+    }
+
+    private Map<Long, StockLine> orderLines(List<StockLine> lines) {
+        Map<Long, StockLine> byItem = new java.util.LinkedHashMap<>();
+        for (StockLine line : lines) {
+            if (line == null || line.orderItemId() == null
+                    || byItem.putIfAbsent(line.orderItemId(), line) != null) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "INVENTORY_ORDER_SOURCE_INVALID");
+            }
+        }
+        if (byItem.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "INVENTORY_ORDER_SOURCE_INVALID");
+        }
+        return byItem;
+    }
+
+    private String orderMovementKey(Long orderId, Long orderItemId, String transactionType) {
+        return "order:" + orderId + ":item:" + orderItemId + ":" + transactionType;
     }
 
     public void restoreCancelledOrder(
