@@ -8,7 +8,6 @@ import com.fido.modules.order.dto.request.OrderActionRequest;
 import com.fido.modules.order.dto.request.PaymentActionRequest;
 import com.fido.modules.order.dto.response.OrderAdminDetailDto;
 import com.fido.modules.order.dto.response.OrderSummaryDto;
-import com.fido.modules.order.dto.response.PaymentAdminDto;
 import com.fido.modules.order.service.OrderActionService;
 import com.fido.modules.order.service.OrderAfterSalesService;
 import com.fido.modules.order.service.OrderEditService;
@@ -97,11 +96,12 @@ public class AdminOrderController {
     }
 
     @PostMapping("/{orderId}/payment-actions")
-    public ApiResponse<PaymentAdminDto> payment(
+    public ApiResponse<OrderAdminDetailDto> payment(
             @AuthenticationPrincipal Jwt jwt,
+            Authentication authentication,
             @PathVariable Long orderId,
             @Valid @RequestBody PaymentActionRequest request) {
-        return ApiResponse.of(payments.action(actor(jwt), orderId, request));
+        return ApiResponse.of(payments.action(actor(jwt), orderId, request, authentication));
     }
 
     @PostMapping("/{orderId}/after-sales")

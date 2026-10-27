@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
 public class AuditPayloadPolicy {
 
     private static final Set<String> VOUCHER_FIELDS =
-            Set.of("code", "status", "usage_limit", "used_count", "discount_type");
+            Set.of("code", "status", "usage_limit", "usage_count", "discount_type");
     private static final Set<String> ACCOUNT_FIELDS =
             Set.of("status", "active", "role_count", "permission_count");
     private static final Set<String> ROLE_FIELDS =
@@ -34,6 +34,7 @@ public class AuditPayloadPolicy {
                     "status",
                     "payment_status",
                     "shipping_status",
+                    "reason_code",
                     "item_count",
                     "total_amount",
                     "refund_amount");
@@ -46,7 +47,7 @@ public class AuditPayloadPolicy {
     private static final Set<String> BOOLEAN_FIELDS = Set.of("active");
     private static final Set<String> NUMERIC_FIELDS =
             Set.of(
-                    "usage_limit", "used_count", "role_count", "permission_count",
+                    "usage_limit", "usage_count", "role_count", "permission_count",
                     "warehouse_id", "item_count", "total_quantity", "product_id",
                     "quantity_delta", "parent_product_id", "price", "image_count",
                     "total_amount", "refund_amount");
@@ -101,7 +102,8 @@ public class AuditPayloadPolicy {
 
     private Set<String> allowedFields(AuditAction action) {
         return switch (action) {
-            case VOUCHER_CREATE, VOUCHER_UPDATE -> VOUCHER_FIELDS;
+            case VOUCHER_CREATE, VOUCHER_UPDATE,
+                    VOUCHER_QUOTA_CONSUME, VOUCHER_QUOTA_RELEASE -> VOUCHER_FIELDS;
             case SUPERADMIN_BOOTSTRAP, STAFF_CREATE, STAFF_UPDATE -> ACCOUNT_FIELDS;
             case ROLE_CREATE, ROLE_UPDATE, ROLE_DELETE -> ROLE_FIELDS;
             case PERMISSION_CREATE, PERMISSION_UPDATE, PERMISSION_DELETE -> PERMISSION_FIELDS;
@@ -110,7 +112,7 @@ public class AuditPayloadPolicy {
                     GOODS_RECEIPT_UPDATE,
                     GOODS_RECEIPT_CONFIRM,
                     GOODS_RECEIPT_CANCEL -> RECEIPT_FIELDS;
-            case INVENTORY_ADJUST, INVENTORY_OPENING -> INVENTORY_FIELDS;
+            case INVENTORY_ADJUST, INVENTORY_OPENING, INVENTORY_ORDER_CANCEL_REVERSAL -> INVENTORY_FIELDS;
             case SUPPLIER_CREATE, SUPPLIER_UPDATE -> SUPPLIER_FIELDS;
             case ORDER_CREATE,
                     ORDER_RECIPIENT_UPDATE,

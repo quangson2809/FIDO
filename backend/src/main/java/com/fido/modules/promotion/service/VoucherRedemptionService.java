@@ -1,6 +1,10 @@
 package com.fido.modules.promotion.service;
 
 import com.fido.modules.account.service.AccountAccessService;
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEntityType;
+import com.fido.modules.audit.service.AuditWriteEvent;
+import com.fido.modules.audit.service.AuditWriteService;
 import com.fido.modules.product.service.PromotionCatalogService;
 import com.fido.modules.pricing.PricingCalculator;
 import com.fido.modules.pricing.PricingService;
@@ -18,6 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Transactional(propagation = Propagation.MANDATORY)
@@ -27,13 +32,24 @@ public class VoucherRedemptionService {
     private final PromotionCatalogService catalog;
     private final AccountAccessService accounts;
     private final PricingService pricing;
+    private final AuditWriteService audit;
 
     public VoucherRedemptionService(
             VoucherRepository vouchers,
             VoucherUsageRepository usages,
             PromotionCatalogService catalog,
             AccountAccessService accounts) {
-        this(vouchers, usages, catalog, accounts, new PricingService());
+        this(vouchers, usages, catalog, accounts, new PricingService(), null);
+    }
+
+    /** Compatibility constructor for isolated callers; Spring uses the fully wired constructor. */
+    public VoucherRedemptionService(
+            VoucherRepository vouchers,
+            VoucherUsageRepository usages,
+            PromotionCatalogService catalog,
+            AccountAccessService accounts,
+            PricingService pricing) {
+        this(vouchers, usages, catalog, accounts, pricing, null);
     }
 
     @Autowired
@@ -42,12 +58,14 @@ public class VoucherRedemptionService {
             VoucherUsageRepository usages,
             PromotionCatalogService catalog,
             AccountAccessService accounts,
-            PricingService pricing) {
+            PricingService pricing,
+            AuditWriteService audit) {
         this.vouchers = vouchers;
         this.usages = usages;
         this.catalog = catalog;
         this.accounts = accounts;
         this.pricing = pricing;
+        this.audit = audit;
     }
 
     public record Line(Long productId, Long amount) {
@@ -186,6 +204,8 @@ public class VoucherRedemptionService {
             throw rejected("VOUCHER_USAGE_LIMIT_REACHED");
         }
         voucher.setUsageCount(recorded + 1);
+        auditQuotaChange(
+                AuditAction.VOUCHER_QUOTA_CONSUME, discount.voucherId(), recorded, recorded + 1);
     }
 
     public void restoreCancelledOrder(Long orderId, Long voucherId) {
@@ -194,13 +214,33 @@ public class VoucherRedemptionService {
                 .orElseThrow(() -> rejected("VOUCHER_NOT_FOUND"));
         VoucherUsage order = usages.findById(orderId)
                 .orElseThrow(() -> rejected("VOUCHER_ORDER_NOT_FOUND"));
-        if (!voucherId.equals(order.getVoucherId()) || !"CANCELLED".equals(order.getOrderStatus())) return;
+        if (!voucherId.equals(order.getVoucherId())) {
+            throw rejected("VOUCHER_ORDER_MISMATCH");
+        }
+        if (!"CANCELLED".equals(order.getOrderStatus())) {
+            throw rejected("VOUCHER_ORDER_NOT_CANCELLED");
+        }
         long activeOrders = usages.countByVoucherIdAndRestoredFalse(voucherId);
         int minimumCount = Math.toIntExact(Math.min(activeOrders, Integer.MAX_VALUE));
         int recorded = voucher.getUsageCount() == null ? 0 : voucher.getUsageCount();
-        if (vouchers.decrementUsageCountAbove(voucherId, minimumCount) == 1) {
-            voucher.setUsageCount(Math.max(0, recorded - 1));
+        if (vouchers.decrementUsageCountAbove(voucherId, minimumCount) != 1) {
+            throw rejected("VOUCHER_QUOTA_CONFLICT");
         }
+        int nextCount = recorded - 1;
+        voucher.setUsageCount(nextCount);
+        auditQuotaChange(AuditAction.VOUCHER_QUOTA_RELEASE, voucherId, recorded, nextCount);
+    }
+
+    private void auditQuotaChange(AuditAction action, Long voucherId, int before, int after) {
+        if (audit == null) {
+            return;
+        }
+        audit.record(AuditWriteEvent.withChanges(
+                action,
+                AuditEntityType.VOUCHER,
+                voucherId.toString(),
+                Map.of("usage_count", before),
+                Map.of("usage_count", after)));
     }
 
     private static String normalizeType(String type) {

@@ -20,7 +20,7 @@ public class OrderAuthorization {
     private String requiredPermission(String action) {
         return switch (action == null ? "" : action) {
             case "CONFIRM", "START_PREPARING", "DISPATCH",
-                    "MARK_DELIVERY_FAILED", "RETRY_DELIVERY" -> OrderPolicy.ORDER_EDIT;
+                    "MARK_DELIVERY_FAILED", "RETRY_DELIVERY", "CANCEL" -> OrderPolicy.ORDER_EDIT;
             default -> null;
         };
     }

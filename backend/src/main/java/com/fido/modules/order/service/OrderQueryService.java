@@ -128,8 +128,8 @@ public class OrderQueryService {
                 order.getTotalSnapshot(),
                 OrderMapper.paymentPublic(payment),
                 OrderMapper.shipping(shippingInfo),
-                order.getCompletedAt(),
-                order.getReturnedAt(),
+                shippingInfo == null ? null : shippingInfo.getDeliveredAt(),
+                payment.getRefundedAt(),
                 order.getCreatedAt(),
                 order.getUpdatedAt());
     }
@@ -150,8 +150,8 @@ public class OrderQueryService {
                 order.getShippingFeeSnapshot(),
                 order.getTotalSnapshot(),
                 OrderMapper.shipping(shippingInfo),
-                order.getCompletedAt(),
-                order.getReturnedAt(),
+                shippingInfo == null ? null : shippingInfo.getDeliveredAt(),
+                payment.getRefundedAt(),
                 order.getCreatedAt(),
                 order.getUpdatedAt(),
                 order.getCustomerAccountId(),

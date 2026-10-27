@@ -400,7 +400,7 @@ public class InventoryCommandService {
     public void deductConfirmedOrder(
             Long actor, Long orderId, List<StockLine> lines, String reason) {
         if (actor == null || actor <= 0 || orderId == null || orderId <= 0
-                || lines == null || lines.isEmpty()) {
+                || lines == null || lines.isEmpty() || !"ORDER_CANCELLED".equals(reason)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "INVENTORY_ORDER_SOURCE_INVALID");
         }
         Map<Long, StockLine> expected = orderLines(lines);
@@ -473,9 +473,87 @@ public class InventoryCommandService {
         return "order:" + orderId + ":item:" + orderItemId + ":" + transactionType;
     }
 
+    /**
+     * Posts the exact, one-time inverse of every ORDER movement for the cancelled Order.
+     * Validate the whole source set before the first balance mutation so a conflict cannot leave
+     * only part of this Order restored. The caller holds the Order aggregate lock.
+     */
     public void restoreCancelledOrder(
             Long actor, Long orderId, List<StockLine> lines, String reason) {
-        restoreOrderStock(actor, orderId, lines, InventoryPolicy.ORDER_CANCEL_IN, reason);
+        if (actor == null || actor <= 0 || orderId == null || orderId <= 0
+                || lines == null || lines.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "INVENTORY_ORDER_SOURCE_INVALID");
+        }
+
+        Map<Long, StockLine> expected = orderLines(lines);
+        requireConfirmedOrderMovements(orderId, lines);
+        List<Long> itemIds = List.copyOf(expected.keySet());
+        List<InventoryTransaction> originals = transactions
+                .findAllByOrderItemIdInAndTransactionType(itemIds, InventoryPolicy.ORDER_CONFIRM_OUT)
+                .stream()
+                .sorted(Comparator.comparing(InventoryTransaction::getProductId)
+                        .thenComparing(InventoryTransaction::getWarehouseId)
+                        .thenComparing(InventoryTransaction::getTxnId))
+                .toList();
+        if (originals.size() != expected.size()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "INVENTORY_ORDER_MOVEMENT_INVALID");
+        }
+
+        // Reject every missing, changed, or already reversed source before mutating any balance.
+        for (InventoryTransaction original : originals) {
+            StockLine line = expected.get(original.getOrderItemId());
+            String key = orderCancellationReversalKey(original.getTxnId());
+            if (line == null
+                    || !Objects.equals(original.getProductId(), line.productId())
+                    || !Objects.equals(original.getQuantityDelta(), -line.quantity())
+                    || original.getReversesTransactionId() != null
+                    || !transactions.findAllByReversesTransactionId(original.getTxnId()).isEmpty()
+                    || transactions.findByIdempotencyKey(key).isPresent()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "INVENTORY_ORDER_MOVEMENT_CONFLICT");
+            }
+        }
+
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        for (InventoryTransaction original : originals) {
+            int delta = Math.negateExact(original.getQuantityDelta());
+            String key = orderCancellationReversalKey(original.getTxnId());
+            applyBalanceDelta(original.getWarehouseId(), original.getProductId(), delta, now);
+
+            InventoryTransaction reversal;
+            try {
+                reversal = record(new InventoryMovement(
+                        actor,
+                        original.getWarehouseId(),
+                        original.getProductId(),
+                        delta,
+                        InventoryPolicy.ORDER_CANCEL_IN,
+                        original.getOrderItemId(),
+                        null,
+                        original.getTxnId(),
+                        reason), key);
+            } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT, "INVENTORY_ORDER_MOVEMENT_CONFLICT");
+            }
+
+            audit.record(AuditWriteEvent.withChanges(
+                    AuditAction.INVENTORY_ORDER_CANCEL_REVERSAL,
+                    AuditEntityType.INVENTORY_TRANSACTION,
+                    reversal.getTxnId().toString(),
+                    Map.of(
+                            "product_id", original.getProductId(),
+                            "warehouse_id", original.getWarehouseId(),
+                            "quantity_delta", original.getQuantityDelta()),
+                    Map.of(
+                            "product_id", reversal.getProductId(),
+                            "warehouse_id", reversal.getWarehouseId(),
+                            "quantity_delta", reversal.getQuantityDelta(),
+                            "reason_code", normalize(reason))));
+        }
+    }
+
+    private String orderCancellationReversalKey(Long originalTransactionId) {
+        return "order-cancel-reversal:" + originalTransactionId;
     }
 
     public void restoreDeliveryReturn(

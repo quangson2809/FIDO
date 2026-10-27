@@ -68,11 +68,12 @@ public final class OrderMapper {
                 shipping.getDeliveredAt());
     }
 
-    public static OrderSummaryDto summary(Order order, Payment payment, String imageUrl) {
+    public static OrderSummaryDto summary(
+            Order order, Payment payment, String imageUrl, ShippingInfo shipping) {
         return new OrderSummaryDto(
                 order.getOrderId(), order.getOrderCode(), order.getOrderStatus(),
-                payment.getPaymentStatus(), imageUrl, order.getTotalSnapshot(), order.getCreatedAt(),
-                order.getCompletedAt(), order.getReturnedAt());
+                payment.getPaymentStatus(), imageUrl, order.getTotalAmount(), order.getCreatedAt(),
+                shipping == null ? null : shipping.getDeliveredAt(), payment.getRefundedAt());
     }
 
     public static OrderConfirmationDto confirmation(Order order, Payment payment) {

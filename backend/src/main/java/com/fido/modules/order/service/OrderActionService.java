@@ -6,6 +6,8 @@ import com.fido.modules.audit.service.AuditWriteEvent;
 import com.fido.modules.audit.service.AuditWriteService;
 import com.fido.modules.inventory.service.InventoryCommandService;
 import com.fido.modules.inventory.service.InventoryCommandService.StockLine;
+import com.fido.modules.promotion.service.VoucherRedemptionService;
+import jakarta.persistence.EntityManager;
 import com.fido.modules.order.dto.request.OrderActionRequest;
 import com.fido.modules.order.dto.response.OrderAdminDetailDto;
 import com.fido.modules.order.entity.Order;
@@ -41,6 +43,8 @@ public class OrderActionService {
     private final InventoryCommandService inventory;
     private final OrderQueryService query;
     private final AuditWriteService audit;
+    private final VoucherRedemptionService voucherRedemption;
+    private final EntityManager entityManager;
 
     public OrderActionService(
             OrderActionPolicy policy,
@@ -50,7 +54,9 @@ public class OrderActionService {
             ShippingInfoRepository shippingInfos,
             InventoryCommandService inventory,
             OrderQueryService query,
-            AuditWriteService audit) {
+            AuditWriteService audit,
+            VoucherRedemptionService voucherRedemption,
+            EntityManager entityManager) {
         this.policy = policy;
         this.orders = orders;
         this.items = items;
@@ -59,6 +65,8 @@ public class OrderActionService {
         this.inventory = inventory;
         this.query = query;
         this.audit = audit;
+        this.voucherRedemption = voucherRedemption;
+        this.entityManager = entityManager;
     }
 
     @PreAuthorize("@orderAuthorization.canExecute(authentication, #request.action())")
@@ -75,9 +83,10 @@ public class OrderActionService {
         switch (request.action()) {
             case "CONFIRM" -> confirm(actor, order, shipping);
             case "START_PREPARING" -> startPreparing(actor, order, shipping);
-            case "DISPATCH" -> dispatch(actor, order, shipping);
-            case "MARK_DELIVERY_FAILED" -> markDeliveryFailed(actor, order, shipping);
-            case "RETRY_DELIVERY" -> retryDelivery(actor, order, shipping);
+            case "DISPATCH" -> dispatch(actor, order, shipping, request);
+            case "MARK_DELIVERY_FAILED" -> markDeliveryFailed(actor, order, shipping, request);
+            case "RETRY_DELIVERY" -> retryDelivery(actor, order, shipping, request);
+            case "CANCEL" -> cancel(actor, order, payment, shipping, request);
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ORDER_ACTION_INVALID");
         }
         return query.adminDetailInternal(order, authentication);
@@ -108,7 +117,8 @@ public class OrderActionService {
                 order.getOrderStatus(), shipping.getShippingStatus());
     }
 
-    private void dispatch(Long actor, Order order, ShippingInfo shipping) {
+    private void dispatch(
+            Long actor, Order order, ShippingInfo shipping, OrderActionRequest request) {
         String fromOrder = order.getOrderStatus();
         String fromShipping = shipping.getShippingStatus();
         inventory.requireConfirmedOrderMovements(order.getOrderId(), stockLines(order.getOrderId()));
@@ -116,6 +126,7 @@ public class OrderActionService {
         order.setOrderStatus(OrderPolicy.SHIPPING);
         shipping.setShippingStatus("SHIPPED");
         shipping.setShippedAt(LocalDateTime.now(ZoneOffset.UTC));
+        applyManualTracking(shipping, request);
         orders.save(order);
         shippingInfos.save(shipping);
         auditTransition(
@@ -123,7 +134,8 @@ public class OrderActionService {
                 order.getOrderStatus(), shipping.getShippingStatus());
     }
 
-    private void markDeliveryFailed(Long actor, Order order, ShippingInfo shipping) {
+    private void markDeliveryFailed(
+            Long actor, Order order, ShippingInfo shipping, OrderActionRequest request) {
         String fromOrder = order.getOrderStatus();
         String fromShipping = shipping.getShippingStatus();
 
@@ -133,10 +145,11 @@ public class OrderActionService {
         shippingInfos.save(shipping);
         auditTransition(
                 AuditAction.ORDER_DELIVERY_FAILED, order, fromOrder, fromShipping,
-                order.getOrderStatus(), shipping.getShippingStatus());
+                order.getOrderStatus(), shipping.getShippingStatus(), null, request.reason());
     }
 
-    private void retryDelivery(Long actor, Order order, ShippingInfo shipping) {
+    private void retryDelivery(
+            Long actor, Order order, ShippingInfo shipping, OrderActionRequest request) {
         String fromOrder = order.getOrderStatus();
         String fromShipping = shipping.getShippingStatus();
         inventory.requireConfirmedOrderMovements(order.getOrderId(), stockLines(order.getOrderId()));
@@ -144,11 +157,49 @@ public class OrderActionService {
         order.setOrderStatus(OrderPolicy.SHIPPING);
         shipping.setShippingStatus("SHIPPED");
         shipping.setShippedAt(LocalDateTime.now(ZoneOffset.UTC));
+        applyManualTracking(shipping, request);
         orders.save(order);
         shippingInfos.save(shipping);
         auditTransition(
                 AuditAction.ORDER_RETRY_DELIVERY, order, fromOrder, fromShipping,
                 order.getOrderStatus(), shipping.getShippingStatus());
+    }
+
+    private void cancel(
+            Long actor, Order order, Payment payment, ShippingInfo shipping,
+            OrderActionRequest request) {
+        String fromOrder = order.getOrderStatus();
+        String fromShipping = shipping.getShippingStatus();
+        List<StockLine> lines = stockLines(order.getOrderId());
+
+        if (!OrderPolicy.PENDING.equals(fromOrder)) {
+            inventory.restoreCancelledOrder(
+                    actor, order.getOrderId(), lines, "ORDER_CANCELLED");
+        }
+
+        order.setOrderStatus(OrderPolicy.CANCELLED);
+        shipping.setShippingStatus("CANCELLED");
+        orders.save(order);
+        shippingInfos.save(shipping);
+
+        // Flush inside the same transaction so the promotion module sees the committed-in-transaction
+        // CANCELLED source state. A later voucher/audit failure still rolls the complete command back.
+        entityManager.flush();
+        voucherRedemption.restoreCancelledOrder(order.getOrderId(), order.getVoucherId());
+
+        auditTransition(
+                AuditAction.ORDER_CANCEL, order, fromOrder, fromShipping,
+                order.getOrderStatus(), shipping.getShippingStatus(),
+                payment.getPaymentStatus(), request.reason());
+    }
+
+    private void applyManualTracking(ShippingInfo shipping, OrderActionRequest request) {
+        if (request.carrier_name() != null && !request.carrier_name().isBlank()) {
+            shipping.setCarrierName(request.carrier_name().trim());
+        }
+        if (request.tracking_number() != null && !request.tracking_number().isBlank()) {
+            shipping.setTrackingNumber(request.tracking_number().trim());
+        }
     }
 
     private List<StockLine> stockLines(Long orderId) {
@@ -164,12 +215,25 @@ public class OrderActionService {
     private void auditTransition(
             AuditAction action, Order order, String fromOrder, String fromShipping,
             String toOrder, String toShipping) {
+        auditTransition(action, order, fromOrder, fromShipping, toOrder, toShipping, null, null);
+    }
+
+    private void auditTransition(
+            AuditAction action, Order order, String fromOrder, String fromShipping,
+            String toOrder, String toShipping, String paymentStatus, String reason) {
         Map<String, Object> before = new LinkedHashMap<>();
         before.put("status", fromOrder);
         before.put("shipping_status", fromShipping);
         Map<String, Object> after = new LinkedHashMap<>();
         after.put("status", toOrder);
         after.put("shipping_status", toShipping);
+        if (paymentStatus != null) {
+            before.put("payment_status", paymentStatus);
+            after.put("payment_status", paymentStatus);
+        }
+        if (reason != null && reason.trim().matches("[A-Za-z0-9._:-]{1,120}")) {
+            after.put("reason_code", reason.trim());
+        }
         audit.record(AuditWriteEvent.withChanges(
                 action, AuditEntityType.ORDER, order.getOrderId().toString(), before, after));
     }
