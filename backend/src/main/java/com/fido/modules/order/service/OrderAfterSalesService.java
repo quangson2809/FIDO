@@ -95,6 +95,7 @@ public class OrderAfterSalesService {
         }
 
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        OrderPolicy.requireReturnWithinWindow(shipping.getDeliveredAt(), now);
         String fromOrder = order.getOrderStatus();
         String fromPayment = payment.getPaymentStatus();
         String fromShipping = shipping.getShippingStatus();

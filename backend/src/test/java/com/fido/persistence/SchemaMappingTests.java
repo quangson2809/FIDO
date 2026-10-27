@@ -115,7 +115,7 @@ class SchemaMappingTests {
                 Map<String, Column> expectedColumns = new HashMap<>();
                 for (var field : entity.getJavaType().getDeclaredFields()) {
                     Column column = field.getAnnotation(Column.class);
-                    if (column != null) expectedColumns.put(column.name(), column);
+                    if (column != null) expectedColumns.put(column.name().replace("`", ""), column);
                 }
 
                 Set<String> actualColumns = new HashSet<>();
