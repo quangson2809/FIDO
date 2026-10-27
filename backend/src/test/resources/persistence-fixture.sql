@@ -22,13 +22,8 @@ INSERT INTO categories(id,parent_category_id,name,slug,status,created_at,updated
 VALUES (1,NULL,'Root','fixture-root','ACTIVE',CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6));
 INSERT INTO brands(id,name,slug,status) VALUES (1,'Fixture brand','fixture-brand','ACTIVE');
 
-INSERT INTO attribute_types(id,code,name,data_type) VALUES
-    (1,'OPTION','Option','OPTION'),
-    (2,'TEXT','Text','TEXT'),
-    (3,'NUMBER','Number','NUMBER'),
-    (4,'BOOLEAN','Boolean','BOOLEAN');
 INSERT INTO attributes(id,attribute_type_id,code,name,is_required,is_variant_defining,sort_order)
-VALUES (1,2,'fixture-text','Fixture text',FALSE,FALSE,0);
+VALUES (1,1,'fixture-option','Fixture option',FALSE,FALSE,0);
 INSERT INTO attribute_options(id,attribute_id,`value`,label,sort_order)
 VALUES (1,1,'fixture-option','Fixture option',0);
 
@@ -40,7 +35,7 @@ INSERT INTO products(
     1000,500,'ACTIVE',NULL,CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6)
 );
 INSERT INTO product_attribute_values(product_id,attribute_id,option_id,text_value,number_value,boolean_value)
-VALUES (1,1,NULL,'Fixture value',NULL,NULL);
+VALUES (1,1,1,NULL,NULL,NULL);
 INSERT INTO product_images(id,product_id,image_url,is_primary,sort_order,created_at)
 VALUES (1,1,'https://example.invalid/test.png',TRUE,0,CURRENT_TIMESTAMP(6));
 
