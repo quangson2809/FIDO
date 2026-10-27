@@ -6,7 +6,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -37,9 +36,6 @@ public class Payment {
     @Column(name = "refund_reason", length = 500)
     private String refundReason;
 
-    @Transient private Long amountDue;
-    @Transient private Long amountReceived;
-    @Transient private Long amountRefunded;
 
     @Column(name = "collected_by_account_id", nullable = true)
     private Long collectedByAccountId;
@@ -61,7 +57,7 @@ public class Payment {
 
     @PrePersist
     void onCreate() {
-        syncAmounts();
+        if (refundAmount == null) refundAmount = 0L;
         LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
         createdAt = now;
         updatedAt = now;
@@ -69,32 +65,7 @@ public class Payment {
 
     @PreUpdate
     void onUpdate() {
-        syncAmounts();
+        if (refundAmount == null) refundAmount = 0L;
         updatedAt = LocalDateTime.now(java.time.ZoneOffset.UTC);
-    }
-
-    @PostLoad
-    void onLoad() {
-        amountDue = amount;
-        amountReceived = "PAID".equals(paymentStatus) ? amount : 0L;
-        amountRefunded = refundAmount == null ? 0L : refundAmount;
-    }
-
-    private void syncAmounts() {
-        if (amount == null && amountDue != null) amount = amountDue;
-        if (refundAmount == null || refundAmount == 0L) {
-            if (amountRefunded != null) refundAmount = amountRefunded;
-        }
-    }
-
-    public void setAmountDue(Long amount) { this.amountDue = amount; }
-    @Deprecated public void setAmountDue(BigDecimal amount) { this.amountDue = exactVnd(amount); }
-    public void setAmountReceived(Long amount) { this.amountReceived = amount; }
-    @Deprecated public void setAmountReceived(BigDecimal amount) { this.amountReceived = exactVnd(amount); }
-    public void setAmountRefunded(Long amount) { this.amountRefunded = amount; }
-    @Deprecated public void setAmountRefunded(BigDecimal amount) { this.amountRefunded = exactVnd(amount); }
-
-    private static Long exactVnd(BigDecimal amount) {
-        return amount == null ? null : amount.longValueExact();
     }
 }
