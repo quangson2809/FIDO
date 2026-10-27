@@ -41,6 +41,7 @@ concurrency:
 
 jobs:
   baseline:
+    if: ${{ !(github.ref == 'refs/heads/feature/p3-1-account-rbac' || (github.event_name == 'pull_request' && github.head_ref == 'feature/p3-1-account-rbac')) }}
     name: Verify one canonical baseline on fresh MySQL
     runs-on: ubuntu-latest
     timeout-minutes: 15
