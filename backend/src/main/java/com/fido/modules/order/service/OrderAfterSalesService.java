@@ -105,7 +105,6 @@ public class OrderAfterSalesService {
 
         payment.setPaymentStatus(OrderPolicy.REFUNDED);
         payment.setRefundAmount(fullRefundAmount);
-        payment.setAmountRefunded(fullRefundAmount);
         payment.setRefundedByAccountId(actor);
         payment.setRefundedAt(now);
         payment.setRefundReason(reason.trim());
