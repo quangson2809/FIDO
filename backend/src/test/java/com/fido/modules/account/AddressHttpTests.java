@@ -43,12 +43,26 @@ class AddressHttpTests extends AccountHttpSupport {
         String phone = phone();
         long accountId = register(phone);
         String token = login(phone);
-        db.update("INSERT INTO addresses(account_id,address_text,is_default,created_at,updated_at) "
-                + "VALUES (?, 'legacy first', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)", accountId);
+        db.update(
+                """
+                INSERT INTO addresses(
+                    account_id,recipient_name,recipient_phone,province,district,ward,
+                    address_line,is_default,created_at,updated_at
+                ) VALUES (?, 'Legacy first', '0900000001', 'Hà Nội', 'Cầu Giấy',
+                    'Dịch Vọng', 'legacy first', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """,
+                accountId);
         long firstId = db.queryForObject(
                 "SELECT MAX(id) FROM addresses WHERE account_id=?", Long.class, accountId);
-        db.update("INSERT INTO addresses(account_id,address_text,is_default,created_at,updated_at) "
-                + "VALUES (?, 'legacy second', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)", accountId);
+        db.update(
+                """
+                INSERT INTO addresses(
+                    account_id,recipient_name,recipient_phone,province,district,ward,
+                    address_line,is_default,created_at,updated_at
+                ) VALUES (?, 'Legacy second', '0900000002', 'Hà Nội', 'Cầu Giấy',
+                    'Dịch Vọng', 'legacy second', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """,
+                accountId);
         long secondId = db.queryForObject(
                 "SELECT MAX(id) FROM addresses WHERE account_id=?", Long.class, accountId);
 

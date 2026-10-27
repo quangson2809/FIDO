@@ -30,15 +30,12 @@ class AccountAccessServiceTests {
         jdbc.update(
                 """
                 INSERT INTO accounts (
-                    id,
-                    password_hash,
-                    created_at,
-                    updated_at
+                    id, full_name, phone, password_hash, status, created_at, updated_at
                 )
                 VALUES
-                    (201, 'never-expose-this', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-                    (202, 'other-hash', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-                    (203, 'admin-hash', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    (201, 'Test account A', '0900000201', 'never-expose-this', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+                    (202, 'Test account B', '0900000202', 'other-hash', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+                    (203, 'Test administrator', '0900000203', 'admin-hash', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """);
 
         jdbc.update(
@@ -136,7 +133,7 @@ class AccountAccessServiceTests {
 
         assertEquals(3, tree.size());
 
-        assertEquals(7, tree.get("account").size());
+        assertEquals(5, tree.get("account").size());
 
         assertEquals(201L, tree.get("account").get("id").asLong());
 

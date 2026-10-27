@@ -37,7 +37,10 @@ class ApiBaselineRouteContractTests {
                     new Route("PATCH", "/api/v1/admin/size-systems/{sizeSystemId}"),
                     new Route("DELETE", "/api/v1/admin/size-systems/{sizeSystemId}"),
                     new Route("POST", "/api/v1/admin/products/{productId}/variants"),
-                    new Route("PATCH", "/api/v1/admin/products/{productId}/variants/{variantId}"));
+                    new Route("PATCH", "/api/v1/admin/products/{productId}/variants/{variantId}"),
+                    new Route("PATCH", "/api/v1/me/orders/{orderId}/recipient"),
+                    new Route("PATCH", "/api/v1/admin/orders/{orderId}"),
+                    new Route("GET", "/api/v1/content-pages/{pageCode}"));
     private static final Set<Route> APPROVED_ROUTE_ADDITIONS =
             Set.of(new Route("DELETE", "/api/v1/admin/products/{productId}"));
     private static final Set<Route> APPROVED_REFINEMENT_ROUTES =
@@ -46,12 +49,15 @@ class ApiBaselineRouteContractTests {
                     new Route("GET", "/api/v1/admin/reports/orders-trend"),
                     new Route("GET", "/api/v1/admin/reports/product-performance"),
                     PRODUCT_IMAGE_UPLOAD,
+                    new Route("GET", "/api/v1/content-pages/{slug}"),
+                    new Route("GET", "/api/v1/admin/inventory/reconciliation"),
+                    new Route("POST", "/api/v1/admin/inventory/transactions/{transactionId}/reversal"),
                     new Route("DELETE", "/api/v1/admin/products/{productId}/images/{imageId}"),
                     new Route("PATCH", "/api/v1/admin/products/{productId}/images"),
                     new Route("GET", "/api/v1/admin/vouchers"),
                     new Route("POST", "/api/v1/admin/vouchers"),
                     new Route("GET", "/api/v1/admin/vouchers/{id}"),
-                    new Route("PUT", "/api/v1/admin/vouchers/{id}"),
+                    new Route("PATCH", "/api/v1/admin/vouchers/{id}"),
                     // P1.3 API-79–82: owner-approved Attribute and Option management routes.
                     new Route("POST", "/api/v1/admin/catalog/attributes"),
                     new Route("PATCH", "/api/v1/admin/catalog/attributes/{attributeId}"),

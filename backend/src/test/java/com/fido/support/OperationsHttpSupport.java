@@ -100,7 +100,7 @@ public abstract class OperationsHttpSupport {
     @AfterEach
     void cleanupOperations() {
         for (long id : accounts) {
-            db.update("DELETE FROM content_pages WHERE updated_by_account_id=?", id);
+            db.update("DELETE FROM content_pages WHERE updated_by=?", id);
             db.update("DELETE FROM audit_logs WHERE actor_account_id=?", id);
             db.update("DELETE FROM addresses WHERE account_id=?", id);
             db.update("DELETE FROM account_roles WHERE account_id=?", id);
