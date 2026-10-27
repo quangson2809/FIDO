@@ -130,9 +130,9 @@ abstract class OrderHttpSupport {
 
     private long warehouseId() {
         if (warehouseId != null) return warehouseId;
-        String code = "ORD-WH-" + UUID.randomUUID().toString().replace("-", "");
-        db.update("INSERT INTO warehouses(code,name,status) VALUES (?,?,'ACTIVE')", code, "Order test warehouse");
-        warehouseId = db.queryForObject("SELECT id FROM warehouses WHERE code=?", Long.class, code);
+        warehouseId = db.queryForObject(
+                "SELECT id FROM warehouses WHERE status='ACTIVE' ORDER BY id LIMIT 1",
+                Long.class);
         return warehouseId;
     }
 
@@ -215,6 +215,5 @@ abstract class OrderHttpSupport {
             db.update("DELETE FROM roles WHERE id=?", roleId);
         }
         for (Long permissionId : createdPermissions) db.update("DELETE FROM permissions WHERE id=?", permissionId);
-        if (warehouseId != null) db.update("DELETE FROM warehouses WHERE id=?", warehouseId);
     }
 }

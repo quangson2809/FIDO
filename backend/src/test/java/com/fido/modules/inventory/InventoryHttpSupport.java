@@ -125,7 +125,6 @@ abstract class InventoryHttpSupport {
         String categorySlug = "inventory-" + suffix;
         String productName = "Inventory product " + suffix;
         String sku = "INV-SKU-" + suffix;
-        String warehouseCode = "INV-WH-" + suffix;
 
         db.update("INSERT INTO categories(name,slug) VALUES (?,?)", categoryName, categorySlug);
         long categoryId = db.queryForObject(
@@ -134,10 +133,8 @@ abstract class InventoryHttpSupport {
                 "INSERT INTO products(category_id,name,sku,selling_price,status) VALUES (?,?,?,100000,'ACTIVE')",
                 categoryId, productName, sku);
         long productId = db.queryForObject("SELECT id FROM products WHERE sku=?", Long.class, sku);
-        db.update("INSERT INTO warehouses(code,name,status) VALUES (?,?, 'ACTIVE')",
-                warehouseCode, "Inventory warehouse " + suffix);
         long warehouseId = db.queryForObject(
-                "SELECT id FROM warehouses WHERE code=?", Long.class, warehouseCode);
+                "SELECT id FROM warehouses WHERE status='ACTIVE' ORDER BY id LIMIT 1", Long.class);
         db.update(
                 "INSERT INTO inventories(warehouse_id,product_id,quantity_on_hand,version) VALUES (?,?,0,0)",
                 warehouseId, productId);
@@ -216,7 +213,6 @@ abstract class InventoryHttpSupport {
             db.update("DELETE FROM product_images WHERE product_id=?", fixture.productId());
             db.update("DELETE FROM products WHERE id=?", fixture.productId());
             db.update("DELETE FROM categories WHERE id=?", fixture.categoryId());
-            db.update("DELETE FROM warehouses WHERE id=?", fixture.warehouseId());
         }
         for (Long accountId : accounts) db.update("DELETE FROM account_roles WHERE account_id=?", accountId);
         for (Long roleId : customRoles) {
