@@ -135,9 +135,9 @@ class ReportRepositoryTests {
         var result = reports.topProducts(START, END, 2);
         assertEquals(List.of(productFour, Math.min(productTwo, productThree)),
                 result.stream().map(item -> item.product_id()).toList());
-        assertEquals(8, result.get(0).completed_units());
+        assertEquals(11, result.get(0).completed_units());
         assertEquals(3, result.get(0).returned_units());
-        assertEquals(5, result.get(0).net_units());
+        assertEquals(8, result.get(0).net_units());
     }
 
     @Test
