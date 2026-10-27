@@ -22,29 +22,29 @@ class CartItemHttpTests extends CartHttpSupport {
         long inventoryBefore =
                 db.queryForObject(
                         """
-                        SELECT available_quantity
+                        SELECT quantity_on_hand
                         FROM inventories
-                        WHERE variant_id=?
+                        WHERE product_id=?
                         """,
                         Long.class,
-                        active.variantId());
+                        active.productId());
 
         int ledgerBefore =
                 db.queryForObject(
                         """
                         SELECT COUNT(*)
                         FROM inventory_transactions
-                        WHERE variant_id=?
+                        WHERE product_id=?
                         """,
                         Integer.class,
-                        active.variantId());
+                        active.productId());
 
         var added =
                 call(
                         "POST",
                         "/api/v1/cart/items",
                         owner.token(),
-                        Map.of("variant_id", active.variantId(), "quantity", 2));
+                        Map.of("product_id", active.productId(), "quantity", 2));
 
         assertEquals(200, added.status(), added.body());
 
@@ -61,7 +61,7 @@ class CartItemHttpTests extends CartHttpSupport {
                         "POST",
                         "/api/v1/cart/items",
                         owner.token(),
-                        Map.of("variant_id", active.variantId(), "quantity", 1));
+                        Map.of("product_id", active.productId(), "quantity", 1));
 
         assertEquals(3, addedAgain.data().get("data").get("items").get(0).get("quantity").asInt());
 
@@ -101,7 +101,7 @@ class CartItemHttpTests extends CartHttpSupport {
                                 "POST",
                                 "/api/v1/cart/items",
                                 owner.token(),
-                                Map.of("variant_id", stopped.variantId(), "quantity", 1))
+                                Map.of("product_id", stopped.productId(), "quantity", 1))
                         .status());
 
         assertEquals(
@@ -110,7 +110,7 @@ class CartItemHttpTests extends CartHttpSupport {
                                 "POST",
                                 "/api/v1/cart/items",
                                 owner.token(),
-                                Map.of("variant_id", outOfStock.variantId(), "quantity", 1))
+                                Map.of("product_id", outOfStock.productId(), "quantity", 1))
                         .status());
 
         assertEquals(
@@ -119,19 +119,19 @@ class CartItemHttpTests extends CartHttpSupport {
                                 "POST",
                                 "/api/v1/cart/items",
                                 owner.token(),
-                                Map.of("variant_id", Long.MAX_VALUE, "quantity", 1))
+                                Map.of("product_id", Long.MAX_VALUE, "quantity", 1))
                         .status());
 
         assertEquals(
                 inventoryBefore,
                 db.queryForObject(
                         """
-                        SELECT available_quantity
+                        SELECT quantity_on_hand
                         FROM inventories
-                        WHERE variant_id=?
+                        WHERE product_id=?
                         """,
                         Long.class,
-                        active.variantId()));
+                        active.productId()));
 
         assertEquals(
                 ledgerBefore,
@@ -139,19 +139,16 @@ class CartItemHttpTests extends CartHttpSupport {
                         """
                         SELECT COUNT(*)
                         FROM inventory_transactions
-                        WHERE variant_id=?
+                        WHERE product_id=?
                         """,
                         Integer.class,
-                        active.variantId()));
+                        active.productId()));
 
         db.update(
                 """
-                UPDATE product_variants
-                SET override_price=80000,
-                    updated_at=CURRENT_TIMESTAMP
-                WHERE variant_id=?
+                UPDATE products SET selling_price=80000, updated_at=CURRENT_TIMESTAMP WHERE id=?
                 """,
-                active.variantId());
+                active.productId());
 
         var repriced = call("GET", "/api/v1/cart", owner.token(), null);
 
