@@ -43,8 +43,8 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
         assertEquals(2, orderedQuantity(firstId));
         assertEquals(0, cartQuantity(customer));
         assertEquals(409, place(customer).status());
-        assertEquals(10, stock(variant.variantId()));
-        assertEquals(0, movementCount(firstId, "ORDER_CONFIRM_OUT"));
+        assertEquals(10, stock(variant.productId()));
+        assertEquals(0, movementCount(firstId, "ORDER"));
         assertEquals(1, count("payments", customer));
 
         add(customer, variant, 1);
@@ -63,8 +63,8 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
         var variant = createVariant(2, 100000, null);
         add(customer, variant, 2);
         db.update(
-                "UPDATE inventories SET available_quantity=1 WHERE variant_id=?",
-                variant.variantId());
+                "UPDATE inventories SET quantity_on_hand=1 WHERE product_id=?",
+                variant.productId());
         assertEquals(409, place(customer).status());
         assertEquals(2, cartQuantity(customer));
         assertEquals(0, count("orders", customer));
@@ -111,7 +111,7 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
                                                     0,
                                                     db.queryForObject(
                                                             """
-                                                            SELECT COUNT(*) FROM cart_items ci JOIN carts c ON c.cart_id=ci.cart_id
+                                                            SELECT COUNT(*) FROM cart_items ci JOIN carts c ON c.id=ci.cart_id
                                                             WHERE c.account_id=?
                                                             """,
                                                             Integer.class,
@@ -120,9 +120,9 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
                                             // checkout writes.
                                             db.update(
                                                     """
-                                                    INSERT INTO payments(order_id,payment_status,amount_due,amount_received,amount_refunded)
-                                                    SELECT p.order_id,p.payment_status,p.amount_due,p.amount_received,p.amount_refunded
-                                                    FROM payments p JOIN orders o ON o.order_id=p.order_id WHERE o.customer_account_id=?
+                                                    INSERT INTO payments(order_id,method,payment_status,amount,currency)
+ SELECT p.order_id,p.method,p.payment_status,p.amount,p.currency
+ FROM payments p JOIN orders o ON o.id=p.order_id WHERE o.account_id=?
                                                     """,
                                                     customer.accountId());
                                         }));
@@ -136,7 +136,7 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
                             + " action='ORDER_CREATE'",
                         Integer.class,
                         customer.accountId()));
-        assertEquals(10, stock(variant.variantId()));
+        assertEquals(10, stock(variant.productId()));
     }
 
     @Test
@@ -149,7 +149,7 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
         assertEquals(List.of(201, 409), results.stream().map(Result::status).sorted().toList());
         assertEquals(1, count("orders", customer));
         assertEquals(0, cartQuantity(customer));
-        assertEquals(10, stock(variant.variantId()));
+        assertEquals(10, stock(variant.productId()));
     }
 
     @Test
@@ -165,14 +165,14 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
                                         "POST",
                                         "/api/v1/cart/items",
                                         customer.token(),
-                                        Map.of("variant_id", variant.variantId(), "quantity", 2)));
+                                        Map.of("product_id", variant.productId(), "quantity", 2)));
         assertEquals(201, results.get(0).status(), results.get(0).body());
         long orderId = remember(results.get(0));
         assertEquals(200, results.get(1).status(), results.get(1).body());
         int purchased = orderedQuantity(orderId);
         assertTrue(purchased == 1 || purchased == 3);
         assertEquals(3, purchased + cartQuantity(customer));
-        assertEquals(10, stock(variant.variantId()));
+        assertEquals(10, stock(variant.productId()));
     }
 
     @Test
@@ -205,7 +205,7 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
                         "POST",
                         "/api/v1/cart/items",
                         customer.token(),
-                        Map.of("variant_id", variant.variantId(), "quantity", quantity));
+                        Map.of("product_id", variant.productId(), "quantity", quantity));
         assertEquals(200, result.status(), result.body());
     }
 
@@ -236,10 +236,10 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
     private int count(String table, User customer) {
         String sql =
                 switch (table) {
-                    case "orders" -> "SELECT COUNT(*) FROM orders WHERE customer_account_id=?";
+                    case "orders" -> "SELECT COUNT(*) FROM orders WHERE account_id=?";
                     case "payments" ->
-                            "SELECT COUNT(*) FROM payments p JOIN orders o ON o.order_id=p.order_id"
-                                + " WHERE o.customer_account_id=?";
+                            "SELECT COUNT(*) FROM payments p JOIN orders o ON o.id=p.order_id"
+                                + " WHERE o.account_id=?";
                     default -> throw new IllegalArgumentException(table);
                 };
         return db.queryForObject(sql, Integer.class, customer.accountId());

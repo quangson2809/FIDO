@@ -29,13 +29,13 @@ class InventoryContextTests extends OrderHttpSupport {
                 .executeWithoutResult(
                         status -> {
                             Order order = em.find(Order.class, orderId);
-                            Inventory stock = em.find(Inventory.class, variant.variantId());
+                            Inventory stock = em.find(Inventory.class, variant.productId());
                             inventory.deductConfirmedOrder(
                                     customer.accountId(),
                                     orderId,
                                     List.of(
                                             new InventoryCommandService.StockLine(
-                                                    variant.variantId(), 1)),
+                                                    variant.productId(), 1)),
                                     "context test");
                             assertTrue(em.contains(order));
                             assertTrue(em.contains(stock));
@@ -50,8 +50,8 @@ class InventoryContextTests extends OrderHttpSupport {
                         "SELECT subtotal FROM orders WHERE id=?",
                         Long.class,
                         orderId));
-        assertEquals(4, stock(variant.variantId()));
-        assertEquals(1, movementCount(orderId, "ORDER_CONFIRM_OUT"));
+        assertEquals(4, stock(variant.productId()));
+        assertEquals(1, movementCount(orderId, "ORDER"));
     }
 
     @Test
@@ -72,13 +72,13 @@ class InventoryContextTests extends OrderHttpSupport {
                                                         List.of(
                                                                 new InventoryCommandService
                                                                         .StockLine(
-                                                                        second.variantId(), 2),
+                                                                        second.productId(), 2),
                                                                 new InventoryCommandService
                                                                         .StockLine(
-                                                                        first.variantId(), 1)),
+                                                                        first.productId(), 1)),
                                                         "rollback test")));
-        assertEquals(5, stock(first.variantId()));
-        assertEquals(1, stock(second.variantId()));
-        assertEquals(0, movementCount(orderId, "ORDER_CONFIRM_OUT"));
+        assertEquals(5, stock(first.productId()));
+        assertEquals(1, stock(second.productId()));
+        assertEquals(0, movementCount(orderId, "ORDER"));
     }
 }
