@@ -55,6 +55,8 @@ jobs:
       DB_USERNAME: root
       DB_PASSWORD: ci-only-password
       SERVER_PORT: "8080"
+      SPRING_PROFILES_ACTIVE: dev
+      DEV_SEED_ENABLED: "true"
       JWT_SECRET_BASE64: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
       JWT_ISSUER: fido-ci
       JWT_TTL_SECONDS: "900"
@@ -78,7 +80,7 @@ jobs:
       - name: Compile production source only
         working-directory: backend
         run: ./gradlew --no-daemon clean compileJava
-      - name: Start main runtime and verify actuator health
+      - name: Start main runtime, execute dev seed, and verify actuator health
         working-directory: backend
         shell: bash
         run: |
@@ -91,8 +93,9 @@ jobs:
           }
           trap cleanup EXIT
           for attempt in $(seq 1 90); do
-            if curl --silent --show-error --fail http://127.0.0.1:8080/actuator/health >/dev/null; then
-              echo "Main runtime started and actuator health is reachable."
+            if curl --silent --show-error --fail http://127.0.0.1:8080/actuator/health >/dev/null \
+                && grep -Fq "FIDO development seed completed and validated against target schema" "$RUNNER_TEMP/fido-boot.log"; then
+              echo "Main runtime started, target-schema development seed completed, and actuator health is reachable."
               exit 0
             fi
             if ! kill -0 "$BOOT_PID" 2>/dev/null; then

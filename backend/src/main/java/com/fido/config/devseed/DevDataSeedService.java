@@ -2,12 +2,16 @@ package com.fido.config.devseed;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Profile({"dev", "test"})
 public class DevDataSeedService {
+
+    private static final Logger log = LoggerFactory.getLogger(DevDataSeedService.class);
 
     public static final String DEFAULT_PASSWORD = "Fido@123";
 
@@ -41,6 +45,7 @@ public class DevDataSeedService {
         DevSeedStateInspector.SeedState initial = state.inspect();
 
         if (initial.complete()) {
+            log.info("FIDO development seed completed and validated against target schema (already present).");
             return;
         }
 
@@ -67,5 +72,7 @@ public class DevDataSeedService {
                     "Development seed finished with incomplete data. "
                             + completed.mismatchSummary());
         }
+
+        log.info("FIDO development seed completed and validated against target schema.");
     }
 }

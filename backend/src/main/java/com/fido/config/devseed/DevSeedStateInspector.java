@@ -8,6 +8,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Detects whether the known demo dataset is absent, complete or partially present.
+ * Flyway-owned system roles, permissions and attribute types are intentionally excluded.
+ */
 @Component
 @Profile({"dev", "test"})
 public class DevSeedStateInspector {
@@ -16,30 +20,33 @@ public class DevSeedStateInspector {
             List.of(
                     probe("accounts", "id BETWEEN 900001 AND 900008", 8),
                     probe("addresses", "id BETWEEN 910001 AND 910003", 3),
-                    probe("roles", "id BETWEEN 900101 AND 900104", 4),
-                    probe("permissions", "id BETWEEN 900201 AND 900215", 15),
-                    probe("account_roles", "account_id BETWEEN 900001 AND 900008", 12),
-                    probe("role_permissions", "role_id BETWEEN 900101 AND 900104", 15),
-                    probe("categories", "category_id BETWEEN 920001 AND 920008", 8),
-                    probe("brands", "brand_id BETWEEN 930001 AND 930002", 2),
-                    probe("size_systems", "size_system_id BETWEEN 940001 AND 940002", 2),
-                    probe("size_values", "size_value_id BETWEEN 941001 AND 941006", 6),
-                    probe("colors", "color_id BETWEEN 950001 AND 950004", 4),
-                    probe("products", "product_id BETWEEN 960001 AND 960017", 17),
-                    probe("product_images", "image_id BETWEEN 961001 AND 961017", 17),
-                    probe("product_variants", "variant_id BETWEEN 970001 AND 970019", 19),
-                    probe("carts", "cart_id BETWEEN 980001 AND 980002", 2),
-                    probe("cart_items", "cart_item_id BETWEEN 981001 AND 981002", 2),
-                    probe("vouchers", "voucher_id = 990001", 1),
+                    probe("account_roles", "account_id BETWEEN 900001 AND 900008", 8),
+                    probe("categories", "id BETWEEN 920001 AND 920008", 8),
+                    probe("brands", "id BETWEEN 930001 AND 930002", 2),
+                    probe("attributes", "id BETWEEN 940001 AND 940002", 2),
+                    probe("attribute_options", "id BETWEEN 941001 AND 941007", 7),
+                    probe(
+                            "product_attribute_values",
+                            "product_id IN (960001,960002,960006)",
+                            6),
+                    probe("products", "id BETWEEN 960001 AND 960017", 17),
+                    probe("product_images", "id BETWEEN 961001 AND 961017", 17),
+                    probe("carts", "id BETWEEN 980001 AND 980002", 2),
+                    probe("cart_items", "id BETWEEN 981001 AND 981002", 2),
+                    probe("vouchers", "id = 990001", 1),
                     probe(
                             "orders",
-                            "order_id IN (1001001,1001002,1001003,1001004,1001005,"
+                            "id IN (1001001,1001002,1001003,1001004,1001005,"
                                     + "1001006,1001101,1001102,1001103)",
                             9),
                     probe(
                             "order_items",
-                            "order_item_id IN (1101001,1101002,1101003,1101004,"
-                                    + "1101005,1101006,1101101,1101102,1101103)",
+                            "id BETWEEN 1101001 AND 1101009",
+                            9),
+                    probe(
+                            "order_addresses",
+                            "order_id IN (1001001,1001002,1001003,1001004,1001005,"
+                                    + "1001006,1001101,1001102,1001103)",
                             9),
                     probe(
                             "payments",
@@ -48,22 +55,20 @@ public class DevSeedStateInspector {
                             9),
                     probe(
                             "shipping_infos",
-                            "order_id IN (1001002,1001003,1001004,1001005,"
-                                    + "1001006,1001101,1001102)",
-                            7),
-                    probe("suppliers", "supplier_id BETWEEN 1020001 AND 1020002", 2),
-                    probe("goods_receipts", "receipt_id BETWEEN 1010001 AND 1010003", 3),
-                    probe("goods_receipt_items", "receipt_item_id BETWEEN 1030001 AND 1030003", 3),
-                    probe("inventories", "variant_id BETWEEN 970001 AND 970019", 19),
+                            "order_id IN (1001001,1001002,1001003,1001004,1001005,"
+                                    + "1001006,1001101,1001102,1001103)",
+                            9),
+                    probe("suppliers", "id BETWEEN 1020001 AND 1020002", 2),
+                    probe("warehouses", "id = 1021001", 1),
+                    probe("goods_receipts", "id BETWEEN 1010001 AND 1010003", 3),
+                    probe("goods_receipt_items", "id BETWEEN 1030001 AND 1030003", 3),
                     probe(
-                            "inventory_transactions",
-                            "txn_id IN (1040001,1040002,1040003,1040004,1040005,"
-                                    + "1040010,1040011,1040012,1040013,1040014,1040015,1040016,"
-                                    + "1040017,1040018,1040019,1040020,1040021,1040022,1040023,"
-                                    + "1040024,1040025,1040026,1040027,1040028,1040029,1040030)",
-                            26),
+                            "inventories",
+                            "warehouse_id = 1021001 AND product_id BETWEEN 960001 AND 960017",
+                            17),
+                    probe("inventory_transactions", "id BETWEEN 1040001 AND 1040025", 25),
                     probe("audit_logs", "id BETWEEN 1050001 AND 1050003", 3),
-                    probe("content_pages", "page_id BETWEEN 1060001 AND 1060003", 3));
+                    probe("content_pages", "id BETWEEN 1060001 AND 1060003", 3));
 
     private final JdbcTemplate jdbc;
 
@@ -73,7 +78,6 @@ public class DevSeedStateInspector {
 
     public SeedState inspect() {
         List<ProbeResult> results = new ArrayList<>(PROBES.size());
-
         for (SeedProbe probe : PROBES) {
             Integer count =
                     jdbc.queryForObject(
@@ -81,7 +85,6 @@ public class DevSeedStateInspector {
                             Integer.class);
             results.add(new ProbeResult(probe, count == null ? 0 : count));
         }
-
         return new SeedState(results);
     }
 
