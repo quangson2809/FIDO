@@ -1,9 +1,9 @@
 package com.fido.modules.product.service;
 
 import com.fido.modules.audit.service.AuditAction;
-import com.fido.modules.audit.service.AuditEvent;
-import com.fido.modules.audit.service.AuditService;
-import com.fido.modules.audit.service.AuditTargetType;
+import com.fido.modules.audit.service.AuditEntityType;
+import com.fido.modules.audit.service.AuditWriteEvent;
+import com.fido.modules.audit.service.AuditWriteService;
 import com.fido.modules.product.dto.request.ProductCreateRequest;
 import com.fido.modules.product.dto.request.ProductImageInput;
 import com.fido.modules.product.dto.request.ProductPatchRequest;
@@ -39,7 +39,7 @@ public class ProductAdminService {
     private final ProductImageRepository images;
     private final CatalogReferenceService references;
     private final AdminCatalogQueryService query;
-    private final AuditService audit;
+    private final AuditWriteService audit;
     private final EntityManager em;
 
     public ProductAdminService(
@@ -47,7 +47,7 @@ public class ProductAdminService {
             ProductImageRepository images,
             CatalogReferenceService references,
             AdminCatalogQueryService query,
-            AuditService audit,
+            AuditWriteService audit,
             EntityManager em) {
         this.products = products;
         this.images = images;
@@ -82,8 +82,7 @@ public class ProductAdminService {
 
         products.save(product);
         flushOrConflict();
-        audit.record(AuditEvent.of(
-                actor, AuditAction.PRODUCT_CREATE, AuditTargetType.PRODUCT, product.getProductId()));
+        audit.record(AuditWriteEvent.of(AuditAction.PRODUCT_CREATE, AuditEntityType.PRODUCT, product.getProductId().toString()));
         return query.detailInternal(product.getProductId());
     }
 
@@ -125,8 +124,7 @@ public class ProductAdminService {
         products.save(product);
         flushOrConflict();
 
-        audit.record(AuditEvent.of(
-                actor, AuditAction.PRODUCT_UPDATE, AuditTargetType.PRODUCT, productId));
+        audit.record(AuditWriteEvent.of(AuditAction.PRODUCT_UPDATE, AuditEntityType.PRODUCT, productId.toString()));
         return query.detailInternal(productId);
     }
 
@@ -139,8 +137,7 @@ public class ProductAdminService {
         product.setDeletedAt(LocalDateTime.now(ZoneOffset.UTC));
         products.save(product);
         em.flush();
-        audit.record(AuditEvent.of(
-                actor, AuditAction.PRODUCT_DELETE, AuditTargetType.PRODUCT, productId));
+        audit.record(AuditWriteEvent.of(AuditAction.PRODUCT_DELETE, AuditEntityType.PRODUCT, productId.toString()));
     }
 
     private void validateParent(Long productId, Long parentProductId) {
