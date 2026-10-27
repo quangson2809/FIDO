@@ -71,8 +71,8 @@ class ProductImageRepositoryTests {
     private void insertImage(String url, int sortOrder) {
         db.update(
                 """
-                INSERT INTO product_images(product_id,image_url,alt_text,sort_order)
-                VALUES (1,?,NULL,?)
+                INSERT INTO product_images(product_id,image_url,sort_order)
+                VALUES (1,?,?)
                 """,
                 url,
                 sortOrder);

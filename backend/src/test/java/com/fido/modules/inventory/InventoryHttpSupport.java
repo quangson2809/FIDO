@@ -130,8 +130,8 @@ abstract class InventoryHttpSupport {
         long categoryId = db.queryForObject(
                 "SELECT id FROM categories WHERE slug=?", Long.class, categorySlug);
         db.update(
-                "INSERT INTO products(category_id,name,sku,selling_price,status) VALUES (?,?,?,100000,'ACTIVE')",
-                categoryId, productName, sku);
+                "INSERT INTO products(category_id,name,slug,sku,selling_price,status) VALUES (?,?,?,?,100000,'ACTIVE')",
+                categoryId, productName, "inventory-product-" + suffix, sku);
         long productId = db.queryForObject("SELECT id FROM products WHERE sku=?", Long.class, sku);
         long warehouseId = db.queryForObject(
                 "SELECT id FROM warehouses WHERE status='ACTIVE' ORDER BY id LIMIT 1", Long.class);
@@ -170,8 +170,8 @@ abstract class InventoryHttpSupport {
 
     long createSiblingProduct(CatalogFixture fixture) {
         String suffix = UUID.randomUUID().toString().replace("-", "");
-        db.update("INSERT INTO products(category_id,name,sku,selling_price,status) VALUES (?,?,?,100000,'ACTIVE')",
-                fixture.categoryId(), "Inventory sibling " + suffix, "INV-SIB-" + suffix);
+        db.update("INSERT INTO products(category_id,name,slug,sku,selling_price,status) VALUES (?,?,?,?,100000,'ACTIVE')",
+                fixture.categoryId(), "Inventory sibling " + suffix, "inventory-sibling-" + suffix, "INV-SIB-" + suffix);
         long productId = db.queryForObject(
                 "SELECT id FROM products WHERE sku=?", Long.class, "INV-SIB-" + suffix);
         db.update("INSERT INTO inventories(warehouse_id,product_id,quantity_on_hand,version) VALUES (?,?,0,0)",
