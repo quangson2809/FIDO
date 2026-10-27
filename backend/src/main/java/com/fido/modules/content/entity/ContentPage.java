@@ -1,7 +1,14 @@
 package com.fido.modules.content.entity;
 
-import jakarta.persistence.*;
-
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -18,14 +25,13 @@ import java.time.temporal.ChronoUnit;
 @Setter
 @NoArgsConstructor
 public class ContentPage {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
     private Long pageId;
 
     @Column(name = "slug", nullable = false, length = 180)
-    private String pageCode;
+    private String slug;
 
     @Column(name = "title", nullable = false, length = 255)
     private String title;

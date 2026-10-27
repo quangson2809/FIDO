@@ -4,10 +4,11 @@ package com.fido.modules.audit.service;
  * Stable target-schema entity codes. These values are persisted in AUDIT_LOGS.entity_type;
  * they are not Java class names or table names supplied by a request.
  *
- * <p>AUDIT_LOGS itself is intentionally absent so writing an audit record cannot recursively
- * create another audit record.
+ * <p>AUDIT_LOG is used only to identify privileged audit-search access events. Inserting an
+ * audit row is never itself audited, so the writer cannot recurse.
  */
 public enum AuditEntityType {
+    AUDIT_LOG,
     ACCOUNT,
     ADDRESS,
     ACCOUNT_ROLE,

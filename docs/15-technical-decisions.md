@@ -58,6 +58,13 @@
 - The target `ORDERS` table has no durable completion/return timestamp columns. Order detail and summary responses derive `completed_at` from `SHIPPING_INFOS.delivered_at` and `returned_at` from `PAYMENTS.refunded_at`, rather than relying on transient fields in the Java entity.
 - Report query periods, bucket boundaries, zero-filled status metrics, source tables and deterministic Product ranking follow [P1.8](refactor-v2/p1/P1.8-operations-seed-contract.md). Money and Order/Payment/return semantics remain owned by P1.5/P1.7; use Asia/Ho_Chi_Minh inclusive business dates and adjust a whole-Order return in its original completion period. Current status counts use Order creation date.
 
+### P3.14 — Audit read and Content Pages
+
+- Audit search uses the existing `GET /api/v1/admin/audit-logs` contract only: `AUDIT_READ`, validated actor/action/entity/time filters, UTC-normalized instants, deterministic `created_at DESC, id DESC` order and standard pagination. Unknown query parameters are rejected instead of silently ignored. There is no separate audit-detail or export route in the approved API contract.
+- Every successful privileged audit search appends one metadata-only `AUDIT_LOG_QUERY` access event after reading the page. The event does not include result rows, and audit-row insertion is never recursively audited. Historical `before_data`/`after_data` payloads are redacted through the action-specific allowlist before DTO serialization; unknown event codes fail closed.
+- Content uses the approved `content_pages.id/slug/title/content/status/updated_by/updated_at` fields. Public slug lookup returns only `PUBLISHED`; invalid, missing, `DRAFT` and `ARCHIVED` pages share the same 404 behavior. Slug is normalized to lowercase and validated against the approved ASCII-hyphen form; it is immutable after creation.
+- Content create starts at `DRAFT`; the existing PATCH route handles field updates and the approved `DRAFT/PUBLISHED/ARCHIVED` transitions under a row lock. Content and its redacted audit event commit atomically. The admin list exposes summaries, not the page body. **Contract discrepancy to reconcile:** P1.8 §3.1 says the admin list should be paginated, while the current API-73/Backend AGENTS contract specifies an unpaginated `{data: [...]}` response. This phase preserves API-73 rather than silently changing its response shape; pagination needs an explicit source-contract decision. No detail/export route, revision table, hard delete or retention purge is added.
+
 ## 7. Image history, retention and deletion
 
 - Order image references must resolve to immutable object/version content for the required retention window. Later Product image changes must not rewrite historical order image results.

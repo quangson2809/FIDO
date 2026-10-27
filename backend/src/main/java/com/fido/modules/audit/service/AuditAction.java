@@ -1,6 +1,7 @@
 package com.fido.modules.audit.service;
 
 public enum AuditAction {
+    AUDIT_LOG_QUERY,
     VOUCHER_CREATE,
     VOUCHER_UPDATE,
     VOUCHER_QUOTA_CONSUME,
