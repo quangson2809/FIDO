@@ -20,7 +20,13 @@ import java.util.concurrent.TimeUnit;
 
 class CheckoutCartTransactionTests extends OrderHttpSupport {
     private static final Map<String, Object> REQUEST =
-            Map.of("recipient_phone", "0900000000", "recipient_address", "Hanoi");
+            Map.of(
+                    "recipient_name", "Test Recipient",
+                    "recipient_phone", "0900000000",
+                    "province", "Hanoi",
+                    "district", "Cau Giay",
+                    "ward", "Dich Vong",
+                    "address_line", "Test address");
 
     @Autowired OrderCreationService creation;
     @Autowired PlatformTransactionManager transactions;
@@ -68,12 +74,13 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
                         "/api/v1/orders",
                         customer.token(),
                         Map.of(
-                                "recipient_phone",
-                                "0900000000",
-                                "recipient_address",
-                                "Hanoi",
-                                "voucher_code",
-                                "UNAPPROVED"));
+                                "recipient_name", "Test Recipient",
+                                "recipient_phone", "0900000000",
+                                "province", "Hanoi",
+                                "district", "Cau Giay",
+                                "ward", "Dich Vong",
+                                "address_line", "Test address",
+                                "voucher_code", "UNAPPROVED"));
         assertEquals(409, voucher.status());
         assertEquals(2, cartQuantity(customer));
     }
@@ -92,7 +99,13 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
                                             creation.create(
                                                     customer.accountId(),
                                                     new CreateOrderRequest(
-                                                            "0900000000", null, "Hanoi", null));
+                                                            "Test Recipient",
+                                                            "0900000000",
+                                                            "Hanoi",
+                                                            "Cau Giay",
+                                                            "Dich Vong",
+                                                            "Test address",
+                                                            null));
                                             assertEquals(
                                                     0,
                                                     db.queryForObject(

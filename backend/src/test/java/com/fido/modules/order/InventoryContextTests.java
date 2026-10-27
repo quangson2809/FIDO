@@ -39,16 +39,16 @@ class InventoryContextTests extends OrderHttpSupport {
                                     "context test");
                             assertTrue(em.contains(order));
                             assertTrue(em.contains(stock));
-                            assertEquals(4, stock.getAvailableQuantity());
+                            assertEquals(4, stock.getQuantityOnHand());
                             // No save/merge: this mutation would be lost if inventory cleared the
                             // context.
-                            order.setCustomerServiceNote("managed after stock mutation");
+                            order.setSubtotal(90_000L);
                         });
         assertEquals(
-                "managed after stock mutation",
+                90_000L,
                 db.queryForObject(
-                        "SELECT customer_service_note FROM orders WHERE order_id=?",
-                        String.class,
+                        "SELECT subtotal FROM orders WHERE id=?",
+                        Long.class,
                         orderId));
         assertEquals(4, stock(variant.variantId()));
         assertEquals(1, movementCount(orderId, "ORDER_CONFIRM_OUT"));
