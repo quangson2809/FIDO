@@ -19,7 +19,7 @@ public final class InventoryMapper {
 
     public static SupplierDto supplier(Supplier supplier) {
         return new SupplierDto(supplier.getSupplierId(), supplier.getCode(), supplier.getName(),
-                supplier.getPhone(), supplier.getEmail(), supplier.getUsageStatus());
+                supplier.getPhone(), supplier.getEmail(), supplier.getStatus());
     }
 
     public static GoodsReceiptItemDto receiptItem(GoodsReceiptItem item) {

@@ -6,4 +6,4 @@ public record SupplierDto(
         String name,
         String phone,
         String email,
-        String usage_status) {}
+        String status) {}

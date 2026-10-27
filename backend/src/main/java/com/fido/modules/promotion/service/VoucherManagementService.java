@@ -1,13 +1,14 @@
 package com.fido.modules.promotion.service;
 
-import com.fido.modules.audit.service.*;
-import com.fido.modules.product.service.PromotionCatalogService;
-import com.fido.modules.promotion.dto.request.VoucherRequest;
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEntityType;
+import com.fido.modules.audit.service.AuditWriteEvent;
+import com.fido.modules.audit.service.AuditWriteService;
+import com.fido.modules.promotion.dto.request.VoucherCreateRequest;
+import com.fido.modules.promotion.dto.request.VoucherPatchRequest;
 import com.fido.modules.promotion.dto.response.VoucherDetailDto;
 import com.fido.modules.promotion.entity.Voucher;
 import com.fido.modules.promotion.repository.VoucherRepository;
-import com.fido.modules.promotion.repository.VoucherUsageRepository;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -17,11 +18,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -30,204 +29,182 @@ public class VoucherManagementService {
             "hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_VOUCHER_READ','PERMISSION_VOUCHER_WRITE')";
     private static final String WRITE =
             "hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_VOUCHER_WRITE')";
+
     private final VoucherRepository vouchers;
-    private final VoucherUsageRepository usages;
-    private final PromotionCatalogService catalog;
     private final AuditWriteService audit;
 
-    public VoucherManagementService(
-            VoucherRepository vouchers,
-            VoucherUsageRepository usages,
-            PromotionCatalogService catalog,
-            AuditWriteService audit) {
+    public VoucherManagementService(VoucherRepository vouchers, AuditWriteService audit) {
         this.vouchers = vouchers;
-        this.usages = usages;
-        this.catalog = catalog;
         this.audit = audit;
     }
 
     @PreAuthorize(READ)
     @Transactional(readOnly = true)
     public Page<VoucherDetailDto> list(String search, int page, int pageSize) {
-        var pageResult =
-                vouchers.findByCodeContainingIgnoreCase(
-                        search,
-                        PageRequest.of(page - 1, pageSize, Sort.by("voucherId").descending()));
-        var ids = pageResult.getContent().stream().map(Voucher::getVoucherId).toList();
-        Map<Long, VoucherUsageRepository.UsageCounts> usageByVoucher =
-                ids.isEmpty()
-                        ? Map.of()
-                        : usages.summarize(ids).stream()
-                                .collect(
-                                        Collectors.toMap(
-                                                VoucherUsageRepository.UsageCounts::getVoucherId,
-                                                usage -> usage));
-        return pageResult.map(
-                v -> {
-                    var usage = usageByVoucher.get(v.getVoucherId());
-                    return dto(
-                            v,
-                            usage == null ? 0L : usage.getActiveCount(),
-                            usage != null && usage.getTotalCount() > 0);
-                });
+        String normalizedSearch = search == null ? "" : search.trim();
+        return vouchers.findByCodeContainingIgnoreCase(
+                        normalizedSearch,
+                        PageRequest.of(page - 1, pageSize, Sort.by("voucherId").descending()))
+                .map(VoucherManagementService::dto);
     }
 
     @PreAuthorize(READ)
     @Transactional(readOnly = true)
     public VoucherDetailDto detail(Long id) {
-        return dto(
-                vouchers.findById(id)
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND)));
+        return dto(vouchers.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "VOUCHER_NOT_FOUND")));
     }
 
     @PreAuthorize(WRITE)
-    public VoucherDetailDto create(Long actor, VoucherRequest r) {
-        validate(r);
-        if (vouchers.existsByCodeIgnoreCaseAndVoucherIdNot(r.code().trim(), 0L))
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Mã voucher đã tồn tại");
-        Voucher v = new Voucher();
-        apply(v, r);
-        vouchers.save(v);
-        audit.record(
-                AuditWriteEvent.of(AuditAction.VOUCHER_CREATE, AuditEntityType.VOUCHER, v.getVoucherId().toString()));
-        return dto(v);
-    }
-
-    @PreAuthorize(WRITE)
-    public VoucherDetailDto update(Long actor, Long id, VoucherRequest r) {
-        Voucher v =
-                vouchers.lockById(id)
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        validate(r);
-        if (usages.existsByVoucherId(id)) {
-            boolean immutableChanged =
-                    !v.getCode().equals(r.code().trim().toUpperCase(Locale.ROOT))
-                            || !v.getDiscountType().equals(normalizeType(r.discount_type()))
-                            || !same(v.getDiscountValue(), r.discount_value())
-                            || !same(v.getMaximumDiscount(), r.maximum_discount())
-                            || !same(v.getMinimumAmount(), r.minimum_amount())
-                            || !sameInstant(v.getStartsAt(), r.starts_at())
-                            || !v.getScope().equals(r.scope())
-                            || !v.getProductIds().equals(r.product_ids())
-                            || !v.getCategoryIds().equals(r.category_ids());
-            if (immutableChanged
-                    || endsShortened(r.ends_at(), v.getEndsAt())
-                    || decreased(v.getUsageLimit(), r.global_limit()))
-                throw new ResponseStatusException(
-                        HttpStatus.CONFLICT,
-                        "Voucher đã dùng chỉ được gia hạn, tăng giới hạn hoặc bật/tắt");
+    public VoucherDetailDto create(VoucherCreateRequest request) {
+        if (request == null) bad("VOUCHER_CONFIGURATION_INVALID");
+        String code = normalizeCode(request.code());
+        validateConfiguration(
+                request.discount_type(),
+                request.discount_value(),
+                request.minimum_order_value() == null ? 0L : request.minimum_order_value(),
+                request.maximum_discount(),
+                request.starts_at(),
+                request.ends_at(),
+                request.usage_limit());
+        if (vouchers.existsByCodeIgnoreCaseAndVoucherIdNot(code, 0L)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "VOUCHER_CODE_ALREADY_EXISTS");
         }
-        if (vouchers.existsByCodeIgnoreCaseAndVoucherIdNot(
-                r.code().trim().toUpperCase(Locale.ROOT), id))
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Mã voucher đã tồn tại");
-        apply(v, r);
-        audit.record(AuditWriteEvent.of(AuditAction.VOUCHER_UPDATE, AuditEntityType.VOUCHER, id.toString()));
-        return dto(v);
+
+        Voucher voucher = new Voucher();
+        voucher.setCode(code);
+        voucher.setDiscountType(request.discount_type());
+        voucher.setDiscountValue(request.discount_value());
+        voucher.setMinimumOrderValue(request.minimum_order_value() == null ? 0L : request.minimum_order_value());
+        voucher.setMaximumDiscount(request.maximum_discount());
+        voucher.setStartsAt(micros(request.starts_at()));
+        voucher.setEndsAt(micros(request.ends_at()));
+        voucher.setUsageLimit(request.usage_limit());
+        voucher.setUsageCount(0);
+        voucher.setStatus("DRAFT");
+
+        Voucher saved = vouchers.save(voucher);
+        audit.record(AuditWriteEvent.of(
+                AuditAction.VOUCHER_CREATE, AuditEntityType.VOUCHER, saved.getVoucherId().toString()));
+        return dto(saved);
     }
 
-    private static String normalizeType(String type) {
-        if ("FIXED_AMOUNT".equals(type)) return "FIXED";
-        if ("PERCENTAGE".equals(type)) return "PERCENT";
-        return type;
-    }
+    @PreAuthorize(WRITE)
+    public VoucherDetailDto update(Long id, VoucherPatchRequest request) {
+        if (request == null || request.isEmpty()) bad("VOUCHER_CONFIGURATION_INVALID");
+        Voucher voucher = vouchers.lockById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "VOUCHER_NOT_FOUND"));
 
-    private static boolean endsShortened(java.time.Instant next, java.time.Instant current) {
-        if (current == null) return next != null;
-        return next != null && next.isBefore(current);
-    }
+        if (request.isCodePresent()) {
+            String code = normalizeCode(request.getCode());
+            if (vouchers.existsByCodeIgnoreCaseAndVoucherIdNot(code, id)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "VOUCHER_CODE_ALREADY_EXISTS");
+            }
+            voucher.setCode(code);
+        }
+        if (request.isDiscountTypePresent()) voucher.setDiscountType(request.getDiscountType());
+        if (request.isDiscountValuePresent()) voucher.setDiscountValue(request.getDiscountValue());
+        if (request.isMinimumOrderValuePresent()) voucher.setMinimumOrderValue(request.getMinimumOrderValue());
+        if (request.isMaximumDiscountPresent()) voucher.setMaximumDiscount(request.getMaximumDiscount());
+        if (request.isStartsAtPresent()) voucher.setStartsAt(micros(request.getStartsAt()));
+        if (request.isEndsAtPresent()) voucher.setEndsAt(micros(request.getEndsAt()));
+        if (request.isUsageLimitPresent()) voucher.setUsageLimit(request.getUsageLimit());
+        if (request.isStatusPresent()) {
+            requireStatusTransition(voucher.getStatus(), request.getStatus());
+            voucher.setStatus(request.getStatus());
+        }
 
-    private static boolean sameInstant(java.time.Instant a, java.time.Instant b) {
-        if (a == null) return b == null;
-        return b != null && a.equals(b.truncatedTo(java.time.temporal.ChronoUnit.MICROS));
-    }
-
-    private static boolean same(BigDecimal a, BigDecimal b) {
-        return a == null ? b == null : b != null && a.compareTo(b) == 0;
-    }
-
-    private static boolean decreased(Integer old, Long next) {
-        return next != null && (old == null || next < old);
-    }
-
-    private static long customerLimit(VoucherRequest r) {
-        return r.customer_limit() == null ? 1 : r.customer_limit();
-    }
-
-    private void validate(VoucherRequest r) {
-        if (r == null) bad("VOUCHER_CONFIGURATION_INVALID");
-        if (r.starts_at() != null && r.ends_at() != null && !r.starts_at().isBefore(r.ends_at()))
-            bad("VOUCHER_WINDOW_INVALID");
-        String type = normalizeType(r.discount_type());
-        if (!"FIXED".equals(type) && !"PERCENT".equals(type)) bad("VOUCHER_DISCOUNT_TYPE_INVALID");
-        if (r.discount_value() == null || r.discount_value().signum() <= 0
-                || r.discount_value().stripTrailingZeros().scale() > 0) bad("VOUCHER_DISCOUNT_VALUE_INVALID");
-        if ("PERCENT".equals(type) && r.discount_value().compareTo(new BigDecimal("10000")) > 0)
-            bad("VOUCHER_PERCENT_BPS_OUT_OF_RANGE");
-        if (r.minimum_amount() == null || r.minimum_amount().signum() < 0
-                || r.minimum_amount().stripTrailingZeros().scale() > 0) bad("VOUCHER_MINIMUM_INVALID");
-        if (r.maximum_discount() != null && (r.maximum_discount().signum() < 0
-                || r.maximum_discount().stripTrailingZeros().scale() > 0)) bad("VOUCHER_MAXIMUM_INVALID");
-        if (r.global_limit() != null && (r.global_limit() < 1 || r.global_limit() > Integer.MAX_VALUE))
+        validateConfiguration(
+                voucher.getDiscountType(),
+                voucher.getDiscountValue(),
+                voucher.getMinimumOrderValue(),
+                voucher.getMaximumDiscount(),
+                voucher.getStartsAt(),
+                voucher.getEndsAt(),
+                voucher.getUsageLimit());
+        if (voucher.getUsageLimit() != null
+                && voucher.getUsageCount() != null
+                && voucher.getUsageLimit() < voucher.getUsageCount()) {
             bad("VOUCHER_USAGE_LIMIT_INVALID");
-        if ((r.scope() != null && !"ALL".equals(r.scope()))
-                || (r.product_ids() != null && !r.product_ids().isEmpty())
-                || (r.category_ids() != null && !r.category_ids().isEmpty())
-                || (r.customer_limit() != null && r.customer_limit() != 1L))
-            bad("VOUCHER_TARGETING_NOT_SUPPORTED");
+        }
+
+        Voucher saved = vouchers.save(voucher);
+        audit.record(AuditWriteEvent.of(
+                AuditAction.VOUCHER_UPDATE, AuditEntityType.VOUCHER, saved.getVoucherId().toString()));
+        return dto(saved);
+    }
+
+    private static void validateConfiguration(
+            String discountType,
+            Long discountValue,
+            Long minimumOrderValue,
+            Long maximumDiscount,
+            Instant startsAt,
+            Instant endsAt,
+            Integer usageLimit) {
+        if (!"FIXED".equals(discountType) && !"PERCENT".equals(discountType)) {
+            bad("VOUCHER_CONFIGURATION_INVALID");
+        }
+        if (discountValue == null || discountValue <= 0L) {
+            bad("VOUCHER_CONFIGURATION_INVALID");
+        }
+        if ("PERCENT".equals(discountType) && discountValue > 10_000L) {
+            bad("VOUCHER_PERCENT_BPS_OUT_OF_RANGE");
+        }
+        if (minimumOrderValue == null || minimumOrderValue < 0L
+                || (maximumDiscount != null && maximumDiscount < 0L)) {
+            bad("VOUCHER_CONFIGURATION_INVALID");
+        }
+        if (usageLimit != null && usageLimit < 1) {
+            bad("VOUCHER_USAGE_LIMIT_INVALID");
+        }
+        if (startsAt != null && endsAt != null && !startsAt.isBefore(endsAt)) {
+            bad("VOUCHER_WINDOW_INVALID");
+        }
+    }
+
+    private static void requireStatusTransition(String current, String next) {
+        if (current == null || next == null) bad("VOUCHER_STATUS_TRANSITION_INVALID");
+        if (current.equals(next)) return;
+        boolean allowed = switch (current) {
+            case "DRAFT" -> "ACTIVE".equals(next) || "INACTIVE".equals(next);
+            case "ACTIVE" -> "INACTIVE".equals(next) || "EXPIRED".equals(next);
+            case "INACTIVE" -> "ACTIVE".equals(next) || "EXPIRED".equals(next);
+            case "EXPIRED" -> false;
+            default -> false;
+        };
+        if (!allowed) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "VOUCHER_STATUS_TRANSITION_INVALID");
+        }
+    }
+
+    private static String normalizeCode(String code) {
+        if (code == null) bad("VOUCHER_CONFIGURATION_INVALID");
+        String normalized = code.trim().toUpperCase(Locale.ROOT);
+        if (normalized.isEmpty() || normalized.length() > 80) bad("VOUCHER_CONFIGURATION_INVALID");
+        return normalized;
+    }
+
+    private static Instant micros(Instant value) {
+        return value == null ? null : value.truncatedTo(ChronoUnit.MICROS);
+    }
+
+    private static VoucherDetailDto dto(Voucher voucher) {
+        return new VoucherDetailDto(
+                voucher.getVoucherId(),
+                voucher.getCode(),
+                voucher.getDiscountType(),
+                voucher.getDiscountValue(),
+                voucher.getMinimumOrderValue(),
+                voucher.getMaximumDiscount(),
+                voucher.getStartsAt(),
+                voucher.getEndsAt(),
+                voucher.getUsageLimit(),
+                voucher.getUsageCount(),
+                voucher.getStatus());
     }
 
     private static void bad(String reason) {
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, reason);
-    }
-
-    private void apply(Voucher v, VoucherRequest r) {
-        v.setCode(r.code().trim().toUpperCase(Locale.ROOT));
-        v.setDiscountType(normalizeType(r.discount_type()));
-        v.setDiscountValue(r.discount_value());
-        v.setMaximumDiscount(r.maximum_discount());
-        v.setMinimumAmount(r.minimum_amount());
-        v.setStartsAt(r.starts_at() == null ? null
-                : r.starts_at().truncatedTo(java.time.temporal.ChronoUnit.MICROS));
-        v.setEndsAt(r.ends_at() == null ? null
-                : r.ends_at().truncatedTo(java.time.temporal.ChronoUnit.MICROS));
-        v.setScope(r.scope());
-        v.getProductIds().clear();
-        v.getProductIds().addAll(r.product_ids());
-        v.getCategoryIds().clear();
-        v.getCategoryIds().addAll(r.category_ids());
-        v.setGlobalLimit(r.global_limit());
-        v.setCustomerLimit(1L);
-        v.setScope("ALL");
-        v.getProductIds().clear();
-        v.getCategoryIds().clear();
-        v.setEnabled(r.enabled());
-        v.setStatus(r.enabled() ? "ACTIVE" : (v.getVoucherId() == null ? "DRAFT" : "INACTIVE"));
-    }
-
-    private VoucherDetailDto dto(Voucher v) {
-        return dto(
-                v,
-                usages.countByVoucherIdAndRestoredFalse(v.getVoucherId()),
-                usages.existsByVoucherId(v.getVoucherId()));
-    }
-
-    private VoucherDetailDto dto(Voucher v, long activeUsage, boolean everUsed) {
-        return new VoucherDetailDto(
-                v.getVoucherId(),
-                v.getCode(),
-                v.getDiscountType(),
-                v.getDiscountValue(),
-                v.getMaximumDiscount(),
-                v.getMinimumAmount(),
-                v.getStartsAt(),
-                v.getEndsAt(),
-                v.getScope(),
-                Set.copyOf(v.getProductIds()),
-                Set.copyOf(v.getCategoryIds()),
-                v.getUsageLimit() == null ? null : v.getUsageLimit().longValue(),
-                v.getCustomerLimit(),
-                "ACTIVE".equals(v.getStatus()),
-                activeUsage,
-                everUsed);
     }
 }

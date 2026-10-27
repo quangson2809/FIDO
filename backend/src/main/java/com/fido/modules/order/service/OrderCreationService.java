@@ -128,7 +128,7 @@ public class OrderCreationService {
         persistVoucherSnapshot(order.getOrderId(), calculation);
         Payment payment = persistInitialPayment(order.getOrderId(), calculation.total());
         persistInitialShipping(order.getOrderId(), normalized);
-        vouchers.consume(order.getOrderId(), accountId, calculation.voucher());
+        vouchers.consume(calculation.voucher());
         cart.completeForOrder(accountId);
         audit.record(AuditWriteEvent.of(
                 AuditAction.ORDER_CREATE, AuditEntityType.ORDER, order.getOrderId().toString()));

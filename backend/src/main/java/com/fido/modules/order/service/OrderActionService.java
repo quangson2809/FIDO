@@ -7,7 +7,6 @@ import com.fido.modules.audit.service.AuditWriteService;
 import com.fido.modules.inventory.service.InventoryCommandService;
 import com.fido.modules.inventory.service.InventoryCommandService.StockLine;
 import com.fido.modules.promotion.service.VoucherRedemptionService;
-import jakarta.persistence.EntityManager;
 import com.fido.modules.order.dto.request.OrderActionRequest;
 import com.fido.modules.order.dto.response.OrderAdminDetailDto;
 import com.fido.modules.order.entity.Order;
@@ -44,7 +43,6 @@ public class OrderActionService {
     private final OrderQueryService query;
     private final AuditWriteService audit;
     private final VoucherRedemptionService voucherRedemption;
-    private final EntityManager entityManager;
 
     public OrderActionService(
             OrderActionPolicy policy,
@@ -55,8 +53,7 @@ public class OrderActionService {
             InventoryCommandService inventory,
             OrderQueryService query,
             AuditWriteService audit,
-            VoucherRedemptionService voucherRedemption,
-            EntityManager entityManager) {
+            VoucherRedemptionService voucherRedemption) {
         this.policy = policy;
         this.orders = orders;
         this.items = items;
@@ -66,7 +63,6 @@ public class OrderActionService {
         this.query = query;
         this.audit = audit;
         this.voucherRedemption = voucherRedemption;
-        this.entityManager = entityManager;
     }
 
     @PreAuthorize("@orderAuthorization.canExecute(authentication, #request.action())")
@@ -182,10 +178,8 @@ public class OrderActionService {
         orders.save(order);
         shippingInfos.save(shipping);
 
-        // Flush inside the same transaction so the promotion module sees the committed-in-transaction
-        // CANCELLED source state. A later voucher/audit failure still rolls the complete command back.
-        entityManager.flush();
-        voucherRedemption.restoreCancelledOrder(order.getOrderId(), order.getVoucherId());
+        // The locked Order transition is the one-time release guard; both writes share this transaction.
+        voucherRedemption.release(order.getVoucherId());
 
         auditTransition(
                 AuditAction.ORDER_CANCEL, order, fromOrder, fromShipping,

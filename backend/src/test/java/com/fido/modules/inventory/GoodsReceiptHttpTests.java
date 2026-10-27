@@ -36,7 +36,7 @@ class GoodsReceiptHttpTests extends InventoryHttpSupport {
 
         assertEquals(200,
                 call("GET", "/api/v1/admin/suppliers/" + supplierId, reader.token(), null).status());
-        var supplierPage = call("GET", "/api/v1/admin/suppliers?q=Supplier&usage_status=ACTIVE",
+        var supplierPage = call("GET", "/api/v1/admin/suppliers?q=Supplier&status=ACTIVE",
                 reader.token(), null);
         assertEquals(200, supplierPage.status(), supplierPage.body());
         assertTrue(supplierPage.data().get("meta").get("total").asInt() >= 1);

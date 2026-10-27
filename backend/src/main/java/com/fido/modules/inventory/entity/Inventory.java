@@ -35,15 +35,6 @@ public class Inventory {
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
     private LocalDateTime updatedAt;
 
-    /** Read-only naming alias used by older stock consumers; persistence uses quantity_on_hand. */
-    public Integer getAvailableQuantity() {
-        return quantityOnHand;
-    }
-
-    public void setAvailableQuantity(Integer quantity) {
-        this.quantityOnHand = quantity;
-    }
-
     public static class InventoryId implements java.io.Serializable {
         private Long productId;
         private Long warehouseId;

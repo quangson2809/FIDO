@@ -32,14 +32,14 @@ public class SupplierQueryService {
 
     @PreAuthorize(READ)
     public ApiListResponse<SupplierDto> list(
-            String q, String usageStatus, Integer page, Integer pageSize) {
-        if (usageStatus != null) {
-            InventoryPolicy.requireSupplierStatus(usageStatus);
+            String q, String status, Integer page, Integer pageSize) {
+        if (status != null) {
+            InventoryPolicy.requireSupplierStatus(status);
         }
 
         Pagination pagination = Pagination.of(page, pageSize);
 
-        Specification<Supplier> specification = supplierSpec(q, usageStatus);
+        Specification<Supplier> specification = supplierSpec(q, status);
 
         var result = suppliers.findAll(specification, pagination.toPageable());
 
@@ -53,7 +53,7 @@ public class SupplierQueryService {
         return InventoryMapper.supplier(supplier(supplierId));
     }
 
-    private Specification<Supplier> supplierSpec(String q, String usageStatus) {
+    private Specification<Supplier> supplierSpec(String q, String status) {
         return (root, query, cb) -> {
             var predicates = new ArrayList<Predicate>();
 
@@ -68,8 +68,8 @@ public class SupplierQueryService {
                                 cb.like(cb.lower(root.get("email")), value)));
             }
 
-            if (usageStatus != null) {
-                predicates.add(cb.equal(root.get("usageStatus"), usageStatus));
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
             }
 
             return cb.and(predicates.toArray(Predicate[]::new));

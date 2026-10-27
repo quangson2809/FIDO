@@ -32,7 +32,7 @@ public class Supplier {
     private String email;
 
     @Column(name = "status", nullable = false, length = 20)
-    private String usageStatus = "ACTIVE";
+    private String status = "ACTIVE";
 
     @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP(6)", updatable = false)
     private LocalDateTime createdAt;
@@ -45,7 +45,7 @@ public class Supplier {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         createdAt = now;
         updatedAt = now;
-        if (usageStatus == null) usageStatus = "ACTIVE";
+        if (status == null) status = "ACTIVE";
     }
 
     @PreUpdate

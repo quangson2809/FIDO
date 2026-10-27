@@ -24,9 +24,6 @@ public class ProductImage {
     @Column(name = "image_url", nullable = false, length = 1000)
     private String imageUrl;
 
-    @Transient
-    private String altText;
-
     @Column(name = "is_primary", nullable = false)
     private Boolean isPrimary = false;
 

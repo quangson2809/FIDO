@@ -36,14 +36,14 @@ public class SupplierCommandService {
 
     @PreAuthorize(WRITE)
     public SupplierDto create(Long actor, SupplierCreateRequest request) {
-        InventoryPolicy.requireSupplierStatus(request.usage_status());
+        InventoryPolicy.requireSupplierStatus(request.status());
 
         Supplier supplier = new Supplier();
         supplier.setCode("SUP-" + UUID.randomUUID().toString().replace("-", "").toUpperCase(Locale.ROOT));
         supplier.setName(request.name().trim());
         supplier.setPhone(request.phone());
         supplier.setEmail(request.email());
-        supplier.setUsageStatus(request.usage_status());
+        supplier.setStatus(request.usage_status());
 
         suppliers.save(supplier);
         audit.record(AuditWriteEvent.of(AuditAction.SUPPLIER_CREATE, AuditEntityType.SUPPLIER, supplier.getSupplierId().toString()));
@@ -57,7 +57,7 @@ public class SupplierCommandService {
         if (request.getName() != null) supplier.setName(request.getName().trim());
         if (request.isPhonePresent()) supplier.setPhone(request.getPhone());
         if (request.isEmailPresent()) supplier.setEmail(request.getEmail());
-        if (request.getUsageStatus() != null) {
+        if (request.getStatus() != null) {
             InventoryPolicy.requireSupplierStatus(request.getUsageStatus());
             supplier.setUsageStatus(request.getUsageStatus());
         }

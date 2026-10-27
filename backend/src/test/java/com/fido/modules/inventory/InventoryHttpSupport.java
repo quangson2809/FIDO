@@ -149,7 +149,7 @@ abstract class InventoryHttpSupport {
 
     long createSupplier(String token, String status) throws Exception {
         var response = call("POST", "/api/v1/admin/suppliers", token,
-                Map.of("name", "Supplier " + UUID.randomUUID(), "usage_status", status));
+                Map.of("name", "Supplier " + UUID.randomUUID(), "status", status));
         assertEquals(201, response.status(), response.body());
         long supplierId = response.data().get("data").get("supplier_id").asLong();
         suppliers.add(supplierId);

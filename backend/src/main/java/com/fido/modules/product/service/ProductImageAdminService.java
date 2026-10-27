@@ -63,7 +63,6 @@ public class ProductImageAdminService {
             ProductImage image = new ProductImage();
             image.setProductId(productId);
             image.setImageUrl(stored.url());
-            image.setAltText(null);
             image.setSortOrder(nextSortOrder);
             image.setIsPrimary(nextSortOrder == 0);
             nextSortOrder++;

@@ -268,7 +268,7 @@ public class GoodsReceiptService {
     private void requireActiveSupplier(Long supplierId) {
         var supplier = suppliers.findById(supplierId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        if (!InventoryPolicy.SUPPLIER_ACTIVE.equals(supplier.getUsageStatus())) {
+        if (!InventoryPolicy.SUPPLIER_ACTIVE.equals(supplier.getStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
     }

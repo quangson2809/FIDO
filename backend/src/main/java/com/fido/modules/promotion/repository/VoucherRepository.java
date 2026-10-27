@@ -1,9 +1,7 @@
 package com.fido.modules.promotion.repository;
 
 import com.fido.modules.promotion.entity.Voucher;
-
 import jakarta.persistence.LockModeType;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Lock;
@@ -12,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.Optional;
 
 public interface VoucherRepository extends Repository<Voucher, Long> {
@@ -30,8 +29,20 @@ public interface VoucherRepository extends Repository<Voucher, Long> {
     Optional<Voucher> lockById(@Param("id") Long id);
 
     @Modifying
-    @Query("update Voucher v set v.usageCount = v.usageCount + 1 where v.voucherId = :id and (v.usageLimit is null or v.usageCount < v.usageLimit)")
-    int incrementUsageCountIfAvailable(@Param("id") Long id);
+    @Query("""
+            update Voucher v
+            set v.usageCount = v.usageCount + 1
+            where v.voucherId = :id
+              and v.status = 'ACTIVE'
+              and (v.startsAt is null or v.startsAt <= :now)
+              and (v.endsAt is null or v.endsAt > :now)
+              and v.minimumOrderValue <= :subtotal
+              and (v.usageLimit is null or v.usageCount < v.usageLimit)
+            """)
+    int incrementUsageCountIfAvailable(
+            @Param("id") Long id,
+            @Param("now") Instant now,
+            @Param("subtotal") Long subtotal);
 
     @Modifying
     @Query("update Voucher v set v.usageCount = v.usageCount - 1 where v.voucherId = :id and v.usageCount > :minimumCount")

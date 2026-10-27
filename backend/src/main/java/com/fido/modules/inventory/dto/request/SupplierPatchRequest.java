@@ -20,7 +20,7 @@ public class SupplierPatchRequest {
     private String email;
 
     @Pattern(regexp = "ACTIVE|INACTIVE")
-    private String usageStatus;
+    private String status;
 
     private boolean phonePresent;
     private boolean emailPresent;
@@ -40,10 +40,10 @@ public class SupplierPatchRequest {
     @JsonSetter("email")
     public void setEmail(String value) { email = value; emailPresent = true; }
 
-    public String getUsageStatus() { return usageStatus; }
+    public String getStatus() { return status; }
 
-    @JsonSetter(value = "usage_status", nulls = com.fasterxml.jackson.annotation.Nulls.FAIL)
-    public void setUsageStatus(String value) { usageStatus = value; }
+    @JsonSetter(value = "status", nulls = com.fasterxml.jackson.annotation.Nulls.FAIL)
+    public void setStatus(String value) { status = value; }
 
     @JsonIgnore
     public boolean isPhonePresent() { return phonePresent; }

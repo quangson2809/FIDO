@@ -179,7 +179,6 @@ public class ProductAdminService {
             ProductImage image = new ProductImage();
             image.setProductId(productId);
             image.setImageUrl(item.image_url());
-            image.setAltText(item.alt_text());
             image.setSortOrder(item.sort_order());
             image.setIsPrimary(item.sort_order() == 0);
             images.save(image);
