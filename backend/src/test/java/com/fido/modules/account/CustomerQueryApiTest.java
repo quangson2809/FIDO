@@ -49,6 +49,28 @@ class CustomerQueryApiTest extends OperationsHttpSupport {
                 VALUES (?,'COD','UNPAID',100,'VND',0)
                 """,
                 id);
+        db.update(
+                """
+                INSERT INTO order_items(
+                    order_id,product_id,sku_snapshot,product_name_snapshot,attribute_snapshot,
+                    image_url_snapshot,quantity,unit_price,discount_amount,line_total)
+                VALUES (?,1,'FIXTURE-SKU','Customer order snapshot','{}','',1,100,0,100)
+                """,
+                id);
+        db.update(
+                """
+                INSERT INTO order_addresses(
+                    order_id,recipient_name,recipient_phone,province,district,ward,address_line)
+                VALUES (?,'Customer Test','0901234567','Hà Nội','Cầu Giấy','Dịch Vọng','Customer address')
+                """,
+                id);
+        db.update(
+                """
+                INSERT INTO shipping_infos(
+                    order_id,recipient_name,recipient_phone,shipping_status,updated_at)
+                VALUES (?,'Customer Test','0901234567','PENDING',CURRENT_TIMESTAMP(6))
+                """,
+                id);
         return id;
     }
 

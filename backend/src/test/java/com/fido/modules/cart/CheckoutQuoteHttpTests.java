@@ -134,10 +134,7 @@ class CheckoutQuoteHttpTests extends CartHttpSupport {
 
         db.update(
                 """
-                UPDATE product_variants
-                SET sale_status='STOPPED',
-                    updated_at=CURRENT_TIMESTAMP
-                WHERE product_id=?
+                UPDATE products SET status='INACTIVE', updated_at=CURRENT_TIMESTAMP WHERE id=?
                 """,
                 active.productId());
 

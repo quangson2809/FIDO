@@ -104,8 +104,8 @@ class GoodsReceiptHttpTests extends InventoryHttpSupport {
         db.update("UPDATE suppliers SET status='ACTIVE' WHERE id=?", supplierId);
 
         call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
-                Map.of("product_id", fixture.productId(),
-                        "quantity_delta", -1, "reason", "Cancellation test precondition"));
+                Map.of("product_id", fixture.productId(), "quantity_delta", -1,
+                        "reason_code", "DAMAGE", "source_operation_id", "receipt-cancel-" + java.util.UUID.randomUUID()));
         long cancelledReceiptId = createReceipt(writer.token(), supplierId, fixture, 2);
 
         assertEquals(200, call("POST", "/api/v1/admin/goods-receipts/" + cancelledReceiptId + "/actions",

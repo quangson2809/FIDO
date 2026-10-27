@@ -11,6 +11,9 @@ import org.springframework.test.context.jdbc.Sql;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -22,97 +25,118 @@ class ReportRepositoryTests {
     private static final LocalDateTime START = LocalDateTime.parse("2020-01-01T17:00:00");
     private static final LocalDateTime END = LocalDateTime.parse("2020-01-03T17:00:00");
 
-    private void completedOrder(long id, String status, String completed) {
-        jdbc.update(
-                """
-                INSERT INTO orders(order_id,order_code,order_status,recipient_phone,recipient_address,
-                    subtotal_snapshot,discount_snapshot,shipping_fee_snapshot,total_snapshot,created_at,updated_at,completed_at)
-                VALUES (?,? ,?,'0900000000','Report fixture',100,0,0,100,'2020-01-02 00:00:00','2020-01-02 00:00:00',?)
-                """,
-                id,
-                "report-" + id,
-                status,
-                completed);
+    private long completedOrder(String status, String delivered) {
+        String suffix = UUID.randomUUID().toString().replace("-", "");
+        String fingerprint = suffix + UUID.randomUUID().toString().replace("-", "");
+        jdbc.update("""
+                INSERT INTO orders(
+                    account_id,order_number,idempotency_key,request_fingerprint,status,
+                    subtotal,discount_amount,shipping_fee,total_amount,currency,
+                    placed_at,created_at,updated_at)
+                VALUES (1,?,?,?, ?,100,0,0,100,'VND',
+                    '2020-01-02 00:00:00','2020-01-02 00:00:00','2020-01-02 00:00:00')
+                """, "RPT-" + suffix.substring(0, 24), "report-idem-" + suffix, fingerprint, status);
+        long orderId = jdbc.queryForObject(
+                "SELECT id FROM orders WHERE order_number=?", Long.class, "RPT-" + suffix.substring(0, 24));
+        String shippingStatus = delivered != null ? "DELIVERED" : "SHIPPED";
+        jdbc.update("""
+                INSERT INTO shipping_infos(
+                    order_id,recipient_name,recipient_phone,shipping_status,shipped_at,delivered_at,updated_at)
+                VALUES (?,'Report recipient','0900000000',?,?,?,CURRENT_TIMESTAMP(6))
+                """, orderId, shippingStatus, delivered, delivered);
+        return orderId;
     }
 
-    private void item(long id, long order, long variant, int quantity) {
-        jdbc.update(
-                """
-                INSERT INTO order_items(order_item_id,order_id,variant_id,product_name_snapshot,size_snapshot,color_snapshot,
-                    unit_price_snapshot,quantity,line_total_snapshot)
-                VALUES (?,?,?,'Original name','M','Black',100,?,?)
-                """,
-                id,
-                order,
-                variant,
-                quantity,
-                quantity * 100);
+    private void item(long orderId, long productId, int quantity) {
+        jdbc.update("""
+                INSERT INTO order_items(
+                    order_id,product_id,sku_snapshot,product_name_snapshot,attribute_snapshot,
+                    image_url_snapshot,quantity,unit_price,discount_amount,line_total)
+                VALUES (?,?,'REPORT-SNAPSHOT','Original historical name','{}','',?,100,0,?)
+                """, orderId, productId, quantity, quantity * 100L);
+    }
+
+    private long createIndependentChildProduct(String name, String slug, String sku, long price) {
+        jdbc.update("""
+                INSERT INTO products(parent_product_id,category_id,brand_id,name,slug,sku,
+                    selling_price,cost_price,status)
+                VALUES (1,1,1,?,?,?,? ,0,'ACTIVE')
+                """, name, slug, sku, price);
+        return jdbc.queryForObject("SELECT id FROM products WHERE sku=?", Long.class, sku);
     }
 
     @Test
-    void variantsReturnsImagesAndCatalogChangesDoNotLoseOrMultiplyHistoricalUnits() {
-        jdbc.update("INSERT INTO colors(color_id,code,name) VALUES(2,'report-color','Color')");
-        jdbc.update(
-                "INSERT INTO"
-                    + " product_variants(variant_id,product_id,size_value_id,color_id,sale_status,created_at,updated_at)"
-                    + " VALUES(2,1,1,2,'STOPPED',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
-        jdbc.update(
-                "UPDATE products SET name='Renamed stopped"
-                    + " product',sale_status='STOPPED',base_price=999999 WHERE product_id=1");
-        jdbc.update(
-                "INSERT INTO product_images(image_id,product_id,image_url,sort_order)"
-                    + " VALUES(2,1,'https://example.invalid/second.png',1)");
-        completedOrder(2, "COMPLETED", "2020-01-01 17:00:00");
-        completedOrder(3, "RETURNED", "2020-01-02 16:59:59.999999");
-        jdbc.update("UPDATE orders SET returned_at='2020-02-01 00:00:00' WHERE order_id=3");
-        completedOrder(4, "SHIPPING", "2020-01-02 00:00:00");
-        completedOrder(5, "COMPLETED", "2020-01-03 17:00:00");
-        item(2, 2, 1, 3);
-        item(3, 2, 2, 5);
-        item(4, 3, 1, 2);
-        item(5, 4, 1, 900);
-        item(6, 5, 1, 800);
+    void independentlySellableProductsKeepTheirOwnHistoricalUnitsAfterCatalogChanges() {
+        String suffix = UUID.randomUUID().toString().replace("-", "");
+        long child = createIndependentChildProduct(
+                "Second independent product", "report-child-" + suffix, "RPT-SKU-" + suffix, 999999);
+        jdbc.update("""
+                INSERT INTO product_images(product_id,image_url,is_primary,sort_order)
+                VALUES (?, 'https://example.invalid/second.png', TRUE, 0)
+                """, child);
+
+        long completed = completedOrder("COMPLETED", "2020-01-01 17:00:00");
+        long returned = completedOrder("RETURNED", "2020-01-02 16:59:59.999999");
+        long shipping = completedOrder("SHIPPING", null);
+        completedOrder("COMPLETED", "2020-01-03 17:00:00");
+        item(completed, 1, 3);
+        item(completed, child, 5);
+        item(returned, 1, 2);
+        item(shipping, 1, 900);
+
+        jdbc.update("UPDATE products SET name='Renamed inactive product',status='INACTIVE',selling_price=999999 WHERE id=1");
+        jdbc.update("UPDATE products SET name='Renamed independent child',status='INACTIVE' WHERE id=?", child);
+
         var result = reports.topProducts(START, END, 10);
-        assertEquals(1, result.size());
-        var product = result.get(0);
-        assertEquals(1, product.product_id());
-        assertEquals("Renamed stopped product", product.product_name());
-        assertEquals("https://example.invalid/test.png", product.thumbnail());
-        assertEquals(10, product.completed_units());
-        assertEquals(2, product.returned_units());
-        assertEquals(8, product.net_units());
-        jdbc.update("DELETE FROM product_images WHERE product_id=1");
+        assertEquals(2, result.size());
+        var childItem = result.get(0);
+        assertEquals(child, childItem.product_id());
+        assertEquals("Renamed independent child", childItem.product_name());
+        assertEquals("https://example.invalid/second.png", childItem.thumbnail());
+        assertEquals(5, childItem.completed_units());
+        assertEquals(0, childItem.returned_units());
+        assertEquals(5, childItem.net_units());
+
+        var parentItem = result.get(1);
+        assertEquals(1, parentItem.product_id());
+        assertEquals("Renamed inactive product", parentItem.product_name());
+        assertEquals("https://example.invalid/test.png", parentItem.thumbnail());
+        assertEquals(5, parentItem.completed_units());
+        assertEquals(2, parentItem.returned_units());
+        assertEquals(3, parentItem.net_units());
+
+        jdbc.update("DELETE FROM product_images WHERE product_id=?", child);
         assertNull(reports.topProducts(START, END, 10).get(0).thumbnail());
-        // FK prevents deletion of the Product/Variant referenced by immutable historical items.
         assertThrows(
                 org.springframework.dao.DataIntegrityViolationException.class,
-                () -> jdbc.update("DELETE FROM product_variants WHERE variant_id=2"));
+                () -> jdbc.update("DELETE FROM products WHERE id=?", child));
     }
 
     @Test
     void tiesUseCompletedUnitsThenProductIdAndLimitIsAppliedAfterAggregation() {
-        for (int product = 2; product <= 4; product++) {
-            jdbc.update(
-                    "INSERT INTO"
-                        + " products(product_id,category_id,size_system_id,name,base_price,sale_status,created_at,updated_at)"
-                        + " VALUES(?,1,1,?,100,'STOPPED',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
-                    product,
-                    "Product " + product);
-            jdbc.update(
-                    "INSERT INTO"
-                        + " product_variants(variant_id,product_id,size_value_id,color_id,sale_status,created_at,updated_at)"
-                        + " VALUES(?,?,1,1,'STOPPED',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
-                    product,
-                    product);
-            completedOrder(product, "COMPLETED", "2020-01-02 00:00:00");
-            item(product, product, product, 5);
+        String suffix = UUID.randomUUID().toString().replace("-", "");
+        List<Long> products = new ArrayList<>();
+        for (int i = 2; i <= 4; i++) {
+            products.add(createIndependentChildProduct(
+                    "Product " + i, "report-tie-" + i + "-" + suffix, "RPT-TIE-" + i + "-" + suffix, 100));
         }
-        completedOrder(5, "RETURNED", "2020-01-02 00:00:00");
-        item(5, 5, 4, 3);
+        long productTwo = products.get(0);
+        long productThree = products.get(1);
+        long productFour = products.get(2);
+        long twoOrder = completedOrder("COMPLETED", "2020-01-02 00:00:00");
+        long threeOrder = completedOrder("COMPLETED", "2020-01-02 00:00:00");
+        long fourOrder = completedOrder("COMPLETED", "2020-01-02 00:00:00");
+        long returnOrder = completedOrder("RETURNED", "2020-01-02 00:00:00");
+        item(twoOrder, productTwo, 5);
+        item(threeOrder, productThree, 5);
+        item(fourOrder, productFour, 8);
+        item(returnOrder, productFour, 3);
+
         var result = reports.topProducts(START, END, 2);
-        assertEquals(
-                java.util.List.of(4L, 2L), result.stream().map(item -> item.product_id()).toList());
+        assertEquals(List.of(productFour, Math.min(productTwo, productThree)),
+                result.stream().map(item -> item.product_id()).toList());
         assertEquals(8, result.get(0).completed_units());
+        assertEquals(3, result.get(0).returned_units());
         assertEquals(5, result.get(0).net_units());
     }
 
@@ -121,18 +145,15 @@ class ReportRepositoryTests {
         try (var connection = jdbc.getDataSource().getConnection()) {
             if (!connection.getMetaData().getDatabaseProductName().equals("MySQL")) return;
         }
-        for (String sql :
-                java.util.List.of(
-                        ReportRepository.DAILY_SALES_SQL,
-                        ReportRepository.DAILY_ORDERS_SQL,
-                        ReportRepository.TOP_PRODUCTS_SQL)) {
-            Object[] parameters =
-                    sql.equals(ReportRepository.TOP_PRODUCTS_SQL)
-                            ? new Object[] {START, END, 10}
-                            : new Object[] {START, END};
+        for (String sql : List.of(
+                ReportRepository.DAILY_SALES_SQL,
+                ReportRepository.DAILY_ORDERS_SQL,
+                ReportRepository.TOP_PRODUCTS_SQL)) {
+            Object[] parameters = sql.equals(ReportRepository.TOP_PRODUCTS_SQL)
+                    ? new Object[] {START, END, 10}
+                    : new Object[] {START, END};
             var plan = jdbc.queryForList("EXPLAIN " + sql, parameters);
             assertFalse(plan.isEmpty());
-            System.out.println("REPORT EXPLAIN: " + plan);
         }
     }
 }
