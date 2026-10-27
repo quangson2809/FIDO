@@ -100,9 +100,10 @@ abstract class CartHttpSupport {
 
     private long warehouseId() {
         if (warehouseId != null) return warehouseId;
-        warehouseId = db.queryForObject(
-                "SELECT id FROM warehouses WHERE status='ACTIVE' ORDER BY id LIMIT 1",
-                Long.class);
+        String code = "CART-WH-" + UUID.randomUUID().toString().replace("-", "");
+        db.update("INSERT INTO warehouses(code,name,status) VALUES (?,?,'ACTIVE')",
+                code, "Cart test warehouse");
+        warehouseId = db.queryForObject("SELECT id FROM warehouses WHERE code=?", Long.class, code);
         return warehouseId;
     }
 
@@ -132,5 +133,6 @@ abstract class CartHttpSupport {
             db.update("DELETE FROM addresses WHERE account_id=?", accountId);
             db.update("DELETE FROM accounts WHERE id=?", accountId);
         }
+        if (warehouseId != null) db.update("DELETE FROM warehouses WHERE id=?", warehouseId);
     }
 }

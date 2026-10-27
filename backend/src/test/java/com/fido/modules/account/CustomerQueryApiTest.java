@@ -13,6 +13,8 @@ import java.util.UUID;
 
 class CustomerQueryApiTest extends OperationsHttpSupport {
     private final List<Long> orderIds = new ArrayList<>();
+    private Long productId;
+    private Long categoryId;
 
     @AfterEach
     void cleanOrders() {
@@ -24,9 +26,27 @@ class CustomerQueryApiTest extends OperationsHttpSupport {
             db.update("DELETE FROM payments WHERE order_id=?", id);
             db.update("DELETE FROM orders WHERE id=?", id);
         }
+        if (productId != null) db.update("DELETE FROM products WHERE id=?", productId);
+        if (categoryId != null) db.update("DELETE FROM categories WHERE id=?", categoryId);
+    }
+
+    private void ensureProduct() {
+        if (productId != null) return;
+        String suffix = UUID.randomUUID().toString().replace("-", "");
+        String categorySlug = "customer-report-" + suffix;
+        String sku = "CUSTOMER-REPORT-" + suffix;
+        db.update("INSERT INTO categories(parent_category_id,name,slug,status) VALUES (NULL,?,?, 'ACTIVE')",
+                "Customer query test category", categorySlug);
+        categoryId = db.queryForObject("SELECT id FROM categories WHERE slug=?", Long.class, categorySlug);
+        db.update("""
+                INSERT INTO products(category_id,name,slug,sku,selling_price,status)
+                VALUES (?,?,?,?,100,'ACTIVE')
+                """, categoryId, "Customer query test product", "customer-product-" + suffix, sku);
+        productId = db.queryForObject("SELECT id FROM products WHERE sku=?", Long.class, sku);
     }
 
     private long order(long accountId, String date) {
+        ensureProduct();
         String suffix = UUID.randomUUID().toString().replace("-", "");
         String orderNumber = "CUST-" + suffix.substring(0, 20);
         String idempotencyKey = "customer-query-" + suffix;
@@ -54,9 +74,9 @@ class CustomerQueryApiTest extends OperationsHttpSupport {
                 INSERT INTO order_items(
                     order_id,product_id,sku_snapshot,product_name_snapshot,attribute_snapshot,
                     image_url_snapshot,quantity,unit_price,discount_amount,line_total)
-                VALUES (?,1,'FIXTURE-SKU','Customer order snapshot','{}','',1,100,0,100)
+                VALUES (?,?,'FIXTURE-SKU','Customer order snapshot','{}','',1,100,0,100)
                 """,
-                id);
+                id, productId);
         db.update(
                 """
                 INSERT INTO order_addresses(

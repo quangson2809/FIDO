@@ -19,7 +19,8 @@ class ReportApiTest extends OperationsHttpSupport {
     private final List<Long> orders = new ArrayList<>();
     private long reportActorId;
     private long reportAccountId;
-    private final long productId = 1L;
+    private Long productId;
+    private Long productCategoryId;
 
     @AfterEach
     void cleanupOrders() {
@@ -30,6 +31,24 @@ class ReportApiTest extends OperationsHttpSupport {
             db.update("DELETE FROM shipping_infos WHERE order_id=?", id);
             db.update("DELETE FROM orders WHERE id=?", id);
         }
+        if (productId != null) db.update("DELETE FROM products WHERE id=?", productId);
+        if (productCategoryId != null) db.update("DELETE FROM categories WHERE id=?", productCategoryId);
+    }
+
+    private void ensureProduct() {
+        if (productId != null) return;
+        String suffix = UUID.randomUUID().toString().replace("-", "");
+        String categorySlug = "report-api-" + suffix;
+        String sku = "REPORT-API-" + suffix;
+        db.update("INSERT INTO categories(parent_category_id,name,slug,status) VALUES (NULL,?,?, 'ACTIVE')",
+                "Report API test category", categorySlug);
+        productCategoryId = db.queryForObject(
+                "SELECT id FROM categories WHERE slug=?", Long.class, categorySlug);
+        db.update("""
+                INSERT INTO products(category_id,name,slug,sku,selling_price,status)
+                VALUES (?,?,?,?,100,'ACTIVE')
+                """, productCategoryId, "Report API test product", "report-product-" + suffix, sku);
+        productId = db.queryForObject("SELECT id FROM products WHERE sku=?", Long.class, sku);
     }
 
     private long order(
@@ -40,6 +59,7 @@ class ReportApiTest extends OperationsHttpSupport {
             long discount,
             long shipping,
             boolean paid) {
+        ensureProduct();
         long total = subtotal - discount + shipping;
         String suffix = UUID.randomUUID().toString().replace("-", "");
         String orderNumber = "RPT-" + suffix;
@@ -209,7 +229,6 @@ class ReportApiTest extends OperationsHttpSupport {
         var customer = user("CUSTOMER");
         reportActorId = root.id();
         reportAccountId = root.id();
-        capability(customer, "REPORT_READ");
         String dates = "?from=2024-01-01&to=2024-01-02";
         for (String endpoint : List.of("overview", "sales-trend", "orders-trend", "product-performance")) {
             String path = "/api/v1/admin/reports/" + endpoint + dates;

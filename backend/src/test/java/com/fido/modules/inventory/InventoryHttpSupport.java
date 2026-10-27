@@ -41,6 +41,7 @@ abstract class InventoryHttpSupport {
     final List<Long> receipts = new ArrayList<>();
     final List<CatalogFixture> catalog = new ArrayList<>();
     final List<Long> additionalProducts = new ArrayList<>();
+    Long operationalWarehouseId;
 
     record Result(int status, JsonNode data, String body) {}
     record Employee(long id, String token) {}
@@ -133,8 +134,7 @@ abstract class InventoryHttpSupport {
                 "INSERT INTO products(category_id,name,slug,sku,selling_price,status) VALUES (?,?,?,?,100000,'ACTIVE')",
                 categoryId, productName, "inventory-product-" + suffix, sku);
         long productId = db.queryForObject("SELECT id FROM products WHERE sku=?", Long.class, sku);
-        long warehouseId = db.queryForObject(
-                "SELECT id FROM warehouses WHERE status='ACTIVE' ORDER BY id LIMIT 1", Long.class);
+        long warehouseId = operationalWarehouseId();
         db.update(
                 "INSERT INTO inventories(warehouse_id,product_id,quantity_on_hand,version) VALUES (?,?,0,0)",
                 warehouseId, productId);
@@ -142,6 +142,16 @@ abstract class InventoryHttpSupport {
         CatalogFixture fixture = new CatalogFixture(categoryId, productId, warehouseId, sku);
         catalog.add(fixture);
         return fixture;
+    }
+
+    private long operationalWarehouseId() {
+        if (operationalWarehouseId != null) return operationalWarehouseId;
+        String code = "INV-WH-" + UUID.randomUUID().toString().replace("-", "");
+        db.update("INSERT INTO warehouses(code,name,status) VALUES (?,?,'ACTIVE')",
+                code, "Inventory test warehouse");
+        operationalWarehouseId = db.queryForObject(
+                "SELECT id FROM warehouses WHERE code=?", Long.class, code);
+        return operationalWarehouseId;
     }
 
     long createSupplier(String token, String status) throws Exception {
@@ -221,5 +231,8 @@ abstract class InventoryHttpSupport {
         }
         for (Long permissionId : createdPermissions) db.update("DELETE FROM permissions WHERE id=?", permissionId);
         for (Long accountId : accounts) db.update("DELETE FROM accounts WHERE id=?", accountId);
+        if (operationalWarehouseId != null) {
+            db.update("DELETE FROM warehouses WHERE id=?", operationalWarehouseId);
+        }
     }
 }

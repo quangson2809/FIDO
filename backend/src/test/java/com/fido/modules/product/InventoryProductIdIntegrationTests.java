@@ -35,8 +35,7 @@ class InventoryProductIdIntegrationTests extends CatalogHttpSupport {
         CatalogFixture fixture = createCatalog(writer);
 
         String suffix = UUID.randomUUID().toString().replace("-", "");
-        long firstWarehouse = db.queryForObject(
-                "SELECT id FROM warehouses WHERE status='ACTIVE' ORDER BY id LIMIT 1", Long.class);
+        long firstWarehouse = createWarehouse("P32-A-" + suffix, "P3.2 warehouse A");
         long secondWarehouse = createWarehouse("P32-B-" + suffix, "P3.2 warehouse B");
         db.update("UPDATE warehouses SET status='INACTIVE' WHERE id=?", secondWarehouse);
         db.update(
@@ -93,8 +92,7 @@ class InventoryProductIdIntegrationTests extends CatalogHttpSupport {
         CatalogFixture fixture = createCatalog(writer);
 
         String suffix = UUID.randomUUID().toString().replace("-", "");
-        long warehouseId = db.queryForObject(
-                "SELECT id FROM warehouses WHERE status='ACTIVE' ORDER BY id LIMIT 1", Long.class);
+        long warehouseId = createWarehouse("GR-P32-" + suffix, "P3.2 receiving warehouse");
         String supplierCode = "SUP-P32-" + suffix;
         db.update("INSERT INTO suppliers(code,name,status) VALUES (?,?,'ACTIVE')",
                 supplierCode, "P3.2 receipt supplier");
