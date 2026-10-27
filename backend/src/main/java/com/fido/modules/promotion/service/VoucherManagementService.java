@@ -33,13 +33,13 @@ public class VoucherManagementService {
     private final VoucherRepository vouchers;
     private final VoucherUsageRepository usages;
     private final PromotionCatalogService catalog;
-    private final AuditService audit;
+    private final AuditWriteService audit;
 
     public VoucherManagementService(
             VoucherRepository vouchers,
             VoucherUsageRepository usages,
             PromotionCatalogService catalog,
-            AuditService audit) {
+            AuditWriteService audit) {
         this.vouchers = vouchers;
         this.usages = usages;
         this.catalog = catalog;
@@ -89,11 +89,7 @@ public class VoucherManagementService {
         apply(v, r);
         vouchers.save(v);
         audit.record(
-                AuditEvent.of(
-                        actor,
-                        AuditAction.VOUCHER_CREATE,
-                        AuditTargetType.VOUCHER,
-                        v.getVoucherId()));
+                AuditWriteEvent.of(AuditAction.VOUCHER_CREATE, AuditEntityType.VOUCHER, v.getVoucherId().toString()));
         return dto(v);
     }
 
@@ -125,7 +121,7 @@ public class VoucherManagementService {
                 r.code().trim().toUpperCase(Locale.ROOT), id))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Mã voucher đã tồn tại");
         apply(v, r);
-        audit.record(AuditEvent.of(actor, AuditAction.VOUCHER_UPDATE, AuditTargetType.VOUCHER, id));
+        audit.record(AuditWriteEvent.of(AuditAction.VOUCHER_UPDATE, AuditEntityType.VOUCHER, id.toString()));
         return dto(v);
     }
 
