@@ -43,7 +43,7 @@ public class SupplierCommandService {
         supplier.setName(request.name().trim());
         supplier.setPhone(request.phone());
         supplier.setEmail(request.email());
-        supplier.setStatus(request.usage_status());
+        supplier.setStatus(request.status());
 
         suppliers.save(supplier);
         audit.record(AuditWriteEvent.of(AuditAction.SUPPLIER_CREATE, AuditEntityType.SUPPLIER, supplier.getSupplierId().toString()));
@@ -58,8 +58,8 @@ public class SupplierCommandService {
         if (request.isPhonePresent()) supplier.setPhone(request.getPhone());
         if (request.isEmailPresent()) supplier.setEmail(request.getEmail());
         if (request.getStatus() != null) {
-            InventoryPolicy.requireSupplierStatus(request.getUsageStatus());
-            supplier.setUsageStatus(request.getUsageStatus());
+            InventoryPolicy.requireSupplierStatus(request.getStatus());
+            supplier.setStatus(request.getStatus());
         }
 
         suppliers.save(supplier);
