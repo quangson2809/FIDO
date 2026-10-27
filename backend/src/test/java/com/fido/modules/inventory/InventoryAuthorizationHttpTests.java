@@ -32,7 +32,7 @@ class InventoryAuthorizationHttpTests extends InventoryHttpSupport {
                                 reader.token(),
                                 Map.of(
                                         "name", "Denied",
-                                        "usage_status", "ACTIVE"))
+                                        "status", "ACTIVE"))
                         .status());
     }
 }

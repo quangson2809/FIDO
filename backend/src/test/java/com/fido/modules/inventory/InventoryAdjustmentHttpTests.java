@@ -28,31 +28,31 @@ class InventoryAdjustmentHttpTests extends InventoryHttpSupport {
         assertEquals(0, inventory.data().get("data").get(0).get("version").asInt());
 
         var increase = call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
-                Map.of("product_id", fixture.productId(), "quantity_delta", 2, "reason", "Cycle count correction"));
+                Map.of("product_id", fixture.productId(), "quantity_delta", 2, "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID()));
         assertEquals(201, increase.status(), increase.body());
         assertEquals("ADJUSTMENT", increase.data().get("data").get("transaction_type").asText());
         assertEquals(7, stock(fixture.productId()));
         assertEquals(1, version(fixture));
 
         var decrease = call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
-                Map.of("product_id", fixture.productId(), "quantity_delta", -3, "reason", "Damaged stock"));
+                Map.of("product_id", fixture.productId(), "quantity_delta", -3, "reason_code", "DAMAGE", "source_operation_id", "test-" + UUID.randomUUID()));
         assertEquals(201, decrease.status(), decrease.body());
         assertEquals("ADJUSTMENT", decrease.data().get("data").get("transaction_type").asText());
         assertEquals(-3, decrease.data().get("data").get("quantity_delta").asInt());
-        assertEquals("Damaged stock", decrease.data().get("data").get("reason").asText());
+        assertEquals("DAMAGE", decrease.data().get("data").get("reason_code").asText());
         assertEquals(4, stock(fixture.productId()));
         assertEquals(2, version(fixture));
 
         int movementCountBeforeFailure = movements(fixture.productId());
         assertEquals(409, call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
                 Map.of("product_id", fixture.productId(), "quantity_delta", -5,
-                        "reason", "Would become negative")).status());
+                        "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID())).status());
         assertEquals(4, stock(fixture.productId()));
         assertEquals(2, version(fixture));
         assertEquals(movementCountBeforeFailure, movements(fixture.productId()));
 
         assertEquals(400, call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
-                Map.of("product_id", fixture.productId(), "quantity_delta", 0, "reason", "No movement")).status());
+                Map.of("product_id", fixture.productId(), "quantity_delta", 0, "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID())).status());
 
         var movementPage = call("GET", "/api/v1/admin/inventory/transactions"
                 + "?product_id=" + fixture.productId() + "&transaction_type=ADJUSTMENT", reader.token(), null);
@@ -82,7 +82,7 @@ class InventoryAdjustmentHttpTests extends InventoryHttpSupport {
 
         assertEquals(409, call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
                 Map.of("product_id", fixture.productId(), "quantity_delta", -1,
-                        "reason", "Missing balance underflow")).status());
+                        "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID())).status());
         assertEquals(0, db.queryForObject(
                 "SELECT COUNT(*) FROM inventories WHERE warehouse_id=? AND product_id=?",
                 Integer.class, fixture.warehouseId(), fixture.productId()));
@@ -90,7 +90,7 @@ class InventoryAdjustmentHttpTests extends InventoryHttpSupport {
 
         var increase = call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
                 Map.of("product_id", fixture.productId(), "quantity_delta", 4,
-                        "reason", "First positive movement"));
+                        "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID()));
         assertEquals(201, increase.status(), increase.body());
         assertEquals(fixture.warehouseId(), increase.data().get("data").get("warehouse_id").asLong());
         assertEquals(4, stock(fixture.productId()));
@@ -105,14 +105,14 @@ class InventoryAdjustmentHttpTests extends InventoryHttpSupport {
         db.update("UPDATE inventories SET quantity_on_hand=?, version=0 WHERE warehouse_id=? AND product_id=?",
                 Integer.MAX_VALUE, fixture.warehouseId(), fixture.productId());
         assertEquals(409, call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
-                Map.of("product_id", fixture.productId(), "quantity_delta", 1, "reason", "Quantity overflow")).status());
+                Map.of("product_id", fixture.productId(), "quantity_delta", 1, "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID())).status());
         assertEquals(Integer.MAX_VALUE, stock(fixture.productId()));
         assertEquals(0, version(fixture));
 
         db.update("UPDATE inventories SET quantity_on_hand=0, version=? WHERE warehouse_id=? AND product_id=?",
                 Integer.MAX_VALUE, fixture.warehouseId(), fixture.productId());
         assertEquals(409, call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
-                Map.of("product_id", fixture.productId(), "quantity_delta", 1, "reason", "Version overflow")).status());
+                Map.of("product_id", fixture.productId(), "quantity_delta", 1, "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID())).status());
         assertEquals(0, stock(fixture.productId()));
         assertEquals(Integer.MAX_VALUE, version(fixture));
         assertEquals(0, movements(fixture.productId()));
@@ -131,14 +131,14 @@ class InventoryAdjustmentHttpTests extends InventoryHttpSupport {
         try {
             var ambiguous = call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
                     Map.of("product_id", fixture.productId(), "quantity_delta", 1,
-                            "reason", "Must not pick a warehouse"));
+                            "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID()));
             assertEquals(500, ambiguous.status(), ambiguous.body());
 
             db.update("UPDATE warehouses SET status='INACTIVE' WHERE id=?", extraWarehouse);
             db.update("UPDATE warehouses SET status='INACTIVE' WHERE id=?", fixture.warehouseId());
             var missing = call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
                     Map.of("product_id", fixture.productId(), "quantity_delta", 1,
-                            "reason", "No active warehouse"));
+                            "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID()));
             assertEquals(500, missing.status(), missing.body());
             assertEquals(0, movements(fixture.productId()));
         } finally {

@@ -133,7 +133,7 @@ class AccountAccessServiceTests {
 
         assertEquals(3, tree.size());
 
-        assertEquals(5, tree.get("account").size());
+        assertEquals(7, tree.get("account").size());
 
         assertEquals(201L, tree.get("account").get("id").asLong());
 
