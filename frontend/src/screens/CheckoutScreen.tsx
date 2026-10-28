@@ -550,7 +550,7 @@ export const CheckoutScreen: React.FC = () => {
                       </p>
                     </div>
                     <span className="col-start-2 text-sm font-semibold">
-                      {money(item.price * item.quantity)}
+                      {money(item.lineTotal)}
                     </span>
                   </div>
                 ))}
