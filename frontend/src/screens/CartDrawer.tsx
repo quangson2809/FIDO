@@ -123,7 +123,7 @@ export const CartDrawer: React.FC = () => {
               </div>
               <p className="mt-5 font-serif text-xl text-[#0B2419]">Giỏ hàng đang trống</p>
               <p className="mt-2 max-w-xs text-xs leading-5">
-                Chọn kích cỡ và màu sắc để thêm sản phẩm yêu thích vào giỏ.
+                Chọn sản phẩm từ danh mục để thêm vào giỏ hàng.
               </p>
               <button
                 type="button"
@@ -235,7 +235,7 @@ export const CartDrawer: React.FC = () => {
                         </span>
                         <button
                           type="button"
-                          disabled={isCartBusy}
+                          disabled={isCartBusy || item.quantity >= item.availableQuantity}
                           aria-label="Tăng số lượng"
                           onClick={() => changeCartQuantity(item.id, 1)}
                           className="flex h-full w-11 items-center justify-center transition hover:bg-[#F3F4EF]"
@@ -248,8 +248,16 @@ export const CartDrawer: React.FC = () => {
                           {item.price.toLocaleString('vi-VN')}₫ / sản phẩm
                         </p>
                         <p className="mt-0.5 font-serif text-lg font-bold text-[#0B2419]">
-                          {(item.price * item.quantity).toLocaleString('vi-VN')}₫
+                          {item.lineTotal.toLocaleString('vi-VN')}₫
                         </p>
+                        <p className="mt-1 text-[10px] text-[#687069]">
+                          Tồn khả dụng: {item.availableQuantity}
+                        </p>
+                        {item.quantity > item.availableQuantity && (
+                          <p className="mt-1 text-[10px] text-amber-800">
+                            Số lượng hiện tại vượt tồn khả dụng; hãy giảm số lượng để tiếp tục.
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
