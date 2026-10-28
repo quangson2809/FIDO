@@ -16,6 +16,7 @@ export const CartDrawer: React.FC = () => {
     cartError,
     refreshCart,
     removeFromCart,
+    clearCart,
     changeCartQuantity,
   } = useCart();
   const navigate = useNavigate();
@@ -274,6 +275,20 @@ export const CartDrawer: React.FC = () => {
               <span>Xem ở bước đặt hàng</span>
             </div>
           </div>
+          {cartItems.length > 0 && (
+            <div className="mb-3 flex justify-end">
+              <button
+                type="button"
+                disabled={isCartBusy || cartError !== null}
+                onClick={() => {
+                  if (window.confirm('Xóa toàn bộ sản phẩm khỏi giỏ hàng?')) clearCart();
+                }}
+                className="min-h-11 px-2 text-xs font-semibold text-red-700 underline disabled:opacity-40"
+              >
+                Xóa toàn bộ giỏ hàng
+              </button>
+            </div>
+          )}
           <div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t border-[#E8E9E3] pt-4">
             <span className="text-sm font-bold">Tạm tính</span>
             <span className="font-serif text-2xl font-bold">
