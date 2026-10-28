@@ -1,9 +1,5 @@
 import assert from 'node:assert/strict';
-import {
-  productSummaryMetadata,
-  productSummarySizes,
-} from '../src/features/catalog/model/productSummary';
-import { summaryMaterialCare, summarySizes } from '../src/features/catalog/api/summaryFields';
+import { productSummaryMetadata } from '../src/features/catalog/model/productSummary';
 import { LatestMutationQueue } from '../src/features/cart/model/LatestMutationQueue';
 import {
   buildMovedImageOrder,
@@ -14,7 +10,7 @@ import {
   canAccessAdminModule,
   canWriteAdminModule,
 } from '../src/features/auth/session/adminAccessPolicy';
-import { canPurchaseProductVariant } from '../src/features/catalog/model/purchaseAvailability';
+import { canPurchaseProduct } from '../src/features/catalog/model/purchaseAvailability';
 import { buildCheckoutQuoteKey } from '../src/features/orders/model/checkoutQuoteKey';
 import {
   changeVoucherScope,
@@ -52,72 +48,27 @@ assert.deepEqual(
   'only explicit top-level categories with descendants own home showcases',
 );
 
-const numericSizes = [29, 30, 31].map((value, index) => ({
-  size_value_id: index + 1,
-  size_system_id: 1,
-  code: String(value),
-  display_name: String(value),
-  sort_order: index,
-}));
-assert.equal(productSummarySizes(numericSizes), 'Size 29 – 31');
-assert.equal(productSummarySizes([numericSizes[0], numericSizes[2]]), 'Size 29 · 31');
-assert.equal(productSummarySizes([numericSizes[0]]), 'Size 29');
-assert.equal(
-  productSummarySizes([
-    { ...numericSizes[0], code: 'Waist 29', display_name: 'Waist 29' },
-    numericSizes[1],
-  ]),
-  'Size Waist 29 · 30',
-);
-assert.equal(
-  productSummarySizes([
-    { ...numericSizes[0], code: 'M', display_name: 'Medium' },
-    { ...numericSizes[1], code: 'L', display_name: 'Large' },
-  ]),
-  'Size M · L',
-);
-assert.equal(
-  productSummarySizes([{ ...numericSizes[0], code: '', display_name: 'Medium' }]),
-  'Size Medium',
-);
-assert.equal(productSummarySizes([]), 'Chưa có size đang bán');
-assert.equal(productSummarySizes(null), 'Size: xem chi tiết');
 const summary = {
   id: '1',
   product_id: 1,
+  sku: 'FIDO-PANTS-1',
   name: 'Managed product',
+  slug: 'managed-product',
   imageUrl: '',
-  base_price: 200000,
-  sale_status: 'ON_SALE' as const,
-  materialCare: 'Giặt mặt trái.',
+  selling_price: 200000,
+  status: 'ACTIVE' as const,
   brand: 'FIDO',
   category: 'Quần',
-  sizes: numericSizes,
 };
 assert.deepEqual(productSummaryMetadata(summary), {
-  text: 'Giặt mặt trái.',
-  label: 'Chất liệu & chăm sóc: Giặt mặt trái.',
-});
-assert.deepEqual(productSummaryMetadata({ ...summary, materialCare: null }), {
   text: 'Thương hiệu: FIDO',
   label: 'Thương hiệu: FIDO',
 });
-assert.deepEqual(productSummaryMetadata({ ...summary, materialCare: ' ', brand: '' }), {
+assert.deepEqual(productSummaryMetadata({ ...summary, brand: '' }), {
   text: 'Danh mục: Quần',
   label: 'Danh mục: Quần',
 });
-assert.equal(
-  productSummaryMetadata({ ...summary, materialCare: null, brand: '', category: '' }),
-  null,
-);
-assert.equal(summaryMaterialCare(undefined), null);
-assert.throws(() => summaryMaterialCare(12));
-assert.equal(summarySizes(undefined), null);
-assert.deepEqual(summarySizes(numericSizes), numericSizes);
-assert.deepEqual(summarySizes([]), []);
-assert.throws(() => summarySizes(null));
-assert.throws(() => summarySizes([{ ...numericSizes[0], sort_order: '0' }]));
-assert.throws(() => summarySizes([{ ...numericSizes[0], size_value_id: -1 }]));
+assert.equal(productSummaryMetadata({ ...summary, brand: '', category: '' }), null);
 
 const profileWithRole = (code: string, permissionCodes: readonly string[] = []): MeDto => ({
   account: {
@@ -282,22 +233,11 @@ assert.equal(
 );
 assert.equal(canWriteAdminModule('content', profileWithRole('SUPERADMIN'), []), true);
 
-assert.equal(
-  canPurchaseProductVariant('ON_SALE', { sale_status: 'ON_SALE', available_quantity: 2 }),
-  true,
-);
-assert.equal(
-  canPurchaseProductVariant('STOPPED', { sale_status: 'ON_SALE', available_quantity: 2 }),
-  false,
-);
-assert.equal(
-  canPurchaseProductVariant('ON_SALE', { sale_status: 'STOPPED', available_quantity: 2 }),
-  false,
-);
-assert.equal(
-  canPurchaseProductVariant('ON_SALE', { sale_status: 'ON_SALE', available_quantity: 0 }),
-  false,
-);
+assert.equal(canPurchaseProduct('ACTIVE'), true);
+assert.equal(canPurchaseProduct('DRAFT'), false);
+assert.equal(canPurchaseProduct('INACTIVE'), false);
+assert.equal(canPurchaseProduct('ARCHIVED'), false);
+assert.equal(canPurchaseProduct(undefined), false);
 
 const checkoutRequest = {
   recipient_phone: '0900000000',
@@ -335,12 +275,12 @@ assert.equal(adminCustomerDetailPath(7), '/admin/customers/7');
 assert.equal(toAdminChildPath('/admin/catalog/categories'), 'catalog/categories');
 
 const imageFixtures = [
-  { image_id: 3, image_url: '3.jpg', alt_text: null, sort_order: 2 },
-  { image_id: 1, image_url: '1.jpg', alt_text: null, sort_order: 0 },
-  { image_id: 2, image_url: '2.jpg', alt_text: null, sort_order: 1 },
+  { id: 3, image_url: '3.jpg', is_primary: false, sort_order: 2 },
+  { id: 1, image_url: '1.jpg', is_primary: true, sort_order: 0 },
+  { id: 2, image_url: '2.jpg', is_primary: false, sort_order: 1 },
 ];
 assert.deepEqual(
-  sortProductImages(imageFixtures).map((image) => image.image_id),
+  sortProductImages(imageFixtures).map((image) => image.id),
   [1, 2, 3],
 );
 assert.deepEqual(buildMovedImageOrder(imageFixtures, 2, -1), [
@@ -603,11 +543,11 @@ assert.equal(
   'do not invent a smaller pagination limit',
 );
 const sharedCatalogQuery = readCatalogQuery(
-  new URLSearchParams('q=shirt&category_id=2&color_id=3&min_price=0&page=2'),
+  new URLSearchParams('q=shirt&category_id=2&min_price=0&page=2'),
 );
 assert.equal(
   catalogQueryParams(sharedCatalogQuery).toString(),
-  'q=shirt&category_id=2&color_id=3&min_price=0&page=2',
+  'q=shirt&category_id=2&min_price=0&page=2',
 );
 const scopedCatalogQuery = readCatalogQuery(
   new URLSearchParams('q=shirt&category_id=999&brand_id=2&page=3'),

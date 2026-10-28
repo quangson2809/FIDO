@@ -13,8 +13,9 @@ export interface CartContextValue {
   withCartLock: <T>(operation: () => Promise<T>) => Promise<T>;
   synchronizePurchasedCart: () => void;
   refreshCart: () => Promise<void>;
-  addToCart: (variantId: number, productName: string, quantity?: number) => void;
+  addToCart: (productId: number, productName: string, quantity?: number) => void;
   removeFromCart: (itemId: string) => void;
+  clearCart: () => void;
   updateCartQuantity: (itemId: string, quantity: number) => void;
   changeCartQuantity: (itemId: string, delta: number) => void;
 }

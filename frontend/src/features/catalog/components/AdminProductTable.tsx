@@ -17,7 +17,7 @@ export function AdminProductTable({
           <tr>
             <th>Sản phẩm</th>
             <th>Danh mục / thương hiệu</th>
-            <th>Giá cơ sở</th>
+            <th>Giá bán</th>
             <th>Trạng thái</th>
             <th aria-label="Thao tác" />
           </tr>
@@ -44,10 +44,10 @@ export function AdminProductTable({
                   </p>
                 </td>
                 <td className="whitespace-nowrap font-semibold">
-                  {product.base_price.toLocaleString('vi-VN')}₫
+                  {product.selling_price.toLocaleString('vi-VN')}₫
                 </td>
                 <td>
-                  <StatusBadge status={product.sale_status} />
+                  <StatusBadge status={product.status} />
                 </td>
                 <td>
                   <button

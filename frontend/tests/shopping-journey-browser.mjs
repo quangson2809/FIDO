@@ -12,15 +12,15 @@ const phase = process.env.JOURNEY_BASELINE
     : 'after';
 const categories = [
   ...meta.categories,
-  { category_id: 3, parent_category_id: 1, name: 'Áo công sở' },
-  { category_id: 4, parent_category_id: 3, name: 'Áo sơ mi' },
+  { category_id: 3, parent_category_id: 1, name: 'Áo công sở', slug: 'ao-cong-so', status: 'ACTIVE' },
+  { category_id: 4, parent_category_id: 3, name: 'Áo sơ mi', slug: 'ao-so-mi', status: 'ACTIVE' },
 ];
 const detail = {
   ...product,
   category: categories[3],
   images: [
-    { image_id: 1, image_url: '/images/about/wardrobe.svg', alt_text: 'Ảnh một', sort_order: 0 },
-    { image_id: 2, image_url: '/images/about/details.svg', alt_text: 'Ảnh hai', sort_order: 1 },
+    { id: 1, image_url: '/images/about/wardrobe.svg', is_primary: true, sort_order: 0 },
+    { id: 2, image_url: '/images/about/details.svg', is_primary: false, sort_order: 1 },
   ],
 };
 const server = await createServer({ server: { port: 5197, strictPort: true } });
@@ -133,7 +133,7 @@ try {
       );
       assert.equal(
         await page
-          .getByRole('img', { name: 'Ảnh một', exact: true })
+          .getByRole('img', { name: product.name, exact: true })
           .last()
           .evaluate((el) => getComputedStyle(el).objectFit),
         'contain',
@@ -142,14 +142,19 @@ try {
       const zoomTrigger = page.getByRole('button', { name: 'Phóng to ảnh', exact: true });
       await zoomTrigger.click();
       const zoom = page.getByRole('dialog', { name: 'Ảnh sản phẩm', exact: true });
-      await zoom.getByRole('img', { name: 'Ảnh một', exact: true }).waitFor();
+      const zoomImage = zoom.getByRole('img', { name: product.name, exact: true });
+      await zoomImage.waitFor();
+      assert.equal(await zoomImage.getAttribute('src'), '/images/about/wardrobe.svg');
       await zoom.getByRole('button', { name: 'Ảnh tiếp theo', exact: true }).click();
-      await zoom.getByRole('img', { name: 'Ảnh hai', exact: true }).waitFor();
+      await zoom.getByText('Ảnh 2 / 2', { exact: true }).waitFor();
+      assert.equal(await zoomImage.getAttribute('src'), '/images/about/details.svg');
       await zoom.getByRole('button', { name: 'Đóng ảnh', exact: true }).focus();
       await page.keyboard.press('ArrowRight');
-      await zoom.getByRole('img', { name: 'Ảnh một', exact: true }).waitFor();
+      await zoom.getByText('Ảnh 1 / 2', { exact: true }).waitFor();
+      assert.equal(await zoomImage.getAttribute('src'), '/images/about/wardrobe.svg');
       await page.keyboard.press('ArrowLeft');
-      await zoom.getByRole('img', { name: 'Ảnh hai', exact: true }).waitFor();
+      await zoom.getByText('Ảnh 2 / 2', { exact: true }).waitFor();
+      assert.equal(await zoomImage.getAttribute('src'), '/images/about/details.svg');
       await capture('zoom');
       await page.keyboard.press('Escape');
       assert.equal(

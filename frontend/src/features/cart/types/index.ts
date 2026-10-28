@@ -1,11 +1,11 @@
 export interface CartItemDto {
   cart_item_id: number;
-  variant_id: number;
+  product_id: number;
   quantity: number;
-  product_name: string;
+  product_name: string | null;
   image_url: string | null;
-  size: string;
-  color: string;
+  thumbnail: string | null;
+  sku: string | null;
   unit_price: number;
   line_total: number;
   available_quantity: number;
@@ -13,7 +13,7 @@ export interface CartItemDto {
 
 export interface CartDto {
   cart_id: number | null;
-  account_id: number | null;
+  account_id: number;
   items: CartItemDto[];
   subtotal: number;
   created_at: string | null;
@@ -22,7 +22,7 @@ export interface CartDto {
 
 export interface CartService {
   getCart(): Promise<CartDto>;
-  addItem(variantId: number, quantity: number): Promise<CartDto>;
+  addItem(productId: number, quantity: number): Promise<CartDto>;
   updateItem(cartItemId: number, quantity: number): Promise<CartDto>;
   removeItem(cartItemId: number): Promise<CartDto>;
   clear(): Promise<CartDto>;
@@ -30,11 +30,12 @@ export interface CartService {
 
 export interface CartViewItem {
   id: string;
+  productId: number;
   name: string;
-  variantId: number;
+  sku: string;
   price: number;
+  lineTotal: number;
+  availableQuantity: number;
   imageUrl: string;
-  size: string | number;
-  color: string;
   quantity: number;
 }

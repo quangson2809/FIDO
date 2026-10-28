@@ -9,7 +9,7 @@ export const buildMovedImageOrder = (
   direction: -1 | 1,
 ): ProductImageOrderInput[] | null => {
   const orderedImages = sortProductImages(images);
-  const currentIndex = orderedImages.findIndex((image) => image.image_id === imageId);
+  const currentIndex = orderedImages.findIndex((image) => image.id === imageId);
   const targetIndex = currentIndex + direction;
 
   if (currentIndex < 0 || targetIndex < 0 || targetIndex >= orderedImages.length) {
@@ -23,7 +23,7 @@ export const buildMovedImageOrder = (
   ];
 
   return nextImages.map((image, index) => ({
-    image_id: image.image_id,
+    image_id: image.id,
     sort_order: index,
   }));
 };

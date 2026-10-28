@@ -40,7 +40,10 @@ const requireBearer = (request: IncomingMessage): void => {
 
 let capturedRegistrationBody: unknown;
 let capturedLoginBody: unknown;
-let capturedSizeBody: unknown;
+let capturedAttributeCreateBody: unknown;
+let capturedAttributePatchBody: unknown;
+let capturedOptionCreateBody: unknown;
+let capturedOptionPatchBody: unknown;
 let capturedVoucherBody: unknown;
 let capturedQuoteBody: unknown;
 let capturedOrderBody: unknown;
@@ -63,17 +66,74 @@ const voucherDetail = { ...voucherPolicy, voucher_id: 27, active_usage: 0, ever_
 const server = createServer((request, response) => {
   const url = new URL(request.url ?? '/', 'http://localhost');
 
-  if (url.pathname === '/api/v1/admin/size-systems/12' && request.method === 'PATCH') {
+  if (url.pathname === '/api/v1/admin/catalog/meta' && request.method === 'GET') {
     requireBearer(request);
-    let body = '';
+    writeJson(response, 200, {
+      data: {
+        attribute_types: [
+          { id: 1, code: 'OPTION', name: 'Lựa chọn', data_type: 'OPTION' },
+          { id: 2, code: 'TEXT', name: 'Văn bản', data_type: 'TEXT' },
+          { id: 3, code: 'NUMBER', name: 'Số', data_type: 'NUMBER' },
+          { id: 4, code: 'BOOLEAN', name: 'Có/Không', data_type: 'BOOLEAN' },
+        ],
+        attributes: [],
+      },
+    });
+    return;
+  }
+
+  if (
+    url.pathname.startsWith('/api/v1/admin/catalog/attributes') &&
+    (request.method === 'POST' || request.method === 'PATCH')
+  ) {
+    requireBearer(request);
+    let raw = '';
     request.on('data', (chunk: Buffer) => {
-      body += chunk.toString();
+      raw += chunk.toString();
     });
     request.on('end', () => {
-      capturedSizeBody = JSON.parse(body);
-      writeJson(response, 200, {
-        data: { size_system_id: 12, code: 'ALPHA', name: 'Alpha', size_values: [] },
-      });
+      const body = JSON.parse(raw) as Record<string, unknown>;
+      const attribute = {
+        id: 1,
+        code: 'MATERIAL',
+        name: 'Material',
+        data_type: 'TEXT',
+        is_required: false,
+        is_variant_defining: false,
+        sort_order: 0,
+        options: [],
+      };
+      const option = {
+        id: 1,
+        attribute_id: 1,
+        value: 'COTTON',
+        label: 'Cotton',
+        sort_order: 0,
+      };
+      if (url.pathname === '/api/v1/admin/catalog/attributes' && request.method === 'POST') {
+        capturedAttributeCreateBody = body;
+        writeJson(response, 201, { data: { ...attribute, ...body } });
+      } else if (
+        url.pathname === '/api/v1/admin/catalog/attributes/1' &&
+        request.method === 'PATCH'
+      ) {
+        capturedAttributePatchBody = body;
+        writeJson(response, 200, { data: { ...attribute, ...body } });
+      } else if (
+        url.pathname === '/api/v1/admin/catalog/attributes/1/options' &&
+        request.method === 'POST'
+      ) {
+        capturedOptionCreateBody = body;
+        writeJson(response, 201, { data: { ...option, ...body } });
+      } else if (
+        url.pathname === '/api/v1/admin/catalog/attributes/1/options/1' &&
+        request.method === 'PATCH'
+      ) {
+        capturedOptionPatchBody = body;
+        writeJson(response, 200, { data: { ...option, ...body } });
+      } else {
+        writeJson(response, 404, { message: 'Not found' });
+      }
     });
     return;
   }
@@ -220,20 +280,21 @@ const server = createServer((request, response) => {
       data: [
         {
           product_id: 960001,
+          parent_product_id: null,
+          sku: 'SMOKE-001',
           name: 'Smoke Product',
+          slug: 'smoke-product',
           thumbnail: 'https://example.com/product.jpg',
           category: {
             category_id: 1,
             parent_category_id: null,
             name: 'Áo',
+            slug: 'ao',
+            status: 'ACTIVE',
           },
           brand: null,
-          base_price: 199000,
-          sale_status: 'ON_SALE',
-          material_care: 'Giặt mặt trái.',
-          sizes: [
-            { size_value_id: 12, size_system_id: 3, code: '30', display_name: '30', sort_order: 2 },
-          ],
+          selling_price: 199000,
+          status: 'ACTIVE',
         },
       ],
       meta: {
@@ -251,11 +312,8 @@ const server = createServer((request, response) => {
       data: {
         categories: [],
         brands: [],
-        size_systems: [],
-        colors: [],
-        genders: [],
-        seasons: [],
-        styles: [],
+        attribute_types: [],
+        attributes: [],
       },
     });
     return;
@@ -460,19 +518,32 @@ try {
     password: 'Fido@123',
   });
 
-  const sizes = [
-    { size_value_id: 21, code: 'M', display_name: 'Medium', sort_order: 2 },
-    { size_value_id: 22, code: 'L', display_name: 'Large', sort_order: 1 },
-    { code: 'XL', display_name: 'Extra large', sort_order: 3 },
-  ];
-  await adminCatalogMetaService.updateSizeSystem(12, { size_values: sizes });
-  assert.deepEqual(capturedSizeBody, { size_values: sizes }, 'Preserve IDs and all retained sizes');
-  await adminCatalogMetaService.updateSizeSystem(12, { size_values: sizes.slice(1) });
-  assert.deepEqual(
-    capturedSizeBody,
-    { size_values: sizes.slice(1) },
-    'Only omit explicitly removed sizes',
-  );
+  await adminCatalogMetaService.getMeta();
+  const attributeInput = {
+    attribute_type_id: 2,
+    code: 'MATERIAL',
+    name: 'Material',
+    is_required: false,
+    is_variant_defining: false,
+    sort_order: 0,
+  };
+  const createdAttribute = await adminCatalogMetaService.createAttribute(attributeInput);
+  assert.equal(createdAttribute.id, 1);
+  assert.deepEqual(capturedAttributeCreateBody, attributeInput);
+  const attributePatch = {
+    name: 'Chất liệu',
+    is_required: true,
+    is_variant_defining: false,
+    sort_order: 1,
+  };
+  await adminCatalogMetaService.updateAttribute(1, attributePatch);
+  assert.deepEqual(capturedAttributePatchBody, attributePatch);
+  const optionInput = { value: 'COTTON', label: 'Cotton', sort_order: 0 };
+  await adminCatalogMetaService.createAttributeOption(1, optionInput);
+  assert.deepEqual(capturedOptionCreateBody, optionInput);
+  const optionPatch = { label: 'Cotton tự nhiên', sort_order: 1 };
+  await adminCatalogMetaService.updateAttributeOption(1, 1, optionPatch);
+  assert.deepEqual(capturedOptionPatchBody, optionPatch);
   const listed = await voucherService.list('SAVE', 1);
   assert.equal(listed.data[0]?.code, 'SAVE10K');
   const createdVoucher = await voucherService.create(voucherPolicy);
@@ -522,11 +593,10 @@ try {
   const catalog = await catalogService.listProducts({ page: 1, page_size: 8 });
   assert.equal(catalog.items[0]?.product_id, 960001);
   assert.equal(catalog.items[0]?.imageUrl, 'https://example.com/product.jpg');
-  assert.equal(catalog.items[0]?.base_price, 199000);
-  assert.equal(catalog.items[0]?.materialCare, 'Giặt mặt trái.');
-  assert.deepEqual(catalog.items[0]?.sizes, [
-    { size_value_id: 12, size_system_id: 3, code: '30', display_name: '30', sort_order: 2 },
-  ]);
+  assert.equal(catalog.items[0]?.sku, 'SMOKE-001');
+  assert.equal(catalog.items[0]?.selling_price, 199000);
+  assert.equal(catalog.items[0]?.status, 'ACTIVE');
+  assert.equal(catalog.items[0]?.category, 'Áo');
   assert.equal(catalog.meta.page, 1);
 
   const meta = await catalogService.getMeta();

@@ -46,8 +46,7 @@ const dashboardModuleKeys: readonly AdminModuleKey[] = [
   'vouchers',
   'categories',
   'brands',
-  'sizes',
-  'colors',
+  'attributes',
   'suppliers',
   'roles',
   'content',
@@ -107,7 +106,7 @@ export const AdminProductDetailRoute = () => {
   );
 };
 
-const AdminCatalogMetaRoute = ({ tab }: { tab: 'categories' | 'brands' | 'sizes' | 'colors' }) => {
+const AdminCatalogMetaRoute = ({ tab }: { tab: 'categories' | 'brands' | 'attributes' }) => {
   const { navigateTab, showToast } = useAdminRouteDeps();
   const canWrite = useAdminWriteAccess(tab);
   return (
@@ -123,8 +122,7 @@ const AdminCatalogMetaRoute = ({ tab }: { tab: 'categories' | 'brands' | 'sizes'
 
 export const AdminCategoriesRoute = () => <AdminCatalogMetaRoute tab="categories" />;
 export const AdminBrandsRoute = () => <AdminCatalogMetaRoute tab="brands" />;
-export const AdminSizesRoute = () => <AdminCatalogMetaRoute tab="sizes" />;
-export const AdminColorsRoute = () => <AdminCatalogMetaRoute tab="colors" />;
+export const AdminAttributesRoute = () => <AdminCatalogMetaRoute tab="attributes" />;
 
 export const AdminOrdersRoute = () => {
   const { navigate } = useAdminRouteDeps();

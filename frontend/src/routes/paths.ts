@@ -23,6 +23,7 @@ export const ADMIN_PATHS = {
   products: '/admin/products',
   categories: '/admin/catalog/categories',
   brands: '/admin/catalog/brands',
+  attributes: '/admin/catalog/attributes',
   sizes: '/admin/catalog/sizes',
   colors: '/admin/catalog/colors',
   orders: '/admin/orders',
@@ -119,8 +120,10 @@ export const resolveAdminRoute = (pathname: string): AdminRouteResolution => {
   if (pathname === ADMIN_PATHS.products) return { menuKey: 'products', breadcrumb: 'Sản phẩm' };
   if (pathname === ADMIN_PATHS.categories) return { menuKey: 'categories', breadcrumb: 'Danh mục' };
   if (pathname === ADMIN_PATHS.brands) return { menuKey: 'brands', breadcrumb: 'Thương hiệu' };
-  if (pathname === ADMIN_PATHS.sizes) return { menuKey: 'sizes', breadcrumb: 'Hệ size' };
-  if (pathname === ADMIN_PATHS.colors) return { menuKey: 'colors', breadcrumb: 'Màu sắc' };
+  if (pathname === ADMIN_PATHS.attributes) return { menuKey: 'attributes', breadcrumb: 'Thuộc tính' };
+  if (pathname === ADMIN_PATHS.sizes || pathname === ADMIN_PATHS.colors) {
+    return { menuKey: 'attributes', breadcrumb: 'Thuộc tính' };
+  }
   if (pathname === ADMIN_PATHS.orders) return { menuKey: 'orders', breadcrumb: 'Đơn hàng' };
   if (pathname === ADMIN_PATHS.inward) return { menuKey: 'inward', breadcrumb: 'Phiếu nhập kho' };
   if (pathname === ADMIN_PATHS.history)

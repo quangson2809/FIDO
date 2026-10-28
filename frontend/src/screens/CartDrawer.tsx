@@ -16,6 +16,7 @@ export const CartDrawer: React.FC = () => {
     cartError,
     refreshCart,
     removeFromCart,
+    clearCart,
     changeCartQuantity,
   } = useCart();
   const navigate = useNavigate();
@@ -123,7 +124,7 @@ export const CartDrawer: React.FC = () => {
               </div>
               <p className="mt-5 font-serif text-xl text-[#0B2419]">Giỏ hàng đang trống</p>
               <p className="mt-2 max-w-xs text-xs leading-5">
-                Chọn kích cỡ và màu sắc để thêm sản phẩm yêu thích vào giỏ.
+                Chọn sản phẩm từ danh mục để thêm vào giỏ hàng.
               </p>
               <button
                 type="button"
@@ -211,12 +212,11 @@ export const CartDrawer: React.FC = () => {
                         </div>
                       )}
                       <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#424844]">
-                        <span className="border border-[#D9DDD6] bg-white px-2 py-1">
-                          Size {item.size}
-                        </span>
-                        <span className="border border-[#D9DDD6] bg-white px-2 py-1">
-                          {item.color}
-                        </span>
+                        {item.sku && (
+                          <span className="border border-[#D9DDD6] bg-white px-2 py-1">
+                            SKU {item.sku}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -236,7 +236,7 @@ export const CartDrawer: React.FC = () => {
                         </span>
                         <button
                           type="button"
-                          disabled={isCartBusy}
+                          disabled={isCartBusy || item.quantity >= item.availableQuantity}
                           aria-label="Tăng số lượng"
                           onClick={() => changeCartQuantity(item.id, 1)}
                           className="flex h-full w-11 items-center justify-center transition hover:bg-[#F3F4EF]"
@@ -249,8 +249,16 @@ export const CartDrawer: React.FC = () => {
                           {item.price.toLocaleString('vi-VN')}₫ / sản phẩm
                         </p>
                         <p className="mt-0.5 font-serif text-lg font-bold text-[#0B2419]">
-                          {(item.price * item.quantity).toLocaleString('vi-VN')}₫
+                          {item.lineTotal.toLocaleString('vi-VN')}₫
                         </p>
+                        <p className="mt-1 text-[10px] text-[#687069]">
+                          Tồn khả dụng: {item.availableQuantity}
+                        </p>
+                        {item.quantity > item.availableQuantity && (
+                          <p className="mt-1 text-[10px] text-amber-800">
+                            Số lượng hiện tại vượt tồn khả dụng; hãy giảm số lượng để tiếp tục.
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -267,6 +275,20 @@ export const CartDrawer: React.FC = () => {
               <span>Xem ở bước đặt hàng</span>
             </div>
           </div>
+          {cartItems.length > 0 && (
+            <div className="mb-3 flex justify-end">
+              <button
+                type="button"
+                disabled={isCartBusy || cartError !== null}
+                onClick={() => {
+                  if (window.confirm('Xóa toàn bộ sản phẩm khỏi giỏ hàng?')) clearCart();
+                }}
+                className="min-h-11 px-2 text-xs font-semibold text-red-700 underline disabled:opacity-40"
+              >
+                Xóa toàn bộ giỏ hàng
+              </button>
+            </div>
+          )}
           <div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t border-[#E8E9E3] pt-4">
             <span className="text-sm font-bold">Tạm tính</span>
             <span className="font-serif text-2xl font-bold">

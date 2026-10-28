@@ -11,12 +11,13 @@ import { CartContext, type CartContextValue } from './cartContext';
 const toCartItems = (cart: CartDto): CartViewItem[] =>
   cart.items.map((item) => ({
     id: String(item.cart_item_id),
-    name: item.product_name,
-    variantId: item.variant_id,
+    productId: item.product_id,
+    name: item.product_name ?? item.sku ?? `Product #${item.product_id}`,
+    sku: item.sku ?? '',
     price: item.unit_price,
-    imageUrl: resolveImageUrl(item.image_url) ?? '',
-    size: item.size,
-    color: item.color,
+    lineTotal: item.line_total,
+    availableQuantity: item.available_quantity,
+    imageUrl: resolveImageUrl(item.image_url ?? item.thumbnail) ?? '',
     quantity: item.quantity,
   }));
 
@@ -92,7 +93,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         await refreshCart();
       } catch {
-        // Restore the last confirmed view if reconciliation also fails; never show an empty cart as a successful read.
+        // Restore the last confirmed view if reconciliation also fails.
         applyLocalCart(confirmedViewRef.current.items, confirmedViewRef.current.subtotal);
         setCartError('Chưa thể xác nhận thay đổi giỏ hàng. Vui lòng tải lại trước khi thanh toán.');
       }
@@ -188,7 +189,6 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const synchronizePurchasedCart = (): void => {
     clearCartState();
     setIsCartOpen(false);
-    // Refresh must not delay navigation or turn an already-created order into a failed checkout.
     void refreshCart().catch(() => {
       showToast(
         'Đơn đã được tạo. Chưa thể tải lại giỏ hàng; vui lòng tải lại trang khi có kết nối.',
@@ -196,11 +196,11 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
   };
 
-  const addToCart = (variantId: number, productName: string, quantity = 1) => {
+  const addToCart = (productId: number, productName: string, quantity = 1) => {
     if (!ensureCartAuthentication()) return;
 
     enqueueCartMutation(
-      () => cartService.addItem(variantId, Math.max(1, quantity)),
+      () => cartService.addItem(productId, Math.max(1, quantity)),
       'Không thể cập nhật giỏ hàng. Vui lòng thử lại.',
     );
     setIsCartOpen(true);
@@ -215,12 +215,23 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     applyLocalCart(
       cartViewRef.current.items.filter((candidate) => candidate.id !== itemId),
-      Math.max(0, cartViewRef.current.subtotal - item.price * item.quantity),
+      Math.max(0, cartViewRef.current.subtotal - item.lineTotal),
     );
 
     enqueueCartMutation(
       () => cartService.removeItem(Number(itemId)),
       'Không thể xóa sản phẩm khỏi giỏ hàng.',
+    );
+  };
+
+  const clearCart = () => {
+    if (!ensureCartAuthentication()) return;
+    if (cartViewRef.current.items.length === 0) return;
+
+    applyLocalCart([], 0);
+    enqueueCartMutation(
+      () => cartService.clear(),
+      'Không thể xóa toàn bộ giỏ hàng. Vui lòng thử lại.',
     );
   };
 
@@ -233,9 +244,19 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const normalizedQuantity = Math.trunc(quantity);
     if (!Number.isFinite(normalizedQuantity) || normalizedQuantity < 1) return;
     if (normalizedQuantity === item.quantity) return;
+    if (normalizedQuantity > item.quantity && normalizedQuantity > item.availableQuantity) {
+      showToast('Số lượng vượt quá tồn kho khả dụng hiện tại.');
+      return;
+    }
 
     const nextItems = cartViewRef.current.items.map((candidate) =>
-      candidate.id === itemId ? { ...candidate, quantity: normalizedQuantity } : candidate,
+      candidate.id === itemId
+        ? {
+            ...candidate,
+            quantity: normalizedQuantity,
+            lineTotal: candidate.price * normalizedQuantity,
+          }
+        : candidate,
     );
     const nextSubtotal = Math.max(
       0,
@@ -273,6 +294,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     refreshCart,
     addToCart,
     removeFromCart,
+    clearCart,
     updateCartQuantity,
     changeCartQuantity,
   };

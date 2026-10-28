@@ -30,17 +30,34 @@ const metadata = {
   ...baseMeta,
   categories: [
     ...baseMeta.categories,
-    { category_id: 3, parent_category_id: 1, name: 'Áo sơ mi' },
-    { category_id: 4, parent_category_id: 3, name: 'Áo công sở' },
+    { category_id: 3, parent_category_id: 1, name: 'Áo sơ mi', slug: 'ao-so-mi', status: 'ACTIVE' },
+    { category_id: 4, parent_category_id: 3, name: 'Áo công sở', slug: 'ao-cong-so', status: 'ACTIVE' },
   ],
-  brands: [...baseMeta.brands, { brand_id: 2, name: 'Nhãn khác' }],
-  size_systems: [
+  brands: [
+    ...baseMeta.brands,
+    { brand_id: 2, name: 'Nhãn khác', slug: 'nhan-khac', status: 'ACTIVE' },
+  ],
+  attributes: [
     {
-      ...baseMeta.size_systems[0],
-      name: 'Alpha',
-      size_values: [
-        { ...baseMeta.size_systems[0].size_values[0], size_value_id: 42, display_name: 'Medium' },
-      ],
+      ...baseMeta.attributes[0],
+      id: 1,
+      code: 'MATERIAL',
+      name: 'Chất liệu',
+      data_type: 'TEXT',
+      is_required: false,
+      is_variant_defining: false,
+      sort_order: 0,
+      options: [],
+    },
+    {
+      id: 2,
+      code: 'FABRIC_TYPE',
+      name: 'Loại vải',
+      data_type: 'OPTION',
+      is_required: false,
+      is_variant_defining: false,
+      sort_order: 1,
+      options: [{ id: 42, attribute_id: 2, value: 'COTTON', label: 'Cotton', sort_order: 0 }],
     },
   ],
 };
@@ -51,16 +68,21 @@ let profile = {
 const detail = {
   ...baseProduct,
   category: metadata.categories[3],
-  material_care: 'Cotton; giặt nhẹ',
-  variants: [{ ...baseProduct.variants[0], size: metadata.size_systems[0].size_values[0] }],
+  attribute_values: baseProduct.attribute_values.map((value) => ({
+    ...value,
+    text_value: 'Cotton; giặt nhẹ',
+  })),
 };
 const summary = {
-  product_id: 1,
+  product_id: detail.product_id,
+  parent_product_id: detail.parent_product_id,
+  sku: detail.sku,
   name: detail.name,
+  slug: detail.slug,
   category: detail.category,
   brand: detail.brand,
-  base_price: detail.base_price,
-  sale_status: detail.sale_status,
+  selling_price: detail.selling_price,
+  status: detail.status,
   thumbnail: null,
 };
 const access = {
@@ -98,7 +120,7 @@ const pages = [
 const requests = [];
 let detailFailure = false;
 let metadataFailure = false;
-let sizeFailure = false;
+let attributeFailure = false;
 await page.addInitScript(() => sessionStorage.setItem('fido.accessToken', 'fixture'));
 await page.route('**/api/v1/**', async (route) => {
   const request = route.request();
@@ -130,13 +152,17 @@ await page.route('**/api/v1/**', async (route) => {
   }
   if (path === '/admin/access-control') return send({ data: access });
   if (path === '/admin/content-pages') return send({ data: pages });
-  if (path === '/admin/size-systems/1' && request.method() === 'PATCH') {
-    if (sizeFailure) return send({}, 409);
-    metadata.size_systems[0] = { ...metadata.size_systems[0], ...request.postDataJSON() };
-    return send({ data: metadata.size_systems[0] });
+  if (path === '/admin/catalog/attributes/1' && request.method() === 'PATCH') {
+    if (attributeFailure) return send({}, 409);
+    metadata.attributes[0] = { ...metadata.attributes[0], ...request.postDataJSON() };
+    return send({ data: metadata.attributes[0] });
   }
-  if (path === '/admin/size-systems' && request.method() === 'POST')
-    return send({ data: { size_system_id: 2, ...request.postDataJSON() } }, 201);
+  if (path === '/admin/catalog/attributes/2/options/42' && request.method() === 'PATCH') {
+    if (attributeFailure) return send({}, 409);
+    const option = { ...metadata.attributes[1].options[0], ...request.postDataJSON() };
+    metadata.attributes[1].options[0] = option;
+    return send({ data: option });
+  }
   return fixture.handler(route);
 });
 const go = (path) => page.goto(`http://localhost:5187${path}`);
@@ -191,7 +217,7 @@ try {
   await page.keyboard.press('ArrowDown');
   await menu.getByRole('link', { name: 'Áo', exact: true }).click();
   await main.getByRole('heading', { name: 'Áo', exact: true, level: 1 }).waitFor();
-  await main.getByRole('button', { name: /Xem size & chất liệu/ }).waitFor();
+  await main.getByRole('button', { name: /Xem thuộc tính/ }).waitFor();
   assert.equal(
     await main.getByRole('searchbox').count(),
     1,
@@ -269,10 +295,10 @@ try {
   metadataFailure = true;
   await go('/categories/1');
   await main.getByRole('alert').waitFor();
-  assert.equal(await main.getByRole('button', { name: /Xem size & chất liệu/ }).count(), 0);
+  assert.equal(await main.getByRole('button', { name: /Xem thuộc tính/ }).count(), 0);
   metadataFailure = false;
   await main.getByRole('button', { name: 'Thử lại', exact: true }).click();
-  await main.getByRole('button', { name: /Xem size & chất liệu/ }).waitFor();
+  await main.getByRole('button', { name: /Xem thuộc tính/ }).waitFor();
   await go('/categories/2');
   await main.getByText('Chưa có sản phẩm đang bán trong danh mục này.', { exact: true }).waitFor();
   const beforeInvalid = requests.filter((r) => r.path === '/catalog/products').length;
@@ -284,7 +310,7 @@ try {
     'invalid category does not browse unfiltered products',
   );
   await go('/products?category_id=1');
-  const productInfo = main.getByRole('button', { name: /Xem size & chất liệu/ }).first();
+  const productInfo = main.getByRole('button', { name: /Xem thuộc tính/ }).first();
   await productInfo.waitFor();
   assert.equal(
     requests.filter((r) => r.path === '/catalog/products/1').length,
@@ -293,12 +319,11 @@ try {
   );
   detailFailure = true;
   await productInfo.click();
-  const productDialog = page.getByRole('dialog', { name: `Thông tin ${detail.name}` });
+  const productDialog = page.getByRole('dialog', { name: `Thuộc tính ${detail.name}` });
   await productDialog.getByRole('alert').waitFor();
   detailFailure = false;
   await productDialog.getByRole('button', { name: 'Thử lại' }).click();
   await productDialog.getByText('Cotton; giặt nhẹ', { exact: true }).waitFor();
-  await productDialog.getByText('Medium', { exact: true }).waitFor();
   await page.keyboard.press('Escape');
   assert.equal(await productInfo.evaluate((el) => document.activeElement === el), true);
   await page.getByRole('button', { name: 'Đăng xuất', exact: true }).first().click();
@@ -310,63 +335,43 @@ try {
   await page.waitForURL('http://localhost:5187/login');
 
   await go('/admin/catalog/categories');
-  await main.getByLabel('Tìm tên hoặc mã thuộc tính').fill('công sở');
+  await main.getByLabel('Tìm danh mục').fill('công sở');
   await main.getByRole('cell', { name: 'Áo công sở', exact: true }).waitFor();
   assert.equal(await main.locator('tbody tr').count(), 1);
   await main.getByRole('button', { name: 'Xóa tìm kiếm' }).click();
   await main.getByLabel('Cấp danh mục').selectOption('root');
   assert.equal(await main.locator('tbody tr').count(), 2);
-  for (const [path, query, expected] of [
-    ['brands', 'nhãn', 'Nhãn khác'],
-    ['colors', 'Đen', 'Đen'],
-    ['sizes', 'medium', 'Alpha'],
-  ]) {
-    await go(`/admin/catalog/${path}`);
-    await main.getByLabel('Tìm tên hoặc mã thuộc tính').fill(query);
-    await main.getByRole('cell', { name: expected, exact: true }).waitFor();
-    assert.equal(await main.locator('tbody tr').count(), 1);
-  }
-  await main.getByRole('button', { name: 'Quản lý size', exact: true }).click();
-  const sizeDialog = page.getByRole('dialog', { name: 'Danh sách size: Alpha' });
-  await sizeDialog.getByLabel('Tên hiển thị *').waitFor();
-  for (const width of [375, 768, 1440]) {
-    await page.setViewportSize({ width, height: 1000 });
-    assert.ok(
-      await sizeDialog.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
-      `size dialog overflow ${width}`,
-    );
-    await page.screenshot({ path: `.browser-evidence/audit-size-${width}.png`, fullPage: true });
-  }
-  assert.doesNotMatch(await sizeDialog.innerText(), /#42|size_value_id/);
-  await sizeDialog.getByLabel('Thứ tự *').fill('2');
-  sizeFailure = true;
-  await sizeDialog.getByRole('button', { name: 'Lưu danh sách size' }).click();
-  await sizeDialog.getByRole('alert').waitFor();
-  assert.equal(
-    await sizeDialog.getByLabel('Thứ tự *').inputValue(),
-    '2',
-    'failed write preserves size draft',
+  await go('/admin/catalog/brands');
+  await main.getByLabel('Tìm thương hiệu').fill('nhãn');
+  await main.getByRole('cell', { name: 'Nhãn khác', exact: true }).waitFor();
+  assert.equal(await main.locator('tbody tr').count(), 1);
+
+  await go('/admin/catalog/attributes');
+  await main.getByRole('heading', { name: 'Chất liệu', exact: true }).waitFor();
+  await main.getByRole('button', { name: 'Sửa thuộc tính', exact: true }).first().click();
+  const attributeName = main.getByLabel('Tên thuộc tính MATERIAL');
+  await attributeName.fill('Chất liệu sợi');
+  attributeFailure = true;
+  await main.getByRole('button', { name: 'Lưu thuộc tính', exact: true }).click();
+  await main.getByRole('alert').waitFor();
+  assert.equal(await attributeName.inputValue(), 'Chất liệu sợi', 'failed write preserves attribute draft');
+  attributeFailure = false;
+  await main.getByRole('button', { name: 'Lưu thuộc tính', exact: true }).click();
+  await main.getByRole('heading', { name: 'Chất liệu sợi', exact: true }).waitFor();
+  assert.deepEqual(
+    requests.filter((request) => request.path === '/admin/catalog/attributes/1' && request.method === 'PATCH').at(-1)?.body,
+    { name: 'Chất liệu sợi', is_required: false, is_variant_defining: false, sort_order: 0 },
   );
-  sizeFailure = false;
-  await sizeDialog.getByRole('button', { name: 'Lưu danh sách size' }).click();
-  await sizeDialog.waitFor({ state: 'detached' });
-  assert.equal(
-    requests.filter((r) => r.path === '/admin/size-systems/1').at(-1).body.size_values[0]
-      .size_value_id,
-    42,
-  );
-  await main.getByRole('button', { name: 'Thêm hệ size' }).click();
-  const createDialog = page.getByRole('dialog', { name: 'Tạo hệ size' });
-  await createDialog.getByRole('button', { name: 'Thêm size', exact: true }).click();
-  await createDialog.getByLabel('Mã size *').fill('L');
-  await createDialog.getByLabel('Tên hiển thị *').fill('Large');
-  await createDialog.getByLabel('Tên hệ size *').fill('Numeric');
-  await createDialog.getByLabel('Mã hệ size *').fill('NUM');
-  await createDialog.getByRole('button', { name: 'Tạo hệ size', exact: true }).click();
-  await createDialog.waitFor({ state: 'detached' });
-  assert.equal(
-    requests.filter((r) => r.path === '/admin/size-systems').at(-1).body.size_values[0].code,
-    'L',
+
+  const optionArticle = main.locator('article').filter({ hasText: 'Loại vải' });
+  await optionArticle.getByRole('button', { name: 'Sửa', exact: true }).click();
+  await optionArticle.getByLabel('Nhãn option COTTON').fill('Cotton hữu cơ');
+  await optionArticle.getByLabel('Thứ tự option COTTON').fill('1');
+  await optionArticle.getByRole('button', { name: 'Lưu', exact: true }).click();
+  await optionArticle.getByText('Cotton hữu cơ', { exact: true }).waitFor();
+  assert.deepEqual(
+    requests.filter((request) => request.path === '/admin/catalog/attributes/2/options/42' && request.method === 'PATCH').at(-1)?.body,
+    { label: 'Cotton hữu cơ', sort_order: 1 },
   );
   await go('/admin/roles');
   await main.getByLabel('Tìm vai trò').fill('Nhân viên');
@@ -401,14 +406,15 @@ try {
     permissions: [access.permissions[0]],
   };
   await go('/admin/catalog/sizes');
-  await main.getByRole('cell', { name: 'Alpha', exact: true }).waitFor();
-  assert.equal(await main.getByRole('button', { name: 'Thêm hệ size' }).count(), 0);
-  assert.equal(await main.getByRole('button', { name: 'Quản lý size' }).count(), 0);
+  await page.waitForURL('**/admin/catalog/attributes');
+  await main.getByRole('heading', { name: 'Chất liệu sợi', exact: true }).waitFor();
+  assert.equal(await main.getByRole('button', { name: 'Sửa thuộc tính', exact: true }).count(), 0);
+  assert.equal(await main.getByRole('button', { name: 'Sửa', exact: true }).count(), 0);
   profile = customer;
   for (const width of [375, 768, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     await go('/categories/1');
-    await main.getByRole('button', { name: /Xem size & chất liệu/ }).waitFor();
+    await main.getByRole('button', { name: /Xem thuộc tính/ }).waitFor();
     assert.ok(
       await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
       `category overflow ${width}`,
@@ -429,7 +435,7 @@ try {
   await page.screenshot({ path: '.browser-evidence/audit-menu-375.png', fullPage: true });
   assert.deepEqual(errors, []);
   console.log(
-    'PASS audit: contact links, category tree/page/history/errors, shared cards/detail retry, logout/dirty guard, admin search, size payload/failure, read-only and responsive checks',
+    'PASS audit: contact links, category tree/page/history/errors, shared cards/detail retry, logout/dirty guard, category/brand search, attribute/option update failure recovery, legacy catalog route redirect, read-only and responsive checks',
   );
 } catch (error) {
   console.error('Audit failure URL:', page.url());

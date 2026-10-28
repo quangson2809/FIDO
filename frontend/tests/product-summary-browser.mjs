@@ -4,57 +4,68 @@ import { chromium } from 'playwright';
 import { createServer } from 'vite';
 import { storefrontFixture, meta, product } from './helpers/storefrontFixture.mjs';
 
-// Controlled edge cases. Live Backend screenshots are a separate verification step.
-const size = (label, id) => ({
-  size_value_id: id,
-  size_system_id: 1,
-  code: label,
-  display_name: label,
-  sort_order: id,
+// Fixtures mirror the current summary/detail DTOs rather than the removed variant model.
+const summary = (overrides = {}) => ({
+  product_id: 1,
+  parent_product_id: null,
+  sku: 'FIDO-TEE-001',
+  name: 'Áo cotton FIDO',
+  slug: 'ao-cotton-fido',
+  thumbnail: '/images/about/wardrobe.svg',
+  category: meta.categories[0],
+  brand: meta.brands[0],
+  selling_price: 200000,
+  status: 'ACTIVE',
+  ...overrides,
 });
 const summaries = [
-  {
-    ...product,
-    name: 'Áo cotton FIDO',
-    thumbnail: '/images/about/wardrobe.svg',
-    material_care: 'Cotton; giặt nhẹ.',
-    sizes: [size('29', 1), size('30', 2), size('31', 3)],
-  },
-  {
-    ...product,
+  summary(),
+  summary({
     product_id: 2,
+    sku: 'FIDO-TROUSER-002',
     name: 'Quần FIDO',
+    slug: 'quan-fido',
     category: meta.categories[1],
     brand: null,
     thumbnail: null,
-    material_care: null,
-    base_price: 499000,
-    sizes: [size('29', 1), size('31', 3), size('34', 6)],
-  },
-  {
-    ...product,
+    selling_price: 499000,
+  }),
+  summary({
     product_id: 3,
-    name: 'Tên sản phẩm rất dài để kiểm tra hai dòng và sự thẳng hàng của giá trong cùng một lưới '.repeat(
-      3,
-    ),
+    sku: 'FIDO-LONG-NAME-003',
+    name: 'Tên sản phẩm rất dài để kiểm tra hai dòng và sự thẳng hàng của giá trong cùng một lưới '.repeat(3),
+    slug: 'ten-san-pham-dai',
     thumbnail: '/broken-summary.jpg',
-    material_care: 'Giặt mặt trái. Không sấy.',
-    sizes: [
-      { ...size('S', 1), display_name: 'Small' },
-      { ...size('M', 2), display_name: 'Medium' },
-      { ...size('L', 3), display_name: 'Large' },
-    ],
-  },
-  {
-    ...product,
+    selling_price: 699000,
+  }),
+  summary({
     product_id: 4,
-    name: 'Sản phẩm nhiều kích cỡ',
-    base_price: 999999999999.99,
+    sku: 'FIDO-EXTRA-004',
+    name: 'Sản phẩm có SKU dài',
+    slug: 'san-pham-co-sku-dai',
+    selling_price: 999999999999,
     thumbnail: '/images/about/details.svg',
-    material_care: null,
-    sizes: Array.from({ length: 12 }, (_, index) => size(`Size ${index * 2 + 28}`, index + 1)),
-  },
+  }),
 ];
+const detailForSummary = (item) => ({
+  ...product,
+  product_id: item.product_id,
+  parent_product_id: item.parent_product_id,
+  sku: item.sku,
+  name: item.name,
+  slug: item.slug,
+  category: item.category,
+  brand: item.brand,
+  selling_price: item.selling_price,
+  status: item.status,
+  images: [],
+  attribute_values:
+    item.product_id === 1
+      ? product.attribute_values.map((value) => ({ ...value, text_value: 'Cotton; giặt nhẹ.' }))
+      : item.product_id === 3
+        ? product.attribute_values.map((value) => ({ ...value, text_value: 'Giặt mặt trái. Không sấy.' }))
+        : [],
+});
 const fixture = storefrontFixture();
 const requests = [];
 let detailFailure = false;
@@ -73,14 +84,7 @@ function catalogRoute(route) {
     return route.fulfill({
       json: {
         data: {
-          ...summary,
-          images: [],
-          variants: summary.sizes.map((value, index) => ({
-            ...product.variants[0],
-            variant_id: index + 1,
-            size: value,
-            effective_price: index % 2 ? 219000 : 199000,
-          })),
+          ...detailForSummary(summary),
         },
       },
     });
@@ -130,15 +134,15 @@ try {
       requests.filter((path) => path === '/api/v1/catalog/products').length <= 2,
       'one list query per mount, independent of card count',
     );
-    assert.match(await first.innerText(), /COTTON; GIẶT NHẸ\./);
     assert.equal(
       await first.locator('.product-summary-metadata').getAttribute('aria-label'),
-      'Chất liệu & chăm sóc: Cotton; giặt nhẹ.',
+      'Thương hiệu: FIDO',
     );
-    assert.match(await first.innerText(), /Size 29 – 31/);
+    assert.match(await first.innerText(), /SKU FIDO-TEE-001/);
+    assert.match(await first.innerText(), /200\.000/);
     assert.match(await cards.nth(1).innerText(), /DANH MỤC: QUẦN/);
-    assert.match(await cards.nth(1).innerText(), /Size 29 · 31 · 34/);
-    assert.match(await cards.nth(2).innerText(), /Size S · M · L/);
+    assert.match(await cards.nth(1).innerText(), /SKU FIDO-TROUSER-002/);
+    assert.match(await cards.nth(2).innerText(), /SKU FIDO-LONG-NAME-003/);
     assert.doesNotMatch(await region.innerText(), /HÀNG MỚI|WOOL BLEND|Giá cơ bản\n/);
     assert.equal(await page.getByRole('button', { name: /yêu thích/i }).count(), 0);
     assert.equal(await first.locator('button button').count(), 0);
@@ -225,13 +229,13 @@ try {
     });
 
     const info = first.getByRole('button', {
-      name: 'Xem size & chất liệu: Áo cotton FIDO',
+      name: 'Xem thuộc tính: Áo cotton FIDO',
       exact: true,
     });
     await info.focus();
     assert.equal(await info.evaluate((el) => getComputedStyle(el).outlineStyle), 'solid');
     await page.keyboard.press('Enter');
-    const dialog = page.getByRole('dialog', { name: 'Thông tin Áo cotton FIDO' });
+    const dialog = page.getByRole('dialog', { name: 'Thuộc tính Áo cotton FIDO' });
     await dialog.getByText('Cotton; giặt nhẹ.', { exact: true }).waitFor();
     assert.ok(page.url().endsWith('/products'), 'information action does not navigate');
     for (let index = 0; index < 4; index++) {
@@ -277,9 +281,9 @@ try {
     await touch.goto('http://localhost:5188/products');
     const touchCard = touch.locator('.product-summary-card').first();
     await touchCard
-      .getByRole('button', { name: 'Xem size & chất liệu: Áo cotton FIDO', exact: true })
+      .getByRole('button', { name: 'Xem thuộc tính: Áo cotton FIDO', exact: true })
       .tap();
-    const touchDialog = touch.getByRole('dialog', { name: 'Thông tin Áo cotton FIDO' });
+    const touchDialog = touch.getByRole('dialog', { name: 'Thuộc tính Áo cotton FIDO' });
     await touchDialog.getByText('Cotton; giặt nhẹ.', { exact: true }).waitFor();
     assert.ok(touch.url().endsWith('/products'));
     await touchDialog.getByRole('button', { name: 'Đóng thông tin sản phẩm' }).tap();
@@ -293,7 +297,7 @@ try {
     await touch.close();
     assert.deepEqual(errors, []);
     console.log(
-      'Product summary browser: PASS — real service mapping with HTTP fixtures, no per-card fetch, 8 viewports, ratio/alignment/overflow, missing/broken image, long name, material labels, sizes with gaps, hover/layout, keyboard/touch/dialog/retry/navigation and reduced motion.',
+      'Product summary browser: PASS — current ProductSummaryDto mapping, no per-card fetch, 8 viewports, ratio/alignment/overflow, missing/broken image, long name, brand/category metadata, SKU, hover/layout, keyboard/touch/dialog/retry/navigation and reduced motion.',
     );
   }
 } finally {

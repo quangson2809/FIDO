@@ -8,8 +8,7 @@ export type AdminModuleKey =
   | 'products'
   | 'categories'
   | 'brands'
-  | 'sizes'
-  | 'colors'
+  | 'attributes'
   | 'inventory'
   | 'inward'
   | 'suppliers'
@@ -43,8 +42,7 @@ const readPermissionByModule: Partial<Record<AdminModuleKey, AdminPermissionCode
   products: 'CATALOG_READ',
   categories: 'CATALOG_READ',
   brands: 'CATALOG_READ',
-  sizes: 'CATALOG_READ',
-  colors: 'CATALOG_READ',
+  attributes: 'CATALOG_READ',
   inventory: 'INVENTORY_READ',
   inward: 'INVENTORY_READ',
   suppliers: 'INVENTORY_READ',
@@ -58,8 +56,7 @@ const writePermissionByModule: Partial<Record<AdminModuleKey, AdminWritePermissi
   products: 'CATALOG_WRITE',
   categories: 'CATALOG_WRITE',
   brands: 'CATALOG_WRITE',
-  sizes: 'CATALOG_WRITE',
-  colors: 'CATALOG_WRITE',
+  attributes: 'CATALOG_WRITE',
   inventory: 'INVENTORY_WRITE',
   inward: 'INVENTORY_WRITE',
   suppliers: 'INVENTORY_WRITE',
