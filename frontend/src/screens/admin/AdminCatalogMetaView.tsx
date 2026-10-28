@@ -21,6 +21,8 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
   canWrite,
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+  const [metadataSearch, setMetadataSearch] = useState('');
+  const [categoryLevel, setCategoryLevel] = useState<'all' | 'root' | 'child'>('all');
   const [publicMeta, setPublicMeta] = useState<CatalogMetaDto | null>(null);
   const [adminMeta, setAdminMeta] = useState<AdminCatalogMetaDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -271,6 +273,18 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
   const categories = publicMeta?.categories ?? [];
   const brands = publicMeta?.brands ?? [];
   const attributes = adminMeta?.attributes ?? [];
+  const normalizedMetadataSearch = metadataSearch.trim().toLocaleLowerCase();
+  const filteredCategories = categories.filter((category) => {
+    const matchesSearch = `${category.name} ${category.slug ?? ''}`
+      .toLocaleLowerCase()
+      .includes(normalizedMetadataSearch);
+    const matchesLevel = categoryLevel === 'all' ||
+      (categoryLevel === 'root' ? category.parent_category_id === null : category.parent_category_id !== null);
+    return matchesSearch && matchesLevel;
+  });
+  const filteredBrands = brands.filter((brand) =>
+    `${brand.name} ${brand.slug ?? ''}`.toLocaleLowerCase().includes(normalizedMetadataSearch),
+  );
 
   if (loading && !publicMeta && !adminMeta) {
     return (
@@ -323,6 +337,8 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
             aria-current={activeTab === tab ? 'page' : undefined}
             onClick={() => {
               setActiveTab(tab);
+              setMetadataSearch('');
+              setCategoryLevel('all');
               onNavigateTab(tab, tab);
               setError(null);
             }}
@@ -359,7 +375,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
                 disabled={busy}
               >
                 <option value="">Danh mục gốc</option>
-                {categories.map((category) => (
+                {filteredCategories.map((category) => (
                   <option key={category.category_id} value={category.category_id}>
                     {category.name}
                   </option>
@@ -429,7 +445,29 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
       )}
 
       {activeTab === 'categories' && (
-        <div className="overflow-x-auto rounded-lg border border-[#E2E5DE] bg-white">
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-end gap-3 rounded-lg border border-[#E2E5DE] bg-white p-4">
+            <label className="min-w-0 flex-1 space-y-1 text-sm">
+              <span className="text-xs font-semibold">Tìm danh mục</span>
+              <input
+                aria-label="Tìm danh mục"
+                value={metadataSearch}
+                onChange={(event) => setMetadataSearch(event.target.value)}
+                className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
+                placeholder="Tên hoặc slug danh mục"
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-xs font-semibold">Cấp danh mục</span>
+              <select aria-label="Cấp danh mục" value={categoryLevel} onChange={(event) => setCategoryLevel(event.target.value as typeof categoryLevel)} className="border border-[#D9DDD6] px-3 py-2 text-sm">
+                <option value="all">Tất cả cấp</option>
+                <option value="root">Danh mục gốc</option>
+                <option value="child">Danh mục con</option>
+              </select>
+            </label>
+            {metadataSearch.trim() && <button type="button" className="admin-secondary" onClick={() => setMetadataSearch('')}>Xóa tìm kiếm</button>}
+          </div>
+          <div className="overflow-x-auto rounded-lg border border-[#E2E5DE] bg-white">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-[#F5F6F2] text-xs uppercase tracking-wide text-[#606863]">
               <tr><th className="px-4 py-3">Tên</th><th className="px-4 py-3">Quan hệ</th><th className="px-4 py-3" /></tr>
@@ -457,17 +495,32 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
       {activeTab === 'brands' && (
-        <div className="overflow-x-auto rounded-lg border border-[#E2E5DE] bg-white">
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-end gap-3 rounded-lg border border-[#E2E5DE] bg-white p-4">
+            <label className="min-w-0 flex-1 space-y-1 text-sm">
+              <span className="text-xs font-semibold">Tìm thương hiệu</span>
+              <input
+                aria-label="Tìm thương hiệu"
+                value={metadataSearch}
+                onChange={(event) => setMetadataSearch(event.target.value)}
+                className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
+                placeholder="Tên hoặc slug thương hiệu"
+              />
+            </label>
+            {metadataSearch.trim() && <button type="button" className="admin-secondary" onClick={() => setMetadataSearch('')}>Xóa tìm kiếm</button>}
+          </div>
+          <div className="overflow-x-auto rounded-lg border border-[#E2E5DE] bg-white">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-[#F5F6F2] text-xs uppercase tracking-wide text-[#606863]">
               <tr><th className="px-4 py-3">Thương hiệu</th><th className="px-4 py-3">Trạng thái</th><th className="px-4 py-3" /></tr>
             </thead>
             <tbody className="divide-y divide-[#E2E5DE]">
-              {brands.map((brand) => (
+              {filteredBrands.map((brand) => (
                 <tr key={brand.brand_id}>
                   <td className="px-4 py-3 font-semibold">{brand.name}</td>
                   <td className="px-4 py-3 text-xs text-[#606863]">{brand.status}</td>
@@ -486,6 +539,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
