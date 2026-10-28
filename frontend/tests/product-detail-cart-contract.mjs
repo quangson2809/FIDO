@@ -170,7 +170,9 @@ try {
   await page.getByRole('button', { name: 'Thêm vào giỏ hàng', exact: true }).click();
   await page.getByRole('dialog', { name: 'Giỏ hàng của bạn' }).waitFor();
   assert.deepEqual(cartRequests, [{ product_id: 1, quantity: 2 }]);
-  await page.getByText('398.000₫', { exact: true }).waitFor();
+  const cartDialog = page.getByRole('dialog', { name: 'Giỏ hàng của bạn' });
+  await cartDialog.getByRole('article').getByText('398.000₫', { exact: true }).waitFor();
+  await cartDialog.locator('footer').getByText('398.000₫', { exact: true }).waitFor();
 
   detail = { ...product, status: 'INACTIVE' };
   await page.reload();
