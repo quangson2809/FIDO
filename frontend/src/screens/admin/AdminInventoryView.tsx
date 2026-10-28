@@ -1,5 +1,4 @@
 import { Link, useLocation } from 'react-router-dom';
-import { StatusBadge } from '../../shared/admin/StatusBadge';
 import { formatVietnamDateTime } from '../../shared/time/formatVietnamDateTime';
 import { statusLabel } from '../../shared/admin/statusLabels';
 import { useDirtyForm } from '../../shared/admin/dirtyFormContext';
@@ -12,12 +11,12 @@ import { getApiErrorMessage } from '../../services/http/apiError';
 import type { InventoryRowDto, InventoryTransactionType } from '../../features/inventory/types';
 
 const transactionTypes: InventoryTransactionType[] = [
-  'RECEIPT_IN',
-  'ADJUSTMENT_IN',
-  'ADJUSTMENT_OUT',
-  'ORDER_CONFIRM_OUT',
-  'ORDER_CANCEL_IN',
-  'DELIVERY_RETURN_IN',
+  'OPENING',
+  'GOODS_RECEIPT',
+  'ORDER',
+  'ORDER_CANCEL_REVERSAL',
+  'RETURN_RESTOCK',
+  'ADJUSTMENT',
 ];
 
 export const AdminInventoryView: React.FC<{
@@ -88,7 +87,7 @@ export const AdminInventoryView: React.FC<{
     }
     if (
       !window.confirm(
-        `Điều chỉnh ${selected.product_name} · ${selected.sku ?? selected.variant_id} (${selected.size} / ${selected.color}) từ ${selected.available_quantity} thành ${selected.available_quantity + parsedDelta}?\nLý do: ${reason.trim()}. Tồn kho được kiểm tra lại khi lưu.`,
+        `Điều chỉnh ${selected.product_name ?? selected.sku} · Product #${selected.product_id} tại kho #${selected.warehouse_id} từ ${selected.available_quantity} thành ${selected.available_quantity + parsedDelta}?\nLý do: ${reason.trim()}. Tồn kho được kiểm tra lại khi lưu.`,
       )
     )
       return;
@@ -96,7 +95,8 @@ export const AdminInventoryView: React.FC<{
     setError(null);
     try {
       await inventoryAdminService.adjustInventory({
-        variant_id: selected.variant_id,
+        warehouse_id: selected.warehouse_id,
+        product_id: selected.product_id,
         quantity_delta: parsedDelta,
         reason: reason.trim(),
       });
@@ -111,7 +111,7 @@ export const AdminInventoryView: React.FC<{
       setError(
         getApiErrorMessage(
           requestError,
-          'Không thể điều chỉnh tồn kho. Backend có thể từ chối do quyền, variant hoặc số lượng khả dụng.',
+          'Không thể điều chỉnh tồn kho. Kiểm tra quyền, Product ID, kho và số lượng khả dụng.',
         ),
       );
     } finally {
@@ -124,10 +124,10 @@ export const AdminInventoryView: React.FC<{
       <header>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">Inventory</p>
         <h1 className="mt-1 font-serif text-3xl font-bold text-[#0B2419]">
-          {historyMode ? 'Lịch sử giao dịch kho' : 'Tồn kho theo biến thể'}
+          {historyMode ? 'Lịch sử giao dịch kho' : 'Tồn kho theo sản phẩm'}
         </h1>
         <p className="mt-2 text-sm text-[#606863]">
-          Kiểm tra số lượng theo từng size, màu và SKU. Mỗi điều chỉnh cần có lý do cụ thể.
+          Kiểm tra số lượng theo Product ID, kho và SKU. Mỗi điều chỉnh cần có lý do cụ thể.
         </p>
       </header>
 
@@ -167,36 +167,27 @@ export const AdminInventoryView: React.FC<{
           {loading ? (
             <div className="p-10 text-center text-sm text-[#606863]">Đang tải tồn kho...</div>
           ) : list.error ? null : rows.length === 0 ? (
-            <div className="p-10 text-center text-sm">Không có biến thể phù hợp.</div>
+            <div className="p-10 text-center text-sm">Không có dòng tồn kho phù hợp.</div>
           ) : (
             <table className="min-w-full text-left text-sm">
               <thead className="bg-[#F5F6F2] text-xs uppercase text-[#606863]">
                 <tr>
-                  <th className="px-4 py-3">Variant / SKU</th>
-                  <th className="px-4 py-3">Sản phẩm</th>
-                  <th className="px-4 py-3">Quy cách</th>
-                  <th className="px-4 py-3">Trạng thái bán</th>
+                  <th className="px-4 py-3">Product / SKU</th>
+                  <th className="px-4 py-3">Tên sản phẩm</th>
+                  <th className="px-4 py-3">Kho</th>
                   <th className="px-4 py-3 text-right">Khả dụng</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E2E5DE]">
                 {rows.map((row) => (
-                  <tr key={row.variant_id}>
+                  <tr key={`${row.warehouse_id}-${row.product_id}`}>
                     <td className="px-4 py-3">
-                      <strong className="font-mono">#{row.variant_id}</strong>
-                      <p className="text-xs text-[#606863]">{row.sku ?? 'Không có SKU'}</p>
+                      <strong className="font-mono">Product #{row.product_id}</strong>
+                      <p className="text-xs text-[#606863]">{row.sku}</p>
                     </td>
-                    <td className="px-4 py-3">
-                      <strong>{row.product_name}</strong>
-                      <p className="text-xs text-[#606863]">Product #{row.product_id}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      {row.size} · {row.color}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={row.sale_status} />
-                    </td>
+                    <td className="px-4 py-3"><strong>{row.product_name ?? '—'}</strong></td>
+                    <td className="px-4 py-3">Kho #{row.warehouse_id}</td>
                     <td className="px-4 py-3 text-right text-lg font-bold">
                       {row.available_quantity}
                     </td>
@@ -250,7 +241,7 @@ export const AdminInventoryView: React.FC<{
         {canWrite && selected && (
           <form onSubmit={adjust} className="rounded-lg border border-[#E2E5DE] bg-white p-5">
             <fieldset disabled={saving} className="contents">
-              <h2 className="font-serif text-xl font-bold">Điều chỉnh {selected.product_name}</h2>
+              <h2 className="font-serif text-xl font-bold">Điều chỉnh {selected.product_name ?? selected.sku}</h2>
               <p className="mt-1 text-xs text-[#606863]">
                 Hiện khả dụng: {selected.available_quantity}. Nhập số dương để tăng kho, số âm để
                 giảm kho.
@@ -328,7 +319,7 @@ export const AdminInventoryView: React.FC<{
             <thead className="bg-[#F5F6F2] text-xs uppercase text-[#606863]">
               <tr>
                 <th className="px-4 py-3">Thời gian / Mã</th>
-                <th className="px-4 py-3">Biến thể</th>
+                <th className="px-4 py-3">Product / Kho</th>
                 <th className="px-4 py-3">Loại</th>
                 <th className="px-4 py-3 text-right">Thay đổi</th>
                 <th className="px-4 py-3">Nguồn</th>
@@ -342,17 +333,17 @@ export const AdminInventoryView: React.FC<{
                     #{tx.txn_id}
                     <p className="text-xs">{formatVietnamDateTime(tx.created_at)}</p>
                   </td>
-                  <td className="px-4 py-3">#{tx.variant_id}</td>
+                  <td className="px-4 py-3">Product #{tx.product_id}<p className="text-xs text-[#606863]">Kho #{tx.warehouse_id}</p></td>
                   <td className="px-4 py-3">{statusLabel(tx.transaction_type)}</td>
                   <td className="px-4 py-3 text-right font-bold">
                     {tx.quantity_delta > 0 ? '+' : ''}
                     {tx.quantity_delta}
                   </td>
                   <td className="px-4 py-3 text-xs">
-                    {tx.order_id
-                      ? `Order #${tx.order_id}`
-                      : tx.goods_receipt_id
-                        ? `Receipt #${tx.goods_receipt_id}`
+                    {tx.order_item_id
+                      ? `Order item #${tx.order_item_id}`
+                      : tx.goods_receipt_item_id
+                        ? `Receipt item #${tx.goods_receipt_item_id}`
                         : 'Manual'}
                   </td>
                   <td className="max-w-sm px-4 py-3 text-xs">{tx.reason ?? '—'}</td>

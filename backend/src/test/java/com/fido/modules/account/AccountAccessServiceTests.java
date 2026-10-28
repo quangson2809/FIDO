@@ -30,20 +30,17 @@ class AccountAccessServiceTests {
         jdbc.update(
                 """
                 INSERT INTO accounts (
-                    account_id,
-                    password_hash,
-                    created_at,
-                    updated_at
+                    id, full_name, phone, password_hash, status, created_at, updated_at
                 )
                 VALUES
-                    (201, 'never-expose-this', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-                    (202, 'other-hash', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-                    (203, 'admin-hash', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    (201, 'Test account A', '0900000201', 'never-expose-this', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+                    (202, 'Test account B', '0900000202', 'other-hash', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+                    (203, 'Test administrator', '0900000203', 'admin-hash', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """);
 
         jdbc.update(
                 """
-                INSERT INTO roles (role_id, code, name)
+                INSERT INTO roles (id, code, name)
                 VALUES
                     (201, 'test-role-a', 'A'),
                     (202, 'test-role-b', 'B'),
@@ -52,7 +49,7 @@ class AccountAccessServiceTests {
 
         jdbc.update(
                 """
-                INSERT INTO permissions (permission_id, code, name)
+                INSERT INTO permissions (id, code, name)
                 VALUES
                     (201, 'test.read', 'Read'),
                     (202, 'test.write', 'Write')
@@ -63,7 +60,7 @@ class AccountAccessServiceTests {
         jdbc.update(
                 """
                 INSERT INTO account_roles
-                SELECT 203, role_id
+                SELECT 203, id
                 FROM roles
                 WHERE code = 'SUPERADMIN'
                 """);
@@ -89,6 +86,13 @@ class AccountAccessServiceTests {
     @Test
     void recognizesSuperadminRoleWithoutInventingPermissionGrants() {
         fixture();
+
+        // Isolate this service test from the global SUPERADMIN seed catalogue.
+        jdbc.update(
+                """
+                DELETE FROM role_permissions
+                WHERE role_id = (SELECT id FROM roles WHERE code = 'SUPERADMIN')
+                """);
 
         assertTrue(access.isSuperadmin(203L));
 
@@ -129,16 +133,16 @@ class AccountAccessServiceTests {
 
         assertEquals(3, tree.size());
 
-        assertEquals(5, tree.get("account").size());
+        assertEquals(7, tree.get("account").size());
 
-        assertEquals(201L, tree.get("account").get("account_id").asLong());
+        assertEquals(201L, tree.get("account").get("id").asLong());
 
         assertFalse(tree.toString().contains("password"));
 
         assertFalse(tree.toString().contains("never-expose-this"));
 
-        assertTrue(tree.get("roles").get(0).has("role_id"));
+        assertTrue(tree.get("roles").get(0).has("id"));
 
-        assertTrue(tree.get("permissions").get(0).has("permission_id"));
+        assertTrue(tree.get("permissions").get(0).has("id"));
     }
 }

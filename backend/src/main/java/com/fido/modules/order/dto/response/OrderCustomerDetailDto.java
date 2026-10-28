@@ -1,6 +1,5 @@
 package com.fido.modules.order.dto.response;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -10,10 +9,10 @@ public record OrderCustomerDetailDto(
         String order_status,
         RecipientDto recipient,
         List<OrderItemDto> items,
-        BigDecimal subtotal,
-        BigDecimal discount,
-        BigDecimal shipping_fee,
-        BigDecimal total,
+        Long subtotal,
+        Long discount,
+        Long shipping_fee,
+        Long total,
         PaymentPublicDto payment,
         ShippingInfoDto shipping_info,
         LocalDateTime completed_at,

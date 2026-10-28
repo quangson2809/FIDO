@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fido.modules.inventory.dto.request.GoodsReceiptActionRequest;
 import com.fido.modules.inventory.service.GoodsReceiptService;
+import com.fido.modules.inventory.service.InventoryCommandService;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -13,7 +14,17 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @SpringBootTest
@@ -21,297 +32,216 @@ import java.util.UUID;
 class InventoryPhase4TransactionTests {
 
     @Autowired GoodsReceiptService receipts;
-
+    @Autowired InventoryCommandService inventory;
     @Autowired JdbcTemplate db;
+    @Autowired PlatformTransactionManager transactionManager;
 
     Long accountId;
     Long supplierId;
     Long categoryId;
-    Long sizeSystemId;
-    Long sizeValueId;
-    Long colorId;
     Long productId;
-    Long variantId;
+    Long warehouseId;
     Long receiptId;
 
     void fixture() {
         String suffix = UUID.randomUUID().toString().replace("-", "");
+        String phone = "+84" + suffix.substring(0, 9);
 
-        String phone = "06" + suffix.substring(0, 16);
+        db.update("INSERT INTO accounts(full_name,password_hash,phone) VALUES (?,?,?)",
+                "Inventory rollback test", "test-only", phone);
+        accountId = db.queryForObject("SELECT id FROM accounts WHERE phone=?", Long.class, phone);
 
-        db.update(
-                """
-                INSERT INTO accounts(
-                    password_hash,
-                    phone,
-                    created_at,
-                    updated_at
-                )
-                VALUES ('test-only',?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
-                """,
-                phone);
+        db.update("INSERT INTO suppliers(code,name,status) VALUES (?,?, 'ACTIVE')",
+                "RB-SUP-" + suffix, "Rollback supplier " + suffix);
+        supplierId = db.queryForObject(
+                "SELECT id FROM suppliers WHERE code=?", Long.class, "RB-SUP-" + suffix);
 
-        accountId =
-                db.queryForObject(
-                        "SELECT account_id FROM accounts WHERE phone=?", Long.class, phone);
+        String categorySlug = "rollback-" + suffix;
+        db.update("INSERT INTO categories(name,slug) VALUES (?,?)",
+                "Rollback category " + suffix, categorySlug);
+        categoryId = db.queryForObject(
+                "SELECT id FROM categories WHERE slug=?", Long.class, categorySlug);
 
-        String supplierName = "Rollback supplier " + suffix;
+        db.update("INSERT INTO products(category_id,name,sku,selling_price,status) "
+                        + "VALUES (?,?,?,100000,'ACTIVE')",
+                categoryId, "Rollback product " + suffix, "RB-SKU-" + suffix);
+        productId = db.queryForObject(
+                "SELECT id FROM products WHERE sku=?", Long.class, "RB-SKU-" + suffix);
 
-        db.update(
-                """
-                INSERT INTO suppliers(
-                    name,
-                    usage_status
-                )
-                VALUES (?,'ACTIVE')
-                """,
-                supplierName);
+        db.update("INSERT INTO warehouses(code,name,status) VALUES (?,?, 'ACTIVE')",
+                "RB-WH-" + suffix, "Rollback warehouse " + suffix);
+        warehouseId = db.queryForObject(
+                "SELECT id FROM warehouses WHERE code=?", Long.class, "RB-WH-" + suffix);
 
-        supplierId =
-                db.queryForObject(
-                        "SELECT supplier_id FROM suppliers WHERE name=?", Long.class, supplierName);
+        db.update("INSERT INTO inventories(warehouse_id,product_id,quantity_on_hand,version) "
+                        + "VALUES (?,?,0,0)", warehouseId, productId);
 
-        String categoryName = "Rollback category " + suffix;
+        db.update("INSERT INTO goods_receipts(supplier_id,warehouse_id,receipt_number,status,created_by) "
+                        + "VALUES (?,?,?,'DRAFT',?)",
+                supplierId, warehouseId, "RB-" + suffix.substring(0, 20), accountId);
+        receiptId = db.queryForObject(
+                "SELECT id FROM goods_receipts WHERE receipt_number=?",
+                Long.class, "RB-" + suffix.substring(0, 20));
 
-        db.update("INSERT INTO categories(parent_category_id,name) VALUES (NULL,?)", categoryName);
-
-        categoryId =
-                db.queryForObject(
-                        "SELECT category_id FROM categories WHERE name=?",
-                        Long.class,
-                        categoryName);
-
-        String systemCode = "RB-SZ-" + suffix.substring(0, 12);
-
-        db.update("INSERT INTO size_systems(code,name) VALUES (?,?)", systemCode, "Rollback size");
-
-        sizeSystemId =
-                db.queryForObject(
-                        "SELECT size_system_id FROM size_systems WHERE code=?",
-                        Long.class,
-                        systemCode);
-
-        db.update(
-                """
-                INSERT INTO size_values(
-                    size_system_id,
-                    code,
-                    display_name,
-                    sort_order
-                )
-                VALUES (?,'M','Medium',1)
-                """,
-                sizeSystemId);
-
-        sizeValueId =
-                db.queryForObject(
-                        """
-                        SELECT size_value_id
-                        FROM size_values
-                        WHERE size_system_id=?
-                          AND code='M'
-                        """,
-                        Long.class,
-                        sizeSystemId);
-
-        String colorCode = "RB-C-" + suffix.substring(0, 12);
-
-        db.update("INSERT INTO colors(code,name) VALUES (?,?)", colorCode, "Rollback color");
-
-        colorId =
-                db.queryForObject(
-                        "SELECT color_id FROM colors WHERE code=?", Long.class, colorCode);
-
-        String productName = "Rollback product " + suffix;
-
-        db.update(
-                """
-                INSERT INTO products(
-                    category_id,
-                    brand_id,
-                    size_system_id,
-                    name,
-                    base_price,
-                    sale_status,
-                    created_at,
-                    updated_at
-                )
-                VALUES (?,NULL,?,?,100000,'ON_SALE',
-                        CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
-                """,
-                categoryId,
-                sizeSystemId,
-                productName);
-
-        productId =
-                db.queryForObject(
-                        "SELECT product_id FROM products WHERE name=?", Long.class, productName);
-
-        String sku = "RB-SKU-" + suffix;
-
-        db.update(
-                """
-                INSERT INTO product_variants(
-                    product_id,
-                    size_value_id,
-                    color_id,
-                    sku,
-                    sale_status,
-                    created_at,
-                    updated_at
-                )
-                VALUES (?,?,?,?,'ON_SALE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
-                """,
-                productId,
-                sizeValueId,
-                colorId,
-                sku);
-
-        variantId =
-                db.queryForObject(
-                        "SELECT variant_id FROM product_variants WHERE sku=?", Long.class, sku);
-
-        db.update(
-                """
-                INSERT INTO inventories(
-                    variant_id,
-                    available_quantity,
-                    updated_at
-                )
-                VALUES (?,0,CURRENT_TIMESTAMP)
-                """,
-                variantId);
-
-        String receiptCode = "RB-" + suffix.substring(0, 20);
-
-        db.update(
-                """
-                INSERT INTO goods_receipts(
-                    receipt_code,
-                    supplier_id,
-                    receipt_status,
-                    receipt_date,
-                    created_by_account_id,
-                    created_at,
-                    updated_at
-                )
-                VALUES (?,?,'DRAFT',CURRENT_DATE,?,
-                        CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
-                """,
-                receiptCode,
-                supplierId,
-                accountId);
-
-        receiptId =
-                db.queryForObject(
-                        "SELECT receipt_id FROM goods_receipts WHERE receipt_code=?",
-                        Long.class,
-                        receiptCode);
-
-        db.update(
-                """
-                INSERT INTO goods_receipt_items(
-                    receipt_id,
-                    variant_id,
-                    quantity
-                )
-                VALUES (?,?,5)
-                """,
-                receiptId,
-                variantId);
+        db.update("INSERT INTO goods_receipt_items(goods_receipt_id,product_id,quantity_received,unit_cost) "
+                        + "VALUES (?,?,5,0)", receiptId, productId);
     }
 
     @AfterEach
     void clean() {
-        if (accountId == null) {
-            return;
-        }
-
+        if (accountId == null) return;
         db.update("DELETE FROM audit_logs WHERE actor_account_id=?", accountId);
-
         if (receiptId != null) {
-            db.update("DELETE FROM inventory_transactions WHERE goods_receipt_id=?", receiptId);
-
-            db.update("DELETE FROM goods_receipt_items WHERE receipt_id=?", receiptId);
-
-            db.update("DELETE FROM goods_receipts WHERE receipt_id=?", receiptId);
+            db.update("DELETE FROM inventory_transactions WHERE goods_receipt_item_id IN "
+                    + "(SELECT id FROM goods_receipt_items WHERE goods_receipt_id=?)", receiptId);
+            db.update("DELETE FROM goods_receipt_items WHERE goods_receipt_id=?", receiptId);
+            db.update("DELETE FROM goods_receipts WHERE id=?", receiptId);
         }
-
-        if (variantId != null) {
-            db.update("DELETE FROM inventory_transactions WHERE variant_id=?", variantId);
-
-            db.update("DELETE FROM inventories WHERE variant_id=?", variantId);
-
-            db.update("DELETE FROM product_variants WHERE variant_id=?", variantId);
-        }
-
         if (productId != null) {
-            db.update("DELETE FROM products WHERE product_id=?", productId);
+            db.update("DELETE FROM inventory_transactions WHERE product_id=?", productId);
+            db.update("DELETE FROM inventories WHERE product_id=?", productId);
+            db.update("DELETE FROM products WHERE id=?", productId);
         }
-
-        if (colorId != null) {
-            db.update("DELETE FROM colors WHERE color_id=?", colorId);
-        }
-
-        if (sizeValueId != null) {
-            db.update("DELETE FROM size_values WHERE size_value_id=?", sizeValueId);
-        }
-
-        if (sizeSystemId != null) {
-            db.update("DELETE FROM size_systems WHERE size_system_id=?", sizeSystemId);
-        }
-
-        if (categoryId != null) {
-            db.update("DELETE FROM categories WHERE category_id=?", categoryId);
-        }
-
-        if (supplierId != null) {
-            db.update("DELETE FROM suppliers WHERE supplier_id=?", supplierId);
-        }
-
-        db.update("DELETE FROM accounts WHERE account_id=?", accountId);
+        if (categoryId != null) db.update("DELETE FROM categories WHERE id=?", categoryId);
+        if (warehouseId != null) db.update("DELETE FROM warehouses WHERE id=?", warehouseId);
+        if (supplierId != null) db.update("DELETE FROM suppliers WHERE id=?", supplierId);
+        db.update("DELETE FROM accounts WHERE id=?", accountId);
     }
 
     @Test
     @WithMockUser(authorities = "ROLE_SUPERADMIN")
     void failedLedgerInsertRollsBackReceiptAndInventoryTogether() {
         fixture();
-
-        assertThrows(
-                RuntimeException.class,
+        assertThrows(RuntimeException.class,
                 () -> receipts.action(-999L, receiptId, new GoodsReceiptActionRequest("CONFIRM")));
 
-        assertEquals(
-                "DRAFT",
-                db.queryForObject(
-                        """
-                        SELECT receipt_status
-                        FROM goods_receipts
-                        WHERE receipt_id=?
-                        """,
-                        String.class,
-                        receiptId));
+        assertEquals("DRAFT", db.queryForObject(
+                "SELECT status FROM goods_receipts WHERE id=?", String.class, receiptId));
+        assertEquals(0, db.queryForObject(
+                "SELECT quantity_on_hand FROM inventories WHERE warehouse_id=? AND product_id=?",
+                Integer.class, warehouseId, productId));
+        assertEquals(0, db.queryForObject(
+                "SELECT COUNT(*) FROM inventory_transactions WHERE goods_receipt_item_id IN "
+                        + "(SELECT id FROM goods_receipt_items WHERE goods_receipt_id=?)",
+                Integer.class, receiptId));
+    }
 
-        assertEquals(
-                0,
-                db.queryForObject(
-                        """
-                        SELECT available_quantity
-                        FROM inventories
-                        WHERE variant_id=?
-                        """,
-                        Integer.class,
-                        variantId));
+    @Test
+    void receiptMovementReplayUsesPersistedReceiptItemIdentityAndDoesNotMutateTwice() {
+        fixture();
+        SecurityContext previous = SecurityContextHolder.getContext();
+        SecurityContext jwtContext = SecurityContextHolder.createEmptyContext();
+        Instant issued = Instant.now();
+        Jwt jwt = Jwt.withTokenValue("p36-receipt-replay-test")
+                .header("alg", "none")
+                .subject(accountId.toString())
+                .issuedAt(issued)
+                .expiresAt(issued.plusSeconds(120))
+                .build();
+        jwtContext.setAuthentication(new JwtAuthenticationToken(
+                jwt, List.of(new SimpleGrantedAuthority("ROLE_SUPERADMIN"))));
+        SecurityContextHolder.setContext(jwtContext);
 
-        assertEquals(
-                0,
-                db.queryForObject(
-                        """
-                        SELECT COUNT(*)
-                        FROM inventory_transactions
-                        WHERE goods_receipt_id=?
-                        """,
-                        Integer.class,
-                        receiptId));
+        try {
+            receipts.action(accountId, receiptId, new GoodsReceiptActionRequest("CONFIRM"));
+            Long receiptItemId = db.queryForObject(
+                    "SELECT id FROM goods_receipt_items WHERE goods_receipt_id=?",
+                    Long.class, receiptId);
+            String semanticKey = "goods-receipt-item:" + receiptItemId + ":GOODS_RECEIPT";
+
+            TransactionTemplate tx = new TransactionTemplate(transactionManager);
+            tx.executeWithoutResult(status -> inventory.receiveGoods(
+                    accountId,
+                    receiptId,
+                    warehouseId,
+                    List.of(new InventoryCommandService.StockLine(
+                            productId, 5, null, receiptItemId))));
+
+            assertEquals(5, db.queryForObject(
+                    "SELECT quantity_on_hand FROM inventories WHERE warehouse_id=? AND product_id=?",
+                    Integer.class, warehouseId, productId));
+            assertEquals(1, db.queryForObject(
+                    "SELECT version FROM inventories WHERE warehouse_id=? AND product_id=?",
+                    Integer.class, warehouseId, productId));
+            assertEquals(1, db.queryForObject(
+                    "SELECT COUNT(*) FROM inventory_transactions WHERE goods_receipt_item_id=? "
+                            + "AND transaction_type='GOODS_RECEIPT' AND idempotency_key=?",
+                    Integer.class, receiptItemId, semanticKey));
+            assertEquals(5, db.queryForObject(
+                    "SELECT COALESCE(SUM(quantity_delta),0) FROM inventory_transactions "
+                            + "WHERE warehouse_id=? AND product_id=?",
+                    Integer.class, warehouseId, productId));
+            assertEquals(1, db.queryForObject(
+                    "SELECT COUNT(*) FROM audit_logs WHERE actor_account_id=? "
+                            + "AND action='GOODS_RECEIPT_CONFIRM' AND entity_id=?",
+                    Integer.class, accountId, Long.toString(receiptId)));
+
+            assertThrows(ResponseStatusException.class,
+                    () -> tx.executeWithoutResult(status -> inventory.receiveGoods(
+                            accountId,
+                            receiptId,
+                            warehouseId,
+                            List.of(new InventoryCommandService.StockLine(
+                                    productId, 4, null, receiptItemId)))));
+            assertEquals(5, db.queryForObject(
+                    "SELECT quantity_on_hand FROM inventories WHERE warehouse_id=? AND product_id=?",
+                    Integer.class, warehouseId, productId));
+            assertEquals(1, db.queryForObject(
+                    "SELECT COUNT(*) FROM inventory_transactions WHERE goods_receipt_item_id=?",
+                    Integer.class, receiptItemId));
+        } finally {
+            SecurityContextHolder.setContext(previous);
+        }
+    }
+
+    @Test
+    void openingBalanceIsSourceDeduplicatedAndLedgerReconciles() {
+        fixture();
+        SecurityContext previous = SecurityContextHolder.getContext();
+        SecurityContext jwtContext = SecurityContextHolder.createEmptyContext();
+        Instant issued = Instant.now();
+        Jwt jwt = Jwt.withTokenValue("p36-opening-test")
+                .header("alg", "none")
+                .subject(accountId.toString())
+                .issuedAt(issued)
+                .expiresAt(issued.plusSeconds(120))
+                .build();
+        jwtContext.setAuthentication(new JwtAuthenticationToken(
+                jwt, List.of(new SimpleGrantedAuthority("ROLE_SUPERADMIN"))));
+        SecurityContextHolder.setContext(jwtContext);
+
+        try {
+            TransactionTemplate tx = new TransactionTemplate(transactionManager);
+            var first = tx.execute(status -> inventory.openStock(accountId, productId, 8));
+            var replay = tx.execute(status -> inventory.openStock(accountId, productId, 8));
+            assertEquals(first.getTxnId(), replay.getTxnId());
+            assertThrows(ResponseStatusException.class,
+                    () -> tx.execute(status -> inventory.openStock(accountId, productId, 9)));
+
+            assertEquals(8, db.queryForObject(
+                    "SELECT quantity_on_hand FROM inventories WHERE warehouse_id=? AND product_id=?",
+                    Integer.class, warehouseId, productId));
+            assertEquals(1, db.queryForObject(
+                    "SELECT version FROM inventories WHERE warehouse_id=? AND product_id=?",
+                    Integer.class, warehouseId, productId));
+            assertEquals("opening:" + warehouseId + ":" + productId,
+                    db.queryForObject(
+                            "SELECT idempotency_key FROM inventory_transactions "
+                                    + "WHERE warehouse_id=? AND product_id=? AND transaction_type='OPENING'",
+                            String.class, warehouseId, productId));
+            assertEquals(1, db.queryForObject(
+                    "SELECT COUNT(*) FROM inventory_transactions "
+                            + "WHERE warehouse_id=? AND product_id=? AND transaction_type='OPENING'",
+                    Integer.class, warehouseId, productId));
+            assertEquals(8, db.queryForObject(
+                    "SELECT COALESCE(SUM(quantity_delta),0) FROM inventory_transactions "
+                            + "WHERE warehouse_id=? AND product_id=?",
+                    Integer.class, warehouseId, productId));
+            assertEquals(1, db.queryForObject(
+                    "SELECT COUNT(*) FROM audit_logs WHERE actor_account_id=? AND action='INVENTORY_OPENING'",
+                    Integer.class, accountId));
+        } finally {
+            SecurityContextHolder.setContext(previous);
+        }
     }
 }

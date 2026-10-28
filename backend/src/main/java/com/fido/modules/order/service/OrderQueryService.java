@@ -6,9 +6,11 @@ import com.fido.modules.order.dto.response.OrderAdminDetailDto;
 import com.fido.modules.order.dto.response.OrderCustomerDetailDto;
 import com.fido.modules.order.dto.response.OrderSummaryDto;
 import com.fido.modules.order.entity.Order;
+import com.fido.modules.order.entity.OrderAddress;
 import com.fido.modules.order.entity.OrderItem;
 import com.fido.modules.order.entity.Payment;
 import com.fido.modules.order.mapper.OrderMapper;
+import com.fido.modules.order.repository.OrderAddressRepository;
 import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
@@ -33,6 +35,7 @@ public class OrderQueryService {
     private static final String READ = "hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_ORDER_READ')";
 
     private final OrderRepository orders;
+    private final OrderAddressRepository addresses;
     private final OrderItemRepository items;
     private final PaymentRepository payments;
     private final ShippingInfoRepository shipping;
@@ -42,6 +45,7 @@ public class OrderQueryService {
 
     public OrderQueryService(
             OrderRepository orders,
+            OrderAddressRepository addresses,
             OrderItemRepository items,
             PaymentRepository payments,
             ShippingInfoRepository shipping,
@@ -49,6 +53,7 @@ public class OrderQueryService {
             OrderActionPolicy actionPolicy,
             OrderAuthorization authorization) {
         this.orders = orders;
+        this.addresses = addresses;
         this.items = items;
         this.payments = payments;
         this.shipping = shipping;
@@ -115,21 +120,22 @@ public class OrderQueryService {
         var orderItems = orderItems(order.getOrderId());
         Payment payment = payment(order.getOrderId());
         var shippingInfo = shipping.findById(order.getOrderId()).orElse(null);
+        OrderAddress address = address(order.getOrderId());
 
         return new OrderCustomerDetailDto(
                 order.getOrderId(),
                 order.getOrderCode(),
                 order.getOrderStatus(),
-                OrderMapper.recipient(order),
+                OrderMapper.recipient(address),
                 orderItems,
-                order.getSubtotalSnapshot(),
-                order.getDiscountSnapshot(),
-                order.getShippingFeeSnapshot(),
-                order.getTotalSnapshot(),
+                order.getSubtotal(),
+                order.getDiscountAmount(),
+                order.getShippingFee(),
+                order.getTotalAmount(),
                 OrderMapper.paymentPublic(payment),
                 OrderMapper.shipping(shippingInfo),
-                order.getCompletedAt(),
-                order.getReturnedAt(),
+                shippingInfo == null ? null : shippingInfo.getDeliveredAt(),
+                payment.getRefundedAt(),
                 order.getCreatedAt(),
                 order.getUpdatedAt());
     }
@@ -138,29 +144,33 @@ public class OrderQueryService {
         var orderItems = orderItems(order.getOrderId());
         Payment payment = payment(order.getOrderId());
         var shippingInfo = shipping.findById(order.getOrderId()).orElse(null);
+        OrderAddress address = address(order.getOrderId());
 
         return new OrderAdminDetailDto(
                 order.getOrderId(),
                 order.getOrderCode(),
                 order.getOrderStatus(),
-                OrderMapper.recipient(order),
+                OrderMapper.recipient(address),
                 orderItems,
-                order.getSubtotalSnapshot(),
-                order.getDiscountSnapshot(),
-                order.getShippingFeeSnapshot(),
-                order.getTotalSnapshot(),
+                order.getSubtotal(),
+                order.getDiscountAmount(),
+                order.getShippingFee(),
+                order.getTotalAmount(),
                 OrderMapper.shipping(shippingInfo),
-                order.getCompletedAt(),
-                order.getReturnedAt(),
+                shippingInfo == null ? null : shippingInfo.getDeliveredAt(),
+                payment.getRefundedAt(),
                 order.getCreatedAt(),
                 order.getUpdatedAt(),
                 order.getCustomerAccountId(),
                 order.getVoucherId(),
-                order.getCustomerServiceNote(),
-                order.getCancelReason(),
                 OrderMapper.paymentAdmin(payment),
                 authorization.filterAllowed(
                         authentication, actionPolicy.allowedActions(order, payment)));
+    }
+
+    private OrderAddress address(Long orderId) {
+        return addresses.findById(orderId)
+                .orElseThrow(() -> new IllegalStateException("ORDER_ADDRESS_SNAPSHOT_MISSING"));
     }
 
     private List<com.fido.modules.order.dto.response.OrderItemDto> orderItems(Long orderId) {

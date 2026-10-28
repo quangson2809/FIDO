@@ -16,9 +16,16 @@ public class StaffPatchRequest {
     @Size(max = 20)
     private String phone;
 
+    @Pattern(regexp = ".*\\S.*")
+    @Size(max = 150)
+    private String full_name;
+
     @Email
     @Size(max = 254)
     private String email;
+
+    @Pattern(regexp = "ACTIVE|PENDING_APPROVAL|LOCKED|SUSPENDED")
+    private String status;
 
     private List<@NotNull Long> role_ids;
 
@@ -31,6 +38,15 @@ public class StaffPatchRequest {
         phone = value;
     }
 
+    public String full_name() {
+        return full_name;
+    }
+
+    @JsonSetter(value = "full_name", nulls = Nulls.FAIL)
+    public void setFull_name(String value) {
+        full_name = value;
+    }
+
     public String email() {
         return email;
     }
@@ -40,7 +56,16 @@ public class StaffPatchRequest {
         email = value;
     }
 
-    public List<@NotNull Long> role_ids() {
+    public String status() {
+        return status;
+    }
+
+    @JsonSetter(value = "status", nulls = Nulls.FAIL)
+    public void setStatus(String value) {
+        status = value;
+    }
+
+    public List<Long> role_ids() {
         return role_ids;
     }
 

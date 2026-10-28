@@ -17,13 +17,16 @@ import java.util.regex.Pattern;
 public class AuditPayloadPolicy {
 
     private static final Set<String> VOUCHER_FIELDS =
-            Set.of("code", "status", "usage_limit", "used_count", "discount_type");
+            Set.of("code", "status", "usage_limit", "usage_count", "discount_type");
     private static final Set<String> ACCOUNT_FIELDS =
             Set.of("status", "active", "role_count", "permission_count");
     private static final Set<String> ROLE_FIELDS =
             Set.of("code", "status", "active", "permission_count");
     private static final Set<String> PERMISSION_FIELDS = Set.of("code", "active");
-    private static final Set<String> CONTENT_FIELDS = Set.of("status");
+    private static final Set<String> CONTENT_FIELDS =
+            Set.of("slug", "status", "title_changed", "content_changed");
+    private static final Set<String> AUDIT_QUERY_FIELDS =
+            Set.of("actor_account_id", "action", "entity_type", "entity_id", "from", "to", "page", "page_size");
     private static final Set<String> RECEIPT_FIELDS =
             Set.of("status", "warehouse_id", "item_count", "total_quantity");
     private static final Set<String> INVENTORY_FIELDS =
@@ -34,6 +37,7 @@ public class AuditPayloadPolicy {
                     "status",
                     "payment_status",
                     "shipping_status",
+                    "reason_code",
                     "item_count",
                     "total_amount",
                     "refund_amount");
@@ -42,14 +46,16 @@ public class AuditPayloadPolicy {
 
     private static final Set<String> CODE_FIELDS =
             Set.of("code", "status", "discount_type", "reason_code",
-                    "payment_status", "shipping_status");
-    private static final Set<String> BOOLEAN_FIELDS = Set.of("active");
+                    "payment_status", "shipping_status", "slug", "action", "entity_type", "entity_id",
+                    "from", "to");
+    private static final Set<String> BOOLEAN_FIELDS =
+            Set.of("active", "title_changed", "content_changed");
     private static final Set<String> NUMERIC_FIELDS =
             Set.of(
-                    "usage_limit", "used_count", "role_count", "permission_count",
+                    "usage_limit", "usage_count", "role_count", "permission_count",
                     "warehouse_id", "item_count", "total_quantity", "product_id",
                     "quantity_delta", "parent_product_id", "price", "image_count",
-                    "total_amount", "refund_amount");
+                    "total_amount", "refund_amount", "actor_account_id", "page", "page_size");
 
     private static final Pattern SAFE_CODE_VALUE =
             Pattern.compile("[A-Za-z0-9._:-]{1,120}");
@@ -99,9 +105,43 @@ public class AuditPayloadPolicy {
         }
     }
 
+    /**
+     * Applies the same action-specific field/value allowlist to historical rows before DTO
+     * serialization. Unknown action codes and nested/unrecognized values fail closed.
+     */
+    public Map<String, Object> redactForRead(String actionCode, Map<String, ?> source) {
+        if (source == null) {
+            return null;
+        }
+
+        final AuditAction action;
+        try {
+            action = AuditAction.valueOf(actionCode);
+        } catch (IllegalArgumentException | NullPointerException ex) {
+            return Map.of();
+        }
+
+        Set<String> allowed = allowedFields(action);
+        Map<String, Object> safe = new TreeMap<>();
+        source.forEach((key, value) -> {
+            if (key == null
+                    || !allowed.contains(key)
+                    || SECRET_OR_PII_KEY.matcher(key).matches()) {
+                return;
+            }
+            Object normalized = normalizeValue(key, value);
+            if (normalized != null) {
+                safe.put(key, normalized);
+            }
+        });
+        return java.util.Collections.unmodifiableMap(safe);
+    }
+
     private Set<String> allowedFields(AuditAction action) {
         return switch (action) {
-            case VOUCHER_CREATE, VOUCHER_UPDATE -> VOUCHER_FIELDS;
+            case AUDIT_LOG_QUERY -> AUDIT_QUERY_FIELDS;
+            case VOUCHER_CREATE, VOUCHER_UPDATE,
+                    VOUCHER_QUOTA_CONSUME, VOUCHER_QUOTA_RELEASE -> VOUCHER_FIELDS;
             case SUPERADMIN_BOOTSTRAP, STAFF_CREATE, STAFF_UPDATE -> ACCOUNT_FIELDS;
             case ROLE_CREATE, ROLE_UPDATE, ROLE_DELETE -> ROLE_FIELDS;
             case PERMISSION_CREATE, PERMISSION_UPDATE, PERMISSION_DELETE -> PERMISSION_FIELDS;
@@ -110,7 +150,7 @@ public class AuditPayloadPolicy {
                     GOODS_RECEIPT_UPDATE,
                     GOODS_RECEIPT_CONFIRM,
                     GOODS_RECEIPT_CANCEL -> RECEIPT_FIELDS;
-            case INVENTORY_ADJUST -> INVENTORY_FIELDS;
+            case INVENTORY_ADJUST, INVENTORY_OPENING, INVENTORY_ORDER_CANCEL_REVERSAL -> INVENTORY_FIELDS;
             case SUPPLIER_CREATE, SUPPLIER_UPDATE -> SUPPLIER_FIELDS;
             case ORDER_CREATE,
                     ORDER_RECIPIENT_UPDATE,
@@ -137,17 +177,26 @@ public class AuditPayloadPolicy {
                     COLOR_DELETE,
                     PRODUCT_CREATE,
                     PRODUCT_UPDATE,
+                    PRODUCT_DELETE,
                     VARIANT_CREATE,
                     VARIANT_UPDATE,
                     SIZE_SYSTEM_CREATE,
                     SIZE_SYSTEM_UPDATE,
-                    SIZE_SYSTEM_DELETE -> CATALOG_FIELDS;
+                    SIZE_SYSTEM_DELETE,
+                    ATTRIBUTE_CREATE,
+                    ATTRIBUTE_UPDATE,
+                    ATTRIBUTE_OPTION_CREATE,
+                    ATTRIBUTE_OPTION_UPDATE -> CATALOG_FIELDS;
         };
     }
 
     private Object normalizeValue(String key, Object value) {
         if (value == null) {
             return null;
+        }
+        if (value instanceof String text && "slug".equals(key)) {
+            String slug = text.trim();
+            return slug.length() <= 180 && slug.matches("[a-z0-9]+(?:-[a-z0-9]+)*") ? slug : null;
         }
         if (value instanceof String text && CODE_FIELDS.contains(key)) {
             String normalized = text.trim();

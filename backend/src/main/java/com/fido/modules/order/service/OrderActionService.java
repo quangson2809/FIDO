@@ -1,19 +1,22 @@
 package com.fido.modules.order.service;
 
 import com.fido.modules.audit.service.AuditAction;
-import com.fido.modules.audit.service.AuditEvent;
-import com.fido.modules.audit.service.AuditService;
-import com.fido.modules.audit.service.AuditTargetType;
+import com.fido.modules.audit.service.AuditEntityType;
+import com.fido.modules.audit.service.AuditWriteEvent;
+import com.fido.modules.audit.service.AuditWriteService;
 import com.fido.modules.inventory.service.InventoryCommandService;
-import com.fido.modules.inventory.service.InventoryMovementQueryService;
+import com.fido.modules.inventory.service.InventoryCommandService.StockLine;
+import com.fido.modules.promotion.service.VoucherRedemptionService;
 import com.fido.modules.order.dto.request.OrderActionRequest;
 import com.fido.modules.order.dto.response.OrderAdminDetailDto;
 import com.fido.modules.order.entity.Order;
 import com.fido.modules.order.entity.OrderItem;
 import com.fido.modules.order.entity.Payment;
+import com.fido.modules.order.entity.ShippingInfo;
 import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
+import com.fido.modules.order.repository.ShippingInfoRepository;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,245 +27,205 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Transactional
 public class OrderActionService {
-
     private final OrderActionPolicy policy;
     private final OrderRepository orders;
     private final OrderItemRepository items;
     private final PaymentRepository payments;
-    private final InventoryCommandService inventoryCommands;
-    private final InventoryMovementQueryService movements;
+    private final ShippingInfoRepository shippingInfos;
+    private final InventoryCommandService inventory;
     private final OrderQueryService query;
-    private final AuditService audit;
-    private final com.fido.modules.promotion.service.VoucherRedemptionService vouchers;
+    private final AuditWriteService audit;
+    private final VoucherRedemptionService voucherRedemption;
 
     public OrderActionService(
             OrderActionPolicy policy,
             OrderRepository orders,
             OrderItemRepository items,
             PaymentRepository payments,
-            InventoryCommandService inventoryCommands,
-            InventoryMovementQueryService movements,
+            ShippingInfoRepository shippingInfos,
+            InventoryCommandService inventory,
             OrderQueryService query,
-            AuditService audit,
-            com.fido.modules.promotion.service.VoucherRedemptionService vouchers) {
+            AuditWriteService audit,
+            VoucherRedemptionService voucherRedemption) {
         this.policy = policy;
         this.orders = orders;
         this.items = items;
         this.payments = payments;
-        this.inventoryCommands = inventoryCommands;
-        this.movements = movements;
+        this.shippingInfos = shippingInfos;
+        this.inventory = inventory;
         this.query = query;
         this.audit = audit;
-        this.vouchers = vouchers;
+        this.voucherRedemption = voucherRedemption;
     }
 
     @PreAuthorize("@orderAuthorization.canExecute(authentication, #request.action())")
     public OrderAdminDetailDto action(
             Long actor, Long orderId, OrderActionRequest request, Authentication authentication) {
-        Order order = locked(orderId);
-        Payment payment =
-                payments.findById(orderId)
-                        .orElseThrow(() -> new IllegalStateException("Order payment is missing"));
-        if (!policy.requireExecutable(order, payment, request.action())) {
-            return query.adminDetailInternal(order, authentication);
+        Order order = orders.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND"));
+        Payment payment = payments.findById(orderId)
+                .orElseThrow(() -> new IllegalStateException("ORDER_PAYMENT_MISSING"));
+        ShippingInfo shipping = shippingInfos.findById(orderId)
+                .orElseThrow(() -> new IllegalStateException("ORDER_SHIPPING_INFO_MISSING"));
+
+        policy.requireExecutable(order, payment, shipping, request.action());
+        switch (request.action()) {
+            case "CONFIRM" -> confirm(actor, order, shipping);
+            case "START_PREPARING" -> startPreparing(actor, order, shipping);
+            case "DISPATCH" -> dispatch(actor, order, shipping, request);
+            case "MARK_DELIVERY_FAILED" -> markDeliveryFailed(actor, order, shipping, request);
+            case "RETRY_DELIVERY" -> retryDelivery(actor, order, shipping, request);
+            case "CANCEL" -> cancel(actor, order, payment, shipping, request);
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ORDER_ACTION_INVALID");
         }
-
-        Order result =
-                switch (request.action()) {
-                    case "CONFIRM" -> confirm(actor, order, request.reason());
-                    case "PREPARE" ->
-                            simpleTransition(
-                                    actor,
-                                    order,
-                                    OrderPolicy.CONFIRMED,
-                                    OrderPolicy.PREPARING,
-                                    AuditAction.ORDER_PREPARE);
-                    case "SHIP" ->
-                            simpleTransition(
-                                    actor,
-                                    order,
-                                    OrderPolicy.PREPARING,
-                                    OrderPolicy.SHIPPING,
-                                    AuditAction.ORDER_SHIP);
-                    case "DELIVERY_FAILED" -> deliveryFailed(actor, order, request.reason());
-                    case "RETRY_DELIVERY" -> retryDelivery(actor, order);
-                    case "CANCEL" -> cancel(actor, order, request.reason());
-                    case "COMPLETE" -> complete(actor, order);
-                    case "DELIVERY_RETURN_IN" -> deliveryReturnIn(actor, order, request.reason());
-                    default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-                };
-
-        return query.adminDetailInternal(result, authentication);
+        return query.adminDetailInternal(order, authentication);
     }
 
-    private Order confirm(Long actor, Order order, String reason) {
-        inventoryCommands.deductConfirmedOrder(
-                actor, order.getOrderId(), stockLines(order.getOrderId()), reason);
+    private void confirm(Long actor, Order order, ShippingInfo shipping) {
+        String fromOrder = order.getOrderStatus();
+        String fromShipping = shipping.getShippingStatus();
+        inventory.deductConfirmedOrder(
+                actor, order.getOrderId(), stockLines(order.getOrderId()), "ORDER_CONFIRM");
 
         order.setOrderStatus(OrderPolicy.CONFIRMED);
         orders.save(order);
-
-        audit.record(
-                AuditEvent.described(
-                        actor,
-                        AuditAction.ORDER_CONFIRM,
-                        AuditTargetType.ORDER,
-                        order.getOrderId(),
-                        transitionDescription(OrderPolicy.PENDING, OrderPolicy.CONFIRMED)));
-
-        return order;
+        auditTransition(
+                AuditAction.ORDER_CONFIRM, order, fromOrder, fromShipping,
+                order.getOrderStatus(), shipping.getShippingStatus());
     }
 
-    private Order deliveryFailed(Long actor, Order order, String reason) {
-        order.setOrderStatus(OrderPolicy.DELIVERY_FAILED);
+    private void startPreparing(Long actor, Order order, ShippingInfo shipping) {
+        String fromOrder = order.getOrderStatus();
+        String fromShipping = shipping.getShippingStatus();
+        inventory.requireConfirmedOrderMovements(order.getOrderId(), stockLines(order.getOrderId()));
 
-        if (reason != null && !reason.isBlank()) {
-            order.setCustomerServiceNote(
-                    appendNote(
-                            order.getCustomerServiceNote(), "DELIVERY_FAILED: " + reason.trim()));
-        }
-
+        order.setOrderStatus(OrderPolicy.PREPARING);
         orders.save(order);
-
-        audit.record(
-                AuditEvent.described(
-                        actor,
-                        AuditAction.ORDER_DELIVERY_FAILED,
-                        AuditTargetType.ORDER,
-                        order.getOrderId(),
-                        transitionDescription(OrderPolicy.SHIPPING, OrderPolicy.DELIVERY_FAILED)));
-
-        return order;
+        auditTransition(
+                AuditAction.ORDER_PREPARE, order, fromOrder, fromShipping,
+                order.getOrderStatus(), shipping.getShippingStatus());
     }
 
-    private Order retryDelivery(Long actor, Order order) {
+    private void dispatch(
+            Long actor, Order order, ShippingInfo shipping, OrderActionRequest request) {
+        String fromOrder = order.getOrderStatus();
+        String fromShipping = shipping.getShippingStatus();
+        inventory.requireConfirmedOrderMovements(order.getOrderId(), stockLines(order.getOrderId()));
+
         order.setOrderStatus(OrderPolicy.SHIPPING);
+        shipping.setShippingStatus("SHIPPED");
+        shipping.setShippedAt(LocalDateTime.now(ZoneOffset.UTC));
+        applyManualTracking(shipping, request);
         orders.save(order);
-
-        audit.record(
-                AuditEvent.described(
-                        actor,
-                        AuditAction.ORDER_RETRY_DELIVERY,
-                        AuditTargetType.ORDER,
-                        order.getOrderId(),
-                        transitionDescription(OrderPolicy.DELIVERY_FAILED, OrderPolicy.SHIPPING)));
-
-        return order;
+        shippingInfos.save(shipping);
+        auditTransition(
+                AuditAction.ORDER_SHIP, order, fromOrder, fromShipping,
+                order.getOrderStatus(), shipping.getShippingStatus());
     }
 
-    private Order complete(Long actor, Order order) {
-        order.setOrderStatus(OrderPolicy.COMPLETED);
-        order.setCompletedAt(LocalDateTime.now(ZoneOffset.UTC));
+    private void markDeliveryFailed(
+            Long actor, Order order, ShippingInfo shipping, OrderActionRequest request) {
+        String fromOrder = order.getOrderStatus();
+        String fromShipping = shipping.getShippingStatus();
 
+        order.setOrderStatus(OrderPolicy.DELIVERY_FAILED);
+        shipping.setShippingStatus("FAILED");
         orders.save(order);
-
-        audit.record(
-                AuditEvent.described(
-                        actor,
-                        AuditAction.ORDER_COMPLETE,
-                        AuditTargetType.ORDER,
-                        order.getOrderId(),
-                        transitionDescription(OrderPolicy.SHIPPING, OrderPolicy.COMPLETED)));
-
-        return order;
+        shippingInfos.save(shipping);
+        auditTransition(
+                AuditAction.ORDER_DELIVERY_FAILED, order, fromOrder, fromShipping,
+                order.getOrderStatus(), shipping.getShippingStatus(), null);
     }
 
-    private Order cancel(Long actor, Order order, String reason) {
-        var stockState = movements.orderStockState(order.getOrderId());
+    private void retryDelivery(
+            Long actor, Order order, ShippingInfo shipping, OrderActionRequest request) {
+        String fromOrder = order.getOrderStatus();
+        String fromShipping = shipping.getShippingStatus();
+        inventory.requireConfirmedOrderMovements(order.getOrderId(), stockLines(order.getOrderId()));
 
-        if (stockState.deducted() && !stockState.restored()) {
-            inventoryCommands.restoreCancelledOrder(
-                    actor, order.getOrderId(), stockLines(order.getOrderId()), reason);
+        order.setOrderStatus(OrderPolicy.SHIPPING);
+        shipping.setShippingStatus("SHIPPED");
+        shipping.setShippedAt(LocalDateTime.now(ZoneOffset.UTC));
+        applyManualTracking(shipping, request);
+        orders.save(order);
+        shippingInfos.save(shipping);
+        auditTransition(
+                AuditAction.ORDER_RETRY_DELIVERY, order, fromOrder, fromShipping,
+                order.getOrderStatus(), shipping.getShippingStatus());
+    }
+
+    private void cancel(
+            Long actor, Order order, Payment payment, ShippingInfo shipping,
+            OrderActionRequest request) {
+        String fromOrder = order.getOrderStatus();
+        String fromShipping = shipping.getShippingStatus();
+        List<StockLine> lines = stockLines(order.getOrderId());
+
+        if (!OrderPolicy.PENDING.equals(fromOrder)) {
+            inventory.restoreCancelledOrder(
+                    actor, order.getOrderId(), lines, "ORDER_CANCELLED");
         }
 
-        String sourceStatus = order.getOrderStatus();
-
-        vouchers.restoreCancelledOrder(order.getOrderId(), order.getVoucherId());
         order.setOrderStatus(OrderPolicy.CANCELLED);
-        order.setCancelReason(reason == null || reason.isBlank() ? null : reason.trim());
-
+        shipping.setShippingStatus("CANCELLED");
         orders.save(order);
+        shippingInfos.save(shipping);
 
-        audit.record(
-                AuditEvent.described(
-                        actor,
-                        AuditAction.ORDER_CANCEL,
-                        AuditTargetType.ORDER,
-                        order.getOrderId(),
-                        transitionDescription(sourceStatus, OrderPolicy.CANCELLED)));
+        // The locked Order transition is the one-time release guard; both writes share this transaction.
+        voucherRedemption.release(order.getVoucherId());
 
-        return order;
+        auditTransition(
+                AuditAction.ORDER_CANCEL, order, fromOrder, fromShipping,
+                order.getOrderStatus(), shipping.getShippingStatus(),
+                payment.getPaymentStatus());
     }
 
-    private Order deliveryReturnIn(Long actor, Order order, String reason) {
-        inventoryCommands.restoreDeliveryReturn(
-                actor, order.getOrderId(), stockLines(order.getOrderId()), reason);
-
-        audit.record(
-                AuditEvent.described(
-                        actor,
-                        AuditAction.ORDER_DELIVERY_RETURN_IN,
-                        AuditTargetType.ORDER,
-                        order.getOrderId(),
-                        "physical delivery return"));
-
-        return order;
-    }
-
-    private Order simpleTransition(
-            Long actor, Order order, String expected, String target, AuditAction auditAction) {
-        order.setOrderStatus(target);
-        orders.save(order);
-
-        audit.record(
-                AuditEvent.described(
-                        actor,
-                        auditAction,
-                        AuditTargetType.ORDER,
-                        order.getOrderId(),
-                        transitionDescription(expected, target)));
-
-        return order;
-    }
-
-    private List<OrderItem> orderItems(Long orderId) {
-        var orderItems = items.findAllByOrderIdOrderByOrderItemIdAsc(orderId);
-
-        if (orderItems.isEmpty()) {
-            throw new IllegalStateException("Order has no items");
+    private void applyManualTracking(ShippingInfo shipping, OrderActionRequest request) {
+        if (request.carrier_name() != null && !request.carrier_name().isBlank()) {
+            shipping.setCarrierName(request.carrier_name().trim());
         }
-
-        return orderItems;
+        if (request.tracking_number() != null && !request.tracking_number().isBlank()) {
+            shipping.setTrackingNumber(request.tracking_number().trim());
+        }
     }
 
-    private List<InventoryCommandService.StockLine> stockLines(Long orderId) {
-        return orderItems(orderId).stream()
-                .map(
-                        item ->
-                                new InventoryCommandService.StockLine(
-                                        item.getVariantId(), item.getQuantity()))
+    private List<StockLine> stockLines(Long orderId) {
+        List<OrderItem> orderItems = items.findAllByOrderIdForUpdate(orderId);
+        if (orderItems.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "ORDER_ITEMS_MISSING");
+        }
+        return orderItems.stream()
+                .map(item -> new StockLine(item.getProductId(), item.getQuantity(), item.getOrderItemId()))
                 .toList();
     }
 
-    private Order locked(Long orderId) {
-        return orders.findByIdForUpdate(orderId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    private void auditTransition(
+            AuditAction action, Order order, String fromOrder, String fromShipping,
+            String toOrder, String toShipping) {
+        auditTransition(action, order, fromOrder, fromShipping, toOrder, toShipping, null);
     }
 
-    private String transitionDescription(String from, String to) {
-        return from + " -> " + to;
-    }
-
-    private String appendNote(String current, String addition) {
-        if (current == null || current.isBlank()) {
-            return addition;
+    private void auditTransition(
+            AuditAction action, Order order, String fromOrder, String fromShipping,
+            String toOrder, String toShipping, String paymentStatus) {
+        Map<String, Object> before = new LinkedHashMap<>();
+        before.put("status", fromOrder);
+        before.put("shipping_status", fromShipping);
+        Map<String, Object> after = new LinkedHashMap<>();
+        after.put("status", toOrder);
+        after.put("shipping_status", toShipping);
+        if (paymentStatus != null) {
+            before.put("payment_status", paymentStatus);
+            after.put("payment_status", paymentStatus);
         }
-
-        return current + "\n" + addition;
+        audit.record(AuditWriteEvent.withChanges(
+                action, AuditEntityType.ORDER, order.getOrderId().toString(), before, after));
     }
 }

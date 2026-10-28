@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -15,52 +16,63 @@ class InventoryConcurrencyTests extends InventoryHttpSupport {
 
     @Test
     void competingAdjustmentsCannotOversell() throws Exception {
-        long readPermission = ensurePermission("INVENTORY_READ");
-        long writePermission = ensurePermission("INVENTORY_WRITE");
-
-        Employee reader = employee(capabilityRole(readPermission));
-
-        Employee writer = employee(capabilityRole(writePermission));
-
-        CatalogFixture fixture = createVariant();
-        db.update(
-                "UPDATE inventories SET available_quantity=4 WHERE variant_id=?",
-                fixture.variantId());
+        Employee writer = employee(capabilityRole(ensurePermission("INVENTORY_WRITE")));
+        CatalogFixture fixture = createProduct();
+        db.update("UPDATE inventories SET quantity_on_hand=4, version=0 WHERE product_id=?", fixture.productId());
         var executor = Executors.newFixedThreadPool(2);
 
         try {
             var gate = new CountDownLatch(1);
-
-            Callable<Result> task =
-                    () -> {
-                        gate.await();
-
-                        return call(
-                                "POST",
-                                "/api/v1/admin/inventory/adjustments",
-                                writer.token(),
-                                Map.of(
-                                        "variant_id",
-                                        fixture.variantId(),
-                                        "quantity_delta",
-                                        -3,
-                                        "reason",
-                                        "Concurrent adjustment"));
-                    };
-
+            Callable<Result> task = () -> {
+                gate.await();
+                return call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
+                        Map.of("product_id", fixture.productId(), "quantity_delta", -3,
+                                "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID()));
+            };
             var first = executor.submit(task);
             var second = executor.submit(task);
-
             gate.countDown();
-
-            var results =
-                    List.of(first.get(30, TimeUnit.SECONDS), second.get(30, TimeUnit.SECONDS));
-
+            var results = List.of(first.get(30, TimeUnit.SECONDS), second.get(30, TimeUnit.SECONDS));
             assertEquals(List.of(201, 409), results.stream().map(Result::status).sorted().toList());
         } finally {
             executor.shutdownNow();
         }
+        assertEquals(1, stock(fixture.productId()));
+        assertEquals(1, db.queryForObject("SELECT version FROM inventories WHERE warehouse_id=? AND product_id=?",
+                Integer.class, fixture.warehouseId(), fixture.productId()));
+        assertEquals(1, db.queryForObject("SELECT COUNT(*) FROM inventory_transactions WHERE product_id=?",
+                Integer.class, fixture.productId()));
+    }
 
-        assertEquals(1, stock(fixture.variantId()));
+    @Test
+    void concurrentIncrementsBothApplyAndAdvanceVersionOnceEach() throws Exception {
+        Employee writer = employee(capabilityRole(ensurePermission("INVENTORY_WRITE")));
+        CatalogFixture fixture = createProduct();
+        var executor = Executors.newFixedThreadPool(2);
+
+        try {
+            var gate = new CountDownLatch(1);
+            Callable<Result> task = () -> {
+                gate.await();
+                return call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
+                        Map.of("product_id", fixture.productId(), "quantity_delta", 3,
+                                "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID()));
+            };
+            var first = executor.submit(task);
+            var second = executor.submit(task);
+            gate.countDown();
+            var results = List.of(first.get(30, TimeUnit.SECONDS), second.get(30, TimeUnit.SECONDS));
+            assertEquals(List.of(201, 201), results.stream().map(Result::status).sorted().toList(),
+                    () -> "Concurrent increment responses: "
+                            + results.stream().map(result -> result.status() + " " + result.body()).toList());
+        } finally {
+            executor.shutdownNow();
+        }
+
+        assertEquals(6, stock(fixture.productId()));
+        assertEquals(2, db.queryForObject("SELECT version FROM inventories WHERE warehouse_id=? AND product_id=?",
+                Integer.class, fixture.warehouseId(), fixture.productId()));
+        assertEquals(2, db.queryForObject("SELECT COUNT(*) FROM inventory_transactions WHERE product_id=?",
+                Integer.class, fixture.productId()));
     }
 }

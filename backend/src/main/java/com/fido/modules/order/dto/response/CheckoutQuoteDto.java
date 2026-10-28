@@ -1,14 +1,17 @@
 package com.fido.modules.order.dto.response;
 
-import java.math.BigDecimal;
 import java.util.List;
 
+/** Advisory response only; deliberately has no quote_id or expiry/commit token. */
 public record CheckoutQuoteDto(
         List<CheckoutItemDto> items,
-        BigDecimal subtotal,
-        BigDecimal discount,
-        BigDecimal shipping_fee,
-        BigDecimal total,
-        VoucherDto voucher,
-        String quote_id,
-        java.time.Instant expires_at) {}
+        Long subtotal,
+        Long discount_amount,
+        Long shipping_fee,
+        Long total_amount,
+        VoucherDto voucher) {
+
+    public CheckoutQuoteDto {
+        items = List.copyOf(items);
+    }
+}

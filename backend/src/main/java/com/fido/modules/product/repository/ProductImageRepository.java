@@ -24,6 +24,8 @@ public interface ProductImageRepository extends Repository<ProductImage, Long> {
 
     List<ProductImage> findAllByProductIdOrderBySortOrderAsc(Long productId);
 
+    List<ProductImage> findAllByProductIdOrderBySortOrderAscImageIdAsc(Long productId);
+
     void deleteAllByProductId(Long productId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

@@ -54,8 +54,10 @@ const quote = () => ({
 const me = {
   account: {
     account_id: 1,
+    full_name: 'Test Customer',
     phone: '0900000000',
     email: 'user@example.test',
+    status: 'ACTIVE',
     created_at: '2026-10-09T00:00:00Z',
     updated_at: '2026-10-09T00:00:00Z',
   },

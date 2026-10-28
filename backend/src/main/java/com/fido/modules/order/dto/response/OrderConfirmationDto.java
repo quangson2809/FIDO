@@ -1,6 +1,5 @@
 package com.fido.modules.order.dto.response;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record OrderConfirmationDto(
@@ -8,9 +7,9 @@ public record OrderConfirmationDto(
         String order_code,
         String order_status,
         PaymentPublicDto payment,
-        BigDecimal subtotal,
-        BigDecimal discount,
-        BigDecimal shipping_fee,
-        BigDecimal total,
+        Long subtotal,
+        Long discount,
+        Long shipping_fee,
+        Long total,
         RecipientDto recipient,
         LocalDateTime created_at) {}

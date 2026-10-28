@@ -1,132 +1,170 @@
 package com.fido.modules.promotion.service;
 
 import com.fido.modules.account.service.AccountAccessService;
-import com.fido.modules.product.service.PromotionCatalogService;
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEntityType;
+import com.fido.modules.audit.service.AuditWriteEvent;
+import com.fido.modules.audit.service.AuditWriteService;
 import com.fido.modules.promotion.entity.Voucher;
-import com.fido.modules.promotion.entity.VoucherUsage;
 import com.fido.modules.promotion.repository.VoucherRepository;
-import com.fido.modules.promotion.repository.VoucherUsageRepository;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Transactional(propagation = Propagation.MANDATORY)
 public class VoucherRedemptionService {
     private final VoucherRepository vouchers;
-    private final VoucherUsageRepository usages;
-    private final PromotionCatalogService catalog;
     private final AccountAccessService accounts;
+    private final com.fido.modules.pricing.PricingService pricing;
+    private final AuditWriteService audit;
 
     public VoucherRedemptionService(
             VoucherRepository vouchers,
-            VoucherUsageRepository usages,
-            PromotionCatalogService catalog,
-            AccountAccessService accounts) {
+            AccountAccessService accounts,
+            com.fido.modules.pricing.PricingService pricing,
+            AuditWriteService audit) {
         this.vouchers = vouchers;
-        this.usages = usages;
-        this.catalog = catalog;
         this.accounts = accounts;
+        this.pricing = pricing;
+        this.audit = audit;
     }
 
-    public record Line(Long variantId, BigDecimal amount) {}
+    public record Line(Long productId, Long amount) {}
 
-    public record Discount(Long voucherId, String code, BigDecimal amount) {}
+    public record Discount(
+            Long voucherId,
+            String code,
+            Long amount,
+            String discountType,
+            Long discountValue,
+            long subtotal) {
+        public Discount(Long voucherId, String code, Long amount) {
+            this(voucherId, code, amount, null, null, 0L);
+        }
+    }
 
+    /** Order placement reads and locks the Voucher before recalculating eligibility. */
     public Discount evaluate(Long accountId, String code, List<Line> lines) {
-        if (code == null || code.isBlank()) return new Discount(null, null, BigDecimal.ZERO);
-        // Public registration creates a roleless customer account. ADMIN and SUPERADMIN
-        // identify internal accounts; do not require an unassigned CUSTOMER role.
-        boolean internalAccount =
-                accounts.findAccess(accountId)
-                        .map(
-                                access ->
-                                        access.roles().stream()
-                                                .anyMatch(
-                                                        role ->
-                                                                "ADMIN".equals(role.code())
-                                                                        || "SUPERADMIN"
-                                                                                .equals(
-                                                                                        role
-                                                                                                .code())))
-                        .orElse(true);
-        if (internalAccount)
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN, "Voucher chỉ dành cho khách hàng đã đăng nhập");
-        Voucher v =
-                vouchers.lockByCode(code.trim())
-                        .orElseThrow(() -> rejected("Mã voucher không tồn tại"));
+        return evaluate(accountId, code, lines, true);
+    }
+
+    /** Quotes are advisory: they do not reserve or consume quota. */
+    public Discount evaluateForQuote(Long accountId, String code, List<Line> lines) {
+        return evaluate(accountId, code, lines, false);
+    }
+
+    private Discount evaluate(Long accountId, String code, List<Line> lines, boolean lockVoucher) {
+        if (code == null || code.isBlank()) {
+            return new Discount(null, null, 0L);
+        }
+        boolean internalAccount = accounts.findAccess(accountId)
+                .map(access -> access.roles().stream()
+                        .anyMatch(role -> "ADMIN".equals(role.code()) || "SUPERADMIN".equals(role.code())))
+                .orElse(true);
+        if (internalAccount) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "FORBIDDEN");
+        }
+
+        Voucher voucher = (lockVoucher
+                ? vouchers.lockByCode(code.trim())
+                : vouchers.findByCodeIgnoreCase(code.trim()))
+                .orElseThrow(() -> rejected("VOUCHER_NOT_FOUND"));
         Instant now = Instant.now();
-        if (!v.isEnabled() || v.getStartsAt() == null) throw rejected("Voucher chưa được bật");
-        if (now.isBefore(v.getStartsAt())) throw rejected("Voucher chưa đến thời gian áp dụng");
-        if (!now.isBefore(v.getEndsAt())) throw rejected("Voucher đã hết hạn");
-        // Locking reads see current usage even under MySQL REPEATABLE READ.
-        var active = usages.activeForUpdate(v.getVoucherId());
-        if (v.getGlobalLimit() != null && active.size() >= v.getGlobalLimit())
-            throw rejected("Voucher đã hết lượt sử dụng");
-        if (active.stream().filter(u -> u.getAccountId().equals(accountId)).count()
-                >= v.getCustomerLimit()) throw rejected("Bạn đã dùng hết lượt của voucher này");
-        var eligible =
-                catalog.eligibleVariants(
-                        lines.stream().map(Line::variantId).toList(),
-                        v.getScope(),
-                        v.getProductIds(),
-                        v.getCategoryIds());
-        BigDecimal subtotal =
-                lines.stream()
-                        .filter(l -> eligible.contains(l.variantId()))
-                        .map(Line::amount)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-        if (subtotal.signum() <= 0) throw rejected("Không có sản phẩm phù hợp với voucher");
-        if (subtotal.compareTo(v.getMinimumAmount()) < 0)
-            throw rejected("Tiền hàng đủ điều kiện chưa đạt mức tối thiểu " + v.getMinimumAmount());
+        requireRedeemable(voucher, now);
+
+        long subtotal = pricing.sumAmounts(lines.stream().map(Line::amount).toList());
+        if (subtotal < voucher.getMinimumOrderValue()) {
+            throw rejected("VOUCHER_MINIMUM_ORDER_NOT_MET");
+        }
+        long amount = pricing.calculateDiscountAmount(
+                voucher.getDiscountType(),
+                voucher.getDiscountValue(),
+                voucher.getMaximumDiscount(),
+                subtotal);
+        if (amount <= 0L) {
+            throw rejected("VOUCHER_NOT_ELIGIBLE");
+        }
         return new Discount(
-                v.getVoucherId(),
-                v.getCode(),
-                discount(
-                        v.getDiscountType(),
-                        v.getDiscountValue(),
-                        v.getMaximumDiscount(),
-                        subtotal));
+                voucher.getVoucherId(),
+                voucher.getCode(),
+                amount,
+                voucher.getDiscountType(),
+                voucher.getDiscountValue(),
+                subtotal);
     }
 
-    public static BigDecimal discount(
-            String type, BigDecimal value, BigDecimal maximum, BigDecimal subtotal) {
-        BigDecimal amount =
-                "PERCENTAGE".equals(type)
-                        ? subtotal.multiply(value)
-                                .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP)
-                                .min(maximum)
-                        : value;
-        return amount.min(subtotal).setScale(2, RoundingMode.HALF_UP);
+    /** Claims one global quota use inside the caller's Order transaction. */
+    public void consume(Discount discount) {
+        if (discount == null || discount.voucherId() == null) return;
+
+        Voucher voucher = vouchers.lockById(discount.voucherId())
+                .orElseThrow(() -> rejected("VOUCHER_NOT_FOUND"));
+        Instant now = Instant.now();
+        requireRedeemable(voucher, now);
+        if (discount.subtotal() < voucher.getMinimumOrderValue()) {
+            throw rejected("VOUCHER_NOT_ELIGIBLE");
+        }
+
+        int before = valueOrZero(voucher.getUsageCount());
+        if (vouchers.incrementUsageCountIfAvailable(
+                        voucher.getVoucherId(), now, discount.subtotal()) != 1) {
+            throw rejected("VOUCHER_QUOTA_CONFLICT");
+        }
+        voucher.setUsageCount(Math.addExact(before, 1));
+        auditQuotaChange(
+                AuditAction.VOUCHER_QUOTA_CONSUME,
+                voucher.getVoucherId(),
+                before,
+                before + 1);
     }
 
-    // evaluate holds the voucher row lock through the owning order transaction.
-    public void consume(Long orderId, Long accountId, Discount discount) {
-        if (discount.voucherId() == null) return;
-        VoucherUsage usage = new VoucherUsage();
-        usage.setOrderId(orderId);
-        usage.setAccountId(accountId);
-        usage.setVoucherId(discount.voucherId());
-        usages.save(usage);
-    }
-
-    // Caller owns the order lock; all usage changes also serialize on its voucher.
-    public void restoreCancelledOrder(Long orderId, Long voucherId) {
+    /** P1.7 calls release only as part of an eligible, locked cancellation transition. */
+    public void release(Long voucherId) {
         if (voucherId == null) return;
-        vouchers.lockById(voucherId).orElseThrow();
-        usages.findById(orderId).filter(u -> !u.isRestored()).ifPresent(u -> u.setRestored(true));
+
+        Voucher voucher = vouchers.lockById(voucherId)
+                .orElseThrow(() -> rejected("VOUCHER_NOT_FOUND"));
+        int before = valueOrZero(voucher.getUsageCount());
+        if (vouchers.decrementUsageCountAbove(voucherId, 0) != 1) {
+            throw rejected("VOUCHER_QUOTA_CONFLICT");
+        }
+        voucher.setUsageCount(before - 1);
+        auditQuotaChange(AuditAction.VOUCHER_QUOTA_RELEASE, voucherId, before, before - 1);
     }
 
-    private static ResponseStatusException rejected(String reason) {
-        return new ResponseStatusException(HttpStatus.CONFLICT, reason);
+    private static void requireRedeemable(Voucher voucher, Instant now) {
+        if (!"ACTIVE".equals(voucher.getStatus())
+                || (voucher.getStartsAt() != null && now.isBefore(voucher.getStartsAt()))
+                || (voucher.getEndsAt() != null && !now.isBefore(voucher.getEndsAt()))) {
+            throw rejected("VOUCHER_NOT_ELIGIBLE");
+        }
+        if (voucher.getUsageLimit() != null
+                && valueOrZero(voucher.getUsageCount()) >= voucher.getUsageLimit()) {
+            throw rejected("VOUCHER_USAGE_LIMIT_REACHED");
+        }
+    }
+
+    private void auditQuotaChange(AuditAction action, Long voucherId, int before, int after) {
+        audit.record(AuditWriteEvent.withChanges(
+                action,
+                AuditEntityType.VOUCHER,
+                voucherId.toString(),
+                Map.of("usage_count", before),
+                Map.of("usage_count", after)));
+    }
+
+    private static int valueOrZero(Integer value) {
+        return value == null ? 0 : value;
+    }
+
+    private static ResponseStatusException rejected(String code) {
+        return new ResponseStatusException(HttpStatus.CONFLICT, code);
     }
 }

@@ -1,102 +1,89 @@
-name: Clean Schema Reset target verification
+name: Canonical Database Baseline Verification
 
 on:
   push:
     branches:
       - demo1
-      - feature/clean-schema-reset
+      - feature/p3-1-account-rbac
     paths:
-      - "backend/src/main/resources/db/clean-reset/**"
-      - "backend/src/test/java/com/fido/persistence/CleanResetSchemaTests.java"
+      - "backend/src/main/resources/db/migration/V1__fido_target_schema.sql"
+      - "backend/src/test/java/com/fido/persistence/DatabaseBaselineTests.java"
+      - "backend/src/test/java/com/fido/persistence/CleanTargetEntityMappingTests.java"
+      - "backend/src/test/java/com/fido/persistence/CleanMigrationTests.java"
+      - "backend/src/test/java/com/fido/persistence/ProductImageOrderingMigrationTests.java"
       - ".github/workflows/clean-reset-schema-verification.yml"
       - "scripts/p1/**"
       - "docs/refactor-v2/target/**"
       - "docs/refactor-v2/p1/P1-data-dictionary.csv"
-      - "docs/refactor-v2/p1/P1.3-catalog-metadata-contract.md"
-      - "docs/refactor-v2/p1/P1-domain-invariants.md"
-      - "docs/refactor-v2/p1/P1-owner-amendment-2026-10-25.md"
       - "docs/refactor-v2/p1/P1.8-operations-seed-contract.md"
-      - "docs/refactor-v2/p1/P1.8-operations-seed-runbook.md"
-      - "docs/refactor-v2/p1/P1-decision-log.md"
-      - "docs/refactor-v2/p1/P1-traceability-matrix.csv"
-      - "docs/refactor-v2/p1/P1-exit-gate.md"
-      - "docs/refactor-v2/p1/P1.9-contract-consistency-report.md"
   pull_request:
     branches:
       - demo1
-      - docs/phase-1-erd-v2-freeze
     paths:
-      - "backend/src/main/resources/db/clean-reset/**"
-      - "backend/src/test/java/com/fido/persistence/CleanResetSchemaTests.java"
-      - "backend/src/test/resources/clean-reset/**"
+      - "backend/src/main/resources/db/migration/V1__fido_target_schema.sql"
+      - "backend/src/test/java/com/fido/persistence/DatabaseBaselineTests.java"
+      - "backend/src/test/java/com/fido/persistence/CleanTargetEntityMappingTests.java"
+      - "backend/src/test/java/com/fido/persistence/CleanMigrationTests.java"
+      - "backend/src/test/java/com/fido/persistence/ProductImageOrderingMigrationTests.java"
       - ".github/workflows/clean-reset-schema-verification.yml"
       - "scripts/p1/**"
       - "docs/refactor-v2/target/**"
       - "docs/refactor-v2/p1/P1-data-dictionary.csv"
-      - "docs/refactor-v2/p1/P1.3-catalog-metadata-contract.md"
-      - "docs/refactor-v2/p1/P1-domain-invariants.md"
-      - "docs/refactor-v2/p1/P1-owner-amendment-2026-10-25.md"
       - "docs/refactor-v2/p1/P1.8-operations-seed-contract.md"
-      - "docs/refactor-v2/p1/P1.8-operations-seed-runbook.md"
-      - "docs/refactor-v2/p1/P1-decision-log.md"
-      - "docs/refactor-v2/p1/P1-traceability-matrix.csv"
-      - "docs/refactor-v2/p1/P1-exit-gate.md"
-      - "docs/refactor-v2/p1/P1.9-contract-consistency-report.md"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: clean-reset-schema-${{ github.ref }}
+  group: database-baseline-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  target-schema:
-    name: Verify target schema from an empty database
+  baseline:
+    if: ${{ !(github.ref == 'refs/heads/feature/p3-1-account-rbac' || (github.event_name == 'pull_request' && github.head_ref == 'feature/p3-1-account-rbac')) }}
+    name: Verify one canonical baseline on fresh MySQL
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
       mysql:
         image: mysql:8.4
         env:
-          MYSQL_ROOT_PASSWORD: clean-reset-test-password
-          MYSQL_DATABASE: fido_clean_reset
+          MYSQL_ROOT_PASSWORD: db-baseline-test-password
+          MYSQL_DATABASE: fido_baseline
           TZ: UTC
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pclean-reset-test-password"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pdb-baseline-test-password"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
     env:
-      CLEAN_RESET_TEST_DB_URL: jdbc:mysql://127.0.0.1:3306/fido_clean_reset?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      CLEAN_RESET_TEST_DB_URL: jdbc:mysql://127.0.0.1:3306/fido_baseline?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       CLEAN_RESET_TEST_DB_DRIVER: com.mysql.cj.jdbc.Driver
       CLEAN_RESET_TEST_DB_USERNAME: root
-      CLEAN_RESET_TEST_DB_PASSWORD: clean-reset-test-password
+      CLEAN_RESET_TEST_DB_PASSWORD: db-baseline-test-password
+      TEST_DB_URL: jdbc:mysql://127.0.0.1:3306/fido_baseline?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      TEST_DB_DRIVER: com.mysql.cj.jdbc.Driver
+      TEST_DB_USERNAME: root
+      TEST_DB_PASSWORD: db-baseline-test-password
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-      - name: Run P1 contract consistency checker
+      - name: Check 31-table ERD, single installer, FK targets and creation order
         run: python scripts/p1/check_contract_consistency.py
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-
-      - name: Run contract consistency gate
-        run: python scripts/p1/check_contract_consistency.py
-
-      - name: Run clean-target schema tests
+      - name: Verify schema, seed and composite mappings on fresh MySQL
         working-directory: backend
-        run: ./gradlew test --tests com.fido.persistence.CleanResetSchemaTests --stacktrace
+        run: ./gradlew --no-daemon test --tests com.fido.persistence.DatabaseBaselineTests --tests com.fido.persistence.CleanTargetEntityMappingTests --tests com.fido.persistence.CleanMigrationTests --tests com.fido.persistence.ProductImageOrderingMigrationTests --stacktrace

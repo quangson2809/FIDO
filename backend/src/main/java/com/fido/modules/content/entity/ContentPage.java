@@ -1,7 +1,14 @@
 package com.fido.modules.content.entity;
 
-import jakarta.persistence.*;
-
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -13,19 +20,18 @@ import java.time.temporal.ChronoUnit;
 @Entity
 @Table(
         name = "content_pages",
-        uniqueConstraints = {@UniqueConstraint(columnNames = {"page_code"})})
+        uniqueConstraints = @UniqueConstraint(name = "uq_content_pages_slug", columnNames = {"slug"}))
 @Getter
 @Setter
 @NoArgsConstructor
 public class ContentPage {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "page_id", nullable = false)
+    @Column(name = "id", nullable = false)
     private Long pageId;
 
-    @Column(name = "page_code", nullable = false, length = 80)
-    private String pageCode;
+    @Column(name = "slug", nullable = false, length = 180)
+    private String slug;
 
     @Column(name = "title", nullable = false, length = 255)
     private String title;
@@ -33,16 +39,19 @@ public class ContentPage {
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "updated_by_account_id", nullable = false)
+    @Column(name = "updated_by")
     private Long updatedByAccountId;
+
+    @Column(name = "status", nullable = false, length = 20)
+    private String status = "DRAFT";
 
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
     private LocalDateTime updatedAt;
 
     @PrePersist
     void onCreate() {
-        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
-        updatedAt = now;
+        if (status == null) status = "DRAFT";
+        updatedAt = LocalDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
     }
 
     @PreUpdate

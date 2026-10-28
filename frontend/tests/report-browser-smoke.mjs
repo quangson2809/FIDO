@@ -51,8 +51,10 @@ async function fixture(
       return send({
         account: {
           account_id: 1,
+          full_name: 'Test Account',
           phone: '0900000000',
           email: null,
+          status: 'ACTIVE',
           created_at: '2026-01-01T00:00:00Z',
           updated_at: '2026-01-01T00:00:00Z',
         },

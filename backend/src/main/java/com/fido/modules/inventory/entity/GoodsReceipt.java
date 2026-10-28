@@ -1,19 +1,17 @@
 package com.fido.modules.inventory.entity;
 
 import jakarta.persistence.*;
-
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
 @Entity
 @Table(
         name = "goods_receipts",
-        uniqueConstraints = {@UniqueConstraint(columnNames = {"receipt_code"})})
+        uniqueConstraints = @UniqueConstraint(name = "uq_goods_receipts_number", columnNames = {"receipt_number"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,32 +19,29 @@ public class GoodsReceipt {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "receipt_id", nullable = false)
+    @Column(name = "id", nullable = false)
     private Long receiptId;
 
-    @Column(name = "receipt_code", nullable = false, length = 40)
+    @Column(name = "receipt_number", nullable = false, length = 40)
     private String receiptCode;
 
     @Column(name = "supplier_id", nullable = false)
     private Long supplierId;
 
-    @Column(name = "receipt_status", nullable = false, length = 20)
-    private String receiptStatus;
+    @Column(name = "warehouse_id", nullable = false)
+    private Long warehouseId;
 
-    @Column(name = "receipt_date", nullable = false)
-    private LocalDate receiptDate;
+    @Column(name = "status", nullable = false, length = 20)
+    private String receiptStatus = "DRAFT";
 
-    @Column(name = "created_by_account_id", nullable = false)
+    @Column(name = "created_by", nullable = false)
     private Long createdByAccountId;
 
-    @Column(name = "confirmed_by_account_id", nullable = true)
+    @Column(name = "confirmed_by")
     private Long confirmedByAccountId;
 
-    @Column(name = "confirmed_at", nullable = true, columnDefinition = "TIMESTAMP(6)")
+    @Column(name = "confirmed_at", columnDefinition = "TIMESTAMP(6)")
     private LocalDateTime confirmedAt;
-
-    @Column(name = "note", nullable = true, columnDefinition = "TEXT")
-    private String note;
 
     @Column(
             name = "created_at",
@@ -63,6 +58,7 @@ public class GoodsReceipt {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         createdAt = now;
         updatedAt = now;
+        if (receiptStatus == null) receiptStatus = "DRAFT";
     }
 
     @PreUpdate

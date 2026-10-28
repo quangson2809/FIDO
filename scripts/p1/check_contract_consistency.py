@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Static consistency gate for ERD v2, clean-reset SQL and RFC4180 Data Dictionary."""
+"""Static consistency gate for ERD v2, canonical baseline SQL and RFC4180 Data Dictionary."""
 from __future__ import annotations
 import csv
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 ERD = ROOT / "docs/refactor-v2/target/erd-v2-approved.mmd"
-SQL = ROOT / "backend/src/main/resources/db/clean-reset/V1__clean_schema.sql"
+SQL = ROOT / "backend/src/main/resources/db/migration/V1__fido_target_schema.sql"
+DB_RESOURCES = ROOT / "backend/src/main/resources/db"
 DICT = ROOT / "docs/refactor-v2/p1/P1-data-dictionary.csv"
 
 
@@ -189,7 +191,16 @@ def norm(value):
 
 def main():
     issues = []
-    erd = parse_erd(ERD.read_text(encoding="utf-8"))
+    schema_sql_files = sorted(path.resolve() for path in DB_RESOURCES.rglob("*.sql"))
+    if schema_sql_files != [SQL.resolve()]:
+        observed = [path.relative_to(ROOT).as_posix() for path in schema_sql_files]
+        issues.append(
+            "Expected exactly one database-installation SQL under backend/src/main/resources/db: "
+            + repr(observed)
+        )
+
+    erd_text = ERD.read_text(encoding="utf-8")
+    erd = parse_erd(erd_text)
     sql_text = SQL.read_text(encoding="utf-8")
     sql, named_constraints, create_order, indexes, evidence, sql_constraints, unique_index_columns = parse_sql(sql_text)
     with DICT.open(encoding="utf-8-sig", newline="") as handle:
@@ -205,6 +216,9 @@ def main():
     }
     if required - set(headers):
         issues.append("Dictionary missing headers: " + ", ".join(sorted(required - set(headers))))
+    if len(create_order) != len(set(create_order)):
+        duplicates = sorted({table for table in create_order if create_order.count(table) > 1})
+        issues.append("Duplicate CREATE TABLE statements: " + repr(duplicates))
     if len(sql) != len(erd):
         issues.append("SQL table count is " + str(len(sql)) + "; canonical ERD table count is " + str(len(erd)))
     if set(erd) != set(sql):
@@ -272,8 +286,84 @@ def main():
     for label, fragment in critical.items():
         if fragment not in normalized:
             issues.append("Missing critical constraint: " + label)
-    if "warehouses" not in create_order or "goods_receipts" not in create_order or create_order.index("warehouses") > create_order.index("goods_receipts"):
-        issues.append("WAREHOUSES must be created before GOODS_RECEIPTS")
+    # Validate every physical FK target, column mapping, and dependency order.
+    create_position = {table: index for index, table in enumerate(create_order)}
+    sql_relationships = Counter()
+    foreign_key_count = 0
+    for child_table, parts in sql_constraints.items():
+        for part in parts:
+            if not re.search(r"\bFOREIGN\s+KEY\b", part, re.I):
+                continue
+            foreign_key_count += 1
+            match = re.search(
+                r"\bFOREIGN\s+KEY\s*\(([^)]*)\)\s*REFERENCES\s+[`\"]?([A-Za-z0-9_]+)[`\"]?\s*\(([^)]*)\)",
+                part,
+                re.I,
+            )
+            if not match:
+                issues.append("Could not parse FK constraint in " + child_table + ": " + part)
+                continue
+            child_columns = [
+                token.strip().strip(chr(96)).strip('"').lower()
+                for token in match.group(1).split(",")
+            ]
+            parent_table = match.group(2).lower()
+            parent_columns = [
+                token.strip().strip(chr(96)).strip('"').lower()
+                for token in match.group(3).split(",")
+            ]
+            if parent_table not in sql:
+                issues.append(
+                    "Foreign key points to a missing table: "
+                    + child_table + " -> " + parent_table
+                )
+                continue
+            if len(child_columns) != len(parent_columns):
+                issues.append(
+                    "Foreign key column count differs: "
+                    + child_table + " -> " + parent_table
+                )
+            missing_child_columns = sorted(set(child_columns) - set(sql[child_table]))
+            missing_parent_columns = sorted(set(parent_columns) - set(sql[parent_table]))
+            if missing_child_columns:
+                issues.append(
+                    "Foreign key uses missing child columns in " + child_table + ": "
+                    + repr(missing_child_columns)
+                )
+            if missing_parent_columns:
+                issues.append(
+                    "Foreign key points to missing parent columns in " + parent_table + ": "
+                    + repr(missing_parent_columns)
+                )
+            if (
+                child_table != parent_table
+                and create_position.get(parent_table, -1) >= create_position.get(child_table, -1)
+            ):
+                issues.append(
+                    "Foreign-key dependency order invalid: create "
+                    + parent_table + " before " + child_table
+                )
+            sql_relationships[tuple(sorted((child_table, parent_table)))] += 1
+
+    # Compare FK relationship pairs with the approved ERD, including repeated links
+    # such as collected_by/refunded_by and created_by/confirmed_by.
+    erd_relationships = Counter(
+        tuple(sorted((match.group(1).lower(), match.group(2).lower())))
+        for match in re.finditer(
+            r"^\s*([A-Z][A-Z0-9_]*)\s+\S+\s+([A-Z][A-Z0-9_]*)\s*:",
+            erd_text,
+            re.M,
+        )
+    )
+    if sql_relationships != erd_relationships:
+        missing_relationships = erd_relationships - sql_relationships
+        unexpected_relationships = sql_relationships - erd_relationships
+        issues.append(
+            "ERD/SQL foreign-key relationships differ: ERD-only="
+            + repr(dict(missing_relationships))
+            + "; SQL-only="
+            + repr(dict(unexpected_relationships))
+        )
 
     # Check that every ERD PK/FK/UK marker maps to a physical SQL constraint.
     for table, fields in erd.items():
@@ -328,6 +418,7 @@ def main():
     print("ERD tables=" + str(len(erd)) + "; SQL tables=" + str(len(sql)) +
           "; ERD fields=" + str(len(erd_keys)) + "; SQL columns=" + str(len(sql_keys)) +
           "; Dictionary rows=" + str(len(dict_keys)))
+    print("Foreign keys=" + str(foreign_key_count) + "; ERD relationships=" + str(sum(erd_relationships.values())))
     print("Named constraints=" + str(len(named_constraints)) + "; standalone indexes=" + str(len(indexes)))
     if issues:
         for issue in issues:

@@ -1,6 +1,7 @@
 package com.fido.modules.content.mapper;
 
 import com.fido.modules.content.dto.response.ContentPageDto;
+import com.fido.modules.content.dto.response.ContentPageSummaryDto;
 import com.fido.modules.content.dto.response.PublicContentPageDto;
 import com.fido.modules.content.entity.ContentPage;
 
@@ -10,15 +11,25 @@ public final class ContentMapper {
     public static ContentPageDto admin(ContentPage page) {
         return new ContentPageDto(
                 page.getPageId(),
-                page.getPageCode(),
+                page.getSlug(),
                 page.getTitle(),
                 page.getContent(),
+                page.getStatus(),
                 page.getUpdatedByAccountId(),
+                page.getUpdatedAt());
+    }
+
+    public static ContentPageSummaryDto summary(ContentPage page) {
+        return new ContentPageSummaryDto(
+                page.getPageId(),
+                page.getSlug(),
+                page.getTitle(),
+                page.getStatus(),
                 page.getUpdatedAt());
     }
 
     public static PublicContentPageDto publicPage(ContentPage page) {
         return new PublicContentPageDto(
-                page.getPageCode(), page.getTitle(), page.getContent(), page.getUpdatedAt());
+                page.getSlug(), page.getTitle(), page.getContent(), page.getUpdatedAt());
     }
 }

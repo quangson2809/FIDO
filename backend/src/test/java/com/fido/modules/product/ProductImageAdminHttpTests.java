@@ -47,30 +47,24 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
     }
 
     @Test
-    void productCreateRejectsLegacyJsonImages() throws Exception {
-        long writePermission = ensurePermission("CATALOG_WRITE");
-        Employee writer = employee(customRole(writePermission));
+    void productCreateRejectsImagePayloadOutsideImageEndpoints() throws Exception {
+        Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         var fixture = createCatalog(writer);
 
-        var response =
-                call(
-                        "POST",
-                        "/api/v1/admin/products",
-                        writer.token(),
-                        Map.of(
-                                "category_id", fixture.categoryId(),
-                                "brand_id", fixture.brandId(),
-                                "size_system_id", fixture.systemId(),
-                                "name", "Legacy " + UUID.randomUUID(),
-                                "base_price", 100000,
-                                "sale_status", "ON_SALE",
-                                "images",
-                                        List.of(
-                                                Map.of(
-                                                        "image_url",
-                                                                "https://example.test/legacy.png",
-                                                        "alt_text", "legacy",
-                                                        "sort_order", 0))));
+        var response = call(
+                "POST",
+                "/api/v1/admin/products",
+                writer.token(),
+                Map.of(
+                        "category_id", fixture.categoryId(),
+                        "brand_id", fixture.brandId(),
+                        "name", "No image writes from create " + UUID.randomUUID(),
+                        "sku", "NO-IMAGE-" + UUID.randomUUID(),
+                        "selling_price", 100000,
+                        "status", "ACTIVE",
+                        "images", List.of(Map.of(
+                                "image_url", "https://example.test/legacy.png",
+                                "sort_order", 0))));
 
         assertEquals(400, response.status(), response.body());
     }
@@ -83,6 +77,8 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
 
         var replaced = replaceImages(writer, fixture.productId());
         assertEquals(List.of(0, 1, 2), sortOrders(fixture.productId()));
+        assertPrimaryInvariant(fixture.productId());
+        assertEquals(List.of(imageIds(replaced).get(0)), primaryImageIds(fixture.productId()));
         List<Long> beforeInvalid = imageIds(replaced);
 
         var duplicateOrder =
@@ -93,8 +89,8 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                         Map.of(
                                 "images",
                                 List.of(
-                                        image("https://example.test/a.png", "a", 0),
-                                        image("https://example.test/b.png", "b", 0))));
+                                        image("https://example.test/a.png", 0),
+                                        image("https://example.test/b.png", 0))));
         assertEquals(409, duplicateOrder.status(), duplicateOrder.body());
         assertEquals(beforeInvalid, storedImageIds(fixture.productId()));
 
@@ -106,8 +102,8 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                         Map.of(
                                 "images",
                                 List.of(
-                                        image("https://example.test/a.png", "a", 0),
-                                        image("https://example.test/b.png", "b", 2))));
+                                        image("https://example.test/a.png", 0),
+                                        image("https://example.test/b.png", 2))));
         assertEquals(409, gapOrder.status(), gapOrder.body());
         assertEquals(beforeInvalid, storedImageIds(fixture.productId()));
 
@@ -120,6 +116,7 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
         assertEquals(200, cleared.status(), cleared.body());
         assertEquals(0, cleared.data().get("data").get("images").size());
         assertEquals(0, storedImageIds(fixture.productId()).size());
+        assertPrimaryInvariant(fixture.productId());
     }
 
     @Test
@@ -140,6 +137,7 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
         assertEquals(200, response.status(), response.body());
         assertEquals(before, imageIds(response));
         assertEquals(before, storedImageIds(fixture.productId()));
+        assertPrimaryInvariant(fixture.productId());
     }
 
     @Test
@@ -181,6 +179,8 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
         assertEquals(
                 List.of(imageIds.get(2), imageIds.get(0), imageIds.get(1)), imageIds(reordered));
         assertEquals(List.of(0, 1, 2), sortOrders(fixture.productId()));
+        assertPrimaryInvariant(fixture.productId());
+        assertEquals(List.of(imageIds.get(2)), primaryImageIds(fixture.productId()));
 
         var invalid =
                 call(
@@ -249,6 +249,8 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
         assertEquals(
                 List.of(imageIds.get(1), imageIds.get(2)), storedImageIds(fixture.productId()));
         assertEquals(List.of(0, 1), sortOrders(fixture.productId()));
+        assertPrimaryInvariant(fixture.productId());
+        assertEquals(List.of(imageIds.get(1)), primaryImageIds(fixture.productId()));
 
         assertEquals(
                 204,
@@ -261,6 +263,9 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                                 writer.token(),
                                 null)
                         .status());
+        assertPrimaryInvariant(fixture.productId());
+        assertEquals(List.of(imageIds.get(2)), primaryImageIds(fixture.productId()));
+
         assertEquals(
                 204,
                 call(
@@ -279,6 +284,8 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                         "SELECT COUNT(*) FROM product_images WHERE product_id=?",
                         Integer.class,
                         fixture.productId()));
+        assertPrimaryInvariant(fixture.productId());
+        assertEquals(List.of(), primaryImageIds(fixture.productId()));
     }
 
     @Test
@@ -324,6 +331,7 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                         .status());
 
         assertEquals(List.of(0, 1, 2), sortOrders(fixture.productId()));
+        assertPrimaryInvariant(fixture.productId());
     }
 
     private Result replaceImages(Employee writer, long productId) throws Exception {
@@ -335,19 +343,57 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                         Map.of(
                                 "images",
                                 List.of(
-                                        image("https://example.test/one.png", "one", 0),
-                                        image("https://example.test/two.png", "two", 1),
-                                        image("https://example.test/three.png", "three", 2))));
+                                        image("https://example.test/one.png", 0),
+                                        image("https://example.test/two.png", 1),
+                                        image("https://example.test/three.png", 2))));
 
         assertEquals(200, response.status(), response.body());
         return response;
     }
 
-    private Map<String, Object> image(String imageUrl, String altText, int sortOrder) {
-        return Map.of(
-                "image_url", imageUrl,
-                "alt_text", altText,
-                "sort_order", sortOrder);
+    private List<Long> primaryImageIds(long productId) {
+        return db.query(
+                """
+                SELECT id
+                FROM product_images
+                WHERE product_id=? AND is_primary=TRUE
+                ORDER BY sort_order,id
+                """,
+                (resultSet, rowNumber) -> resultSet.getLong(1),
+                productId);
+    }
+
+    private void assertPrimaryInvariant(long productId) {
+        List<Integer> orders = sortOrders(productId);
+        assertEquals(
+                java.util.stream.IntStream.range(0, orders.size()).boxed().toList(), orders);
+        long gallerySize =
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM product_images WHERE product_id=?",
+                        Long.class,
+                        productId);
+        long primaryCount =
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM product_images WHERE product_id=? AND is_primary=TRUE",
+                        Long.class,
+                        productId);
+        assertEquals(gallerySize == 0 ? 0L : 1L, primaryCount);
+        int mismatchCount =
+                db.queryForObject(
+                        """
+                        SELECT COUNT(*)
+                        FROM product_images
+                        WHERE product_id=?
+                          AND ((sort_order=0 AND is_primary=FALSE)
+                            OR (sort_order<>0 AND is_primary=TRUE))
+                        """,
+                        Integer.class,
+                        productId);
+        assertEquals(0, mismatchCount);
+    }
+
+    private Map<String, Object> image(String imageUrl, int sortOrder) {
+        return Map.of("image_url", imageUrl, "sort_order", sortOrder);
     }
 
     private long createSecondProductImage(Employee writer, CatalogFixture fixture)
@@ -362,14 +408,14 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                                 fixture.categoryId(),
                                 "brand_id",
                                 fixture.brandId(),
-                                "size_system_id",
-                                fixture.systemId(),
                                 "name",
                                 "Other " + UUID.randomUUID(),
-                                "base_price",
+                                "sku",
+                                "OTHER-" + UUID.randomUUID(),
+                                "selling_price",
                                 100000,
-                                "sale_status",
-                                "ON_SALE"));
+                                "status",
+                                "ACTIVE"));
 
         assertEquals(201, created.status(), created.body());
         long productId = created.data().get("data").get("product_id").asLong();
@@ -382,16 +428,16 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                         writer.token(),
                         Map.of(
                                 "images",
-                                List.of(image("https://example.test/foreign.png", "foreign", 0))));
+                                List.of(image("https://example.test/foreign.png", 0))));
         assertEquals(200, withImage.status(), withImage.body());
 
-        return withImage.data().get("data").get("images").get(0).get("image_id").asLong();
+        return withImage.data().get("data").get("images").get(0).get("id").asLong();
     }
 
     private List<Long> imageIds(Result response) {
         var ids = new ArrayList<Long>();
         for (var image : response.data().get("data").get("images")) {
-            ids.add(image.get("image_id").asLong());
+            ids.add(image.get("id").asLong());
         }
         return List.copyOf(ids);
     }
@@ -399,7 +445,7 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
     private List<Long> storedImageIds(long productId) {
         return db.query(
                 """
-                SELECT image_id
+                SELECT id
                 FROM product_images
                 WHERE product_id=?
                 ORDER BY sort_order

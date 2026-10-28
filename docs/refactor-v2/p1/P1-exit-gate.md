@@ -8,8 +8,8 @@
 
 - Source baseline for P1.9: `demo1@6b7c759dd0931fccff98645331cd72e6970ad16f`.
 - Canonical logical model: `docs/refactor-v2/target/erd-v2-approved.mmd`.
-- Physical target: `docs/refactor-v2/p1/P1-data-dictionary.csv` + isolated `backend/src/main/resources/db/clean-reset/V1__clean_schema.sql`.
-- Required system seed specification: [P1.8 operations/seed contract](P1.8-operations-seed-contract.md); target `V2__system_seed.sql` was updated to match the approved 13-code manifest. It remains isolated from the active Flyway chain.
+- Physical target: `docs/refactor-v2/p1/P1-data-dictionary.csv` + isolated `backend/src/main/resources/db/migration/V1__fido_target_schema.sql`.
+- Required system seed specification: [P1.8 operations/seed contract](P1.8-operations-seed-contract.md); target `same canonical V1 baseline` was updated to match the approved 13-code manifest. It remains isolated from the active Flyway chain.
 - Cross-domain evidence and remaining validation gate: [P1.9 consistency report](P1.9-contract-consistency-report.md).
 - The active Flyway migration chain and runtime Java/frontend code were not changed by P1.9. No database was reset.
 
@@ -36,3 +36,8 @@
 DB-12 numeric retention periods and anonymization exceptions remain TBD. This blocks purge/privacy-retention acceptance and does not authorize any default duration or scheduled deletion. Historical editable UC source documents are absent; do not invent old UC IDs.
 
 **Current gate: P1.9 PASS for cross-domain contract/schema consistency; P1 overall remains PARTIAL because runtime Entity/Repository/Service, API/DTO, authorization, frontend, transaction/concurrency and end-to-end acceptance remain open. P1.9's entry restriction on P2.1 is cleared. DB-12 retention/anonymization and historical UC-ID traceability remain explicitly bounded limitations.
+
+
+## Current candidate status — 2026-10-26
+
+The PASS entries above are historical. The current single schema/seed file is `backend/src/main/resources/db/migration/V1__fido_target_schema.sql`; old clean-reset SQL, separate seed SQL, duplicate installer and V1–V14 migration files have been removed. The new candidate is not PASS until the single-baseline checker and fresh-MySQL workflow pass on the exact SHA. Runtime mapping/API/authorization acceptance remains separate.

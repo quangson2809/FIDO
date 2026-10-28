@@ -10,6 +10,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 import java.util.List;
 import java.util.Map;
@@ -20,7 +24,13 @@ import java.util.concurrent.TimeUnit;
 
 class CheckoutCartTransactionTests extends OrderHttpSupport {
     private static final Map<String, Object> REQUEST =
-            Map.of("recipient_phone", "0900000000", "recipient_address", "Hanoi");
+            Map.of(
+                    "recipient_name", "Test Recipient",
+                    "recipient_phone", "0900000000",
+                    "province", "Hanoi",
+                    "district", "Cau Giay",
+                    "ward", "Dich Vong",
+                    "address_line", "Test address");
 
     @Autowired OrderCreationService creation;
     @Autowired PlatformTransactionManager transactions;
@@ -37,8 +47,8 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
         assertEquals(2, orderedQuantity(firstId));
         assertEquals(0, cartQuantity(customer));
         assertEquals(409, place(customer).status());
-        assertEquals(10, stock(variant.variantId()));
-        assertEquals(0, movementCount(firstId, "ORDER_CONFIRM_OUT"));
+        assertEquals(10, stock(variant.productId()));
+        assertEquals(0, movementCount(firstId, "ORDER"));
         assertEquals(1, count("payments", customer));
 
         add(customer, variant, 1);
@@ -57,8 +67,8 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
         var variant = createVariant(2, 100000, null);
         add(customer, variant, 2);
         db.update(
-                "UPDATE inventories SET available_quantity=1 WHERE variant_id=?",
-                variant.variantId());
+                "UPDATE inventories SET quantity_on_hand=1 WHERE product_id=?",
+                variant.productId());
         assertEquals(409, place(customer).status());
         assertEquals(2, cartQuantity(customer));
         assertEquals(0, count("orders", customer));
@@ -68,12 +78,13 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
                         "/api/v1/orders",
                         customer.token(),
                         Map.of(
-                                "recipient_phone",
-                                "0900000000",
-                                "recipient_address",
-                                "Hanoi",
-                                "voucher_code",
-                                "UNAPPROVED"));
+                                "recipient_name", "Test Recipient",
+                                "recipient_phone", "0900000000",
+                                "province", "Hanoi",
+                                "district", "Cau Giay",
+                                "ward", "Dich Vong",
+                                "address_line", "Test address",
+                                "voucher_code", "UNAPPROVED"));
         assertEquals(409, voucher.status());
         assertEquals(2, cartQuantity(customer));
     }
@@ -83,46 +94,51 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
         User customer = user();
         var variant = createVariant(10, 100000, null);
         add(customer, variant, 2);
-        assertThrows(
-                DataIntegrityViolationException.class,
-                () ->
-                        new TransactionTemplate(transactions)
-                                .executeWithoutResult(
-                                        status -> {
-                                            creation.create(
-                                                    customer.accountId(),
-                                                    new CreateOrderRequest(
-                                                            "0900000000", null, "Hanoi", null));
-                                            assertEquals(
-                                                    0,
-                                                    db.queryForObject(
-                                                            """
-                                                            SELECT COUNT(*) FROM cart_items ci JOIN carts c ON c.cart_id=ci.cart_id
-                                                            WHERE c.account_id=?
-                                                            """,
-                                                            Integer.class,
-                                                            customer.accountId()));
-                                            // Force a real database constraint failure after all
-                                            // checkout writes.
-                                            db.update(
-                                                    """
-                                                    INSERT INTO payments(order_id,payment_status,amount_due,amount_received,amount_refunded)
-                                                    SELECT p.order_id,p.payment_status,p.amount_due,p.amount_received,p.amount_refunded
-                                                    FROM payments p JOIN orders o ON o.order_id=p.order_id WHERE o.customer_account_id=?
-                                                    """,
-                                                    customer.accountId());
-                                        }));
+        var previousContext = SecurityContextHolder.getContext();
+        var auditContext = SecurityContextHolder.createEmptyContext();
+        Jwt jwt = Jwt.withTokenValue("checkout-rollback-test")
+                .header("alg", "none")
+                .subject(Long.toString(customer.accountId()))
+                .build();
+        auditContext.setAuthentication(new JwtAuthenticationToken(
+                jwt, List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER"))));
+        SecurityContextHolder.setContext(auditContext);
+        try {
+            assertThrows(
+                    DataIntegrityViolationException.class,
+                    () -> new TransactionTemplate(transactions).executeWithoutResult(status -> {
+                        creation.createWithIdempotencyKey(
+                                customer.accountId(),
+                                new CreateOrderRequest(
+                                        "Test Recipient", "0900000000", "Hanoi", "Cau Giay",
+                                        "Dich Vong", "Test address", null),
+                                List.of("rollback-after-order-write"));
+                        assertEquals(
+                                0,
+                                db.queryForObject("""
+                                        SELECT COUNT(*) FROM cart_items ci JOIN carts c ON c.id=ci.cart_id
+                                        WHERE c.account_id=?
+                                        """, Integer.class, customer.accountId()));
+                        db.update("""
+                                INSERT INTO payments(order_id,method,payment_status,amount,currency)
+                                SELECT p.order_id,p.method,p.payment_status,p.amount,p.currency
+                                FROM payments p JOIN orders o ON o.id=p.order_id
+                                WHERE o.account_id=?
+                                """, customer.accountId());
+                    }));
+        } finally {
+            SecurityContextHolder.clearContext();
+            SecurityContextHolder.setContext(previousContext);
+        }
         assertEquals(2, cartQuantity(customer));
         assertEquals(0, count("orders", customer));
         assertEquals(0, count("payments", customer));
         assertEquals(
                 0,
                 db.queryForObject(
-                        "SELECT COUNT(*) FROM audit_logs WHERE actor_account_id=? AND"
-                            + " action='ORDER_CREATE'",
-                        Integer.class,
-                        customer.accountId()));
-        assertEquals(10, stock(variant.variantId()));
+                        "SELECT COUNT(*) FROM audit_logs WHERE actor_account_id=? AND action='ORDER_CREATE'",
+                        Integer.class, customer.accountId()));
+        assertEquals(10, stock(variant.productId()));
     }
 
     @Test
@@ -135,7 +151,7 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
         assertEquals(List.of(201, 409), results.stream().map(Result::status).sorted().toList());
         assertEquals(1, count("orders", customer));
         assertEquals(0, cartQuantity(customer));
-        assertEquals(10, stock(variant.variantId()));
+        assertEquals(10, stock(variant.productId()));
     }
 
     @Test
@@ -151,14 +167,14 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
                                         "POST",
                                         "/api/v1/cart/items",
                                         customer.token(),
-                                        Map.of("variant_id", variant.variantId(), "quantity", 2)));
+                                        Map.of("product_id", variant.productId(), "quantity", 2)));
         assertEquals(201, results.get(0).status(), results.get(0).body());
         long orderId = remember(results.get(0));
         assertEquals(200, results.get(1).status(), results.get(1).body());
         int purchased = orderedQuantity(orderId);
         assertTrue(purchased == 1 || purchased == 3);
         assertEquals(3, purchased + cartQuantity(customer));
-        assertEquals(10, stock(variant.variantId()));
+        assertEquals(10, stock(variant.productId()));
     }
 
     @Test
@@ -191,7 +207,7 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
                         "POST",
                         "/api/v1/cart/items",
                         customer.token(),
-                        Map.of("variant_id", variant.variantId(), "quantity", quantity));
+                        Map.of("product_id", variant.productId(), "quantity", quantity));
         assertEquals(200, result.status(), result.body());
     }
 
@@ -222,10 +238,10 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
     private int count(String table, User customer) {
         String sql =
                 switch (table) {
-                    case "orders" -> "SELECT COUNT(*) FROM orders WHERE customer_account_id=?";
+                    case "orders" -> "SELECT COUNT(*) FROM orders WHERE account_id=?";
                     case "payments" ->
-                            "SELECT COUNT(*) FROM payments p JOIN orders o ON o.order_id=p.order_id"
-                                + " WHERE o.customer_account_id=?";
+                            "SELECT COUNT(*) FROM payments p JOIN orders o ON o.id=p.order_id"
+                                + " WHERE o.account_id=?";
                     default -> throw new IllegalArgumentException(table);
                 };
         return db.queryForObject(sql, Integer.class, customer.accountId());

@@ -1,45 +1,25 @@
 package com.fido.modules.product.dto.request;
 
-import com.fasterxml.jackson.annotation.JsonAnySetter;
-
+import tools.jackson.databind.annotation.JsonDeserialize;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 public record ProductCreateRequest(
-        @NotNull @Positive Long category_id,
+        @Positive Long parent_product_id,
+        @Positive Long category_id,
         @Positive Long brand_id,
-        @NotNull @Positive Long size_system_id,
-        @NotBlank @Size(max = 255) String name,
+        @Size(max = 255) String name,
+        @Size(max = 200) String slug,
+        @NotBlank @Size(max = 100) String sku,
         String description,
-        @Size(max = 50) String gender,
-        @Size(max = 80) String season,
-        @Size(max = 100) String style,
-        String material_care,
-        @NotNull @DecimalMin("0.0") BigDecimal base_price,
-        @NotBlank @Pattern(regexp = "ON_SALE|STOPPED") String sale_status,
-        @Valid List<VariantInput> variants) {
-
-    @JsonAnySetter
-    public void rejectLegacyImages(String field, Object ignored) {
-        if ("images".equals(field)) {
-            throw new IllegalArgumentException(
-                    "Product creation does not accept images; use the product image upload"
-                        + " endpoint");
-        }
-    }
-
-    public record VariantInput(
-            @NotNull @Positive Long size_value_id,
-            @NotNull @Positive Long color_id,
-            @Size(max = 100) String sku,
-            @DecimalMin("0.0") BigDecimal override_price,
-            @NotBlank @Pattern(regexp = "ON_SALE|STOPPED") String sale_status) {}
-}
+        @NotNull @PositiveOrZero @JsonDeserialize(using = IntegerVndDeserializer.class) Long selling_price,
+        @PositiveOrZero @JsonDeserialize(using = IntegerVndDeserializer.class) Long cost_price,
+        @Pattern(regexp = "DRAFT|ACTIVE|INACTIVE|ARCHIVED") String status,
+        @Valid List<@NotNull ProductAttributeValueInput> attribute_values) {}

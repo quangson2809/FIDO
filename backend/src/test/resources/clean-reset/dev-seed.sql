@@ -12,10 +12,9 @@ VALUES (30001,NULL,10001,20001,'Áo thun cơ bản','ao-thun-co-ban-demo','DEMO-
 INSERT INTO products (id,parent_product_id,category_id,brand_id,name,slug,sku,description,selling_price,cost_price,status)
 VALUES (30002,30001,NULL,NULL,NULL,NULL,'DEMO-TSHIRT-WHT-S',NULL,195000,NULL,'ACTIVE');
 
-INSERT INTO attribute_types (id,code,name,data_type) VALUES
- (40001,'SIZE','Kích thước','OPTION'),(40002,'COLOR','Màu sắc','OPTION');
 INSERT INTO attributes (id,attribute_type_id,code,name,is_required,is_variant_defining,sort_order) VALUES
- (41001,40001,'SIZE','Kích thước',TRUE,TRUE,1),(41002,40002,'COLOR','Màu sắc',TRUE,TRUE,2);
+ (41001,(SELECT id FROM attribute_types WHERE code='OPTION'),'SIZE','Kích thước',TRUE,TRUE,1),
+ (41002,(SELECT id FROM attribute_types WHERE code='OPTION'),'COLOR','Màu sắc',TRUE,TRUE,2);
 INSERT INTO attribute_options (id,attribute_id,`value`,label,sort_order) VALUES
  (42001,41001,'S','S',1),(42002,41002,'WHITE','Trắng',1);
 INSERT INTO product_attribute_values (product_id,attribute_id,option_id,text_value,number_value,boolean_value) VALUES

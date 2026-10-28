@@ -1,7 +1,9 @@
 export interface AccountDto {
   account_id: number;
+  full_name: string | null;
   phone: string;
   email: string | null;
+  status: 'ACTIVE' | 'PENDING_APPROVAL' | 'LOCKED' | 'SUSPENDED';
   created_at: string;
   updated_at: string;
 }
@@ -40,7 +42,7 @@ export interface LoginResponseDto {
 }
 
 export interface ProfilePatchInput {
-  phone?: string;
+  full_name?: string;
   email?: string;
 }
 
@@ -50,7 +52,12 @@ export interface AddressInput {
 
 export interface AuthService {
   login(identifier: string, password: string): Promise<LoginResponseDto>;
-  register(phone: string, email: string | null, password: string): Promise<AccountDto>;
+  register(
+    phone: string,
+    fullName: string,
+    email: string | null,
+    password: string,
+  ): Promise<LoginResponseDto>;
   logout(): void;
 }
 

@@ -5,19 +5,12 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/**
- * Maps dynamic order actions to actor capabilities. Business state validation remains in order
- * policy/services.
- */
 @Component("orderAuthorization")
 public class OrderAuthorization {
-
     public boolean canExecute(Authentication authentication, String action) {
-        String permission = requiredPermission(action);
-
-        return permission != null
-                && (hasAuthority(authentication, "ROLE_SUPERADMIN")
-                        || hasAuthority(authentication, "PERMISSION_" + permission));
+        if (hasAuthority(authentication, "ROLE_SUPERADMIN")) return true;
+        return requiredPermission(action) != null
+                && hasAuthority(authentication, "PERMISSION_ORDER_EDIT");
     }
 
     public List<String> filterAllowed(Authentication authentication, List<String> actions) {
@@ -25,14 +18,9 @@ public class OrderAuthorization {
     }
 
     private String requiredPermission(String action) {
-        if (action == null) {
-            return null;
-        }
-
-        return switch (action) {
-            case "CONFIRM", "PREPARE" -> OrderPolicy.ORDER_PROCESS;
-            case "SHIP", "RETRY_DELIVERY", "COMPLETE" -> OrderPolicy.ORDER_FULFILLMENT;
-            case "DELIVERY_FAILED", "CANCEL", "DELIVERY_RETURN_IN" -> OrderPolicy.ORDER_EXCEPTION;
+        return switch (action == null ? "" : action) {
+            case "CONFIRM", "START_PREPARING", "DISPATCH",
+                    "MARK_DELIVERY_FAILED", "RETRY_DELIVERY", "CANCEL" -> OrderPolicy.ORDER_EDIT;
             default -> null;
         };
     }

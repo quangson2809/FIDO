@@ -1,17 +1,25 @@
 package com.fido.modules.product.entity;
 
-import jakarta.persistence.*;
-
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
 @Entity
-@Table(name = "products")
+@Table(
+        name = "products",
+        uniqueConstraints = @UniqueConstraint(name = "uq_products_sku", columnNames = {"sku"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,47 +27,43 @@ public class Product {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "product_id", nullable = false)
+    @Column(name = "id", nullable = false)
     private Long productId;
 
-    @Column(name = "category_id", nullable = false)
+    @Column(name = "parent_product_id")
+    private Long parentProductId;
+
+    @Column(name = "category_id")
     private Long categoryId;
 
-    @Column(name = "brand_id", nullable = true)
+    @Column(name = "brand_id")
     private Long brandId;
 
-    @Column(name = "size_system_id", nullable = false)
-    private Long sizeSystemId;
-
-    @Column(name = "name", nullable = false, length = 255)
+    @Column(name = "name", length = 255)
     private String name;
 
-    @Column(name = "description", nullable = true, columnDefinition = "TEXT")
+    @Column(name = "slug", length = 200)
+    private String slug;
+
+    @Column(name = "sku", nullable = false, length = 100)
+    private String sku;
+
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "gender", nullable = true, length = 50)
-    private String gender;
+    @Column(name = "selling_price", nullable = false)
+    private Long sellingPrice;
 
-    @Column(name = "season", nullable = true, length = 80)
-    private String season;
+    @Column(name = "cost_price")
+    private Long costPrice;
 
-    @Column(name = "style", nullable = true, length = 100)
-    private String style;
+    @Column(name = "status", nullable = false, length = 20)
+    private String status = "DRAFT";
 
-    @Column(name = "material_care", nullable = true, columnDefinition = "TEXT")
-    private String materialCare;
+    @Column(name = "deleted_at", columnDefinition = "TIMESTAMP(6)")
+    private LocalDateTime deletedAt;
 
-    @Column(name = "base_price", nullable = false, precision = 18, scale = 2)
-    private BigDecimal basePrice;
-
-    @Column(name = "sale_status", nullable = false, length = 30)
-    private String saleStatus;
-
-    @Column(
-            name = "created_at",
-            nullable = false,
-            columnDefinition = "TIMESTAMP(6)",
-            updatable = false)
+    @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP(6)", updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
@@ -68,6 +72,7 @@ public class Product {
     @PrePersist
     void onCreate() {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        if (status == null || status.isBlank()) status = "DRAFT";
         createdAt = now;
         updatedAt = now;
     }
@@ -75,5 +80,9 @@ public class Product {
     @PreUpdate
     void onUpdate() {
         updatedAt = LocalDateTime.now(ZoneOffset.UTC);
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
     }
 }

@@ -17,11 +17,20 @@ class RbacHttpTests extends AccountHttpSupport {
     void rolePermissionCrudReplacementAuditAndRollback() throws Exception {
         String token = root();
         String suffix = UUID.randomUUID().toString();
+        String permissionCode = "test." + suffix;
 
         assertEquals(
                 400,
                 call("PATCH", "/api/v1/admin/roles/not-an-id", token, Map.of("name", "Bad"))
                         .status());
+
+        long superadminRoleId =
+                db.queryForObject("SELECT id FROM roles WHERE code='SUPERADMIN'", Long.class);
+        var protectedSuperadmin = call(
+                "PATCH", "/api/v1/admin/roles/" + superadminRoleId, token,
+                Map.of("status", "INACTIVE"));
+        assertEquals(409, protectedSuperadmin.status(), protectedSuperadmin.body());
+        assertEquals("SYSTEM_ROLE_PROTECTED", protectedSuperadmin.data().get("code").asText());
 
         assertEquals(
                 400,
@@ -29,9 +38,7 @@ class RbacHttpTests extends AccountHttpSupport {
                                 "POST",
                                 "/api/v1/admin/permissions",
                                 token,
-                                Map.of(
-                                        "code", " ",
-                                        "name", "Bad"))
+                                Map.of("code", " ", "name", "Bad"))
                         .status());
 
         var permissionResponse =
@@ -39,13 +46,47 @@ class RbacHttpTests extends AccountHttpSupport {
                         "POST",
                         "/api/v1/admin/permissions",
                         token,
-                        Map.of("code", "test." + suffix, "name", "Test permission"));
+                        Map.of("code", permissionCode, "name", "Test permission"));
 
         assertEquals(201, permissionResponse.status(), permissionResponse.body());
 
-        long permissionId = permissionResponse.data().get("data").get("permission_id").asLong();
+        long permissionId = permissionResponse.data().get("data").get("id").asLong();
 
         permissionIds.add(permissionId);
+
+        var duplicatePermission = call(
+                "POST", "/api/v1/admin/permissions", token,
+                Map.of("code", permissionCode, "name", "Duplicate permission"));
+        assertEquals(409, duplicatePermission.status(), duplicatePermission.body());
+        assertEquals("PERMISSION_CODE_ALREADY_EXISTS", duplicatePermission.data().get("code").asText());
+
+        assertEquals(
+                1,
+                db.queryForObject(
+                        """
+                        SELECT COUNT(*)
+                        FROM role_permissions rp
+                        JOIN roles r ON r.id=rp.role_id
+                        WHERE r.code='SUPERADMIN' AND rp.permission_id=?
+                        """,
+                        Integer.class,
+                        permissionId));
+
+        assertEquals(
+                400,
+                call(
+                                "PATCH",
+                                "/api/v1/admin/permissions/" + permissionId,
+                                token,
+                                Map.of("code", "mutated"))
+                        .status());
+
+        assertEquals(
+                permissionCode,
+                db.queryForObject(
+                        "SELECT code FROM permissions WHERE id=?",
+                        String.class,
+                        permissionId));
 
         assertEquals(
                 200,
@@ -64,7 +105,7 @@ class RbacHttpTests extends AccountHttpSupport {
 
         boolean permissionFound = false;
         for (var permissionNode : permissionList.data().get("data")) {
-            if (permissionNode.get("permission_id").asLong() == permissionId) {
+            if (permissionNode.get("id").asLong() == permissionId) {
                 permissionFound = true;
                 break;
             }
@@ -88,7 +129,14 @@ class RbacHttpTests extends AccountHttpSupport {
 
         assertEquals(201, roleResponse.status(), roleResponse.body());
 
-        long roleId = roleResponse.data().get("data").get("role_id").asLong();
+        var duplicateRole = call(
+                "POST", "/api/v1/admin/roles", token,
+                Map.of("code", "test." + suffix, "name", "Duplicate role",
+                        "permission_ids", List.of(permissionId)));
+        assertEquals(409, duplicateRole.status(), duplicateRole.body());
+        assertEquals("ROLE_CODE_ALREADY_EXISTS", duplicateRole.data().get("code").asText());
+
+        long roleId = roleResponse.data().get("data").get("id").asLong();
 
         roleIds.add(roleId);
 
@@ -97,25 +145,23 @@ class RbacHttpTests extends AccountHttpSupport {
         assertEquals(200, accessControl.status(), accessControl.body());
 
         boolean roleFound = false;
-
         for (var roleNode : accessControl.data().get("data").get("roles")) {
-            if (roleNode.get("role_id").asLong() != roleId) {
+            if (roleNode.get("id").asLong() != roleId) {
                 continue;
             }
 
             roleFound = true;
-
             assertEquals(1, roleNode.get("permissions").size());
-
             assertEquals(
-                    permissionId, roleNode.get("permissions").get(0).get("permission_id").asLong());
+                    permissionId, roleNode.get("permissions").get(0).get("id").asLong());
         }
 
         assertTrue(roleFound);
 
-        assertEquals(
-                409,
-                call("DELETE", "/api/v1/admin/permissions/" + permissionId, token, null).status());
+        var usedPermissionDelete = call(
+                "DELETE", "/api/v1/admin/permissions/" + permissionId, token, null);
+        assertEquals(409, usedPermissionDelete.status(), usedPermissionDelete.body());
+        assertEquals("PERMISSION_IN_USE", usedPermissionDelete.data().get("code").asText());
 
         assertEquals(
                 404,
@@ -123,16 +169,12 @@ class RbacHttpTests extends AccountHttpSupport {
                                 "PATCH",
                                 "/api/v1/admin/roles/" + roleId,
                                 token,
-                                Map.of(
-                                        "name",
-                                        "Must rollback",
-                                        "permission_ids",
-                                        List.of(Long.MAX_VALUE)))
+                                Map.of("name", "Must rollback", "permission_ids", List.of(Long.MAX_VALUE)))
                         .status());
 
         assertEquals(
                 "Role",
-                db.queryForObject("SELECT name FROM roles WHERE role_id=?", String.class, roleId));
+                db.queryForObject("SELECT name FROM roles WHERE id=?", String.class, roleId));
 
         assertEquals(
                 1,
@@ -170,7 +212,7 @@ class RbacHttpTests extends AccountHttpSupport {
                                 SELECT COUNT(*)
                                 FROM audit_logs
                                 WHERE action='ROLE_CREATE'
-                                  AND target_id=?
+                                  AND entity_id=?
                                 """,
                                 Integer.class,
                                 Long.toString(roleId))

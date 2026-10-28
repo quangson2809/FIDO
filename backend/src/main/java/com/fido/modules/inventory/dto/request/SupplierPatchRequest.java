@@ -2,8 +2,6 @@ package com.fido.modules.inventory.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonSetter;
-import com.fasterxml.jackson.annotation.Nulls;
-
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -21,95 +19,35 @@ public class SupplierPatchRequest {
     @Size(max = 254)
     private String email;
 
-    @Size(max = 500)
-    private String address;
-
     @Pattern(regexp = "ACTIVE|INACTIVE")
-    private String usageStatus;
-
-    @Size(max = 500)
-    private String note;
+    private String status;
 
     private boolean phonePresent;
     private boolean emailPresent;
-    private boolean addressPresent;
-    private boolean notePresent;
 
-    public String getName() {
-        return name;
-    }
+    public String getName() { return name; }
 
-    @JsonSetter(value = "name", nulls = Nulls.FAIL)
-    public void setName(String value) {
-        name = value;
-    }
+    @JsonSetter(value = "name", nulls = com.fasterxml.jackson.annotation.Nulls.FAIL)
+    public void setName(String value) { name = value; }
 
-    public String getPhone() {
-        return phone;
-    }
+    public String getPhone() { return phone; }
 
     @JsonSetter("phone")
-    public void setPhone(String value) {
-        phone = value;
-        phonePresent = true;
-    }
+    public void setPhone(String value) { phone = value; phonePresent = true; }
 
-    public String getEmail() {
-        return email;
-    }
+    public String getEmail() { return email; }
 
     @JsonSetter("email")
-    public void setEmail(String value) {
-        email = value;
-        emailPresent = true;
-    }
+    public void setEmail(String value) { email = value; emailPresent = true; }
 
-    public String getAddress() {
-        return address;
-    }
+    public String getStatus() { return status; }
 
-    @JsonSetter("address")
-    public void setAddress(String value) {
-        address = value;
-        addressPresent = true;
-    }
-
-    public String getUsageStatus() {
-        return usageStatus;
-    }
-
-    @JsonSetter(value = "usage_status", nulls = Nulls.FAIL)
-    public void setUsageStatus(String value) {
-        usageStatus = value;
-    }
-
-    public String getNote() {
-        return note;
-    }
-
-    @JsonSetter("note")
-    public void setNote(String value) {
-        note = value;
-        notePresent = true;
-    }
+    @JsonSetter(value = "status", nulls = com.fasterxml.jackson.annotation.Nulls.FAIL)
+    public void setStatus(String value) { status = value; }
 
     @JsonIgnore
-    public boolean isPhonePresent() {
-        return phonePresent;
-    }
+    public boolean isPhonePresent() { return phonePresent; }
 
     @JsonIgnore
-    public boolean isEmailPresent() {
-        return emailPresent;
-    }
-
-    @JsonIgnore
-    public boolean isAddressPresent() {
-        return addressPresent;
-    }
-
-    @JsonIgnore
-    public boolean isNotePresent() {
-        return notePresent;
-    }
+    public boolean isEmailPresent() { return emailPresent; }
 }

@@ -2,16 +2,14 @@ package com.fido.modules.promotion.controller;
 
 import com.fido.common.response.ApiResponse;
 import com.fido.common.response.PaginationMeta;
-import com.fido.modules.promotion.dto.request.VoucherRequest;
+import com.fido.modules.promotion.dto.request.VoucherCreateRequest;
+import com.fido.modules.promotion.dto.request.VoucherPatchRequest;
 import com.fido.modules.promotion.dto.response.VoucherDetailDto;
 import com.fido.modules.promotion.service.VoucherManagementService;
-
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.*;
-
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -35,8 +33,7 @@ public class VoucherAdminController {
         var result = service.list(search, page, page_size);
         return new VoucherPage(
                 result.getContent(),
-                new PaginationMeta(
-                        page, page_size, result.getTotalElements(), result.getTotalPages()));
+                new PaginationMeta(page, page_size, result.getTotalElements(), result.getTotalPages()));
     }
 
     @GetMapping("/{id}")
@@ -46,16 +43,13 @@ public class VoucherAdminController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<VoucherDetailDto> create(
-            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody VoucherRequest request) {
-        return ApiResponse.of(service.create(Long.valueOf(jwt.getSubject()), request));
+    public ApiResponse<VoucherDetailDto> create(@Valid @RequestBody VoucherCreateRequest request) {
+        return ApiResponse.of(service.create(request));
     }
 
-    @PutMapping("/{id}")
+    @PatchMapping("/{id}")
     public ApiResponse<VoucherDetailDto> update(
-            @AuthenticationPrincipal Jwt jwt,
-            @PathVariable Long id,
-            @Valid @RequestBody VoucherRequest request) {
-        return ApiResponse.of(service.update(Long.valueOf(jwt.getSubject()), id, request));
+            @PathVariable Long id, @Valid @RequestBody VoucherPatchRequest request) {
+        return ApiResponse.of(service.update(id, request));
     }
 }

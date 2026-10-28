@@ -1,10 +1,6 @@
 import { StatusBadge } from '../../shared/admin/StatusBadge';
 import { useSearchParams } from 'react-router-dom';
 import { Pagination } from '../../shared/admin/Pagination';
-import {
-  VariantPicker,
-  ReceiptVariantLabel,
-} from '../../features/inventory/components/VariantPicker';
 import { statusLabel } from '../../shared/admin/statusLabels';
 import { useRemoteQuery } from '../../shared/hooks/useRemoteQuery';
 import { QueryFeedback } from '../../shared/admin/QueryFeedback';
@@ -19,7 +15,7 @@ import type {
 } from '../../features/inventory/types';
 import { getVietnamToday } from '../../shared/time/vietnamCalendar';
 
-const emptyItem = (): GoodsReceiptItemInput => ({ variant_id: 0, quantity: 1 });
+const emptyItem = (): GoodsReceiptItemInput => ({ product_id: 0, quantity: 1, unit_cost: 0 });
 
 export const AdminInwardView: React.FC<{
   showToast: (msg: string) => void;
@@ -34,18 +30,18 @@ export const AdminInwardView: React.FC<{
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<GoodsReceiptDetailDto | null>(null);
   const [supplierId, setSupplierId] = useState('');
+  const [warehouseId, setWarehouseId] = useState('');
   const [receiptDate, setReceiptDate] = useState(getVietnamToday());
   const [note, setNote] = useState('');
   const [items, setItems] = useState<GoodsReceiptItemInput[]>([emptyItem()]);
   const [supplierSearch, setSupplierSearch] = useState('');
   const [supplierPage, setSupplierPage] = useState(1);
-  const [pickingIndex, setPickingIndex] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
   const [savedDraft, setSavedDraft] = useState(() =>
-    JSON.stringify({ supplierId, receiptDate, note, items }),
+    JSON.stringify({ supplierId, warehouseId, receiptDate, note, items }),
   );
-  const draftKey = JSON.stringify({ supplierId, receiptDate, note, items });
+  const draftKey = JSON.stringify({ supplierId, warehouseId, receiptDate, note, items });
   const dirty = draftKey !== savedDraft;
   const canDiscard = useDirtyForm(dirty);
   const list = useRemoteQuery(
@@ -79,10 +75,11 @@ export const AdminInwardView: React.FC<{
   const resetDraftForm = () => {
     const date = getVietnamToday();
     setSavedDraft(
-      JSON.stringify({ supplierId: '', receiptDate: date, note: '', items: [emptyItem()] }),
+      JSON.stringify({ supplierId: '', warehouseId: '', receiptDate: date, note: '', items: [emptyItem()] }),
     );
     setSelected(null);
     setSupplierId('');
+    setWarehouseId('');
     setReceiptDate(date);
     setNote('');
     setItems([emptyItem()]);
@@ -91,17 +88,20 @@ export const AdminInwardView: React.FC<{
   const editDetail = (detail: GoodsReceiptDetailDto) => {
     setSelected(detail);
     setSupplierId(String(detail.supplier_id));
-    setReceiptDate(detail.receipt_date);
+    setWarehouseId(String(detail.warehouse_id));
+    setReceiptDate(detail.receipt_date ?? getVietnamToday());
     setNote(detail.note ?? '');
     const nextItems = detail.items.map((item) => ({
-      variant_id: item.variant_id,
-      quantity: item.quantity,
+      product_id: item.product_id,
+      quantity: item.quantity_received,
+      unit_cost: item.unit_cost,
     }));
     setItems(nextItems);
     setSavedDraft(
       JSON.stringify({
         supplierId: String(detail.supplier_id),
-        receiptDate: detail.receipt_date,
+        warehouseId: String(detail.warehouse_id),
+        receiptDate: detail.receipt_date ?? getVietnamToday(),
         note: detail.note ?? '',
         items: nextItems,
       }),
@@ -130,20 +130,23 @@ export const AdminInwardView: React.FC<{
   const normalizedItems = (): GoodsReceiptItemInput[] | null => {
     if (items.length === 0) return null;
     const normalized = items.map((item) => ({
-      variant_id: Number(item.variant_id),
+      product_id: Number(item.product_id),
       quantity: Number(item.quantity),
+      unit_cost: Number(item.unit_cost),
     }));
     if (
       normalized.some(
         (item) =>
-          !Number.isInteger(item.variant_id) ||
-          item.variant_id <= 0 ||
+          !Number.isInteger(item.product_id) ||
+          item.product_id <= 0 ||
           !Number.isInteger(item.quantity) ||
-          item.quantity <= 0,
+          item.quantity <= 0 ||
+          !Number.isSafeInteger(item.unit_cost) ||
+          item.unit_cost < 0,
       )
     )
       return null;
-    if (new Set(normalized.map((item) => item.variant_id)).size !== normalized.length) return null;
+    if (new Set(normalized.map((item) => item.product_id)).size !== normalized.length) return null;
     return normalized;
   };
 
@@ -151,10 +154,12 @@ export const AdminInwardView: React.FC<{
     event.preventDefault();
     if (!canWrite || saving) return;
     const parsedSupplier = Number(supplierId);
+    const parsedWarehouse = Number(warehouseId);
     const normalized = normalizedItems();
-    if (!Number.isInteger(parsedSupplier) || parsedSupplier <= 0 || !receiptDate || !normalized) {
+    if (!Number.isInteger(parsedSupplier) || parsedSupplier <= 0 ||
+        !Number.isInteger(parsedWarehouse) || parsedWarehouse <= 0 || !receiptDate || !normalized) {
       setError(
-        'Phiếu nhập cần supplier ACTIVE, ngày nhập và ít nhất một variant hợp lệ; không được trùng variant.',
+        'Phiếu nhập cần supplier ACTIVE, Warehouse ID, ngày nhập và Product ID hợp lệ; không được trùng Product ID.',
       );
       return;
     }
@@ -164,12 +169,14 @@ export const AdminInwardView: React.FC<{
       const detail = selected
         ? await inventoryAdminService.updateReceipt(selected.receipt_id, {
             supplier_id: parsedSupplier,
+            warehouse_id: parsedWarehouse,
             receipt_date: receiptDate,
             note: note.trim() || null,
             items: normalized,
           })
         : await inventoryAdminService.createReceipt({
             supplier_id: parsedSupplier,
+            warehouse_id: parsedWarehouse,
             receipt_date: receiptDate,
             note: note.trim() || null,
             items: normalized,
@@ -181,7 +188,7 @@ export const AdminInwardView: React.FC<{
       setError(
         getApiErrorMessage(
           requestError,
-          'Không thể lưu phiếu nhập. Kiểm tra trạng thái bản nháp, nhà cung cấp và các biến thể đã chọn.',
+          'Không thể lưu phiếu nhập. Kiểm tra trạng thái bản nháp, nhà cung cấp, kho và Product ID.',
         ),
       );
     } finally {
@@ -197,7 +204,7 @@ export const AdminInwardView: React.FC<{
     }
     if (
       !window.confirm(
-        `${action === 'CONFIRM' ? 'Xác nhận' : 'Hủy'} phiếu ${selected.receipt_code}?\n${action === 'CONFIRM' ? `${selected.items.length} dòng, tổng ${selected.items.reduce((total, item) => total + item.quantity, 0)} sản phẩm sẽ được cộng vào kho. Phiếu đã xác nhận không sửa được.` : 'Phiếu sẽ bị hủy và không cộng tồn kho.'}`,
+        `${action === 'CONFIRM' ? 'Xác nhận' : 'Hủy'} phiếu ${selected.receipt_code}?\n${action === 'CONFIRM' ? `${selected.items.length} dòng, tổng ${selected.items.reduce((total, item) => total + item.quantity_received, 0)} sản phẩm sẽ được cộng vào kho. Phiếu đã xác nhận không sửa được.` : 'Phiếu sẽ bị hủy và không cộng tồn kho.'}`,
       )
     )
       return;
@@ -224,18 +231,6 @@ export const AdminInwardView: React.FC<{
 
   return (
     <div className="space-y-6">
-      {pickingIndex !== null && (
-        <VariantPicker
-          excludedIds={items
-            .filter((_, index) => index !== pickingIndex)
-            .map((item) => item.variant_id)}
-          onClose={() => setPickingIndex(null)}
-          onSelect={(row) => {
-            setItem(pickingIndex, { variant_id: row.variant_id });
-            setPickingIndex(null);
-          }}
-        />
-      )}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">
@@ -449,6 +444,16 @@ export const AdminInwardView: React.FC<{
                   onPage={setSupplierPage}
                 />
                 <label className="block space-y-1">
+                  <span className="text-xs font-semibold">Warehouse ID *</span>
+                  <input
+                    type="number" min="1" step="1" required
+                    disabled={!canWrite || (selected !== null && !isDraft)}
+                    value={warehouseId}
+                    onChange={(event) => setWarehouseId(event.target.value)}
+                    className="w-full border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]"
+                  />
+                </label>
+                <label className="block space-y-1">
                   <span className="text-xs font-semibold">Ngày nhập *</span>
                   <input
                     type="date"
@@ -471,7 +476,7 @@ export const AdminInwardView: React.FC<{
                 </label>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold">Biến thể và số lượng *</span>
+                    <span className="text-xs font-semibold">Product ID, số lượng và giá vốn VND *</span>
                     {canWrite && (selected === null || isDraft) && (
                       <button
                         type="button"
@@ -483,46 +488,41 @@ export const AdminInwardView: React.FC<{
                     )}
                   </div>
                   {items.map((item, index) => (
-                    <div key={index} className="grid grid-cols-[minmax(0,1fr)_80px_auto] gap-2">
-                      <div className="min-w-0">
-                        {item.variant_id > 0 && <ReceiptVariantLabel variantId={item.variant_id} />}
-                        {canWrite && (selected === null || isDraft) && (
-                          <button
-                            type="button"
-                            disabled={saving}
-                            onClick={() => setPickingIndex(index)}
-                            className="admin-secondary"
-                          >
-                            {item.variant_id ? 'Đổi biến thể' : 'Chọn biến thể'}
-                          </button>
-                        )}
-                      </div>
+                    <div key={index} className="grid grid-cols-[minmax(0,1fr)_76px_104px_auto] gap-2">
                       <input
-                        type="number"
-                        min="1"
-                        step="1"
+                        type="number" min="1" step="1" required
+                        disabled={!canWrite || (selected !== null && !isDraft)}
+                        aria-label={`Product ID dòng ${index + 1}`}
+                        value={item.product_id || ''}
+                        onChange={(event) => setItem(index, { product_id: Number(event.target.value) })}
+                        placeholder="Product ID"
+                        className="min-w-0 w-full border border-[#D9DDD6] px-2 py-2 text-sm disabled:bg-[#F5F6F2]"
+                      />
+                      <input
+                        type="number" min="1" step="1" required
                         disabled={!canWrite || (selected !== null && !isDraft)}
                         aria-label={`Số lượng dòng ${index + 1}`}
                         value={item.quantity}
-                        onChange={(event) =>
-                          setItem(index, { quantity: Number(event.target.value) })
-                        }
-                        className="border border-[#D9DDD6] px-3 py-2 text-sm disabled:bg-[#F5F6F2]"
+                        onChange={(event) => setItem(index, { quantity: Number(event.target.value) })}
+                        className="w-full border border-[#D9DDD6] px-2 py-2 text-sm disabled:bg-[#F5F6F2]"
+                      />
+                      <input
+                        type="number" min="0" step="1" required
+                        disabled={!canWrite || (selected !== null && !isDraft)}
+                        aria-label={`Giá vốn VND dòng ${index + 1}`}
+                        value={item.unit_cost}
+                        onChange={(event) => setItem(index, { unit_cost: Number(event.target.value) })}
+                        placeholder="Giá vốn"
+                        className="w-full border border-[#D9DDD6] px-2 py-2 text-sm disabled:bg-[#F5F6F2]"
                       />
                       {canWrite && (selected === null || isDraft) && (
                         <button
                           type="button"
                           disabled={items.length === 1}
-                          onClick={() =>
-                            setItems((current) =>
-                              current.filter((_, itemIndex) => itemIndex !== index),
-                            )
-                          }
+                          onClick={() => setItems((current) => current.filter((_, itemIndex) => itemIndex !== index))}
                           aria-label={`Xóa dòng ${index + 1}`}
                           className="px-2 text-red-700 disabled:opacity-30"
-                        >
-                          ×
-                        </button>
+                        >×</button>
                       )}
                     </div>
                   ))}

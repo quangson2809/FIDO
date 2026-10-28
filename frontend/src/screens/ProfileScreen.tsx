@@ -12,7 +12,7 @@ export const ProfileScreen: React.FC = () => {
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<MeDto | null>(null);
-  const [phone, setPhone] = useState('');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [newAddress, setNewAddress] = useState('');
   const [editingAddressId, setEditingAddressId] = useState<number | null>(null);
@@ -31,7 +31,7 @@ export const ProfileScreen: React.FC = () => {
         const me = await profileService.getMe();
         if (!active) return;
         setProfile(me);
-        setPhone(me.account.phone);
+        setFullName(me.account.full_name ?? '');
         setEmail(me.account.email ?? '');
         setError(null);
       } catch (requestError: unknown) {
@@ -54,20 +54,20 @@ export const ProfileScreen: React.FC = () => {
 
   const handleSaveProfile = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const normalizedPhone = phone.trim();
+    const normalizedName = fullName.trim();
     const normalizedEmail = email.trim();
-    if (!normalizedPhone) {
-      showToast('Số điện thoại không được để trống.');
+    if (!normalizedName) {
+      showToast('Họ và tên không được để trống.');
       return;
     }
     setSavingProfile(true);
     try {
       const account = await profileService.updateProfile({
-        phone: normalizedPhone,
+        full_name: normalizedName,
         ...(normalizedEmail ? { email: normalizedEmail } : {}),
       });
       setProfile((current) => (current ? { ...current, account } : current));
-      setPhone(account.phone);
+      setFullName(account.full_name ?? normalizedName);
       setEmail(account.email ?? '');
       showToast('Đã cập nhật hồ sơ.');
     } catch (requestError: unknown) {
@@ -252,13 +252,13 @@ export const ProfileScreen: React.FC = () => {
             </div>
             <form onSubmit={handleSaveProfile} className="mt-6 grid gap-5 sm:grid-cols-2">
               <label className="space-y-1.5 text-xs font-medium">
-                <span>Số điện thoại *</span>
+                <span>Họ và tên *</span>
                 <input
-                  type="tel"
-                  autoComplete="tel"
-                  value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
-                  maxLength={20}
+                  type="text"
+                  autoComplete="name"
+                  value={fullName}
+                  onChange={(event) => setFullName(event.target.value)}
+                  maxLength={150}
                   required
                   className="w-full border border-[#D9DDD6] bg-[#FAF9F5] px-3.5 py-3 text-sm outline-none transition focus:border-[#0B2419]"
                 />

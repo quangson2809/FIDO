@@ -18,12 +18,11 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.net.URI;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -52,7 +51,7 @@ abstract class AccountHttpSupport {
     record Result(int status, JsonNode data, String body) {}
 
     Result call(String method, String path, String token, Object body) throws Exception {
-        var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path));
+        var request = java.net.http.HttpRequest.newBuilder(URI.create("http://localhost:" + port + path));
 
         request.header("Accept", "application/json");
 
@@ -65,10 +64,11 @@ abstract class AccountHttpSupport {
         request.method(
                 method,
                 body == null
-                        ? HttpRequest.BodyPublishers.noBody()
-                        : HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)));
+                        ? java.net.http.HttpRequest.BodyPublishers.noBody()
+                        : java.net.http.HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)));
 
-        var response = client.send(request.build(), HttpResponse.BodyHandlers.ofString());
+        var response =
+                client.send(request.build(), java.net.http.HttpResponse.BodyHandlers.ofString());
 
         return new Result(
                 response.statusCode(),
@@ -77,7 +77,10 @@ abstract class AccountHttpSupport {
     }
 
     String phone() {
-        return "09" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+        return "+84" + String.format(
+                Locale.ROOT,
+                "%09d",
+                ThreadLocalRandom.current().nextLong(100_000_000L, 1_000_000_000L));
     }
 
     long register(String phone) throws Exception {
@@ -86,16 +89,13 @@ abstract class AccountHttpSupport {
                         "POST",
                         "/api/v1/auth/register",
                         null,
-                        Map.of(
-                                "phone", phone,
-                                "password", PASSWORD));
+                        Map.of("phone", phone, "full_name", "Test Account", "password", PASSWORD));
 
         assertEquals(201, response.status, response.body);
 
-        long accountId = response.data.get("data").get("account_id").asLong();
+        long accountId = response.data.get("data").get("account").get("id").asLong();
 
         created.add(accountId);
-
         return accountId;
     }
 
@@ -105,12 +105,9 @@ abstract class AccountHttpSupport {
                         "POST",
                         "/api/v1/auth/login",
                         null,
-                        Map.of(
-                                "identifier", phone,
-                                "password", PASSWORD));
+                        Map.of("phone", phone, "password", PASSWORD));
 
         assertEquals(200, response.status, response.body);
-
         return response.data.get("data").get("access_token").asText();
     }
 
@@ -118,8 +115,7 @@ abstract class AccountHttpSupport {
         db.update(
                 """
                 INSERT INTO account_roles
-                SELECT ?, role_id
-                FROM roles
+                SELECT ?, id FROM roles
                 WHERE code = ?
                 """,
                 accountId,
@@ -129,9 +125,7 @@ abstract class AccountHttpSupport {
     String root() throws Exception {
         String phone = phone();
         long accountId = register(phone);
-
         grant(accountId, "SUPERADMIN");
-
         return login(phone);
     }
 
@@ -139,22 +133,19 @@ abstract class AccountHttpSupport {
     void clean() {
         for (Long accountId : created) {
             db.update("DELETE FROM audit_logs WHERE actor_account_id=?", accountId);
-
             db.update("DELETE FROM addresses WHERE account_id=?", accountId);
-
             db.update("DELETE FROM account_roles WHERE account_id=?", accountId);
-
-            db.update("DELETE FROM accounts WHERE account_id=?", accountId);
+            db.update("DELETE FROM accounts WHERE id=?", accountId);
         }
 
         for (Long roleId : roleIds) {
             db.update("DELETE FROM role_permissions WHERE role_id=?", roleId);
-
-            db.update("DELETE FROM roles WHERE role_id=?", roleId);
+            db.update("DELETE FROM roles WHERE id=?", roleId);
         }
 
         for (Long permissionId : permissionIds) {
-            db.update("DELETE FROM permissions WHERE permission_id=?", permissionId);
+            db.update("DELETE FROM role_permissions WHERE permission_id=?", permissionId);
+            db.update("DELETE FROM permissions WHERE id=?", permissionId);
         }
     }
 }

@@ -3,22 +3,11 @@ package com.fido.modules.inventory.repository;
 import java.time.LocalDateTime;
 
 public interface InventoryRowView {
-
-    Long getVariantId();
-
-    String getSku();
-
+    Long getWarehouseId();
     Long getProductId();
-
+    String getSku();
     String getProductName();
-
-    String getSize();
-
-    String getColor();
-
-    String getSaleStatus();
-
     Integer getAvailableQuantity();
-
+    Integer getVersion();
     LocalDateTime getUpdatedAt();
 }

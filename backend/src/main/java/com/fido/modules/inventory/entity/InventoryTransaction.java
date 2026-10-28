@@ -21,28 +21,37 @@ public class InventoryTransaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "txn_id", nullable = false, updatable = false)
+    @Column(name = "id", nullable = false, updatable = false)
     private Long txnId;
 
-    @Column(name = "variant_id", nullable = false, updatable = false)
-    private Long variantId;
+    @Column(name = "product_id", nullable = false, updatable = false)
+    private Long productId;
+
+    @Column(name = "warehouse_id", nullable = false, updatable = false)
+    private Long warehouseId;
 
     @Column(name = "quantity_delta", nullable = false, updatable = false)
     private Integer quantityDelta;
 
-    @Column(name = "transaction_type", nullable = false, length = 40, updatable = false)
+    @Column(name = "goods_receipt_item_id", updatable = false)
+    private Long goodsReceiptItemId;
+
+    @Column(name = "order_item_id", updatable = false)
+    private Long orderItemId;
+
+    @Column(name = "idempotency_key", nullable = false, length = 120, unique = true, updatable = false)
+    private String idempotencyKey;
+
+    @Column(name = "reverses_transaction_id", updatable = false)
+    private Long reversesTransactionId;
+
+    @Column(name = "transaction_type", nullable = false, length = 30, updatable = false)
     private String transactionType;
 
-    @Column(name = "order_id", nullable = true, updatable = false)
-    private Long orderId;
-
-    @Column(name = "goods_receipt_id", nullable = true, updatable = false)
-    private Long goodsReceiptId;
-
-    @Column(name = "actor_account_id", nullable = false, updatable = false)
+    @Column(name = "created_by", nullable = true, updatable = false)
     private Long actorAccountId;
 
-    @Column(name = "reason", nullable = true, length = 500, updatable = false)
+    @Column(name = "reason_code", nullable = true, length = 80, updatable = false)
     private String reason;
 
     @Column(
@@ -54,7 +63,6 @@ public class InventoryTransaction {
 
     @PrePersist
     void onCreate() {
-        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-        createdAt = now;
+        if (createdAt == null) createdAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 }

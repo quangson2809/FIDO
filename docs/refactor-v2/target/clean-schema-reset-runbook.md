@@ -1,52 +1,26 @@
-# Clean Schema Reset — Target Baseline Runbook
+# FIDO — Single Canonical Database Baseline
 
-> **Authorization boundary:** The owner approved a clean reset only for a verified disposable local/development/test database. Discard disposable test data and create/reseed from the approved 31-table ERD v2. This does not authorize resetting production, staging, shared integration or any database with persistent business data. No database reset was performed by this documentation change.
+## Authority
 
-## 1. Target authority
+The only database-installation SQL is `backend/src/main/resources/db/migration/V1__fido_target_schema.sql`. It creates exactly the 31 tables in the approved ERD v2, including all primary keys, foreign keys, composite relationships, unique constraints, checks and indexes, and seeds the approved three system roles, thirteen permissions and SUPERADMIN grants.
 
-- Logical schema: [owner-approved ERD v2](erd-v2-approved.mmd).
-- Physical schema: [canonical P1 data dictionary](../p1/P1-data-dictionary.csv).
-- Required system seed: `backend/src/main/resources/db/clean-reset/V2__system_seed.sql`.
-- Approved rules: [P1 owner approval](../p1/P1-owner-approval-2026-10-23.md), [decision log](../p1/P1-decision-log.md), [P1.8 seed/audit/deletion contract](../p1/P1.8-operations-seed-contract.md) and [P1.8 operator requirements](../p1/P1.8-operations-seed-runbook.md).
+The logical model is [approved ERD v2](erd-v2-approved.mmd); the physical columns, types, nullability and key/index evidence are defined in the [P1 Data Dictionary](../p1/P1-data-dictionary.csv). Business and seed rules remain governed by the approved P1 contracts and decision log.
 
-The clean-reset Flyway location is isolated from the active default migration path until application mappings and acceptance gates are ready. Do not activate it merely to make a schema reset happen.
+## Fresh installation
 
-## 2. Preflight — mandatory
+1. Use MySQL 8.0.16+.
+2. Create a **new, empty** database using `utf8mb4` and `utf8mb4_0900_ai_ci`.
+3. Configure the application/Flyway to connect to that database. Flyway applies the single V1 baseline.
+4. Run `python scripts/p1/check_contract_consistency.py` and the database-baseline verification workflow against the exact commit.
+5. Verify the table count is 31 and the roles/permissions/role-permission seed matches the approved manifest.
+6. Configure the initial SUPERADMIN account through deployment secrets/bootstrap separately; the SQL file deliberately contains no user credentials.
 
-Before any destructive action:
+## Versioning rule — no per-phase SQL
 
-1. Identify the exact host, port, database name and active application profile.
-2. Verify that the target is a disposable local/development/test database and contains no persistent, shared or real business data.
-3. Confirm the candidate commit and that the target DDL/system seed passed the required exact-SHA static checker and fresh MySQL tests.
-4. Review the actual reset command and database credentials; do not derive a reset target from an unspecified environment variable.
-5. Stop if the database identity or disposability cannot be proven. Never attempt an exploratory reset against an unknown database.
+This repository is using a **single pre-release baseline**, not a forward-migration chain. Do not add `V2__...`, `V3__...` or another SQL file for a feature phase. If an ERD/schema change is approved before release, update the same baseline and Data Dictionary, then rebuild and verify a fresh disposable database. Each feature phase should implement its Java/API behavior against that baseline and the relevant feature contract.
 
-## 3. Target model invariants
+This baseline is for a fresh, empty database only. It is not an upgrade script and must not be applied to a populated database. Existing databases created from the removed V1–V14 migration chain require an explicitly approved migration/rollout plan; do not delete, reset or overwrite production, staging, shared integration or persistent business data.
 
-- The target contains exactly the 31 logical tables in the canonical ERD.
-- Parent/child Products share `PRODUCTS`, with one parent-child level. Children are explicit Product records; each owns its Product ID, SKU, required integer-VND selling price and stock. No implicit NULL inheritance exists.
-- Attributes `OPTION`, `TEXT`, `NUMBER` and `BOOLEAN` are descriptive only. They do not generate child Products. Every option belongs to its owning Attribute.
-- Cart, order lines, receiving lines and inventory balances/transactions refer to `product_id`, never a variant identifier.
-- Stock is keyed by `(warehouse_id, product_id)`. The v1 server resolves one operational warehouse. Stock ledger changes are append-only and atomic with source state/balance/audit.
-- Quote is stateless/advisory. No persisted quote ID, stock reservation or voucher side effect is part of the target.
-- Money is integer VND. Order placement re-prices current data and uses authenticated account-scoped idempotency.
-- One COD Payment aggregate per Order and manual shipping. Preserve placed-order snapshots, payment facts, stock ledger and audit according to the approved lifecycle/FK rules.
+## Acceptance boundary
 
-## 4. Schema and seed sequence
-
-1. Validate the canonical ERD, target SQL, dictionary and consistency checker agree on the same table/column/key set.
-2. Apply the target baseline to a newly created empty isolated MySQL database, not to a database whose history or contents are unknown.
-3. Apply required system roles/permissions through the approved migration seed and compare it with the exact P1.8 manifest. Resolve IDs by immutable codes; the seed must contain no Accounts or credentials. External-secret SUPERADMIN bootstrap is a separate provisioning step, not V2 SQL.
-4. Load demo fixtures only through an explicit development/test mechanism after target mappings are ready. Demo seed must not contain secrets or reusable plaintext passwords. Verify SUPERADMIN grants all current permissions; do not implicitly grant business permissions to ADMIN or CUSTOMER.
-5. Start the application only after JPA/entity mappings are aligned to the target schema; validate startup and module-level behavior.
-6. Verify the installed table set, keys, foreign keys, checks, defaults, indexes and seed contents. Run API, security, transaction, concurrency and frontend acceptance tests on the exact candidate SHA.
-
-Do not preserve, migrate or crosswalk disposable legacy test records solely for the reset.
-
-## 5. Verification and status
-
-The reset is not complete until a fresh install and its schema/seed checks are evidenced. Runtime acceptance remains separate: Entity/Repository/Service/API/DTO/frontend, auth/RBAC, Product attributes, Cart/order, integer-VND math, inventory/ledger, voucher quota, Payment/shipping and snapshot behavior must be verified.
-
-**Retention caveat:** numeric audit/image/personal/business-data retention periods and anonymization exceptions remain TBD. Do not schedule a purge of audit/history/content data or image assets until those decisions are approved. The current clean-reset DDL does not explicitly encode CartItems CASCADE; follow P1.8/P1.9 and delete dependent working rows explicitly until the FK policy is reconciled.
-
-**Current state:** the clean-reset DDL and system seed remain isolated; this runbook is not an execution log. No database was reset by this documentation work.
+A passing schema checker and fresh-MySQL test prove the baseline's structural/seed consistency only. They do not establish that every JPA entity, repository, service, API contract, authorization rule or concurrency behavior already passes. Those remain implementation and acceptance gates for P3.1 and later phases.

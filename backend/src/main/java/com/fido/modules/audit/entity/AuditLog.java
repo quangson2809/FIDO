@@ -1,15 +1,22 @@
 package com.fido.modules.audit.entity;
 
-import jakarta.persistence.*;
-
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
 import org.hibernate.annotations.Immutable;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Map;
 
 @Entity
 @Table(name = "audit_logs")
@@ -18,37 +25,41 @@ import java.time.ZoneOffset;
 @NoArgsConstructor
 @Immutable
 public class AuditLog {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "audit_id", nullable = false, updatable = false)
+    @Column(name = "id", nullable = false, updatable = false)
     private Long auditId;
 
-    @Column(name = "actor_account_id", nullable = false, updatable = false)
+    @Column(name = "actor_account_id", updatable = false)
     private Long actorAccountId;
 
     @Column(name = "action", nullable = false, length = 120, updatable = false)
     private String action;
 
-    @Column(name = "target_type", nullable = false, length = 80, updatable = false)
-    private String targetType;
+    @Column(name = "entity_type", nullable = false, length = 80, updatable = false)
+    private String entityType;
 
-    @Column(name = "target_id", nullable = false, length = 80, updatable = false)
-    private String targetId;
+    @Column(name = "entity_id", nullable = false, length = 100, updatable = false)
+    private String entityId;
 
-    @Column(name = "description", nullable = true, columnDefinition = "TEXT", updatable = false)
-    private String description;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "before_data", columnDefinition = "JSON", updatable = false)
+    private Map<String, Object> beforeData;
 
-    @Column(
-            name = "created_at",
-            nullable = false,
-            columnDefinition = "TIMESTAMP(6)",
-            updatable = false)
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "after_data", columnDefinition = "JSON", updatable = false)
+    private Map<String, Object> afterData;
+
+    @Column(name = "correlation_id", length = 120, updatable = false)
+    private String correlationId;
+
+    @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP(6)", updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
     void onCreate() {
-        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-        createdAt = now;
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now(ZoneOffset.UTC);
+        }
     }
 }

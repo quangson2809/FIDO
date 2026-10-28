@@ -2,28 +2,25 @@ package com.fido.modules.product.service;
 
 import com.fido.common.response.ApiListResponse;
 import com.fido.common.response.Pagination;
-import com.fido.modules.inventory.service.InventoryAvailabilityService;
 import com.fido.modules.product.dto.response.AdminProductDetailDto;
+import com.fido.modules.product.dto.response.AdminProductRelationDto;
 import com.fido.modules.product.dto.response.AdminProductSummaryDto;
-import com.fido.modules.product.dto.response.AdminVariantDto;
 import com.fido.modules.product.dto.response.BrandDto;
-import com.fido.modules.product.dto.response.CatalogMetaDto;
+import com.fido.modules.product.dto.response.AdminCatalogMetaDtoV2;
+import com.fido.modules.product.dto.response.CategoryDto;
+import com.fido.modules.product.dto.response.ProductAttributeValueDto;
+import com.fido.modules.product.dto.response.ProductImageDto;
 import com.fido.modules.product.entity.Product;
-import com.fido.modules.product.entity.ProductVariant;
 import com.fido.modules.product.mapper.CatalogMapper;
 import com.fido.modules.product.repository.ProductImageRepository;
 import com.fido.modules.product.repository.ProductRepository;
-import com.fido.modules.product.repository.ProductVariantRepository;
 
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Map;
 
 @Service
 @Transactional(readOnly = true)
@@ -33,26 +30,23 @@ public class AdminCatalogQueryService {
             "hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_CATALOG_READ')";
 
     private final ProductRepository products;
-    private final ProductVariantRepository variants;
     private final ProductImageRepository images;
     private final ProductImageReadService imageRead;
-    private final InventoryAvailabilityService inventory;
+    private final ProductAttributeValueReadService attributeValueRead;
     private final CatalogReferenceService references;
     private final CatalogMetaService metaService;
 
     public AdminCatalogQueryService(
             ProductRepository products,
-            ProductVariantRepository variants,
             ProductImageRepository images,
             ProductImageReadService imageRead,
-            InventoryAvailabilityService inventory,
+            ProductAttributeValueReadService attributeValueRead,
             CatalogReferenceService references,
             CatalogMetaService metaService) {
         this.products = products;
-        this.variants = variants;
         this.images = images;
         this.imageRead = imageRead;
-        this.inventory = inventory;
+        this.attributeValueRead = attributeValueRead;
         this.references = references;
         this.metaService = metaService;
     }
@@ -62,33 +56,23 @@ public class AdminCatalogQueryService {
             String q,
             Long categoryId,
             Long brandId,
-            Long sizeSystemId,
-            String saleStatus,
+            Long parentProductId,
+            String status,
             Integer page,
             Integer pageSize) {
-        if (saleStatus != null) {
-            CatalogPolicy.requireSaleStatus(saleStatus);
-        }
-
+        if (status != null) CatalogPolicy.requireProductStatus(status);
         Pagination pagination = Pagination.of(page, pageSize);
-        Specification<Product> specification =
-                CatalogSpecifications.adminProducts(
-                        q, categoryId, brandId, sizeSystemId, saleStatus);
-        var result = products.findAll(specification, pagination.toPageable());
-        var productsOnPage = result.getContent();
-        Map<Long, String> thumbnailsByProductId =
+        Specification<Product> spec =
+                CatalogSpecifications.adminProducts(q, categoryId, brandId, parentProductId, status);
+        var result = products.findAll(spec, pagination.toPageable());
+        var pageProducts = result.getContent();
+        var thumbnails =
                 imageRead.representativeByProductIds(
-                        productsOnPage.stream().map(Product::getProductId).toList());
-
+                        pageProducts.stream().map(Product::getProductId).toList());
         var data =
-                productsOnPage.stream()
-                        .map(
-                                product ->
-                                        CatalogMapper.adminSummary(
-                                                product,
-                                                thumbnailsByProductId.get(product.getProductId())))
+                pageProducts.stream()
+                        .map(p -> CatalogMapper.adminSummary(p, thumbnails.get(p.getProductId())))
                         .toList();
-
         return ApiListResponse.of(data, pagination.meta(result.getTotalElements()));
     }
 
@@ -98,69 +82,84 @@ public class AdminCatalogQueryService {
     }
 
     @PreAuthorize(READ)
-    public CatalogMetaDto adminMeta() {
-        return metaService.meta();
+    public AdminCatalogMetaDtoV2 adminMeta() {
+        return metaService.adminMeta();
     }
 
     AdminProductDetailDto detailInternal(Long productId) {
         Product product = references.product(productId);
-        var adminVariants = readVariants(productId);
-        var productImages =
-                images.findAllByProductIdOrderBySortOrderAsc(productId).stream()
-                        .map(CatalogMapper::image)
+
+        AdminProductRelationDto current = relation(product);
+
+        AdminProductRelationDto parent = product.getParentProductId() == null
+                ? null
+                : relation(references.product(product.getParentProductId()));
+
+        List<AdminProductRelationDto> children =
+                products.findAllByParentProductIdOrderByProductIdAsc(productId).stream()
+                        .filter(child -> !child.isDeleted())
+                        .map(this::relation)
                         .toList();
 
         return new AdminProductDetailDto(
+                current.product_id(),
+                current.parent_product_id(),
+                children.stream().map(AdminProductRelationDto::product_id).toList(),
+                current.sku(),
+                current.name(),
+                current.slug(),
+                current.description(),
+                current.category(),
+                current.brand(),
+                current.category_id(),
+                current.brand_id(),
+                current.selling_price(),
+                current.cost_price(),
+                current.status(),
+                current.images(),
+                current.created_at(),
+                current.updated_at(),
+                current.attribute_values(),
+                parent,
+                children);
+    }
+
+    private AdminProductRelationDto relation(Product product) {
+        CategoryDto category = product.getCategoryId() == null
+                ? null
+                : CatalogMapper.category(references.category(product.getCategoryId()));
+
+        BrandDto brand = product.getBrandId() == null
+                ? null
+                : CatalogMapper.brand(references.brand(product.getBrandId()));
+
+        List<ProductImageDto> productImages =
+                images.findAllByProductIdOrderBySortOrderAscImageIdAsc(
+                                product.getProductId())
+                        .stream()
+                        .map(CatalogMapper::image)
+                        .toList();
+
+        List<ProductAttributeValueDto> values =
+                attributeValueRead.forProduct(product.getProductId());
+
+        return new AdminProductRelationDto(
                 product.getProductId(),
+                product.getParentProductId(),
+                product.getSku(),
                 product.getName(),
+                product.getSlug(),
                 product.getDescription(),
-                CatalogMapper.category(references.category(product.getCategoryId())),
-                brandDto(product.getBrandId()),
-                metaService.sizeSystemDto(product.getSizeSystemId()),
-                product.getGender(),
-                product.getSeason(),
-                product.getStyle(),
-                product.getMaterialCare(),
-                product.getBasePrice(),
-                product.getSaleStatus(),
-                productImages,
-                adminVariants,
+                category,
+                brand,
                 product.getCategoryId(),
                 product.getBrandId(),
-                product.getSizeSystemId(),
+                product.getSellingPrice(),
+                product.getCostPrice(),
+                product.getStatus(),
+                values,
+                productImages,
                 product.getCreatedAt(),
                 product.getUpdatedAt());
-    }
-
-    List<AdminVariantDto> variantsInternal(Long productId) {
-        references.product(productId);
-        return readVariants(productId);
-    }
-
-    private List<AdminVariantDto> readVariants(Long productId) {
-        var productVariants = variants.findAllByProductIdOrderByVariantIdAsc(productId);
-        var availabilityByVariantId =
-                inventory.availableQuantities(
-                        productVariants.stream().map(ProductVariant::getVariantId).toList());
-        return productVariants.stream()
-                .map(
-                        variant ->
-                                CatalogMapper.adminVariant(
-                                        variant,
-                                        availabilityByVariantId.getOrDefault(
-                                                variant.getVariantId(), 0)))
-                .toList();
-    }
-
-    AdminVariantDto variantInternal(Long productId, Long variantId) {
-        ProductVariant variant =
-                variants.findByVariantIdAndProductId(variantId, productId)
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        return CatalogMapper.adminVariant(
-                variant, inventory.availableQuantity(variant.getVariantId()));
-    }
-
-    private BrandDto brandDto(Long brandId) {
-        return brandId == null ? null : CatalogMapper.brand(references.brand(brandId));
     }
 }

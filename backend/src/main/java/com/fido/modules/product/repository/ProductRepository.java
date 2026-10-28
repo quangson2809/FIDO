@@ -16,6 +16,7 @@ import java.util.Optional;
 
 public interface ProductRepository
         extends Repository<Product, Long>, JpaSpecificationExecutor<Product> {
+
     Optional<Product> findById(Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -26,24 +27,15 @@ public interface ProductRepository
 
     List<Product> findAllByProductIdIn(Collection<Long> productIds);
 
+    List<Product> findAllByParentProductIdOrderByProductIdAsc(Long parentProductId);
+
+    boolean existsBySku(String sku);
+
+    boolean existsBySkuAndProductIdNot(String sku, Long productId);
+
     boolean existsByCategoryId(Long categoryId);
 
     boolean existsByBrandId(Long brandId);
 
-    boolean existsBySizeSystemId(Long sizeSystemId);
-
-    @Query(
-            "select distinct p.gender from Product p where p.gender is not null and trim(p.gender)"
-                + " <> '' order by p.gender")
-    List<String> findDistinctGenders();
-
-    @Query(
-            "select distinct p.season from Product p where p.season is not null and trim(p.season)"
-                + " <> '' order by p.season")
-    List<String> findDistinctSeasons();
-
-    @Query(
-            "select distinct p.style from Product p where p.style is not null and trim(p.style) <>"
-                + " '' order by p.style")
-    List<String> findDistinctStyles();
+    boolean existsByParentProductId(Long parentProductId);
 }

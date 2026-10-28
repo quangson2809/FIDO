@@ -1,9 +1,9 @@
 package com.fido.modules.inventory.service;
 
 import com.fido.modules.audit.service.AuditAction;
-import com.fido.modules.audit.service.AuditEvent;
-import com.fido.modules.audit.service.AuditService;
-import com.fido.modules.audit.service.AuditTargetType;
+import com.fido.modules.audit.service.AuditEntityType;
+import com.fido.modules.audit.service.AuditWriteEvent;
+import com.fido.modules.audit.service.AuditWriteService;
 import com.fido.modules.inventory.dto.request.GoodsReceiptActionRequest;
 import com.fido.modules.inventory.dto.request.GoodsReceiptCreateRequest;
 import com.fido.modules.inventory.dto.request.GoodsReceiptPatchRequest;
@@ -25,12 +25,12 @@ import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
 @Transactional
 public class GoodsReceiptService {
-
     private static final String WRITE =
             "hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_INVENTORY_WRITE')";
 
@@ -39,7 +39,8 @@ public class GoodsReceiptService {
     private final SupplierRepository suppliers;
     private final InventoryCommandService inventoryCommands;
     private final GoodsReceiptQueryService query;
-    private final AuditService audit;
+    private final OperationalWarehouseService operationalWarehouse;
+    private final AuditWriteService audit;
 
     public GoodsReceiptService(
             GoodsReceiptRepository receipts,
@@ -47,88 +48,77 @@ public class GoodsReceiptService {
             SupplierRepository suppliers,
             InventoryCommandService inventoryCommands,
             GoodsReceiptQueryService query,
-            AuditService audit) {
+            OperationalWarehouseService operationalWarehouse,
+            AuditWriteService audit) {
         this.receipts = receipts;
         this.items = items;
         this.suppliers = suppliers;
         this.inventoryCommands = inventoryCommands;
         this.query = query;
+        this.operationalWarehouse = operationalWarehouse;
         this.audit = audit;
     }
 
     @PreAuthorize(WRITE)
     public GoodsReceiptDetailDto create(Long actor, GoodsReceiptCreateRequest request) {
         requireActiveSupplier(request.supplier_id());
-
+        Long warehouseId = operationalWarehouse.requireOperationalWarehouseId();
         var requestedItems = createItems(request.items());
         validateItems(requestedItems);
 
         GoodsReceipt receipt = new GoodsReceipt();
         receipt.setReceiptCode(generateReceiptCode());
         receipt.setSupplierId(request.supplier_id());
+        receipt.setWarehouseId(warehouseId);
         receipt.setReceiptStatus(InventoryPolicy.RECEIPT_DRAFT);
-        receipt.setReceiptDate(request.receipt_date());
         receipt.setCreatedByAccountId(actor);
-        receipt.setNote(request.note());
-
         receipts.save(receipt);
-
         saveItems(receipt.getReceiptId(), requestedItems);
 
-        audit.record(
-                AuditEvent.of(
-                        actor,
-                        AuditAction.GOODS_RECEIPT_CREATE,
-                        AuditTargetType.GOODS_RECEIPT,
-                        receipt.getReceiptId()));
-
+        audit.record(AuditWriteEvent.withChanges(
+                AuditAction.GOODS_RECEIPT_CREATE,
+                AuditEntityType.GOODS_RECEIPT,
+                receipt.getReceiptId().toString(),
+                Map.of(),
+                snapshot(receipt.getReceiptStatus(), warehouseId,
+                        items.findAllByReceiptIdOrderByReceiptItemIdAsc(receipt.getReceiptId()))));
         return query.detailInternal(receipt);
     }
 
     @PreAuthorize(WRITE)
-    public GoodsReceiptDetailDto update(
-            Long actor, Long receiptId, GoodsReceiptPatchRequest request) {
+    public GoodsReceiptDetailDto update(Long actor, Long receiptId, GoodsReceiptPatchRequest request) {
         GoodsReceipt receipt = receiptForUpdate(receiptId);
-
         requireDraft(receipt);
+        List<GoodsReceiptItem> beforeItems =
+                items.findAllByReceiptIdOrderByReceiptItemIdAsc(receiptId);
+        Map<String, Object> before = snapshot(receipt.getReceiptStatus(), receipt.getWarehouseId(), beforeItems);
 
         if (request.getSupplierId() != null) {
             requireActiveSupplier(request.getSupplierId());
             receipt.setSupplierId(request.getSupplierId());
         }
 
-        if (request.getReceiptDate() != null) {
-            receipt.setReceiptDate(request.getReceiptDate());
-        }
-
-        if (request.isNotePresent()) {
-            receipt.setNote(request.getNote());
-        }
-
-        receipts.save(receipt);
-
         if (request.isItemsPresent()) {
             var requestedItems = patchItems(request.getItems());
             validateItems(requestedItems);
-
             items.deleteByReceiptId(receiptId);
-
             saveItems(receiptId, requestedItems);
         }
+        receipts.save(receipt);
 
-        audit.record(
-                AuditEvent.of(
-                        actor,
-                        AuditAction.GOODS_RECEIPT_UPDATE,
-                        AuditTargetType.GOODS_RECEIPT,
-                        receiptId));
-
+        List<GoodsReceiptItem> afterItems =
+                items.findAllByReceiptIdOrderByReceiptItemIdAsc(receiptId);
+        audit.record(AuditWriteEvent.withChanges(
+                AuditAction.GOODS_RECEIPT_UPDATE,
+                AuditEntityType.GOODS_RECEIPT,
+                receiptId.toString(),
+                before,
+                snapshot(receipt.getReceiptStatus(), receipt.getWarehouseId(), afterItems)));
         return query.detailInternal(receipt);
     }
 
     @PreAuthorize(WRITE)
-    public GoodsReceiptDetailDto action(
-            Long actor, Long receiptId, GoodsReceiptActionRequest request) {
+    public GoodsReceiptDetailDto action(Long actor, Long receiptId, GoodsReceiptActionRequest request) {
         return switch (request.action()) {
             case "CONFIRM" -> confirm(actor, receiptId);
             case "CANCEL" -> cancel(actor, receiptId);
@@ -137,140 +127,150 @@ public class GoodsReceiptService {
     }
 
     private GoodsReceiptDetailDto confirm(Long actor, Long receiptId) {
+        // Source aggregate is locked before source lines or inventory balance rows.
         GoodsReceipt current = receiptForUpdate(receiptId);
-
         if (InventoryPolicy.RECEIPT_CONFIRMED.equals(current.getReceiptStatus())) {
             return query.detailInternal(current);
         }
-
         if (!InventoryPolicy.RECEIPT_DRAFT.equals(current.getReceiptStatus())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "GOODS_RECEIPT_INVALID_STATE");
         }
 
-        var receiptItems = items.findAllByReceiptIdOrderByReceiptItemIdAsc(receiptId);
-
+        List<GoodsReceiptItem> receiptItems =
+                items.findAllByReceiptIdOrderByReceiptItemIdAsc(receiptId);
+        if (receiptItems.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "GOODS_RECEIPT_EMPTY");
+        }
         validateStoredItems(receiptItems);
+        Map<String, Object> before =
+                snapshot(current.getReceiptStatus(), current.getWarehouseId(), receiptItems);
 
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-
         current.setReceiptStatus(InventoryPolicy.RECEIPT_CONFIRMED);
         current.setConfirmedByAccountId(actor);
         current.setConfirmedAt(now);
         current.setUpdatedAt(now);
 
-        var stockLines =
-                receiptItems.stream()
-                        .map(
-                                item ->
-                                        new InventoryCommandService.StockLine(
-                                                item.getVariantId(), item.getQuantity()))
-                        .toList();
+        var stockLines = receiptItems.stream()
+                .map(item -> new InventoryCommandService.StockLine(
+                        item.getProductId(), item.getQuantity(), null, item.getReceiptItemId()))
+                .toList();
 
-        inventoryCommands.receiveGoods(actor, receiptId, stockLines);
+        // Inventory writes balance/version and immutable semantic-source ledger keys in this transaction.
+        inventoryCommands.receiveGoods(actor, receiptId, current.getWarehouseId(), stockLines);
 
-        audit.record(
-                AuditEvent.of(
-                        actor,
-                        AuditAction.GOODS_RECEIPT_CONFIRM,
-                        AuditTargetType.GOODS_RECEIPT,
-                        receiptId));
-
+        audit.record(AuditWriteEvent.withChanges(
+                AuditAction.GOODS_RECEIPT_CONFIRM,
+                AuditEntityType.GOODS_RECEIPT,
+                receiptId.toString(),
+                before,
+                snapshot(current.getReceiptStatus(), current.getWarehouseId(), receiptItems)));
         return query.detailInternal(current);
     }
 
     private GoodsReceiptDetailDto cancel(Long actor, Long receiptId) {
         GoodsReceipt current = receiptForUpdate(receiptId);
-
         if (InventoryPolicy.RECEIPT_CANCELLED.equals(current.getReceiptStatus())) {
             return query.detailInternal(current);
         }
-
         if (!InventoryPolicy.RECEIPT_DRAFT.equals(current.getReceiptStatus())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "GOODS_RECEIPT_INVALID_STATE");
         }
 
+        List<GoodsReceiptItem> currentItems =
+                items.findAllByReceiptIdOrderByReceiptItemIdAsc(receiptId);
+        Map<String, Object> before =
+                snapshot(current.getReceiptStatus(), current.getWarehouseId(), currentItems);
         current.setReceiptStatus(InventoryPolicy.RECEIPT_CANCELLED);
         current.setUpdatedAt(LocalDateTime.now(ZoneOffset.UTC));
-
-        audit.record(
-                AuditEvent.of(
-                        actor,
-                        AuditAction.GOODS_RECEIPT_CANCEL,
-                        AuditTargetType.GOODS_RECEIPT,
-                        receiptId));
-
+        audit.record(AuditWriteEvent.withChanges(
+                AuditAction.GOODS_RECEIPT_CANCEL,
+                AuditEntityType.GOODS_RECEIPT,
+                receiptId.toString(),
+                before,
+                snapshot(current.getReceiptStatus(), current.getWarehouseId(), currentItems)));
         return query.detailInternal(current);
+    }
+
+    private Map<String, Object> snapshot(String status, Long warehouseId, List<GoodsReceiptItem> rows) {
+        long totalQuantity = rows.stream()
+                .map(item -> (long) item.getQuantity())
+                .reduce(0L, Math::addExact);
+        return Map.of(
+                "status", status,
+                "warehouse_id", warehouseId,
+                "item_count", rows.size(),
+                "total_quantity", totalQuantity);
     }
 
     private void saveItems(Long receiptId, List<ReceiptItemInput> requested) {
         for (var item : requested) {
             GoodsReceiptItem row = new GoodsReceiptItem();
             row.setReceiptId(receiptId);
-            row.setVariantId(item.variantId());
+            row.setProductId(item.productId());
+            row.setUnitCost(item.unitCost());
             row.setQuantity(item.quantity());
-
             items.save(row);
         }
     }
 
     private void validateItems(List<ReceiptItemInput> requested) {
-        var variantIds = new HashSet<Long>();
-
+        if (requested == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        var productIds = new HashSet<Long>();
         for (var item : requested) {
-            validateVariant(item.variantId());
-
-            if (!variantIds.add(item.variantId())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT);
+            if (item == null || item.productId() == null || item.quantity() == null
+                    || item.quantity() <= 0 || item.unitCost() == null || item.unitCost() < 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+            }
+            inventoryCommands.requireTrackedProduct(item.productId());
+            if (!productIds.add(item.productId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "GOODS_RECEIPT_DUPLICATE_PRODUCT");
             }
         }
     }
 
-    private List<ReceiptItemInput> createItems(
-            List<GoodsReceiptCreateRequest.ItemInput> requested) {
+    private List<ReceiptItemInput> createItems(List<GoodsReceiptCreateRequest.ItemInput> requested) {
+        if (requested == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         return requested.stream()
-                .map(item -> new ReceiptItemInput(item.variant_id(), item.quantity()))
+                .map(item -> {
+                    if (item == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+                    return new ReceiptItemInput(item.product_id(), item.quantity_received(), item.unit_cost());
+                })
                 .toList();
     }
 
     private List<ReceiptItemInput> patchItems(List<GoodsReceiptPatchRequest.ItemInput> requested) {
+        if (requested == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         return requested.stream()
-                .map(item -> new ReceiptItemInput(item.variant_id(), item.quantity()))
+                .map(item -> {
+                    if (item == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+                    return new ReceiptItemInput(item.product_id(), item.quantity_received(), item.unit_cost());
+                })
                 .toList();
     }
 
     private void validateStoredItems(List<GoodsReceiptItem> storedItems) {
         if (storedItems.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "GOODS_RECEIPT_EMPTY");
         }
-
-        var variantIds = new HashSet<Long>();
-
+        var productIds = new HashSet<Long>();
         for (GoodsReceiptItem item : storedItems) {
             if (item.getQuantity() == null || item.getQuantity() <= 0) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT);
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "GOODS_RECEIPT_INVALID_ITEM");
             }
-
-            validateVariant(item.getVariantId());
-
-            if (!variantIds.add(item.getVariantId())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT);
+            inventoryCommands.requireTrackedProduct(item.getProductId());
+            if (!productIds.add(item.getProductId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "GOODS_RECEIPT_DUPLICATE_PRODUCT");
             }
         }
     }
 
     private void requireActiveSupplier(Long supplierId) {
-        var supplier =
-                suppliers
-                        .findById(supplierId)
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-
-        if (!InventoryPolicy.SUPPLIER_ACTIVE.equals(supplier.getUsageStatus())) {
+        var supplier = suppliers.findById(supplierId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if (!InventoryPolicy.SUPPLIER_ACTIVE.equals(supplier.getStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
-    }
-
-    private void validateVariant(Long variantId) {
-        inventoryCommands.requireTrackedVariant(variantId);
     }
 
     private GoodsReceipt receiptForUpdate(Long receiptId) {
@@ -280,7 +280,7 @@ public class GoodsReceiptService {
 
     private void requireDraft(GoodsReceipt receipt) {
         if (!InventoryPolicy.RECEIPT_DRAFT.equals(receipt.getReceiptStatus())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "GOODS_RECEIPT_INVALID_STATE");
         }
     }
 
@@ -288,5 +288,5 @@ public class GoodsReceiptService {
         return "GR-" + UUID.randomUUID().toString().replace("-", "").toUpperCase(Locale.ROOT);
     }
 
-    private record ReceiptItemInput(Long variantId, Integer quantity) {}
+    private record ReceiptItemInput(Long productId, Integer quantity, Long unitCost) {}
 }

@@ -2,11 +2,9 @@ package com.fido.modules.product.dto.response;
 
 import java.util.List;
 
+/** Public catalog metadata keeps category/brand fields and adds typed attributes. */
 public record CatalogMetaDto(
         List<CategoryDto> categories,
         List<BrandDto> brands,
-        List<SizeSystemDto> size_systems,
-        List<ColorDto> colors,
-        List<String> genders,
-        List<String> seasons,
-        List<String> styles) {}
+        List<AttributeTypeDto> attribute_types,
+        List<AttributeDto> attributes) {}

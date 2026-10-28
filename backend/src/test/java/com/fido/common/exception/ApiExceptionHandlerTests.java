@@ -13,6 +13,8 @@ import org.springframework.web.servlet.HandlerMapping;
 
 import java.util.Map;
 
+import tools.jackson.databind.ObjectMapper;
+
 @ExtendWith(OutputCaptureExtension.class)
 class ApiExceptionHandlerTests {
     @Test
@@ -43,7 +45,12 @@ class ApiExceptionHandlerTests {
                 }) {
             assertFalse(output.getAll().contains(secret));
         }
-        assertEquals("", response.getContentAsString());
+        var body = new ObjectMapper().readTree(response.getContentAsString());
+        assertEquals("CONFLICT", body.get("code").asText());
+        assertEquals(409, body.get("status").asInt());
+        for (String secret : new String[] {"secret-token", "secret-phone", "secret-password", "secret-provider-key"}) {
+            assertFalse(response.getContentAsString().contains(secret));
+        }
     }
 
     @Test
@@ -57,5 +64,8 @@ class ApiExceptionHandlerTests {
         assertEquals(500, response.getStatus());
         assertTrue(output.getAll().contains("Unexpected server failure"));
         assertFalse(output.getAll().contains("private data"));
+        var body = new ObjectMapper().readTree(response.getContentAsString());
+        assertEquals("INTERNAL_ERROR", body.get("code").asText());
+        assertFalse(response.getContentAsString().contains("private data"));
     }
 }

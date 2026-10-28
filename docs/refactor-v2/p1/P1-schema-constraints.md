@@ -1,11 +1,11 @@
 # P1 — Schema Constraints and Physical Contract
 
-**Status: PARTIAL.** Owner-approved target behavior is recorded. Historical clean-reset DDL and MySQL checks passed on previously recorded SHAs, but the current documentation candidate must pass CI at its exact SHA. Application compatibility and behavioral acceptance are separate gates.
+**Status: single baseline consolidated; exact-SHA schema verification required.** The pre-release schema source is `backend/src/main/resources/db/migration/V1__fido_target_schema.sql`. The previous incremental V1–V14 SQL files were removed so phases cannot apply independent schema versions. The current candidate must pass its exact-SHA fresh-MySQL workflow; application compatibility and behavioral acceptance remain separate gates.
 
 ## 1. Canonical physical contract
 
 - Logical table/relationship authority: `docs/refactor-v2/target/erd-v2-approved.mmd`.
-- Physical field/type/null/default/key/index/constraint authority: `docs/refactor-v2/p1/P1-data-dictionary.csv` plus clean-reset DDL.
+- Physical field/type/null/default/key/index/constraint authority: `docs/refactor-v2/p1/P1-data-dictionary.csv` and the single installer `backend/src/main/resources/db/migration/V1__fido_target_schema.sql`.
 - Owner behavior authority: `P1-owner-approval-2026-10-23.md` and `P1-decision-log.md`.
 - Target SQL uses integer BIGINT for monetary VND values. DECIMAL is permitted for descriptive numeric Product attributes only where specified by the dictionary.
 - The target includes the generated physical `accounts.phone_active_key` for active-account phone uniqueness; it is not an independently writable domain field.
@@ -40,4 +40,4 @@ The detailed normative calculation is [P1.5 Pricing and Voucher Contract](P1.5-p
 4. Run backend mapping/integration tests and target business/security/concurrency acceptance on the exact candidate SHA.
 5. Report each workflow by tested SHA. A previous successful run does not prove a later candidate passed.
 
-The target DDL remains isolated from the active legacy Flyway path until runtime mappings are ready and activation is explicitly gated. Clean Schema Reset is permitted only against a verified disposable local/development/test database. No destructive action is implied here.
+The only schema-installation SQL is `backend/src/main/resources/db/migration/V1__fido_target_schema.sql`. It is a fresh-install baseline for a newly created empty database, not an in-place upgrade path for a database created by the retired incremental chain. Do not add `V2__...` or phase-specific schema SQL. An approved ERD/Data Dictionary change must update this single baseline in place and be verified on a fresh disposable MySQL database. Never run it against production, staging, shared integration or persistent business data.

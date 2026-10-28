@@ -19,15 +19,14 @@ class CheckoutConsistencyHttpTests extends OrderHttpSupport {
                         "POST",
                         "/api/v1/cart/items",
                         customer.token(),
-                        Map.of("variant_id", fixture.variantId(), "quantity", 2));
+                        Map.of("product_id", fixture.productId(), "quantity", 2));
 
         assertEquals(200, added.status(), added.body());
 
         Map<String, Object> checkoutRequest =
                 Map.of(
                         "recipient_phone", "0900000000",
-                        "recipient_email", "customer@example.test",
-                        "recipient_address", "Cau Giay, Hanoi");
+                        "recipient_name", "Test Recipient", "province", "Hanoi", "district", "Cau Giay", "ward", "Dich Vong", "address_line", "Cau Giay, Hanoi");
 
         var quote = call("POST", "/api/v1/checkout/quote", customer.token(), checkoutRequest);
 
@@ -41,15 +40,20 @@ class CheckoutConsistencyHttpTests extends OrderHttpSupport {
 
         orderIds.add(orderId);
 
-        for (String field : new String[] {"subtotal", "discount", "shipping_fee", "total"}) {
+        Map<String, String> quoteFields = Map.of(
+                "subtotal", "subtotal",
+                "discount", "discount_amount",
+                "shipping_fee", "shipping_fee",
+                "total", "total_amount");
+        for (var field : quoteFields.entrySet()) {
             assertEquals(
-                    quote.data().get("data").get(field).decimalValue(),
-                    created.data().get("data").get(field).decimalValue(),
-                    field);
+                    quote.data().get("data").get(field.getValue()).decimalValue(),
+                    created.data().get("data").get(field.getKey()).decimalValue(),
+                    field.getKey());
         }
 
         assertEquals(190000, created.data().get("data").get("total").asInt());
 
-        assertEquals(5, stock(fixture.variantId()));
+        assertEquals(5, stock(fixture.productId()));
     }
 }

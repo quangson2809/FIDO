@@ -14,8 +14,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.math.BigDecimal;
-
 @RestController
 @RequestMapping("/api/v1/catalog")
 public class PublicCatalogController {
@@ -31,29 +29,12 @@ public class PublicCatalogController {
             @RequestParam(required = false) String q,
             @RequestParam(name = "category_id", required = false) Long categoryId,
             @RequestParam(name = "brand_id", required = false) Long brandId,
-            @RequestParam(name = "min_price", required = false) BigDecimal minPrice,
-            @RequestParam(name = "max_price", required = false) BigDecimal maxPrice,
-            @RequestParam(name = "size_value_id", required = false) Long sizeValueId,
-            @RequestParam(name = "color_id", required = false) Long colorId,
-            @RequestParam(required = false) String gender,
-            @RequestParam(required = false) String season,
-            @RequestParam(required = false) String style,
+            @RequestParam(name = "min_price", required = false) Long minPrice,
+            @RequestParam(name = "max_price", required = false) Long maxPrice,
             @RequestParam(required = false) Integer page,
             @RequestParam(name = "page_size", required = false) Integer pageSize) {
         return service.publicProducts(
-                new CatalogProductFilter(
-                        q,
-                        categoryId,
-                        brandId,
-                        minPrice,
-                        maxPrice,
-                        sizeValueId,
-                        colorId,
-                        gender,
-                        season,
-                        style,
-                        page,
-                        pageSize));
+                new CatalogProductFilter(q, categoryId, brandId, minPrice, maxPrice, page, pageSize));
     }
 
     @GetMapping("/products/{productId}")

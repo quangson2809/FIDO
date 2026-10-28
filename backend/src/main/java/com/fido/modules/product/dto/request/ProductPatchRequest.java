@@ -3,205 +3,96 @@ package com.fido.modules.product.dto.request;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
-
+import tools.jackson.databind.annotation.JsonDeserialize;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 public class ProductPatchRequest {
-
+    @Positive private Long parentProductId;
     @Positive private Long categoryId;
-
     @Positive private Long brandId;
-
-    @Positive private Long sizeSystemId;
-
-    @Pattern(regexp = ".*\\S.*")
-    @Size(max = 255)
-    private String name;
-
+    @Size(max = 255) private String name;
+    @Size(max = 200) private String slug;
+    @Pattern(regexp = ".*\\S.*") @Size(max = 100) private String sku;
     private String description;
+    @PositiveOrZero private Long sellingPrice;
+    @PositiveOrZero private Long costPrice;
+    @Pattern(regexp = "DRAFT|ACTIVE|INACTIVE|ARCHIVED") private String status;
+    @Valid private List<@jakarta.validation.constraints.NotNull ProductImageInput> images;
+    @Valid private List<@jakarta.validation.constraints.NotNull ProductAttributeValueInput> attributeValues;
 
-    @Size(max = 50)
-    private String gender;
+    private boolean parentProductIdPresent, categoryIdPresent, brandIdPresent, namePresent,
+            slugPresent, skuPresent, descriptionPresent, sellingPricePresent, costPricePresent,
+            statusPresent, imagesPresent, attributeValuesPresent;
 
-    @Size(max = 80)
-    private String season;
+    public Long getParentProductId() { return parentProductId; }
+    @JsonSetter(value = "parent_product_id", nulls = Nulls.SET)
+    public void setParentProductId(Long value) { parentProductId = value; parentProductIdPresent = true; }
 
-    @Size(max = 100)
-    private String style;
+    public Long getCategoryId() { return categoryId; }
+    @JsonSetter(value = "category_id", nulls = Nulls.SET)
+    public void setCategoryId(Long value) { categoryId = value; categoryIdPresent = true; }
 
-    private String materialCare;
+    public Long getBrandId() { return brandId; }
+    @JsonSetter(value = "brand_id", nulls = Nulls.SET)
+    public void setBrandId(Long value) { brandId = value; brandIdPresent = true; }
 
-    @DecimalMin("0.0")
-    private BigDecimal basePrice;
+    public String getName() { return name; }
+    @JsonSetter(value = "name", nulls = Nulls.SET)
+    public void setName(String value) { name = value; namePresent = true; }
 
-    @Pattern(regexp = "ON_SALE|STOPPED")
-    private String saleStatus;
+    public String getSlug() { return slug; }
+    @JsonSetter(value = "slug", nulls = Nulls.SET)
+    public void setSlug(String value) { slug = value; slugPresent = true; }
 
-    @Valid private List<@NotNull ProductImageInput> images;
+    public String getSku() { return sku; }
+    @JsonSetter(value = "sku", nulls = Nulls.FAIL)
+    public void setSku(String value) { sku = value; skuPresent = true; }
 
-    private boolean brandIdPresent;
-    private boolean descriptionPresent;
-    private boolean genderPresent;
-    private boolean seasonPresent;
-    private boolean stylePresent;
-    private boolean materialCarePresent;
-    private boolean imagesPresent;
+    public String getDescription() { return description; }
+    @JsonSetter(value = "description", nulls = Nulls.SET)
+    public void setDescription(String value) { description = value; descriptionPresent = true; }
 
-    public Long getCategoryId() {
-        return categoryId;
-    }
+    public Long getSellingPrice() { return sellingPrice; }
+    @JsonSetter(value = "selling_price", nulls = Nulls.FAIL)
+    @JsonDeserialize(using = IntegerVndDeserializer.class)
+    public void setSellingPrice(Long value) { sellingPrice = value; sellingPricePresent = true; }
 
-    @JsonSetter(value = "category_id", nulls = Nulls.FAIL)
-    public void setCategoryId(Long value) {
-        categoryId = value;
-    }
+    public Long getCostPrice() { return costPrice; }
+    @JsonSetter(value = "cost_price", nulls = Nulls.SET)
+    @JsonDeserialize(using = IntegerVndDeserializer.class)
+    public void setCostPrice(Long value) { costPrice = value; costPricePresent = true; }
 
-    public Long getBrandId() {
-        return brandId;
-    }
+    public String getStatus() { return status; }
+    @JsonSetter(value = "status", nulls = Nulls.FAIL)
+    public void setStatus(String value) { status = value; statusPresent = true; }
 
-    @JsonSetter("brand_id")
-    public void setBrandId(Long value) {
-        brandId = value;
-        brandIdPresent = true;
-    }
-
-    public Long getSizeSystemId() {
-        return sizeSystemId;
-    }
-
-    @JsonSetter(value = "size_system_id", nulls = Nulls.FAIL)
-    public void setSizeSystemId(Long value) {
-        sizeSystemId = value;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    @JsonSetter(value = "name", nulls = Nulls.FAIL)
-    public void setName(String value) {
-        name = value;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    @JsonSetter("description")
-    public void setDescription(String value) {
-        description = value;
-        descriptionPresent = true;
-    }
-
-    public String getGender() {
-        return gender;
-    }
-
-    @JsonSetter("gender")
-    public void setGender(String value) {
-        gender = value;
-        genderPresent = true;
-    }
-
-    public String getSeason() {
-        return season;
-    }
-
-    @JsonSetter("season")
-    public void setSeason(String value) {
-        season = value;
-        seasonPresent = true;
-    }
-
-    public String getStyle() {
-        return style;
-    }
-
-    @JsonSetter("style")
-    public void setStyle(String value) {
-        style = value;
-        stylePresent = true;
-    }
-
-    public String getMaterialCare() {
-        return materialCare;
-    }
-
-    @JsonSetter("material_care")
-    public void setMaterialCare(String value) {
-        materialCare = value;
-        materialCarePresent = true;
-    }
-
-    public BigDecimal getBasePrice() {
-        return basePrice;
-    }
-
-    @JsonSetter(value = "base_price", nulls = Nulls.FAIL)
-    public void setBasePrice(BigDecimal value) {
-        basePrice = value;
-    }
-
-    public String getSaleStatus() {
-        return saleStatus;
-    }
-
-    @JsonSetter(value = "sale_status", nulls = Nulls.FAIL)
-    public void setSaleStatus(String value) {
-        saleStatus = value;
-    }
-
-    public List<ProductImageInput> getImages() {
-        return images;
-    }
-
+    public List<ProductImageInput> getImages() { return images; }
     @JsonSetter(value = "images", nulls = Nulls.FAIL)
-    public void setImages(List<ProductImageInput> value) {
-        images = value;
-        imagesPresent = true;
+    public void setImages(List<ProductImageInput> value) { images = value; imagesPresent = true; }
+
+    public List<ProductAttributeValueInput> getAttributeValues() { return attributeValues; }
+    @JsonSetter(value = "attribute_values", nulls = Nulls.FAIL)
+    public void setAttributeValues(List<ProductAttributeValueInput> value) {
+        attributeValues = value;
+        attributeValuesPresent = true;
     }
 
-    @JsonIgnore
-    public boolean isBrandIdPresent() {
-        return brandIdPresent;
-    }
-
-    @JsonIgnore
-    public boolean isDescriptionPresent() {
-        return descriptionPresent;
-    }
-
-    @JsonIgnore
-    public boolean isGenderPresent() {
-        return genderPresent;
-    }
-
-    @JsonIgnore
-    public boolean isSeasonPresent() {
-        return seasonPresent;
-    }
-
-    @JsonIgnore
-    public boolean isStylePresent() {
-        return stylePresent;
-    }
-
-    @JsonIgnore
-    public boolean isMaterialCarePresent() {
-        return materialCarePresent;
-    }
-
-    @JsonIgnore
-    public boolean isImagesPresent() {
-        return imagesPresent;
-    }
+    @JsonIgnore public boolean isParentProductIdPresent() { return parentProductIdPresent; }
+    @JsonIgnore public boolean isCategoryIdPresent() { return categoryIdPresent; }
+    @JsonIgnore public boolean isBrandIdPresent() { return brandIdPresent; }
+    @JsonIgnore public boolean isNamePresent() { return namePresent; }
+    @JsonIgnore public boolean isSlugPresent() { return slugPresent; }
+    @JsonIgnore public boolean isSkuPresent() { return skuPresent; }
+    @JsonIgnore public boolean isDescriptionPresent() { return descriptionPresent; }
+    @JsonIgnore public boolean isSellingPricePresent() { return sellingPricePresent; }
+    @JsonIgnore public boolean isCostPricePresent() { return costPricePresent; }
+    @JsonIgnore public boolean isStatusPresent() { return statusPresent; }
+    @JsonIgnore public boolean isImagesPresent() { return imagesPresent; }
+    @JsonIgnore public boolean isAttributeValuesPresent() { return attributeValuesPresent; }
 }
