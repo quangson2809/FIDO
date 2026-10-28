@@ -275,12 +275,12 @@ assert.equal(adminCustomerDetailPath(7), '/admin/customers/7');
 assert.equal(toAdminChildPath('/admin/catalog/categories'), 'catalog/categories');
 
 const imageFixtures = [
-  { image_id: 3, image_url: '3.jpg', alt_text: null, sort_order: 2 },
-  { image_id: 1, image_url: '1.jpg', alt_text: null, sort_order: 0 },
-  { image_id: 2, image_url: '2.jpg', alt_text: null, sort_order: 1 },
+  { id: 3, image_url: '3.jpg', is_primary: false, sort_order: 2 },
+  { id: 1, image_url: '1.jpg', is_primary: true, sort_order: 0 },
+  { id: 2, image_url: '2.jpg', is_primary: false, sort_order: 1 },
 ];
 assert.deepEqual(
-  sortProductImages(imageFixtures).map((image) => image.image_id),
+  sortProductImages(imageFixtures).map((image) => image.id),
   [1, 2, 3],
 );
 assert.deepEqual(buildMovedImageOrder(imageFixtures, 2, -1), [
