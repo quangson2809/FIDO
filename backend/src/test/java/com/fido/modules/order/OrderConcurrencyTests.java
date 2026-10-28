@@ -1,6 +1,8 @@
 package com.fido.modules.order;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -126,5 +128,11 @@ class OrderConcurrencyTests extends OrderHttpSupport {
                         """,
                         String.class,
                         orderId));
+
+        var detail = call("GET", "/api/v1/admin/orders/" + orderId, root.token(), null);
+        assertEquals(200, detail.status(), detail.body());
+        String allowedActions = detail.data().get("data").get("allowed_actions").toString();
+        assertTrue(allowedActions.contains("START_PREPARING"));
+        assertFalse(allowedActions.contains("CONFIRM"));
     }
 }
