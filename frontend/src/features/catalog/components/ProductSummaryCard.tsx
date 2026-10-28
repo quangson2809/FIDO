@@ -19,6 +19,7 @@ const attributeValueText = (value: ProductAttributeValueDto): string | null => {
     case 'BOOLEAN':
       return value.boolean_value === null ? null : value.boolean_value ? 'Có' : 'Không';
   }
+  return null;
 };
 
 function ProductSummaryDetails({ productId }: { productId: number }) {

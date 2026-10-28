@@ -116,8 +116,7 @@ export const CatalogFiltersPanel: React.FC<{
           })}
         />
       )}
-      <fieldset className="space-y-5">
-        <legend className="mb-3 text-sm font-semibold">Thương hiệu & lựa chọn</legend>
+      
         <FilterSelect
           label="Thương hiệu"
           value={brandId ?? ''}
@@ -128,17 +127,7 @@ export const CatalogFiltersPanel: React.FC<{
             label: item.name,
           }))}
         />
-<FilterSelect
-          label="Màu sắc"
-          value={colorId ?? ''}
-          disabled={metaLoading}
-          onChange={(value) => onColorChange(value ? Number(value) : undefined)}
-          options={(meta?.colors ?? []).map((item) => ({
-            value: String(item.color_id),
-            label: item.name,
-          }))}
-        />
-</fieldset>
+
 <div className="border-t border-[#E8E9E3] pt-4">
         <p className="mb-2 text-sm font-semibold">Khoảng giá cơ bản (đ)</p>
         <div className="grid grid-cols-2 gap-2">
