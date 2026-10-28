@@ -335,14 +335,14 @@ try {
   await page.waitForURL('http://localhost:5187/login');
 
   await go('/admin/catalog/categories');
-  await main.getByLabel('Tìm tên hoặc mã thuộc tính').fill('công sở');
+  await main.getByLabel('Tìm danh mục').fill('công sở');
   await main.getByRole('cell', { name: 'Áo công sở', exact: true }).waitFor();
   assert.equal(await main.locator('tbody tr').count(), 1);
   await main.getByRole('button', { name: 'Xóa tìm kiếm' }).click();
   await main.getByLabel('Cấp danh mục').selectOption('root');
   assert.equal(await main.locator('tbody tr').count(), 2);
   await go('/admin/catalog/brands');
-  await main.getByLabel('Tìm tên hoặc mã thuộc tính').fill('nhãn');
+  await main.getByLabel('Tìm thương hiệu').fill('nhãn');
   await main.getByRole('cell', { name: 'Nhãn khác', exact: true }).waitFor();
   assert.equal(await main.locator('tbody tr').count(), 1);
 
