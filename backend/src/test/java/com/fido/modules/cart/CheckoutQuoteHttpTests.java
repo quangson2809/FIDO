@@ -63,9 +63,9 @@ class CheckoutQuoteHttpTests extends CartHttpSupport {
 
         assertEquals(200, quote.status(), quote.body());
         assertEquals(160000, quote.data().get("data").get("subtotal").asInt());
-        assertEquals(0, quote.data().get("data").get("discount").asInt());
+        assertEquals(0, quote.data().get("data").get("discount_amount").asInt());
         assertEquals(30000, quote.data().get("data").get("shipping_fee").asInt());
-        assertEquals(190000, quote.data().get("data").get("total").asInt());
+        assertEquals(190000, quote.data().get("data").get("total_amount").asInt());
         assertTrue(quote.data().get("data").get("voucher").isNull());
 
         assertEquals(

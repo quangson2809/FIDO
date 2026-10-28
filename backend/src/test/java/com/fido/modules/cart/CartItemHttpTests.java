@@ -1,6 +1,7 @@
 package com.fido.modules.cart;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -104,14 +105,19 @@ class CartItemHttpTests extends CartHttpSupport {
                                 Map.of("product_id", stopped.productId(), "quantity", 1))
                         .status());
 
-        assertEquals(
-                409,
-                call(
-                                "POST",
-                                "/api/v1/cart/items",
-                                owner.token(),
-                                Map.of("product_id", outOfStock.productId(), "quantity", 1))
-                        .status());
+        var outOfStockAdded = call(
+                "POST", "/api/v1/cart/items", owner.token(),
+                Map.of("product_id", outOfStock.productId(), "quantity", 1));
+        assertEquals(200, outOfStockAdded.status(), outOfStockAdded.body());
+        long outOfStockItemId = 0L;
+        for (var item : outOfStockAdded.data().get("data").get("items")) {
+            if (item.get("product_id").asLong() == outOfStock.productId()) {
+                outOfStockItemId = item.get("cart_item_id").asLong();
+            }
+        }
+        assertTrue(outOfStockItemId > 0);
+        assertEquals(200, call("DELETE", "/api/v1/cart/items/" + outOfStockItemId,
+                owner.token(), null).status());
 
         assertEquals(
                 404,

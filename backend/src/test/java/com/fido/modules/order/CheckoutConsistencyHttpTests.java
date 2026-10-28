@@ -40,11 +40,16 @@ class CheckoutConsistencyHttpTests extends OrderHttpSupport {
 
         orderIds.add(orderId);
 
-        for (String field : new String[] {"subtotal", "discount", "shipping_fee", "total"}) {
+        Map<String, String> quoteFields = Map.of(
+                "subtotal", "subtotal",
+                "discount", "discount_amount",
+                "shipping_fee", "shipping_fee",
+                "total", "total_amount");
+        for (var field : quoteFields.entrySet()) {
             assertEquals(
-                    quote.data().get("data").get(field).decimalValue(),
-                    created.data().get("data").get(field).decimalValue(),
-                    field);
+                    quote.data().get("data").get(field.getValue()).decimalValue(),
+                    created.data().get("data").get(field.getKey()).decimalValue(),
+                    field.getKey());
         }
 
         assertEquals(190000, created.data().get("data").get("total").asInt());

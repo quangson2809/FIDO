@@ -67,7 +67,7 @@ class CartConcurrencyTests extends CartHttpSupport {
     }
 
     @Test
-    void quantityUpdateRejectsStoppedOrUnavailableVariantsWithoutChangingItem() throws Exception {
+    void quantityUpdateRejectsInactiveProductsButDoesNotReserveStock() throws Exception {
         User owner = user();
         var variant = createVariant("ON_SALE", "ON_SALE", 5, 100000, null);
         var added =
@@ -91,11 +91,11 @@ class CartConcurrencyTests extends CartHttpSupport {
                 "UPDATE inventories SET quantity_on_hand=0 WHERE product_id=?",
                 variant.productId());
         assertEquals(
-                409,
+                200,
                 call("PATCH", "/api/v1/cart/items/" + itemId, owner.token(), Map.of("quantity", 3))
                         .status());
         assertEquals(
-                2,
+                3,
                 db.queryForObject(
                         "SELECT quantity FROM cart_items WHERE id=?",
                         Integer.class,
