@@ -36,7 +36,7 @@ export const useAdminAttributes = (showToast: (message: string) => void): UseAdm
   }, []);
 
   useEffect(() => {
-    void refresh();
+    void Promise.resolve().then(refresh);
   }, [refresh]);
 
   const runMutation = useCallback(
