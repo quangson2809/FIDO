@@ -363,9 +363,7 @@ try {
     { name: 'Chất liệu sợi', is_required: false, is_variant_defining: false, sort_order: 0 },
   );
 
-  const optionArticle = main.locator('article').filter({
-    has: main.getByRole('heading', { name: 'Loại vải', exact: true }),
-  });
+  const optionArticle = main.locator('article').filter({ hasText: 'Loại vải' });
   await optionArticle.getByRole('button', { name: 'Sửa', exact: true }).click();
   await optionArticle.getByLabel('Nhãn option COTTON').fill('Cotton hữu cơ');
   await optionArticle.getByLabel('Thứ tự option COTTON').fill('1');
