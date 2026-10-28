@@ -238,7 +238,7 @@ export const AdminProductGallerySection: React.FC<{
         {images.map((image, index) => {
           const url = resolveImageUrl(image.image_url);
           return (
-            <figure key={image.image_id} className="border border-[#E2E5DE] bg-[#F5F6F2]">
+            <figure key={image.id} className="border border-[#E2E5DE] bg-[#F5F6F2]">
               {url ? (
                 <img
                   src={url}
@@ -251,7 +251,7 @@ export const AdminProductGallerySection: React.FC<{
               <figcaption className="space-y-2 p-2 text-[10px] text-[#606863]">
                 <div className="flex items-center justify-between gap-2">
                   <span>
-                    #{image.image_id} · order {image.sort_order}
+                    #{image.id} · order {image.sort_order}
                   </span>
                   {index === 0 && (
                     <span className="bg-[#0B2419] px-1.5 py-0.5 font-bold text-white">COVER</span>
@@ -263,7 +263,7 @@ export const AdminProductGallerySection: React.FC<{
                       type="button"
                       disabled={busy || index === 0}
                       aria-label={`Đưa ảnh ${index + 1} lên trước`}
-                      onClick={() => onMove(image.image_id, -1)}
+                      onClick={() => onMove(image.id, -1)}
                       className="border border-[#D9DDD6] px-1 py-1 disabled:opacity-30"
                     >
                       ←
@@ -272,7 +272,7 @@ export const AdminProductGallerySection: React.FC<{
                       type="button"
                       disabled={busy || index === images.length - 1}
                       aria-label={`Đưa ảnh ${index + 1} ra sau`}
-                      onClick={() => onMove(image.image_id, 1)}
+                      onClick={() => onMove(image.id, 1)}
                       className="border border-[#D9DDD6] px-1 py-1 disabled:opacity-30"
                     >
                       →
@@ -280,7 +280,7 @@ export const AdminProductGallerySection: React.FC<{
                     <button
                       type="button"
                       disabled={busy}
-                      onClick={() => onDelete(image.image_id)}
+                      onClick={() => onDelete(image.id)}
                       className="border border-red-200 px-1 py-1 text-red-700 disabled:opacity-30"
                     >
                       Xóa

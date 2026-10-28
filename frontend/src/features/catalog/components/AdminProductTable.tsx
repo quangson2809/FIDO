@@ -17,7 +17,7 @@ export function AdminProductTable({
           <tr>
             <th>Sản phẩm</th>
             <th>Danh mục / thương hiệu</th>
-            <th>Giá cơ sở</th>
+            <th>Giá bán</th>
             <th>Trạng thái</th>
             <th aria-label="Thao tác" />
           </tr>

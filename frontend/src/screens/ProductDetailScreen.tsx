@@ -188,7 +188,7 @@ export const ProductDetailScreen: React.FC = () => {
       return;
     }
 
-    addToCart(selectedVariant.variant_id, product.name, quantity);
+    addToCart(product.product_id, product.name, quantity);
   };
 
   const openRecommendation = (nextProductId: string) => {

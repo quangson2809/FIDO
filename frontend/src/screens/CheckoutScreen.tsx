@@ -546,7 +546,7 @@ export const CheckoutScreen: React.FC = () => {
                     <div className="min-w-0 flex-1">
                       <p className="line-clamp-2 text-sm font-semibold">{item.name}</p>
                       <p className="mt-1 text-[10px] uppercase tracking-wide text-[#687069]">
-                        {item.size} · {item.color} · x{item.quantity}
+                        SKU {item.sku} · x{item.quantity}
                       </p>
                     </div>
                     <span className="col-start-2 text-sm font-semibold">

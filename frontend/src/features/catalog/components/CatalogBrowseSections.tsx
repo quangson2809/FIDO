@@ -128,19 +128,7 @@ export const CatalogFiltersPanel: React.FC<{
             label: item.name,
           }))}
         />
-        <FilterSelect
-          label="Size"
-          value={sizeValueId ?? ''}
-          disabled={metaLoading}
-          onChange={(value) => onSizeChange(value ? Number(value) : undefined)}
-          options={(meta?.size_systems ?? []).flatMap((system) =>
-            system.size_values.map((size) => ({
-              value: String(size.size_value_id),
-              label: system.name + ' · ' + size.display_name,
-            })),
-          )}
-        />
-        <FilterSelect
+<FilterSelect
           label="Màu sắc"
           value={colorId ?? ''}
           disabled={metaLoading}
@@ -150,14 +138,7 @@ export const CatalogFiltersPanel: React.FC<{
             label: item.name,
           }))}
         />
-        <FilterSelect
-          label="Giới tính"
-          value={gender ?? ''}
-          disabled={metaLoading}
-          onChange={(value) => onGenderChange(value || undefined)}
-          options={(meta?.genders ?? []).map((item) => ({ value: item, label: item }))}
-        />
-      </fieldset>
+</fieldset>
 <div className="border-t border-[#E8E9E3] pt-4">
         <p className="mb-2 text-sm font-semibold">Khoảng giá cơ bản (đ)</p>
         <div className="grid grid-cols-2 gap-2">

@@ -211,12 +211,11 @@ export const CartDrawer: React.FC = () => {
                         </div>
                       )}
                       <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#424844]">
-                        <span className="border border-[#D9DDD6] bg-white px-2 py-1">
-                          Size {item.size}
-                        </span>
-                        <span className="border border-[#D9DDD6] bg-white px-2 py-1">
-                          {item.color}
-                        </span>
+                        {item.sku && (
+                          <span className="border border-[#D9DDD6] bg-white px-2 py-1">
+                            SKU {item.sku}
+                          </span>
+                        )}
                       </div>
                     </div>
 
