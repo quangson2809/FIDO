@@ -290,8 +290,8 @@ const inactiveProductPanelHtml = renderToStaticMarkup(
   />,
 );
 assert.match(inactiveProductPanelHtml, /Sản phẩm hiện chưa khả dụng để mua/);
-assert.match(stoppedProductPanelHtml, /Không khả dụng/);
-assert.doesNotMatch(stoppedProductPanelHtml, />Thêm vào giỏ hàng</);
+assert.match(inactiveProductPanelHtml, /Không khả dụng/);
+assert.doesNotMatch(inactiveProductPanelHtml, />Thêm vào giỏ hàng</);
 
 for (const [name, expected] of [
   ['Áo sơ mi', 'tops'],
