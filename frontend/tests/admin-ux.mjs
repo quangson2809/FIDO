@@ -25,46 +25,55 @@ const pagination = (data, pageNumber = 1, total = data.length) => ({
   data,
   meta: { page: pageNumber, page_size: 20, total, total_pages: Math.ceil(total / 20) },
 });
-const size = { size_value_id: 1, size_system_id: 1, code: 'M', display_name: 'M', sort_order: 0 };
-const color = { color_id: 1, code: 'BLACK', name: 'Đen' };
 const metadata = {
-  categories: [{ category_id: 1, parent_category_id: null, name: 'Áo' }],
+  categories: [
+    { category_id: 1, parent_category_id: null, name: 'Áo', slug: 'ao', status: 'ACTIVE' },
+  ],
   brands: [],
-  colors: [color, { color_id: 2, code: 'WHITE', name: 'Trắng' }],
-  size_systems: [{ size_system_id: 1, code: 'TOP', name: 'Áo', size_values: [size] }],
-  genders: [],
-  seasons: [],
-  styles: [],
+  attribute_types: [
+    { id: 1, code: 'OPTION', name: 'Lựa chọn', data_type: 'OPTION' },
+    { id: 2, code: 'TEXT', name: 'Văn bản', data_type: 'TEXT' },
+    { id: 3, code: 'NUMBER', name: 'Số', data_type: 'NUMBER' },
+    { id: 4, code: 'BOOLEAN', name: 'Có/Không', data_type: 'BOOLEAN' },
+  ],
+  attributes: [
+    {
+      id: 1,
+      code: 'MATERIAL',
+      name: 'Chất liệu',
+      data_type: 'TEXT',
+      is_required: false,
+      is_variant_defining: false,
+      sort_order: 0,
+      options: [],
+    },
+  ],
 };
 let product = {
   product_id: 1,
+  parent_product_id: null,
+  sku: 'TEE-M-BLACK',
   name: 'Áo thử nghiệm',
+  slug: 'ao-thu-nghiem',
   description: null,
   category: metadata.categories[0],
-  category_id: 1,
   brand: null,
-  brand_id: null,
-  size_system: metadata.size_systems[0],
-  size_system_id: 1,
-  gender: null,
-  season: null,
-  style: null,
-  material_care: null,
-  base_price: 200000,
-  sale_status: 'ON_SALE',
+  selling_price: 200000,
+  cost_price: null,
+  status: 'ACTIVE',
   images: [],
-  variants: [
+  attribute_values: [
     {
-      variant_id: 10,
-      product_id: 1,
-      size_value_id: 1,
-      color_id: 1,
-      sku: 'TEE-M-BLACK',
-      override_price: null,
-      sale_status: 'ON_SALE',
-      available_quantity: 5,
-      created_at: date,
-      updated_at: date,
+      attribute_id: 1,
+      attribute_code: 'MATERIAL',
+      attribute_name: 'Chất liệu',
+      data_type: 'TEXT',
+      option_id: null,
+      option_value: null,
+      option_label: null,
+      text_value: 'Cotton',
+      number_value: null,
+      boolean_value: null,
     },
   ],
   created_at: date,
@@ -163,9 +172,9 @@ await page.route('**/api/v1/**', async (route) => {
       };
       return send({ data: order.payment });
     }
-    if (path === '/admin/products/1/variants/10' && !priceError) {
-      product = { ...product, variants: [{ ...product.variants[0], ...request.postDataJSON() }] };
-      return send({ data: product.variants[0] });
+    if (path === '/admin/products/1' && request.method === 'PATCH' && !priceError) {
+      product = { ...product, ...request.postDataJSON() };
+      return send({ data: product });
     }
     if (path === '/admin/goods-receipts/1/actions') {
       receipt = { ...receipt, receipt_status: 'CONFIRMED' };
@@ -177,7 +186,19 @@ await page.route('**/api/v1/**', async (route) => {
   if (path === '/cart')
     return send({ data: { cart_id: 1, account_id: 1, items: [], subtotal: 0 } });
   if (path === '/admin/products/1') return send({ data: product });
-  if (path === '/admin/products') return send(pagination([product]));
+  if (path === '/admin/products')
+    return send(pagination([{
+      product_id: product.product_id,
+      parent_product_id: product.parent_product_id,
+      sku: product.sku,
+      name: product.name,
+      slug: product.slug,
+      category: product.category,
+      brand: product.brand,
+      selling_price: product.selling_price,
+      status: product.status,
+      thumbnail: null,
+    }]));
   if (path === '/admin/orders/1') return send({ data: order });
   if (path === '/admin/orders')
     return send(pagination([{ ...order, payment_status: order.payment.payment_status }]));
@@ -359,14 +380,17 @@ try {
     .first()
     .click();
   await goto('/admin/products/1');
-  const price = page.getByRole('spinbutton', { name: 'Giá riêng TEE-M-BLACK' });
+  await page.getByRole('button', { name: 'Chỉnh sửa', exact: true }).click();
+  const price = page.getByRole('spinbutton', { name: 'Giá bán (VND)' });
   await price.fill('250000');
-  await page.getByRole('button', { name: 'Lưu giá', exact: true }).click();
+  await page.getByRole('button', { name: 'Lưu', exact: true }).click();
   await page.getByRole('alert').waitFor();
-  assert.equal(await price.inputValue(), '250000', 'failed price edit preserves input');
+  assert.equal(await price.inputValue(), '250000', 'failed product patch preserves input');
   priceError = false;
-  await page.getByRole('button', { name: 'Lưu giá', exact: true }).click();
-  await page.getByText('Giá riêng: 250.000₫', { exact: false }).waitFor();
+  await page.getByRole('button', { name: 'Lưu', exact: true }).click();
+  await page.getByText('250.000₫', { exact: true }).waitFor();
+  const productPatch = writes.filter((entry) => entry.path === '/admin/products/1').at(-1)?.body;
+  assert.ok(productPatch && !Object.hasOwn(productPatch, 'attribute_values'), 'PATCH omits untouched attribute_values');
   await goto('/admin/orders/1');
   const beforeAction = writes.length;
   page.once('dialog', (dialog) => dialog.dismiss());
@@ -457,8 +481,7 @@ try {
     '/admin/content',
     '/admin/catalog/categories',
     '/admin/catalog/brands',
-    '/admin/catalog/sizes',
-    '/admin/catalog/colors',
+    '/admin/catalog/attributes',
   ];
   reportError = false;
   for (const width of [1440, 768, 375]) {
