@@ -202,7 +202,10 @@ await page.route('**/api/v1/**', async (route) => {
   if (path === '/admin/orders/1') return send({ data: order });
   if (path === '/admin/orders')
     return send(pagination([{ ...order, payment_status: order.payment.payment_status }]));
-  if (path === '/admin/catalog/meta') return send({ data: metadata });
+  if (path === '/catalog/meta') return send({ data: metadata });
+  if (path === '/admin/catalog/meta') return send({
+    data: { attribute_types: metadata.attribute_types, attributes: metadata.attributes },
+  });
   if (path === '/admin/customers/1') return send({ message: 'Không tải được hồ sơ' }, 500);
   if (path === '/admin/customers') {
     customerRequests++;
