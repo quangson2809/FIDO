@@ -109,7 +109,7 @@ export function ProductSummaryCard({
             <span>{product.selling_price.toLocaleString('vi-VN')} đ</span>
             <span className="product-summary-price-label">{product.status}</span>
           </span>
-          <span className="product-summary-sizes" title={product.sku}>
+          <span className="product-summary-sku" title={product.sku}>
             SKU {product.sku}
           </span>
         </span>
