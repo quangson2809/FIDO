@@ -68,7 +68,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
   }, []);
 
   useEffect(() => {
-    void load();
+    void Promise.resolve().then(load);
   }, [load]);
 
   const resetForm = () => {
