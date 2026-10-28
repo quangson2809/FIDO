@@ -21,149 +21,121 @@ class DatabaseConstraintsTests {
     @Autowired JdbcTemplate jdbc;
 
     private void rejects(String sql) {
-        DataAccessException failure =
-                assertThrows(DataAccessException.class, () -> jdbc.update(sql), sql);
+        DataAccessException failure = assertThrows(DataAccessException.class, () -> jdbc.update(sql), sql);
         Throwable cause = failure.getMostSpecificCause();
         assertInstanceOf(SQLException.class, cause);
-        SQLException databaseError = (SQLException) cause;
-        // MySQL reports CHECK violations as HY000 / 3819 rather than SQLSTATE class 23.
+        SQLException error = (SQLException) cause;
         assertTrue(
-                (databaseError.getSQLState() != null
-                                && databaseError.getSQLState().startsWith("23"))
-                        || ("HY000".equals(databaseError.getSQLState())
-                                && databaseError.getErrorCode() == 3819),
-                () ->
-                        "Expected integrity violation, got "
-                                + databaseError.getSQLState()
-                                + " / "
-                                + databaseError.getErrorCode()
-                                + " for "
-                                + sql);
+                (error.getSQLState() != null && error.getSQLState().startsWith("23"))
+                        || ("HY000".equals(error.getSQLState()) && error.getErrorCode() == 3819),
+                () -> "Expected integrity violation, got " + error.getSQLState()
+                        + " / " + error.getErrorCode() + " for " + sql);
     }
 
     @Test
     void negativeStockNonPositiveQuantitiesAndZeroMovementFail() {
-        rejects("UPDATE inventories SET available_quantity=-1 WHERE variant_id=1");
-        for (String table : new String[] {"cart_items", "order_items", "goods_receipt_items"}) {
-            rejects("UPDATE " + table + " SET quantity=0");
-            rejects("UPDATE " + table + " SET quantity=-1");
-        }
-        rejects("UPDATE inventory_transactions SET quantity_delta=0 WHERE txn_id=1");
-        assertEquals(
-                10,
-                jdbc.queryForObject(
-                        "SELECT available_quantity FROM inventories WHERE variant_id=1",
-                        Integer.class));
+        rejects("UPDATE inventories SET quantity_on_hand=-1 WHERE warehouse_id=1 AND product_id=1");
+        rejects("UPDATE cart_items SET quantity=0 WHERE id=1");
+        rejects("UPDATE cart_items SET quantity=-1 WHERE id=1");
+        rejects("UPDATE order_items SET quantity=0 WHERE id=1");
+        rejects("UPDATE order_items SET quantity=-1 WHERE id=1");
+        rejects("UPDATE goods_receipt_items SET quantity_received=0 WHERE id=1");
+        rejects("UPDATE goods_receipt_items SET quantity_received=-1 WHERE id=1");
+        rejects("UPDATE inventory_transactions SET quantity_delta=0 WHERE id=1");
+        assertEquals(10, jdbc.queryForObject(
+                "SELECT quantity_on_hand FROM inventories WHERE warehouse_id=1 AND product_id=1",
+                Integer.class));
     }
 
     @Test
-    void allMoneyColumnsRejectNegativeValues() {
-        for (String field :
-                new String[] {
-                    "products.base_price",
-                    "product_variants.override_price",
-                    "orders.subtotal_snapshot",
-                    "orders.discount_snapshot",
-                    "orders.shipping_fee_snapshot",
-                    "orders.total_snapshot",
-                    "order_items.unit_price_snapshot",
-                    "order_items.line_total_snapshot",
-                    "payments.amount_due",
-                    "payments.amount_received",
-                    "payments.amount_refunded"
-                }) {
+    void everyTargetMoneyColumnRejectsNegativeValues() {
+        for (String field : new String[] {
+                "products.selling_price",
+                "products.cost_price",
+                "orders.subtotal",
+                "orders.discount_amount",
+                "orders.shipping_fee",
+                "orders.total_amount",
+                "order_items.unit_price",
+                "order_items.discount_amount",
+                "order_items.line_total",
+                "payments.amount",
+                "payments.refund_amount",
+                "vouchers.discount_value",
+                "vouchers.minimum_order_value",
+                "vouchers.maximum_discount",
+                "goods_receipt_items.unit_cost"
+        }) {
             String[] parts = field.split("\\.");
-            rejects("UPDATE " + parts[0] + " SET " + parts[1] + "=-0.01");
+            rejects("UPDATE " + parts[0] + " SET " + parts[1] + "=-1");
         }
     }
 
     @Test
     void compoundUniqueConstraintsAndSharedPrimaryKeysAreEnforced() {
-        rejects(
-                "INSERT INTO product_variants VALUES"
-                    + " (2,1,1,1,NULL,NULL,'fixture-status',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
-        rejects("INSERT INTO size_values VALUES (2,1,'M','Duplicate',2)");
-        rejects("INSERT INTO cart_items VALUES (2,1,1,1)");
-        rejects("INSERT INTO goods_receipt_items VALUES (2,1,1,1)");
-        rejects("INSERT INTO inventories VALUES (1,0,CURRENT_TIMESTAMP)");
-        rejects("INSERT INTO account_roles VALUES (1,101)");
-        rejects("INSERT INTO role_permissions VALUES (101,1001)");
-        rejects("INSERT INTO payments SELECT * FROM payments");
-        rejects("INSERT INTO shipping_infos SELECT * FROM shipping_infos");
+        rejects("INSERT INTO attribute_options(attribute_id,`value`,label,sort_order)"
+                + " VALUES (1,'fixture-option','Duplicate',1)");
+        rejects("INSERT INTO cart_items(cart_id,product_id,quantity) VALUES (1,1,2)");
+        rejects("INSERT INTO goods_receipt_items(goods_receipt_id,product_id,quantity_received,unit_cost)"
+                + " VALUES (1,1,3,500)");
+        rejects("INSERT INTO inventories(warehouse_id,product_id,quantity_on_hand,version)"
+                + " VALUES (1,1,0,0)");
+        rejects("INSERT INTO account_roles(account_id,role_id) VALUES (1,101)");
+        rejects("INSERT INTO role_permissions(role_id,permission_id) VALUES (101,1001)");
+        rejects("INSERT INTO payments(order_id,method,payment_status,amount,currency)"
+                + " VALUES (1,'COD','UNPAID',30900,'VND')");
+        rejects("INSERT INTO shipping_infos(order_id,recipient_name,recipient_phone,shipping_status)"
+                + " VALUES (1,'Fixture recipient','0900000001','PENDING')");
+        rejects("INSERT INTO product_images(product_id,image_url,sort_order)"
+                + " VALUES (1,'https://example.invalid/duplicate.png',0)");
     }
 
     @Test
-    void foreignKeysStatesAndVoucherAccountConstraintAreEnforced() {
-        rejects("UPDATE addresses SET account_id=999");
-        rejects("UPDATE product_variants SET size_value_id=999");
-        rejects("UPDATE product_variants SET color_id=999");
-        rejects("UPDATE inventory_transactions SET actor_account_id=999");
-        rejects("UPDATE orders SET order_status='DELIVERED'");
-        rejects("UPDATE payments SET payment_status='UNKNOWN'");
-        rejects("UPDATE goods_receipts SET receipt_status='UNKNOWN'");
-        rejects("UPDATE orders SET voucher_id=1,customer_account_id=NULL");
-        rejects("DELETE FROM product_variants WHERE variant_id=1");
+    void foreignKeysAndWorkflowStatesAreEnforced() {
+        rejects("UPDATE addresses SET account_id=999 WHERE id=1");
+        rejects("UPDATE products SET category_id=999 WHERE id=1");
+        rejects("UPDATE inventory_transactions SET created_by=999 WHERE id=1");
+        rejects("UPDATE orders SET status='DELIVERED' WHERE id=1");
+        rejects("UPDATE payments SET payment_status='UNKNOWN' WHERE order_id=1");
+        rejects("UPDATE goods_receipts SET status='UNKNOWN' WHERE id=1");
+        rejects("UPDATE orders SET account_id=NULL WHERE id=1");
+        rejects("DELETE FROM products WHERE id=1");
         rejects("DELETE FROM accounts WHERE id=1");
     }
 
     @Test
     void catalogEditsDoNotRewriteHistoricalSnapshotsOrPaymentState() {
-        jdbc.update("UPDATE products SET name='Changed',base_price=999 WHERE product_id=1");
+        jdbc.update("UPDATE products SET name='Changed',selling_price=999 WHERE id=1");
         assertEquals(
                 "Historical product",
-                jdbc.queryForObject(
-                        "SELECT product_name_snapshot FROM order_items WHERE order_item_id=1",
-                        String.class));
+                jdbc.queryForObject("SELECT product_name_snapshot FROM order_items WHERE id=1", String.class));
         assertEquals(
-                0,
-                jdbc.queryForObject(
-                                "SELECT unit_price_snapshot FROM order_items WHERE order_item_id=1",
-                                java.math.BigDecimal.class)
-                        .compareTo(new java.math.BigDecimal("100.00")));
+                1000L,
+                jdbc.queryForObject("SELECT unit_price FROM order_items WHERE id=1", Long.class));
         assertEquals(
                 "UNPAID",
-                jdbc.queryForObject(
-                        "SELECT payment_status FROM payments WHERE order_id=1", String.class));
+                jdbc.queryForObject("SELECT payment_status FROM payments WHERE order_id=1", String.class));
     }
 
     @Test
     void productImageSortOrderIsNonNegativeAndUniquePerProduct() {
-        rejects("UPDATE product_images SET sort_order=-1 WHERE image_id=1");
-        rejects(
-                """
-                INSERT INTO product_images (product_id,image_url,alt_text,sort_order)
-                VALUES (1,'https://example.invalid/duplicate.png',NULL,0)
-                """);
+        rejects("UPDATE product_images SET sort_order=-1 WHERE id=1");
+        rejects("INSERT INTO product_images(product_id,image_url,sort_order)"
+                + " VALUES (1,'https://example.invalid/duplicate.png',0)");
 
-        jdbc.update(
-                """
-                INSERT INTO products (
-                    product_id, category_id, brand_id, size_system_id, name,
-                    description, gender, season, style, material_care,
-                    base_price, sale_status, created_at, updated_at
-                ) VALUES (
-                    2,1,1,1,'Second product',NULL,NULL,NULL,NULL,NULL,
-                    100.00,'fixture-status',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
-                )
-                """);
-        jdbc.update(
-                """
-                INSERT INTO product_images (product_id,image_url,alt_text,sort_order)
-                VALUES (2,'https://example.invalid/second.png',NULL,0)
-                """);
-
-        assertEquals(
-                1,
-                jdbc.queryForObject(
-                        "SELECT COUNT(*) FROM product_images WHERE product_id=2 AND sort_order=0",
-                        Integer.class));
+        jdbc.update("INSERT INTO products(category_id,brand_id,name,sku,selling_price,status)"
+                + " VALUES (1,1,'Second product','SECOND-PRODUCT-SKU',1000,'ACTIVE')");
+        long productId = jdbc.queryForObject(
+                "SELECT id FROM products WHERE sku='SECOND-PRODUCT-SKU'", Long.class);
+        jdbc.update("INSERT INTO product_images(product_id,image_url,sort_order) VALUES (?,?,0)",
+                productId, "https://example.invalid/second.png");
+        assertEquals(1, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM product_images WHERE product_id=? AND sort_order=0",
+                Integer.class, productId));
     }
 
     @Test
-    void legacyOrderItemMayKeepNullImageSnapshot() {
-        assertNull(
-                jdbc.queryForObject(
-                        "SELECT image_url_snapshot FROM order_items WHERE order_item_id=1",
-                        String.class));
+    void orderItemRequiresAnImageSnapshotValue() {
+        rejects("UPDATE order_items SET image_url_snapshot=NULL WHERE id=1");
     }
 }

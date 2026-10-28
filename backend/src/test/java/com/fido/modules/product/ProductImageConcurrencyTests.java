@@ -14,7 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
@@ -46,7 +47,7 @@ class ProductImageConcurrencyTests extends CatalogHttpSupport {
         String second = "https://storage.test/parallel-b.png";
 
         meetBeforeProductLock(productId);
-        runConcurrently(
+        runConcurrently(writer.id(),
                 () ->
                         imageCommands.appendUploadedImages(
                                 writer.id(), productId, List.of(new UploadedImage(first))),
@@ -77,7 +78,7 @@ class ProductImageConcurrencyTests extends CatalogHttpSupport {
 
         meetBeforeProductLock(productId);
         List<AdminProductDetailDto> responses =
-                runConcurrently(
+                runConcurrently(writer.id(),
                         () -> imageCommands.reorderImages(writer.id(), productId, reorder(first)),
                         () -> imageCommands.reorderImages(writer.id(), productId, reorder(second)));
 
@@ -111,12 +112,13 @@ class ProductImageConcurrencyTests extends CatalogHttpSupport {
     }
 
     private List<AdminProductDetailDto> runConcurrently(
+            long actorId,
             Callable<AdminProductDetailDto> first, Callable<AdminProductDetailDto> second)
             throws Exception {
         var executor = Executors.newFixedThreadPool(2);
         try {
-            var firstResult = executor.submit(() -> authenticated(first));
-            var secondResult = executor.submit(() -> authenticated(second));
+            var firstResult = executor.submit(() -> authenticated(actorId, first));
+            var secondResult = executor.submit(() -> authenticated(actorId, second));
             return List.of(
                     firstResult.get(20, TimeUnit.SECONDS), secondResult.get(20, TimeUnit.SECONDS));
         } finally {
@@ -127,14 +129,15 @@ class ProductImageConcurrencyTests extends CatalogHttpSupport {
         }
     }
 
-    private AdminProductDetailDto authenticated(Callable<AdminProductDetailDto> command)
-            throws Exception {
+    private AdminProductDetailDto authenticated(
+            long actorId, Callable<AdminProductDetailDto> command) throws Exception {
         var context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(
-                new UsernamePasswordAuthenticationToken(
-                        "phase14-test",
-                        "unused",
-                        List.of(new SimpleGrantedAuthority("PERMISSION_CATALOG_WRITE"))));
+        Jwt jwt = Jwt.withTokenValue("phase14-test")
+                .header("alg", "none")
+                .subject(Long.toString(actorId))
+                .build();
+        context.setAuthentication(new JwtAuthenticationToken(
+                jwt, List.of(new SimpleGrantedAuthority("PERMISSION_CATALOG_WRITE"))));
         SecurityContextHolder.setContext(context);
         try {
             return command.call();

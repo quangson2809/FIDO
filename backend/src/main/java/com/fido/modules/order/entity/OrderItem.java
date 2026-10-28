@@ -6,7 +6,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Immutable;
 
-import java.math.BigDecimal;
 
 @Entity
 @Table(name = "order_items")
@@ -32,15 +31,11 @@ public class OrderItem {
     @Column(name = "sku_snapshot", nullable = false, length = 100, updatable = false)
     private String skuSnapshot;
 
-    @Transient private Long unitPriceSnapshot;
-
     @Column(name = "unit_price", nullable = false, updatable = false)
     private Long unitPrice;
 
     @Column(name = "quantity", nullable = false, updatable = false)
     private Integer quantity;
-
-    @Transient private Long lineTotalSnapshot;
 
     @Column(name = "discount_amount", nullable = false, updatable = false)
     private Long discountAmount = 0L;
@@ -56,25 +51,8 @@ public class OrderItem {
 
     @PrePersist
     void onCreate() {
-        if (unitPrice == null && unitPriceSnapshot != null) unitPrice = unitPriceSnapshot;
-        if (lineTotal == null && lineTotalSnapshot != null) lineTotal = lineTotalSnapshot;
         if (discountAmount == null) discountAmount = 0L;
         if (attributeSnapshot == null) attributeSnapshot = "{}";
         if (imageUrlSnapshot == null) imageUrlSnapshot = "";
-    }
-
-    @PostLoad
-    void onLoad() {
-        unitPriceSnapshot = unitPrice;
-        lineTotalSnapshot = lineTotal;
-    }
-
-    public void setUnitPriceSnapshot(Long amount) { this.unitPriceSnapshot = amount; }
-    @Deprecated public void setUnitPriceSnapshot(BigDecimal amount) { this.unitPriceSnapshot = exactVnd(amount); }
-    public void setLineTotalSnapshot(Long amount) { this.lineTotalSnapshot = amount; }
-    @Deprecated public void setLineTotalSnapshot(BigDecimal amount) { this.lineTotalSnapshot = exactVnd(amount); }
-
-    private static Long exactVnd(BigDecimal amount) {
-        return amount == null ? null : amount.longValueExact();
     }
 }

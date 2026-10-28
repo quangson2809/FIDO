@@ -28,7 +28,7 @@ class CartConcurrencyTests extends CartHttpSupport {
                                     "POST",
                                     "/api/v1/cart/items",
                                     owner.token(),
-                                    Map.of("variant_id", variant.variantId(), "quantity", 1));
+                                    Map.of("product_id", variant.productId(), "quantity", 1));
                         };
                 var first = executor.submit(task);
                 var second = executor.submit(task);
@@ -55,19 +55,19 @@ class CartConcurrencyTests extends CartHttpSupport {
         assertEquals(
                 20,
                 db.queryForObject(
-                        "SELECT available_quantity FROM inventories WHERE variant_id=?",
+                        "SELECT quantity_on_hand FROM inventories WHERE product_id=?",
                         Integer.class,
-                        variant.variantId()));
+                        variant.productId()));
         assertEquals(
                 0,
                 db.queryForObject(
-                        "SELECT COUNT(*) FROM inventory_transactions WHERE variant_id=?",
+                        "SELECT COUNT(*) FROM inventory_transactions WHERE product_id=?",
                         Integer.class,
-                        variant.variantId()));
+                        variant.productId()));
     }
 
     @Test
-    void quantityUpdateRejectsStoppedOrUnavailableVariantsWithoutChangingItem() throws Exception {
+    void quantityUpdateRejectsInactiveProductsButDoesNotReserveStock() throws Exception {
         User owner = user();
         var variant = createVariant("ON_SALE", "ON_SALE", 5, 100000, null);
         var added =
@@ -75,29 +75,29 @@ class CartConcurrencyTests extends CartHttpSupport {
                         "POST",
                         "/api/v1/cart/items",
                         owner.token(),
-                        Map.of("variant_id", variant.variantId(), "quantity", 2));
+                        Map.of("product_id", variant.productId(), "quantity", 2));
         long itemId = added.data().get("data").get("items").get(0).get("cart_item_id").asLong();
         db.update(
-                "UPDATE product_variants SET sale_status='STOPPED' WHERE variant_id=?",
-                variant.variantId());
+                "UPDATE products SET status='INACTIVE' WHERE id=?",
+                variant.productId());
         assertEquals(
                 409,
                 call("PATCH", "/api/v1/cart/items/" + itemId, owner.token(), Map.of("quantity", 3))
                         .status());
         db.update(
-                "UPDATE product_variants SET sale_status='ON_SALE' WHERE variant_id=?",
-                variant.variantId());
+                "UPDATE products SET status='ACTIVE' WHERE id=?",
+                variant.productId());
         db.update(
-                "UPDATE inventories SET available_quantity=0 WHERE variant_id=?",
-                variant.variantId());
+                "UPDATE inventories SET quantity_on_hand=0 WHERE product_id=?",
+                variant.productId());
         assertEquals(
-                409,
+                200,
                 call("PATCH", "/api/v1/cart/items/" + itemId, owner.token(), Map.of("quantity", 3))
                         .status());
         assertEquals(
-                2,
+                3,
                 db.queryForObject(
-                        "SELECT quantity FROM cart_items WHERE cart_item_id=?",
+                        "SELECT quantity FROM cart_items WHERE id=?",
                         Integer.class,
                         itemId));
         assertEquals(

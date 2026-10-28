@@ -150,7 +150,7 @@ class StaffHttpTests extends AccountHttpSupport {
     }
 
     @Test
-    void staffCreationRejectsPhoneOwnedBySoftDeletedAccount() throws Exception {
+    void staffCreationAllowsPhoneReusedAfterSoftDelete() throws Exception {
         String token = root();
         String phone = phone();
         long deletedAccountId = register(phone);
@@ -164,18 +164,18 @@ class StaffHttpTests extends AccountHttpSupport {
                 token,
                 Map.of("phone", phone, "full_name", "Replacement Staff", "password", PASSWORD));
 
-        assertEquals(409, response.status(), response.body());
-        assertEquals("PHONE_ALREADY_IN_USE", response.data().get("code").asText());
-        assertEquals(
-                1,
-                db.queryForObject(
-                        "SELECT COUNT(*) FROM accounts WHERE phone=?",
-                        Integer.class,
-                        phone));
+        assertEquals(201, response.status(), response.body());
+        long replacementId = response.data().get("data").get("account").get("id").asLong();
+        created.add(replacementId);
+        assertEquals(2, db.queryForObject(
+                "SELECT COUNT(*) FROM accounts WHERE phone=?", Integer.class, phone));
+        assertEquals(1, db.queryForObject(
+                "SELECT COUNT(*) FROM accounts WHERE phone=? AND deleted_at IS NULL",
+                Integer.class, phone));
     }
 
     @Test
-    void staffUpdateRejectsPhoneOwnedBySoftDeletedAccount() throws Exception {
+    void staffUpdateAllowsPhoneReusedAfterSoftDelete() throws Exception {
         String token = root();
         String staffPhone = phone();
         var createdStaff = call(
@@ -199,13 +199,11 @@ class StaffHttpTests extends AccountHttpSupport {
                 token,
                 Map.of("phone", deletedPhone));
 
-        assertEquals(409, response.status(), response.body());
-        assertEquals("PHONE_ALREADY_IN_USE", response.data().get("code").asText());
-        assertEquals(
-                staffPhone,
-                db.queryForObject(
-                        "SELECT phone FROM accounts WHERE id=?",
-                        String.class,
-                        staffId));
+        assertEquals(200, response.status(), response.body());
+        assertEquals(deletedPhone, response.data().get("data").get("account").get("phone").asText());
+        assertEquals(deletedPhone, db.queryForObject(
+                "SELECT phone FROM accounts WHERE id=?", String.class, staffId));
+        assertEquals(2, db.queryForObject(
+                "SELECT COUNT(*) FROM accounts WHERE phone=?", Integer.class, deletedPhone));
     }
 }

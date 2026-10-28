@@ -4,7 +4,6 @@ import com.fido.modules.cart.service.CheckoutCartView;
 import com.fido.modules.pricing.PricingCalculator;
 import com.fido.modules.promotion.service.VoucherRedemptionService;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 record CheckoutCalculation(
@@ -41,16 +40,6 @@ record CheckoutCalculation(
                 new VoucherRedemptionService.Discount(null, null, discount), List.of());
     }
 
-    /** Compatibility adapter for old tests; fractional VND is rejected. */
-    CheckoutCalculation(
-            List<CheckoutCartView.Item> items,
-            BigDecimal subtotal,
-            BigDecimal discount,
-            BigDecimal shippingFee,
-            BigDecimal total) {
-        this(items, exactVnd(subtotal), exactVnd(discount), exactVnd(shippingFee), exactVnd(total));
-    }
-
     PricingCalculator.PricedLine lineFor(Long productId) {
         return pricedLines.stream()
                 .filter(line -> line.productId().equals(productId))
@@ -58,7 +47,4 @@ record CheckoutCalculation(
                 .orElseThrow(() -> new IllegalStateException("Pricing result is missing a Product line"));
     }
 
-    private static long exactVnd(BigDecimal amount) {
-        return amount == null ? 0L : amount.longValueExact();
-    }
 }

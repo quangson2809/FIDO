@@ -83,17 +83,14 @@ public interface InventoryTransactionRepository
     org.springframework.data.domain.Page<InventoryReconciliationView> reconcile(
             org.springframework.data.domain.Pageable pageable);
 
-    @Query(
-            value = """
-                    SELECT EXISTS (
-                        SELECT 1
-                        FROM inventory_transactions movement
-                        JOIN order_items item ON item.id = movement.order_item_id
-                        WHERE item.order_id = :orderId
-                          AND movement.transaction_type = :transactionType
-                    )
-                    """,
-            nativeQuery = true)
-    boolean existsByOrderIdAndTransactionType(
+    @Query("""
+            SELECT COUNT(movement)
+            FROM InventoryTransaction movement
+            WHERE movement.orderItemId IN (
+                SELECT item.orderItemId FROM OrderItem item WHERE item.orderId = :orderId
+            )
+              AND movement.transactionType = :transactionType
+            """)
+    long countByOrderIdAndTransactionType(
             @Param("orderId") Long orderId, @Param("transactionType") String transactionType);
 }

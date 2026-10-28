@@ -11,7 +11,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.math.BigDecimal;
 
 @Service
 public class CheckoutCalculationService {
@@ -34,19 +33,6 @@ public class CheckoutCalculationService {
         this.vouchers = vouchers;
         this.shippingFee = shippingFee;
         this.pricing = pricing;
-    }
-
-    /** Compatibility adapter for old test fixtures; production configuration uses integer VND. */
-    CheckoutCalculationService(
-            CartQueryService cart,
-            VoucherRedemptionService vouchers,
-            BigDecimal shippingFee) {
-        this(cart, vouchers, exactVnd(shippingFee), new PricingService());
-    }
-
-    /** Existing direct callers use the placement-safe calculation path. */
-    CheckoutCalculation calculate(Long accountId, String voucherCode) {
-        return calculateForOrder(accountId, voucherCode);
     }
 
     CheckoutCalculation calculateForOrder(Long accountId, String voucherCode) {
@@ -106,7 +92,4 @@ public class CheckoutCalculationService {
         }
     }
 
-    private static Long exactVnd(BigDecimal amount) {
-        return amount == null ? null : amount.longValueExact();
-    }
 }

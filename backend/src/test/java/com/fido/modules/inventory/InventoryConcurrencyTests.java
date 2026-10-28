@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -26,7 +27,7 @@ class InventoryConcurrencyTests extends InventoryHttpSupport {
                 gate.await();
                 return call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
                         Map.of("product_id", fixture.productId(), "quantity_delta", -3,
-                                "reason", "Concurrent adjustment"));
+                                "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID()));
             };
             var first = executor.submit(task);
             var second = executor.submit(task);
@@ -55,7 +56,7 @@ class InventoryConcurrencyTests extends InventoryHttpSupport {
                 gate.await();
                 return call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
                         Map.of("product_id", fixture.productId(), "quantity_delta", 3,
-                                "reason", "Concurrent positive movement"));
+                                "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID()));
             };
             var first = executor.submit(task);
             var second = executor.submit(task);

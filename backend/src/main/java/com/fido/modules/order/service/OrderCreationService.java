@@ -2,9 +2,9 @@ package com.fido.modules.order.service;
 
 import com.fido.modules.account.service.AccountMutationLockService;
 import com.fido.modules.audit.service.AuditAction;
-import com.fido.modules.audit.service.AuditEvent;
-import com.fido.modules.audit.service.AuditService;
-import com.fido.modules.audit.service.AuditTargetType;
+import com.fido.modules.audit.service.AuditEntityType;
+import com.fido.modules.audit.service.AuditWriteEvent;
+import com.fido.modules.audit.service.AuditWriteService;
 import com.fido.modules.cart.service.CartCommandService;
 import com.fido.modules.cart.service.CheckoutCartView;
 import com.fido.modules.order.dto.request.CreateOrderRequest;
@@ -56,7 +56,7 @@ public class OrderCreationService {
     private final OrderVoucherSnapshotRepository voucherSnapshots;
     private final PaymentRepository payments;
     private final ShippingInfoRepository shippingInfos;
-    private final AuditService audit;
+    private final AuditWriteService audit;
     private final VoucherRedemptionService vouchers;
     private final CheckoutRequestNormalizer normalizer;
     private final OrderProductSnapshotService productSnapshots;
@@ -72,7 +72,7 @@ public class OrderCreationService {
             OrderVoucherSnapshotRepository voucherSnapshots,
             PaymentRepository payments,
             ShippingInfoRepository shippingInfos,
-            AuditService audit,
+            AuditWriteService audit,
             VoucherRedemptionService vouchers,
             CheckoutRequestNormalizer normalizer,
             OrderProductSnapshotService productSnapshots) {
@@ -89,32 +89,6 @@ public class OrderCreationService {
         this.vouchers = vouchers;
         this.normalizer = normalizer;
         this.productSnapshots = productSnapshots;
-    }
-
-    /** Source compatibility for legacy test construction only. Spring uses the fully wired constructor. */
-    @Deprecated
-    OrderCreationService(
-            CheckoutCalculationService checkout,
-            CartCommandService cart,
-            OrderRepository orders,
-            OrderItemRepository items,
-            PaymentRepository payments,
-            AuditService audit,
-            CheckoutQuoteStore ignoredQuoteStore,
-            VoucherRedemptionService vouchers) {
-        this.checkout = checkout;
-        this.cart = cart;
-        this.accountLocks = null;
-        this.orders = orders;
-        this.items = items;
-        this.addresses = null;
-        this.voucherSnapshots = null;
-        this.payments = payments;
-        this.shippingInfos = null;
-        this.audit = audit;
-        this.vouchers = vouchers;
-        this.normalizer = null;
-        this.productSnapshots = null;
     }
 
     public OrderCreationResult createWithIdempotencyKey(
@@ -154,19 +128,13 @@ public class OrderCreationService {
         persistVoucherSnapshot(order.getOrderId(), calculation);
         Payment payment = persistInitialPayment(order.getOrderId(), calculation.total());
         persistInitialShipping(order.getOrderId(), normalized);
-        vouchers.consume(order.getOrderId(), accountId, calculation.voucher());
+        vouchers.consume(calculation.voucher());
         cart.completeForOrder(accountId);
-        audit.record(AuditEvent.of(
-                accountId, AuditAction.ORDER_CREATE, AuditTargetType.ORDER, order.getOrderId()));
+        audit.record(AuditWriteEvent.of(
+                AuditAction.ORDER_CREATE, AuditEntityType.ORDER, order.getOrderId().toString()));
 
         return new OrderCreationResult(
                 OrderMapper.confirmation(order, payment, address), order.getOrderId(), false);
-    }
-
-    /** HTTP Order creation requires an Idempotency-Key; this overload only preserves old source compatibility. */
-    @Deprecated
-    public OrderConfirmationDto create(Long accountId, CreateOrderRequest request) {
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "IDEMPOTENCY_KEY_REQUIRED");
     }
 
     private OrderCreationResult replay(Order order, String fingerprint) {
@@ -259,9 +227,6 @@ public class OrderCreationService {
         payment.setMethod("COD");
         payment.setPaymentStatus(OrderPolicy.UNPAID);
         payment.setAmount(total);
-        payment.setAmountDue(total);
-        payment.setAmountReceived(0L);
-        payment.setAmountRefunded(0L);
         payment.setCurrency("VND");
         payment.setRefundAmount(0L);
         return payments.save(payment);

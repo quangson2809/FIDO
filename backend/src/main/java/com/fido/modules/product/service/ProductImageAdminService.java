@@ -1,9 +1,9 @@
 package com.fido.modules.product.service;
 
 import com.fido.modules.audit.service.AuditAction;
-import com.fido.modules.audit.service.AuditEvent;
-import com.fido.modules.audit.service.AuditService;
-import com.fido.modules.audit.service.AuditTargetType;
+import com.fido.modules.audit.service.AuditEntityType;
+import com.fido.modules.audit.service.AuditWriteEvent;
+import com.fido.modules.audit.service.AuditWriteService;
 import com.fido.modules.product.dto.request.ProductImageReorderRequest;
 import com.fido.modules.product.dto.response.AdminProductDetailDto;
 import com.fido.modules.product.entity.ProductImage;
@@ -33,13 +33,13 @@ public class ProductImageAdminService {
     private final ProductImageRepository images;
     private final CatalogReferenceService references;
     private final AdminCatalogQueryService query;
-    private final AuditService audit;
+    private final AuditWriteService audit;
 
     public ProductImageAdminService(
             ProductImageRepository images,
             CatalogReferenceService references,
             AdminCatalogQueryService query,
-            AuditService audit) {
+            AuditWriteService audit) {
         this.images = images;
         this.references = references;
         this.query = query;
@@ -63,7 +63,6 @@ public class ProductImageAdminService {
             ProductImage image = new ProductImage();
             image.setProductId(productId);
             image.setImageUrl(stored.url());
-            image.setAltText(null);
             image.setSortOrder(nextSortOrder);
             image.setIsPrimary(nextSortOrder == 0);
             nextSortOrder++;
@@ -233,8 +232,7 @@ public class ProductImageAdminService {
 
     private void recordProductUpdate(Long actor, Long productId) {
         audit.record(
-                AuditEvent.of(
-                        actor, AuditAction.PRODUCT_UPDATE, AuditTargetType.PRODUCT, productId));
+                AuditWriteEvent.of(AuditAction.PRODUCT_UPDATE, AuditEntityType.PRODUCT, productId.toString()));
     }
 
     private static ResponseStatusException notFound() {

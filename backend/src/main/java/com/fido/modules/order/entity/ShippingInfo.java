@@ -23,8 +23,6 @@ public class ShippingInfo {
     @Column(name = "recipient_phone", nullable = false, length = 20)
     private String recipientPhone;
 
-    @Transient
-    private String deliveryMode;
 
     @Column(name = "carrier_name", nullable = true, length = 150)
     private String carrierName;

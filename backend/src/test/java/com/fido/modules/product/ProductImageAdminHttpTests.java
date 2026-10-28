@@ -64,7 +64,6 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                         "status", "ACTIVE",
                         "images", List.of(Map.of(
                                 "image_url", "https://example.test/legacy.png",
-                                "alt_text", "legacy",
                                 "sort_order", 0))));
 
         assertEquals(400, response.status(), response.body());
@@ -90,8 +89,8 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                         Map.of(
                                 "images",
                                 List.of(
-                                        image("https://example.test/a.png", "a", 0),
-                                        image("https://example.test/b.png", "b", 0))));
+                                        image("https://example.test/a.png", 0),
+                                        image("https://example.test/b.png", 0))));
         assertEquals(409, duplicateOrder.status(), duplicateOrder.body());
         assertEquals(beforeInvalid, storedImageIds(fixture.productId()));
 
@@ -103,8 +102,8 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                         Map.of(
                                 "images",
                                 List.of(
-                                        image("https://example.test/a.png", "a", 0),
-                                        image("https://example.test/b.png", "b", 2))));
+                                        image("https://example.test/a.png", 0),
+                                        image("https://example.test/b.png", 2))));
         assertEquals(409, gapOrder.status(), gapOrder.body());
         assertEquals(beforeInvalid, storedImageIds(fixture.productId()));
 
@@ -344,9 +343,9 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                         Map.of(
                                 "images",
                                 List.of(
-                                        image("https://example.test/one.png", "one", 0),
-                                        image("https://example.test/two.png", "two", 1),
-                                        image("https://example.test/three.png", "three", 2))));
+                                        image("https://example.test/one.png", 0),
+                                        image("https://example.test/two.png", 1),
+                                        image("https://example.test/three.png", 2))));
 
         assertEquals(200, response.status(), response.body());
         return response;
@@ -393,11 +392,8 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
         assertEquals(0, mismatchCount);
     }
 
-    private Map<String, Object> image(String imageUrl, String altText, int sortOrder) {
-        return Map.of(
-                "image_url", imageUrl,
-                "alt_text", altText,
-                "sort_order", sortOrder);
+    private Map<String, Object> image(String imageUrl, int sortOrder) {
+        return Map.of("image_url", imageUrl, "sort_order", sortOrder);
     }
 
     private long createSecondProductImage(Employee writer, CatalogFixture fixture)
@@ -432,7 +428,7 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                         writer.token(),
                         Map.of(
                                 "images",
-                                List.of(image("https://example.test/foreign.png", "foreign", 0))));
+                                List.of(image("https://example.test/foreign.png", 0))));
         assertEquals(200, withImage.status(), withImage.body());
 
         return withImage.data().get("data").get("images").get(0).get("id").asLong();

@@ -36,7 +36,7 @@ class GoodsReceiptHttpTests extends InventoryHttpSupport {
 
         assertEquals(200,
                 call("GET", "/api/v1/admin/suppliers/" + supplierId, reader.token(), null).status());
-        var supplierPage = call("GET", "/api/v1/admin/suppliers?q=Supplier&usage_status=ACTIVE",
+        var supplierPage = call("GET", "/api/v1/admin/suppliers?q=Supplier&status=ACTIVE",
                 reader.token(), null);
         assertEquals(200, supplierPage.status(), supplierPage.body());
         assertTrue(supplierPage.data().get("meta").get("total").asInt() >= 1);
@@ -104,8 +104,8 @@ class GoodsReceiptHttpTests extends InventoryHttpSupport {
         db.update("UPDATE suppliers SET status='ACTIVE' WHERE id=?", supplierId);
 
         call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
-                Map.of("product_id", fixture.productId(),
-                        "quantity_delta", -1, "reason", "Cancellation test precondition"));
+                Map.of("product_id", fixture.productId(), "quantity_delta", -1,
+                        "reason_code", "DAMAGE", "source_operation_id", "receipt-cancel-" + java.util.UUID.randomUUID()));
         long cancelledReceiptId = createReceipt(writer.token(), supplierId, fixture, 2);
 
         assertEquals(200, call("POST", "/api/v1/admin/goods-receipts/" + cancelledReceiptId + "/actions",

@@ -41,6 +41,7 @@ abstract class InventoryHttpSupport {
     final List<Long> receipts = new ArrayList<>();
     final List<CatalogFixture> catalog = new ArrayList<>();
     final List<Long> additionalProducts = new ArrayList<>();
+    Long operationalWarehouseId;
 
     record Result(int status, JsonNode data, String body) {}
     record Employee(long id, String token) {}
@@ -125,19 +126,15 @@ abstract class InventoryHttpSupport {
         String categorySlug = "inventory-" + suffix;
         String productName = "Inventory product " + suffix;
         String sku = "INV-SKU-" + suffix;
-        String warehouseCode = "INV-WH-" + suffix;
 
         db.update("INSERT INTO categories(name,slug) VALUES (?,?)", categoryName, categorySlug);
         long categoryId = db.queryForObject(
                 "SELECT id FROM categories WHERE slug=?", Long.class, categorySlug);
         db.update(
-                "INSERT INTO products(category_id,name,sku,selling_price,status) VALUES (?,?,?,100000,'ACTIVE')",
-                categoryId, productName, sku);
+                "INSERT INTO products(category_id,name,slug,sku,selling_price,status) VALUES (?,?,?,?,100000,'ACTIVE')",
+                categoryId, productName, "inventory-product-" + suffix, sku);
         long productId = db.queryForObject("SELECT id FROM products WHERE sku=?", Long.class, sku);
-        db.update("INSERT INTO warehouses(code,name,status) VALUES (?,?, 'ACTIVE')",
-                warehouseCode, "Inventory warehouse " + suffix);
-        long warehouseId = db.queryForObject(
-                "SELECT id FROM warehouses WHERE code=?", Long.class, warehouseCode);
+        long warehouseId = operationalWarehouseId();
         db.update(
                 "INSERT INTO inventories(warehouse_id,product_id,quantity_on_hand,version) VALUES (?,?,0,0)",
                 warehouseId, productId);
@@ -147,9 +144,19 @@ abstract class InventoryHttpSupport {
         return fixture;
     }
 
+    private long operationalWarehouseId() {
+        if (operationalWarehouseId != null) return operationalWarehouseId;
+        String code = "INV-WH-" + UUID.randomUUID().toString().replace("-", "");
+        db.update("INSERT INTO warehouses(code,name,status) VALUES (?,?,'ACTIVE')",
+                code, "Inventory test warehouse");
+        operationalWarehouseId = db.queryForObject(
+                "SELECT id FROM warehouses WHERE code=?", Long.class, code);
+        return operationalWarehouseId;
+    }
+
     long createSupplier(String token, String status) throws Exception {
         var response = call("POST", "/api/v1/admin/suppliers", token,
-                Map.of("name", "Supplier " + UUID.randomUUID(), "usage_status", status));
+                Map.of("name", "Supplier " + UUID.randomUUID(), "status", status));
         assertEquals(201, response.status(), response.body());
         long supplierId = response.data().get("data").get("supplier_id").asLong();
         suppliers.add(supplierId);
@@ -173,8 +180,8 @@ abstract class InventoryHttpSupport {
 
     long createSiblingProduct(CatalogFixture fixture) {
         String suffix = UUID.randomUUID().toString().replace("-", "");
-        db.update("INSERT INTO products(category_id,name,sku,selling_price,status) VALUES (?,?,?,100000,'ACTIVE')",
-                fixture.categoryId(), "Inventory sibling " + suffix, "INV-SIB-" + suffix);
+        db.update("INSERT INTO products(category_id,name,slug,sku,selling_price,status) VALUES (?,?,?,?,100000,'ACTIVE')",
+                fixture.categoryId(), "Inventory sibling " + suffix, "inventory-sibling-" + suffix, "INV-SIB-" + suffix);
         long productId = db.queryForObject(
                 "SELECT id FROM products WHERE sku=?", Long.class, "INV-SIB-" + suffix);
         db.update("INSERT INTO inventories(warehouse_id,product_id,quantity_on_hand,version) VALUES (?,?,0,0)",
@@ -216,7 +223,6 @@ abstract class InventoryHttpSupport {
             db.update("DELETE FROM product_images WHERE product_id=?", fixture.productId());
             db.update("DELETE FROM products WHERE id=?", fixture.productId());
             db.update("DELETE FROM categories WHERE id=?", fixture.categoryId());
-            db.update("DELETE FROM warehouses WHERE id=?", fixture.warehouseId());
         }
         for (Long accountId : accounts) db.update("DELETE FROM account_roles WHERE account_id=?", accountId);
         for (Long roleId : customRoles) {
@@ -225,5 +231,8 @@ abstract class InventoryHttpSupport {
         }
         for (Long permissionId : createdPermissions) db.update("DELETE FROM permissions WHERE id=?", permissionId);
         for (Long accountId : accounts) db.update("DELETE FROM accounts WHERE id=?", accountId);
+        if (operationalWarehouseId != null) {
+            db.update("DELETE FROM warehouses WHERE id=?", operationalWarehouseId);
+        }
     }
 }

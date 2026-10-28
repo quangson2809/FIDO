@@ -194,37 +194,27 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
     }
 
     @Test
-    void softDeletedPhoneCannotBeRegisteredAgain() throws Exception {
+    void softDeletedPhoneCanBeRegisteredAgain() throws Exception {
         String phone = phone();
         long oldAccountId = register(phone);
 
-        db.update(
-                "UPDATE accounts SET deleted_at=CURRENT_TIMESTAMP WHERE id=?",
-                oldAccountId);
+        db.update("UPDATE accounts SET deleted_at=CURRENT_TIMESTAMP WHERE id=?", oldAccountId);
 
-        var reRegistered =
-                call(
-                        "POST",
-                        "/api/v1/auth/register",
-                        null,
-                        Map.of("phone", phone, "full_name", "Replacement Account", "password", PASSWORD));
+        var reRegistered = call(
+                "POST",
+                "/api/v1/auth/register",
+                null,
+                Map.of("phone", phone, "full_name", "Replacement Account", "password", PASSWORD));
 
-        assertEquals(409, reRegistered.status(), reRegistered.body());
-        assertEquals("PHONE_ALREADY_IN_USE", reRegistered.data().get("code").asText());
+        assertEquals(201, reRegistered.status(), reRegistered.body());
+        long newAccountId = reRegistered.data().get("data").get("account").get("id").asLong();
+        assertNotEquals(oldAccountId, newAccountId);
+        assertEquals(2, db.queryForObject(
+                "SELECT COUNT(*) FROM accounts WHERE phone=?", Integer.class, phone));
         assertEquals(
-                1,
-                db.queryForObject(
-                        "SELECT COUNT(*) FROM accounts WHERE phone=?",
-                        Integer.class,
-                        phone));
-        assertEquals(
-                401,
-                call(
-                                "POST",
-                                "/api/v1/auth/login",
-                                null,
-                                Map.of("phone", phone, "password", PASSWORD))
-                        .status());
+                200,
+                call("POST", "/api/v1/auth/login", null,
+                        Map.of("phone", phone, "password", PASSWORD)).status());
     }
 
     @Test

@@ -9,7 +9,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.fido.modules.audit.service.AuditService;
+import com.fido.modules.audit.service.AuditWriteService;
 import com.fido.modules.product.dto.request.ProductImageReorderRequest;
 import com.fido.modules.product.entity.Product;
 import com.fido.modules.product.entity.ProductImage;
@@ -32,7 +32,7 @@ class ProductImageAdminServiceTests {
     @Mock private ProductImageRepository images;
     @Mock private CatalogReferenceService references;
     @Mock private AdminCatalogQueryService query;
-    @Mock private AuditService audit;
+    @Mock private AuditWriteService audit;
 
     private ProductImageAdminService service;
 

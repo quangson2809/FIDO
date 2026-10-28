@@ -25,8 +25,6 @@ class ProductImageAuthorizationHttpTests extends CatalogHttpSupport {
                                         Map.of(
                                                 "image_url",
                                                 "https://example.test/auth-image.png",
-                                                "alt_text",
-                                                "authorization test",
                                                 "sort_order",
                                                 0))));
         assertEquals(200, imageAdded.status(), imageAdded.body());

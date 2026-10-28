@@ -400,7 +400,7 @@ public class InventoryCommandService {
     public void deductConfirmedOrder(
             Long actor, Long orderId, List<StockLine> lines, String reason) {
         if (actor == null || actor <= 0 || orderId == null || orderId <= 0
-                || lines == null || lines.isEmpty() || !"ORDER_CANCELLED".equals(reason)) {
+                || lines == null || lines.isEmpty() || !"ORDER_CONFIRM".equals(reason)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "INVENTORY_ORDER_SOURCE_INVALID");
         }
         Map<Long, StockLine> expected = orderLines(lines);

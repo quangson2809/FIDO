@@ -24,7 +24,7 @@ class AuditQueryApiTest extends OperationsHttpSupport {
                 path
                         + "?actor_account_id="
                         + employee.id()
-                        + "&action=TEST&entity_type=CONTENT_PAGE&entity_id=abc&from=2026-09-20T12:00:00&to=2026-09-20T12:00:00&page_size=1";
+                        + "&action=TEST&entity_type=CONTENT_PAGE&entity_id=abc&from=2026-09-20T12:00:00Z&to=2026-09-20T12:00:00Z&page_size=1";
         var first = call("GET", query, employee.token(), null);
         assertEquals(200, first.status());
         assertEquals(2, first.body().get("meta").get("total").asInt());
@@ -40,8 +40,8 @@ class AuditQueryApiTest extends OperationsHttpSupport {
                     "entity_type=NO",
                     "entity_id=NO",
                     "actor_account_id=9223372036854775807",
-                    "from=2099-01-01T00:00:00",
-                    "to=1900-01-01T00:00:00"
+                    "from=2099-01-01T00:00:00Z",
+                    "to=1900-01-01T00:00:00Z"
                 }) {
             var empty = call("GET", path + "?" + filter, employee.token(), null);
             assertEquals(200, empty.status());
@@ -51,7 +51,7 @@ class AuditQueryApiTest extends OperationsHttpSupport {
                 new String[] {
                     "page=0",
                     "page_size=101",
-                    "from=2026-10-01T00:00:00&to=2026-09-01T00:00:00",
+                    "from=2026-10-01T00:00:00Z&to=2026-09-01T00:00:00Z",
                     "from=bad"
                 })
             assertEquals(400, call("GET", path + "?" + invalid, employee.token(), null).status());

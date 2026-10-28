@@ -16,12 +16,7 @@ import com.fido.modules.order.entity.ShippingInfo;
 public final class OrderMapper {
     private OrderMapper() {}
 
-    public static RecipientDto recipient(Order order) {
-        return new RecipientDto(
-                order.getRecipientPhone(), order.getRecipientEmail(), order.getRecipientAddress());
-    }
-
-    private static RecipientDto recipient(OrderAddress address) {
+    public static RecipientDto recipient(OrderAddress address) {
         String formattedAddress = String.join(", ",
                 address.getAddressLine(),
                 address.getWard(),
@@ -37,22 +32,24 @@ public final class OrderMapper {
                 item.getProductNameSnapshot(),
                 item.getImageUrlSnapshot(),
                 item.getSkuSnapshot(),
-                item.getUnitPriceSnapshot(),
+                item.getUnitPrice(),
                 item.getQuantity(),
-                item.getLineTotalSnapshot(),
+                item.getLineTotal(),
                 item.getDiscountAmount());
     }
 
     public static PaymentPublicDto paymentPublic(Payment payment) {
         return new PaymentPublicDto(
-                payment.getPaymentStatus(), payment.getAmountDue(),
-                payment.getAmountReceived(), payment.getAmountRefunded());
+                payment.getPaymentStatus(), payment.getAmount(),
+                "PAID".equals(payment.getPaymentStatus()) ? payment.getAmount() : 0L,
+                payment.getRefundAmount() == null ? 0L : payment.getRefundAmount());
     }
 
     public static PaymentAdminDto paymentAdmin(Payment payment) {
         return new PaymentAdminDto(
-                payment.getPaymentStatus(), payment.getAmountDue(), payment.getAmountReceived(),
-                payment.getAmountRefunded(), payment.getCollectedByAccountId(),
+                payment.getPaymentStatus(), payment.getAmount(),
+                "PAID".equals(payment.getPaymentStatus()) ? payment.getAmount() : 0L,
+                payment.getRefundAmount() == null ? 0L : payment.getRefundAmount(), payment.getCollectedByAccountId(),
                 payment.getCollectedAt(), payment.getRefundedByAccountId(), payment.getRefundedAt());
     }
 
@@ -74,14 +71,6 @@ public final class OrderMapper {
                 order.getOrderId(), order.getOrderCode(), order.getOrderStatus(),
                 payment.getPaymentStatus(), imageUrl, order.getTotalAmount(), order.getCreatedAt(),
                 shipping == null ? null : shipping.getDeliveredAt(), payment.getRefundedAt());
-    }
-
-    public static OrderConfirmationDto confirmation(Order order, Payment payment) {
-        return new OrderConfirmationDto(
-                order.getOrderId(), order.getOrderCode(), order.getOrderStatus(),
-                paymentPublic(payment), order.getSubtotalSnapshot(), order.getDiscountSnapshot(),
-                order.getShippingFeeSnapshot(), order.getTotalSnapshot(),
-                recipient(order), order.getCreatedAt());
     }
 
     public static OrderConfirmationDto confirmation(

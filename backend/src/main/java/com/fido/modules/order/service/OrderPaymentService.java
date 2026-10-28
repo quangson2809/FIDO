@@ -102,7 +102,6 @@ public class OrderPaymentService {
         payment.setPaymentStatus(OrderPolicy.PAID);
         payment.setCollectedByAccountId(actor);
         payment.setCollectedAt(now);
-        payment.setAmountReceived(collectionAmount);
 
         orders.save(order);
         shippingInfos.save(shipping);

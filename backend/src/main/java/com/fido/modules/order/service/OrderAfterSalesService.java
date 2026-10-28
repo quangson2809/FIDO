@@ -95,6 +95,7 @@ public class OrderAfterSalesService {
         }
 
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        OrderPolicy.requireReturnWithinWindow(shipping.getDeliveredAt(), now);
         String fromOrder = order.getOrderStatus();
         String fromPayment = payment.getPaymentStatus();
         String fromShipping = shipping.getShippingStatus();
@@ -105,7 +106,6 @@ public class OrderAfterSalesService {
 
         payment.setPaymentStatus(OrderPolicy.REFUNDED);
         payment.setRefundAmount(fullRefundAmount);
-        payment.setAmountRefunded(fullRefundAmount);
         payment.setRefundedByAccountId(actor);
         payment.setRefundedAt(now);
         payment.setRefundReason(reason.trim());

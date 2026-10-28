@@ -1,9 +1,9 @@
 package com.fido.modules.product.service;
 
 import com.fido.modules.audit.service.AuditAction;
-import com.fido.modules.audit.service.AuditEvent;
-import com.fido.modules.audit.service.AuditService;
-import com.fido.modules.audit.service.AuditTargetType;
+import com.fido.modules.audit.service.AuditEntityType;
+import com.fido.modules.audit.service.AuditWriteEvent;
+import com.fido.modules.audit.service.AuditWriteService;
 import com.fido.modules.product.dto.request.BrandPatchRequest;
 import com.fido.modules.product.dto.request.BrandRequest;
 import com.fido.modules.product.dto.request.CategoryCreateRequest;
@@ -43,7 +43,7 @@ public class CatalogMasterDataService {
     private final BrandRepository brands;
     private final ProductRepository products;
     private final CatalogReferenceService references;
-    private final AuditService audit;
+    private final AuditWriteService audit;
     private final EntityManager em;
 
     public CatalogMasterDataService(
@@ -51,7 +51,7 @@ public class CatalogMasterDataService {
             BrandRepository brands,
             ProductRepository products,
             CatalogReferenceService references,
-            AuditService audit,
+            AuditWriteService audit,
             EntityManager em) {
         this.categories = categories;
         this.brands = brands;
@@ -78,8 +78,7 @@ public class CatalogMasterDataService {
 
         categories.save(category);
         flushOrConflict("Category slug or parent reference conflicts with existing data");
-        audit.record(AuditEvent.of(
-                actor, AuditAction.CATEGORY_CREATE, AuditTargetType.CATEGORY, category.getCategoryId()));
+        audit.record(AuditWriteEvent.of(AuditAction.CATEGORY_CREATE, AuditEntityType.CATEGORY, category.getCategoryId().toString()));
         return CatalogMapper.category(category);
     }
 
@@ -106,8 +105,7 @@ public class CatalogMasterDataService {
         }
         categories.save(category);
         flushOrConflict("Category violates a uniqueness or reference constraint");
-        audit.record(AuditEvent.of(
-                actor, AuditAction.CATEGORY_UPDATE, AuditTargetType.CATEGORY, categoryId));
+        audit.record(AuditWriteEvent.of(AuditAction.CATEGORY_UPDATE, AuditEntityType.CATEGORY, categoryId.toString()));
         return CatalogMapper.category(category);
     }
 
@@ -119,8 +117,7 @@ public class CatalogMasterDataService {
         }
         categories.delete(category);
         flushOrConflict("Category is still referenced");
-        audit.record(AuditEvent.of(
-                actor, AuditAction.CATEGORY_DELETE, AuditTargetType.CATEGORY, categoryId));
+        audit.record(AuditWriteEvent.of(AuditAction.CATEGORY_DELETE, AuditEntityType.CATEGORY, categoryId.toString()));
     }
 
     @PreAuthorize(WRITE)
@@ -137,7 +134,7 @@ public class CatalogMasterDataService {
         brand.setStatus(status);
         brands.save(brand);
         flushOrConflict("Brand slug conflicts with existing data");
-        audit.record(AuditEvent.of(actor, AuditAction.BRAND_CREATE, AuditTargetType.BRAND, brand.getBrandId()));
+        audit.record(AuditWriteEvent.of(AuditAction.BRAND_CREATE, AuditEntityType.BRAND, brand.getBrandId().toString()));
         return CatalogMapper.brand(brand);
     }
 
@@ -160,7 +157,7 @@ public class CatalogMasterDataService {
         }
         brands.save(brand);
         flushOrConflict("Brand violates a uniqueness or reference constraint");
-        audit.record(AuditEvent.of(actor, AuditAction.BRAND_UPDATE, AuditTargetType.BRAND, brandId));
+        audit.record(AuditWriteEvent.of(AuditAction.BRAND_UPDATE, AuditEntityType.BRAND, brandId.toString()));
         return CatalogMapper.brand(brand);
     }
 
@@ -172,7 +169,7 @@ public class CatalogMasterDataService {
         }
         brands.delete(brand);
         flushOrConflict("Brand is still referenced");
-        audit.record(AuditEvent.of(actor, AuditAction.BRAND_DELETE, AuditTargetType.BRAND, brandId));
+        audit.record(AuditWriteEvent.of(AuditAction.BRAND_DELETE, AuditEntityType.BRAND, brandId.toString()));
     }
 
     private void validateParent(Long categoryId, Long parentId) {

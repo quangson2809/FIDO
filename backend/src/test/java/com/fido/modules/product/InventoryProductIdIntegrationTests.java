@@ -63,7 +63,7 @@ class InventoryProductIdIntegrationTests extends CatalogHttpSupport {
 
         var adjustment = call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
                 Map.of("product_id", fixture.productId(),
-                        "quantity_delta", 3, "reason", "P3.2 product-id adjustment"));
+                        "quantity_delta", 3, "reason_code", "COUNT_CORRECTION", "source_operation_id", "p32-" + UUID.randomUUID()));
         assertEquals(201, adjustment.status(), adjustment.body());
         assertEquals(fixture.productId(),
                 adjustment.data().get("data").get("product_id").asLong());

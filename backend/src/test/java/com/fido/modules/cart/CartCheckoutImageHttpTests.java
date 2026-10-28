@@ -101,7 +101,7 @@ class CartCheckoutImageHttpTests extends CartHttpSupport {
                         "POST",
                         "/api/v1/cart/items",
                         user.token(),
-                        Map.of("variant_id", fixture.variantId(), "quantity", 1));
+                        Map.of("product_id", fixture.productId(), "quantity", 1));
 
         assertEquals(200, response.status(), response.body());
     }
@@ -121,7 +121,7 @@ class CartCheckoutImageHttpTests extends CartHttpSupport {
                         user.token(),
                         Map.of(
                                 "recipient_phone", "0900000000",
-                                "recipient_address", "Hanoi"));
+                                "recipient_name", "Test Recipient", "province", "Hanoi", "district", "Cau Giay", "ward", "Dich Vong", "address_line", "Hanoi"));
 
         assertEquals(200, response.status(), response.body());
         return response.data().get("data").get("items").get(0);
@@ -133,10 +133,9 @@ class CartCheckoutImageHttpTests extends CartHttpSupport {
                 INSERT INTO product_images(
                     product_id,
                     image_url,
-                    alt_text,
                     sort_order
                 )
-                VALUES (?,?,NULL,?)
+                VALUES (?,?,?)
                 """,
                 productId,
                 imageUrl,
