@@ -206,7 +206,7 @@ try {
   await page.getByLabel('SKU *').fill('TEE-NEW');
   await page.getByLabel('Tên Product').fill('Áo mới');
   await page.getByLabel('Slug').fill('ao-moi');
-  await page.getByLabel('Product cha ID').fill('101');
+  await page.getByLabel('Product cha ID', { exact: true }).fill('101');
   await page.getByLabel('Danh mục Product').selectOption('1');
   await page.getByLabel('Thương hiệu Product').selectOption('7');
   await page.getByLabel('Giá bán (VND) *').fill('320000');
