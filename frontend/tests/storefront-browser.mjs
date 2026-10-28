@@ -58,7 +58,8 @@ try {
   await cartDialog.getByRole('button', { name: 'Tăng số lượng' }).click();
   await cartDialog.getByRole('alert').waitFor();
   assert.match(await cartDialog.innerText(), /Chưa thể xác nhận thay đổi/);
-  assert.match(await cartDialog.innerText(), /480|440\.000/);
+  assert.match(await cartDialog.innerText(), /400\.000₫/);
+  assert.doesNotMatch(await cartDialog.innerText(), /600\.000₫/, 'failed mutation keeps the last confirmed total');
   assert.equal(
     await cartDialog.getByRole('button', { name: 'Tiếp tục đặt hàng' }).isDisabled(),
     true,
