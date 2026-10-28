@@ -4,12 +4,15 @@ import com.fido.modules.audit.service.AuditAction;
 import com.fido.modules.audit.service.AuditEntityType;
 import com.fido.modules.audit.service.AuditWriteEvent;
 import com.fido.modules.audit.service.AuditWriteService;
+import com.fido.modules.product.dto.request.ProductAttributeValueInput;
 import com.fido.modules.product.dto.request.ProductCreateRequest;
 import com.fido.modules.product.dto.request.ProductImageInput;
 import com.fido.modules.product.dto.request.ProductPatchRequest;
 import com.fido.modules.product.dto.response.AdminProductDetailDto;
 import com.fido.modules.product.entity.Product;
+import com.fido.modules.product.entity.ProductAttributeValue;
 import com.fido.modules.product.entity.ProductImage;
+import com.fido.modules.product.repository.ProductAttributeValueRepository;
 import com.fido.modules.product.repository.ProductImageRepository;
 import com.fido.modules.product.repository.ProductRepository;
 
@@ -37,6 +40,8 @@ public class ProductAdminService {
 
     private final ProductRepository products;
     private final ProductImageRepository images;
+    private final ProductAttributeValueRepository productAttributeValues;
+    private final ProductAttributeValueValidator attributeValueValidator;
     private final CatalogReferenceService references;
     private final AdminCatalogQueryService query;
     private final AuditWriteService audit;
@@ -45,12 +50,16 @@ public class ProductAdminService {
     public ProductAdminService(
             ProductRepository products,
             ProductImageRepository images,
+            ProductAttributeValueRepository productAttributeValues,
+            ProductAttributeValueValidator attributeValueValidator,
             CatalogReferenceService references,
             AdminCatalogQueryService query,
             AuditWriteService audit,
             EntityManager em) {
         this.products = products;
         this.images = images;
+        this.productAttributeValues = productAttributeValues;
+        this.attributeValueValidator = attributeValueValidator;
         this.references = references;
         this.query = query;
         this.audit = audit;
@@ -82,7 +91,22 @@ public class ProductAdminService {
 
         products.save(product);
         flushOrConflict();
-        audit.record(AuditWriteEvent.of(AuditAction.PRODUCT_CREATE, AuditEntityType.PRODUCT, product.getProductId().toString()));
+
+        List<ProductAttributeValueInput> requestedValues =
+                request.attribute_values() == null
+                        ? List.of()
+                        : request.attribute_values();
+        List<ProductAttributeValue> validatedValues =
+                attributeValueValidator.validateCompleteSet(
+                        product.getProductId(), status, requestedValues);
+
+        replaceAttributeValues(product.getProductId(), validatedValues);
+        flushOrConflict();
+
+        audit.record(AuditWriteEvent.of(
+                AuditAction.PRODUCT_CREATE,
+                AuditEntityType.PRODUCT,
+                product.getProductId().toString()));
         return query.detailInternal(product.getProductId());
     }
 
@@ -120,11 +144,32 @@ public class ProductAdminService {
             product.setStatus(request.getStatus());
         }
 
+        List<ProductAttributeValueInput> resultingInputs =
+                request.isAttributeValuesPresent()
+                        ? request.getAttributeValues()
+                        : productAttributeValues
+                                .findAllByProductIdOrderByAttributeIdAsc(productId)
+                                .stream()
+                                .map(ProductAdminService::toInput)
+                                .toList();
+
+        List<ProductAttributeValue> validatedValues =
+                attributeValueValidator.validateCompleteSet(
+                        productId, product.getStatus(), resultingInputs);
+
         replaceImagesIfPresent(productId, request);
         products.save(product);
+
+        if (request.isAttributeValuesPresent()) {
+            replaceAttributeValues(productId, validatedValues);
+        }
+
         flushOrConflict();
 
-        audit.record(AuditWriteEvent.of(AuditAction.PRODUCT_UPDATE, AuditEntityType.PRODUCT, productId.toString()));
+        audit.record(AuditWriteEvent.of(
+                AuditAction.PRODUCT_UPDATE,
+                AuditEntityType.PRODUCT,
+                productId.toString()));
         return query.detailInternal(productId);
     }
 
@@ -138,6 +183,24 @@ public class ProductAdminService {
         products.save(product);
         em.flush();
         audit.record(AuditWriteEvent.of(AuditAction.PRODUCT_DELETE, AuditEntityType.PRODUCT, productId.toString()));
+    }
+
+    private void replaceAttributeValues(
+            Long productId, List<ProductAttributeValue> validatedValues) {
+        productAttributeValues.deleteAllByProductId(productId);
+        em.flush();
+        for (ProductAttributeValue value : validatedValues) {
+            productAttributeValues.save(value);
+        }
+    }
+
+    private static ProductAttributeValueInput toInput(ProductAttributeValue value) {
+        return new ProductAttributeValueInput(
+                value.getAttributeId(),
+                value.getOptionId(),
+                value.getTextValue(),
+                value.getNumberValue(),
+                value.getBooleanValue());
     }
 
     private void validateParent(Long productId, Long parentProductId) {

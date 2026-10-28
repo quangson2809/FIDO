@@ -20,4 +20,7 @@ public record AdminProductDetailDto(
         String status,
         List<ProductImageDto> images,
         LocalDateTime created_at,
-        LocalDateTime updated_at) {}
+        LocalDateTime updated_at,
+        List<ProductAttributeValueDto> attribute_values,
+        AdminProductRelationDto parent_product,
+        List<AdminProductRelationDto> children) {}

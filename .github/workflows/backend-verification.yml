@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/p3-1-account-rbac
+      - feature/catalog-product-attributes-backend
       - work/p3-16-consolidated
       - demo1
       - feature/backend-phase-0-discovery
