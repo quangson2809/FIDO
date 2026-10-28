@@ -20,9 +20,9 @@ const positiveInteger = (
 };
 
 const price = (value: string | null): number | undefined => {
-  if (!value || !/^\d+(?:\.\d{1,2})?$/.test(value)) return undefined;
+  if (!value || !/^\d+$/.test(value)) return undefined;
   const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed <= Number.MAX_SAFE_INTEGER ? parsed : undefined;
+  return Number.isSafeInteger(parsed) ? parsed : undefined;
 };
 
 export function readCatalogQuery(
