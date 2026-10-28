@@ -52,16 +52,21 @@ const metadata = {
 let product = {
   product_id: 1,
   parent_product_id: null,
+  child_product_ids: [],
   sku: 'TEE-M-BLACK',
   name: 'Áo thử nghiệm',
   slug: 'ao-thu-nghiem',
   description: null,
   category: metadata.categories[0],
   brand: null,
+  category_id: 1,
+  brand_id: null,
   selling_price: 200000,
   cost_price: null,
   status: 'ACTIVE',
   images: [],
+  parent_product: null,
+  children: [],
   attribute_values: [
     {
       attribute_id: 1,
@@ -196,7 +201,10 @@ await page.route('**/api/v1/**', async (route) => {
       category: product.category,
       brand: product.brand,
       selling_price: product.selling_price,
+      cost_price: product.cost_price,
       status: product.status,
+      created_at: product.created_at,
+      updated_at: product.updated_at,
       thumbnail: null,
     }]));
   if (path === '/admin/orders/1') return send({ data: order });
