@@ -65,10 +65,7 @@ class ProductImageUploadServiceTests {
         when(storage.upload(any()))
                 .thenReturn(new ImageStorageGateway.UploadedImage("https://i.ibb.co/image"));
 
-        service.upload(
-                7L,
-                21L,
-                new MultipartFile[] {png("front.png"), jpeg("front.jpg"), webp("front.webp")});
+        service.upload(21L, new MultipartFile[] {png("front.png"), jpeg("front.jpg"), webp("front.webp")});
 
         verify(storage, times(3)).upload(any());
         verify(productImages).appendUploadedImages(any(), any());
@@ -163,10 +160,7 @@ class ProductImageUploadServiceTests {
                 assertThrows(
                         ResponseStatusException.class,
                         () ->
-                                service.upload(
-                                        7L,
-                                        21L,
-                                        new MultipartFile[] {
+                                service.upload(21L, new MultipartFile[] {
                                             png("one.png"), png("two.png"), png("three.png")
                                         }));
 
