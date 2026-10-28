@@ -22,7 +22,7 @@ public class InventoryMovementQueryService {
     }
 
     private boolean hasMovement(Long orderId, String transactionType) {
-        return transactions.existsByOrderIdAndTransactionType(orderId, transactionType);
+        return transactions.countByOrderIdAndTransactionType(orderId, transactionType) > 0L;
     }
 
     public record OrderStockState(
