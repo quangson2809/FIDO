@@ -220,7 +220,7 @@ try {
   await page.getByLabel('Ảnh Product mới').setInputFiles({ name: 'shirt.png', mimeType: 'image/png', buffer: Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0]) });
   failNextUpload = true;
   await page.getByRole('button', { name: 'Tạo Product', exact: true }).click();
-  await page.getByText('Product #202 đã được tạo.', { exact: false }).waitFor();
+  await page.getByText('Chỉ còn bước tải ảnh', { exact: false }).waitFor();
   assert.equal(requests.filter((item) => item.method === 'POST' && item.path === '/admin/products').length, 1);
   assert.deepEqual(requests.find((item) => item.method === 'POST' && item.path === '/admin/products')?.body, {
     sku: 'TEE-NEW', name: 'Áo mới', slug: 'ao-moi', description: 'Sản phẩm độc lập theo Product contract',
@@ -232,7 +232,7 @@ try {
   });
   await page.getByLabel('Ảnh Product mới').setInputFiles({ name: 'retry-shirt.png', mimeType: 'image/png', buffer: Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0]) });
   await page.getByRole('button', { name: 'Thử tải ảnh lại', exact: true }).click();
-  await page.getByText('Product #202 đã được tạo.', { exact: false }).waitFor();
+  await page.getByText('Product #202 đã được tạo.', { exact: true }).waitFor();
   assert.equal(requests.filter((item) => item.method === 'POST' && item.path === '/admin/products').length, 1, 'retry must not create duplicate Product');
 
   await page.goto('http://localhost:5182/admin/products/101?edit=1', { waitUntil: 'domcontentloaded' });
