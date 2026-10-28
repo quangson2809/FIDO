@@ -17,8 +17,20 @@ const secondProduct = {
   name: 'Quần FIDO',
   category: meta.categories[1],
 };
+const toSummary = (item) => ({
+  product_id: item.product_id,
+  parent_product_id: item.parent_product_id,
+  sku: item.sku,
+  name: item.name,
+  slug: item.slug,
+  thumbnail: null,
+  category: item.category,
+  brand: item.brand,
+  selling_price: item.selling_price,
+  status: item.status,
+});
 const recommendations = {
-  data: [product, secondProduct].map((item) => ({ ...item, thumbnail: null })),
+  data: [product, secondProduct].map(toSummary),
   meta: { page: 1, page_size: 5, total: 2, total_pages: 1 },
 };
 
