@@ -53,6 +53,7 @@ class InventoryContextTests extends OrderHttpSupport {
                 assertTrue(em.contains(stock));
                 assertEquals(4, stock.getQuantityOnHand());
                 order.setSubtotal(90_000L);
+                order.setTotalAmount(120_000L);
             });
         } finally {
             SecurityContextHolder.clearContext();
@@ -69,10 +70,12 @@ class InventoryContextTests extends OrderHttpSupport {
     void failureOnLaterStockLineRollsBackEarlierMutationAndLedger() throws Exception {
         var customer = user();
         var first = createVariant(5, 100000, null);
-        var second = createVariant(1, 100000, null);
+        var second = createVariant(2, 100000, null);
         call("POST", "/api/v1/cart/items", customer.token(),
                 Map.of("product_id", second.productId(), "quantity", 2));
         long orderId = createOrder(customer, first, 1);
+        db.update("UPDATE inventories SET quantity_on_hand=1 WHERE warehouse_id=? AND product_id=?",
+                second.warehouseId(), second.productId());
         Long firstOrderItemId = db.queryForObject(
                 "SELECT id FROM order_items WHERE order_id=? AND product_id=?",
                 Long.class, orderId, first.productId());

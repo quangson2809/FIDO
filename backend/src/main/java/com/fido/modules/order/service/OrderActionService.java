@@ -141,7 +141,7 @@ public class OrderActionService {
         shippingInfos.save(shipping);
         auditTransition(
                 AuditAction.ORDER_DELIVERY_FAILED, order, fromOrder, fromShipping,
-                order.getOrderStatus(), shipping.getShippingStatus(), null, request.reason());
+                order.getOrderStatus(), shipping.getShippingStatus(), null);
     }
 
     private void retryDelivery(
@@ -184,7 +184,7 @@ public class OrderActionService {
         auditTransition(
                 AuditAction.ORDER_CANCEL, order, fromOrder, fromShipping,
                 order.getOrderStatus(), shipping.getShippingStatus(),
-                payment.getPaymentStatus(), request.reason());
+                payment.getPaymentStatus());
     }
 
     private void applyManualTracking(ShippingInfo shipping, OrderActionRequest request) {
@@ -209,12 +209,12 @@ public class OrderActionService {
     private void auditTransition(
             AuditAction action, Order order, String fromOrder, String fromShipping,
             String toOrder, String toShipping) {
-        auditTransition(action, order, fromOrder, fromShipping, toOrder, toShipping, null, null);
+        auditTransition(action, order, fromOrder, fromShipping, toOrder, toShipping, null);
     }
 
     private void auditTransition(
             AuditAction action, Order order, String fromOrder, String fromShipping,
-            String toOrder, String toShipping, String paymentStatus, String reason) {
+            String toOrder, String toShipping, String paymentStatus) {
         Map<String, Object> before = new LinkedHashMap<>();
         before.put("status", fromOrder);
         before.put("shipping_status", fromShipping);
@@ -224,9 +224,6 @@ public class OrderActionService {
         if (paymentStatus != null) {
             before.put("payment_status", paymentStatus);
             after.put("payment_status", paymentStatus);
-        }
-        if (reason != null && reason.trim().matches("[A-Za-z0-9._:-]{1,120}")) {
-            after.put("reason_code", reason.trim());
         }
         audit.record(AuditWriteEvent.withChanges(
                 action, AuditEntityType.ORDER, order.getOrderId().toString(), before, after));

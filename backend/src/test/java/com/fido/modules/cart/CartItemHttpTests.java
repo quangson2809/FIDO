@@ -120,7 +120,7 @@ class CartItemHttpTests extends CartHttpSupport {
                 owner.token(), null).status());
 
         assertEquals(
-                404,
+                409,
                 call(
                                 "POST",
                                 "/api/v1/cart/items",

@@ -70,7 +70,7 @@ class OrderConcurrencyTests extends OrderHttpSupport {
             var appliedOrder =
                     db.queryForList(
                             "SELECT tx.product_id FROM inventory_transactions tx JOIN order_items oi ON oi.id=tx.order_item_id WHERE oi.order_id=? AND"
-                                + " transaction_type='ORDER_CONFIRM_OUT' ORDER BY txn_id",
+                                + " tx.transaction_type='ORDER' ORDER BY tx.id",
                             Long.class,
                             orderId);
             assertEquals(
@@ -107,7 +107,7 @@ class OrderConcurrencyTests extends OrderHttpSupport {
             var results =
                     List.of(first.get(30, TimeUnit.SECONDS), second.get(30, TimeUnit.SECONDS));
 
-            assertEquals(List.of(200, 200), results.stream().map(Result::status).sorted().toList());
+            assertEquals(List.of(200, 409), results.stream().map(Result::status).sorted().toList());
         } finally {
             executor.shutdownNow();
         }
