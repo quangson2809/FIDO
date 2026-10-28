@@ -1,6 +1,7 @@
 package com.fido.modules.order;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 import java.util.Map;
@@ -16,6 +17,10 @@ class OrderStockHttpTests extends OrderHttpSupport {
                 Map.of("product_id", second.productId(), "quantity", 2)).status());
 
         long orderId = createOrder(customer, first, 2);
+        var pendingDetail = call(
+                "GET", "/api/v1/admin/orders/" + orderId, root.token(), null);
+        assertEquals(200, pendingDetail.status(), pendingDetail.body());
+        assertTrue(pendingDetail.data().get("data").get("allowed_actions").toString().contains("CONFIRM"));
         db.update("UPDATE inventories SET quantity_on_hand=1 WHERE product_id=?", second.productId());
 
         var rejected = action(root, orderId, "CONFIRM");
