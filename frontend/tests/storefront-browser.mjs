@@ -388,7 +388,7 @@ try {
   const addRequest = fixture.state.requests
     .filter((request) => request.path === '/cart/items' && request.method === 'POST')
     .at(-1);
-  assert.equal(addRequest.body.variant_id, 1);
+  assert.deepEqual(addRequest.body, { product_id: 1, quantity: 1 });
   assert.equal(addRequest.body.quantity, 1);
   await page.getByLabel('Chọn địa chỉ nhận hàng').selectOption('2');
   await quoteButton.click();
