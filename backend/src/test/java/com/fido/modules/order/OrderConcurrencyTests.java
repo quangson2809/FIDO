@@ -120,9 +120,9 @@ class OrderConcurrencyTests extends OrderHttpSupport {
                 "CONFIRMED",
                 db.queryForObject(
                         """
-                        SELECT order_status
+                        SELECT status
                         FROM orders
-                        WHERE order_id=?
+                        WHERE id=?
                         """,
                         String.class,
                         orderId));
