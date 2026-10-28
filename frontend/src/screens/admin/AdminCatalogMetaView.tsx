@@ -34,6 +34,19 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
   const [attributeRequired, setAttributeRequired] = useState(false);
   const [variantDefining, setVariantDefining] = useState(false);
   const [optionDrafts, setOptionDrafts] = useState<Record<number, { value: string; label: string }>>({});
+  const [editingAttributeId, setEditingAttributeId] = useState<number | null>(null);
+  const [attributeEditDraft, setAttributeEditDraft] = useState({
+    name: '',
+    required: false,
+    variantDefining: false,
+    sortOrder: '',
+  });
+  const [editingOption, setEditingOption] = useState<{
+    attributeId: number;
+    optionId: number;
+    label: string;
+    sortOrder: string;
+  } | null>(null);
   const [renameTarget, setRenameTarget] = useState<RenameTarget | null>(null);
   const [renameValue, setRenameValue] = useState('');
 
@@ -96,7 +109,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
           name: name.trim(),
           is_required: attributeRequired,
           is_variant_defining: variantDefining,
-          sort_order: adminMeta?.attributes.length ?? 0,
+          sort_order: Math.max(-1, ...(adminMeta?.attributes.map((attribute) => attribute.sort_order) ?? []) ) + 1,
         });
       }
 
@@ -105,6 +118,82 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
       showToast('Đã cập nhật catalog metadata.');
     } catch (failure: unknown) {
       setError(getApiErrorMessage(failure, 'Không thể tạo metadata.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const beginAttributeEdit = (attribute: AdminCatalogMetaDto['attributes'][number]) => {
+    setEditingAttributeId(attribute.id);
+    setAttributeEditDraft({
+      name: attribute.name,
+      required: attribute.is_required,
+      variantDefining: attribute.is_variant_defining,
+      sortOrder: String(attribute.sort_order),
+    });
+    setError(null);
+  };
+
+  const saveAttribute = async () => {
+    if (!canWrite || busy || editingAttributeId === null) return;
+    const nameValue = attributeEditDraft.name.trim();
+    const sortOrder = Number(attributeEditDraft.sortOrder);
+    if (!nameValue || !Number.isSafeInteger(sortOrder) || sortOrder < 0) {
+      setError('Tên và thứ tự thuộc tính phải hợp lệ.');
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      await adminCatalogMetaService.updateAttribute(editingAttributeId, {
+        name: nameValue,
+        is_required: attributeEditDraft.required,
+        is_variant_defining: attributeEditDraft.variantDefining,
+        sort_order: sortOrder,
+      });
+      setEditingAttributeId(null);
+      await load();
+      showToast('Đã cập nhật thuộc tính.');
+    } catch (failure: unknown) {
+      setError(getApiErrorMessage(failure, 'Không thể cập nhật thuộc tính.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const beginOptionEdit = (attributeId: number, option: AdminCatalogMetaDto['attributes'][number]['options'][number]) => {
+    setEditingOption({
+      attributeId,
+      optionId: option.id,
+      label: option.label,
+      sortOrder: String(option.sort_order),
+    });
+    setError(null);
+  };
+
+  const saveOption = async () => {
+    if (!canWrite || busy || !editingOption) return;
+    const label = editingOption.label.trim();
+    const sortOrder = Number(editingOption.sortOrder);
+    if (!label || !Number.isSafeInteger(sortOrder) || sortOrder < 0) {
+      setError('Nhãn và thứ tự option phải hợp lệ.');
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      await adminCatalogMetaService.updateAttributeOption(
+        editingOption.attributeId,
+        editingOption.optionId,
+        { label, sort_order: sortOrder },
+      );
+      setEditingOption(null);
+      await load();
+      showToast('Đã cập nhật Attribute Option.');
+    } catch (failure: unknown) {
+      setError(getApiErrorMessage(failure, 'Không thể cập nhật option.'));
     } finally {
       setBusy(false);
     }
@@ -161,7 +250,13 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
       await adminCatalogMetaService.createAttributeOption(attributeId, {
         value: draft.value.trim(),
         label: draft.label.trim(),
-        sort_order: adminMeta?.attributes.find((attribute) => attribute.id === attributeId)?.options.length ?? 0,
+        sort_order:
+          Math.max(
+            -1,
+            ...(adminMeta?.attributes
+              .find((attribute) => attribute.id === attributeId)
+              ?.options.map((option) => option.sort_order) ?? []),
+          ) + 1,
       });
       setOptionDrafts((current) => ({ ...current, [attributeId]: { value: '', label: '' } }));
       await load();
@@ -399,6 +494,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
           {attributes.length === 0 && <p role="status" className="admin-state">Chưa có thuộc tính được cấu hình.</p>}
           {attributes.map((attribute) => {
             const optionDraft = optionDrafts[attribute.id] ?? { value: '', label: '' };
+            const editingAttribute = editingAttributeId === attribute.id;
             return (
               <article key={attribute.id} className="rounded-lg border border-[#E2E5DE] bg-white p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -408,19 +504,130 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
                       {attribute.code} · {attribute.data_type} · Thứ tự {attribute.sort_order}
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-2 text-xs">
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
                     <span className="border px-2 py-1">{attribute.is_required ? 'Bắt buộc' : 'Không bắt buộc'}</span>
                     {attribute.is_variant_defining && <span className="border px-2 py-1">Đánh dấu phân biệt</span>}
+                    {canWrite && !editingAttribute && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className="admin-secondary"
+                        onClick={() => beginAttributeEdit(attribute)}
+                      >
+                        Sửa thuộc tính
+                      </button>
+                    )}
                   </div>
                 </div>
+                {editingAttribute && canWrite && (
+                  <form
+                    onSubmit={(event) => { event.preventDefault(); void saveAttribute(); }}
+                    className="mt-4 grid gap-3 border-t border-[#E8E9E3] pt-4 md:grid-cols-2"
+                  >
+                    <label className="space-y-1">
+                      <span className="text-xs font-semibold">Tên thuộc tính</span>
+                      <input
+                        aria-label={`Tên thuộc tính ${attribute.code}`}
+                        value={attributeEditDraft.name}
+                        maxLength={150}
+                        required
+                        disabled={busy}
+                        onChange={(event) => setAttributeEditDraft((current) => ({ ...current, name: event.target.value }))}
+                        className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
+                      />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-xs font-semibold">Thứ tự</span>
+                      <input
+                        aria-label={`Thứ tự thuộc tính ${attribute.code}`}
+                        type="number"
+                        min="0"
+                        step="1"
+                        required
+                        value={attributeEditDraft.sortOrder}
+                        disabled={busy}
+                        onChange={(event) => setAttributeEditDraft((current) => ({ ...current, sortOrder: event.target.value }))}
+                        className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={attributeEditDraft.required}
+                        disabled={busy}
+                        onChange={(event) => setAttributeEditDraft((current) => ({ ...current, required: event.target.checked }))}
+                      />
+                      Bắt buộc
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={attributeEditDraft.variantDefining}
+                        disabled={busy}
+                        onChange={(event) => setAttributeEditDraft((current) => ({ ...current, variantDefining: event.target.checked }))}
+                      />
+                      Đánh dấu phân biệt
+                    </label>
+                    <div className="flex gap-2 md:col-span-2">
+                      <button type="submit" disabled={busy} className="admin-primary">Lưu thuộc tính</button>
+                      <button type="button" disabled={busy} className="admin-secondary" onClick={() => setEditingAttributeId(null)}>Hủy</button>
+                    </div>
+                  </form>
+                )}
                 {attribute.data_type === 'OPTION' && (
                   <div className="mt-4 space-y-3">
                     <h3 className="text-sm font-semibold">Options</h3>
-                    {attribute.options.map((option) => (
-                      <div key={option.id} className="flex flex-wrap justify-between gap-2 border-b border-[#E8E9E3] py-2 text-sm">
-                        <span>{option.label}</span><code className="text-xs text-[#606863]">{option.value}</code>
-                      </div>
-                    ))}
+                    {attribute.options.map((option) => {
+                      const isEditingOption =
+                        editingOption?.attributeId === attribute.id &&
+                        editingOption.optionId === option.id;
+                      return (
+                        <div key={option.id} className="border-b border-[#E8E9E3] py-2 text-sm">
+                          {isEditingOption && editingOption ? (
+                            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_8rem_auto]">
+                              <label className="space-y-1">
+                                <span className="text-xs font-semibold">Nhãn option</span>
+                                <input
+                                  aria-label={`Nhãn option ${option.value}`}
+                                  value={editingOption.label}
+                                  maxLength={150}
+                                  required
+                                  disabled={busy}
+                                  onChange={(event) => setEditingOption((current) => current ? { ...current, label: event.target.value } : current)}
+                                  className="w-full border border-[#D9DDD6] px-3 py-2"
+                                />
+                              </label>
+                              <label className="space-y-1">
+                                <span className="text-xs font-semibold">Thứ tự</span>
+                                <input
+                                  aria-label={`Thứ tự option ${option.value}`}
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  required
+                                  value={editingOption.sortOrder}
+                                  disabled={busy}
+                                  onChange={(event) => setEditingOption((current) => current ? { ...current, sortOrder: event.target.value } : current)}
+                                  className="w-full border border-[#D9DDD6] px-3 py-2"
+                                />
+                              </label>
+                              <div className="flex items-end gap-2">
+                                <button type="button" disabled={busy} className="admin-primary" onClick={() => void saveOption()}>Lưu</button>
+                                <button type="button" disabled={busy} className="admin-secondary" onClick={() => setEditingOption(null)}>Hủy</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span>{option.label}</span>
+                              <div className="flex items-center gap-2">
+                                <code className="text-xs text-[#606863]">{option.value} · thứ tự {option.sort_order}</code>
+                                {canWrite && <button type="button" disabled={busy} className="admin-secondary" onClick={() => beginOptionEdit(attribute.id, option)}>Sửa</button>}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                     {canWrite && (
                       <form onSubmit={(event) => { event.preventDefault(); void addOption(attribute.id); }} className="grid gap-2 sm:grid-cols-3">
                         <input aria-label="Mã option" placeholder="Mã option" value={optionDraft.value} disabled={busy} onChange={(event) => setOptionDrafts((current) => ({ ...current, [attribute.id]: { ...optionDraft, value: event.target.value } }))} className="border border-[#D9DDD6] px-3 py-2 text-sm" required />
