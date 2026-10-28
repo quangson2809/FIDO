@@ -15,6 +15,7 @@ export interface CartContextValue {
   refreshCart: () => Promise<void>;
   addToCart: (productId: number, productName: string, quantity?: number) => void;
   removeFromCart: (itemId: string) => void;
+  clearCart: () => void;
   updateCartQuantity: (itemId: string, quantity: number) => void;
   changeCartQuantity: (itemId: string, delta: number) => void;
 }
