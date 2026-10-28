@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useDirtyForm } from '../../shared/admin/dirtyFormContext';
 import { QueryFeedback } from '../../shared/admin/QueryFeedback';
-import { StatusBadge } from '../../shared/admin/StatusBadge';
 import { useRemoteQuery } from '../../shared/hooks/useRemoteQuery';
 import { catalogService } from '../../features/catalog/api/service';
 import { adminCatalogMetaService } from '../../features/catalog/api/adminCatalogMetaService';
