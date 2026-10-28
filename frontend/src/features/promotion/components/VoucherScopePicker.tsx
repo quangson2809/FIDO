@@ -125,7 +125,7 @@ export function VoucherProductPicker({ selectedIds, onChange, disabled }: Picker
         const failures: number[] = [];
         found.forEach((result, index) => {
           const id = missingIds[index];
-          if (result.status === 'fulfilled') names[id] = result.value.name;
+          if (result.status === 'fulfilled') names[id] = result.value.name ?? result.value.sku;
           else failures.push(id);
         });
         if (Object.keys(names).length > 0) setLabels((current) => ({ ...current, ...names }));
