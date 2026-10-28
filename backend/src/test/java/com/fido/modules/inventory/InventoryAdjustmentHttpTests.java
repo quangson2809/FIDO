@@ -39,7 +39,7 @@ class InventoryAdjustmentHttpTests extends InventoryHttpSupport {
         assertEquals(201, decrease.status(), decrease.body());
         assertEquals("ADJUSTMENT", decrease.data().get("data").get("transaction_type").asText());
         assertEquals(-3, decrease.data().get("data").get("quantity_delta").asInt());
-        assertEquals("DAMAGE", decrease.data().get("data").get("reason_code").asText());
+        assertEquals("DAMAGE", decrease.data().get("data").get("reason").asText());
         assertEquals(4, stock(fixture.productId()));
         assertEquals(2, version(fixture));
 

@@ -10,6 +10,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 import java.util.List;
 import java.util.Map;
@@ -90,52 +94,50 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
         User customer = user();
         var variant = createVariant(10, 100000, null);
         add(customer, variant, 2);
-        assertThrows(
-                DataIntegrityViolationException.class,
-                () ->
-                        new TransactionTemplate(transactions)
-                                .executeWithoutResult(
-                                        status -> {
-                                            creation.createWithIdempotencyKey(
-                                                    customer.accountId(),
-                                                    new CreateOrderRequest(
-                                                            "Test Recipient",
-                                                            "0900000000",
-                                                            "Hanoi",
-                                                            "Cau Giay",
-                                                            "Dich Vong",
-                                                            "Test address",
-                                                            null),
-                                                    List.of("rollback-after-order-write"));
-                                            assertEquals(
-                                                    0,
-                                                    db.queryForObject(
-                                                            """
-                                                            SELECT COUNT(*) FROM cart_items ci JOIN carts c ON c.id=ci.cart_id
-                                                            WHERE c.account_id=?
-                                                            """,
-                                                            Integer.class,
-                                                            customer.accountId()));
-                                            // Force a real database constraint failure after all
-                                            // checkout writes.
-                                            db.update(
-                                                    """
-                                                    INSERT INTO payments(order_id,method,payment_status,amount,currency)
- SELECT p.order_id,p.method,p.payment_status,p.amount,p.currency
- FROM payments p JOIN orders o ON o.id=p.order_id WHERE o.account_id=?
-                                                    """,
-                                                    customer.accountId());
-                                        }));
+        var previousContext = SecurityContextHolder.getContext();
+        var auditContext = SecurityContextHolder.createEmptyContext();
+        Jwt jwt = Jwt.withTokenValue("checkout-rollback-test")
+                .header("alg", "none")
+                .subject(Long.toString(customer.accountId()))
+                .build();
+        auditContext.setAuthentication(new JwtAuthenticationToken(
+                jwt, List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER"))));
+        SecurityContextHolder.setContext(auditContext);
+        try {
+            assertThrows(
+                    DataIntegrityViolationException.class,
+                    () -> new TransactionTemplate(transactions).executeWithoutResult(status -> {
+                        creation.createWithIdempotencyKey(
+                                customer.accountId(),
+                                new CreateOrderRequest(
+                                        "Test Recipient", "0900000000", "Hanoi", "Cau Giay",
+                                        "Dich Vong", "Test address", null),
+                                List.of("rollback-after-order-write"));
+                        assertEquals(
+                                0,
+                                db.queryForObject("""
+                                        SELECT COUNT(*) FROM cart_items ci JOIN carts c ON c.id=ci.cart_id
+                                        WHERE c.account_id=?
+                                        """, Integer.class, customer.accountId()));
+                        db.update("""
+                                INSERT INTO payments(order_id,method,payment_status,amount,currency)
+                                SELECT p.order_id,p.method,p.payment_status,p.amount,p.currency
+                                FROM payments p JOIN orders o ON o.id=p.order_id
+                                WHERE o.account_id=?
+                                """, customer.accountId());
+                    }));
+        } finally {
+            SecurityContextHolder.clearContext();
+            SecurityContextHolder.setContext(previousContext);
+        }
         assertEquals(2, cartQuantity(customer));
         assertEquals(0, count("orders", customer));
         assertEquals(0, count("payments", customer));
         assertEquals(
                 0,
                 db.queryForObject(
-                        "SELECT COUNT(*) FROM audit_logs WHERE actor_account_id=? AND"
-                            + " action='ORDER_CREATE'",
-                        Integer.class,
-                        customer.accountId()));
+                        "SELECT COUNT(*) FROM audit_logs WHERE actor_account_id=? AND action='ORDER_CREATE'",
+                        Integer.class, customer.accountId()));
         assertEquals(10, stock(variant.productId()));
     }
 
