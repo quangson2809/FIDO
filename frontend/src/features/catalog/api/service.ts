@@ -2,7 +2,6 @@ import type { ApiListResponse, ApiResponse } from '../../../types/api';
 import { apiClient } from '../../../services/http/apiClient';
 import { sortProductImages } from '../model/productImageOrder';
 import { resolveImageUrl } from '../../../services/media/imageUrl';
-import { summaryMaterialCare, summarySizes } from './summaryFields';
 import type {
   CatalogMetaDto,
   CatalogProductPage,
@@ -18,14 +17,14 @@ const imageOrEmpty = (value?: string | null): string => resolveImageUrl(value) ?
 const summaryToView = (product: ProductSummaryDto): CatalogProductView => ({
   id: String(product.product_id),
   product_id: product.product_id,
-  name: product.name,
-  category: product.category.name,
+  sku: product.sku,
+  name: product.name ?? product.sku,
+  category: product.category?.name ?? '',
   brand: product.brand?.name ?? '',
-  base_price: product.base_price,
+  selling_price: product.selling_price,
+  status: product.status,
   imageUrl: imageOrEmpty(product.thumbnail),
-  sale_status: product.sale_status,
-  materialCare: summaryMaterialCare(product.material_care),
-  sizes: summarySizes(product.sizes),
+  slug: product.slug,
 });
 
 const normalizeDetailImages = (product: ProductDetailDto): ProductDetailDto => ({

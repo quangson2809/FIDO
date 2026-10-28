@@ -1,106 +1,288 @@
 import type { PaginationMeta } from '../../../types/api';
 
-export type SaleStatus = 'ON_SALE' | 'STOPPED';
+export type ProductStatus = 'DRAFT' | 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
+export type CatalogEntityStatus = 'ACTIVE' | 'INACTIVE';
+export type AttributeValueType = 'OPTION' | 'TEXT' | 'NUMBER' | 'BOOLEAN';
 
 export interface CategoryDto {
   category_id: number;
   parent_category_id: number | null;
   name: string;
+  slug: string | null;
+  status: CatalogEntityStatus;
 }
 
 export interface BrandDto {
   brand_id: number;
   name: string;
+  slug: string | null;
+  status: CatalogEntityStatus;
 }
 
-export interface SizeValueDto {
-  size_value_id: number;
-  size_system_id: number;
-  code: string;
-  display_name: string;
+export interface AttributeTypeDto {
+  id: number;
+  code: AttributeValueType;
+  name: string;
+  data_type: AttributeValueType;
+}
+
+export interface AttributeOptionDto {
+  id: number;
+  attribute_id: number;
+  value: string;
+  label: string;
   sort_order: number;
 }
 
-export interface SizeSystemDto {
-  size_system_id: number;
+export interface AttributeDto {
+  id: number;
   code: string;
   name: string;
-  size_values: SizeValueDto[];
+  data_type: AttributeValueType;
+  is_required: boolean;
+  is_variant_defining: boolean;
+  sort_order: number;
+  options: AttributeOptionDto[];
 }
 
-export interface ColorDto {
-  color_id: number;
-  code: string;
-  name: string;
+export interface ProductAttributeValueDto {
+  attribute_id: number;
+  attribute_code: string;
+  attribute_name: string;
+  data_type: AttributeValueType;
+  option_id: number | null;
+  option_value: string | null;
+  option_label: string | null;
+  text_value: string | null;
+  number_value: number | null;
+  boolean_value: boolean | null;
+}
+
+export interface ProductAttributeValueInput {
+  attribute_id: number;
+  option_id?: number | null;
+  text_value?: string | null;
+  number_value?: number | null;
+  boolean_value?: boolean | null;
 }
 
 export interface CatalogMetaDto {
   categories: CategoryDto[];
   brands: BrandDto[];
-  size_systems: SizeSystemDto[];
-  colors: ColorDto[];
-  genders: string[];
-  seasons: string[];
-  styles: string[];
+  attribute_types: AttributeTypeDto[];
+  attributes: AttributeDto[];
+}
+
+export interface AdminCatalogMetaDto {
+  attribute_types: AttributeTypeDto[];
+  attributes: AttributeDto[];
 }
 
 export interface ProductImageDto {
-  image_id: number;
+  id: number;
   image_url: string;
-  alt_text: string | null;
+  is_primary: boolean;
   sort_order: number;
 }
 
-export interface ProductVariantDto {
-  variant_id: number;
-  size: SizeValueDto;
-  color: ColorDto;
-  sku: string | null;
-  effective_price: number;
-  sale_status: SaleStatus;
-  available_quantity: number;
+export interface ProductImageInput {
+  image_url: string;
+  sort_order: number;
+}
+
+export interface ProductImageOrderInput {
+  image_id: number;
+  sort_order: number;
 }
 
 export interface ProductSummaryDto {
   product_id: number;
-  name: string;
+  parent_product_id: number | null;
+  sku: string;
+  name: string | null;
+  slug: string | null;
   thumbnail: string | null;
-  category: CategoryDto;
+  category: CategoryDto | null;
   brand: BrandDto | null;
-  base_price: number;
-  sale_status: SaleStatus;
-  material_care?: string | null;
-  sizes?: SizeValueDto[];
+  selling_price: number;
+  status: ProductStatus;
 }
 
 export interface ProductDetailDto {
   product_id: number;
-  name: string;
+  parent_product_id: number | null;
+  sku: string;
+  name: string | null;
+  slug: string | null;
   description: string | null;
-  category: CategoryDto;
+  category: CategoryDto | null;
   brand: BrandDto | null;
-  size_system: SizeSystemDto;
-  gender: string | null;
-  season: string | null;
-  style: string | null;
-  material_care: string | null;
-  base_price: number;
-  sale_status: SaleStatus;
+  selling_price: number;
+  status: ProductStatus;
   images: ProductImageDto[];
-  variants: ProductVariantDto[];
+  created_at: string;
+  updated_at: string;
+  attribute_values: ProductAttributeValueDto[];
+}
+
+export interface AdminProductSummaryDto {
+  product_id: number;
+  parent_product_id: number | null;
+  sku: string;
+  name: string | null;
+  thumbnail: string | null;
+  category_id: number | null;
+  brand_id: number | null;
+  selling_price: number;
+  cost_price: number | null;
+  status: ProductStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminProductRelationDto {
+  product_id: number;
+  parent_product_id: number | null;
+  sku: string;
+  name: string | null;
+  slug: string | null;
+  description: string | null;
+  category: CategoryDto | null;
+  brand: BrandDto | null;
+  category_id: number | null;
+  brand_id: number | null;
+  selling_price: number;
+  cost_price: number | null;
+  status: ProductStatus;
+  attribute_values: ProductAttributeValueDto[];
+  images: ProductImageDto[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminProductDetailDto {
+  product_id: number;
+  parent_product_id: number | null;
+  child_product_ids: number[];
+  sku: string;
+  name: string | null;
+  slug: string | null;
+  description: string | null;
+  category: CategoryDto | null;
+  brand: BrandDto | null;
+  category_id: number | null;
+  brand_id: number | null;
+  selling_price: number;
+  cost_price: number | null;
+  status: ProductStatus;
+  images: ProductImageDto[];
+  created_at: string;
+  updated_at: string;
+  attribute_values: ProductAttributeValueDto[];
+  parent_product: AdminProductRelationDto | null;
+  children: AdminProductRelationDto[];
+}
+
+export interface ProductCreateInput {
+  parent_product_id?: number | null;
+  category_id?: number | null;
+  brand_id?: number | null;
+  name?: string | null;
+  slug?: string | null;
+  sku: string;
+  description?: string | null;
+  selling_price: number;
+  cost_price?: number | null;
+  status?: ProductStatus;
+  attribute_values?: ProductAttributeValueInput[];
+}
+
+export interface ProductPatchInput {
+  parent_product_id?: number | null;
+  category_id?: number | null;
+  brand_id?: number | null;
+  name?: string | null;
+  slug?: string | null;
+  sku?: string;
+  description?: string | null;
+  selling_price?: number;
+  cost_price?: number | null;
+  status?: ProductStatus;
+  images?: ProductImageInput[];
+  /**
+   * When sent, this replaces the complete set of product attribute values.
+   * Omit this property when attribute values have not changed.
+   */
+  attribute_values?: ProductAttributeValueInput[];
+}
+
+export interface AdminProductQuery {
+  q?: string;
+  category_id?: number;
+  brand_id?: number;
+  parent_product_id?: number;
+  status?: ProductStatus;
+  page?: number;
+  page_size?: number;
+}
+
+export interface CategoryCreateInput {
+  parent_category_id?: number | null;
+  name: string;
+  status?: CatalogEntityStatus;
+}
+
+export interface CategoryPatchInput {
+  parent_category_id?: number | null;
+  name?: string;
+  status?: CatalogEntityStatus;
+}
+
+export interface BrandInput {
+  name: string;
+  status?: CatalogEntityStatus;
+}
+
+export type BrandPatchInput = Partial<BrandInput>;
+
+export interface AttributeCreateInput {
+  attribute_type_id: number;
+  code: string;
+  name: string;
+  is_required: boolean;
+  is_variant_defining?: boolean;
+  sort_order?: number;
+}
+
+export interface AttributePatchInput {
+  name?: string;
+  is_required?: boolean;
+  is_variant_defining?: boolean;
+  sort_order?: number;
+}
+
+export interface AttributeOptionCreateInput {
+  value: string;
+  label: string;
+  sort_order?: number;
+}
+
+export interface AttributeOptionPatchInput {
+  label?: string;
+  sort_order?: number;
 }
 
 export interface CatalogProductView {
   id: string;
   product_id: number;
+  sku: string;
   name: string;
   category: string;
   brand: string;
-  base_price: number;
+  selling_price: number;
+  status: ProductStatus;
   imageUrl: string;
-  sale_status: SaleStatus;
-  materialCare: string | null;
-  sizes: readonly SizeValueDto[] | null;
+  slug: string | null;
 }
 
 export interface CatalogProductQuery {
@@ -109,11 +291,6 @@ export interface CatalogProductQuery {
   brand_id?: number;
   min_price?: number;
   max_price?: number;
-  size_value_id?: number;
-  color_id?: number;
-  gender?: string;
-  season?: string;
-  style?: string;
   page?: number;
   page_size?: number;
 }
@@ -127,151 +304,4 @@ export interface CatalogService {
   listProducts(query?: CatalogProductQuery): Promise<CatalogProductPage>;
   getProductDetail(productId: number | string): Promise<ProductDetailDto>;
   getMeta(): Promise<CatalogMetaDto>;
-}
-
-export interface ProductCreateVariantInput {
-  size_value_id: number;
-  color_id: number;
-  sku?: string | null;
-  override_price?: number | null;
-  sale_status: SaleStatus;
-}
-
-export interface ProductImageOrderInput {
-  image_id: number;
-  sort_order: number;
-}
-
-export interface ProductCreateInput {
-  category_id: number;
-  brand_id?: number | null;
-  size_system_id: number;
-  name: string;
-  description?: string | null;
-  gender?: string | null;
-  season?: string | null;
-  style?: string | null;
-  material_care?: string | null;
-  base_price: number;
-  sale_status: SaleStatus;
-  variants?: ProductCreateVariantInput[];
-}
-
-export interface ProductPatchInput {
-  category_id?: number;
-  brand_id?: number | null;
-  size_system_id?: number;
-  name?: string;
-  description?: string | null;
-  gender?: string | null;
-  season?: string | null;
-  style?: string | null;
-  material_care?: string | null;
-  base_price?: number;
-  sale_status?: SaleStatus;
-}
-
-export interface AdminProductQuery {
-  q?: string;
-  category_id?: number;
-  brand_id?: number;
-  size_system_id?: number;
-  sale_status?: SaleStatus;
-  page?: number;
-  page_size?: number;
-}
-
-export interface AdminProductSummaryDto {
-  product_id: number;
-  name: string;
-  thumbnail: string | null;
-  category_id: number;
-  brand_id: number | null;
-  size_system_id: number;
-  base_price: number;
-  sale_status: SaleStatus;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface AdminVariantDto {
-  variant_id: number;
-  product_id: number;
-  size_value_id: number;
-  color_id: number;
-  sku: string | null;
-  override_price: number | null;
-  sale_status: SaleStatus;
-  available_quantity: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface AdminProductDetailDto {
-  product_id: number;
-  name: string;
-  description: string | null;
-  category: CategoryDto;
-  brand: BrandDto | null;
-  size_system: SizeSystemDto;
-  gender: string | null;
-  season: string | null;
-  style: string | null;
-  material_care: string | null;
-  base_price: number;
-  sale_status: SaleStatus;
-  images: ProductImageDto[];
-  variants: AdminVariantDto[];
-  category_id: number;
-  brand_id: number | null;
-  size_system_id: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface VariantPatchInput {
-  override_price?: number | null;
-  sale_status?: SaleStatus;
-}
-
-export interface CategoryCreateInput {
-  parent_category_id: number | null;
-  name: string;
-}
-
-export interface CategoryPatchInput {
-  parent_category_id?: number | null;
-  name?: string;
-}
-
-export interface BrandInput {
-  name: string;
-}
-
-export interface ColorCreateInput {
-  code: string;
-  name: string;
-}
-
-export interface ColorPatchInput {
-  code?: string;
-  name?: string;
-}
-
-export interface SizeValueCreateInput {
-  code: string;
-  display_name: string;
-  sort_order: number;
-}
-
-export interface SizeSystemCreateInput {
-  code: string;
-  name: string;
-  size_values: SizeValueCreateInput[];
-}
-
-export interface SizeSystemPatchInput {
-  code?: string;
-  name?: string;
-  size_values?: Array<SizeValueCreateInput & { size_value_id?: number }>;
 }
