@@ -226,6 +226,11 @@ const server = createServer((request, response) => {
   }
 
   if (request.method === 'POST' && url.pathname === '/api/v1/auth/login') {
+    assert.equal(
+      request.headers.authorization,
+      undefined,
+      'Public login must not inherit a stale bearer token from the previous session',
+    );
     let raw = '';
     request.on('data', (chunk: Buffer) => {
       raw += chunk.toString();
