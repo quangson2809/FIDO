@@ -14,8 +14,8 @@ import com.fido.modules.product.repository.CategoryRepository;
 import com.fido.modules.product.repository.ProductImageRepository;
 import com.fido.modules.product.repository.ProductRepository;
 
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -33,6 +33,7 @@ public class PublicCatalogQueryService {
     private final ProductRepository products;
     private final ProductImageRepository images;
     private final ProductImageReadService imageRead;
+    private final ProductAttributeValueReadService attributeValueRead;
     private final CategoryRepository categories;
     private final BrandRepository brands;
     private final CatalogReferenceService references;
@@ -42,6 +43,7 @@ public class PublicCatalogQueryService {
             ProductRepository products,
             ProductImageRepository images,
             ProductImageReadService imageRead,
+            ProductAttributeValueReadService attributeValueRead,
             CategoryRepository categories,
             BrandRepository brands,
             CatalogReferenceService references,
@@ -49,6 +51,7 @@ public class PublicCatalogQueryService {
         this.products = products;
         this.images = images;
         this.imageRead = imageRead;
+        this.attributeValueRead = attributeValueRead;
         this.categories = categories;
         this.brands = brands;
         this.references = references;
@@ -109,7 +112,8 @@ public class PublicCatalogQueryService {
                 product.getStatus(),
                 productImages,
                 product.getCreatedAt(),
-                product.getUpdatedAt());
+                product.getUpdatedAt(),
+                attributeValueRead.forProduct(productId));
     }
 
     public CatalogMetaDto publicMeta() {

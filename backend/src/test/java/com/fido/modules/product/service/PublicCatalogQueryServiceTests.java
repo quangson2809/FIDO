@@ -26,6 +26,7 @@ class PublicCatalogQueryServiceTests {
     @Mock private ProductRepository products;
     @Mock private ProductImageRepository images;
     @Mock private ProductImageReadService imageRead;
+    @Mock private ProductAttributeValueReadService attributeValueRead;
     @Mock private CategoryRepository categories;
     @Mock private BrandRepository brands;
     @Mock private CatalogReferenceService references;
@@ -36,7 +37,8 @@ class PublicCatalogQueryServiceTests {
     @BeforeEach
     void setUp() {
         service = new PublicCatalogQueryService(
-                products, images, imageRead, categories, brands, references, metaService);
+                products, images, imageRead, attributeValueRead,
+                categories, brands, references, metaService);
     }
 
     @Test
@@ -44,6 +46,7 @@ class PublicCatalogQueryServiceTests {
         Product product = product(41L, "CORE-41", 125000L);
         when(references.publicProduct(41L)).thenReturn(product);
         when(images.findAllByProductIdOrderBySortOrderAsc(41L)).thenReturn(List.of());
+        when(attributeValueRead.forProduct(41L)).thenReturn(List.of());
 
         var detail = service.publicDetail(41L);
 
@@ -52,6 +55,7 @@ class PublicCatalogQueryServiceTests {
         assertEquals(125000L, detail.selling_price());
         assertEquals("ACTIVE", detail.status());
         assertEquals(List.of(), detail.images());
+        assertEquals(List.of(), detail.attribute_values());
         verify(references).publicProduct(41L);
     }
 

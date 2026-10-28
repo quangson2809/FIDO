@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+
 import java.util.List;
 
 public class ProductPatchRequest {
@@ -23,10 +24,11 @@ public class ProductPatchRequest {
     @PositiveOrZero private Long costPrice;
     @Pattern(regexp = "DRAFT|ACTIVE|INACTIVE|ARCHIVED") private String status;
     @Valid private List<@jakarta.validation.constraints.NotNull ProductImageInput> images;
+    @Valid private List<@jakarta.validation.constraints.NotNull ProductAttributeValueInput> attributeValues;
 
     private boolean parentProductIdPresent, categoryIdPresent, brandIdPresent, namePresent,
             slugPresent, skuPresent, descriptionPresent, sellingPricePresent, costPricePresent,
-            statusPresent, imagesPresent;
+            statusPresent, imagesPresent, attributeValuesPresent;
 
     public Long getParentProductId() { return parentProductId; }
     @JsonSetter(value = "parent_product_id", nulls = Nulls.SET)
@@ -74,6 +76,13 @@ public class ProductPatchRequest {
     @JsonSetter(value = "images", nulls = Nulls.FAIL)
     public void setImages(List<ProductImageInput> value) { images = value; imagesPresent = true; }
 
+    public List<ProductAttributeValueInput> getAttributeValues() { return attributeValues; }
+    @JsonSetter(value = "attribute_values", nulls = Nulls.FAIL)
+    public void setAttributeValues(List<ProductAttributeValueInput> value) {
+        attributeValues = value;
+        attributeValuesPresent = true;
+    }
+
     @JsonIgnore public boolean isParentProductIdPresent() { return parentProductIdPresent; }
     @JsonIgnore public boolean isCategoryIdPresent() { return categoryIdPresent; }
     @JsonIgnore public boolean isBrandIdPresent() { return brandIdPresent; }
@@ -85,4 +94,5 @@ public class ProductPatchRequest {
     @JsonIgnore public boolean isCostPricePresent() { return costPricePresent; }
     @JsonIgnore public boolean isStatusPresent() { return statusPresent; }
     @JsonIgnore public boolean isImagesPresent() { return imagesPresent; }
+    @JsonIgnore public boolean isAttributeValuesPresent() { return attributeValuesPresent; }
 }

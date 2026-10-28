@@ -6,8 +6,16 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 public interface ProductAttributeValueRepository
         extends Repository<ProductAttributeValue, ProductAttributeValueId> {
+
+    List<ProductAttributeValue> findAllByProductIdOrderByAttributeIdAsc(Long productId);
+
+    ProductAttributeValue save(ProductAttributeValue entity);
+
+    void deleteAllByProductId(Long productId);
 
     @Query("""
             select case when count(product) > 0 then true else false end
