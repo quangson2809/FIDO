@@ -67,7 +67,7 @@ public class ProductAdminService {
     }
 
     @PreAuthorize(WRITE)
-    public AdminProductDetailDto createProduct(Long actor, ProductCreateRequest request) {
+    public AdminProductDetailDto createProduct(ProductCreateRequest request) {
         if (request.category_id() != null) references.category(request.category_id());
         if (request.brand_id() != null) references.brand(request.brand_id());
         validateParent(null, request.parent_product_id());
@@ -112,7 +112,7 @@ public class ProductAdminService {
 
     @PreAuthorize(WRITE)
     public AdminProductDetailDto updateProduct(
-            Long actor, Long productId, ProductPatchRequest request) {
+            Long productId, ProductPatchRequest request) {
         Product product = references.productForUpdate(productId);
 
         if (request.isParentProductIdPresent()) {
@@ -174,7 +174,7 @@ public class ProductAdminService {
     }
 
     @PreAuthorize(WRITE)
-    public void deleteProduct(Long actor, Long productId) {
+    public void deleteProduct(Long productId) {
         Product product = references.productForUpdate(productId);
         if (products.existsByParentProductId(productId)) {
             conflict("A parent product with children cannot be deleted");

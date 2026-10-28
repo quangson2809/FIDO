@@ -49,11 +49,9 @@ class ProductImageConcurrencyTests extends CatalogHttpSupport {
         meetBeforeProductLock(productId);
         runConcurrently(writer.id(),
                 () ->
-                        imageCommands.appendUploadedImages(
-                                writer.id(), productId, List.of(new UploadedImage(first))),
+                        imageCommands.appendUploadedImages(productId, List.of(new UploadedImage(first))),
                 () ->
-                        imageCommands.appendUploadedImages(
-                                writer.id(), productId, List.of(new UploadedImage(second))));
+                        imageCommands.appendUploadedImages(productId, List.of(new UploadedImage(second))));
 
         List<String> stored = storedUrls(productId);
         assertEquals(original.size() + 2, stored.size());
@@ -79,8 +77,8 @@ class ProductImageConcurrencyTests extends CatalogHttpSupport {
         meetBeforeProductLock(productId);
         List<AdminProductDetailDto> responses =
                 runConcurrently(writer.id(),
-                        () -> imageCommands.reorderImages(writer.id(), productId, reorder(first)),
-                        () -> imageCommands.reorderImages(writer.id(), productId, reorder(second)));
+                        () -> imageCommands.reorderImages(productId, reorder(first)),
+                        () -> imageCommands.reorderImages(productId, reorder(second)));
 
         List<List<Long>> allowedOrders = List.of(first, second);
         List<Long> firstResponse =

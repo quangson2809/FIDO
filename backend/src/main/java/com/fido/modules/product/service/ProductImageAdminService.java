@@ -48,7 +48,7 @@ public class ProductImageAdminService {
 
     @PreAuthorize(WRITE)
     public AdminProductDetailDto appendUploadedImages(
-            Long actor, Long productId, List<ImageStorageGateway.UploadedImage> uploaded) {
+            Long productId, List<ImageStorageGateway.UploadedImage> uploaded) {
         references.productForUpdate(productId);
         List<ProductImage> current = images.findAllByProductIdForUpdate(productId);
         assertGalleryInvariant(current);
@@ -70,12 +70,12 @@ public class ProductImageAdminService {
         }
 
         images.flush();
-        recordProductUpdate(actor, productId);
+        recordProductUpdate(productId);
         return query.detailInternal(productId);
     }
 
     @PreAuthorize(WRITE)
-    public void removeImage(Long actor, Long productId, Long imageId) {
+    public void removeImage(Long productId, Long imageId) {
         references.productForUpdate(productId);
         List<ProductImage> current = images.findAllByProductIdForUpdate(productId);
         assertGalleryInvariant(current);
@@ -95,12 +95,12 @@ public class ProductImageAdminService {
                         .toList();
 
         normalizeSortOrder(remaining);
-        recordProductUpdate(actor, productId);
+        recordProductUpdate(productId);
     }
 
     @PreAuthorize(WRITE)
     public AdminProductDetailDto reorderImages(
-            Long actor, Long productId, ProductImageReorderRequest request) {
+            Long productId, ProductImageReorderRequest request) {
         references.productForUpdate(productId);
         List<ProductImage> current = images.findAllByProductIdForUpdate(productId);
         assertGalleryInvariant(current);
@@ -109,7 +109,7 @@ public class ProductImageAdminService {
         List<ProductImage> finalOrder = resolveFinalOrder(current, requestedOrders);
 
         normalizeSortOrder(finalOrder);
-        recordProductUpdate(actor, productId);
+        recordProductUpdate(productId);
 
         return query.detailInternal(productId);
     }
@@ -230,7 +230,7 @@ public class ProductImageAdminService {
         images.flush();
     }
 
-    private void recordProductUpdate(Long actor, Long productId) {
+    private void recordProductUpdate(Long productId) {
         audit.record(
                 AuditWriteEvent.of(AuditAction.PRODUCT_UPDATE, AuditEntityType.PRODUCT, productId.toString()));
     }

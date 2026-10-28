@@ -14,8 +14,6 @@ import com.fido.modules.product.service.CatalogMasterDataService;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -47,46 +45,41 @@ public class AdminCatalogMasterController {
     @PostMapping("/categories")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<CategoryDto> createCategory(
-            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody CategoryCreateRequest request) {
-        return ApiResponse.of(masterData.createCategory(actor(jwt), request));
+            @Valid @RequestBody CategoryCreateRequest request) {
+        return ApiResponse.of(masterData.createCategory(request));
     }
 
     @PatchMapping("/categories/{categoryId}")
     public ApiResponse<CategoryDto> updateCategory(
-            @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long categoryId,
             @Valid @RequestBody CategoryPatchRequest request) {
-        return ApiResponse.of(masterData.updateCategory(actor(jwt), categoryId, request));
+        return ApiResponse.of(masterData.updateCategory(categoryId, request));
     }
 
     @DeleteMapping("/categories/{categoryId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteCategory(@AuthenticationPrincipal Jwt jwt, @PathVariable Long categoryId) {
-        masterData.deleteCategory(actor(jwt), categoryId);
+    public void deleteCategory(@PathVariable Long categoryId) {
+        masterData.deleteCategory(categoryId);
     }
 
     @PostMapping("/brands")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<BrandDto> createBrand(
-            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody BrandRequest request) {
-        return ApiResponse.of(masterData.createBrand(actor(jwt), request));
+            @Valid @RequestBody BrandRequest request) {
+        return ApiResponse.of(masterData.createBrand(request));
     }
 
     @PatchMapping("/brands/{brandId}")
     public ApiResponse<BrandDto> updateBrand(
-            @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long brandId,
             @Valid @RequestBody BrandPatchRequest request) {
-        return ApiResponse.of(masterData.updateBrand(actor(jwt), brandId, request));
+        return ApiResponse.of(masterData.updateBrand(brandId, request));
     }
 
     @DeleteMapping("/brands/{brandId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteBrand(@AuthenticationPrincipal Jwt jwt, @PathVariable Long brandId) {
-        masterData.deleteBrand(actor(jwt), brandId);
+    public void deleteBrand(@PathVariable Long brandId) {
+        masterData.deleteBrand(brandId);
     }
 
-    private Long actor(Jwt jwt) {
-        return Long.valueOf(jwt.getSubject());
-    }
 }
