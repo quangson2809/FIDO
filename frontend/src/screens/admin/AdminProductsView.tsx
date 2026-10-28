@@ -11,8 +11,8 @@ import type { CatalogMetaDto, ProductCreateInput, ProductStatus } from '../../fe
 import { getApiErrorMessage } from '../../services/http/apiError';
 
 interface AdminProductsViewProps { onSelectProduct?: (id: string) => void; onEditProduct?: (id: string) => void; onNavigateTab?: (tab: string, breadcrumb: string) => void; showToast: (message: string) => void; canWrite: boolean; }
-type FormState = { sku: string; name: string; categoryId: string; brandId: string; sellingPrice: string; description: string; status: ProductStatus; };
-const initialForm: FormState = { sku: '', name: '', categoryId: '', brandId: '', sellingPrice: '', description: '', status: 'ACTIVE' };
+type FormState = { sku: string; name: string; categoryId: string; brandId: string; sellingPrice: string; costPrice: string; description: string; status: ProductStatus; };
+const initialForm: FormState = { sku: '', name: '', categoryId: '', brandId: '', sellingPrice: '', costPrice: '', description: '', status: 'ACTIVE' };
 
 export const AdminProductsView: React.FC<AdminProductsViewProps> = ({ onSelectProduct, onEditProduct, onNavigateTab, showToast, canWrite }) => {
   const [meta, setMeta] = useState<CatalogMetaDto | null>(null);
@@ -50,9 +50,12 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({ onSelectPr
   const updateForm = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((current) => ({ ...current, [key]: value }));
   const createPayload = (): ProductCreateInput | null => {
     const category = Number(form.categoryId); const price = Number(form.sellingPrice); const brand = form.brandId ? Number(form.brandId) : null;
+    const cost = form.costPrice.trim() ? Number(form.costPrice) : null;
     if (!form.sku.trim() || form.sku.trim().length > 100 || !form.name.trim() || !leafCategories.some((item) => item.category_id === category) ||
-      !form.sellingPrice.trim() || !Number.isSafeInteger(price) || price < 0 || (brand !== null && !meta?.brands.some((item) => item.brand_id === brand))) return null;
-    return { sku: form.sku.trim(), name: form.name.trim(), category_id: category, brand_id: brand, description: form.description.trim() || null, selling_price: price, status: form.status };
+      !form.sellingPrice.trim() || !Number.isSafeInteger(price) || price < 0 ||
+      (cost !== null && (!Number.isSafeInteger(cost) || cost < 0)) ||
+      (brand !== null && !meta?.brands.some((item) => item.brand_id === brand))) return null;
+    return { sku: form.sku.trim(), name: form.name.trim(), category_id: category, brand_id: brand, description: form.description.trim() || null, selling_price: price, cost_price: cost, status: form.status };
   };
   const finishCreate = (productId: number) => {
     setForm(initialForm); setImages([]); setShowCreate(false); setPendingProductId(null); setLastCreatedId(productId); setError(null); list.reload();
@@ -92,6 +95,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({ onSelectPr
         <label className="space-y-1 text-sm"><span className="block text-xs font-semibold">Danh mục *</span><select required value={form.categoryId} onChange={(event) => updateForm('categoryId', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2"><option value="">Chọn danh mục</option>{leafCategories.map((item) => <option key={item.category_id} value={item.category_id}>{item.name}</option>)}</select></label>
         <label className="space-y-1 text-sm"><span className="block text-xs font-semibold">Thương hiệu</span><select value={form.brandId} onChange={(event) => updateForm('brandId', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2"><option value="">Không chọn</option>{meta?.brands.filter((item) => item.status === 'ACTIVE').map((item) => <option key={item.brand_id} value={item.brand_id}>{item.name}</option>)}</select></label>
         <label className="space-y-1 text-sm"><span className="block text-xs font-semibold">Giá bán (VND) *</span><input required type="number" min="0" step="1" value={form.sellingPrice} onChange={(event) => updateForm('sellingPrice', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2" /></label>
+        <label className="space-y-1 text-sm"><span className="block text-xs font-semibold">Giá vốn (VND, tùy chọn)</span><input type="number" min="0" step="1" value={form.costPrice} onChange={(event) => updateForm('costPrice', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2" /></label>
         <label className="space-y-1 text-sm"><span className="block text-xs font-semibold">Trạng thái</span><select value={form.status} onChange={(event) => updateForm('status', event.target.value as ProductStatus)} className="w-full border border-[#D9DDD6] px-3 py-2"><option value="DRAFT">DRAFT</option><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option><option value="ARCHIVED">ARCHIVED</option></select></label>
       </div>
       <label className="block space-y-1 text-sm"><span className="block text-xs font-semibold">Mô tả</span><textarea rows={3} value={form.description} onChange={(event) => updateForm('description', event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2" /></label>
