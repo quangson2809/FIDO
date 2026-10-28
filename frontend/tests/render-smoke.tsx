@@ -98,6 +98,8 @@ const cartValue: CartContextValue = {
       productId: 1,
       sku: 'FIDO-TEE',
       price: 199000,
+      lineTotal: 398000,
+      availableQuantity: 8,
       imageUrl: '',
       quantity: 2,
     },
