@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public interface ProductAttributeValueRepository
@@ -16,6 +17,45 @@ public interface ProductAttributeValueRepository
     ProductAttributeValue save(ProductAttributeValue entity);
 
     void deleteAllByProductId(Long productId);
+
+    @Query("""
+            select attribute.attributeId as attributeId,
+                   attribute.code as attributeCode,
+                   attribute.name as attributeName,
+                   attributeType.code as typeCode,
+                   attributeType.dataType as dataType,
+                   attributeValue.optionId as optionId,
+                   attributeOption.value as optionValue,
+                   attributeOption.label as optionLabel,
+                   attributeValue.textValue as textValue,
+                   attributeValue.numberValue as numberValue,
+                   attributeValue.booleanValue as booleanValue
+            from ProductAttributeValue attributeValue
+            join Attribute attribute on attribute.attributeId = attributeValue.attributeId
+            join AttributeType attributeType
+                on attributeType.attributeTypeId = attribute.attributeTypeId
+            left join AttributeOption attributeOption
+                on attributeOption.attributeOptionId = attributeValue.optionId
+                and attributeOption.attributeId = attributeValue.attributeId
+            where attributeValue.productId = :productId
+            order by attribute.attributeId asc
+            """)
+    List<AttributeValueReadRow> findAttributeValuesForProduct(
+            @Param("productId") Long productId);
+
+    interface AttributeValueReadRow {
+        Long getAttributeId();
+        String getAttributeCode();
+        String getAttributeName();
+        String getTypeCode();
+        String getDataType();
+        Long getOptionId();
+        String getOptionValue();
+        String getOptionLabel();
+        String getTextValue();
+        BigDecimal getNumberValue();
+        Boolean getBooleanValue();
+    }
 
     @Query("""
             select case when count(product) > 0 then true else false end

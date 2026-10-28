@@ -40,16 +40,14 @@ class ProductImageUploadServiceTests {
         when(storage.upload(back))
                 .thenReturn(new ImageStorageGateway.UploadedImage("https://i.ibb.co/back.png"));
 
-        service.upload(7L, 21L, new MultipartFile[] {front, back});
+        service.upload(21L, new MultipartFile[] {front, back});
 
         InOrder order = inOrder(references, storage, productImages);
         order.verify(references).product(21L);
         order.verify(storage).upload(front);
         order.verify(storage).upload(back);
         order.verify(productImages)
-                .appendUploadedImages(
-                        7L,
-                        21L,
+                .appendUploadedImages(21L,
                         List.of(
                                 new ImageStorageGateway.UploadedImage("https://i.ibb.co/front.png"),
                                 new ImageStorageGateway.UploadedImage(
@@ -67,13 +65,10 @@ class ProductImageUploadServiceTests {
         when(storage.upload(any()))
                 .thenReturn(new ImageStorageGateway.UploadedImage("https://i.ibb.co/image"));
 
-        service.upload(
-                7L,
-                21L,
-                new MultipartFile[] {png("front.png"), jpeg("front.jpg"), webp("front.webp")});
+        service.upload(21L, new MultipartFile[] {png("front.png"), jpeg("front.jpg"), webp("front.webp")});
 
         verify(storage, times(3)).upload(any());
-        verify(productImages).appendUploadedImages(any(), any(), any());
+        verify(productImages).appendUploadedImages(any(), any());
     }
 
     @Test
@@ -92,9 +87,9 @@ class ProductImageUploadServiceTests {
 
         assertThrows(
                 ProductImageStorageException.class,
-                () -> service.upload(7L, 21L, new MultipartFile[] {image}));
+                () -> service.upload(21L, new MultipartFile[] {image}));
 
-        verify(productImages, never()).appendUploadedImages(any(), any(), any());
+        verify(productImages, never()).appendUploadedImages(any(), any());
     }
 
     @Test
@@ -116,11 +111,11 @@ class ProductImageUploadServiceTests {
         var error =
                 assertThrows(
                         ResponseStatusException.class,
-                        () -> service.upload(7L, 21L, new MultipartFile[] {valid, invalid}));
+                        () -> service.upload(21L, new MultipartFile[] {valid, invalid}));
 
         assertEquals(HttpStatus.BAD_REQUEST, error.getStatusCode());
         verify(storage, never()).upload(any());
-        verify(productImages, never()).appendUploadedImages(any(), any(), any());
+        verify(productImages, never()).appendUploadedImages(any(), any());
     }
 
     @Test
@@ -134,7 +129,7 @@ class ProductImageUploadServiceTests {
         var emptyError =
                 assertThrows(
                         ResponseStatusException.class,
-                        () -> normal.upload(7L, 21L, new MultipartFile[0]));
+                        () -> normal.upload(21L, new MultipartFile[0]));
         assertEquals(HttpStatus.BAD_REQUEST, emptyError.getStatusCode());
 
         ProductImageUploadService limited =
@@ -143,11 +138,11 @@ class ProductImageUploadServiceTests {
         var sizeError =
                 assertThrows(
                         ResponseStatusException.class,
-                        () -> limited.upload(7L, 21L, new MultipartFile[] {png("front.png")}));
+                        () -> limited.upload(21L, new MultipartFile[] {png("front.png")}));
         assertEquals(HttpStatus.BAD_REQUEST, sizeError.getStatusCode());
 
         verify(storage, never()).upload(any());
-        verify(productImages, never()).appendUploadedImages(any(), any(), any());
+        verify(productImages, never()).appendUploadedImages(any(), any());
     }
 
     @Test
@@ -165,16 +160,13 @@ class ProductImageUploadServiceTests {
                 assertThrows(
                         ResponseStatusException.class,
                         () ->
-                                service.upload(
-                                        7L,
-                                        21L,
-                                        new MultipartFile[] {
+                                service.upload(21L, new MultipartFile[] {
                                             png("one.png"), png("two.png"), png("three.png")
                                         }));
 
         assertEquals(HttpStatus.BAD_REQUEST, error.getStatusCode());
         verify(storage, never()).upload(any());
-        verify(productImages, never()).appendUploadedImages(any(), any(), any());
+        verify(productImages, never()).appendUploadedImages(any(), any());
     }
 
     @Test
@@ -205,14 +197,14 @@ class ProductImageUploadServiceTests {
         assertBadRequest(service, unsupported);
 
         verify(storage, never()).upload(any());
-        verify(productImages, never()).appendUploadedImages(any(), any(), any());
+        verify(productImages, never()).appendUploadedImages(any(), any());
     }
 
     private void assertBadRequest(ProductImageUploadService service, MultipartFile file) {
         var error =
                 assertThrows(
                         ResponseStatusException.class,
-                        () -> service.upload(7L, 21L, new MultipartFile[] {file}));
+                        () -> service.upload(21L, new MultipartFile[] {file}));
         assertEquals(HttpStatus.BAD_REQUEST, error.getStatusCode());
     }
 

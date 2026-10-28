@@ -6,17 +6,16 @@ import com.fido.modules.cart.entity.Cart;
 import com.fido.modules.cart.entity.CartItem;
 import com.fido.modules.cart.repository.CartItemRepository;
 import com.fido.modules.cart.repository.CartRepository;
+import com.fido.modules.inventory.service.InventoryAvailabilityService;
 import com.fido.modules.pricing.PricingCalculator;
 import com.fido.modules.pricing.PricingService;
 import com.fido.modules.product.service.CatalogProductReadService;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -29,24 +28,19 @@ public class CartQueryService {
     private final CartRepository carts;
     private final CartItemRepository items;
     private final CatalogProductReadService catalog;
+    private final InventoryAvailabilityService inventory;
     private final PricingService pricing;
 
     public CartQueryService(
             CartRepository carts,
             CartItemRepository items,
-            CatalogProductReadService catalog) {
-        this(carts, items, catalog, new PricingService());
-    }
-
-    @Autowired
-    public CartQueryService(
-            CartRepository carts,
-            CartItemRepository items,
             CatalogProductReadService catalog,
+            InventoryAvailabilityService inventory,
             PricingService pricing) {
         this.carts = carts;
         this.items = items;
         this.catalog = catalog;
+        this.inventory = inventory;
         this.pricing = pricing;
     }
 
@@ -100,10 +94,18 @@ public class CartQueryService {
 
     private ResolvedCart resolveCart(Cart cart) {
         List<CartItem> cartItems = items.findAllByCartIdOrderByCartItemIdAsc(cart.getCartId());
-        Map<Long, CatalogProductReadService.ProductView> productsById =
-                catalog.getAll(cartItems.stream().map(CartItem::getProductId).toList());
+        List<Long> productIds = cartItems.stream()
+                .map(CartItem::getProductId)
+                .distinct()
+                .toList();
+        Map<Long, CatalogProductReadService.ProductView> productsById = catalog.getAll(productIds);
+        Map<Long, Integer> stockById = inventory.availableQuantities(productIds);
+
         List<ResolvedCartItem> rawItems = cartItems.stream()
-                .map(item -> resolve(item, productsById.get(item.getProductId())))
+                .map(item -> resolve(
+                        item,
+                        productsById.get(item.getProductId()),
+                        stockById.getOrDefault(item.getProductId(), 0)))
                 .toList();
         var calculation = pricing.calculate(
                 rawItems.stream()
@@ -122,17 +124,23 @@ public class CartQueryService {
                 .map(item -> new ResolvedCartItem(
                         item.item(),
                         item.product(),
-                        grossByProduct.get(item.item().getProductId())))
+                        grossByProduct.get(item.item().getProductId()),
+                        item.availableQuantity(),
+                        item.purchasable()))
                 .toList();
         return new ResolvedCart(pricedItems, calculation.subtotal());
     }
 
     private ResolvedCartItem resolve(
-            CartItem item, CatalogProductReadService.ProductView product) {
+            CartItem item,
+            CatalogProductReadService.ProductView product,
+            Integer availableQuantity) {
         if (product == null) {
             throw new IllegalStateException("Cart item references missing product");
         }
-        return new ResolvedCartItem(item, product, 0L);
+        int available = availableQuantity == null ? 0 : availableQuantity;
+        boolean purchasable = "ACTIVE".equals(product.status()) && available > 0;
+        return new ResolvedCartItem(item, product, 0L, available, purchasable);
     }
 
     private CartItemDto toCartItemDto(ResolvedCartItem resolved) {
@@ -148,7 +156,7 @@ public class CartQueryService {
                 product.sku(),
                 product.unitPrice(),
                 resolved.lineTotal(),
-                product.availableQuantity());
+                resolved.availableQuantity());
     }
 
     private CheckoutCartView.Item toCheckoutItem(ResolvedCartItem resolved) {
@@ -162,8 +170,8 @@ public class CartQueryService {
                 product.sku(),
                 product.unitPrice(),
                 resolved.lineTotal(),
-                product.availableQuantity(),
-                product.purchasable());
+                resolved.availableQuantity(),
+                resolved.purchasable());
     }
 
     private record ResolvedCart(List<ResolvedCartItem> items, Long subtotal) {
@@ -173,5 +181,9 @@ public class CartQueryService {
     }
 
     private record ResolvedCartItem(
-            CartItem item, CatalogProductReadService.ProductView product, Long lineTotal) {}
+            CartItem item,
+            CatalogProductReadService.ProductView product,
+            Long lineTotal,
+            Integer availableQuantity,
+            boolean purchasable) {}
 }

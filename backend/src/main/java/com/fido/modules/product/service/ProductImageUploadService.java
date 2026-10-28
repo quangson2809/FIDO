@@ -61,7 +61,7 @@ public class ProductImageUploadService {
     }
 
     @PreAuthorize(WRITE)
-    public AdminProductDetailDto upload(Long actor, Long productId, MultipartFile[] imageFiles) {
+    public AdminProductDetailDto upload(Long productId, MultipartFile[] imageFiles) {
         long startedAt = System.nanoTime();
         references.product(productId);
 
@@ -84,7 +84,7 @@ public class ProductImageUploadService {
         }
 
         AdminProductDetailDto result =
-                productImages.appendUploadedImages(actor, productId, List.copyOf(uploaded));
+                productImages.appendUploadedImages(productId, List.copyOf(uploaded));
 
         log.info(
                 "Product image upload completed productId={} result=success durationMs={}",
