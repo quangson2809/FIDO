@@ -77,6 +77,19 @@ try {
     'focus stays in drawer after deletion',
   );
   await page.keyboard.press('Escape');
+  fixture.state.quantity = 2;
+  await page.reload();
+  await cartTrigger.click();
+  page.once('dialog', (dialog) => void dialog.accept());
+  await cartDialog.getByRole('button', { name: 'Xóa toàn bộ giỏ hàng', exact: true }).click();
+  await cartDialog.getByText('Giỏ hàng đang trống', { exact: false }).waitFor();
+  assert.equal(fixture.state.quantity, 0);
+  assert.equal(
+    fixture.state.requests.filter((request) => request.path === '/cart' && request.method === 'DELETE').length,
+    1,
+    'clear cart uses DELETE /cart',
+  );
+  await page.keyboard.press('Escape');
   fixture.state.quantity = 1;
   await go('/checkout');
   await page.getByLabel('Chọn địa chỉ nhận hàng').waitFor();
@@ -224,18 +237,13 @@ try {
   await page.getByRole('heading', { name: 'Áo FIDO', exact: true }).waitFor();
   // Gallery order, keyboard enlargement, and broken media.
   product.images = [
-    { image_id: 2, image_url: '/images/about/palette.svg', alt_text: 'Ảnh thứ hai', sort_order: 2 },
-    {
-      image_id: 1,
-      image_url: '/images/about/wardrobe.svg',
-      alt_text: 'Ảnh thứ nhất',
-      sort_order: 1,
-    },
+    { id: 2, image_url: '/images/about/palette.svg', is_primary: false, sort_order: 1 },
+    { id: 1, image_url: '/images/about/wardrobe.svg', is_primary: true, sort_order: 0 },
   ];
   await go('/products/1');
   await page.getByRole('button', { name: 'Phóng to ảnh' }).waitFor();
   assert.equal(
-    await page.getByRole('img', { name: 'Ảnh thứ nhất', exact: true }).last().getAttribute('src'),
+    await page.getByRole('img', { name: 'Áo FIDO 1', exact: true }).first().getAttribute('src'),
     '/images/about/wardrobe.svg',
   );
   await page.getByRole('button', { name: 'Xem ảnh 2', exact: true }).click();
@@ -247,24 +255,19 @@ try {
   await page.getByRole('dialog', { name: 'Ảnh sản phẩm' }).waitFor();
   await page.keyboard.press('Escape');
   product.images = [
-    { image_id: 1, image_url: '/broken-fixture.png', alt_text: 'Ảnh lỗi', sort_order: 1 },
+    { id: 1, image_url: '/broken-fixture.png', is_primary: true, sort_order: 0 },
   ];
   await page.route('**/broken-fixture.png', (route) => route.fulfill({ status: 404, body: '' }));
   await go('/products/1');
-  await page.getByRole('img', { name: 'Ảnh lỗi: ảnh chưa khả dụng' }).waitFor();
+  await page.getByRole('img', { name: 'Áo FIDO: ảnh chưa khả dụng' }).waitFor();
   product.images = [
-    {
-      image_id: 1,
-      image_url: '/images/about/wardrobe.svg',
-      alt_text: 'Ảnh thứ nhất',
-      sort_order: 1,
-    },
-    { image_id: 2, image_url: '/images/about/palette.svg', alt_text: 'Ảnh thứ hai', sort_order: 2 },
+    { id: 1, image_url: '/images/about/wardrobe.svg', is_primary: true, sort_order: 0 },
+    { id: 2, image_url: '/images/about/palette.svg', is_primary: false, sort_order: 1 },
   ];
   await go('/products/1');
-  const selectedSize = page.getByRole('button', { name: 'M', exact: true });
-  await selectedSize.waitFor();
-  const contrast = await selectedSize.evaluate((element) => {
+  const addToCart = page.getByRole('button', { name: 'Thêm vào giỏ hàng', exact: true });
+  await addToCart.waitFor();
+  const contrast = await addToCart.evaluate((element) => {
     const style = getComputedStyle(element);
     const luminance = (value) =>
       value
@@ -280,13 +283,13 @@ try {
       background = luminance(style.backgroundColor);
     return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
   });
-  assert.ok(contrast >= 4.5, `selected purchase control contrast ${contrast}`);
-  await selectedSize.focus();
-  await page.keyboard.press('Tab');
-  const focusOutline = await page.evaluate(
-    () => getComputedStyle(document.activeElement).outlineStyle,
+  assert.ok(contrast >= 4.5, `add-to-cart contrast ${contrast}`);
+  await addToCart.focus();
+  assert.equal(
+    await addToCart.evaluate((element) => getComputedStyle(element).outlineStyle),
+    'solid',
+    'keyboard focus is visible',
   );
-  assert.equal(focusOutline, 'solid', 'keyboard focus is visible');
   const touchTargets = await page.locator('button').evaluateAll((elements) =>
     elements
       .filter(
