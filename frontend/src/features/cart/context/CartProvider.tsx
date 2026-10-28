@@ -224,6 +224,17 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     );
   };
 
+  const clearCart = () => {
+    if (!ensureCartAuthentication()) return;
+    if (cartViewRef.current.items.length === 0) return;
+
+    applyLocalCart([], 0);
+    enqueueCartMutation(
+      () => cartService.clear(),
+      'Không thể xóa toàn bộ giỏ hàng. Vui lòng thử lại.',
+    );
+  };
+
   const setCartQuantity = (itemId: string, quantity: number) => {
     if (!ensureCartAuthentication()) return;
 
@@ -283,6 +294,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     refreshCart,
     addToCart,
     removeFromCart,
+    clearCart,
     updateCartQuantity,
     changeCartQuantity,
   };
