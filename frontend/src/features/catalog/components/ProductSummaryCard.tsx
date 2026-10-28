@@ -1,32 +1,37 @@
 import { useCallback, useState } from 'react';
 import { catalogService } from '../api/service';
-import type { CatalogProductView } from '../types';
+import type { CatalogProductView, ProductAttributeValueDto } from '../types';
 import { StorefrontImage } from '../../../shared/ui/storefront/StorefrontImage';
 import { StorefrontDialog } from '../../../shared/ui/storefront/StorefrontDialog';
 import { QueryFeedback } from '../../../shared/ui/storefront/QueryFeedback';
 import { useRemoteQuery } from '../../../shared/hooks/useRemoteQuery';
 import { getStorefrontErrorMessage } from '../../../services/http/storefrontError';
-import { productSummaryMetadata, productSummarySizes } from '../model/productSummary';
+import { productSummaryMetadata } from '../model/productSummary';
+
+const attributeValueText = (value: ProductAttributeValueDto): string | null => {
+  switch (value.data_type) {
+    case 'OPTION':
+      return value.option_label ?? value.option_value;
+    case 'TEXT':
+      return value.text_value;
+    case 'NUMBER':
+      return value.number_value === null ? null : String(value.number_value);
+    case 'BOOLEAN':
+      return value.boolean_value === null ? null : value.boolean_value ? 'Có' : 'Không';
+  }
+};
 
 function ProductSummaryDetails({ productId }: { productId: number }) {
   const detail = useRemoteQuery(
     useCallback(() => catalogService.getProductDetail(productId), [productId]),
   );
   const product = detail.data;
-  const sizes = [
-    ...new Map(
-      product?.variants
-        .filter((variant) => variant.sale_status === 'ON_SALE')
-        .map((variant) => [variant.size.size_value_id, variant.size]) ?? [],
-    ).values(),
-  ].sort((a, b) => a.sort_order - b.sort_order);
-  const colors = [
-    ...new Set(
-      product?.variants
-        .filter((variant) => variant.sale_status === 'ON_SALE')
-        .map((variant) => variant.color.name) ?? [],
-    ),
-  ];
+  const attributes = (product?.attribute_values ?? [])
+    .map((attribute) => ({ attribute, text: attributeValueText(attribute) }))
+    .filter((item): item is { attribute: ProductAttributeValueDto; text: string } =>
+      item.text !== null && item.text.trim() !== '',
+    );
+
   return (
     <>
       <QueryFeedback
@@ -41,25 +46,18 @@ function ProductSummaryDetails({ productId }: { productId: number }) {
       {product && (
         <>
           <dl className="space-y-4 text-sm">
-            <div>
-              <dt className="font-semibold">Kích cỡ đang bán</dt>
-              <dd className="mt-1">
-                {sizes.map((size) => size.display_name).join(' · ') || 'Chưa có kích cỡ đang bán'}
-              </dd>
-            </div>
-            <div>
-              <dt className="font-semibold">Màu sắc đang bán</dt>
-              <dd className="mt-1">{colors.join(' · ') || 'Chưa có màu đang bán'}</dd>
-            </div>
-            <div>
-              <dt className="font-semibold">Chất liệu & chăm sóc</dt>
-              <dd className="mt-1 whitespace-pre-wrap">
-                {product.material_care || 'Chưa có thông tin chất liệu và chăm sóc'}
-              </dd>
-            </div>
+            {attributes.map(({ attribute, text }) => (
+              <div key={attribute.attribute_id}>
+                <dt className="font-semibold">{attribute.attribute_name}</dt>
+                <dd className="mt-1 whitespace-pre-wrap">{text}</dd>
+              </div>
+            ))}
           </dl>
+          {attributes.length === 0 && (
+            <p className="text-sm text-muted-grey">Sản phẩm chưa có thuộc tính mô tả.</p>
+          )}
           <p className="mt-4 text-sm text-muted-grey">
-            Xem chi tiết để chọn size, màu và kiểm tra giá, số lượng khả dụng.
+            Giá, trạng thái và thuộc tính được lấy từ thông tin sản phẩm hiện hành.
           </p>
         </>
       )}
@@ -76,7 +74,6 @@ export function ProductSummaryCard({
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const metadata = productSummaryMetadata(product);
-  const sizes = productSummarySizes(product.sizes);
 
   return (
     <article className="product-summary-card">
@@ -107,27 +104,24 @@ export function ProductSummaryCard({
           {product.name}
         </h2>
         <span className="product-summary-footer">
-          <span
-            className="product-summary-price"
-            title="Giá cơ bản. Giá từng biến thể được xác nhận khi chọn size và màu."
-          >
-            <span>{product.base_price.toLocaleString('vi-VN')} đ</span>
-            <span className="product-summary-price-label">cơ bản</span>
+          <span className="product-summary-price" title="Giá bán của sản phẩm">
+            <span>{product.selling_price.toLocaleString('vi-VN')} đ</span>
+            <span className="product-summary-price-label">{product.status}</span>
           </span>
-          <span className="product-summary-sizes" title={sizes}>
-            {sizes}
+          <span className="product-summary-sizes" title={product.sku}>
+            SKU {product.sku}
           </span>
         </span>
         <span className="product-summary-cta" aria-hidden="true">
-          Chọn size & màu <span>→</span>
+          Xem chi tiết <span>→</span>
         </span>
       </div>
       <button
         type="button"
-        aria-label={`Xem size & chất liệu: ${product.name}`}
+        aria-label={`Xem thuộc tính: ${product.name}`}
         aria-haspopup="dialog"
         aria-expanded={detailsOpen}
-        title="Xem size, màu, chất liệu & chăm sóc"
+        title="Xem thuộc tính sản phẩm"
         onClick={() => setDetailsOpen(true)}
         className="product-summary-info"
       >
@@ -147,7 +141,7 @@ export function ProductSummaryCard({
       </button>
       {detailsOpen && (
         <StorefrontDialog
-          name={`Thông tin ${product.name}`}
+          name={`Thuộc tính ${product.name}`}
           onClose={() => setDetailsOpen(false)}
           className="product-summary-dialog"
         >

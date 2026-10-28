@@ -41,20 +41,10 @@ export const CatalogFiltersPanel: React.FC<{
   activeFilterCount: number;
   categoryId: number | undefined;
   brandId: number | undefined;
-  sizeValueId: number | undefined;
-  colorId: number | undefined;
-  gender: string | undefined;
-  season: string | undefined;
-  style: string | undefined;
   minPriceInput: string;
   maxPriceInput: string;
   onCategoryChange: (value: number | undefined) => void;
   onBrandChange: (value: number | undefined) => void;
-  onSizeChange: (value: number | undefined) => void;
-  onColorChange: (value: number | undefined) => void;
-  onGenderChange: (value: string | undefined) => void;
-  onSeasonChange: (value: string | undefined) => void;
-  onStyleChange: (value: string | undefined) => void;
   onMinPriceInputChange: (value: string) => void;
   onMaxPriceInputChange: (value: string) => void;
   onApplyPriceRange: () => void;
@@ -69,20 +59,10 @@ export const CatalogFiltersPanel: React.FC<{
   activeFilterCount,
   categoryId,
   brandId,
-  sizeValueId,
-  colorId,
-  gender,
-  season,
-  style,
   minPriceInput,
   maxPriceInput,
   onCategoryChange,
   onBrandChange,
-  onSizeChange,
-  onColorChange,
-  onGenderChange,
-  onSeasonChange,
-  onStyleChange,
   onMinPriceInputChange,
   onMaxPriceInputChange,
   onApplyPriceRange,
@@ -178,25 +158,7 @@ export const CatalogFiltersPanel: React.FC<{
           options={(meta?.genders ?? []).map((item) => ({ value: item, label: item }))}
         />
       </fieldset>
-      <fieldset className="space-y-5">
-        <legend className="mb-3 text-sm font-semibold">Phong cách & mùa</legend>
-        <FilterSelect
-          label="Mùa"
-          value={season ?? ''}
-          disabled={metaLoading}
-          onChange={(value) => onSeasonChange(value || undefined)}
-          options={(meta?.seasons ?? []).map((item) => ({ value: item, label: item }))}
-        />
-        <FilterSelect
-          label="Phong cách"
-          value={style ?? ''}
-          disabled={metaLoading}
-          onChange={(value) => onStyleChange(value || undefined)}
-          options={(meta?.styles ?? []).map((item) => ({ value: item, label: item }))}
-        />
-      </fieldset>
-
-      <div className="border-t border-[#E8E9E3] pt-4">
+<div className="border-t border-[#E8E9E3] pt-4">
         <p className="mb-2 text-sm font-semibold">Khoảng giá cơ bản (đ)</p>
         <div className="grid grid-cols-2 gap-2">
           <input

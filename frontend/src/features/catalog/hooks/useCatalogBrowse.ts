@@ -15,11 +15,8 @@ import {
 const toFilters = (query: CatalogProductQuery): CatalogFilters => ({
   category_id: query.category_id,
   brand_id: query.brand_id,
-  size_value_id: query.size_value_id,
-  color_id: query.color_id,
-  gender: query.gender,
-  season: query.season,
-  style: query.style,
+  min_price: query.min_price,
+  max_price: query.max_price,
 });
 
 export const useCatalogBrowse = (meta: CatalogMetaDto | null, categoryId?: number) => {

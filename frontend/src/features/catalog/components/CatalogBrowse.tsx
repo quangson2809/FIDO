@@ -54,20 +54,10 @@ export function CatalogBrowse({
         activeFilterCount={catalog.activeFilterCount}
         categoryId={catalog.draft.filters.category_id}
         brandId={catalog.draft.filters.brand_id}
-        sizeValueId={catalog.draft.filters.size_value_id}
-        colorId={catalog.draft.filters.color_id}
-        gender={catalog.draft.filters.gender}
-        season={catalog.draft.filters.season}
-        style={catalog.draft.filters.style}
         minPriceInput={catalog.draft.min}
         maxPriceInput={catalog.draft.max}
         onCategoryChange={(value) => catalog.updateFilter('category_id', value)}
         onBrandChange={(value) => catalog.updateFilter('brand_id', value)}
-        onSizeChange={(value) => catalog.updateFilter('size_value_id', value)}
-        onColorChange={(value) => catalog.updateFilter('color_id', value)}
-        onGenderChange={(value) => catalog.updateFilter('gender', value)}
-        onSeasonChange={(value) => catalog.updateFilter('season', value)}
-        onStyleChange={(value) => catalog.updateFilter('style', value)}
         onMinPriceInputChange={catalog.setMinPriceInput}
         onMaxPriceInputChange={catalog.setMaxPriceInput}
         onApplyPriceRange={() => apply()}
