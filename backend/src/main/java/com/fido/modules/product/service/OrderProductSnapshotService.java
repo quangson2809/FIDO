@@ -2,6 +2,7 @@ package com.fido.modules.product.service;
 
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
+import com.fido.modules.product.repository.ProductAttributeSnapshotRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
