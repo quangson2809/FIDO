@@ -354,7 +354,19 @@ try {
       const longProduct = {
         ...product,
         name: 'FIDO'.repeat(63) + 'ABC',
-        variants: [{ ...product.variants[0], sku: 'FIDO' + 'X'.repeat(96) }],
+        sku: 'FIDO' + 'X'.repeat(96),
+      };
+      const longSummary = {
+        product_id: longProduct.product_id,
+        parent_product_id: longProduct.parent_product_id,
+        sku: longProduct.sku,
+        name: longProduct.name,
+        slug: longProduct.slug,
+        thumbnail: null,
+        category: longProduct.category,
+        brand: longProduct.brand,
+        selling_price: longProduct.selling_price,
+        status: longProduct.status,
       };
       await page.route('**/api/v1/catalog/products/1', (route) =>
         route.fulfill({ json: { data: longProduct } }),
@@ -362,7 +374,7 @@ try {
       await page.route('**/api/v1/catalog/products?*', (route) =>
         route.fulfill({
           json: {
-            data: [{ ...longProduct, thumbnail: null }],
+            data: [longSummary],
             meta: { page: 1, page_size: 12, total: 1, total_pages: 1 },
           },
         }),
