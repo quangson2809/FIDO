@@ -184,7 +184,7 @@ try {
   );
 
   const colorCard = page.locator('article').filter({ hasText: 'COLOR' }).first();
-  await colorCard.getByRole('button', { name: 'Sửa thuộc tính COLOR', exact: true }).click();
+  await colorCard.getByRole('button', { name: 'Sửa thuộc tính', exact: true }).click();
   const attributeEditor = colorCard.locator('form').first();
   assert.equal(await attributeEditor.getByLabel('Mã thuộc tính').count(), 0, 'attribute code is immutable');
   assert.equal(await attributeEditor.getByLabel('Kiểu dữ liệu').count(), 0, 'attribute data type is immutable');
@@ -215,11 +215,11 @@ try {
   );
 
   const blackOption = colorCard.locator('[data-option-id="100"]');
-  await blackOption.getByRole('button', { name: 'Sửa option BLACK', exact: true }).click();
+  await blackOption.getByRole('button', { name: 'Sửa', exact: true }).click();
   assert.equal(await blackOption.getByLabel('Mã option BLACK').count(), 0, 'option value is immutable');
   await blackOption.getByLabel('Nhãn option BLACK').fill('Đen nhám');
   await blackOption.getByLabel('Thứ tự option BLACK').fill('2');
-  await blackOption.getByRole('button', { name: 'Lưu option BLACK', exact: true }).click();
+  await blackOption.getByRole('button', { name: 'Lưu', exact: true }).click();
   await page.getByText('Đen nhám', { exact: true }).waitFor();
   assert.deepEqual(
     requests.find((item) => item.method === 'PATCH' && item.path === '/admin/catalog/attributes/10/options/100')?.body,

@@ -416,7 +416,7 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
                       className="admin-secondary"
                       onClick={() => beginAttributeEdit(attribute)}
                     >
-                      Sửa thuộc tính {attribute.code}
+                      Sửa thuộc tính
                     </button>
                   )}
                 </div>
@@ -550,7 +550,7 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
                             </label>
                             <div className="flex items-end gap-2">
                               <button type="submit" disabled={busy} className="admin-primary">
-                                Lưu option {option.value}
+                                Lưu
                               </button>
                               <button type="button" disabled={busy} className="admin-secondary" onClick={() => setEditingOption(null)}>
                                 Hủy
@@ -572,7 +572,7 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
                                 className="admin-secondary"
                                 onClick={() => beginOptionEdit(attribute.id, option)}
                               >
-                                Sửa option {option.value}
+                                Sửa
                               </button>
                             )}
                           </div>
