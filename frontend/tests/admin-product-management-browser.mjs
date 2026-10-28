@@ -189,7 +189,7 @@ await page.route('**/api/v1/**', async (route) => {
 
 try {
   await page.goto('http://localhost:5182/admin/products', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('heading', { name: 'Sản phẩm', exact: true }).waitFor();
+  await page.getByRole('heading', { name: 'Sản phẩm', level: 1, exact: true }).waitFor();
   await page.getByText('TEE-101', { exact: true }).waitFor();
 
   await page.getByLabel('Tìm sản phẩm').fill('TEE');
@@ -264,7 +264,7 @@ try {
   assert.ok(requests.some((item) => item.method === 'DELETE' && item.path === '/admin/products/101/images/51'));
   page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'Xóa Product', exact: true }).click();
-  await page.getByRole('heading', { name: 'Sản phẩm', exact: true }).waitFor();
+  await page.getByRole('heading', { name: 'Sản phẩm', level: 1, exact: true }).waitFor();
   assert.ok(requests.some((item) => item.method === 'DELETE' && item.path === '/admin/products/101'));
   assert.deepEqual(pageErrors, [], 'no uncaught runtime errors');
   process.stdout.write('Admin Product management browser regression: PASS\n');
