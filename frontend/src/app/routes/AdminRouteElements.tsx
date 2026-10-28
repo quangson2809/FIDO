@@ -10,6 +10,7 @@ import {
 import { useAuthSession } from '../../features/auth/session/useAuthSession';
 import { AdminAuditView } from '../../screens/admin/AdminAuditView';
 import { AdminCatalogMetaView } from '../../screens/admin/AdminCatalogMetaView';
+import { AdminAttributesView } from '../../screens/admin/AdminAttributesView';
 import { AdminCustomersView } from '../../screens/admin/AdminCustomersView';
 import { AdminDashboardView } from '../../screens/admin/AdminDashboardView';
 import { AdminInventoryView } from '../../screens/admin/AdminInventoryView';
@@ -106,7 +107,7 @@ export const AdminProductDetailRoute = () => {
   );
 };
 
-const AdminCatalogMetaRoute = ({ tab }: { tab: 'categories' | 'brands' | 'attributes' }) => {
+const AdminCatalogMetaRoute = ({ tab }: { tab: 'categories' | 'brands' }) => {
   const { navigateTab, showToast } = useAdminRouteDeps();
   const canWrite = useAdminWriteAccess(tab);
   return (
@@ -122,7 +123,12 @@ const AdminCatalogMetaRoute = ({ tab }: { tab: 'categories' | 'brands' | 'attrib
 
 export const AdminCategoriesRoute = () => <AdminCatalogMetaRoute tab="categories" />;
 export const AdminBrandsRoute = () => <AdminCatalogMetaRoute tab="brands" />;
-export const AdminAttributesRoute = () => <AdminCatalogMetaRoute tab="attributes" />;
+
+export const AdminAttributesRoute = () => {
+  const { showToast } = useAdminRouteDeps();
+  const canWrite = useAdminWriteAccess('attributes');
+  return <AdminAttributesView showToast={showToast} canWrite={canWrite} />;
+};
 
 export const AdminOrdersRoute = () => {
   const { navigate } = useAdminRouteDeps();
