@@ -12,15 +12,15 @@ const phase = process.env.JOURNEY_BASELINE
     : 'after';
 const categories = [
   ...meta.categories,
-  { category_id: 3, parent_category_id: 1, name: 'Áo công sở' },
-  { category_id: 4, parent_category_id: 3, name: 'Áo sơ mi' },
+  { category_id: 3, parent_category_id: 1, name: 'Áo công sở', slug: 'ao-cong-so', status: 'ACTIVE' },
+  { category_id: 4, parent_category_id: 3, name: 'Áo sơ mi', slug: 'ao-so-mi', status: 'ACTIVE' },
 ];
 const detail = {
   ...product,
   category: categories[3],
   images: [
-    { image_id: 1, image_url: '/images/about/wardrobe.svg', alt_text: 'Ảnh một', sort_order: 0 },
-    { image_id: 2, image_url: '/images/about/details.svg', alt_text: 'Ảnh hai', sort_order: 1 },
+    { id: 1, image_url: '/images/about/wardrobe.svg', is_primary: true, sort_order: 0 },
+    { id: 2, image_url: '/images/about/details.svg', is_primary: false, sort_order: 1 },
   ],
 };
 const server = await createServer({ server: { port: 5197, strictPort: true } });
