@@ -215,7 +215,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     applyLocalCart(
       cartViewRef.current.items.filter((candidate) => candidate.id !== itemId),
-      Math.max(0, cartViewRef.current.subtotal - item.price * item.quantity),
+      Math.max(0, cartViewRef.current.subtotal - item.lineTotal),
     );
 
     enqueueCartMutation(
