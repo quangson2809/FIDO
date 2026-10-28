@@ -15,6 +15,8 @@ const toCartItems = (cart: CartDto): CartViewItem[] =>
     name: item.product_name ?? item.sku ?? `Product #${item.product_id}`,
     sku: item.sku ?? '',
     price: item.unit_price,
+    lineTotal: item.line_total,
+    availableQuantity: item.available_quantity,
     imageUrl: resolveImageUrl(item.image_url ?? item.thumbnail) ?? '',
     quantity: item.quantity,
   }));
@@ -231,9 +233,19 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const normalizedQuantity = Math.trunc(quantity);
     if (!Number.isFinite(normalizedQuantity) || normalizedQuantity < 1) return;
     if (normalizedQuantity === item.quantity) return;
+    if (normalizedQuantity > item.quantity && normalizedQuantity > item.availableQuantity) {
+      showToast('Số lượng vượt quá tồn kho khả dụng hiện tại.');
+      return;
+    }
 
     const nextItems = cartViewRef.current.items.map((candidate) =>
-      candidate.id === itemId ? { ...candidate, quantity: normalizedQuantity } : candidate,
+      candidate.id === itemId
+        ? {
+            ...candidate,
+            quantity: normalizedQuantity,
+            lineTotal: candidate.price * normalizedQuantity,
+          }
+        : candidate,
     );
     const nextSubtotal = Math.max(
       0,
