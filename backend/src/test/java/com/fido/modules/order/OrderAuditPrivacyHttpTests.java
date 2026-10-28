@@ -28,6 +28,7 @@ class OrderAuditPrivacyHttpTests extends OrderHttpSupport {
 
         String afterData = auditAfterData(orderId, "ORDER_CANCEL");
         assertFalse(afterData.contains(reason));
+        assertFalse(afterData.contains("reason_code"));
         assertTrue(afterData.contains("CANCELLED"));
         assertEquals(5, stock(product.productId()));
     }
