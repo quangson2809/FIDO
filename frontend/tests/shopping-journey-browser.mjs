@@ -133,7 +133,7 @@ try {
       );
       assert.equal(
         await page
-          .getByRole('img', { name: 'Ảnh một', exact: true })
+          .getByRole('img', { name: product.name, exact: true })
           .last()
           .evaluate((el) => getComputedStyle(el).objectFit),
         'contain',
@@ -142,14 +142,19 @@ try {
       const zoomTrigger = page.getByRole('button', { name: 'Phóng to ảnh', exact: true });
       await zoomTrigger.click();
       const zoom = page.getByRole('dialog', { name: 'Ảnh sản phẩm', exact: true });
-      await zoom.getByRole('img', { name: 'Ảnh một', exact: true }).waitFor();
+      const zoomImage = zoom.getByRole('img', { name: product.name, exact: true });
+      await zoomImage.waitFor();
+      assert.equal(await zoomImage.getAttribute('src'), '/images/about/wardrobe.svg');
       await zoom.getByRole('button', { name: 'Ảnh tiếp theo', exact: true }).click();
-      await zoom.getByRole('img', { name: 'Ảnh hai', exact: true }).waitFor();
+      await zoom.getByText('Ảnh 2 / 2', { exact: true }).waitFor();
+      assert.equal(await zoomImage.getAttribute('src'), '/images/about/details.svg');
       await zoom.getByRole('button', { name: 'Đóng ảnh', exact: true }).focus();
       await page.keyboard.press('ArrowRight');
-      await zoom.getByRole('img', { name: 'Ảnh một', exact: true }).waitFor();
+      await zoom.getByText('Ảnh 1 / 2', { exact: true }).waitFor();
+      assert.equal(await zoomImage.getAttribute('src'), '/images/about/wardrobe.svg');
       await page.keyboard.press('ArrowLeft');
-      await zoom.getByRole('img', { name: 'Ảnh hai', exact: true }).waitFor();
+      await zoom.getByText('Ảnh 2 / 2', { exact: true }).waitFor();
+      assert.equal(await zoomImage.getAttribute('src'), '/images/about/details.svg');
       await capture('zoom');
       await page.keyboard.press('Escape');
       assert.equal(
