@@ -36,7 +36,7 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
   };
 
   useEffect(() => {
-    if (!validId) { setLoading(false); setError('Mã sản phẩm không hợp lệ.'); return undefined; }
+    if (!validId) return undefined;
     let active = true;
     void adminProductService.getProduct(productId).then((detail) => {
       if (!active) return;
@@ -50,6 +50,8 @@ export const AdminProductDetailView: React.FC<Props> = ({ productId, onNavigateT
   }, [productId, validId, revision]);
 
   const orderedImages = useMemo(() => sortProductImages(product?.images ?? []), [product]);
+  if (!validId) return <div className="admin-state" role="alert">Mã sản phẩm không hợp lệ.</div>;
+
   const saveProduct = async () => {
     if (!canWrite || !product || busy) return;
     const price = Number(sellingPrice); const cost = costPrice.trim() ? Number(costPrice) : null;
