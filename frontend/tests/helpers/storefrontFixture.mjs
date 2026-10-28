@@ -198,7 +198,11 @@ export function storefrontFixture() {
         },
       });
     }
-    if (path === '/cart') return send({ data: cart() });
+    if (path === '/cart' && request.method() === 'DELETE') {
+      state.quantity = 0;
+      return send({ data: cart() });
+    }
+    if (path === '/cart' && request.method() === 'GET') return send({ data: cart() });
     if (path === '/cart/items' && request.method() === 'POST') {
       const body = request.postDataJSON();
       if (body.product_id !== product.product_id) return send({ message: 'Product not found' }, 404);
