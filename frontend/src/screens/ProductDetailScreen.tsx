@@ -4,6 +4,7 @@ import { useCart } from '../features/cart/hooks/useCart';
 import { catalogService } from '../features/catalog/api/service';
 import { ProductGallerySection, ProductPurchasePanel, ProductRecommendationsSection, ProductSpecsSection } from '../features/catalog/components/ProductDetailSections';
 import type { ProductDetailDto } from '../features/catalog/types';
+import { sortProductImages } from '../features/catalog/model/productImageOrder';
 import { useAuthSession } from '../features/auth/session/useAuthSession';
 import { useToast } from '../shared/ui/toast/useToast';
 import { getStorefrontErrorMessage } from '../services/http/storefrontError';
@@ -49,7 +50,10 @@ export const ProductDetailScreen: React.FC = () => {
     return () => { active = false; };
   }, [productId, retry]);
 
-  const gallery = useMemo(() => product?.images.map((image) => image.image_url) ?? [], [product]);
+  const gallery = useMemo(
+    () => sortProductImages(product?.images ?? []).map((image) => image.image_url),
+    [product],
+  );
   const addCurrentProductToCart = () => {
     if (!product || product.status !== 'ACTIVE') return;
     if (!isAuthenticated) {
