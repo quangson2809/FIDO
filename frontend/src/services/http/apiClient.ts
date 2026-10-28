@@ -63,10 +63,16 @@ const axiosClient = axios.create({
   },
 });
 
+const isPublicAuthRequest = (url: string | undefined): boolean => {
+  const pathname = (url ?? '').split(/[?#]/, 1)[0] ?? '';
+  return /(?:^|\/)auth\/(?:login|register)\/?$/.test(pathname);
+};
+
 axiosClient.interceptors.request.use((config) => {
-  if (accessToken) {
+  if (accessToken && !isPublicAuthRequest(config.url)) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   } else {
+    // Public authentication endpoints must not inherit an expired token from session storage.
     delete config.headers.Authorization;
   }
   return config;
