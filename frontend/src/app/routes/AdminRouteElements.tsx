@@ -1,5 +1,5 @@
 import { AdminVouchersView } from '../../screens/admin/AdminVouchersView';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useToast } from '../../shared/ui/toast/useToast';
 import { getAdminPath } from '../../routes/paths';
 import {
@@ -76,11 +76,13 @@ export const AdminProductsRoute = () => {
   const canWrite = useAdminWriteAccess('products');
   const openProduct = (productId: string) =>
     navigate(`/admin/products/${encodeURIComponent(productId)}`);
+  const editProduct = (productId: string) =>
+    navigate(`/admin/products/${encodeURIComponent(productId)}?edit=1`);
 
   return (
     <AdminProductsView
       onSelectProduct={openProduct}
-      onEditProduct={openProduct}
+      onEditProduct={editProduct}
       onNavigateTab={navigateTab}
       showToast={showToast}
       canWrite={canWrite}
@@ -90,6 +92,7 @@ export const AdminProductsRoute = () => {
 
 export const AdminProductDetailRoute = () => {
   const { productId } = useParams<{ productId: string }>();
+  const [searchParams] = useSearchParams();
   const parsedProductId = positiveInteger(productId);
   const { navigateTab, showToast } = useAdminRouteDeps();
   const canWrite = useAdminWriteAccess('products');
@@ -100,6 +103,7 @@ export const AdminProductDetailRoute = () => {
     <AdminProductDetailView
       key={parsedProductId}
       productId={parsedProductId}
+      startEditing={searchParams.get('edit') === '1'}
       onNavigateTab={navigateTab}
       showToast={showToast}
       canWrite={canWrite}
