@@ -375,7 +375,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
                 disabled={busy}
               >
                 <option value="">Danh mục gốc</option>
-                {filteredCategories.map((category) => (
+                {categories.map((category) => (
                   <option key={category.category_id} value={category.category_id}>
                     {category.name}
                   </option>
@@ -473,7 +473,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
               <tr><th className="px-4 py-3">Tên</th><th className="px-4 py-3">Quan hệ</th><th className="px-4 py-3" /></tr>
             </thead>
             <tbody className="divide-y divide-[#E2E5DE]">
-              {categories.map((category) => (
+              {filteredCategories.map((category) => (
                 <tr key={category.category_id}>
                   <td className="px-4 py-3 font-semibold">{category.name}</td>
                   <td className="px-4 py-3 text-xs text-[#606863]">
