@@ -1,17 +1,11 @@
-import { SizeValueFields } from '../../features/catalog/components/SizeValueFields';
-import { ListSearch } from '../../shared/admin/ListSearch';
-import { Modal } from '../../shared/admin/Modal';
-import { ApiClientError, getApiErrorMessage } from '../../services/http/apiError';
-import { useDirtyForm } from '../../shared/admin/dirtyFormContext';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { catalogService } from '../../features/catalog/api/service';
 import { adminCatalogMetaService } from '../../features/catalog/api/adminCatalogMetaService';
-import type {
-  CatalogMetaDto,
-  SizeSystemDto,
-  SizeSystemPatchInput,
-} from '../../features/catalog/types';
+import type { AdminCatalogMetaDto, CatalogMetaDto } from '../../features/catalog/types';
+import { getApiErrorMessage } from '../../services/http/apiError';
 
-type Tab = 'categories' | 'brands' | 'sizes' | 'colors';
+type Tab = 'categories' | 'brands' | 'attributes';
+type RenameTarget = { kind: 'categories' | 'brands'; id: number; name: string };
 
 interface Props {
   initialTab?: Tab;
@@ -26,386 +20,174 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
   onNavigateTab,
   canWrite,
 }) => {
-  const activeTab = initialTab;
-  const [search, setSearch] = useState('');
-  const [categoryKind, setCategoryKind] = useState('all');
-  const [creatingSizeSystem, setCreatingSizeSystem] = useState(false);
-  const [meta, setMeta] = useState<CatalogMetaDto | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+  const [publicMeta, setPublicMeta] = useState<CatalogMetaDto | null>(null);
+  const [adminMeta, setAdminMeta] = useState<AdminCatalogMetaDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [renaming, setRenaming] = useState<{ kind: Tab; id: number; name: string } | null>(null);
-  const [nextName, setNextName] = useState('');
+
   const [name, setName] = useState('');
-  const [code, setCode] = useState('');
   const [parentId, setParentId] = useState('');
-  const [sizeValues, setSizeValues] = useState<NonNullable<SizeSystemPatchInput['size_values']>>(
-    [],
-  );
-  const [editingSizes, setEditingSizes] = useState<SizeSystemDto | null>(null);
-  const [sizeValuesDirty, setSizeValuesDirty] = useState(false);
+  const [attributeTypeId, setAttributeTypeId] = useState('');
+  const [attributeCode, setAttributeCode] = useState('');
+  const [attributeRequired, setAttributeRequired] = useState(false);
+  const [variantDefining, setVariantDefining] = useState(false);
+  const [optionDrafts, setOptionDrafts] = useState<Record<number, { value: string; label: string }>>({});
+  const [renameTarget, setRenameTarget] = useState<RenameTarget | null>(null);
+  const [renameValue, setRenameValue] = useState('');
 
-  const canDiscard = useDirtyForm(
-    Boolean(
-      (renaming && nextName !== renaming.name) || name || code || parentId || sizeValuesDirty,
-    ),
-  );
-
-  const validateSizes = () => {
-    const codes = new Set<string>();
-    for (const value of sizeValues) {
-      const normalized = value.code.trim().toLowerCase();
-      if (
-        !normalized ||
-        !value.display_name.trim() ||
-        !Number.isInteger(value.sort_order) ||
-        value.sort_order < -2147483648 ||
-        value.sort_order > 2147483647
-      ) {
-        throw new Error('Nhập code, tên hiển thị và thứ tự nguyên hợp lệ cho từng size.');
-      }
-      if (codes.has(normalized)) throw new Error('Code size không được trùng trong cùng hệ.');
-      codes.add(normalized);
-    }
-    return sizeValues.map((value) => ({
-      ...value,
-      code: value.code.trim(),
-      display_name: value.display_name.trim(),
-    }));
-  };
-
-  const saveSizes = async () => {
-    if (!canWrite || !editingSizes || busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const updated = await adminCatalogMetaService.updateSizeSystem(editingSizes.size_system_id, {
-        size_values: validateSizes(),
-      });
-      setMeta((current) =>
-        current
-          ? {
-              ...current,
-              size_systems: current.size_systems.map((system) =>
-                system.size_system_id === updated.size_system_id ? updated : system,
-              ),
-            }
-          : current,
-      );
-      setEditingSizes(null);
-      setSizeValues([]);
-      setSizeValuesDirty(false);
-      showToast('Đã lưu danh sách size.');
-    } catch (failure: unknown) {
-      setError(
-        failure instanceof ApiClientError && failure.status === 409
-          ? 'Không thể lưu: size đang được sử dụng không được xóa hoặc đổi code/tên; code size phải duy nhất.'
-          : getApiErrorMessage(failure, 'Không thể lưu danh sách size.'),
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const sizeFields = (
-    <SizeValueFields
-      values={sizeValues}
-      onChange={(values) => {
-        setSizeValues(values);
-        setSizeValuesDirty(true);
-      }}
-    />
-  );
-
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      setMeta(await adminCatalogMetaService.getMeta());
+      const [catalog, adminCatalog] = await Promise.all([
+        catalogService.getMeta(),
+        adminCatalogMetaService.getMeta(),
+      ]);
+      setPublicMeta(catalog);
+      setAdminMeta(adminCatalog);
       setError(null);
-    } catch {
-      setMeta(null);
-      setError('Không thể tải catalog metadata hoặc tài khoản không có quyền CATALOG_READ.');
+    } catch (failure: unknown) {
+      setError(getApiErrorMessage(failure, 'Không thể tải catalog metadata.'));
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    let active = true;
-    void adminCatalogMetaService
-      .getMeta()
-      .then((result) => {
-        if (!active) return;
-        setMeta(result);
-        setError(null);
-      })
-      .catch(() => {
-        if (!active) return;
-        setMeta(null);
-        setError('Không thể tải catalog metadata hoặc tài khoản không có quyền CATALOG_READ.');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
   }, []);
 
-  const clearForm = () => {
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const resetForm = () => {
     setName('');
-    setCode('');
     setParentId('');
-    setSizeValues([]);
-    setSizeValuesDirty(false);
+    setAttributeTypeId('');
+    setAttributeCode('');
+    setAttributeRequired(false);
+    setVariantDefining(false);
   };
 
   const createCurrent = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!canWrite || !name.trim() || busy) return;
+    if (!canWrite || busy || !name.trim()) return;
+
     setBusy(true);
     setError(null);
     try {
       if (activeTab === 'categories') {
-        const parsedParent = parentId ? Number(parentId) : null;
-        if (parsedParent !== null && (!Number.isInteger(parsedParent) || parsedParent <= 0))
-          throw new Error('invalid');
+        const parent = parentId.trim() ? Number(parentId) : null;
+        if (parent !== null && (!Number.isSafeInteger(parent) || parent <= 0)) {
+          throw new Error('Danh mục cha không hợp lệ.');
+        }
         await adminCatalogMetaService.createCategory({
-          parent_category_id: parsedParent,
           name: name.trim(),
+          parent_category_id: parent,
         });
       } else if (activeTab === 'brands') {
         await adminCatalogMetaService.createBrand({ name: name.trim() });
-      } else if (activeTab === 'colors') {
-        if (!code.trim()) throw new Error('invalid');
-        await adminCatalogMetaService.createColor({ code: code.trim(), name: name.trim() });
       } else {
-        if (!code.trim()) throw new Error('Nhập code hệ size.');
-        await adminCatalogMetaService.createSizeSystem({
-          code: code.trim(),
+        const typeId = Number(attributeTypeId);
+        if (!Number.isSafeInteger(typeId) || typeId <= 0 || !attributeCode.trim()) {
+          throw new Error('Chọn kiểu dữ liệu và nhập mã thuộc tính hợp lệ.');
+        }
+        await adminCatalogMetaService.createAttribute({
+          attribute_type_id: typeId,
+          code: attributeCode.trim(),
           name: name.trim(),
-          size_values: validateSizes(),
+          is_required: attributeRequired,
+          is_variant_defining: variantDefining,
+          sort_order: adminMeta?.attributes.length ?? 0,
         });
       }
-      clearForm();
-      setCreatingSizeSystem(false);
+
+      resetForm();
       await load();
       showToast('Đã cập nhật catalog metadata.');
     } catch (failure: unknown) {
-      setError(
-        getApiErrorMessage(
-          failure,
-          'Không thể tạo metadata. Kiểm tra dữ liệu, quan hệ và quyền CATALOG_WRITE.',
-        ),
-      );
+      setError(getApiErrorMessage(failure, 'Không thể tạo metadata.'));
     } finally {
       setBusy(false);
     }
   };
 
-  const rename = async () => {
-    if (!canWrite || !renaming || !nextName.trim() || busy) return;
-    const { kind, id } = renaming;
+  const saveRename = async () => {
+    if (!canWrite || busy || !renameTarget || !renameValue.trim()) return;
     setBusy(true);
     setError(null);
     try {
-      if (kind === 'categories')
-        await adminCatalogMetaService.updateCategory(id, { name: nextName.trim() });
-      if (kind === 'brands')
-        await adminCatalogMetaService.updateBrand(id, { name: nextName.trim() });
-      if (kind === 'colors')
-        await adminCatalogMetaService.updateColor(id, { name: nextName.trim() });
-      if (kind === 'sizes')
-        await adminCatalogMetaService.updateSizeSystem(id, { name: nextName.trim() });
-      setRenaming(null);
+      if (renameTarget.kind === 'categories') {
+        await adminCatalogMetaService.updateCategory(renameTarget.id, { name: renameValue.trim() });
+      } else {
+        await adminCatalogMetaService.updateBrand(renameTarget.id, { name: renameValue.trim() });
+      }
+      setRenameTarget(null);
+      setRenameValue('');
       await load();
+      showToast('Đã cập nhật tên.');
     } catch (failure: unknown) {
-      setError(getApiErrorMessage(failure, 'Không thể cập nhật metadata.'));
+      setError(getApiErrorMessage(failure, 'Không thể cập nhật tên.'));
     } finally {
       setBusy(false);
     }
   };
 
-  const remove = async (kind: Tab, id: number) => {
-    if (
-      !canWrite ||
-      busy ||
-      !window.confirm('Xóa thuộc tính này? Chỉ có thể xóa khi không còn được sử dụng.')
-    )
+  const removeMaster = async (kind: 'categories' | 'brands', id: number, label: string) => {
+    if (!canWrite || busy || !window.confirm(`Xóa ${label}? Chỉ xóa được mục không còn được tham chiếu.`)) {
       return;
+    }
     setBusy(true);
     setError(null);
     try {
       if (kind === 'categories') await adminCatalogMetaService.deleteCategory(id);
-      if (kind === 'brands') await adminCatalogMetaService.deleteBrand(id);
-      if (kind === 'colors') await adminCatalogMetaService.deleteColor(id);
-      if (kind === 'sizes') await adminCatalogMetaService.deleteSizeSystem(id);
+      else await adminCatalogMetaService.deleteBrand(id);
       await load();
-    } catch {
-      setError(
-        'Không thể xóa metadata; mục có thể đang được tham chiếu hoặc actor không có quyền.',
-      );
+    } catch (failure: unknown) {
+      setError(getApiErrorMessage(failure, 'Không thể xóa metadata đang được tham chiếu.'));
     } finally {
       setBusy(false);
     }
   };
 
-  if (loading && !meta)
+  const addOption = async (attributeId: number) => {
+    if (!canWrite || busy) return;
+    const draft = optionDrafts[attributeId];
+    if (!draft?.value.trim() || !draft.label.trim()) {
+      setError('Nhập cả mã option và nhãn hiển thị.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await adminCatalogMetaService.createAttributeOption(attributeId, {
+        value: draft.value.trim(),
+        label: draft.label.trim(),
+        sort_order: adminMeta?.attributes.find((attribute) => attribute.id === attributeId)?.options.length ?? 0,
+      });
+      setOptionDrafts((current) => ({ ...current, [attributeId]: { value: '', label: '' } }));
+      await load();
+      showToast('Đã thêm Attribute Option.');
+    } catch (failure: unknown) {
+      setError(getApiErrorMessage(failure, 'Không thể thêm option.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const categories = publicMeta?.categories ?? [];
+  const brands = publicMeta?.brands ?? [];
+  const attributes = adminMeta?.attributes ?? [];
+
+  if (loading && !publicMeta && !adminMeta) {
     return (
       <div className="rounded-lg border border-[#E2E5DE] bg-white p-10 text-center text-sm">
         Đang tải catalog metadata...
       </div>
     );
-
-  const rows =
-    activeTab === 'categories'
-      ? (meta?.categories ?? [])
-      : activeTab === 'brands'
-        ? (meta?.brands ?? [])
-        : activeTab === 'colors'
-          ? (meta?.colors ?? [])
-          : (meta?.size_systems ?? []);
-
-  const normalizedSearch = search.trim().toLocaleLowerCase('vi-VN');
-  const filteredRows = rows.filter((row) => {
-    const text = [
-      row.name,
-      'code' in row ? row.code : '',
-      'size_values' in row
-        ? row.size_values.map((value) => `${value.code} ${value.display_name}`).join(' ')
-        : '',
-    ]
-      .join(' ')
-      .toLocaleLowerCase('vi-VN');
-    return (
-      text.includes(normalizedSearch) &&
-      (!('parent_category_id' in row) ||
-        categoryKind === 'all' ||
-        (categoryKind === 'root'
-          ? row.parent_category_id === null
-          : row.parent_category_id !== null))
-    );
-  });
+  }
 
   return (
     <div className="space-y-6">
-      {creatingSizeSystem && canWrite && (
-        <Modal
-          title="Tạo hệ size"
-          busy={busy}
-          onClose={() => {
-            if (canDiscard()) {
-              clearForm();
-              setCreatingSizeSystem(false);
-            }
-          }}
-        >
-          <form onSubmit={createCurrent} className="space-y-4">
-            <fieldset disabled={busy} className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label>
-                  Tên hệ size *
-                  <input
-                    className="w-full"
-                    required
-                    maxLength={150}
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                  />
-                </label>
-                <label>
-                  Mã hệ size *
-                  <input
-                    className="w-full"
-                    required
-                    maxLength={50}
-                    value={code}
-                    onChange={(event) => setCode(event.target.value)}
-                  />
-                </label>
-              </div>
-              {sizeFields}
-              <button type="submit" className="admin-primary">
-                {busy ? 'Đang tạo...' : 'Tạo hệ size'}
-              </button>
-            </fieldset>
-            {error && (
-              <p role="alert" className="text-red-700">
-                {error}
-              </p>
-            )}
-          </form>
-        </Modal>
-      )}
-      {editingSizes && canWrite && (
-        <Modal
-          title={`Danh sách size: ${editingSizes.name}`}
-          busy={busy}
-          onClose={() => {
-            if (canDiscard()) {
-              setEditingSizes(null);
-              setSizeValues([]);
-              setSizeValuesDirty(false);
-            }
-          }}
-        >
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void saveSizes();
-            }}
-            className="space-y-4"
-          >
-            <fieldset disabled={busy} className="space-y-4">
-              {sizeFields}
-              <button type="submit" className="admin-primary">
-                {busy ? 'Đang lưu...' : 'Lưu danh sách size'}
-              </button>
-            </fieldset>
-            {error && (
-              <p role="alert" className="text-red-700">
-                {error}
-              </p>
-            )}
-          </form>
-        </Modal>
-      )}
-      {renaming && (
-        <Modal
-          title={`Đổi tên ${renaming.name}`}
-          busy={busy}
-          onClose={() => {
-            if (canDiscard()) setRenaming(null);
-          }}
-        >
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void rename();
-            }}
-          >
-            <label>
-              Tên mới
-              <input
-                required
-                disabled={busy}
-                maxLength={renaming.kind === 'colors' ? 100 : 150}
-                value={nextName}
-                onChange={(event) => setNextName(event.target.value)}
-              />
-            </label>
-            {error && (
-              <p role="alert" className="text-red-700">
-                {error}
-              </p>
-            )}
-            <button type="submit" className="admin-primary" disabled={busy || !nextName.trim()}>
-              Lưu tên
-            </button>
-          </form>
-        </Modal>
-      )}
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">
             Catalog master data
@@ -414,49 +196,18 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
             Danh mục & thuộc tính
           </h1>
           <p className="mt-2 text-sm text-[#606863]">
-            Quản lý danh mục, thương hiệu, hệ size và màu dùng cho sản phẩm.
+            Quản lý danh mục, thương hiệu và thuộc tính định kiểu theo API backend.
           </p>
         </div>
         <button
           type="button"
-          disabled={loading}
+          disabled={loading || busy}
           onClick={() => void load()}
           className="border border-[#0B2419] px-4 py-2 text-xs font-bold uppercase disabled:opacity-40"
         >
           Làm mới
         </button>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {(['categories', 'brands', 'sizes', 'colors'] as Tab[]).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => {
-              if (canDiscard()) {
-                clearForm();
-                setCreatingSizeSystem(false);
-                setEditingSizes(null);
-                setRenaming(null);
-                setSearch('');
-                setCategoryKind('all');
-                onNavigateTab(tab, tab);
-              }
-            }}
-            aria-current={activeTab === tab ? 'page' : undefined}
-            className={`px-4 py-2 text-xs font-bold uppercase ${activeTab === tab ? 'bg-[#0B2419] text-white' : 'border border-[#D9DDD6] bg-white'}`}
-          >
-            {
-              {
-                categories: 'Danh mục',
-                brands: 'Thương hiệu',
-                sizes: 'Hệ size',
-                colors: 'Màu sắc',
-              }[tab]
-            }
-          </button>
-        ))}
-      </div>
+      </header>
 
       {error && (
         <div role="alert" className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -465,211 +216,238 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
       )}
       {!canWrite && (
         <div className="border border-[#E2E5DE] bg-[#F8FAF4] p-3 text-sm text-[#606863]">
-          Chế độ chỉ đọc. Cần CATALOG_WRITE để tạo, sửa hoặc xóa metadata.
+          Chế độ chỉ đọc. Cần CATALOG_WRITE để tạo, sửa hoặc xóa dữ liệu.
         </div>
       )}
 
-      {canWrite && activeTab === 'sizes' && (
-        <button
-          type="button"
-          className="admin-primary"
-          disabled={busy}
-          onClick={() => {
-            if (canDiscard()) {
-              clearForm();
-              setCreatingSizeSystem(true);
+      <nav aria-label="Catalog metadata" className="flex flex-wrap gap-2">
+        {(['categories', 'brands', 'attributes'] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            aria-current={activeTab === tab ? 'page' : undefined}
+            onClick={() => {
+              setActiveTab(tab);
+              onNavigateTab(tab, tab);
               setError(null);
-            }
-          }}
-        >
-          Thêm hệ size
-        </button>
-      )}
-      {canWrite && activeTab !== 'sizes' && !editingSizes && (
+            }}
+            className={`px-4 py-2 text-xs font-bold uppercase ${activeTab === tab ? 'bg-[#0B2419] text-white' : 'border border-[#D9DDD6] bg-white'}`}
+          >
+            {{ categories: 'Danh mục', brands: 'Thương hiệu', attributes: 'Thuộc tính' }[tab]}
+          </button>
+        ))}
+      </nav>
+
+      {canWrite && (
         <form
           onSubmit={createCurrent}
           className="grid gap-3 rounded-lg border border-[#E2E5DE] bg-white p-5 md:grid-cols-2 xl:grid-cols-4"
         >
-          <fieldset disabled={busy} className="contents">
+          <label className="space-y-1">
+            <span className="text-xs font-semibold">{activeTab === 'attributes' ? 'Tên thuộc tính *' : 'Tên *'}</span>
+            <input
+              value={name}
+              maxLength={150}
+              onChange={(event) => setName(event.target.value)}
+              className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
+              disabled={busy}
+              required
+            />
+          </label>
+          {activeTab === 'categories' && (
             <label className="space-y-1">
-              <span className="text-xs font-semibold">Tên *</span>
-              <input
-                value={name}
-                maxLength={activeTab === 'colors' ? 100 : 150}
-                onChange={(event) => setName(event.target.value)}
+              <span className="text-xs font-semibold">Danh mục cha</span>
+              <select
+                value={parentId}
+                onChange={(event) => setParentId(event.target.value)}
                 className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
-                required
-              />
+                disabled={busy}
+              >
+                <option value="">Danh mục gốc</option>
+                {categories.map((category) => (
+                  <option key={category.category_id} value={category.category_id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
             </label>
-            {activeTab === 'colors' && (
+          )}
+          {activeTab === 'attributes' && (
+            <>
               <label className="space-y-1">
-                <span className="text-xs font-semibold">Code *</span>
+                <span className="text-xs font-semibold">Mã thuộc tính *</span>
                 <input
-                  value={code}
-                  maxLength={50}
-                  onChange={(event) => setCode(event.target.value)}
+                  value={attributeCode}
+                  maxLength={80}
+                  onChange={(event) => setAttributeCode(event.target.value)}
                   className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
+                  disabled={busy}
                   required
                 />
               </label>
-            )}
-            {activeTab === 'categories' && (
               <label className="space-y-1">
-                <span className="text-xs font-semibold">Danh mục cha</span>
+                <span className="text-xs font-semibold">Kiểu dữ liệu *</span>
                 <select
-                  value={parentId}
-                  onChange={(event) => setParentId(event.target.value)}
+                  value={attributeTypeId}
+                  onChange={(event) => setAttributeTypeId(event.target.value)}
                   className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
+                  disabled={busy}
+                  required
                 >
-                  <option value="">Danh mục gốc</option>
-                  {meta?.categories.map((category) => (
-                    <option key={category.category_id} value={category.category_id}>
-                      {category.name}
+                  <option value="">Chọn kiểu</option>
+                  {(adminMeta?.attribute_types ?? []).map((type) => (
+                    <option key={type.id} value={type.id}>
+                      {type.code} · {type.name}
                     </option>
                   ))}
                 </select>
               </label>
-            )}
-            <div className="flex items-end">
-              <button
-                type="submit"
-                disabled={busy}
-                className="w-full bg-[#0B2419] px-4 py-2.5 text-xs font-bold uppercase text-white disabled:opacity-40"
-              >
-                {busy ? 'Đang xử lý...' : 'Tạo mới'}
-              </button>
-            </div>
-          </fieldset>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={attributeRequired}
+                  onChange={(event) => setAttributeRequired(event.target.checked)}
+                  disabled={busy}
+                />
+                Bắt buộc
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={variantDefining}
+                  onChange={(event) => setVariantDefining(event.target.checked)}
+                  disabled={busy}
+                />
+                Đánh dấu thuộc tính phân biệt
+              </label>
+            </>
+          )}
+          <div className="flex items-end gap-2">
+            <button type="submit" disabled={busy} className="admin-primary">
+              {busy ? 'Đang xử lý...' : activeTab === 'attributes' ? 'Tạo thuộc tính' : 'Tạo mới'}
+            </button>
+            <button type="button" disabled={busy} onClick={resetForm} className="admin-secondary">
+              Xóa nhập
+            </button>
+          </div>
         </form>
       )}
 
-      <ListSearch
-        label="Tìm tên hoặc mã thuộc tính"
-        value={search}
-        onChange={setSearch}
-        count={filteredRows.length}
-      />
       {activeTab === 'categories' && (
-        <label className="block max-w-xs text-sm">
-          Cấp danh mục
-          <select
-            className="mt-1 w-full"
-            value={categoryKind}
-            onChange={(event) => setCategoryKind(event.target.value)}
-          >
-            <option value="all">Tất cả cấp</option>
-            <option value="root">Danh mục gốc</option>
-            <option value="child">Danh mục con</option>
-          </select>
-        </label>
-      )}
-      {filteredRows.length === 0 && (
-        <p role="status" className="admin-state">
-          {rows.length
-            ? 'Không có thuộc tính khớp tìm kiếm.'
-            : 'Chưa có thuộc tính trong nhóm này.'}
-        </p>
-      )}
-      <div className="overflow-x-auto rounded-lg border border-[#E2E5DE] bg-white">
-        <table className="min-w-full text-left text-sm">
-          <thead className="bg-[#F5F6F2] text-xs uppercase tracking-wide text-[#606863]">
-            <tr>
-              <th className="px-4 py-3">Tên</th>
-              <th className="px-4 py-3">Thông tin</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#E2E5DE]">
-            {filteredRows.map((row) => {
-              const id =
-                'category_id' in row
-                  ? row.category_id
-                  : 'brand_id' in row
-                    ? row.brand_id
-                    : 'color_id' in row
-                      ? row.color_id
-                      : row.size_system_id;
-              const detail =
-                'parent_category_id' in row
-                  ? row.parent_category_id === null
-                    ? 'Danh mục gốc'
-                    : `Thuộc ${meta?.categories.find((category) => category.category_id === row.parent_category_id)?.name ?? 'danh mục cha'}`
-                  : 'size_values' in row
-                    ? `${row.code} · ${row.size_values.length} kích cỡ`
-                    : 'code' in row
-                      ? row.code
-                      : '';
-              return (
-                <tr key={id}>
-                  <td className="px-4 py-3 font-semibold">{row.name}</td>
+        <div className="overflow-x-auto rounded-lg border border-[#E2E5DE] bg-white">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-[#F5F6F2] text-xs uppercase tracking-wide text-[#606863]">
+              <tr><th className="px-4 py-3">Tên</th><th className="px-4 py-3">Quan hệ</th><th className="px-4 py-3" /></tr>
+            </thead>
+            <tbody className="divide-y divide-[#E2E5DE]">
+              {categories.map((category) => (
+                <tr key={category.category_id}>
+                  <td className="px-4 py-3 font-semibold">{category.name}</td>
                   <td className="px-4 py-3 text-xs text-[#606863]">
-                    {detail}
-                    {'size_values' in row && (
-                      <ul>
-                        {row.size_values.map((value) => (
-                          <li key={value.size_value_id}>
-                            {value.code} · {value.display_name} · Thứ tự {value.sort_order}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                    {category.parent_category_id === null ? 'Danh mục gốc' : `Danh mục cha #${category.parent_category_id}`}
+                    <span className="ml-2">{category.status}</span>
                   </td>
                   <td className="px-4 py-3 text-right">
                     {canWrite && (
                       <div className="flex justify-end gap-2">
-                        {'size_values' in row && (
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => {
-                              if (!canDiscard()) return;
-                              clearForm();
-                              setEditingSizes(row);
-                              setSizeValues(
-                                row.size_values.map(
-                                  ({ size_value_id, code, display_name, sort_order }) => ({
-                                    size_value_id,
-                                    code,
-                                    display_name,
-                                    sort_order,
-                                  }),
-                                ),
-                              );
-                              setError(null);
-                            }}
-                          >
-                            Quản lý size
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => {
-                            if (!canDiscard()) return;
-                            setRenaming({ kind: activeTab, id, name: row.name });
-                            setNextName(row.name);
-                          }}
-                          className="border border-[#D9DDD6] px-3 py-1.5 text-xs font-semibold"
-                        >
-                          Đổi tên
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => void remove(activeTab, id)}
-                          className="border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700"
-                        >
-                          Xóa
-                        </button>
+                        <button type="button" disabled={busy} className="admin-secondary" onClick={() => {
+                          setRenameTarget({ kind: 'categories', id: category.category_id, name: category.name });
+                          setRenameValue(category.name);
+                        }}>Đổi tên</button>
+                        <button type="button" disabled={busy} className="admin-danger" onClick={() => void removeMaster('categories', category.category_id, category.name)}>Xóa</button>
                       </div>
                     )}
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {activeTab === 'brands' && (
+        <div className="overflow-x-auto rounded-lg border border-[#E2E5DE] bg-white">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-[#F5F6F2] text-xs uppercase tracking-wide text-[#606863]">
+              <tr><th className="px-4 py-3">Thương hiệu</th><th className="px-4 py-3">Trạng thái</th><th className="px-4 py-3" /></tr>
+            </thead>
+            <tbody className="divide-y divide-[#E2E5DE]">
+              {brands.map((brand) => (
+                <tr key={brand.brand_id}>
+                  <td className="px-4 py-3 font-semibold">{brand.name}</td>
+                  <td className="px-4 py-3 text-xs text-[#606863]">{brand.status}</td>
+                  <td className="px-4 py-3 text-right">
+                    {canWrite && (
+                      <div className="flex justify-end gap-2">
+                        <button type="button" disabled={busy} className="admin-secondary" onClick={() => {
+                          setRenameTarget({ kind: 'brands', id: brand.brand_id, name: brand.name });
+                          setRenameValue(brand.name);
+                        }}>Đổi tên</button>
+                        <button type="button" disabled={busy} className="admin-danger" onClick={() => void removeMaster('brands', brand.brand_id, brand.name)}>Xóa</button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {activeTab === 'attributes' && (
+        <div className="space-y-4">
+          {attributes.length === 0 && <p role="status" className="admin-state">Chưa có thuộc tính được cấu hình.</p>}
+          {attributes.map((attribute) => {
+            const optionDraft = optionDrafts[attribute.id] ?? { value: '', label: '' };
+            return (
+              <article key={attribute.id} className="rounded-lg border border-[#E2E5DE] bg-white p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 className="font-semibold">{attribute.name}</h2>
+                    <p className="mt-1 text-xs text-[#606863]">
+                      {attribute.code} · {attribute.data_type} · Thứ tự {attribute.sort_order}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <span className="border px-2 py-1">{attribute.is_required ? 'Bắt buộc' : 'Không bắt buộc'}</span>
+                    {attribute.is_variant_defining && <span className="border px-2 py-1">Đánh dấu phân biệt</span>}
+                  </div>
+                </div>
+                {attribute.data_type === 'OPTION' && (
+                  <div className="mt-4 space-y-3">
+                    <h3 className="text-sm font-semibold">Options</h3>
+                    {attribute.options.map((option) => (
+                      <div key={option.id} className="flex flex-wrap justify-between gap-2 border-b border-[#E8E9E3] py-2 text-sm">
+                        <span>{option.label}</span><code className="text-xs text-[#606863]">{option.value}</code>
+                      </div>
+                    ))}
+                    {canWrite && (
+                      <form onSubmit={(event) => { event.preventDefault(); void addOption(attribute.id); }} className="grid gap-2 sm:grid-cols-3">
+                        <input aria-label="Mã option" placeholder="Mã option" value={optionDraft.value} disabled={busy} onChange={(event) => setOptionDrafts((current) => ({ ...current, [attribute.id]: { ...optionDraft, value: event.target.value } }))} className="border border-[#D9DDD6] px-3 py-2 text-sm" required />
+                        <input aria-label="Nhãn option" placeholder="Nhãn hiển thị" value={optionDraft.label} disabled={busy} onChange={(event) => setOptionDrafts((current) => ({ ...current, [attribute.id]: { ...optionDraft, label: event.target.value } }))} className="border border-[#D9DDD6] px-3 py-2 text-sm" required />
+                        <button type="submit" disabled={busy} className="admin-secondary">Thêm option</button>
+                      </form>
+                    )}
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      )}
+
+      {renameTarget && canWrite && (
+        <div role="dialog" aria-modal="true" aria-label="Đổi tên metadata" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <form onSubmit={(event) => { event.preventDefault(); void saveRename(); }} className="w-full max-w-md space-y-4 rounded-lg bg-white p-5">
+            <h2 className="font-semibold">Đổi tên: {renameTarget.name}</h2>
+            <input autoFocus value={renameValue} onChange={(event) => setRenameValue(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2" maxLength={150} required />
+            <div className="flex justify-end gap-2">
+              <button type="button" disabled={busy} className="admin-secondary" onClick={() => setRenameTarget(null)}>Hủy</button>
+              <button type="submit" disabled={busy || !renameValue.trim()} className="admin-primary">Lưu</button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 };
