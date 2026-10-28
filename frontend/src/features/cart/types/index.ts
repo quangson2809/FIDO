@@ -34,6 +34,8 @@ export interface CartViewItem {
   name: string;
   sku: string;
   price: number;
+  lineTotal: number;
+  availableQuantity: number;
   imageUrl: string;
   quantity: number;
 }
