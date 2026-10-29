@@ -240,9 +240,12 @@ assert.equal(canPurchaseProduct('ARCHIVED'), false);
 assert.equal(canPurchaseProduct(undefined), false);
 
 const checkoutRequest = {
+  recipient_name: 'Test Customer',
   recipient_phone: '0900000000',
-  recipient_email: null,
-  recipient_address: 'Hà Nội',
+  province: 'Hà Nội',
+  district: 'Hoàn Kiếm',
+  ward: 'Hàng Trống',
+  address_line: '1 Đinh Tiên Hoàng',
   voucher_code: null,
 };
 assert.notEqual(
@@ -385,24 +388,25 @@ const { sameCheckoutQuote } = await import('../src/features/orders/model/sameChe
 const confirmedQuote = {
   items: [
     {
-      variant_id: 1,
+      product_id: 1,
       quantity: 2,
       product_name: 'Áo',
-      size: 'M',
-      color: 'Đen',
+      thumbnail: null,
+      sku: 'FIDO-001',
       unit_price: 100000,
+      discount_amount: 0,
       line_total: 200000,
       available_quantity: 10,
     },
   ],
   subtotal: 200000,
-  discount: 0,
+  discount_amount: 0,
   shipping_fee: 30000,
-  total: 230000,
+  total_amount: 230000,
   voucher: null,
 };
 assert.equal(sameCheckoutQuote(confirmedQuote, structuredClone(confirmedQuote)), true);
-assert.equal(sameCheckoutQuote(confirmedQuote, { ...confirmedQuote, total: 240000 }), false);
+assert.equal(sameCheckoutQuote(confirmedQuote, { ...confirmedQuote, total_amount: 240000 }), false);
 assert.equal(
   sameCheckoutQuote(confirmedQuote, {
     ...confirmedQuote,
@@ -413,7 +417,7 @@ assert.equal(
 assert.equal(
   sameCheckoutQuote(confirmedQuote, {
     ...confirmedQuote,
-    items: [{ ...confirmedQuote.items[0], variant_id: 2 }],
+    items: [{ ...confirmedQuote.items[0], product_id: 2 }],
   }),
   false,
 );
@@ -522,7 +526,7 @@ import {
   catalogQueryParams,
   catalogUrlParams,
 } from '../src/features/catalog/model/catalogQuery';
-import { recipientErrors, quoteHasExpired } from '../src/features/orders/model/recipientValidation';
+import { recipientErrors } from '../src/features/orders/model/recipientValidation';
 import { getStorefrontErrorMessage } from '../src/services/http/storefrontError';
 import { ApiClientError } from '../src/services/http/apiError';
 assert.deepEqual(
@@ -569,28 +573,29 @@ assert.equal(
   'q=shirt&brand_id=2&page=3',
   'category URL preserves filters and pagination without duplicate scope',
 );
-assert.deepEqual(
-  recipientErrors({
-    recipient_phone: '+84 90-000-0000',
-    recipient_email: 'user@example.test',
-    recipient_address: 'Hà Nội',
-  }),
-  { phone: null, email: null, address: null },
-);
-assert.ok(
-  recipientErrors({ recipient_phone: 'bad', recipient_email: 'bad', recipient_address: ' ' }).phone,
-);
-assert.ok(
-  recipientErrors({ recipient_phone: '0900000000', recipient_email: null, recipient_address: ' ' })
-    .address,
-);
-assert.equal(
-  quoteHasExpired(undefined, 0),
-  false,
-  'absence of expiry retains the existing quote contract',
-);
-assert.equal(quoteHasExpired('invalid', 0), true, 'malformed expiry must not authorize submission');
-assert.equal(quoteHasExpired('2026-10-10T01:00:00Z', Date.parse('2026-10-10T01:00:00Z')), true);
+const validRecipient = {
+  recipient_name: 'Test Customer',
+  recipient_phone: '+84 90-000-0000',
+  province: 'Hà Nội',
+  district: 'Hoàn Kiếm',
+  ward: 'Hàng Trống',
+  address_line: '1 Đinh Tiên Hoàng',
+  voucher_code: null,
+};
+assert.deepEqual(recipientErrors(validRecipient), {
+  name: null,
+  phone: null,
+  province: null,
+  district: null,
+  ward: null,
+  addressLine: null,
+});
+assert.ok(recipientErrors({ ...validRecipient, recipient_name: ' ' }).name);
+assert.ok(recipientErrors({ ...validRecipient, recipient_phone: 'bad' }).phone);
+assert.ok(recipientErrors({ ...validRecipient, province: ' ' }).province);
+assert.ok(recipientErrors({ ...validRecipient, district: ' ' }).district);
+assert.ok(recipientErrors({ ...validRecipient, ward: ' ' }).ward);
+assert.ok(recipientErrors({ ...validRecipient, address_line: ' ' }).addressLine);
 assert.equal(
   getStorefrontErrorMessage(new ApiClientError('SQL private stack', 500), 'Thử lại.'),
   'Thử lại.',
@@ -603,4 +608,4 @@ assert.match(
   getStorefrontErrorMessage(new ApiClientError('Forbidden', 403), 'Thử lại.'),
   /không có quyền/,
 );
-console.log('Storefront URL, recipient, expiry and safe error models: PASS');
+console.log('Storefront URL, structured recipient and safe error models: PASS');
