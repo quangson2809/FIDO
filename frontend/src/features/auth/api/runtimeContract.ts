@@ -63,6 +63,13 @@ const expectNullableString = (
   fieldPath: string,
 ): string | null => (value === null ? null : expectString(value, endpoint, fieldPath));
 
+const expectOptionalNullableString = (
+  value: unknown,
+  endpoint: string,
+  fieldPath: string,
+): string | null =>
+  value === null || value === undefined ? null : expectString(value, endpoint, fieldPath);
+
 const expectInteger = (value: unknown, endpoint: string, fieldPath: string): number => {
   if (typeof value !== 'number' || !Number.isSafeInteger(value)) {
     return fail(endpoint, fieldPath, 'a safe integer');
@@ -75,14 +82,15 @@ const responseData = (value: unknown, endpoint: string): unknown =>
 
 const parseAccount = (value: unknown, endpoint: string, fieldPath: string): AccountDto => {
   const account = expectObject(value, endpoint, fieldPath);
+  // The canonical backend now names the identifier "id"; account_id remains the app's view-model key.
   return {
-    account_id: expectInteger(account.account_id, endpoint, `${fieldPath}.account_id`),
+    account_id: expectInteger(account.id ?? account.account_id, endpoint, `${fieldPath}.id`),
     full_name:
       account.full_name === null || account.full_name === undefined
         ? null
         : expectString(account.full_name, endpoint, `${fieldPath}.full_name`),
     phone: expectString(account.phone, endpoint, `${fieldPath}.phone`),
-    email: expectNullableString(account.email, endpoint, `${fieldPath}.email`),
+    email: expectOptionalNullableString(account.email, endpoint, `${fieldPath}.email`),
     status: expectNonBlankString(account.status, endpoint, `${fieldPath}.status`) as AccountDto['status'],
     created_at: expectString(account.created_at, endpoint, `${fieldPath}.created_at`),
     updated_at: expectString(account.updated_at, endpoint, `${fieldPath}.updated_at`),
@@ -91,10 +99,36 @@ const parseAccount = (value: unknown, endpoint: string, fieldPath: string): Acco
 
 const parseAddress = (value: unknown, endpoint: string, fieldPath: string): AddressDto => {
   const address = expectObject(value, endpoint, fieldPath);
+  const recipientName = expectOptionalNullableString(
+    address.recipient_name, endpoint, `${fieldPath}.recipient_name`,
+  );
+  const recipientPhone = expectOptionalNullableString(
+    address.recipient_phone, endpoint, `${fieldPath}.recipient_phone`,
+  );
+  const province = expectOptionalNullableString(address.province, endpoint, `${fieldPath}.province`);
+  const district = expectOptionalNullableString(address.district, endpoint, `${fieldPath}.district`);
+  const ward = expectOptionalNullableString(address.ward, endpoint, `${fieldPath}.ward`);
+  const addressLine = expectOptionalNullableString(
+    address.address_line, endpoint, `${fieldPath}.address_line`,
+  );
+  const structuredLabel = [addressLine, ward, district, province]
+    .filter((part): part is string => Boolean(part?.trim()))
+    .join(', ');
+  const legacyLabel = typeof address.address_text === 'string' ? address.address_text : null;
+
   return {
-    address_id: expectInteger(address.address_id, endpoint, `${fieldPath}.address_id`),
-    address_text: expectString(address.address_text, endpoint, `${fieldPath}.address_text`),
-    created_at: expectString(address.created_at, endpoint, `${fieldPath}.created_at`),
+    address_id: expectInteger(address.id ?? address.address_id, endpoint, `${fieldPath}.id`),
+    address_text: legacyLabel ?? structuredLabel,
+    created_at: address.created_at === null || address.created_at === undefined
+      ? null
+      : expectString(address.created_at, endpoint, `${fieldPath}.created_at`),
+    recipient_name: recipientName,
+    recipient_phone: recipientPhone,
+    province,
+    district,
+    ward,
+    address_line: addressLine,
+    is_default: typeof address.is_default === 'boolean' ? address.is_default : false,
   };
 };
 

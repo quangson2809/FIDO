@@ -9,9 +9,18 @@ export interface AccountDto {
 }
 
 export interface AddressDto {
+  /** Frontend compatibility key mapped from the backend AddressDto.id. */
   address_id: number;
+  /** Display label assembled from structured backend address fields when needed. */
   address_text: string;
-  created_at: string;
+  created_at: string | null;
+  recipient_name: string | null;
+  recipient_phone: string | null;
+  province: string | null;
+  district: string | null;
+  ward: string | null;
+  address_line: string | null;
+  is_default: boolean;
 }
 
 export interface RoleDto {

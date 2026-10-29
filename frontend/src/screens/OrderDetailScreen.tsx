@@ -198,7 +198,7 @@ export const OrderDetailScreen: React.FC = () => {
                       <div>
                         <h3 className="font-serif text-lg">{item.product_name}</h3>
                         <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-[#687069]">
-                          SKU {item.sku ?? '—'} · Size {item.size} · {item.color}
+                          SKU {item.sku ?? '—'} · Số lượng {item.quantity}
                         </p>
                       </div>
                       <strong className="whitespace-nowrap font-serif text-lg">

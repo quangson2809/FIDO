@@ -10,7 +10,7 @@ import { CartContext, type CartContextValue } from './cartContext';
 
 const toCartItems = (cart: CartDto): CartViewItem[] =>
   cart.items.map((item) => ({
-    id: String(item.cart_item_id),
+    id: item.cart_item_id,
     productId: item.product_id,
     name: item.product_name ?? item.sku ?? `Product #${item.product_id}`,
     sku: item.sku ?? '',
@@ -207,19 +207,14 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     showToast('Đang thêm ' + productName + ' vào giỏ hàng...');
   };
 
-  const removeFromCart = (itemId: string) => {
+  const removeFromCart = (itemId: number) => {
     if (!ensureCartAuthentication()) return;
 
     const item = cartViewRef.current.items.find((candidate) => candidate.id === itemId);
     if (!item) return;
 
-    applyLocalCart(
-      cartViewRef.current.items.filter((candidate) => candidate.id !== itemId),
-      Math.max(0, cartViewRef.current.subtotal - item.lineTotal),
-    );
-
     enqueueCartMutation(
-      () => cartService.removeItem(Number(itemId)),
+      () => cartService.removeItem(itemId),
       'Không thể xóa sản phẩm khỏi giỏ hàng.',
     );
   };
@@ -228,14 +223,13 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!ensureCartAuthentication()) return;
     if (cartViewRef.current.items.length === 0) return;
 
-    applyLocalCart([], 0);
     enqueueCartMutation(
       () => cartService.clear(),
       'Không thể xóa toàn bộ giỏ hàng. Vui lòng thử lại.',
     );
   };
 
-  const setCartQuantity = (itemId: string, quantity: number) => {
+  const setCartQuantity = (itemId: number, quantity: number) => {
     if (!ensureCartAuthentication()) return;
 
     const item = cartViewRef.current.items.find((candidate) => candidate.id === itemId);
@@ -249,32 +243,17 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
 
-    const nextItems = cartViewRef.current.items.map((candidate) =>
-      candidate.id === itemId
-        ? {
-            ...candidate,
-            quantity: normalizedQuantity,
-            lineTotal: candidate.price * normalizedQuantity,
-          }
-        : candidate,
-    );
-    const nextSubtotal = Math.max(
-      0,
-      cartViewRef.current.subtotal + (normalizedQuantity - item.quantity) * item.price,
-    );
-    applyLocalCart(nextItems, nextSubtotal);
-
     enqueueCartMutation(
-      () => cartService.updateItem(Number(itemId), normalizedQuantity),
+      () => cartService.updateItem(itemId, normalizedQuantity),
       'Không thể cập nhật số lượng giỏ hàng.',
     );
   };
 
-  const updateCartQuantity = (itemId: string, quantity: number) => {
+  const updateCartQuantity = (itemId: number, quantity: number) => {
     setCartQuantity(itemId, quantity);
   };
 
-  const changeCartQuantity = (itemId: string, delta: number) => {
+  const changeCartQuantity = (itemId: number, delta: number) => {
     const item = cartViewRef.current.items.find((candidate) => candidate.id === itemId);
     if (!item || !Number.isFinite(delta)) return;
     setCartQuantity(itemId, item.quantity + Math.trunc(delta));

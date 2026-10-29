@@ -20,7 +20,7 @@ export const CartDrawer: React.FC = () => {
     changeCartQuantity,
   } = useCart();
   const navigate = useNavigate();
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const close = () => {
     setDeletingId(null);
     setIsCartOpen(false);

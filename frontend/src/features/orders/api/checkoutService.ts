@@ -8,7 +8,7 @@ import type {
 } from '../types';
 
 export const checkoutService: CheckoutService = {
-  async quote(request: CheckoutRequest) {
+  async quote(request) {
     const response = await apiClient.post<ApiResponse<CheckoutQuoteDto>>(
       '/checkout/quote',
       request,
@@ -16,8 +16,12 @@ export const checkoutService: CheckoutService = {
     return response.data;
   },
 
-  async createOrder(request: CheckoutRequest & { quote_id: string }) {
-    const response = await apiClient.post<ApiResponse<OrderConfirmationDto>>('/orders', request);
+  async createOrder(request, idempotencyKey) {
+    const response = await apiClient.post<ApiResponse<OrderConfirmationDto>>(
+      '/orders',
+      request,
+      { headers: { 'Idempotency-Key': idempotencyKey } },
+    );
     return response.data;
   },
 };

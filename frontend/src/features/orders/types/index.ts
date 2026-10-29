@@ -17,6 +17,7 @@ export interface OrderSummaryDto {
   order_code: string;
   order_status: OrderStatus;
   payment_status: PaymentStatus;
+  image_url: string | null;
   total: number;
   created_at: string;
   completed_at: string | null;
@@ -25,15 +26,14 @@ export interface OrderSummaryDto {
 
 export interface OrderItemDto {
   order_item_id: number;
-  variant_id: number;
+  product_id: number;
   product_name: string;
   image_url: string | null;
   sku: string | null;
-  size: string;
-  color: string;
   unit_price: number;
   quantity: number;
   line_total: number;
+  discount_amount: number;
 }
 
 export interface RecipientDto {
@@ -96,19 +96,23 @@ export interface RecipientPatchInput {
 }
 
 export interface CheckoutRequest {
+  recipient_name: string;
   recipient_phone: string;
-  recipient_email: string | null;
-  recipient_address: string;
+  province: string;
+  district: string;
+  ward: string;
+  address_line: string;
   voucher_code: string | null;
 }
 
 export interface CheckoutItemDto {
-  variant_id: number;
+  product_id: number;
   quantity: number;
   product_name: string;
-  size: string;
-  color: string;
+  thumbnail: string | null;
+  sku: string;
   unit_price: number;
+  discount_amount: number;
   line_total: number;
   available_quantity: number;
 }
@@ -119,13 +123,11 @@ export interface VoucherDto {
 }
 
 export interface CheckoutQuoteDto {
-  quote_id?: string;
-  expires_at?: string;
   items: CheckoutItemDto[];
   subtotal: number;
-  discount: number;
+  discount_amount: number;
   shipping_fee: number;
-  total: number;
+  total_amount: number;
   voucher: VoucherDto | null;
 }
 
@@ -204,11 +206,8 @@ export interface OrderActionInput {
 }
 
 export interface AfterSalesReturnInput {
-  operation: 'RETURN';
+  action: 'RETURN_AND_REFUND_FULL';
   reason: string;
-  source_variant_id?: number;
-  target_variant_id?: number;
-  quantity?: number;
 }
 
 export interface OrderService {
@@ -222,5 +221,5 @@ export interface OrderService {
 
 export interface CheckoutService {
   quote(request: CheckoutRequest): Promise<CheckoutQuoteDto>;
-  createOrder(request: CheckoutRequest & { quote_id: string }): Promise<OrderConfirmationDto>;
+  createOrder(request: CheckoutRequest, idempotencyKey: string): Promise<OrderConfirmationDto>;
 }
