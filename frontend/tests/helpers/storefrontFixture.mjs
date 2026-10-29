@@ -94,6 +94,7 @@ export function storefrontFixture() {
     emptyOrders: false,
     loseOrderResponse: false,
   };
+  const profile = structuredClone(me);
   const createdOrders = new Map();
   const cartItem = () => ({
     cart_item_id: 1,
@@ -130,7 +131,7 @@ export function storefrontFixture() {
     order_id: 1,
     order_code: 'FIDO-001',
     order_status: state.orderStatus,
-    recipient: { phone: me.account.phone, email: me.account.email, address: 'Nghệ An' },
+    recipient: { phone: profile.account.phone, email: profile.account.email, address: 'Nghệ An' },
     items: [{
       ...checkoutItem(),
       order_item_id: 1,
@@ -172,16 +173,41 @@ export function storefrontFixture() {
         { message: 'java.sql.SQLException: private internal detail' },
         state.failures.get(path),
       );
-    if (path === '/me') return send({ data: me });
+    if (path === '/me') return send({ data: profile });
     if (path === '/auth/login')
       return send({
         data: {
           access_token: 'fixture',
           token_type: 'Bearer',
           expires_in: 3600,
-          account: me.account,
+          account: profile.account,
         },
       });
+    if (path === '/me/addresses' && request.method() === 'POST') {
+      const input = request.postDataJSON();
+      const nextId = Math.max(0, ...profile.addresses.map((address) => address.id)) + 1;
+      const address = {
+        ...input,
+        id: nextId,
+        is_default: typeof input.is_default === 'boolean' ? input.is_default : profile.addresses.length === 0,
+      };
+      profile.addresses.push(address);
+      return send({ data: address }, 201);
+    }
+    if (path.startsWith('/me/addresses/')) {
+      const addressId = Number(path.split('/').at(-1));
+      const addressIndex = profile.addresses.findIndex((address) => address.id === addressId);
+      if (addressIndex < 0) return send({ message: 'Address not found' }, 404);
+      if (request.method() === 'PATCH') {
+        const updated = { ...profile.addresses[addressIndex], ...request.postDataJSON(), id: addressId };
+        profile.addresses[addressIndex] = updated;
+        return send({ data: updated });
+      }
+      if (request.method() === 'DELETE') {
+        profile.addresses.splice(addressIndex, 1);
+        return route.fulfill({ status: 204, body: '' });
+      }
+    }
     if (path === '/catalog/meta') return send({ data: meta });
     if (path === '/catalog/products/1') return send({ data: product });
     if (path === '/catalog/products') {

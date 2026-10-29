@@ -5,8 +5,90 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../shared/ui/toast/useToast';
 import { profileService } from '../features/auth/api/profileService';
-import type { MeDto } from '../features/auth/types';
+import type { AddressDto, AddressInput, MeDto } from '../features/auth/types';
 import { getStorefrontErrorMessage } from '../services/http/storefrontError';
+
+type AddressFieldKey =
+  | 'recipient_name'
+  | 'recipient_phone'
+  | 'province'
+  | 'district'
+  | 'ward'
+  | 'address_line';
+
+const addressFieldDefinitions: ReadonlyArray<{
+  key: AddressFieldKey;
+  label: string;
+  maxLength: number;
+  autoComplete: string;
+}> = [
+  { key: 'recipient_name', label: 'Họ tên người nhận', maxLength: 150, autoComplete: 'name' },
+  { key: 'recipient_phone', label: 'Số điện thoại người nhận', maxLength: 20, autoComplete: 'tel' },
+  { key: 'province', label: 'Tỉnh / thành phố', maxLength: 120, autoComplete: 'address-level1' },
+  { key: 'district', label: 'Quận / huyện', maxLength: 120, autoComplete: 'address-level2' },
+  { key: 'ward', label: 'Phường / xã', maxLength: 120, autoComplete: 'address-level3' },
+  { key: 'address_line', label: 'Địa chỉ cụ thể', maxLength: 500, autoComplete: 'street-address' },
+];
+
+const emptyAddressInput = (): AddressInput => ({
+  recipient_name: '',
+  recipient_phone: '',
+  province: '',
+  district: '',
+  ward: '',
+  address_line: '',
+});
+
+const addressInputFromDto = (address: AddressDto): AddressInput => ({
+  recipient_name: address.recipient_name ?? '',
+  recipient_phone: address.recipient_phone ?? '',
+  province: address.province ?? '',
+  district: address.district ?? '',
+  ward: address.ward ?? '',
+  address_line: address.address_line ?? '',
+  is_default: address.is_default,
+});
+
+const normalizeAddressInput = (input: AddressInput): AddressInput | null => {
+  const normalized: AddressInput = {
+    recipient_name: input.recipient_name.trim(),
+    recipient_phone: input.recipient_phone.trim(),
+    province: input.province.trim(),
+    district: input.district.trim(),
+    ward: input.ward.trim(),
+    address_line: input.address_line.trim(),
+    ...(typeof input.is_default === 'boolean' ? { is_default: input.is_default } : {}),
+  };
+  const required: AddressFieldKey[] = [
+    'recipient_name', 'recipient_phone', 'province', 'district', 'ward', 'address_line',
+  ];
+  return required.every((field) => normalized[field].length > 0) ? normalized : null;
+};
+
+const AddressFields: React.FC<{
+  value: AddressInput;
+  onChange: (field: AddressFieldKey, value: string) => void;
+  disabled: boolean;
+  inputPrefix: string;
+}> = ({ value, onChange, disabled, inputPrefix }) => (
+  <div className="grid gap-3 sm:grid-cols-2">
+    {addressFieldDefinitions.map((field) => (
+      <label key={field.key} className="space-y-1.5 text-xs font-medium">
+        <span>{field.label} *</span>
+        <input
+          aria-label={field.label + ' (' + inputPrefix + ')'}
+          autoComplete={field.autoComplete}
+          required
+          maxLength={field.maxLength}
+          disabled={disabled}
+          value={value[field.key]}
+          onChange={(event) => onChange(field.key, event.target.value)}
+          className="w-full border border-[#D9DDD6] bg-[#FAF9F5] px-3.5 py-3 text-sm outline-none transition focus:border-[#0B2419] disabled:opacity-60"
+        />
+      </label>
+    ))}
+  </div>
+);
 
 export const ProfileScreen: React.FC = () => {
   const { showToast } = useToast();
@@ -14,9 +96,9 @@ export const ProfileScreen: React.FC = () => {
   const [profile, setProfile] = useState<MeDto | null>(null);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [newAddress, setNewAddress] = useState('');
+  const [newAddress, setNewAddress] = useState<AddressInput>(emptyAddressInput);
   const [editingAddressId, setEditingAddressId] = useState<number | null>(null);
-  const [editingAddressText, setEditingAddressText] = useState('');
+  const [editingAddress, setEditingAddress] = useState<AddressInput>(emptyAddressInput);
   const [retry, setRetry] = useState(0);
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -79,15 +161,18 @@ export const ProfileScreen: React.FC = () => {
 
   const handleAddAddress = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const addressText = newAddress.trim();
-    if (!addressText) return;
+    const normalized = normalizeAddressInput(newAddress);
+    if (!normalized) {
+      showToast('Vui lòng nhập đầy đủ thông tin người nhận và địa chỉ.');
+      return;
+    }
     setSavingAddress(true);
     try {
-      const address = await profileService.addAddress({ address_text: addressText });
+      const address = await profileService.addAddress(normalized);
       setProfile((current) =>
         current ? { ...current, addresses: [...current.addresses, address] } : current,
       );
-      setNewAddress('');
+      setNewAddress(emptyAddressInput());
       showToast('Đã thêm địa chỉ.');
     } catch (requestError: unknown) {
       showToast(getStorefrontErrorMessage(requestError, 'Không thể thêm địa chỉ.'));
@@ -97,11 +182,14 @@ export const ProfileScreen: React.FC = () => {
   };
 
   const handleUpdateAddress = async (addressId: number) => {
-    const addressText = editingAddressText.trim();
-    if (!addressText) return;
+    const normalized = normalizeAddressInput(editingAddress);
+    if (!normalized) {
+      showToast('Vui lòng nhập đầy đủ thông tin người nhận và địa chỉ.');
+      return;
+    }
     setSavingAddress(true);
     try {
-      const updated = await profileService.updateAddress(addressId, { address_text: addressText });
+      const updated = await profileService.updateAddress(addressId, normalized);
       setProfile((current) =>
         current
           ? {
@@ -113,7 +201,7 @@ export const ProfileScreen: React.FC = () => {
           : current,
       );
       setEditingAddressId(null);
-      setEditingAddressText('');
+      setEditingAddress(emptyAddressInput());
       showToast('Đã cập nhật địa chỉ.');
     } catch (requestError: unknown) {
       showToast(getStorefrontErrorMessage(requestError, 'Không thể cập nhật địa chỉ.'));
@@ -303,21 +391,19 @@ export const ProfileScreen: React.FC = () => {
               </span>
             </div>
 
-            <form onSubmit={handleAddAddress} className="mt-5 flex flex-col gap-3 sm:flex-row">
-              <input
-                aria-label="Địa chỉ mới"
+            <form onSubmit={handleAddAddress} className="mt-5 space-y-3">
+              <AddressFields
                 value={newAddress}
-                onChange={(event) => setNewAddress(event.target.value)}
-                maxLength={500}
-                placeholder="Nhập địa chỉ mới"
-                className="min-w-0 flex-1 border border-[#D9DDD6] bg-[#FAF9F5] px-3.5 py-3 text-sm outline-none transition focus:border-[#0B2419]"
+                onChange={(field, value) => setNewAddress((current) => ({ ...current, [field]: value }))}
+                disabled={savingAddress}
+                inputPrefix="địa chỉ mới"
               />
               <button
                 type="submit"
-                disabled={savingAddress || !newAddress.trim()}
+                disabled={savingAddress || !normalizeAddressInput(newAddress)}
                 className="bg-[#0B2419] px-5 py-3 text-xs font-bold uppercase tracking-wider text-white disabled:opacity-50"
               >
-                Thêm địa chỉ
+                {savingAddress ? 'Đang thêm...' : 'Thêm địa chỉ'}
               </button>
             </form>
 
@@ -335,32 +421,34 @@ export const ProfileScreen: React.FC = () => {
                   className="border border-[#E8E9E3] bg-[#FFFDF5] p-4 sm:p-5"
                 >
                   {editingAddressId === address.address_id ? (
-                    <div className="flex flex-col gap-3 sm:flex-row">
-                      <input
-                        aria-label="Sửa địa chỉ"
-                        value={editingAddressText}
-                        onChange={(event) => setEditingAddressText(event.target.value)}
-                        maxLength={500}
-                        className="min-w-0 flex-1 border border-[#D9DDD6] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#0B2419]"
+                    <div className="space-y-3">
+                      <AddressFields
+                        value={editingAddress}
+                        onChange={(field, value) => setEditingAddress((current) => ({ ...current, [field]: value }))}
+                        disabled={savingAddress}
+                        inputPrefix="sửa địa chỉ"
                       />
-                      <button
-                        type="button"
-                        disabled={savingAddress || !editingAddressText.trim()}
-                        onClick={() => void handleUpdateAddress(address.address_id)}
-                        className="bg-[#0B2419] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50"
-                      >
-                        Lưu
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingAddressId(null);
-                          setEditingAddressText('');
-                        }}
-                        className="border border-[#D9DDD6] bg-white px-4 py-2.5 text-xs font-semibold"
-                      >
-                        Hủy
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          disabled={savingAddress || !normalizeAddressInput(editingAddress)}
+                          onClick={() => void handleUpdateAddress(address.address_id)}
+                          className="bg-[#0B2419] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50"
+                        >
+                          {savingAddress ? 'Đang lưu...' : 'Lưu'}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={savingAddress}
+                          onClick={() => {
+                            setEditingAddressId(null);
+                            setEditingAddress(emptyAddressInput());
+                          }}
+                          className="border border-[#D9DDD6] bg-white px-4 py-2.5 text-xs font-semibold"
+                        >
+                          Hủy
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -376,7 +464,7 @@ export const ProfileScreen: React.FC = () => {
                           disabled={savingAddress}
                           onClick={() => {
                             setEditingAddressId(address.address_id);
-                            setEditingAddressText(address.address_text);
+                            setEditingAddress(addressInputFromDto(address));
                           }}
                           className="border border-[#D9DDD6] bg-white px-3 py-1.5 text-xs font-semibold"
                         >

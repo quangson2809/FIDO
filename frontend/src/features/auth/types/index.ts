@@ -56,7 +56,13 @@ export interface ProfilePatchInput {
 }
 
 export interface AddressInput {
-  address_text: string;
+  recipient_name: string;
+  recipient_phone: string;
+  province: string;
+  district: string;
+  ward: string;
+  address_line: string;
+  is_default?: boolean;
 }
 
 export interface AuthService {

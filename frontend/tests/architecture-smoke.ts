@@ -72,7 +72,7 @@ assert.equal(productSummaryMetadata({ ...summary, brand: '', category: '' }), nu
 
 const profileWithRole = (code: string, permissionCodes: readonly string[] = []): MeDto => ({
   account: {
-    account_id: 1,
+    id: 1,
     full_name: 'Test Account',
     phone: '0900000000',
     email: null,

@@ -309,6 +309,60 @@ try {
       .filter((target) => target.width < 43.5 || target.height < 43.5),
   );
   assert.deepEqual(touchTargets, [], 'visible buttons have 44px touch targets');
+  // Profile address CRUD uses the structured Backend request/response contract.
+  await go('/account');
+  await page.getByRole('heading', { name: 'Hồ sơ của tôi', exact: true }).waitFor();
+  const newAddressFields = {
+    recipient_name: 'FIDO Test',
+    recipient_phone: '0900111222',
+    province: 'Hà Nội',
+    district: 'Ba Đình',
+    ward: 'Liễu Giai',
+    address_line: '99 P5 Lane',
+  };
+  for (const [label, value] of [
+    ['Họ tên người nhận', newAddressFields.recipient_name],
+    ['Số điện thoại người nhận', newAddressFields.recipient_phone],
+    ['Tỉnh / thành phố', newAddressFields.province],
+    ['Quận / huyện', newAddressFields.district],
+    ['Phường / xã', newAddressFields.ward],
+    ['Địa chỉ cụ thể', newAddressFields.address_line],
+  ]) {
+    await page.getByLabel(label + ' (địa chỉ mới)').fill(value);
+  }
+  await page.getByRole('button', { name: 'Thêm địa chỉ', exact: true }).click();
+  const addedAddress = page.locator('article').filter({ hasText: newAddressFields.address_line });
+  await addedAddress.waitFor();
+  const createAddressRequest = fixture.state.requests
+    .filter((request) => request.path === '/me/addresses' && request.method === 'POST')
+    .at(-1);
+  assert.deepEqual(createAddressRequest.body, newAddressFields);
+
+  await addedAddress.getByRole('button', { name: 'Sửa', exact: true }).click();
+  const updatedAddressFields = {
+    ...newAddressFields,
+    recipient_name: 'FIDO Test Updated',
+    address_line: '100 P5 Lane',
+    is_default: false,
+  };
+  for (const [label, value] of [
+    ['Họ tên người nhận', updatedAddressFields.recipient_name],
+    ['Số điện thoại người nhận', updatedAddressFields.recipient_phone],
+    ['Tỉnh / thành phố', updatedAddressFields.province],
+    ['Quận / huyện', updatedAddressFields.district],
+    ['Phường / xã', updatedAddressFields.ward],
+    ['Địa chỉ cụ thể', updatedAddressFields.address_line],
+  ]) {
+    await page.getByLabel(label + ' (sửa địa chỉ)').fill(value);
+  }
+  await page.getByRole('button', { name: 'Lưu', exact: true }).click();
+  const updatedAddress = page.locator('article').filter({ hasText: updatedAddressFields.address_line });
+  await updatedAddress.waitFor();
+  const updateAddressRequest = fixture.state.requests
+    .filter((request) => request.path.startsWith('/me/addresses/') && request.method === 'PATCH')
+    .at(-1);
+  assert.deepEqual(updateAddressRequest.body, updatedAddressFields);
+
   // Responsive review on every customer page and drawer, including reduced motion.
   for (const width of [375, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });

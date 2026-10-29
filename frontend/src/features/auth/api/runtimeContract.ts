@@ -80,11 +80,16 @@ const expectInteger = (value: unknown, endpoint: string, fieldPath: string): num
 const responseData = (value: unknown, endpoint: string): unknown =>
   expectObject(value, endpoint, 'response').data;
 
+const expectBoolean = (value: unknown, endpoint: string, fieldPath: string): boolean => {
+  if (typeof value !== 'boolean') return fail(endpoint, fieldPath, 'a boolean');
+  return value;
+};
+
 const parseAccount = (value: unknown, endpoint: string, fieldPath: string): AccountDto => {
   const account = expectObject(value, endpoint, fieldPath);
   // The canonical backend now names the identifier "id"; account_id remains the app's view-model key.
   return {
-    account_id: expectInteger(account.id ?? account.account_id, endpoint, `${fieldPath}.id`),
+    account_id: expectInteger(account.id, endpoint, `${fieldPath}.id`),
     full_name:
       account.full_name === null || account.full_name === undefined
         ? null
@@ -114,11 +119,9 @@ const parseAddress = (value: unknown, endpoint: string, fieldPath: string): Addr
   const structuredLabel = [addressLine, ward, district, province]
     .filter((part): part is string => Boolean(part?.trim()))
     .join(', ');
-  const legacyLabel = typeof address.address_text === 'string' ? address.address_text : null;
-
   return {
-    address_id: expectInteger(address.id ?? address.address_id, endpoint, `${fieldPath}.id`),
-    address_text: legacyLabel ?? structuredLabel,
+    address_id: expectInteger(address.id, endpoint, `${fieldPath}.id`),
+    address_text: structuredLabel,
     created_at: address.created_at === null || address.created_at === undefined
       ? null
       : expectString(address.created_at, endpoint, `${fieldPath}.created_at`),
@@ -128,7 +131,7 @@ const parseAddress = (value: unknown, endpoint: string, fieldPath: string): Addr
     district,
     ward,
     address_line: addressLine,
-    is_default: typeof address.is_default === 'boolean' ? address.is_default : false,
+    is_default: expectBoolean(address.is_default, endpoint, `${fieldPath}.is_default`),
   };
 };
 
@@ -150,6 +153,16 @@ const parsePermission = (value: unknown, endpoint: string, fieldPath: string): P
     name: expectString(permission.name, endpoint, `${fieldPath}.name`),
   };
 };
+
+export const parseAccountResponse = (
+  value: unknown,
+  endpoint = 'PATCH /me',
+): AccountDto => parseAccount(responseData(value, endpoint), endpoint, 'data');
+
+export const parseAddressResponse = (
+  value: unknown,
+  endpoint: string,
+): AddressDto => parseAddress(responseData(value, endpoint), endpoint, 'data');
 
 export const parseLoginResponse = (
   value: unknown,
