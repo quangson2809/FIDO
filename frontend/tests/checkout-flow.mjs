@@ -109,7 +109,6 @@ await page.route('**/api/v1/**', async (route) => {
     return send({ data: cart() });
   }
   if (path === '/checkout/quote') {
-    quotedPrice = price;
     return send({ data: quote() });
   }
   if (path === '/orders' && request.method() === 'POST') {
