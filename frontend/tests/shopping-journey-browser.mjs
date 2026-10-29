@@ -183,7 +183,10 @@ try {
     await capture('cart');
     await page.keyboard.press('Escape');
     await page.goto('http://localhost:5197/checkout');
-    await page.getByLabel('Địa chỉ nhận hàng *').fill('Nghệ An');
+    await page.getByLabel('Tỉnh / thành phố *').fill('Nghệ An');
+    await page.getByLabel('Quận / huyện *').fill('Vinh');
+    await page.getByLabel('Phường / xã *').fill('Hà Huy Tập');
+    await page.getByLabel('Địa chỉ cụ thể *').fill('15 Nguyễn Trãi');
     await page.getByRole('button', { name: 'Kiểm tra & báo giá', exact: true }).click();
     await page.getByRole('button', { name: /^Đặt hàng COD/ }).waitFor();
     await capture('checkout');
@@ -198,10 +201,12 @@ try {
     const fixture = storefrontFixture();
     await page.route('**/api/v1/**', fixture.handler);
     await page.clock.install();
-    fixture.state.expiresAt = new Date(Date.now() + 30000).toISOString();
     fixture.state.loseOrderResponse = true;
     await page.goto('http://localhost:5197/checkout');
-    await page.getByLabel('Địa chỉ nhận hàng *').fill('Địa chỉ cần giữ nguyên');
+    await page.getByLabel('Tỉnh / thành phố *').fill('Hà Nội');
+    await page.getByLabel('Quận / huyện *').fill('Ba Đình');
+    await page.getByLabel('Phường / xã *').fill('Liễu Giai');
+    await page.getByLabel('Địa chỉ cụ thể *').fill('Địa chỉ cần giữ nguyên');
     await page.getByLabel('Mã voucher', { exact: true }).fill('VALID');
     await page.getByRole('button', { name: 'Kiểm tra & báo giá', exact: true }).click();
     await page.getByRole('button', { name: /^Đặt hàng COD/ }).click();
@@ -219,13 +224,16 @@ try {
     await page.getByRole('button', { name: 'Kiểm tra đơn hàng của tôi', exact: true }).waitFor();
     assert.equal(fixture.state.orders, 1);
     assert.equal(
-      await page.getByLabel('Địa chỉ nhận hàng *').inputValue(),
+      await page.getByLabel('Địa chỉ cụ thể *').inputValue(),
       'Địa chỉ cần giữ nguyên',
     );
     for (const label of [
+      'Họ tên người nhận *',
       'Số điện thoại người nhận *',
-      'Email người nhận',
-      'Địa chỉ nhận hàng *',
+      'Tỉnh / thành phố *',
+      'Quận / huyện *',
+      'Phường / xã *',
+      'Địa chỉ cụ thể *',
       'Mã voucher',
     ]) {
       assert.equal(
@@ -268,7 +276,12 @@ try {
     assert.deepEqual(
       attempts[1].body,
       attempts[0].body,
-      'replay uses exactly the original request and quote ID',
+      'replay sends the exact original structured request',
+    );
+    assert.equal(
+      attempts[1].headers['idempotency-key'],
+      attempts[0].headers['idempotency-key'],
+      'replay reuses the original Idempotency-Key',
     );
     assert.equal(fixture.state.orders, 1, 'Backend replay fixture creates only one order');
     await page.close();
