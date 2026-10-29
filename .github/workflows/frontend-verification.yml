@@ -1,4 +1,5 @@
 name: Frontend verification
+# FE-P4 cart and checkout contract verification uses this workflow.
 
 on:
   push:
