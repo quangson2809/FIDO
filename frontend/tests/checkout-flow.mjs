@@ -115,7 +115,7 @@ await page.route('**/api/v1/**', async (route) => {
     const orderBody = request.postDataJSON();
     assert.deepEqual(
       Object.keys(orderBody).sort(),
-      ['address_line', 'district', 'province', 'recipient_name', 'recipient_phone', 'voucher_code'],
+      ['address_line', 'district', 'province', 'recipient_name', 'recipient_phone', 'voucher_code', 'ward'],
     );
     assert.equal(orderBody.recipient_phone, '0900000000');
     assert.ok(orderBody.address_line);
