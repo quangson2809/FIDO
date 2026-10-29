@@ -19,8 +19,12 @@ export const AdminInwardView: React.FC<{
   canWrite: boolean;
 }> = ({ showToast, onNavigateTab, canWrite }) => {
   const [params, setParams] = useSearchParams();
-  const statuses: GoodsReceiptStatus[] = ['DRAFT', 'CONFIRMED', 'CANCELLED'];
-  const status = statuses.find((value) => value === params.get('status')) ?? '';
+  const statuses = ['DRAFT', 'CONFIRMED', 'CANCELLED'] as const;
+  const statusParam = params.get('status');
+  const status: GoodsReceiptStatus | '' =
+    statusParam === 'DRAFT' || statusParam === 'CONFIRMED' || statusParam === 'CANCELLED'
+      ? statusParam
+      : '';
   const setStatus = (value: string) => setParams(value ? { status: value } : {});
   const [page, setPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
@@ -35,12 +39,25 @@ export const AdminInwardView: React.FC<{
   const [savedDraft, setSavedDraft] = useState(draftKey);
   const dirty = draftKey !== savedDraft;
   const canDiscard = useDirtyForm(dirty);
-  const list = useRemoteQuery(useCallback(() => inventoryAdminService.listReceipts({
-    receipt_status: status || undefined, page, page_size: 20,
-  }), [page, status]));
-  const supplierQuery = useRemoteQuery(useCallback(() => inventoryAdminService.listSuppliers({
-    status: 'ACTIVE', q: supplierSearch || undefined, page: supplierPage, page_size: 20,
-  }), [supplierSearch, supplierPage]));
+  const loadReceipts = useCallback(
+    () => inventoryAdminService.listReceipts({
+      receipt_status: status || undefined,
+      page,
+      page_size: 20,
+    }),
+    [page, status],
+  );
+  const loadSuppliers = useCallback(
+    () => inventoryAdminService.listSuppliers({
+      status: 'ACTIVE',
+      q: supplierSearch || undefined,
+      page: supplierPage,
+      page_size: 20,
+    }),
+    [supplierSearch, supplierPage],
+  );
+  const list = useRemoteQuery(loadReceipts);
+  const supplierQuery = useRemoteQuery(loadSuppliers);
   const receipts = list.data?.data ?? [];
   const meta = list.data?.meta;
   const suppliers = supplierQuery.data?.data ?? [];

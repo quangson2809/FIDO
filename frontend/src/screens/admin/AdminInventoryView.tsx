@@ -15,10 +15,6 @@ const createSourceOperationId = (): string => {
   return 'adjust:' + Date.now() + ':' + Math.random().toString(36).slice(2, 14);
 };
 
-const adjustmentReasonCodes: InventoryAdjustmentReasonCode[] = [
-  'COUNT_CORRECTION', 'DAMAGE', 'LOSS', 'FOUND', 'DATA_CORRECTION',
-];
-
 const transactionTypes: InventoryTransactionType[] = [
   'OPENING',
   'GOODS_RECEIPT',
