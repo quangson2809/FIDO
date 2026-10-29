@@ -209,7 +209,7 @@ export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
     try {
       applyOrder(
         await adminOrderService.returnOrder(order.order_id, {
-          operation: 'RETURN',
+          action: 'RETURN_AND_REFUND_FULL',
           reason: reason.trim(),
         }),
       );
