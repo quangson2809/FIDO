@@ -76,7 +76,7 @@ const responseData = (value: unknown, endpoint: string): unknown =>
 const parseAccount = (value: unknown, endpoint: string, fieldPath: string): AccountDto => {
   const account = expectObject(value, endpoint, fieldPath);
   return {
-    account_id: expectInteger(account.account_id, endpoint, `${fieldPath}.account_id`),
+    account_id: expectInteger(account.id ?? account.account_id, endpoint, `${fieldPath}.id`),
     full_name:
       account.full_name === null || account.full_name === undefined
         ? null
@@ -91,17 +91,32 @@ const parseAccount = (value: unknown, endpoint: string, fieldPath: string): Acco
 
 const parseAddress = (value: unknown, endpoint: string, fieldPath: string): AddressDto => {
   const address = expectObject(value, endpoint, fieldPath);
+  const addressParts = ["address_line", "ward", "district", "province"]
+    .map((field) => {
+      const part = address[field];
+      if (part === null || part === undefined) return null;
+      return expectString(part, endpoint, `${fieldPath}.${field}`);
+    })
+    .filter((part): part is string => part !== null && part.trim().length > 0);
+  const legacyAddressText = address.address_text;
+
   return {
-    address_id: expectInteger(address.address_id, endpoint, `${fieldPath}.address_id`),
-    address_text: expectString(address.address_text, endpoint, `${fieldPath}.address_text`),
-    created_at: expectString(address.created_at, endpoint, `${fieldPath}.created_at`),
+    address_id: expectInteger(address.id ?? address.address_id, endpoint, `${fieldPath}.id`),
+    address_text:
+      legacyAddressText === null || legacyAddressText === undefined
+        ? addressParts.join(", ")
+        : expectString(legacyAddressText, endpoint, `${fieldPath}.address_text`),
+    created_at:
+      address.created_at === null || address.created_at === undefined
+        ? null
+        : expectString(address.created_at, endpoint, `${fieldPath}.created_at`),
   };
 };
 
 const parseRole = (value: unknown, endpoint: string, fieldPath: string): RoleDto => {
   const role = expectObject(value, endpoint, fieldPath);
   return {
-    role_id: expectInteger(role.role_id, endpoint, `${fieldPath}.role_id`),
+    role_id: expectInteger(role.id ?? role.role_id, endpoint, `${fieldPath}.id`),
     code: expectNonBlankString(role.code, endpoint, `${fieldPath}.code`),
     name: expectString(role.name, endpoint, `${fieldPath}.name`),
     description: expectNullableString(role.description, endpoint, `${fieldPath}.description`),
@@ -111,7 +126,7 @@ const parseRole = (value: unknown, endpoint: string, fieldPath: string): RoleDto
 const parsePermission = (value: unknown, endpoint: string, fieldPath: string): PermissionDto => {
   const permission = expectObject(value, endpoint, fieldPath);
   return {
-    permission_id: expectInteger(permission.permission_id, endpoint, `${fieldPath}.permission_id`),
+    permission_id: expectInteger(permission.id ?? permission.permission_id, endpoint, `${fieldPath}.id`),
     code: expectNonBlankString(permission.code, endpoint, `${fieldPath}.code`),
     name: expectString(permission.name, endpoint, `${fieldPath}.name`),
   };
