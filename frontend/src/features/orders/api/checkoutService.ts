@@ -2,7 +2,6 @@ import type { ApiResponse } from '../../../types/api';
 import { apiClient } from '../../../services/http/apiClient';
 import type {
   CheckoutQuoteDto,
-  CheckoutRequest,
   CheckoutService,
   OrderConfirmationDto,
 } from '../types';
