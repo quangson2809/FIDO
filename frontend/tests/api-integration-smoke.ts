@@ -624,7 +624,7 @@ try {
   assert.deepEqual(meta.categories, []);
 
   const cart = await cartService.getCart();
-  assert.equal(cart.account_id, account.account_id);
+  assert.equal(cart.account_id, account.id);
 
   const orders = await orderService.getOrders({ page: 1, page_size: 10 });
   assert.equal(orders.meta.page, 1);
