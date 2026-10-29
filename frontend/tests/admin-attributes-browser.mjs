@@ -15,7 +15,7 @@ const requests = [];
 const date = '2026-10-28T00:00:00Z';
 const profile = {
   account: {
-    account_id: 1,
+    id: 1,
     full_name: 'Admin test',
     phone: '0900000000',
     email: null,

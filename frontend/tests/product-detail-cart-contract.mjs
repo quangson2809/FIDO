@@ -76,7 +76,7 @@ await page.route('**/api/v1/**', async (route) => {
     return send({
       data: {
         account: {
-          account_id: 1,
+          id: 1,
           full_name: 'Test Customer',
           phone: '0900000000',
           email: 'customer@example.test',
