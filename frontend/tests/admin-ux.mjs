@@ -13,6 +13,10 @@ const page = await browser.newPage();
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 const date = '2026-10-08T03:00:00Z';
+const reportStatusCounts = {
+  PENDING: 2, CONFIRMED: 0, PREPARING: 0, SHIPPING: 0,
+  COMPLETED: 1, DELIVERY_FAILED: 0, CANCELLED: 0, RETURNED: 0,
+};
 const permission = { permission_id: 1, code: 'CATALOG_READ', name: 'Xem danh mục' };
 const role = { role_id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null };
 let me = {
@@ -262,9 +266,54 @@ await page.route('**/api/v1/**', async (route) => {
             completed_sales: 123456,
             returned_adjustment: 0,
             net_sales: 123456,
-            orders_by_status: { PENDING: 2, COMPLETED: 1 },
+            orders_by_status: reportStatusCounts,
           },
         });
+  if (path === '/admin/reports/sales-trend')
+    return send({
+      data: {
+        from: url.searchParams.get('from'),
+        to: url.searchParams.get('to'),
+        granularity: url.searchParams.get('granularity') || 'DAY',
+        timezone: 'Asia/Ho_Chi_Minh',
+        points: [{
+          period_start: url.searchParams.get('from'),
+          completed_sales: 123456,
+          returned_adjustment: 0,
+          net_sales: 123456,
+        }],
+      },
+    });
+  if (path === '/admin/reports/orders-trend')
+    return send({
+      data: {
+        from: url.searchParams.get('from'),
+        to: url.searchParams.get('to'),
+        granularity: url.searchParams.get('granularity') || 'DAY',
+        timezone: 'Asia/Ho_Chi_Minh',
+        points: [{
+          period_start: url.searchParams.get('from'),
+          total_orders: 3,
+          orders_by_status: reportStatusCounts,
+        }],
+      },
+    });
+  if (path === '/admin/reports/product-performance')
+    return send({
+      data: {
+        from: url.searchParams.get('from'),
+        to: url.searchParams.get('to'),
+        limit: Number(url.searchParams.get('limit') || 10),
+        items: [{
+          product_id: 1,
+          product_name: 'Áo thử nghiệm',
+          thumbnail: null,
+          completed_units: 1,
+          returned_units: 0,
+          net_units: 1,
+        }],
+      },
+    });
   if (path === '/admin/suppliers') return send(pagination([supplier]));
   if (path === '/admin/goods-receipts') return send(pagination([receipt]));
   if (path === '/admin/goods-receipts/1') return send({ data: receipt });
