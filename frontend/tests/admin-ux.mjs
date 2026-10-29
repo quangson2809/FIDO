@@ -119,7 +119,7 @@ let order = {
   },
   allowed_actions: ['CONFIRM', 'CANCEL'],
 };
-let priceError = true;
+let productPatchAttempts = 0;
 const supplier = {
   supplier_id: 1,
   code: 'SUP-001',
@@ -197,7 +197,9 @@ await page.route('**/api/v1/**', async (route) => {
       };
       return send({ data: order.payment });
     }
-    if (path === '/admin/products/1' && request.method === 'PATCH' && !priceError) {
+    if (path === '/admin/products/1' && request.method() === 'PATCH') {
+      productPatchAttempts += 1;
+      if (productPatchAttempts === 1) return send({ message: 'Lỗi lưu thử nghiệm' }, 500);
       product = { ...product, ...request.postDataJSON() };
       return send({ data: product });
     }
@@ -466,7 +468,6 @@ try {
   await page.getByRole('button', { name: 'Lưu', exact: true }).click();
   await page.getByRole('alert').waitFor();
   assert.equal(await price.inputValue(), '250000', 'failed product patch preserves input');
-  priceError = false;
   await page.getByRole('button', { name: 'Lưu', exact: true }).click();
   await page.getByText('250.000₫', { exact: true }).waitFor();
   const productPatch = writes.filter((entry) => entry.path === '/admin/products/1').at(-1)?.body;
