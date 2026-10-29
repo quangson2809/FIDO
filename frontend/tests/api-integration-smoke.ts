@@ -15,7 +15,7 @@ import { reportService } from '../src/features/report/api/service';
 import { apiClient, hasApiAccessToken } from '../src/services/http/apiClient';
 
 const account = {
-  account_id: 900001,
+  id: 900001,
   full_name: 'Quản trị hệ thống',
   phone: '0909000001',
   email: 'superadmin@fido.local',
@@ -261,17 +261,29 @@ const server = createServer((request, response) => {
     writeJson(response, 200, {
       data: {
         account,
-        addresses: [],
+        addresses: [
+          {
+            id: 51,
+            recipient_name: 'Nguyễn Văn A',
+            recipient_phone: '0909000001',
+            province: 'Hà Nội',
+            district: 'Ba Đình',
+            ward: 'Điện Biên',
+            address_line: 'Số 1',
+            is_default: true,
+          },
+        ],
         roles: [
           {
-            role_id: 1,
+            id: 1,
             code: 'SUPERADMIN',
             name: 'Superadmin',
             description: null,
+            status: 'ACTIVE',
           },
         ],
         permissions: malformedMeResponse
-          ? [{ permission_id: 1, code: 42, name: 'Broken permission' }]
+          ? [{ id: 1, code: 42, name: 'Broken permission', description: null }]
           : [],
       },
     });
@@ -329,7 +341,7 @@ const server = createServer((request, response) => {
     writeJson(response, 200, {
       data: {
         cart_id: 1,
-        account_id: account.account_id,
+        account_id: account.id,
         items: [],
         subtotal: 0,
         created_at: '2026-10-07T00:00:00',
@@ -507,7 +519,7 @@ try {
     'superadmin@fido.local',
     'Fido@123',
   );
-  assert.equal(registered.account.account_id, account.account_id);
+  assert.equal(registered.account.account_id, account.id);
   assert.deepEqual(capturedRegistrationBody, {
     phone: '0909000001',
     full_name: 'Quản trị hệ thống',
@@ -518,6 +530,7 @@ try {
 
   const login = await authService.login('0909000001', 'Fido@123');
   assert.equal(login.access_token, 'smoke-token');
+  assert.equal(login.account.account_id, account.id);
   assert.deepEqual(capturedLoginBody, {
     phone: '0909000001',
     password: 'Fido@123',
@@ -593,7 +606,10 @@ try {
   assert.deepEqual(capturedOrderBody, { ...checkoutRequest, quote_id: 'voucher-smoke-quote' });
 
   const me = await profileService.getMe();
+  assert.equal(me.account.account_id, account.id);
   assert.equal(me.roles[0]?.code, 'SUPERADMIN');
+  assert.equal(me.addresses[0]?.address_text, 'Số 1, Điện Biên, Ba Đình, Hà Nội');
+  assert.equal(me.addresses[0]?.created_at, null);
 
   const catalog = await catalogService.listProducts({ page: 1, page_size: 8 });
   assert.equal(catalog.items[0]?.product_id, 960001);
@@ -608,7 +624,7 @@ try {
   assert.deepEqual(meta.categories, []);
 
   const cart = await cartService.getCart();
-  assert.equal(cart.account_id, account.account_id);
+  assert.equal(cart.account_id, account.id);
 
   const orders = await orderService.getOrders({ page: 1, page_size: 10 });
   assert.equal(orders.meta.page, 1);

@@ -11,7 +11,7 @@ export interface AccountDto {
 export interface AddressDto {
   address_id: number;
   address_text: string;
-  created_at: string;
+  created_at: string | null;
 }
 
 export interface RoleDto {
