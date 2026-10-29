@@ -456,7 +456,7 @@ try {
   await goto('/admin/reports');
   await page.getByText('123.456₫').first().waitFor();
   reportError = true;
-  await page.getByRole('button', { name: 'Xem báo cáo' }).click();
+  await page.getByRole('button', { name: 'Đơn hàng', exact: true }).click();
   await page.getByRole('alert').waitFor();
   assert.equal(await page.getByText('123.456₫').count(), 0, 'stale report hidden');
   await goto('/admin/products/1');
