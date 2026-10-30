@@ -28,32 +28,48 @@ const catalogMeta = {
     { category_id: 2, parent_category_id: null, name: 'Danh mục ngừng', slug: 'ngung', status: 'INACTIVE' },
   ],
   brands: [{ brand_id: 7, name: 'FIDO', slug: 'fido', status: 'ACTIVE' }],
-  attribute_types: [
-    { id: 1, code: 'OPTION', name: 'Lựa chọn', data_type: 'OPTION' },
-    { id: 2, code: 'TEXT', name: 'Văn bản', data_type: 'TEXT' },
-    { id: 3, code: 'NUMBER', name: 'Số', data_type: 'NUMBER' },
-    { id: 4, code: 'BOOLEAN', name: 'Có/Không', data_type: 'BOOLEAN' },
-  ],
   attributes: [],
 };
-const adminMeta = {
-  attribute_types: catalogMeta.attribute_types,
-  attributes: [
-    { id: 11, code: 'COLOR', name: 'Màu sắc', data_type: 'OPTION', is_required: false, is_variant_defining: true, sort_order: 0, options: [
-      { id: 111, attribute_id: 11, value: 'BLACK', label: 'Đen', sort_order: 0 },
-      { id: 112, attribute_id: 11, value: 'WHITE', label: 'Trắng', sort_order: 1 },
-    ] },
-    { id: 12, code: 'MATERIAL', name: 'Chất liệu', data_type: 'TEXT', is_required: true, is_variant_defining: false, sort_order: 1, options: [] },
-    { id: 13, code: 'WEIGHT', name: 'Trọng lượng', data_type: 'NUMBER', is_required: false, is_variant_defining: false, sort_order: 2, options: [] },
-    { id: 14, code: 'WATERPROOF', name: 'Chống nước', data_type: 'BOOLEAN', is_required: false, is_variant_defining: false, sort_order: 3, options: [] },
-  ],
-};
-const initialValues = [
-  { attribute_id: 11, attribute_code: 'COLOR', attribute_name: 'Màu sắc', data_type: 'OPTION', option_id: 111, option_value: 'BLACK', option_label: 'Đen', text_value: null, number_value: null, boolean_value: null },
-  { attribute_id: 12, attribute_code: 'MATERIAL', attribute_name: 'Chất liệu', data_type: 'TEXT', option_id: null, option_value: null, option_label: null, text_value: 'Cotton', number_value: null, boolean_value: null },
-  { attribute_id: 13, attribute_code: 'WEIGHT', attribute_name: 'Trọng lượng', data_type: 'NUMBER', option_id: null, option_value: null, option_label: null, text_value: null, number_value: 0.5, boolean_value: null },
-  { attribute_id: 14, attribute_code: 'WATERPROOF', attribute_name: 'Chống nước', data_type: 'BOOLEAN', option_id: null, option_value: null, option_label: null, text_value: null, number_value: null, boolean_value: false },
+const attributes = [
+  { id: 11, code: 'COLOR', name: 'Màu sắc', is_required: false, is_variant_defining: true, sort_order: 0, options: [
+    { id: 111, attribute_id: 11, value: 'BLACK', label: 'Đen', sort_order: 0 },
+    { id: 112, attribute_id: 11, value: 'WHITE', label: 'Trắng', sort_order: 1 },
+  ] },
+  { id: 12, code: 'MATERIAL', name: 'Chất liệu', is_required: true, is_variant_defining: false, sort_order: 1, options: [
+    { id: 121, attribute_id: 12, value: 'COTTON', label: 'Cotton', sort_order: 0 },
+    { id: 122, attribute_id: 12, value: 'LINEN', label: 'Linen', sort_order: 1 },
+  ] },
+  { id: 13, code: 'WEIGHT', name: 'Định lượng', is_required: false, is_variant_defining: false, sort_order: 2, options: [
+    { id: 131, attribute_id: 13, value: '180GSM', label: '180 GSM', sort_order: 0 },
+    { id: 132, attribute_id: 13, value: '220GSM', label: '220 GSM', sort_order: 1 },
+  ] },
+  { id: 14, code: 'WATERPROOF', name: 'Chống nước', is_required: false, is_variant_defining: false, sort_order: 3, options: [
+    { id: 141, attribute_id: 14, value: 'YES', label: 'Có', sort_order: 0 },
+    { id: 142, attribute_id: 14, value: 'NO', label: 'Không', sort_order: 1 },
+  ] },
 ];
+const adminMeta = { attributes };
+catalogMeta.attributes = attributes;
+const initialValues = [
+  { attribute_id: 11, attribute_code: 'COLOR', attribute_name: 'Màu sắc', attribute_value_id: 111, value: 'BLACK', label: 'Đen' },
+  { attribute_id: 12, attribute_code: 'MATERIAL', attribute_name: 'Chất liệu', attribute_value_id: 121, value: 'COTTON', label: 'Cotton' },
+  { attribute_id: 13, attribute_code: 'WEIGHT', attribute_name: 'Định lượng', attribute_value_id: 131, value: '180GSM', label: '180 GSM' },
+  { attribute_id: 14, attribute_code: 'WATERPROOF', attribute_name: 'Chống nước', attribute_value_id: 142, value: 'NO', label: 'Không' },
+];
+const valuesFromIds = (ids) => (ids ?? []).map((optionId) => {
+  const attribute = adminMeta.attributes.find((item) =>
+    item.options.some((option) => option.id === optionId));
+  const option = attribute?.options.find((item) => item.id === optionId);
+  if (!attribute || !option) throw new Error('Unknown attribute_value_id: ' + optionId);
+  return {
+    attribute_id: attribute.id,
+    attribute_code: attribute.code,
+    attribute_name: attribute.name,
+    attribute_value_id: option.id,
+    value: option.value,
+    label: option.label,
+  };
+});
 const initialProduct = {
   product_id: 101, parent_product_id: null, child_product_ids: [], sku: 'TEE-101',
   name: 'Áo thử nghiệm', slug: 'ao-thu-nghiem', description: 'Mô tả gốc',
@@ -71,14 +87,18 @@ let products = new Map([[101, clone(initialProduct)]]);
 let nextProductId = 202;
 let failNextUpload = false;
 const requests = [];
-const valuesFromInputs = (inputs) => (inputs ?? []).map((input) => {
-  const attribute = adminMeta.attributes.find((item) => item.id === input.attribute_id);
-  const option = input.option_id == null ? null : attribute?.options.find((item) => item.id === input.option_id);
+const valuesFromIds = (ids) => (ids ?? []).map((optionId) => {
+  const attribute = adminMeta.attributes.find((item) =>
+    item.options.some((option) => option.id === optionId));
+  const option = attribute?.options.find((item) => item.id === optionId);
+  if (!attribute || !option) throw new Error('Unknown attribute_value_id: ' + optionId);
   return {
-    attribute_id: input.attribute_id, attribute_code: attribute?.code ?? 'UNKNOWN',
-    attribute_name: attribute?.name ?? 'Unknown', data_type: attribute?.data_type ?? 'TEXT',
-    option_id: input.option_id ?? null, option_value: option?.value ?? null, option_label: option?.label ?? null,
-    text_value: input.text_value ?? null, number_value: input.number_value ?? null, boolean_value: input.boolean_value ?? null,
+    attribute_id: attribute.id,
+    attribute_code: attribute.code,
+    attribute_name: attribute.name,
+    attribute_value_id: option.id,
+    value: option.value,
+    label: option.label,
   };
 });
 const summary = (product) => ({
@@ -124,7 +144,7 @@ await page.route('**/api/v1/**', async (route) => {
       brand: body.brand_id == null ? null : catalogMeta.brands.find((item) => item.brand_id === body.brand_id) ?? null,
       category_id: body.category_id ?? null, brand_id: body.brand_id ?? null,
       selling_price: body.selling_price, cost_price: body.cost_price ?? null, status: body.status ?? 'DRAFT',
-      images: [], attribute_values: valuesFromInputs(body.attribute_values), parent_product: null, children: [],
+      images: [], attribute_values: valuesFromIds(body.attribute_value_ids), parent_product: null, children: [],
     };
     products.set(id, product);
     return send(route, { data: clone(product) }, 201);
@@ -176,7 +196,7 @@ await page.route('**/api/v1/**', async (route) => {
       product.brand_id = body.brand_id;
       product.brand = body.brand_id == null ? null : catalogMeta.brands.find((item) => item.brand_id === body.brand_id) ?? null;
     }
-    if (Object.hasOwn(body, 'attribute_values')) product.attribute_values = valuesFromInputs(body.attribute_values);
+    if (Object.hasOwn(body, 'attribute_value_ids')) product.attribute_values = valuesFromIds(body.attribute_value_ids);
     product.updated_at = timestamp;
     return send(route, { data: clone(product) });
   }
@@ -214,9 +234,9 @@ try {
   await page.getByLabel('Trạng thái Product').selectOption('ACTIVE');
   await page.getByLabel('Mô tả').fill('Sản phẩm độc lập theo Product contract');
   await page.getByLabel('Giá trị thuộc tính COLOR').selectOption('112');
-  await page.getByLabel('Giá trị thuộc tính MATERIAL').fill('Cotton');
-  await page.getByLabel('Giá trị thuộc tính WEIGHT').fill('0.75');
-  await page.getByLabel('Giá trị thuộc tính WATERPROOF').selectOption('true');
+  await page.getByLabel('Giá trị thuộc tính MATERIAL').selectOption('121');
+  await page.getByLabel('Giá trị thuộc tính WEIGHT').selectOption('132');
+  await page.getByLabel('Giá trị thuộc tính WATERPROOF').selectOption('141');
   await page.getByLabel('Ảnh Product mới').setInputFiles({ name: 'shirt.png', mimeType: 'image/png', buffer: Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0]) });
   failNextUpload = true;
   await page.getByRole('button', { name: 'Tạo Product', exact: true }).click();
@@ -225,10 +245,7 @@ try {
   assert.deepEqual(requests.find((item) => item.method === 'POST' && item.path === '/admin/products')?.body, {
     sku: 'TEE-NEW', name: 'Áo mới', slug: 'ao-moi', description: 'Sản phẩm độc lập theo Product contract',
     parent_product_id: 101, category_id: 1, brand_id: 7, selling_price: 320000, cost_price: 190000, status: 'ACTIVE',
-    attribute_values: [
-      { attribute_id: 11, option_id: 112 }, { attribute_id: 12, text_value: 'Cotton' },
-      { attribute_id: 13, number_value: 0.75 }, { attribute_id: 14, boolean_value: true },
-    ],
+    attribute_value_ids: [112, 121, 132, 141],
   });
   await page.getByLabel('Ảnh Product mới').setInputFiles({ name: 'retry-shirt.png', mimeType: 'image/png', buffer: Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0]) });
   await page.getByRole('button', { name: 'Thử tải ảnh lại', exact: true }).click();
@@ -243,12 +260,9 @@ try {
   assert.deepEqual(requests.filter((item) => item.method === 'PATCH' && item.path === '/admin/products/101').at(-1)?.body, { selling_price: 250000 });
 
   await page.getByRole('button', { name: 'Chỉnh sửa', exact: true }).click();
-  await page.getByLabel('Giá trị thuộc tính MATERIAL').fill('Linen');
+  await page.getByLabel('Giá trị thuộc tính MATERIAL').selectOption('122');
   await page.getByRole('button', { name: 'Lưu', exact: true }).click();
-  assert.deepEqual(requests.filter((item) => item.method === 'PATCH' && item.path === '/admin/products/101').at(-1)?.body?.attribute_values, [
-    { attribute_id: 11, option_id: 111 }, { attribute_id: 12, text_value: 'Linen' },
-    { attribute_id: 13, number_value: 0.5 }, { attribute_id: 14, boolean_value: false },
-  ]);
+  assert.deepEqual(requests.filter((item) => item.method === 'PATCH' && item.path === '/admin/products/101').at(-1)?.body?.attribute_value_ids, [111, 122, 131, 142]);
 
   await page.getByRole('button', { name: 'Chỉnh sửa', exact: true }).click();
   await page.getByLabel('Danh mục Product').selectOption('');

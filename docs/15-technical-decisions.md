@@ -12,8 +12,8 @@
 
 ## 2. Approved persistence and money contract
 
-- The target is the 31-table model in `docs/refactor-v2/target/erd-v2-approved.mmd`; exact physical details are in `docs/refactor-v2/p1/P1-data-dictionary.csv`.
-- Target monetary values are whole VND stored as integer BIGINT values. Do not use decimal money or JSON floating-point money. DECIMAL is acceptable for non-monetary descriptive numeric attributes.
+- The revised target is the 30-table option-only model in `docs/refactor-v2/target/erd-v2-approved.mmd`; exact physical details are in `docs/refactor-v2/p1/P1-data-dictionary.csv`.
+- Target monetary values are whole VND stored as integer BIGINT values. Do not use decimal money or JSON floating-point money. 
 - Calculate order-level discount with HALF-UP rounding to a whole VND, then allocate with largest remainder and ascending Product ID tie-break. Line discounts reconcile exactly to the order discount.
 - Product, Order, OrderItem, address, voucher, Payment and image facts that must remain historically stable are snapshotted at the appropriate write boundary.
 
@@ -21,11 +21,18 @@
 
 - Account phone identity is unique among active accounts and can be reused after soft deletion. Account lifecycle and generated active-phone enforcement must agree between DDL, Entity, authentication and service validation.
 - Product parent/child records share `PRODUCTS`. v1 allows one parent-child level; children are explicit, independently sellable records. Each row owns SKU, required selling price and inventory; NULL never means implicit inheritance.
-- Typed catalog attributes use `OPTION`, `TEXT`, `NUMBER` and `BOOLEAN`. Options must belong to the selected Attribute. Attribute metadata is descriptive and never creates Products automatically.
-- P3.3 seeds exactly four canonical `ATTRIBUTE_TYPES` rows in the existing baseline SQL. Typed-value validation uses an exhaustive enum switch: exactly one non-null value compatible with the Attribute type, OPTION ownership checked against that exact Attribute, and NUMBER bounded to `DECIMAL(18,4)`. No Strategy/Factory or variant generator is introduced. Only API-79–82 Attribute/Option management routes are implemented; Product POST/PATCH value persistence remains in the Product-core phase and no separate write route is added.
+- Catalog Attributes are Option-only. The `ATTRIBUTE_TYPES` table and `attributes.attribute_type_id` are removed. Each Product/Attribute value contains a required `option_id` owned by the stored `attribute_id`; the composite FK enforces ownership. Product create/update sends `attribute_value_ids[]`; Backend resolves each Option, derives its Attribute and rejects unknown IDs, duplicate IDs and multiple Options for one Attribute. Required Attributes must be selected before activation. Attributes never auto-generate Products or variants.
 - Required system roles/permissions are seeded by Flyway. Bootstrap SUPERADMIN credentials come from external secret/configuration, never committed source or demo seed. Protect the last SUPERADMIN invariant and audit privileged changes.
 
-## 4. Cart, checkout, Order and vouchers
+## 4. Owner-directed option-only Attribute model (2026-10-30)
+
+- The clean-install target is the revised 30-table option-only catalog model. Remove `ATTRIBUTE_TYPES`, `ATTRIBUTES.attribute_type_id`, and `PRODUCT_ATTRIBUTE_VALUES.text_value`, `number_value`, `boolean_value`.
+- `PRODUCT_ATTRIBUTE_VALUES.option_id` is mandatory and constrained by `(option_id, attribute_id)` to `ATTRIBUTE_OPTIONS(id, attribute_id)`. Keep one row per `(product_id, attribute_id)`.
+- Product create/update accepts `attribute_value_ids: Long[]`; the server resolves each Option ID and derives the owning Attribute. Product detail responses expose `attribute_value_id`, machine `value` and display `label` with Attribute metadata.
+- This is a clean-install contract change, not a migration of existing populated databases. Existing installations require a separately reviewed data-preserving migration.
+- Keep `is_required`, `is_variant_defining` and `sort_order`; `is_variant_defining` remains informational and never generates saleable Products.
+
+## 5. Cart, checkout, Order and vouchers
 
 - Persisted Cart and Order creation require authentication; Account scope comes from the security principal; guest Cart, checkout and merge are excluded.
 - Current Cart is the sole account-owned OPEN row. No OPEN row means empty read/create-on-mutation; more than one OPEN row fails closed with CART_SELECTION_AMBIGUOUS and no mutation/merge. No updated_at selection or one-active-Cart schema constraint is inferred; P3.8 serializes Account-scoped creation/mutations.
@@ -35,7 +42,7 @@
 - v1 vouchers are order-wide, non-stackable and use one global limit. Consume usage atomically with successful order placement and restore at most once on eligible cancellation. No catalog-targeting joins or per-account usage ledger.
 - Payment is COD-only with one Payment aggregate per Order. Collect COD only atomically with SHIPPING→COMPLETED after manual delivery verification; v1 allows one whole-order full offline refund paired with COMPLETED→RETURNED. Partial/multiple refunds, automated disbursement and detailed item-level return workflows require an approved scope change.
 
-## 5. Inventory, receiving and audit
+## 6. Inventory, receiving and audit
 
 - v1 has one operational warehouse; the server selects the active warehouse for stock-affecting commands.
 - `INVENTORIES` is keyed by `(warehouse_id, product_id)` and stores `quantity_on_hand` plus a concurrency version. A successful movement updates source state, balance, append-only `INVENTORY_TRANSACTIONS` and required audit in one transaction.
@@ -49,7 +56,7 @@
 
 - **Runtime schema alignment:** the canonical `backend/src/main/resources/db/migration/V1__fido_target_schema.sql` in this branch defines the target `audit_logs` columns `id, actor_account_id, action, entity_type, entity_id, before_data, after_data, correlation_id, created_at`. `AuditLog` and `AuditWriteRepository` map/write that target shape. This baseline is for a fresh, empty database; it is not an upgrade path for a populated database whose `audit_logs` table still has the legacy shape. Never run target-schema writers against that legacy database.
 
-## 6. Order states, shipping and reporting
+## 7. Order states, shipping and reporting
 
 - Enforce the normative [P1.7 Order/Payment/Shipping contract](refactor-v2/p1/P1.7-order-payment-contract.md) and its summary in `docs/06-business-rules-state-machines.md`; validate actor, preconditions, state, transaction and errors under lock. Duplicate collection/refund and illegal replays must not repeat side effects.
 - Shipping is manual; do not introduce carrier API, automatic tracking integration or a dedicated event/timeline table in v1. Order, Payment and ShippingInfo state changes plus required audit are atomic.
@@ -74,13 +81,13 @@
 - API money fields are Java signed-BIGINT-compatible integers (`long`), not floating-point or decimal JSON values. Because MySQL returns `SUM(BIGINT)` as DECIMAL, aggregate projections convert with exact range checking; overflow or inconsistent net totals fail closed rather than round/truncate. Product performance preserves the approved `limit` response field, zero-filled Order-status buckets, whole-Order return semantics and deterministic ranking `net_units DESC, completed_units DESC, product_id ASC`.
 - Repository report methods contain only reads; report services run in read-only repeatable-read transactions. No audit mutation, content behavior, cache, snapshot table, query builder or report-owned domain state is added.
 
-## 7. Image history, retention and deletion
+## 8. Image history, retention and deletion
 
 - Order image references must resolve to immutable object/version content for the required retention window. Later Product image changes must not rewrite historical order image results.
 - Prefer soft-delete/disable for referenced Account/catalog/voucher/warehouse records. Use RESTRICT by default for business/history foreign keys; CASCADE only for explicitly disposable working data.
 - Posted Orders, snapshots, Payment facts, inventory ledger and audit history are not cascade-deleted.
 - The lifecycle/FK matrix and system-seed manifest are specified in [P1.8](refactor-v2/p1/P1.8-operations-seed-contract.md); numeric audit/image/personal-business retention durations and legal anonymization/deletion exceptions remain TBD. Do not implement scheduled purge until they are approved. Current DDL lacks an explicit CartItems CASCADE; P1.9 must reconcile it, and code must delete child rows explicitly until then.
 
-## 8. Delivery status
+## 9. Delivery status
 
 Owner-approved behavior and target schema are recorded; application/DTO/frontend alignment and runtime acceptance remain open until verified on the exact candidate SHA. DDL validation does not prove transaction/concurrency, authorization or user-flow behavior. Clean Schema Reset may be run only against a verified disposable development/test database; no reset is authorized against persistent/shared data.

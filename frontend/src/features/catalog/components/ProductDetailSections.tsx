@@ -17,27 +17,8 @@ const attributeValueLabel = (
   definitions: readonly AttributeDto[],
 ): string => {
   const definition = definitions.find((item) => item.id === value.attribute_id);
-  const dataType = definition?.data_type ?? value.data_type;
-
-  switch (dataType) {
-    case 'OPTION':
-      return (
-        definition?.options.find((option) => option.id === value.option_id)?.label ??
-        value.option_label ??
-        value.option_value ??
-        '—'
-      );
-    case 'TEXT':
-      return value.text_value ?? '—';
-    case 'NUMBER':
-      return value.number_value === null
-        ? '—'
-        : value.number_value.toLocaleString('vi-VN', { maximumFractionDigits: 4 });
-    case 'BOOLEAN':
-      return value.boolean_value === null ? '—' : value.boolean_value ? 'Có' : 'Không';
-    default:
-      return '—';
-  }
+  return definition?.options.find((option) => option.id === value.attribute_value_id)?.label
+    ?? value.label ?? value.value ?? '—';
 };
 
 export const ProductGallerySection: React.FC<{

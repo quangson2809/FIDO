@@ -23,7 +23,7 @@ class DevDataSeedServiceTests {
     private static final List<String> TARGET_TABLES =
             List.of(
                     "accounts", "addresses", "roles", "permissions", "account_roles", "role_permissions",
-                    "categories", "brands", "attribute_types", "attributes", "attribute_options",
+                    "categories", "brands", "attributes", "attribute_options",
                     "products", "product_attribute_values", "product_images", "carts", "cart_items",
                     "vouchers", "orders", "order_items", "order_addresses", "order_voucher_snapshots",
                     "payments", "shipping_infos", "suppliers", "warehouses", "goods_receipts",
@@ -79,7 +79,6 @@ class DevDataSeedServiceTests {
         assertEquals(8, firstCounts.get("account_roles"));
         assertEquals(8, firstCounts.get("categories"));
         assertEquals(2, firstCounts.get("brands"));
-        assertEquals(4, firstCounts.get("attribute_types"));
         assertEquals(2, firstCounts.get("attributes"));
         assertEquals(7, firstCounts.get("attribute_options"));
         assertEquals(17, firstCounts.get("products"));

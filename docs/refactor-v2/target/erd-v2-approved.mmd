@@ -1,7 +1,7 @@
 %% FIDO ERD v2 — contract-freeze revision, 2026-10-23
-%% Base: owner-confirmed 31-table ERD supplied 2026-10-22.
+%% Base: owner-confirmed ERD v2; the 2026-10-30 owner-directed catalog simplification removes ATTRIBUTE_TYPES.
 %% Revision authorized by the owner's instruction to resolve P1 blockers with the smallest coherent contract change.
-%% Retains 31 tables; adds explicit fields only where required to express already-recorded business decisions.
+%% Revised target contains 30 tables; Product catalog attributes are option-only.
 %% Owner-approved contract defaults recorded 2026-10-23: one-level Product parent/child; descriptive attributes only; DB-03/DB-05 mechanics approved; clean reset only for disposable development/test databases.
 %% Numeric audit/image/personal-data retention periods remain TBD under DB-12.
 %% Physical nullability, generated columns, indexes, defaults, constraints and status literals are specified separately.
@@ -93,16 +93,9 @@ erDiagram
         timestamp updated_at
     }
 
-    ATTRIBUTE_TYPES {
-        bigint id PK
-        varchar code UK
-        varchar name
-        varchar data_type
-    }
 
     ATTRIBUTES {
         bigint id PK
-        bigint attribute_type_id FK
         varchar code UK
         varchar name
         boolean is_required
@@ -121,10 +114,7 @@ erDiagram
     PRODUCT_ATTRIBUTE_VALUES {
         bigint product_id PK,FK
         bigint attribute_id PK,FK
-        bigint option_id FK
-        varchar text_value
-        decimal number_value "Descriptive numeric attribute; not money"
-        boolean boolean_value
+        bigint option_id FK "NOT NULL; Option must belong to attribute_id"
     }
 
     %% Physical target index: UNIQUE (product_id, sort_order); application transactions still preserve contiguous 0..n-1 positions and the primary-image invariant.
@@ -341,11 +331,10 @@ erDiagram
     BRANDS o|--o{ PRODUCTS : brands
 
     PRODUCTS o|--o{ PRODUCTS : parent_of
-    ATTRIBUTE_TYPES ||--o{ ATTRIBUTES : defines_type
     ATTRIBUTES ||--o{ ATTRIBUTE_OPTIONS : offers
     PRODUCTS ||--o{ PRODUCT_ATTRIBUTE_VALUES : has
     ATTRIBUTES ||--o{ PRODUCT_ATTRIBUTE_VALUES : describes
-    ATTRIBUTE_OPTIONS o|--o{ PRODUCT_ATTRIBUTE_VALUES : selected_option
+    ATTRIBUTE_OPTIONS ||--o{ PRODUCT_ATTRIBUTE_VALUES : selected_option
     PRODUCTS ||--o{ PRODUCT_IMAGES : has
 
     ACCOUNTS ||--o{ CARTS : owns

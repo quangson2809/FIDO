@@ -10,10 +10,10 @@ import {
 } from '../../features/catalog/components/AdminProductDetailSections';
 import {
   attributeDraftFromValues,
-  buildProductAttributeInputs,
-  preserveUnmanagedProductAttributeValues,
-  productAttributeValuesToInputs,
-  sameProductAttributeValues,
+  buildProductAttributeValueIds,
+  preserveUnmanagedProductAttributeValueIds,
+  productAttributeValuesToIds,
+  sameProductAttributeValueIds,
   type ProductAttributeDraft,
 } from '../../features/catalog/model/productAttributeForm';
 import { buildMovedImageOrder, sortProductImages } from '../../features/catalog/model/productImageOrder';
@@ -86,17 +86,17 @@ export const AdminProductDetailView: React.FC<Props> = ({
         sellingPrice !== String(product.selling_price) ||
         costPrice !== (product.cost_price === null ? '' : String(product.cost_price)) ||
         status !== product.status ||
-        !sameProductAttributeValues(
-          preserveUnmanagedProductAttributeValues(
+        !sameProductAttributeValueIds(
+          preserveUnmanagedProductAttributeValueIds(
             product.attribute_values,
             adminMeta?.attributes ?? [],
-            buildProductAttributeInputs(
+            buildProductAttributeValueIds(
               adminMeta?.attributes ?? [],
               attributeDraft,
               status,
             ).values,
           ),
-          productAttributeValuesToInputs(product.attribute_values),
+          productAttributeValuesToIds(product.attribute_values),
         )),
   );
   const canDiscard = useDirtyForm(infoDirty || imageFiles.length > 0);
@@ -240,16 +240,16 @@ export const AdminProductDetailView: React.FC<Props> = ({
       return;
     }
 
-    const attributesResult = buildProductAttributeInputs(adminMeta.attributes, attributeDraft, status);
+    const attributesResult = buildProductAttributeValueIds(adminMeta.attributes, attributeDraft, status);
     if (attributesResult.errors.length > 0) {
       setError(attributesResult.errors.join(' '));
       return;
     }
 
-    const fullAttributeValues = preserveUnmanagedProductAttributeValues(
+    const fullAttributeValues = preserveUnmanagedProductAttributeValueIds(
       product.attribute_values,
       adminMeta.attributes,
-      attributesResult.values,
+      attributesResult.attributeValueIds,
     );
     const patch: ProductPatchInput = {};
     if (sku.trim() !== product.sku) patch.sku = sku.trim();
@@ -266,12 +266,12 @@ export const AdminProductDetailView: React.FC<Props> = ({
     if (cost !== product.cost_price) patch.cost_price = cost;
     if (status !== product.status) patch.status = status;
     if (
-      !sameProductAttributeValues(
+      !sameProductAttributeValueIds(
         fullAttributeValues,
-        productAttributeValuesToInputs(product.attribute_values),
+        productAttributeValuesToIds(product.attribute_values),
       )
     ) {
-      patch.attribute_values = fullAttributeValues;
+      patch.attribute_value_ids = fullAttributeValues;
     }
 
     if (Object.keys(patch).length === 0) {

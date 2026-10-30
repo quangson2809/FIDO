@@ -2,7 +2,6 @@ import type { PaginationMeta } from '../../../types/api';
 
 export type ProductStatus = 'DRAFT' | 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
 export type CatalogEntityStatus = 'ACTIVE' | 'INACTIVE';
-export type AttributeValueType = 'OPTION' | 'TEXT' | 'NUMBER' | 'BOOLEAN';
 
 export interface CategoryDto {
   category_id: number;
@@ -19,13 +18,6 @@ export interface BrandDto {
   status: CatalogEntityStatus;
 }
 
-export interface AttributeTypeDto {
-  id: number;
-  code: AttributeValueType;
-  name: string;
-  data_type: AttributeValueType;
-}
-
 export interface AttributeOptionDto {
   id: number;
   attribute_id: number;
@@ -38,7 +30,6 @@ export interface AttributeDto {
   id: number;
   code: string;
   name: string;
-  data_type: AttributeValueType;
   is_required: boolean;
   is_variant_defining: boolean;
   sort_order: number;
@@ -49,32 +40,18 @@ export interface ProductAttributeValueDto {
   attribute_id: number;
   attribute_code: string;
   attribute_name: string;
-  data_type: AttributeValueType;
-  option_id: number | null;
-  option_value: string | null;
-  option_label: string | null;
-  text_value: string | null;
-  number_value: number | null;
-  boolean_value: boolean | null;
-}
-
-export interface ProductAttributeValueInput {
-  attribute_id: number;
-  option_id?: number | null;
-  text_value?: string | null;
-  number_value?: number | null;
-  boolean_value?: boolean | null;
+  attribute_value_id: number;
+  value: string;
+  label: string;
 }
 
 export interface CatalogMetaDto {
   categories: CategoryDto[];
   brands: BrandDto[];
-  attribute_types: AttributeTypeDto[];
   attributes: AttributeDto[];
 }
 
 export interface AdminCatalogMetaDto {
-  attribute_types: AttributeTypeDto[];
   attributes: AttributeDto[];
 }
 
@@ -194,7 +171,7 @@ export interface ProductCreateInput {
   selling_price: number;
   cost_price?: number | null;
   status?: ProductStatus;
-  attribute_values?: ProductAttributeValueInput[];
+  attribute_value_ids?: number[];
 }
 
 export interface ProductPatchInput {
@@ -210,10 +187,10 @@ export interface ProductPatchInput {
   status?: ProductStatus;
   images?: ProductImageInput[];
   /**
-   * When sent, this replaces the complete set of product attribute values.
+   * When sent, this replaces the complete set of Product Attribute Option IDs.
    * Omit this property when attribute values have not changed.
    */
-  attribute_values?: ProductAttributeValueInput[];
+  attribute_value_ids?: number[];
 }
 
 export interface AdminProductQuery {
@@ -246,7 +223,6 @@ export interface BrandInput {
 export type BrandPatchInput = Partial<BrandInput>;
 
 export interface AttributeCreateInput {
-  attribute_type_id: number;
   code: string;
   name: string;
   is_required: boolean;

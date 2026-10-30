@@ -25,9 +25,6 @@ public class Attribute {
     @Column(name = "id", nullable = false)
     private Long attributeId;
 
-    @Column(name = "attribute_type_id", nullable = false)
-    private Long attributeTypeId;
-
     @Column(name = "code", nullable = false, length = 80)
     private String code;
 

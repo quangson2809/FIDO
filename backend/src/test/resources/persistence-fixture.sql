@@ -1,4 +1,4 @@
--- Minimal deterministic fixture for the approved ERD v2 (31-table) schema.
+-- Minimal deterministic fixture for the revised option-only 30-table ERD v2.
 -- This file is test data only; it must never define legacy/compatibility columns.
 
 INSERT INTO accounts(id,full_name,password_hash,phone,email,status,deleted_at,created_at,updated_at)
@@ -22,8 +22,8 @@ INSERT INTO categories(id,parent_category_id,name,slug,status,created_at,updated
 VALUES (1,NULL,'Root','fixture-root','ACTIVE',CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6));
 INSERT INTO brands(id,name,slug,status) VALUES (1,'Fixture brand','fixture-brand','ACTIVE');
 
-INSERT INTO attributes(id,attribute_type_id,code,name,is_required,is_variant_defining,sort_order)
-VALUES (1,1,'fixture-option','Fixture option',FALSE,FALSE,0);
+INSERT INTO attributes(id,code,name,is_required,is_variant_defining,sort_order)
+VALUES (1,'fixture-option','Fixture option',FALSE,FALSE,0);
 INSERT INTO attribute_options(id,attribute_id,`value`,label,sort_order)
 VALUES (1,1,'fixture-option','Fixture option',0);
 
@@ -34,8 +34,8 @@ INSERT INTO products(
     1,NULL,1,1,'Fixture product','fixture-product','FIXTURE-SKU','Fixture description',
     1000,500,'ACTIVE',NULL,CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6)
 );
-INSERT INTO product_attribute_values(product_id,attribute_id,option_id,text_value,number_value,boolean_value)
-VALUES (1,1,1,NULL,NULL,NULL);
+INSERT INTO product_attribute_values(product_id,attribute_id,option_id)
+VALUES (1,1,1);
 INSERT INTO product_images(id,product_id,image_url,is_primary,sort_order,created_at)
 VALUES (1,1,'https://example.invalid/test.png',TRUE,0,CURRENT_TIMESTAMP(6));
 

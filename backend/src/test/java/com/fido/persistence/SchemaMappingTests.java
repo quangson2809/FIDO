@@ -45,7 +45,6 @@ class SchemaMappingTests {
             Map.entry("role_permissions", "account"),
             Map.entry("categories", "product"),
             Map.entry("brands", "product"),
-            Map.entry("attribute_types", "product"),
             Map.entry("attributes", "product"),
             Map.entry("attribute_options", "product"),
             Map.entry("products", "product"),
@@ -74,7 +73,7 @@ class SchemaMappingTests {
     @Autowired AccountRepository accounts;
 
     @Test
-    void domainTablesAndEntitiesMatchApprovedThirtyOneTableOwnership() throws Exception {
+    void domainTablesAndEntitiesMatchApprovedThirtyTableOwnership() throws Exception {
         Set<String> mapped = new HashSet<>();
         for (EntityType<?> entity : em.getMetamodel().getEntities()) {
             Class<?> type = entity.getJavaType();
@@ -96,7 +95,7 @@ class SchemaMappingTests {
             assertNotNull(em.find(type, key), "Cannot read canonical fixture for " + table);
         }
         assertEquals(OWNERS.keySet(), mapped);
-        assertEquals(31, mapped.size());
+        assertEquals(30, mapped.size());
 
         try (Connection connection = dataSource.getConnection()) {
             Set<String> actualTables = new HashSet<>();
@@ -108,7 +107,7 @@ class SchemaMappingTests {
                 }
             }
             assertEquals(OWNERS.keySet(), actualTables,
-                    "The database must contain exactly the approved 31 target tables.");
+                    "The database must contain exactly the approved 30 target tables.");
 
             for (EntityType<?> entity : em.getMetamodel().getEntities()) {
                 String table = entity.getJavaType().getAnnotation(Table.class).name();

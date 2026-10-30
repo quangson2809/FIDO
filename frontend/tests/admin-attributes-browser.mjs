@@ -28,18 +28,11 @@ const profile = {
   permissions: [],
 };
 let metadata = {
-  attribute_types: [
-    { id: 1, code: 'OPTION', name: 'Lựa chọn', data_type: 'OPTION' },
-    { id: 2, code: 'TEXT', name: 'Văn bản', data_type: 'TEXT' },
-    { id: 3, code: 'NUMBER', name: 'Số', data_type: 'NUMBER' },
-    { id: 4, code: 'BOOLEAN', name: 'Có/Không', data_type: 'BOOLEAN' },
-  ],
   attributes: [
     {
       id: 10,
       code: 'COLOR',
       name: 'Màu sắc',
-      data_type: 'OPTION',
       is_required: false,
       is_variant_defining: false,
       sort_order: 0,
@@ -49,11 +42,10 @@ let metadata = {
       id: 11,
       code: 'MATERIAL',
       name: 'Chất liệu',
-      data_type: 'TEXT',
       is_required: true,
       is_variant_defining: false,
       sort_order: 1,
-      options: [],
+      options: [{ id: 110, attribute_id: 11, value: 'COTTON', label: 'Cotton', sort_order: 0 }],
     },
   ],
 };
@@ -97,7 +89,6 @@ await page.route('**/api/v1/**', async (route) => {
       id: Math.max(0, ...metadata.attributes.map((item) => item.id)) + 1,
       code: body.code,
       name: body.name,
-      data_type: metadata.attribute_types.find((item) => item.id === body.attribute_type_id).data_type,
       is_required: body.is_required,
       is_variant_defining: body.is_variant_defining ?? false,
       sort_order: body.sort_order ?? 0,
@@ -122,7 +113,7 @@ await page.route('**/api/v1/**', async (route) => {
   if (method === 'POST' && createOptionMatch) {
     const attributeId = Number(createOptionMatch[1]);
     const parent = metadata.attributes.find((item) => item.id === attributeId);
-    if (!parent || parent.data_type !== 'OPTION') return send(route, { message: 'Invalid parent' }, 400);
+    if (!parent) return send(route, { message: 'Invalid parent' }, 400);
     const created = {
       id: Math.max(0, ...metadata.attributes.flatMap((item) => item.options.map((option) => option.id))) + 1,
       attribute_id: attributeId,
@@ -161,20 +152,18 @@ try {
   await page.goto('http://localhost:5181/admin/catalog/attributes', { waitUntil: 'domcontentloaded' });
   await page.getByRole('heading', { name: 'Quản lý thuộc tính', exact: true }).waitFor();
   await page.getByText('Màu sắc', { exact: true }).waitFor();
-  await page.getByText('OPTION', { exact: true }).first().waitFor();
+  await page.getByText('Options', { exact: true }).first().waitFor();
   await page.getByText('Chất liệu', { exact: true }).waitFor();
   await page.getByText('Giá trị: BLACK · Thứ tự 0', { exact: true }).waitFor();
 
-  // Attribute create reads type IDs from admin metadata and submits only the backend request fields.
+  // Attribute creation has no type selector; every Attribute owns Options.
   await page.getByLabel('Mã thuộc tính').fill('WEIGHT');
-  await page.getByLabel('Tên thuộc tính mới').fill('Trọng lượng');
-  await page.getByLabel('Kiểu dữ liệu').selectOption('3');
+  await page.getByLabel('Tên thuộc tính mới').fill('Định lượng');
   await page.getByRole('button', { name: 'Tạo thuộc tính', exact: true }).click();
-  await page.getByText('Trọng lượng', { exact: true }).waitFor();
+  await page.getByText('Định lượng', { exact: true }).waitFor();
   assert.deepEqual(
     requests.find((item) => item.method === 'POST' && item.path === '/admin/catalog/attributes')?.body,
     {
-      attribute_type_id: 3,
       code: 'WEIGHT',
       name: 'Trọng lượng',
       is_required: false,
@@ -187,7 +176,6 @@ try {
   await colorCard.getByRole('button', { name: 'Sửa thuộc tính', exact: true }).click();
   const attributeEditor = colorCard.locator('form').first();
   assert.equal(await attributeEditor.getByLabel('Mã thuộc tính').count(), 0, 'attribute code is immutable');
-  assert.equal(await attributeEditor.getByLabel('Kiểu dữ liệu').count(), 0, 'attribute data type is immutable');
   await colorCard.getByLabel('Tên thuộc tính COLOR').fill('Màu chính');
   await colorCard.getByLabel('Thứ tự thuộc tính COLOR').fill('2');
   await colorCard.getByLabel('Bắt buộc COLOR').check();

@@ -18,7 +18,7 @@
 |---|---|---|
 | Account identity | Active phone unique; soft deletion releases the phone for reuse. | Entity/auth mapping, concurrent registration, delete/reuse and generic authentication errors. |
 | Product hierarchy | One parent-child level; self-FK; each Product row owns SKU, required selling price and stock; no implicit NULL inheritance. | Cycle/depth checks under concurrent changes; Product create/update and sale eligibility. |
-| Attributes | OPTION/TEXT/NUMBER/BOOLEAN; one compatible typed value; option belongs to the same Attribute; no auto-generated Products. | Service/API type checks, requiredness, cross-Attribute option rejection and update behavior. |
+| Attributes | Option-only; `option_id` is mandatory and belongs to `attribute_id`; one Option per Product/Attribute; no auto-generated Products. | Service/API ID resolution, requiredness, duplicate Attribute selection and composite FK checks. |
 | Cart/order item identity | Product foreign keys; authenticated ownership; positive quantities. | DTO/query/frontend alignment; ownership and concurrency tests. |
 | Inventory | Composite warehouse/Product key; non-negative quantity/version; append-only ledger; source-linked movements. | Real MySQL last-stock race, deterministic locks, semantic source dedupe, reversal and balance=ledger reconciliation. |
 | Goods receipt | Required warehouse FK; one operational warehouse resolved server-side; DRAFT-only edits; confirmation posts stock once. | Receipt double-confirm concurrency and atomic source/balance/ledger/audit. |

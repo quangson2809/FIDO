@@ -25,7 +25,7 @@ class DatabaseBaselineTests {
 
     private static final Set<String> TARGET_TABLES = Set.of(
             "accounts", "addresses", "roles", "permissions", "account_roles",
-            "role_permissions", "categories", "brands", "products", "attribute_types",
+            "role_permissions", "categories", "brands", "products",
             "attributes", "attribute_options", "product_attribute_values", "product_images",
             "carts", "cart_items", "vouchers", "orders", "order_items", "order_addresses",
             "order_voucher_snapshots", "payments", "shipping_infos", "suppliers",
@@ -96,8 +96,7 @@ class DatabaseBaselineTests {
             Map.entry("accounts", Set.of("created_at","deleted_at","email","full_name","id","password_hash","phone","phone_active_key","status","updated_at")),
             Map.entry("addresses", Set.of("account_id","address_line","created_at","district","id","is_default","province","recipient_name","recipient_phone","updated_at","ward")),
             Map.entry("attribute_options", Set.of("attribute_id","id","label","sort_order","value")),
-            Map.entry("attribute_types", Set.of("code","data_type","id","name")),
-            Map.entry("attributes", Set.of("attribute_type_id","code","id","is_required","is_variant_defining","name","sort_order")),
+            Map.entry("attributes", Set.of("code","id","is_required","is_variant_defining","name","sort_order")),
             Map.entry("audit_logs", Set.of("action","actor_account_id","after_data","before_data","correlation_id","created_at","entity_id","entity_type","id")),
             Map.entry("brands", Set.of("id","name","slug","status")),
             Map.entry("cart_items", Set.of("added_at","cart_id","id","product_id","quantity","updated_at")),
@@ -114,7 +113,7 @@ class DatabaseBaselineTests {
             Map.entry("orders", Set.of("account_id","created_at","currency","discount_amount","id","idempotency_key","order_number","placed_at","request_fingerprint","shipping_fee","status","subtotal","total_amount","updated_at","voucher_id")),
             Map.entry("payments", Set.of("amount","collected_at","collected_by_account_id","created_at","currency","method","order_id","payment_status","refund_amount","refund_reason","refunded_at","refunded_by_account_id","updated_at")),
             Map.entry("permissions", Set.of("code","description","id","name")),
-            Map.entry("product_attribute_values", Set.of("attribute_id","boolean_value","number_value","option_id","product_id","text_value")),
+            Map.entry("product_attribute_values", Set.of("attribute_id","option_id","product_id")),
             Map.entry("product_images", Set.of("created_at","id","image_url","is_primary","product_id","sort_order")),
             Map.entry("products", Set.of("brand_id","category_id","cost_price","created_at","deleted_at","description","id","name","parent_product_id","selling_price","sku","slug","status","updated_at")),
             Map.entry("role_permissions", Set.of("permission_id","role_id")),
@@ -126,7 +125,7 @@ class DatabaseBaselineTests {
     );
 
     @Test
-    void cleanTargetBaselineCreatesExactlyTheApprovedThirtyOneTables() {
+    void cleanTargetBaselineCreatesExactlyTheApprovedThirtyTables() {
         var dataSource = newTestDataSource("schema");
 
         try {
@@ -353,6 +352,8 @@ class DatabaseBaselineTests {
                     "UPDATE vouchers SET usage_count = usage_limit + 1 WHERE code = 'DEMO10'"));
             assertThrows(DataAccessException.class, () -> jdbc.update(
                     "INSERT INTO product_attribute_values(product_id,attribute_id,option_id) VALUES (30001,41002,42001)"));
+            assertThrows(DataAccessException.class, () -> jdbc.update(
+                    "INSERT INTO product_attribute_values(product_id,attribute_id,option_id) VALUES (30001,41002,NULL)"));
         } finally {
             dropAllTables(dataSource);
         }

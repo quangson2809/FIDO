@@ -5,11 +5,11 @@ import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
 import tools.jackson.databind.annotation.JsonDeserialize;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
-
 import java.util.List;
 
 public class ProductPatchRequest {
@@ -23,65 +23,51 @@ public class ProductPatchRequest {
     @PositiveOrZero private Long sellingPrice;
     @PositiveOrZero private Long costPrice;
     @Pattern(regexp = "DRAFT|ACTIVE|INACTIVE|ARCHIVED") private String status;
-    @Valid private List<@jakarta.validation.constraints.NotNull ProductImageInput> images;
-    @Valid private List<@jakarta.validation.constraints.NotNull ProductAttributeValueInput> attributeValues;
+    @Valid private List<@NotNull ProductImageInput> images;
+    private List<@NotNull @Positive Long> attributeValueIds;
 
     private boolean parentProductIdPresent, categoryIdPresent, brandIdPresent, namePresent,
             slugPresent, skuPresent, descriptionPresent, sellingPricePresent, costPricePresent,
-            statusPresent, imagesPresent, attributeValuesPresent;
+            statusPresent, imagesPresent, attributeValueIdsPresent;
 
     public Long getParentProductId() { return parentProductId; }
     @JsonSetter(value = "parent_product_id", nulls = Nulls.SET)
     public void setParentProductId(Long value) { parentProductId = value; parentProductIdPresent = true; }
-
     public Long getCategoryId() { return categoryId; }
     @JsonSetter(value = "category_id", nulls = Nulls.SET)
     public void setCategoryId(Long value) { categoryId = value; categoryIdPresent = true; }
-
     public Long getBrandId() { return brandId; }
     @JsonSetter(value = "brand_id", nulls = Nulls.SET)
     public void setBrandId(Long value) { brandId = value; brandIdPresent = true; }
-
     public String getName() { return name; }
     @JsonSetter(value = "name", nulls = Nulls.SET)
     public void setName(String value) { name = value; namePresent = true; }
-
     public String getSlug() { return slug; }
     @JsonSetter(value = "slug", nulls = Nulls.SET)
     public void setSlug(String value) { slug = value; slugPresent = true; }
-
     public String getSku() { return sku; }
     @JsonSetter(value = "sku", nulls = Nulls.FAIL)
     public void setSku(String value) { sku = value; skuPresent = true; }
-
     public String getDescription() { return description; }
     @JsonSetter(value = "description", nulls = Nulls.SET)
     public void setDescription(String value) { description = value; descriptionPresent = true; }
-
     public Long getSellingPrice() { return sellingPrice; }
     @JsonSetter(value = "selling_price", nulls = Nulls.FAIL)
     @JsonDeserialize(using = IntegerVndDeserializer.class)
     public void setSellingPrice(Long value) { sellingPrice = value; sellingPricePresent = true; }
-
     public Long getCostPrice() { return costPrice; }
     @JsonSetter(value = "cost_price", nulls = Nulls.SET)
     @JsonDeserialize(using = IntegerVndDeserializer.class)
     public void setCostPrice(Long value) { costPrice = value; costPricePresent = true; }
-
     public String getStatus() { return status; }
     @JsonSetter(value = "status", nulls = Nulls.FAIL)
     public void setStatus(String value) { status = value; statusPresent = true; }
-
     public List<ProductImageInput> getImages() { return images; }
     @JsonSetter(value = "images", nulls = Nulls.FAIL)
     public void setImages(List<ProductImageInput> value) { images = value; imagesPresent = true; }
-
-    public List<ProductAttributeValueInput> getAttributeValues() { return attributeValues; }
-    @JsonSetter(value = "attribute_values", nulls = Nulls.FAIL)
-    public void setAttributeValues(List<ProductAttributeValueInput> value) {
-        attributeValues = value;
-        attributeValuesPresent = true;
-    }
+    public List<Long> getAttributeValueIds() { return attributeValueIds; }
+    @JsonSetter(value = "attribute_value_ids", nulls = Nulls.FAIL)
+    public void setAttributeValueIds(List<Long> value) { attributeValueIds = value; attributeValueIdsPresent = true; }
 
     @JsonIgnore public boolean isParentProductIdPresent() { return parentProductIdPresent; }
     @JsonIgnore public boolean isCategoryIdPresent() { return categoryIdPresent; }
@@ -94,5 +80,5 @@ public class ProductPatchRequest {
     @JsonIgnore public boolean isCostPricePresent() { return costPricePresent; }
     @JsonIgnore public boolean isStatusPresent() { return statusPresent; }
     @JsonIgnore public boolean isImagesPresent() { return imagesPresent; }
-    @JsonIgnore public boolean isAttributeValuesPresent() { return attributeValuesPresent; }
+    @JsonIgnore public boolean isAttributeValueIdsPresent() { return attributeValueIdsPresent; }
 }

@@ -2,9 +2,9 @@
 
 ## Authority
 
-The only database-installation SQL is `backend/src/main/resources/db/migration/V1__fido_target_schema.sql`. It creates exactly the 31 tables in the approved ERD v2, including all primary keys, foreign keys, composite relationships, unique constraints, checks and indexes, and seeds the approved three system roles, thirteen permissions and SUPERADMIN grants.
+The only database-installation SQL is `backend/src/main/resources/db/migration/V1__fido_target_schema.sql`. It creates exactly the 30 tables in the revised option-only catalog ERD v2, including all primary keys, foreign keys, composite relationships, unique constraints, checks and indexes, and seeds the approved three system roles, thirteen permissions and SUPERADMIN grants.
 
-The logical model is [approved ERD v2](erd-v2-approved.mmd); the physical columns, types, nullability and key/index evidence are defined in the [P1 Data Dictionary](../p1/P1-data-dictionary.csv). Business and seed rules remain governed by the approved P1 contracts and decision log.
+The logical model is [revised option-only ERD v2](erd-v2-approved.mmd); the physical columns, types, nullability and key/index evidence are defined in the [P1 Data Dictionary](../p1/P1-data-dictionary.csv). Business and seed rules remain governed by the approved P1 contracts and decision log.
 
 ## Fresh installation
 
@@ -12,7 +12,7 @@ The logical model is [approved ERD v2](erd-v2-approved.mmd); the physical column
 2. Create a **new, empty** database using `utf8mb4` and `utf8mb4_0900_ai_ci`.
 3. Configure the application/Flyway to connect to that database. Flyway applies the single V1 baseline.
 4. Run `python scripts/p1/check_contract_consistency.py` and the database-baseline verification workflow against the exact commit.
-5. Verify the table count is 31 and the roles/permissions/role-permission seed matches the approved manifest.
+5. Verify the table count is 30 and the roles/permissions/role-permission seed matches the approved manifest.
 6. Configure the initial SUPERADMIN account through deployment secrets/bootstrap separately; the SQL file deliberately contains no user credentials.
 
 ## Versioning rule — no per-phase SQL

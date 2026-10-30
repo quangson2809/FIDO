@@ -4,7 +4,6 @@ import com.fido.modules.audit.service.AuditAction;
 import com.fido.modules.audit.service.AuditEntityType;
 import com.fido.modules.audit.service.AuditWriteEvent;
 import com.fido.modules.audit.service.AuditWriteService;
-import com.fido.modules.product.dto.request.ProductAttributeValueInput;
 import com.fido.modules.product.dto.request.ProductCreateRequest;
 import com.fido.modules.product.dto.request.ProductImageInput;
 import com.fido.modules.product.dto.request.ProductPatchRequest;
@@ -92,13 +91,12 @@ public class ProductAdminService {
         products.save(product);
         flushOrConflict();
 
-        List<ProductAttributeValueInput> requestedValues =
-                request.attribute_values() == null
-                        ? List.of()
-                        : request.attribute_values();
+        List<Long> requestedValueIds = request.attribute_value_ids() == null
+                ? List.of()
+                : request.attribute_value_ids();
         List<ProductAttributeValue> validatedValues =
                 attributeValueValidator.validateCompleteSet(
-                        product.getProductId(), status, requestedValues);
+                        product.getProductId(), status, requestedValueIds);
 
         replaceAttributeValues(product.getProductId(), validatedValues);
         flushOrConflict();
@@ -144,23 +142,19 @@ public class ProductAdminService {
             product.setStatus(request.getStatus());
         }
 
-        List<ProductAttributeValueInput> resultingInputs =
-                request.isAttributeValuesPresent()
-                        ? request.getAttributeValues()
-                        : productAttributeValues
-                                .findAllByProductIdOrderByAttributeIdAsc(productId)
-                                .stream()
-                                .map(ProductAdminService::toInput)
-                                .toList();
+        List<Long> resultingValueIds = request.isAttributeValueIdsPresent()
+                ? request.getAttributeValueIds()
+                : productAttributeValues.findAllByProductIdOrderByAttributeIdAsc(productId)
+                        .stream().map(ProductAttributeValue::getOptionId).toList();
 
         List<ProductAttributeValue> validatedValues =
                 attributeValueValidator.validateCompleteSet(
-                        productId, product.getStatus(), resultingInputs);
+                        productId, product.getStatus(), resultingValueIds);
 
         replaceImagesIfPresent(productId, request);
         products.save(product);
 
-        if (request.isAttributeValuesPresent()) {
+        if (request.isAttributeValueIdsPresent()) {
             replaceAttributeValues(productId, validatedValues);
         }
 
@@ -192,15 +186,6 @@ public class ProductAdminService {
         for (ProductAttributeValue value : validatedValues) {
             productAttributeValues.save(value);
         }
-    }
-
-    private static ProductAttributeValueInput toInput(ProductAttributeValue value) {
-        return new ProductAttributeValueInput(
-                value.getAttributeId(),
-                value.getOptionId(),
-                value.getTextValue(),
-                value.getNumberValue(),
-                value.getBooleanValue());
     }
 
     private void validateParent(Long productId, Long parentProductId) {

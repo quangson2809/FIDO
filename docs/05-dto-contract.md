@@ -52,10 +52,9 @@
 - `ProductDetailDto`: Product summary plus description, images and descriptive attribute values.
 - `ProductImageDto`: `id, image_url, is_primary, sort_order`. `image_url` must identify stable/immutable object-version content when used for an Order snapshot; do not rely on a mutable overwriteable URL.
 - Product image upload accepts multipart image files under the owning Product ID. Reorder accepts `images[]` entries `image_id, sort_order`; reject IDs belonging to another Product, duplicate positions, gaps or invalid positions. Image removal detaches it from the current gallery but must preserve content/version references required by placed Orders.
-- `AttributeTypeDto`: `id, code, name, data_type`.
-- `AttributeDto`: `id, attribute_type_id, code, name, is_required, is_variant_defining, sort_order, options[]`.
+- `AttributeDto`: `id, code, name, is_required, is_variant_defining, sort_order, options[]`.
 - `AttributeOptionDto`: `id, attribute_id, value, label, sort_order`.
-- `ProductAttributeValueDto`: `attribute_id` plus exactly one of `option_id`, `text_value`, `number_value`, `boolean_value`, matching the authoritative Attribute type. An option must belong to the same Attribute. `is_variant_defining` is informational only; attribute values never create Products.
+- `ProductAttributeValueDto`: `attribute_id, attribute_code, attribute_name, attribute_value_id, value, label`. Product create/update requests send `attribute_value_ids[]`; Backend resolves each Option and its owning Attribute. An Option must belong to the Attribute, and only one Option may be selected per Attribute. `is_variant_defining` is informational only; attribute values never create Products.
 
 A Product is the catalog sale unit. A child Product has a normal Product ID and independently owns SKU, required selling price and inventory. Do not encode a Product option-combination ID as a saleable item ID.
 
@@ -106,7 +105,7 @@ Inventory quantities and ledger movements are Product-based. Every adjustment ha
 
 ## 8. Validation and conflicts
 
-Reject invalid typed attribute values, cross-Attribute options, duplicate active phone, duplicate Product SKU, invalid Product hierarchy, non-positive Cart/receipt quantities, insufficient stock, invalid voucher use and forbidden state transitions. Use stable typed errors for authorization, validation, stock conflicts and idempotency conflicts.
+Reject invalid option-only Attribute values, cross-Attribute options, duplicate active phone, duplicate Product SKU, invalid Product hierarchy, non-positive Cart/receipt quantities, insufficient stock, invalid voucher use and forbidden state transitions. Use stable typed errors for authorization, validation, stock conflicts and idempotency conflicts.
 
 For order-creation idempotency, require the `Idempotency-Key` HTTP header on `POST /api/v1/orders`; scope the stored key to the authenticated account and fingerprint the canonical semantic payload with SHA-256. Same key/same payload replays; same key/different payload conflicts; another account cannot read the result. P1.6 is normative for transport/replay details. Post-create transition retries are guarded by locked state preconditions and source-deduplicated Inventory effects; they do not imply a new command-id table.
 
@@ -117,7 +116,7 @@ This is the target DTO contract. Any old response shape not represented here mus
 
 - A Product is one sale-unit record identified by id. Parent and child records each expose their own sku, required integer-VND selling_price, status and stock relationship. A child is created by setting parent_product_id; no variants[], variant_id or option-combination identity is part of the target DTO.
 - category_id, brand_id, name, slug and description follow target nullability and never inherit from the parent. PATCH omission retains the current value; explicit null clears only a nullable target field. For attribute_values, omission retains the set and a supplied array replaces the complete set.
-- ProductAttributeValueDto contains attribute_id plus exactly one type-matching value: option_id, text_value, number_value or boolean_value. OPTION references must belong to the same Attribute; required values must exist before activation; values never generate Products.
-- AttributeDto exposes id, attribute_type_id, code, name, is_required, is_variant_defining, sort_order and options[]. AttributeOptionDto exposes id, attribute_id, value, label and sort_order. Attribute code/type and Option machine value are immutable under the target write contract; display label/order may change.
+- ProductAttributeValueDto exposes the Attribute and selected Option (`attribute_value_id`, `value`, `label`). Product create/update accepts only `attribute_value_ids[]`; Backend derives the owning Attribute, rejects unknown IDs, duplicate IDs and multiple Option selections for one Attribute, and enforces required values before activation. Values never generate Products.
+- AttributeDto exposes id, code, name, is_required, is_variant_defining, sort_order and options[]. AttributeOptionDto exposes id, attribute_id, value, label and sort_order. Attribute code and Option machine value are immutable under the target write contract; display label/order may change.
 - ProductImageDto exposes id, image_url, is_primary and sort_order. A non-empty gallery has exactly one primary image at sort_order zero; writes atomically renumber the full gallery. Order snapshots never resolve through mutable current gallery state.
 - Exact routes, typed filter operators, errors and evidence are owned by [P1.3 Catalog Metadata Contract](refactor-v2/p1/P1.3-catalog-metadata-contract.md). This is target documentation, not a claim that current runtime DTOs conform.

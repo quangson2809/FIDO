@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import { adminCatalogMetaService } from '../../features/catalog/api/adminCatalogMetaService';
-import type { AttributeValueType } from '../../features/catalog/types';
 import { useAdminAttributes } from '../../features/catalog/hooks/useAdminAttributes';
 
 interface Props {
@@ -11,7 +10,6 @@ interface Props {
 interface AttributeCreateDraft {
   code: string;
   name: string;
-  attributeTypeId: string;
   isRequired: boolean;
   isVariantDefining: boolean;
 }
@@ -35,8 +33,6 @@ interface OptionEditDraft {
   sortOrder: string;
 }
 
-const supportedDataTypes: readonly AttributeValueType[] = ['OPTION', 'TEXT', 'NUMBER', 'BOOLEAN'];
-
 const nextSortOrder = (values: number[]): number => Math.max(-1, ...values) + 1;
 
 export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) => {
@@ -46,7 +42,6 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
   const [createDraft, setCreateDraft] = useState<AttributeCreateDraft>({
     code: '',
     name: '',
-    attributeTypeId: '',
     isRequired: false,
     isVariantDefining: false,
   });
@@ -60,15 +55,11 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
   const [optionDrafts, setOptionDrafts] = useState<Record<number, OptionDraft>>({});
   const [editingOption, setEditingOption] = useState<OptionEditDraft | null>(null);
 
-  const attributeTypes = useMemo(
-    () => (meta?.attribute_types ?? []).filter((type) => supportedDataTypes.includes(type.data_type)),
-    [meta],
-  );
   const normalizedSearch = search.trim().toLocaleLowerCase();
   const attributes = useMemo(
     () =>
       (meta?.attributes ?? []).filter((attribute) =>
-        `${attribute.code} ${attribute.name} ${attribute.data_type}`
+        `${attribute.code} ${attribute.name}`
           .toLocaleLowerCase()
           .includes(normalizedSearch),
       ),
@@ -81,9 +72,8 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
 
     const code = createDraft.code.trim();
     const name = createDraft.name.trim();
-    const type = attributeTypes.find((item) => String(item.id) === createDraft.attributeTypeId);
-    if (!code || code.length > 80 || !name || name.length > 150 || !type) {
-      setValidationError('Nhập mã, tên và chọn kiểu dữ liệu hợp lệ.');
+    if (!code || code.length > 80 || !name || name.length > 150) {
+      setValidationError('Nhập mã và tên thuộc tính hợp lệ.');
       return;
     }
 
@@ -92,7 +82,6 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
     const succeeded = await runMutation(
       () =>
         adminCatalogMetaService.createAttribute({
-          attribute_type_id: type.id,
           code,
           name,
           is_required: createDraft.isRequired,
@@ -107,7 +96,6 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
       setCreateDraft({
         code: '',
         name: '',
-        attributeTypeId: '',
         isRequired: false,
         isVariantDefining: false,
       });
@@ -160,7 +148,7 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
     attribute: NonNullable<typeof meta>['attributes'][number],
   ) => {
     event.preventDefault();
-    if (!canWrite || busy || attribute.data_type !== 'OPTION') return;
+    if (!canWrite || busy) return;
     const draft = optionDrafts[attribute.id] ?? { value: '', label: '' };
     const value = draft.value.trim();
     const label = draft.label.trim();
@@ -239,8 +227,7 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
             Quản lý thuộc tính
           </h1>
           <p className="mt-2 max-w-3xl text-sm text-[#606863]">
-            Tạo và cập nhật Attribute/Option theo API backend. Mã, kiểu dữ liệu và giá trị option
-            là trường bất biến; cờ phân biệt chỉ mang ý nghĩa mô tả, không tự tạo Product Variant.
+            Mỗi Attribute quản lý một danh sách Option. Product lưu lựa chọn bằng các attribute_value_id; không phát sinh biến thể tự động.
           </p>
         </div>
         <button
@@ -296,25 +283,7 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
               className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
             />
           </label>
-          <label className="space-y-1">
-            <span className="text-xs font-semibold">Kiểu dữ liệu *</span>
-            <select
-              aria-label="Kiểu dữ liệu"
-              value={createDraft.attributeTypeId}
-              required
-              disabled={busy || loading || !meta}
-              onChange={(event) => setCreateDraft((current) => ({ ...current, attributeTypeId: event.target.value }))}
-              className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
-            >
-              <option value="">Chọn kiểu dữ liệu</option>
-              {attributeTypes.map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.data_type} · {type.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="space-y-3">
+<div className="space-y-3">
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -337,7 +306,7 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
             </label>
           </div>
           <div className="flex items-end gap-2">
-            <button type="submit" disabled={busy || loading || !meta || attributeTypes.length === 0} className="admin-primary">
+            <button type="submit" disabled={busy || loading || !meta} className="admin-primary">
               {busy ? 'Đang xử lý...' : 'Tạo thuộc tính'}
             </button>
           </div>
@@ -353,7 +322,7 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
-              placeholder="Mã, tên hoặc kiểu dữ liệu"
+              placeholder="Mã hoặc tên thuộc tính"
             />
           </label>
           {search.trim() && (
@@ -397,8 +366,6 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
                   <p className="mt-1 flex flex-wrap gap-x-2 text-xs text-[#606863]">
                     <code>{attribute.code}</code>
                     <span aria-hidden="true">·</span>
-                    <span>{attribute.data_type}</span>
-                    <span aria-hidden="true">·</span>
                     <span>Thứ tự {attribute.sort_order}</span>
                   </p>
                 </div>
@@ -436,13 +403,7 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
                       {attribute.code}
                     </p>
                   </div>
-                  <div className="space-y-1">
-                    <span className="text-xs font-semibold">Kiểu dữ liệu (không sửa được)</span>
-                    <p className="border border-[#E8E9E3] bg-[#F8FAF4] px-3 py-2 text-sm">
-                      {attribute.data_type}
-                    </p>
-                  </div>
-                  <label className="space-y-1">
+<label className="space-y-1">
                     <span className="text-xs font-semibold">Tên thuộc tính</span>
                     <input
                       aria-label={`Tên thuộc tính ${attribute.code}`}
@@ -499,7 +460,7 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
                 </form>
               )}
 
-              {attribute.data_type === 'OPTION' && (
+              {(
                 <div className="mt-5 space-y-3 border-t border-[#E8E9E3] pt-4">
                   <h3 className="text-sm font-semibold">Options</h3>
                   {attribute.options.length === 0 && (

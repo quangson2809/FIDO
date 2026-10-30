@@ -20,9 +20,9 @@ The older decision questionnaire is superseded by the dated owner approval and l
 
 ## 2. Frozen target profile
 
-- The target logical model is the approved **31-table ERD v2**.
+- The target logical model is the revised **30-table option-only catalog ERD v2**.
 - A sellable catalog record is a row in `PRODUCTS`. Parent and child Products are explicit, independently sellable records. v1 permits one parent-child level; each row owns its SKU, required selling price and stock. NULL never means “inherit from parent.”
-- Catalog metadata uses `ATTRIBUTE_TYPES`, `ATTRIBUTES`, `ATTRIBUTE_OPTIONS` and `PRODUCT_ATTRIBUTE_VALUES`. Types are `OPTION`, `TEXT`, `NUMBER`, `BOOLEAN`. Attribute data is descriptive; it never creates Product records automatically. An option must belong to the Attribute that uses it.
+- Catalog metadata uses `ATTRIBUTES`, `ATTRIBUTE_OPTIONS` and `PRODUCT_ATTRIBUTE_VALUES`. Every Product attribute value references one predefined Option owned by its Attribute. The current contract has no AttributeType registry or TEXT/NUMBER/BOOLEAN typed-value paths. Attribute metadata is descriptive and never creates Product records automatically.
 - `CART_ITEMS`, `ORDER_ITEMS`, `GOODS_RECEIPT_ITEMS`, `INVENTORIES` and `INVENTORY_TRANSACTIONS` refer to Product IDs. Stock balance is keyed by warehouse and Product.
 - Persisted Cart and order placement require an authenticated account. A quote is stateless/advisory and does not persist a quote identifier, reserve stock or consume a voucher.
 - Monetary values are whole VND, stored as integer values. The approved discount rule is order-level HALF-UP rounding followed by largest-remainder allocation to lines, with ascending Product ID as the stable tie-break.

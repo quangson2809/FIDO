@@ -4,15 +4,9 @@ import { StatusBadge } from '../../../shared/admin/StatusBadge';
 import type { AdminProductDetailDto, ProductImageDto, ProductStatus } from '../types';
 import { resolveImageUrl } from '../../../services/media/imageUrl';
 
-const attributeDisplayValue = (value: AdminProductDetailDto['attribute_values'][number]): string => {
-  switch (value.data_type) {
-    case 'OPTION': return value.option_label ?? value.option_value ?? '—';
-    case 'TEXT': return value.text_value ?? '—';
-    case 'NUMBER': return value.number_value === null ? '—' : String(value.number_value);
-    case 'BOOLEAN': return value.boolean_value === null ? '—' : value.boolean_value ? 'Có' : 'Không';
-    default: return '—';
-  }
-};
+const attributeDisplayValue = (
+  value: AdminProductDetailDto['attribute_values'][number],
+): string => value.label || value.value || '—';
 
 export const AdminProductInfoSection: React.FC<{
   product: AdminProductDetailDto; editing: boolean; busy: boolean; canWrite: boolean;
@@ -49,7 +43,7 @@ export const AdminProductInfoSection: React.FC<{
       <div className="sm:col-span-2"><dt className="text-xs text-[#606863]">Mô tả</dt><dd className="whitespace-pre-line">{product.description ?? '—'}</dd></div>
     </dl>}
     {product.children.length > 0 && <div className="mt-5 border-t border-[#E2E5DE] pt-4"><h3 className="text-xs font-bold uppercase tracking-wider">Sản phẩm con</h3><ul className="mt-2 space-y-1 text-sm">{product.children.map((child) => <li key={child.product_id}>#{child.product_id} · {child.sku} · {child.name ?? 'Chưa đặt tên'} · {child.status}</li>)}</ul></div>}
-    {product.attribute_values.length > 0 && <div className="mt-5 border-t border-[#E2E5DE] pt-4"><h3 className="text-xs font-bold uppercase tracking-wider">Thuộc tính sản phẩm</h3><dl className="mt-2 divide-y divide-[#E2E5DE]">{product.attribute_values.map((value) => <div key={value.attribute_id} className="flex justify-between gap-4 py-2 text-sm"><dt className="text-[#606863]">{value.attribute_name} <span className="text-xs">({value.data_type})</span></dt><dd className="text-right font-medium">{attributeDisplayValue(value)}</dd></div>)}</dl></div>}
+    {product.attribute_values.length > 0 && <div className="mt-5 border-t border-[#E2E5DE] pt-4"><h3 className="text-xs font-bold uppercase tracking-wider">Thuộc tính sản phẩm</h3><dl className="mt-2 divide-y divide-[#E2E5DE]">{product.attribute_values.map((value) => <div key={value.attribute_id} className="flex justify-between gap-4 py-2 text-sm"><dt className="text-[#606863]">{value.attribute_name}</dt><dd className="text-right font-medium">{attributeDisplayValue(value)}</dd></div>)}</dl></div>}
   </section>;
 };
 
