@@ -9,9 +9,18 @@ export interface AccountDto {
 }
 
 export interface AddressDto {
+  /** Frontend compatibility key mapped from the backend AddressDto.id. */
   address_id: number;
+  /** Display label assembled from structured backend address fields when needed. */
   address_text: string;
   created_at: string | null;
+  recipient_name: string | null;
+  recipient_phone: string | null;
+  province: string | null;
+  district: string | null;
+  ward: string | null;
+  address_line: string | null;
+  is_default: boolean;
 }
 
 export interface RoleDto {
@@ -47,7 +56,13 @@ export interface ProfilePatchInput {
 }
 
 export interface AddressInput {
-  address_text: string;
+  recipient_name: string;
+  recipient_phone: string;
+  province: string;
+  district: string;
+  ward: string;
+  address_line: string;
+  is_default?: boolean;
 }
 
 export interface AuthService {

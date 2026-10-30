@@ -8,7 +8,12 @@ import { QueryFeedback } from '../../shared/admin/QueryFeedback';
 import React, { useState } from 'react';
 import { inventoryAdminService } from '../../features/inventory/api/adminService';
 import { getApiErrorMessage } from '../../services/http/apiError';
-import type { InventoryRowDto, InventoryTransactionType } from '../../features/inventory/types';
+import type { InventoryAdjustmentReasonCode, InventoryRowDto, InventoryTransactionType } from '../../features/inventory/types';
+
+const createSourceOperationId = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return 'adjust:' + Date.now() + ':' + Math.random().toString(36).slice(2, 14);
+};
 
 const transactionTypes: InventoryTransactionType[] = [
   'OPENING',
@@ -39,12 +44,13 @@ export const AdminInventoryView: React.FC<{
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<InventoryRowDto | null>(null);
   const [delta, setDelta] = useState('');
-  const [reason, setReason] = useState('');
+  const [reasonCode, setReasonCode] = useState<InventoryAdjustmentReasonCode>('COUNT_CORRECTION');
+  const [sourceOperationId, setSourceOperationId] = useState(createSourceOperationId);
   const [saving, setSaving] = useState(false);
   const [transactionType, setTransactionType] = useState<InventoryTransactionType | ''>('');
   const [transactionPage, setTransactionPage] = useState(1);
 
-  const canDiscard = useDirtyForm(Boolean(selected && (delta || reason)));
+  const canDiscard = useDirtyForm(Boolean(selected && (delta || reasonCode !== 'COUNT_CORRECTION')));
 
   const history = useRemoteQuery(
     useCallback(
@@ -80,14 +86,16 @@ export const AdminInventoryView: React.FC<{
       !Number.isSafeInteger(parsedDelta) ||
       parsedDelta === 0 ||
       selected.available_quantity + parsedDelta < 0 ||
-      !reason.trim()
+      !Number.isSafeInteger(selected.version) ||
+      selected.version < 0 ||
+      !sourceOperationId
     ) {
-      setError('Nhập số nguyên khác 0, số lượng sau điều chỉnh không âm và lý do cụ thể.');
+      setError('Nhập số nguyên khác 0, số lượng sau điều chỉnh không âm và kiểm tra lại phiên bản tồn kho.');
       return;
     }
     if (
       !window.confirm(
-        `Điều chỉnh ${selected.product_name ?? selected.sku} · Product #${selected.product_id} tại kho #${selected.warehouse_id} từ ${selected.available_quantity} thành ${selected.available_quantity + parsedDelta}?\nLý do: ${reason.trim()}. Tồn kho được kiểm tra lại khi lưu.`,
+        `Điều chỉnh ${selected.product_name ?? selected.sku} · Product #${selected.product_id} tại kho #${selected.warehouse_id} (phiên bản ${selected.version}) từ ${selected.available_quantity} thành ${selected.available_quantity + parsedDelta}?\nMã lý do: ${reasonCode}. Tồn kho sẽ được kiểm tra lại khi lưu.`,
       )
     )
       return;
@@ -95,15 +103,17 @@ export const AdminInventoryView: React.FC<{
     setError(null);
     try {
       await inventoryAdminService.adjustInventory({
-        warehouse_id: selected.warehouse_id,
         product_id: selected.product_id,
         quantity_delta: parsedDelta,
-        reason: reason.trim(),
+        reason_code: reasonCode,
+        source_operation_id: sourceOperationId,
+        expected_version: selected.version,
       });
       list.reload();
       setSelected(null);
       setDelta('');
-      setReason('');
+      setReasonCode('COUNT_CORRECTION');
+      setSourceOperationId(createSourceOperationId());
       setTransactionPage(1);
       history.reload();
       showToast('Đã điều chỉnh tồn kho.');
@@ -111,7 +121,7 @@ export const AdminInventoryView: React.FC<{
       setError(
         getApiErrorMessage(
           requestError,
-          'Không thể điều chỉnh tồn kho. Kiểm tra quyền, Product ID, kho và số lượng khả dụng.',
+          'Không thể điều chỉnh tồn kho. Kiểm tra quyền, Product ID, mã lý do, phiên bản kho và số lượng khả dụng.',
         ),
       );
     } finally {
@@ -199,7 +209,8 @@ export const AdminInventoryView: React.FC<{
                             if (saving || !canDiscard()) return;
                             setSelected(row);
                             setDelta('');
-                            setReason('');
+                            setReasonCode('COUNT_CORRECTION');
+                            setSourceOperationId(createSourceOperationId());
                           }}
                           className="border border-[#0B2419] px-3 py-2 text-xs font-bold uppercase"
                         >
@@ -243,8 +254,8 @@ export const AdminInventoryView: React.FC<{
             <fieldset disabled={saving} className="contents">
               <h2 className="font-serif text-xl font-bold">Điều chỉnh {selected.product_name ?? selected.sku}</h2>
               <p className="mt-1 text-xs text-[#606863]">
-                Hiện khả dụng: {selected.available_quantity}. Nhập số dương để tăng kho, số âm để
-                giảm kho.
+                Hiện khả dụng: {selected.available_quantity}. Phiên bản tồn kho: {selected.version}.
+                Nhập số dương để tăng kho, số âm để giảm kho; Backend sẽ từ chối nếu phiên bản đã đổi.
               </p>
               <p className="mt-3 font-semibold">
                 Dự kiến: {selected.available_quantity} →{' '}
@@ -263,15 +274,22 @@ export const AdminInventoryView: React.FC<{
                   placeholder="Tăng (+) / giảm (−)"
                   className="border border-[#D9DDD6] px-3 py-2 text-sm"
                 />
-                <input
-                  aria-label="Lý do điều chỉnh"
-                  required
-                  maxLength={500}
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value)}
-                  placeholder="Lý do điều chỉnh"
-                  className="border border-[#D9DDD6] px-3 py-2 text-sm"
-                />
+                <label className="block text-sm">
+                  <span className="mb-1 block text-xs font-semibold">Mã lý do *</span>
+                  <select
+                    aria-label="Mã lý do điều chỉnh"
+                    required
+                    value={reasonCode}
+                    onChange={(event) => setReasonCode(event.target.value as InventoryAdjustmentReasonCode)}
+                    className="w-full border border-[#D9DDD6] bg-white px-3 py-2 text-sm"
+                  >
+                    <option value="COUNT_CORRECTION">Kiểm kê chênh lệch</option>
+                    <option value="DAMAGE">Hư hỏng</option>
+                    <option value="LOSS">Thất thoát</option>
+                    <option value="FOUND">Tìm thấy</option>
+                    <option value="DATA_CORRECTION">Điều chỉnh dữ liệu</option>
+                  </select>
+                </label>
                 <button
                   disabled={saving}
                   className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white disabled:opacity-40"

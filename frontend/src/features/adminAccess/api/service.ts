@@ -1,4 +1,5 @@
 import { apiClient } from '../../../services/http/apiClient';
+import { parseAccountResponse, parseAddressResponse } from '../../auth/api/runtimeContract';
 import type { ApiListResponse, ApiResponse } from '../../../types/api';
 import type { PermissionDto } from '../../auth/types';
 import type {
@@ -30,10 +31,22 @@ export const adminAccessService = {
   },
 
   async getCustomer(customerId: number): Promise<CustomerDetailDto> {
-    const response = await apiClient.get<ApiResponse<CustomerDetailDto>>(
-      `/admin/customers/${customerId}`,
-    );
-    return response.data;
+    const endpoint = '/admin/customers/' + customerId;
+    const response = await apiClient.get<ApiResponse<{
+      account: unknown;
+      addresses: unknown;
+      orders: CustomerDetailDto['orders'];
+    }>>(endpoint);
+    if (!Array.isArray(response.data.addresses)) {
+      throw new TypeError('GET ' + endpoint + ': addresses must be an array');
+    }
+    return {
+      account: parseAccountResponse({ data: response.data.account }, 'GET ' + endpoint),
+      addresses: response.data.addresses.map((address) =>
+        parseAddressResponse({ data: address }, 'GET ' + endpoint),
+      ),
+      orders: response.data.orders,
+    };
   },
 
   async getStaff(query?: {
@@ -42,32 +55,45 @@ export const adminAccessService = {
     page?: number;
     page_size?: number;
   }): Promise<ApiListResponse<StaffAccountSummaryDto>> {
-    return apiClient.get<ApiListResponse<StaffAccountSummaryDto>>('/admin/staff-accounts', {
-      params: query,
-    });
+    const endpoint = '/admin/staff-accounts';
+    const response = await apiClient.get<ApiListResponse<{
+      account: unknown;
+      roles: StaffAccountSummaryDto['roles'];
+    }>>(endpoint, { params: query });
+    return {
+      ...response,
+      data: response.data.map((member) => ({
+        ...member,
+        account: parseAccountResponse({ data: member.account }, 'GET ' + endpoint),
+      })),
+    };
   },
 
   async getStaffDetail(accountId: number): Promise<StaffAccountDetailDto> {
-    const response = await apiClient.get<ApiResponse<StaffAccountDetailDto>>(
-      `/admin/staff-accounts/${accountId}`,
-    );
-    return response.data;
+    const endpoint = '/admin/staff-accounts/' + accountId;
+    const response = await apiClient.get<ApiResponse<Omit<StaffAccountDetailDto, 'account'> & { account: unknown }>>(endpoint);
+    return {
+      ...response.data,
+      account: parseAccountResponse({ data: response.data.account }, 'GET ' + endpoint),
+    };
   },
 
   async createStaff(input: StaffCreateInput): Promise<StaffAccountDetailDto> {
-    const response = await apiClient.post<ApiResponse<StaffAccountDetailDto>>(
-      '/admin/staff-accounts',
-      input,
-    );
-    return response.data;
+    const endpoint = '/admin/staff-accounts';
+    const response = await apiClient.post<ApiResponse<Omit<StaffAccountDetailDto, 'account'> & { account: unknown }>>(endpoint, input);
+    return {
+      ...response.data,
+      account: parseAccountResponse({ data: response.data.account }, 'POST ' + endpoint),
+    };
   },
 
   async updateStaff(accountId: number, input: StaffPatchInput): Promise<StaffAccountDetailDto> {
-    const response = await apiClient.patch<ApiResponse<StaffAccountDetailDto>>(
-      `/admin/staff-accounts/${accountId}`,
-      input,
-    );
-    return response.data;
+    const endpoint = '/admin/staff-accounts/' + accountId;
+    const response = await apiClient.patch<ApiResponse<Omit<StaffAccountDetailDto, 'account'> & { account: unknown }>>(endpoint, input);
+    return {
+      ...response.data,
+      account: parseAccountResponse({ data: response.data.account }, 'PATCH ' + endpoint),
+    };
   },
 
   async getAccessControl(): Promise<AccessControlDto> {

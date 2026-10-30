@@ -1,5 +1,5 @@
 import { AdminVouchersView } from '../../screens/admin/AdminVouchersView';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useToast } from '../../shared/ui/toast/useToast';
 import { getAdminPath } from '../../routes/paths';
 import {
@@ -10,6 +10,7 @@ import {
 import { useAuthSession } from '../../features/auth/session/useAuthSession';
 import { AdminAuditView } from '../../screens/admin/AdminAuditView';
 import { AdminCatalogMetaView } from '../../screens/admin/AdminCatalogMetaView';
+import { AdminAttributesView } from '../../screens/admin/AdminAttributesView';
 import { AdminCustomersView } from '../../screens/admin/AdminCustomersView';
 import { AdminDashboardView } from '../../screens/admin/AdminDashboardView';
 import { AdminInventoryView } from '../../screens/admin/AdminInventoryView';
@@ -75,11 +76,13 @@ export const AdminProductsRoute = () => {
   const canWrite = useAdminWriteAccess('products');
   const openProduct = (productId: string) =>
     navigate(`/admin/products/${encodeURIComponent(productId)}`);
+  const editProduct = (productId: string) =>
+    navigate(`/admin/products/${encodeURIComponent(productId)}?edit=1`);
 
   return (
     <AdminProductsView
       onSelectProduct={openProduct}
-      onEditProduct={openProduct}
+      onEditProduct={editProduct}
       onNavigateTab={navigateTab}
       showToast={showToast}
       canWrite={canWrite}
@@ -89,6 +92,7 @@ export const AdminProductsRoute = () => {
 
 export const AdminProductDetailRoute = () => {
   const { productId } = useParams<{ productId: string }>();
+  const [searchParams] = useSearchParams();
   const parsedProductId = positiveInteger(productId);
   const { navigateTab, showToast } = useAdminRouteDeps();
   const canWrite = useAdminWriteAccess('products');
@@ -99,6 +103,7 @@ export const AdminProductDetailRoute = () => {
     <AdminProductDetailView
       key={parsedProductId}
       productId={parsedProductId}
+      startEditing={searchParams.get('edit') === '1'}
       onNavigateTab={navigateTab}
       showToast={showToast}
       canWrite={canWrite}
@@ -106,7 +111,7 @@ export const AdminProductDetailRoute = () => {
   );
 };
 
-const AdminCatalogMetaRoute = ({ tab }: { tab: 'categories' | 'brands' | 'attributes' }) => {
+const AdminCatalogMetaRoute = ({ tab }: { tab: 'categories' | 'brands' }) => {
   const { navigateTab, showToast } = useAdminRouteDeps();
   const canWrite = useAdminWriteAccess(tab);
   return (
@@ -122,7 +127,12 @@ const AdminCatalogMetaRoute = ({ tab }: { tab: 'categories' | 'brands' | 'attrib
 
 export const AdminCategoriesRoute = () => <AdminCatalogMetaRoute tab="categories" />;
 export const AdminBrandsRoute = () => <AdminCatalogMetaRoute tab="brands" />;
-export const AdminAttributesRoute = () => <AdminCatalogMetaRoute tab="attributes" />;
+
+export const AdminAttributesRoute = () => {
+  const { showToast } = useAdminRouteDeps();
+  const canWrite = useAdminWriteAccess('attributes');
+  return <AdminAttributesView showToast={showToast} canWrite={canWrite} />;
+};
 
 export const AdminOrdersRoute = () => {
   const { navigate } = useAdminRouteDeps();

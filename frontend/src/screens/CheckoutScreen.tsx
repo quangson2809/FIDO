@@ -8,18 +8,26 @@ import { checkoutService } from '../features/orders/api/checkoutService';
 import type { CheckoutQuoteDto, CheckoutRequest } from '../features/orders/types';
 import { normalizeApiError } from '../services/http/apiError';
 import { getStorefrontErrorMessage } from '../services/http/storefrontError';
-import { formatVietnamDateTime } from '../shared/time/formatVietnamDateTime';
-import { recipientErrors, quoteHasExpired } from '../features/orders/model/recipientValidation';
+import { recipientErrors } from '../features/orders/model/recipientValidation';
 import type { AddressDto } from '../features/auth/types';
 import { buildCheckoutQuoteKey } from '../features/orders/model/checkoutQuoteKey';
 import { CheckoutConfirmationDialog } from '../features/orders/components/CheckoutConfirmationDialog';
+import { useToast } from '../shared/ui/toast/useToast';
 
 interface PendingCheckout {
-  request: CheckoutRequest & { quote_id: string };
+  request: CheckoutRequest;
   quote: CheckoutQuoteDto;
+  idempotencyKey: string;
 }
 
 const money = (value: number): string => `${value.toLocaleString('vi-VN')}₫`;
+
+const createIdempotencyKey = (): string => {
+  if (typeof window !== 'undefined' && typeof window.crypto?.randomUUID === 'function') {
+    return window.crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+};
 
 export const CheckoutScreen: React.FC = () => {
   const {
@@ -34,15 +42,19 @@ export const CheckoutScreen: React.FC = () => {
     synchronizePurchasedCart,
   } = useCart();
   const navigate = useNavigate();
+  const { showToast } = useToast();
+
+  const [recipientName, setRecipientName] = useState('');
   const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [address, setAddress] = useState('');
+  const [province, setProvince] = useState('');
+  const [district, setDistrict] = useState('');
+  const [ward, setWard] = useState('');
+  const [addressLine, setAddressLine] = useState('');
   const [addresses, setAddresses] = useState<AddressDto[]>([]);
   const [addressChoice, setAddressChoice] = useState('new');
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileRetry, setProfileRetry] = useState(0);
   const [validationVisible, setValidationVisible] = useState(false);
-  const [expiredQuoteId, setExpiredQuoteId] = useState<string | null>(null);
   const [voucherCode, setVoucherCode] = useState('');
   const [quote, setQuote] = useState<CheckoutQuoteDto | null>(null);
   const [quotedRequestKey, setQuotedRequestKey] = useState<string | null>(null);
@@ -60,18 +72,24 @@ export const CheckoutScreen: React.FC = () => {
       try {
         const me = await profileService.getMe();
         if (!active) return;
+        setRecipientName((current) => current || me.account.full_name || '');
         setPhone((current) => current || me.account.phone);
-        setEmail((current) => current || me.account.email || '');
         setAddresses(me.addresses);
         setProfileError(null);
       } catch (requestError: unknown) {
-        if (active)
-          setProfileError(
-            getStorefrontErrorMessage(
-              requestError,
-              'Không thể tải địa chỉ đã lưu. Bạn có thể nhập thông tin nhận hàng hoặc thử lại.',
-            ),
-          );
+        if (active) {
+          const status = normalizeApiError(requestError).status;
+          if (status === 401) {
+            navigate('/login', { state: { from: '/checkout' }, replace: true });
+          } else {
+            setProfileError(
+              getStorefrontErrorMessage(
+                requestError,
+                'Không thể tải địa chỉ đã lưu. Bạn vẫn có thể nhập thông tin nhận hàng.',
+              ),
+            );
+          }
+        }
       } finally {
         if (active) setProfileLoading(false);
       }
@@ -81,7 +99,7 @@ export const CheckoutScreen: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [profileRetry]);
+  }, [navigate, profileRetry]);
 
   const invalidateQuote = () => {
     if (uncertainOrder) return;
@@ -90,77 +108,79 @@ export const CheckoutScreen: React.FC = () => {
     setError(null);
   };
 
-  const selectedAddress = addresses.find((item) => String(item.address_id) === addressChoice);
-  const recipientAddress = selectedAddress?.address_text ?? address;
   const request = useMemo<CheckoutRequest>(
     () => ({
+      recipient_name: recipientName.trim(),
       recipient_phone: phone.trim(),
-      recipient_email: email.trim() || null,
-      recipient_address: recipientAddress.trim(),
+      province: province.trim(),
+      district: district.trim(),
+      ward: ward.trim(),
+      address_line: addressLine.trim(),
       voucher_code: voucherCode.trim() || null,
     }),
-    [recipientAddress, email, phone, voucherCode],
+    [recipientName, phone, province, district, ward, addressLine, voucherCode],
   );
 
   const currentRequestKey = buildCheckoutQuoteKey(request, cartRevision);
-  const quoteExpired = Boolean(
-    quote && (expiredQuoteId === quote.quote_id || quoteHasExpired(quote.expires_at)),
-  );
-  const quoteIsCurrent = quote !== null && quotedRequestKey === currentRequestKey && !quoteExpired;
+  const quoteIsCurrent = quote !== null && quotedRequestKey === currentRequestKey;
   const fieldErrors = recipientErrors(request);
   const formIsValid = !Object.values(fieldErrors).some(Boolean);
-  useEffect(() => {
-    if (!quote?.expires_at || !quote.quote_id) return;
-    const expiry = Date.parse(quote.expires_at);
-    if (!Number.isFinite(expiry)) return;
-    const timer = window.setTimeout(
-      () => setExpiredQuoteId(quote.quote_id ?? null),
-      Math.max(0, expiry - Date.now()),
-    );
-    return () => window.clearTimeout(timer);
-  }, [quote]);
-  const canRequestQuote =
-    request.recipient_phone.length > 0 &&
-    request.recipient_address.length > 0 &&
-    cartItems.length > 0;
+  const canRequestQuote = request.recipient_phone.length > 0 && cartItems.length > 0;
+
+  const focusFirstInvalidField = () => {
+    const fieldOrder: Array<[keyof typeof fieldErrors, string]> = [
+      ['name', 'checkout-name'],
+      ['phone', 'checkout-phone'],
+      ['province', 'checkout-province'],
+      ['district', 'checkout-district'],
+      ['ward', 'checkout-ward'],
+      ['addressLine', 'checkout-address-line'],
+    ];
+    const firstInvalid = fieldOrder.find(([key]) => Boolean(fieldErrors[key]));
+    if (firstInvalid) document.getElementById(firstInvalid[1])?.focus();
+  };
+
+  const handleUnauthorized = (requestError: unknown): boolean => {
+    if (normalizeApiError(requestError).status !== 401) return false;
+    navigate('/login', { state: { from: '/checkout' }, replace: true });
+    return true;
+  };
 
   const loadQuote = async () => {
     if (isCartBusy || quoteLoading || uncertainOrder) return;
     setValidationVisible(true);
     if (!formIsValid) {
-      document
-        .getElementById(
-          fieldErrors.phone
-            ? 'checkout-phone'
-            : fieldErrors.email
-              ? 'checkout-email'
-              : 'checkout-address',
-        )
-        ?.focus();
+      focusFirstInvalidField();
       return;
     }
-    if (!canRequestQuote) {
-      setError('Cần có sản phẩm trong giỏ, số điện thoại và địa chỉ nhận hàng.');
+    if (!canRequestQuote || cartError) {
+      setError(
+        cartError
+          ? 'Cần tải lại giỏ hàng thành công trước khi kiểm tra báo giá.'
+          : 'Cần có sản phẩm trong giỏ hàng và thông tin nhận hàng đầy đủ.',
+      );
       return;
     }
+
     const submittedRequest = request;
     const submittedRequestKey = currentRequestKey;
     setQuoteLoading(true);
     setError(null);
     try {
       const result = await withCartLock(() => checkoutService.quote(submittedRequest));
-      setExpiredQuoteId(null);
       setQuote(result);
       setQuotedRequestKey(submittedRequestKey);
     } catch (requestError: unknown) {
       setQuote(null);
       setQuotedRequestKey(null);
-      setError(
-        getStorefrontErrorMessage(
-          requestError,
-          'Không thể tạo báo giá. Kiểm tra thông tin nhận hàng và tồn kho.',
-        ),
-      );
+      if (!handleUnauthorized(requestError)) {
+        setError(
+          getStorefrontErrorMessage(
+            requestError,
+            'Không thể tạo báo giá. Kiểm tra thông tin nhận hàng và số lượng tồn kho.',
+          ),
+        );
+      }
     } finally {
       setQuoteLoading(false);
     }
@@ -168,45 +188,80 @@ export const CheckoutScreen: React.FC = () => {
 
   const placeOrder = async () => {
     if (!confirmationOpen || isCartBusy || submittingRef.current) return;
-    if (!uncertainOrder && (!quoteIsCurrent || quoteHasExpired(quote?.expires_at))) return;
-    const submission =
+    if (!uncertainOrder && !quoteIsCurrent) return;
+
+    const submission: PendingCheckout | null =
       uncertainOrder ??
-      (quote?.quote_id ? { request: { ...request, quote_id: quote.quote_id }, quote } : null);
+      (quote
+        ? {
+            request: { ...request },
+            quote,
+            idempotencyKey: createIdempotencyKey(),
+          }
+        : null);
     if (!submission) {
-      setError('Báo giá thiếu mã xác nhận. Vui lòng kiểm tra lại.');
-      setQuote(null);
-      setQuotedRequestKey(null);
+      setError('Chưa có báo giá hiện hành. Vui lòng kiểm tra lại trước khi đặt hàng.');
       setConfirmationOpen(false);
       return;
     }
+
     submittingRef.current = true;
     setOrderSubmitting(true);
     setError(null);
     try {
       await withCartLock(async () => {
-        // Replay the exact submitted snapshot. The Backend may return an already-created order even after expiry.
-        const result = await checkoutService.createOrder(submission.request);
+        const result = await checkoutService.createOrder(
+          submission.request,
+          submission.idempotencyKey,
+        );
         synchronizePurchasedCart();
+        if (result.total !== submission.quote.total_amount) {
+          showToast(
+            `Đơn đã được tạo; tổng COD cuối cùng do Backend xác nhận là ${money(result.total)}.`,
+          );
+        }
         navigate(`/checkout/success/${result.order_id}`);
       });
     } catch (requestError: unknown) {
-      const { status } = normalizeApiError(requestError);
-      setUncertainOrder(!status || status >= 500 ? submission : null);
-      setError(
-        getStorefrontErrorMessage(
-          requestError,
-          'Chưa nhận được xác nhận đặt hàng. Kiểm tra đơn hàng của tôi trước khi thử lại với báo giá này.',
-        ),
-      );
-      setConfirmationOpen(false);
-      if (status && status < 500) {
+      const status = normalizeApiError(requestError).status;
+      if (status === undefined || status >= 500) {
+        // A retry must reuse the same key and exact request to avoid duplicate orders.
+        setUncertainOrder(submission);
+      } else {
+        setUncertainOrder(null);
         setQuote(null);
         setQuotedRequestKey(null);
       }
+
+      if (!handleUnauthorized(requestError)) {
+        setError(
+          getStorefrontErrorMessage(
+            requestError,
+            'Chưa nhận được xác nhận đặt hàng. Hãy xác minh lại yêu cầu đã gửi trước khi tạo đơn khác.',
+          ),
+        );
+      }
+      setConfirmationOpen(false);
     } finally {
       submittingRef.current = false;
       setOrderSubmitting(false);
     }
+  };
+
+  const handleAddressChoice = (value: string) => {
+    setAddressChoice(value);
+    if (value !== 'new') {
+      const saved = addresses.find((item) => String(item.address_id) === value);
+      if (saved) {
+        setRecipientName(saved.recipient_name ?? '');
+        setPhone(saved.recipient_phone ?? '');
+        setProvince(saved.province ?? '');
+        setDistrict(saved.district ?? '');
+        setWard(saved.ward ?? '');
+        setAddressLine(saved.address_line ?? '');
+      }
+    }
+    invalidateQuote();
   };
 
   return (
@@ -220,7 +275,7 @@ export const CheckoutScreen: React.FC = () => {
           >
             Sản phẩm
           </button>
-          <span>/</span>
+          <span aria-hidden="true">/</span>
           <span className="font-semibold text-[#0B2419]">Đặt hàng</span>
         </nav>
       </div>
@@ -234,7 +289,7 @@ export const CheckoutScreen: React.FC = () => {
             <div>
               <h1 className="font-serif text-3xl sm:text-4xl">Xác nhận thông tin nhận hàng</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-white/65">
-                Kiểm tra thông tin, xem tổng tiền và xác nhận đơn trước khi đặt hàng.
+                Backend sẽ kiểm tra lại sản phẩm, tồn kho và tổng COD khi tạo đơn.
               </p>
             </div>
             <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-white/60">
@@ -270,9 +325,7 @@ export const CheckoutScreen: React.FC = () => {
             </div>
 
             {profileLoading && (
-              <p role="status" className="mb-4 text-sm">
-                Đang tải thông tin nhận hàng...
-              </p>
+              <p role="status" className="mb-4 text-sm">Đang tải thông tin nhận hàng...</p>
             )}
             {profileError && (
               <p role="alert" className="mb-4 text-sm text-red-700">
@@ -282,11 +335,55 @@ export const CheckoutScreen: React.FC = () => {
                   onClick={() => setProfileRetry((value) => value + 1)}
                   className="ml-2 underline"
                 >
-                  Thử lại địa chỉ
+                  Thử tải thông tin lại
                 </button>
               </p>
             )}
+
+            {addresses.length > 0 && (
+              <label className="mb-5 block">
+                <span className="mb-2 block text-sm font-semibold">Địa chỉ đã lưu</span>
+                <select
+                  className="field-input"
+                  aria-label="Địa chỉ đã lưu"
+                  value={addressChoice}
+                  disabled={orderSubmitting || profileLoading || Boolean(uncertainOrder)}
+                  onChange={(event) => handleAddressChoice(event.target.value)}
+                >
+                  <option value="new">Nhập địa chỉ mới</option>
+                  {addresses.map((item) => (
+                    <option key={item.address_id} value={item.address_id}>
+                      {item.address_text || `Địa chỉ #${item.address_id}`}
+                      {item.is_default ? ' (mặc định)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-1 block text-xs text-[#687069]">
+                  Chọn một địa chỉ để điền các trường có sẵn; kiểm tra lại trước khi báo giá.
+                </span>
+              </label>
+            )}
+
             <div className="grid gap-5 sm:grid-cols-2">
+              <Field
+                label="Họ tên người nhận *"
+                error={validationVisible ? fieldErrors.name : null}
+                errorId="checkout-name-error"
+              >
+                <input
+                  id="checkout-name"
+                  type="text"
+                  autoComplete="name"
+                  maxLength={150}
+                  disabled={profileLoading || orderSubmitting || Boolean(uncertainOrder)}
+                  value={recipientName}
+                  onBlur={() => setValidationVisible(true)}
+                  aria-invalid={validationVisible && Boolean(fieldErrors.name)}
+                  aria-describedby="checkout-name-error"
+                  onChange={(event) => { setRecipientName(event.target.value); invalidateQuote(); }}
+                  className="field-input"
+                />
+              </Field>
               <Field
                 label="Số điện thoại người nhận *"
                 error={validationVisible ? fieldErrors.phone : null}
@@ -302,93 +399,90 @@ export const CheckoutScreen: React.FC = () => {
                   onBlur={() => setValidationVisible(true)}
                   aria-invalid={validationVisible && Boolean(fieldErrors.phone)}
                   aria-describedby="checkout-phone-error"
-                  onChange={(event) => {
-                    setPhone(event.target.value);
-                    invalidateQuote();
-                  }}
+                  onChange={(event) => { setPhone(event.target.value); invalidateQuote(); }}
                   className="field-input"
                 />
               </Field>
               <Field
-                label="Email người nhận"
-                error={validationVisible ? fieldErrors.email : null}
-                errorId="checkout-email-error"
+                label="Tỉnh / thành phố *"
+                error={validationVisible ? fieldErrors.province : null}
+                errorId="checkout-province-error"
               >
                 <input
-                  id="checkout-email"
-                  type="email"
-                  autoComplete="email"
-                  maxLength={254}
+                  id="checkout-province"
+                  autoComplete="address-level1"
+                  maxLength={120}
                   disabled={profileLoading || orderSubmitting || Boolean(uncertainOrder)}
-                  value={email}
+                  value={province}
                   onBlur={() => setValidationVisible(true)}
-                  aria-invalid={validationVisible && Boolean(fieldErrors.email)}
-                  aria-describedby="checkout-email-error"
-                  onChange={(event) => {
-                    setEmail(event.target.value);
-                    invalidateQuote();
-                  }}
+                  aria-invalid={validationVisible && Boolean(fieldErrors.province)}
+                  aria-describedby="checkout-province-error"
+                  onChange={(event) => { setProvince(event.target.value); invalidateQuote(); }}
                   className="field-input"
                 />
               </Field>
-              {addresses.length > 0 && (
-                <label className="sm:col-span-2">
-                  <span className="mb-2 block text-sm font-semibold">Chọn địa chỉ nhận hàng</span>
-                  <select
-                    className="field-input"
-                    aria-label="Chọn địa chỉ nhận hàng"
-                    value={addressChoice}
-                    disabled={orderSubmitting || profileLoading || Boolean(uncertainOrder)}
-                    onChange={(event) => {
-                      setAddressChoice(event.target.value);
-                      invalidateQuote();
-                    }}
-                  >
-                    <option value="new">Nhập địa chỉ nhận mới</option>
-                    {addresses.map((item) => (
-                      <option key={item.address_id} value={item.address_id}>
-                        {item.address_text}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
+              <Field
+                label="Quận / huyện *"
+                error={validationVisible ? fieldErrors.district : null}
+                errorId="checkout-district-error"
+              >
+                <input
+                  id="checkout-district"
+                  autoComplete="address-level2"
+                  maxLength={120}
+                  disabled={profileLoading || orderSubmitting || Boolean(uncertainOrder)}
+                  value={district}
+                  onBlur={() => setValidationVisible(true)}
+                  aria-invalid={validationVisible && Boolean(fieldErrors.district)}
+                  aria-describedby="checkout-district-error"
+                  onChange={(event) => { setDistrict(event.target.value); invalidateQuote(); }}
+                  className="field-input"
+                />
+              </Field>
+              <Field
+                label="Phường / xã *"
+                error={validationVisible ? fieldErrors.ward : null}
+                errorId="checkout-ward-error"
+              >
+                <input
+                  id="checkout-ward"
+                  autoComplete="address-level3"
+                  maxLength={120}
+                  disabled={profileLoading || orderSubmitting || Boolean(uncertainOrder)}
+                  value={ward}
+                  onBlur={() => setValidationVisible(true)}
+                  aria-invalid={validationVisible && Boolean(fieldErrors.ward)}
+                  aria-describedby="checkout-ward-error"
+                  onChange={(event) => { setWard(event.target.value); invalidateQuote(); }}
+                  className="field-input"
+                />
+              </Field>
               <div className="sm:col-span-2">
-                {selectedAddress ? (
-                  <div className="rounded-md border border-[#D9DDD6] bg-[#FFFDF5] p-4 text-sm">
-                    <p className="font-semibold">Địa chỉ đã chọn</p>
-                    <p className="mt-2">{selectedAddress.address_text}</p>
-                  </div>
-                ) : (
-                  <Field
-                    label="Địa chỉ nhận hàng *"
-                    error={validationVisible ? fieldErrors.address : null}
-                    errorId="checkout-address-error"
-                  >
-                    <textarea
-                      id="checkout-address"
-                      autoComplete="street-address"
-                      rows={4}
-                      maxLength={500}
-                      disabled={profileLoading || orderSubmitting || Boolean(uncertainOrder)}
-                      value={address}
-                      onBlur={() => setValidationVisible(true)}
-                      aria-invalid={validationVisible && Boolean(fieldErrors.address)}
-                      aria-describedby="checkout-address-error"
-                      onChange={(event) => {
-                        setAddress(event.target.value);
-                        invalidateQuote();
-                      }}
-                      className="field-input resize-y"
-                      placeholder="Nhập địa chỉ nhận hàng"
-                    />
-                  </Field>
-                )}
+                <Field
+                  label="Địa chỉ cụ thể *"
+                  error={validationVisible ? fieldErrors.addressLine : null}
+                  errorId="checkout-address-line-error"
+                >
+                  <textarea
+                    id="checkout-address-line"
+                    autoComplete="street-address"
+                    rows={3}
+                    maxLength={500}
+                    disabled={profileLoading || orderSubmitting || Boolean(uncertainOrder)}
+                    value={addressLine}
+                    onBlur={() => setValidationVisible(true)}
+                    aria-invalid={validationVisible && Boolean(fieldErrors.addressLine)}
+                    aria-describedby="checkout-address-line-error"
+                    onChange={(event) => { setAddressLine(event.target.value); invalidateQuote(); }}
+                    className="field-input resize-y"
+                    placeholder="Số nhà, tên đường, tòa nhà..."
+                  />
+                </Field>
               </div>
-              <p className="text-sm text-muted-grey sm:col-span-2">
-                Địa chỉ nhập tại đây chỉ dùng cho đơn này.
-              </p>
             </div>
+            <p className="mt-4 text-sm text-muted-grey">
+              Thông tin nhận hàng được lưu vào đơn đặt hàng; checkout không tự tạo địa chỉ trong hồ sơ.
+            </p>
           </section>
 
           <section className="border border-[#E8E9E3] bg-white p-4 shadow-sm sm:p-7">
@@ -400,7 +494,7 @@ export const CheckoutScreen: React.FC = () => {
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">
                   Ưu đãi & tổng tiền
                 </p>
-                <h2 className="font-serif text-xl">Xác nhận báo giá</h2>
+                <h2 className="font-serif text-xl">Báo giá từ Backend</h2>
               </div>
             </div>
             <div className="mb-5 space-y-3">
@@ -409,33 +503,27 @@ export const CheckoutScreen: React.FC = () => {
                   maxLength={80}
                   value={voucherCode}
                   disabled={orderSubmitting || quoteLoading || Boolean(uncertainOrder)}
-                  onChange={(event) => {
-                    setVoucherCode(event.target.value);
-                    invalidateQuote();
-                  }}
+                  onChange={(event) => { setVoucherCode(event.target.value); invalidateQuote(); }}
                   placeholder="Nhập mã ưu đãi"
                   className="field-input"
                 />
               </Field>
               <p className="text-sm text-[#687069]">
-                Áp dụng một mã cho tiền hàng đủ điều kiện. Bấm kiểm tra báo giá để xem mức giảm.
+                Báo giá là bản tính tham khảo. Backend tính lại giá, tồn kho và tổng COD lúc tạo đơn.
               </p>
               {voucherCode && (
                 <button
                   type="button"
                   disabled={orderSubmitting || quoteLoading || Boolean(uncertainOrder)}
                   className="text-sm underline"
-                  onClick={() => {
-                    setVoucherCode('');
-                    invalidateQuote();
-                  }}
+                  onClick={() => { setVoucherCode(''); invalidateQuote(); }}
                 >
                   Xóa mã voucher
                 </button>
               )}
-              {quoteIsCurrent && quote.voucher && (
+              {quoteIsCurrent && quote?.voucher && (
                 <p role="status" className="text-sm text-green-800">
-                  Đã áp dụng {quote.voucher.code}: giảm {money(quote.discount)}
+                  Đã áp dụng {quote.voucher.code}: giảm {money(quote.discount_amount)}
                 </p>
               )}
             </div>
@@ -443,6 +531,7 @@ export const CheckoutScreen: React.FC = () => {
               type="button"
               disabled={
                 cartItems.length === 0 ||
+                cartLoading ||
                 quoteLoading ||
                 profileLoading ||
                 orderSubmitting ||
@@ -462,16 +551,13 @@ export const CheckoutScreen: React.FC = () => {
           </section>
 
           {error && (
-            <div
-              role="alert"
-              className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-            >
+            <div role="alert" className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               <p>{error}</p>
               {uncertainOrder && (
                 <>
                   <p className="mt-3">
-                    Kết quả yêu cầu trước chưa rõ. Thông tin được giữ nguyên; chỉ xác minh lại với
-                    cùng mã báo giá để tránh gửi đơn mới.
+                    Kết quả lần gửi trước chưa rõ. Khi xác minh lại, hệ thống sẽ gửi đúng nội dung
+                    và cùng mã chống trùng để tránh tạo đơn lặp.
                   </p>
                   <button
                     type="button"
@@ -502,18 +588,14 @@ export const CheckoutScreen: React.FC = () => {
               </div>
             </div>
             {cartLoading ? (
-              <p role="status" className="p-6 text-sm">
-                Đang tải giỏ hàng...
-              </p>
+              <p role="status" className="p-6 text-sm">Đang tải giỏ hàng...</p>
             ) : cartError ? (
               <div role="alert" className="p-6 text-sm text-red-700">
                 {cartError}
                 <button
                   type="button"
                   disabled={isCartBusy}
-                  onClick={() => {
-                    void refreshCart().catch(() => undefined);
-                  }}
+                  onClick={() => { void refreshCart().catch(() => undefined); }}
                   className="ml-2 underline"
                 >
                   Thử lại giỏ hàng
@@ -535,23 +617,32 @@ export const CheckoutScreen: React.FC = () => {
                 {cartItems.map((item) => (
                   <div key={item.id} className="grid grid-cols-[48px_minmax(0,1fr)] gap-3 py-4">
                     <div className="h-16 w-12 shrink-0 overflow-hidden bg-[#F3F4EF]">
-                      {item.imageUrl && (
-                        <StorefrontImage
-                          src={item.imageUrl}
-                          alt={item.name}
-                          className="h-full w-full object-cover"
-                        />
+                      {item.imageUrl ? (
+                        <StorefrontImage src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="flex h-full items-center justify-center text-center text-[9px] text-[#687069]">
+                          Chưa có ảnh
+                        </span>
                       )}
                     </div>
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0">
                       <p className="line-clamp-2 text-sm font-semibold">{item.name}</p>
                       <p className="mt-1 text-[10px] uppercase tracking-wide text-[#687069]">
-                        SKU {item.sku} · x{item.quantity}
+                        SKU {item.sku || '—'} · x{item.quantity}
                       </p>
+                      <p className="mt-1 text-xs text-[#687069]">
+                        {money(item.price)} / sản phẩm
+                      </p>
+                      <p className="mt-1 text-sm font-semibold">{money(item.lineTotal)}</p>
+                      <p className="mt-1 text-[10px] text-[#687069]">
+                        Tồn khả dụng: {item.availableQuantity}
+                      </p>
+                      {item.quantity > item.availableQuantity && (
+                        <p className="mt-1 text-xs text-amber-800">
+                          Số lượng vượt tồn khả dụng; hãy điều chỉnh trong giỏ hàng.
+                        </p>
+                      )}
                     </div>
-                    <span className="col-start-2 text-sm font-semibold">
-                      {money(item.lineTotal)}
-                    </span>
                   </div>
                 ))}
               </div>
@@ -562,9 +653,7 @@ export const CheckoutScreen: React.FC = () => {
             </div>
           </section>
 
-          <section
-            className={`border p-5 shadow-sm ${quoteIsCurrent ? 'border-[#0B2419] bg-white' : 'border-[#E8E9E3] bg-[#FFFDF5]'}`}
-          >
+          <section className={`border p-5 shadow-sm ${quoteIsCurrent ? 'border-[#0B2419] bg-white' : 'border-[#E8E9E3] bg-[#FFFDF5]'}`}>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#687069]">
@@ -576,67 +665,75 @@ export const CheckoutScreen: React.FC = () => {
                 <StorefrontIcon name="verified" className="h-5 w-5 text-[#1B5038]" />
               )}
             </div>
-            {quoteExpired && !uncertainOrder && (
-              <p role="status" className="mt-3 text-sm text-red-700">
-                Báo giá đã hết hạn. Vui lòng kiểm tra lại trước khi đặt hàng.
-              </p>
-            )}
-            {!quote || (!quoteIsCurrent && !uncertainOrder) ? (
+            {!quote || !quoteIsCurrent ? (
               <p className="mt-3 text-sm leading-6 text-[#687069]">
-                Hoàn tất thông tin nhận hàng và bấm kiểm tra báo giá để xem giảm giá, phí giao hàng
+                Hoàn tất thông tin nhận hàng, rồi kiểm tra báo giá để xem giảm giá, phí giao hàng
                 và tổng COD.
               </p>
             ) : (
               <>
-                {quote.expires_at && (
-                  <p className="mt-3 text-sm text-muted-grey">
-                    {uncertainOrder
-                      ? 'Thời hạn báo giá của yêu cầu đã gửi: '
-                      : 'Báo giá có hiệu lực đến '}
-                    {formatVietnamDateTime(quote.expires_at)}
-                  </p>
-                )}
                 <dl className="mt-5 space-y-2.5 text-sm">
                   <div className="flex justify-between gap-4">
-                    <dt>Tạm tính</dt>
-                    <dd>{money(quote.subtotal)}</dd>
+                    <dt>Tạm tính</dt><dd>{money(quote.subtotal)}</dd>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <dt>Giảm giá</dt>
-                    <dd>-{money(quote.discount)}</dd>
+                    <dt>Giảm giá</dt><dd>-{money(quote.discount_amount)}</dd>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <dt>Phí giao hàng</dt>
-                    <dd>{money(quote.shipping_fee)}</dd>
+                    <dt>Phí giao hàng</dt><dd>{money(quote.shipping_fee)}</dd>
                   </div>
                   <div className="flex justify-between gap-4 border-t border-[#E8E9E3] pt-4">
                     <dt className="font-bold">Tổng COD</dt>
-                    <dd className="font-serif text-xl font-bold">{money(quote.total)}</dd>
+                    <dd className="font-serif text-xl font-bold">{money(quote.total_amount)}</dd>
                   </div>
                 </dl>
-                <p className="mt-3 text-[10px] leading-5 text-[#687069]">
-                  {quote.items.length} sản phẩm đã được kiểm tra.
-                </p>
+                <div className="mt-4 divide-y divide-[#E8E9E3] border-y border-[#E8E9E3]">
+                  {quote.items.map((item) => (
+                    <div key={item.product_id} className="py-3 text-sm">
+                      <div className="flex justify-between gap-3">
+                        <span className="font-semibold">{item.product_name}</span>
+                        <span className="shrink-0">{money(item.line_total)}</span>
+                      </div>
+                      <p className="mt-1 text-[10px] text-[#687069]">
+                        SKU {item.sku || '—'} · x{item.quantity} · tồn {item.available_quantity}
+                      </p>
+                    </div>
+                  ))}
+                </div>
                 <button
                   type="button"
-                  disabled={orderSubmitting || quoteLoading || isCartBusy}
+                  disabled={
+                    orderSubmitting ||
+                    quoteLoading ||
+                    isCartBusy ||
+                    Boolean(uncertainOrder)
+                  }
                   onClick={() => setConfirmationOpen(true)}
                   className="mt-5 flex w-full items-center justify-center gap-2 bg-[#0B2419] px-5 py-3.5 text-xs font-bold uppercase tracking-[0.16em] text-white transition hover:bg-[#1B5038] disabled:opacity-40"
                 >
                   <span>
                     {orderSubmitting
                       ? 'Đang tạo đơn...'
-                      : uncertainOrder
-                        ? 'Xác minh lại đơn đã gửi'
-                        : `Đặt hàng COD · ${money(quote.total)}`}
+                      : `Đặt hàng COD · ${money(quote.total_amount)}`}
                   </span>
                   <StorefrontIcon name="arrow_forward" className="h-5 w-5 text-[18px]" />
                 </button>
               </>
             )}
+            {uncertainOrder && (
+              <button
+                type="button"
+                disabled={orderSubmitting || isCartBusy}
+                onClick={() => setConfirmationOpen(true)}
+                className="mt-3 min-h-11 w-full border border-[#0B2419] px-4 text-sm font-semibold"
+              >
+                Xác minh lại đơn đã gửi
+              </button>
+            )}
           </section>
         </aside>
       </section>
+
       {confirmationOpen && quote && (
         <CheckoutConfirmationDialog
           request={uncertainOrder?.request ?? request}
@@ -644,7 +741,6 @@ export const CheckoutScreen: React.FC = () => {
           busy={orderSubmitting}
           current={(Boolean(uncertainOrder) || quoteIsCurrent) && (!isCartBusy || orderSubmitting)}
           error={error}
-          expired={!uncertainOrder && quoteExpired}
           replaying={Boolean(uncertainOrder)}
           onCancel={() => setConfirmationOpen(false)}
           onConfirm={() => void placeOrder()}

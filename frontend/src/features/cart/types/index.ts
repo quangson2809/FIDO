@@ -29,7 +29,7 @@ export interface CartService {
 }
 
 export interface CartViewItem {
-  id: string;
+  id: number;
   productId: number;
   name: string;
   sku: string;

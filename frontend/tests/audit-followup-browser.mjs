@@ -63,7 +63,7 @@ const metadata = {
 };
 let profile = {
   ...customer,
-  roles: [{ role_id: 2, code: 'SUPERADMIN', name: 'Quản trị', description: null }],
+  roles: [{ id: 2, code: 'SUPERADMIN', name: 'Quản trị', description: null }],
 };
 const detail = {
   ...baseProduct,
@@ -402,8 +402,8 @@ try {
   assert.equal(await page.evaluate(() => sessionStorage.getItem('fido.accessToken')), null);
   profile = {
     ...customer,
-    roles: [{ role_id: 2, code: 'ADMIN', name: 'Nhân viên', description: null }],
-    permissions: [access.permissions[0]],
+    roles: [{ id: 2, code: 'ADMIN', name: 'Nhân viên', description: null }],
+    permissions: [{ id: access.permissions[0].permission_id, code: access.permissions[0].code, name: access.permissions[0].name }],
   };
   await go('/admin/catalog/sizes');
   await page.waitForURL('**/admin/catalog/attributes');

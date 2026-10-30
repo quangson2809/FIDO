@@ -44,7 +44,7 @@ export const AdminProductInfoSection: React.FC<{
       <div><dt className="text-xs text-[#606863]">Thương hiệu</dt><dd>{product.brand?.name ?? '—'}</dd></div>
       <div><dt className="text-xs text-[#606863]">Giá bán</dt><dd className="font-bold">{product.selling_price.toLocaleString('vi-VN')}₫</dd></div>
       <div><dt className="text-xs text-[#606863]">Giá vốn</dt><dd>{product.cost_price === null ? '—' : product.cost_price.toLocaleString('vi-VN') + '₫'}</dd></div>
-      <div><dt className="text-xs text-[#606863]">Parent product</dt><dd>{product.parent_product_id ?? '—'}</dd></div>
+      <div><dt className="text-xs text-[#606863]">Product cha</dt><dd>{product.parent_product === null ? '—' : '#' + product.parent_product.product_id + ' · ' + product.parent_product.sku}</dd></div>
       <div><dt className="text-xs text-[#606863]">Slug</dt><dd>{product.slug ?? '—'}</dd></div>
       <div className="sm:col-span-2"><dt className="text-xs text-[#606863]">Mô tả</dt><dd className="whitespace-pre-line">{product.description ?? '—'}</dd></div>
     </dl>}
@@ -64,8 +64,8 @@ export const AdminProductGallerySection: React.FC<{
     {images.length === 0 ? <div className="mt-4 border border-[#E2E5DE] bg-[#F5F6F2] p-8 text-center text-sm text-[#606863]">Chưa có ảnh sản phẩm.</div> : <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
       {images.map((image, index) => { const url = resolveImageUrl(image.image_url); return <figure key={image.id} className="border border-[#E2E5DE] bg-[#F5F6F2]">
         {url ? <img src={url} alt={productName} className="aspect-[3/4] w-full object-cover" /> : <div className="aspect-[3/4]" />}
-        <figcaption className="space-y-2 p-2 text-[10px] text-[#606863]"><div className="flex items-center justify-between gap-2"><span>#{image.id} · order {image.sort_order}</span>{index === 0 && <span className="bg-[#0B2419] px-1.5 py-0.5 font-bold text-white">COVER</span>}</div>
-          {canWrite && <div className="grid grid-cols-3 gap-1"><button type="button" disabled={busy || index === 0} aria-label={'Đưa ảnh ' + (index + 1) + ' lên trước'} onClick={() => onMove(image.id, -1)} className="border border-[#D9DDD6] px-1 py-1 disabled:opacity-30">←</button><button type="button" disabled={busy || index === images.length - 1} aria-label={'Đưa ảnh ' + (index + 1) + ' ra sau'} onClick={() => onMove(image.id, 1)} className="border border-[#D9DDD6] px-1 py-1 disabled:opacity-30">→</button><button type="button" disabled={busy} onClick={() => onDelete(image.id)} className="border border-red-200 px-1 py-1 text-red-700 disabled:opacity-30">Xóa</button></div>}
+        <figcaption className="space-y-2 p-2 text-[10px] text-[#606863]"><div className="flex items-center justify-between gap-2"><span>#{image.id} · order {image.sort_order}</span>{image.is_primary && <span className="bg-[#0B2419] px-1.5 py-0.5 font-bold text-white">ẢNH CHÍNH</span>}</div>
+          {canWrite && <div className="grid grid-cols-3 gap-1"><button type="button" disabled={busy || index === 0} aria-label={'Đưa ảnh ' + (index + 1) + ' lên trước'} onClick={() => onMove(image.id, -1)} className="border border-[#D9DDD6] px-1 py-1 disabled:opacity-30">←</button><button type="button" disabled={busy || index === images.length - 1} aria-label={'Đưa ảnh ' + (index + 1) + ' ra sau'} onClick={() => onMove(image.id, 1)} className="border border-[#D9DDD6] px-1 py-1 disabled:opacity-30">→</button><button type="button" aria-label={'Xóa ảnh ' + image.id} disabled={busy} onClick={() => onDelete(image.id)} className="border border-red-200 px-1 py-1 text-red-700 disabled:opacity-30">Xóa</button></div>}
         </figcaption></figure>; })}
     </div>}
   </section>

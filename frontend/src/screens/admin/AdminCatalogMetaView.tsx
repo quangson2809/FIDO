@@ -302,10 +302,10 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
             Catalog master data
           </p>
           <h1 className="mt-1 font-serif text-3xl font-bold text-[#0B2419]">
-            Danh mục & thuộc tính
+            Danh mục & thương hiệu
           </h1>
           <p className="mt-2 text-sm text-[#606863]">
-            Quản lý danh mục, thương hiệu và thuộc tính định kiểu theo API backend.
+            Quản lý danh mục và thương hiệu theo API backend.
           </p>
         </div>
         <button
@@ -330,7 +330,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
       )}
 
       <nav aria-label="Catalog metadata" className="flex flex-wrap gap-2">
-        {(['categories', 'brands', 'attributes'] as const).map((tab) => (
+        {(['categories', 'brands'] as const).map((tab) => (
           <button
             key={tab}
             type="button"

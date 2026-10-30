@@ -14,10 +14,10 @@ export interface CartContextValue {
   synchronizePurchasedCart: () => void;
   refreshCart: () => Promise<void>;
   addToCart: (productId: number, productName: string, quantity?: number) => void;
-  removeFromCart: (itemId: string) => void;
+  removeFromCart: (itemId: number) => void;
   clearCart: () => void;
-  updateCartQuantity: (itemId: string, quantity: number) => void;
-  changeCartQuantity: (itemId: string, delta: number) => void;
+  updateCartQuantity: (itemId: number, quantity: number) => void;
+  changeCartQuantity: (itemId: number, delta: number) => void;
 }
 
 export const CartContext = createContext<CartContextValue | undefined>(undefined);

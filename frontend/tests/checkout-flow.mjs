@@ -17,7 +17,8 @@ page.on('pageerror', (error) => errors.push(error.message));
 let quantity = 2;
 let price = 100000;
 let orders = 0;
-let quotedPrice = price;
+let orderRequests = 0;
+const idempotencyKeys = [];
 let rejectOrder = false;
 let delayOrder = false;
 let delayMutation = false;
@@ -26,15 +27,16 @@ let releaseOrder = () => {};
 let releaseMutation = () => {};
 const item = () => ({
   cart_item_id: 1,
-  variant_id: 1,
+  product_id: 1,
   product_name: 'Áo FIDO thử nghiệm',
-  size: 'M',
-  color: 'Đen',
+  thumbnail: null,
+  image_url: null,
+  sku: 'FIDO-TEST-001',
   quantity,
   unit_price: price,
   line_total: quantity * price,
+  discount_amount: 0,
   available_quantity: 10,
-  image_url: null,
 });
 const cart = () => ({
   cart_id: 1,
@@ -43,17 +45,16 @@ const cart = () => ({
   subtotal: quantity * price,
 });
 const quote = () => ({
-  quote_id: 'test-quote',
   items: [item()],
   subtotal: quantity * price,
-  discount: 0,
+  discount_amount: 0,
   shipping_fee: 30000,
-  total: quantity * price + 30000,
+  total_amount: quantity * price + 30000,
   voucher: null,
 });
 const me = {
   account: {
-    account_id: 1,
+    id: 1,
     full_name: 'Test Customer',
     phone: '0900000000',
     email: 'user@example.test',
@@ -61,8 +62,17 @@ const me = {
     created_at: '2026-10-09T00:00:00Z',
     updated_at: '2026-10-09T00:00:00Z',
   },
-  addresses: [{ address_id: 1, address_text: 'Hà Nội', created_at: '2026-10-09T00:00:00Z' }],
-  roles: [{ role_id: 1, code: 'CUSTOMER', name: 'Customer', description: null }],
+  addresses: [{
+    id: 1,
+    recipient_name: 'Test Customer',
+    recipient_phone: '0900000000',
+    province: 'Hà Nội',
+    district: 'Hoàn Kiếm',
+    ward: 'Hàng Trống',
+    address_line: '1 Đinh Tiên Hoàng',
+    is_default: true,
+  }],
+  roles: [{ id: 1, code: 'CUSTOMER', name: 'Customer', description: null, status: 'ACTIVE' }],
   permissions: [],
 };
 await page.addInitScript(() => sessionStorage.setItem('fido.accessToken', 'fixture'));
@@ -99,21 +109,53 @@ await page.route('**/api/v1/**', async (route) => {
     return send({ data: cart() });
   }
   if (path === '/checkout/quote') {
-    quotedPrice = price;
     return send({ data: quote() });
   }
   if (path === '/orders' && request.method() === 'POST') {
-    assert.equal(request.postDataJSON().quote_id, 'test-quote');
-    if (price !== quotedPrice) return send({ message: 'Giá hoặc sản phẩm đã thay đổi' }, 409);
-    orders++;
+    const orderBody = request.postDataJSON();
+    assert.deepEqual(
+      Object.keys(orderBody).sort(),
+      ['address_line', 'district', 'province', 'recipient_name', 'recipient_phone', 'voucher_code', 'ward'],
+    );
+    assert.equal(orderBody.recipient_phone, '0900000000');
+    assert.ok(orderBody.address_line);
+    const idempotencyKey = request.headers()['idempotency-key'];
+    assert.match(idempotencyKey ?? '', /^[A-Za-z0-9._~-]{1,128}$/);
+    idempotencyKeys.push(idempotencyKey);
+    orderRequests++;
     if (delayOrder)
       await new Promise((resolve) => {
         releaseOrder = resolve;
       });
     if (rejectOrder) return send({ message: 'Không thể tạo đơn thử nghiệm' }, 409);
+    orders++;
+    const subtotal = quantity * price;
+    const total = subtotal + 30000;
     quantity = 0;
     return send(
-      { data: { order_id: orders, order_code: `ORD-${orders}`, order_status: 'PENDING' } },
+      {
+        data: {
+          order_id: orders,
+          order_code: `ORD-${orders}`,
+          order_status: 'PENDING',
+          payment: {
+            payment_status: 'UNPAID',
+            amount_due: total,
+            amount_received: 0,
+            amount_refunded: 0,
+          },
+          subtotal,
+          discount: 0,
+          shipping_fee: 30000,
+          total,
+          recipient: {
+            phone: orderBody.recipient_phone,
+            email: null,
+            address: [orderBody.address_line, orderBody.ward, orderBody.district, orderBody.province].join(', '),
+          },
+          created_at: '2026-10-29T00:00:00Z',
+        },
+      },
       201,
     );
   }
@@ -152,7 +194,7 @@ const openDialog = () => page.getByRole('button', { name: /^Đặt hàng COD/ })
 const confirm = () => page.getByRole('button', { name: 'Xác nhận đặt hàng COD', exact: true });
 try {
   await page.goto('http://localhost:5181/checkout');
-  await page.getByLabel('Chọn địa chỉ nhận hàng').selectOption('1');
+  await page.getByLabel('Địa chỉ đã lưu').selectOption('1');
   await loadQuote();
   await openDialog();
   const dialog = page.getByRole('dialog', { name: 'Xác nhận đặt hàng', exact: true });
@@ -173,25 +215,33 @@ try {
   await page.getByRole('button', { name: 'Quay lại chỉnh sửa' }).click();
   assert.equal(orders, 0);
 
-  await openDialog();
+  // The quote is advisory: order creation may return a different backend-confirmed total.
   price = 120000;
+  await openDialog();
   await confirm().click();
-  await page.getByRole('alert').filter({ hasText: 'Giá hoặc sản phẩm đã thay đổi' }).waitFor();
-  assert.equal(orders, 0, 'changed quote must require new confirmation');
+  await page.waitForURL('**/checkout/success/1');
+  assert.equal(orders, 1);
+  assert.equal(quantity, 0);
+  await page.getByText(/tổng COD cuối cùng do Backend xác nhận là 270\.000/).waitFor();
+
+  // A rejected creation must retain the cart and require a new quote.
+  quantity = 2;
+  rejectOrder = true;
+  await page.goto('http://localhost:5181/checkout');
+  await page.getByLabel('Địa chỉ đã lưu').selectOption('1');
   await loadQuote();
   await openDialog();
-  assert.match(await dialog.innerText(), /270\.000/);
-  rejectOrder = true;
   await confirm().click();
-  await page.getByRole('alert').filter({ hasText: 'Không thể tạo đơn' }).waitFor();
+  await page.getByRole('alert').filter({ hasText: 'Không thể tạo đơn thử nghiệm' }).waitFor();
   assert.equal(orders, 1);
+  assert.equal(orderRequests, 2);
   assert.equal(quantity, 2);
   assert.equal(await dialog.count(), 0);
 
   rejectOrder = false;
   await loadQuote();
-  await page.getByLabel('Chọn địa chỉ nhận hàng').selectOption('new');
-  await page.getByLabel('Địa chỉ nhận hàng *').fill('Địa chỉ mới');
+  await page.getByLabel('Địa chỉ đã lưu').selectOption('new');
+  await page.getByLabel('Địa chỉ cụ thể *').fill('Địa chỉ mới');
   assert.equal(
     await page.getByRole('button', { name: /^Đặt hàng COD/ }).count(),
     0,
@@ -205,7 +255,7 @@ try {
     assert.equal(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth), true);
     await page.screenshot({
       animations: 'disabled',
-      path: `.browser-evidence/after-confirmation-${width}.png`,
+      path: '.browser-evidence/after-confirmation-' + width + '.png',
     });
   }
   await page.getByRole('button', { name: 'Quay lại chỉnh sửa' }).click();
@@ -228,34 +278,39 @@ try {
   });
   await dialog.getByRole('button', { name: 'Đang tạo đơn...', exact: true }).waitFor();
   await page.waitForTimeout(100);
-  assert.equal(orders, 2, 'synchronous double click sends only one additional order');
+  assert.equal(orders, 1, 'order is not counted until backend creation succeeds');
+  assert.equal(orderRequests, 3, 'synchronous double click sends one request');
   await page.keyboard.press('Escape');
   assert.equal(await dialog.count(), 1, 'cannot dismiss while submitting');
   releaseOrder();
   await page.waitForURL('**/checkout/success/2');
+  assert.equal(orders, 2);
   assert.equal(quantity, 0);
   assert.match(await page.getByRole('button', { name: /^Giỏ hàng \(/ }).innerText(), /0$/);
   await page.goto('http://localhost:5181/checkout');
   await page.getByText('Giỏ hàng trống.', { exact: false }).waitFor();
   assert.equal(await page.getByRole('button', { name: /Kiểm tra & báo giá/ }).isDisabled(), true);
+
   // A failed reconciliation read must not turn a successful order into an error or a retry.
   quantity = 1;
   delayOrder = false;
   failCartRefresh = true;
   await page.reload();
-  await page.getByLabel('Chọn địa chỉ nhận hàng').selectOption('1');
+  await page.getByLabel('Địa chỉ đã lưu').selectOption('1');
   await loadQuote();
   await openDialog();
   await confirm().click();
   await page.waitForURL('**/checkout/success/3');
   assert.equal(orders, 3);
+  assert.equal(orderRequests, 4);
+  assert.equal(new Set(idempotencyKeys).size, 4, 'each distinct submission must use a fresh key');
   assert.match(await page.getByRole('button', { name: /^Giỏ hàng \(/ }).innerText(), /0$/);
   await page
     .getByText('Đơn đã được tạo. Chưa thể tải lại giỏ hàng; vui lòng tải lại trang khi có kết nối.')
     .waitFor();
   assert.deepEqual(errors, []);
   console.log(
-    'Checkout browser flow: PASS (confirmation/cancel/price change/rejection/stale quote/pending mutation/double click/refresh/375,768,1440)',
+    'Checkout browser flow: PASS (backend-recalculated total/idempotency/COD confirmation/rejection/stale quote/pending mutation/double click/cart reconciliation/375,768,1440)',
   );
 } catch (error) {
   console.error(await page.locator('body').innerText(), errors);

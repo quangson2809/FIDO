@@ -325,11 +325,13 @@ try {
     },
   );
   await check(
-    'Confirmation traps focus, locks scroll and explains quote expiry',
+    'Confirmation traps focus, locks scroll and shows the authoritative quote',
     async (page, fixture, go) => {
       await go('/checkout');
-      await page.getByLabel('Chọn địa chỉ nhận hàng').selectOption('2');
-      fixture.state.expiresAt = new Date(Date.now() + 2000).toISOString();
+      await page.getByLabel('Tỉnh / thành phố *').fill('Hà Nội');
+      await page.getByLabel('Quận / huyện *').fill('Ba Đình');
+      await page.getByLabel('Phường / xã *').fill('Liễu Giai');
+      await page.getByLabel('Địa chỉ cụ thể *').fill('12 Đội Cấn');
       await page.getByRole('button', { name: 'Kiểm tra & báo giá', exact: true }).click();
       const trigger = page.getByRole('button', { name: /^Đặt hàng COD/ });
       await trigger.click();
@@ -343,12 +345,13 @@ try {
         );
       }
       assert.equal(await page.evaluate(() => document.body.style.overflow), 'hidden');
-      await dialog.getByRole('alert').filter({ hasText: 'Báo giá đã hết hạn' }).waitFor();
+      assert.equal(await dialog.getByRole('alert').count(), 0);
       assert.equal(
         await dialog
           .getByRole('button', { name: 'Xác nhận đặt hàng COD', exact: true })
-          .isDisabled(),
+          .isEnabled(),
         true,
+        'Backend owns final quote and inventory validation',
       );
       assert.equal(fixture.state.orders, 0);
       await page.screenshot({

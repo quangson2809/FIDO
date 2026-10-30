@@ -13,12 +13,17 @@ const page = await browser.newPage();
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 const date = '2026-10-08T03:00:00Z';
+const reportStatusCounts = {
+  PENDING: 2, CONFIRMED: 0, PREPARING: 0, SHIPPING: 0,
+  COMPLETED: 1, DELIVERY_FAILED: 0, CANCELLED: 0, RETURNED: 0,
+};
 const permission = { permission_id: 1, code: 'CATALOG_READ', name: 'Xem danh mục' };
 const role = { role_id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null };
+const meRole = { id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null, status: 'ACTIVE' };
 let me = {
-  account: { account_id: 1, full_name: 'Test Account', phone: '0900000000', email: null, status: 'ACTIVE', created_at: date, updated_at: date },
+  account: { id: 1, full_name: 'Test Account', phone: '0900000000', email: null, status: 'ACTIVE', created_at: date, updated_at: date },
   addresses: [],
-  roles: [role],
+  roles: [meRole],
   permissions: [],
 };
 const pagination = (data, pageNumber = 1, total = data.length) => ({
@@ -115,29 +120,27 @@ let order = {
   },
   allowed_actions: ['CONFIRM', 'CANCEL'],
 };
-let priceError = true;
+let productPatchAttempts = 0;
 const supplier = {
   supplier_id: 1,
+  code: 'SUP-001',
   name: 'Nhà cung cấp mẫu',
   phone: null,
   email: null,
-  address: null,
-  usage_status: 'ACTIVE',
-  note: null,
+  status: 'ACTIVE',
 };
 let receipt = {
   receipt_id: 1,
   receipt_code: 'GR-001',
   supplier_id: 1,
+  warehouse_id: 1,
   receipt_status: 'DRAFT',
-  receipt_date: '2026-10-08',
   confirmed_at: null,
   created_at: date,
   updated_at: date,
   created_by_account_id: 1,
   confirmed_by_account_id: null,
-  note: null,
-  items: [{ receipt_item_id: 1, variant_id: 10, quantity: 2 }],
+  items: [{ receipt_item_id: 1, product_id: 1, quantity_received: 2, unit_cost: 100000 }],
 };
 let customerError = false;
 let reportError = false;
@@ -166,6 +169,24 @@ await page.route('**/api/v1/**', async (route) => {
     });
   if (request.method() !== 'GET') {
     writes.push({ path, body: request.postDataJSON() });
+    if (path === '/admin/inventory/adjustments') {
+      const input = request.postDataJSON();
+      return send({
+        data: {
+          txn_id: 12,
+          product_id: input.product_id,
+          warehouse_id: 1,
+          quantity_delta: input.quantity_delta,
+          transaction_type: 'ADJUSTMENT',
+          order_item_id: null,
+          goods_receipt_item_id: null,
+          reverses_transaction_id: null,
+          actor_account_id: 1,
+          reason: input.reason_code,
+          created_at: date,
+        },
+      }, 201);
+    }
     if (path === '/admin/orders/1/actions') {
       order = { ...order, order_status: 'CONFIRMED', allowed_actions: ['PREPARE', 'CANCEL'] };
       return send({ data: order });
@@ -177,7 +198,9 @@ await page.route('**/api/v1/**', async (route) => {
       };
       return send({ data: order.payment });
     }
-    if (path === '/admin/products/1' && request.method === 'PATCH' && !priceError) {
+    if (path === '/admin/products/1' && request.method() === 'PATCH') {
+      productPatchAttempts += 1;
+      if (productPatchAttempts === 1) return send({ message: 'Lỗi lưu thử nghiệm' }, 500);
       product = { ...product, ...request.postDataJSON() };
       return send({ data: product });
     }
@@ -246,9 +269,54 @@ await page.route('**/api/v1/**', async (route) => {
             completed_sales: 123456,
             returned_adjustment: 0,
             net_sales: 123456,
-            orders_by_status: { PENDING: 2, COMPLETED: 1 },
+            orders_by_status: reportStatusCounts,
           },
         });
+  if (path === '/admin/reports/sales-trend')
+    return send({
+      data: {
+        from: url.searchParams.get('from'),
+        to: url.searchParams.get('to'),
+        granularity: url.searchParams.get('granularity') || 'DAY',
+        timezone: 'Asia/Ho_Chi_Minh',
+        points: [{
+          period_start: url.searchParams.get('from'),
+          completed_sales: 123456,
+          returned_adjustment: 0,
+          net_sales: 123456,
+        }],
+      },
+    });
+  if (path === '/admin/reports/orders-trend')
+    return send({
+      data: {
+        from: url.searchParams.get('from'),
+        to: url.searchParams.get('to'),
+        granularity: url.searchParams.get('granularity') || 'DAY',
+        timezone: 'Asia/Ho_Chi_Minh',
+        points: [{
+          period_start: url.searchParams.get('from'),
+          total_orders: 3,
+          orders_by_status: reportStatusCounts,
+        }],
+      },
+    });
+  if (path === '/admin/reports/product-performance')
+    return send({
+      data: {
+        from: url.searchParams.get('from'),
+        to: url.searchParams.get('to'),
+        limit: Number(url.searchParams.get('limit') || 10),
+        items: [{
+          product_id: 1,
+          product_name: 'Áo thử nghiệm',
+          thumbnail: null,
+          completed_units: 1,
+          returned_units: 0,
+          net_units: 1,
+        }],
+      },
+    });
   if (path === '/admin/suppliers') return send(pagination([supplier]));
   if (path === '/admin/goods-receipts') return send(pagination([receipt]));
   if (path === '/admin/goods-receipts/1') return send({ data: receipt });
@@ -256,14 +324,12 @@ await page.route('**/api/v1/**', async (route) => {
     return send(
       pagination([
         {
-          variant_id: 10,
-          sku: 'TEE-M-BLACK',
+          warehouse_id: 1,
           product_id: 1,
+          sku: 'TEE-M-BLACK',
           product_name: 'Áo thử nghiệm',
-          size: 'M',
-          color: 'Đen',
-          sale_status: 'ON_SALE',
           available_quantity: 5,
+          version: 0,
           updated_at: date,
         },
       ]),
@@ -342,6 +408,24 @@ try {
   await page.getByRole('button', { name: 'Chi tiết', exact: true }).click();
   await page.getByRole('dialog').getByRole('alert').waitFor();
   await page.getByRole('button', { name: 'Đóng hộp thoại' }).click();
+  await goto('/admin/inventory');
+  await page.getByRole('button', { name: 'Điều chỉnh', exact: true }).click();
+  await page.getByRole('spinbutton', { name: 'Số lượng điều chỉnh', exact: true }).fill('2');
+  await page.getByLabel('Mã lý do điều chỉnh').selectOption('DAMAGE');
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Xác nhận', exact: true }).click();
+  await page.getByText('Đã điều chỉnh tồn kho.', { exact: true }).waitFor();
+  const adjustment = writes.filter((entry) => entry.path === '/admin/inventory/adjustments').at(-1)?.body;
+  assert.ok(adjustment);
+  assert.deepEqual(Object.keys(adjustment).sort(), [
+    'expected_version', 'product_id', 'quantity_delta', 'reason_code', 'source_operation_id',
+  ]);
+  assert.equal(adjustment.product_id, 1);
+  assert.equal(adjustment.quantity_delta, 2);
+  assert.equal(adjustment.reason_code, 'DAMAGE');
+  assert.equal(adjustment.expected_version, 0);
+  assert.match(adjustment.source_operation_id, /^[A-Za-z0-9._:-]{1,80}$/);
+
   await goto('/admin/catalog/categories');
   await page.locator('main').getByRole('button', { name: 'Thương hiệu', exact: true }).click();
   assert.match(page.url(), /catalog\/brands/);
@@ -359,12 +443,12 @@ try {
   await page.getByRole('button', { name: /Đơn hàng/ }).click();
   await goto('/admin/goods-receipts');
   await page.getByRole('button', { name: 'Chi tiết', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Ghi chú' }).fill('Thay đổi chưa lưu');
+  await page.getByRole('spinbutton', { name: 'Số lượng nhận dòng 1', exact: true }).fill('3');
   const writeCount = writes.length;
   await page.getByRole('button', { name: 'Xác nhận nhập kho', exact: true }).click();
   await page.getByText('Phiếu có thay đổi chưa lưu.', { exact: false }).waitFor();
   assert.equal(writes.length, writeCount, 'dirty receipt cannot confirm');
-  await page.getByRole('textbox', { name: 'Ghi chú' }).fill('');
+  await page.getByRole('spinbutton', { name: 'Số lượng nhận dòng 1', exact: true }).fill('2');
   page.once('dialog', (dialog) => dialog.dismiss());
   await page.getByRole('button', { name: 'Xác nhận nhập kho', exact: true }).click();
   assert.equal(writes.length, writeCount, 'cancelled confirmation sends no request');
@@ -375,21 +459,9 @@ try {
   await goto('/admin/reports');
   await page.getByText('123.456₫').first().waitFor();
   reportError = true;
-  await page.getByRole('button', { name: 'Xem báo cáo' }).click();
+  await page.getByRole('navigation', { name: 'Loại báo cáo' }).getByRole('button', { name: 'Đơn hàng', exact: true }).click();
   await page.getByRole('alert').waitFor();
   assert.equal(await page.getByText('123.456₫').count(), 0, 'stale report hidden');
-  await goto('/admin/goods-receipts');
-  await page.getByRole('button', { name: 'Chọn biến thể', exact: true }).click();
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: /Áo thử nghiệm/ })
-    .click();
-  await page.getByText('TEE-M-BLACK · M / Đen', { exact: true }).waitFor();
-  page.once('dialog', (dialog) => dialog.accept());
-  await page
-    .getByRole('button', { name: /Sản phẩm/ })
-    .first()
-    .click();
   await goto('/admin/products/1');
   await page.getByRole('button', { name: 'Chỉnh sửa', exact: true }).click();
   const price = page.getByRole('spinbutton', { name: 'Giá bán (VND)' });
@@ -397,7 +469,6 @@ try {
   await page.getByRole('button', { name: 'Lưu', exact: true }).click();
   await page.getByRole('alert').waitFor();
   assert.equal(await price.inputValue(), '250000', 'failed product patch preserves input');
-  priceError = false;
   await page.getByRole('button', { name: 'Lưu', exact: true }).click();
   await page.getByText('250.000₫', { exact: true }).waitFor();
   const productPatch = writes.filter((entry) => entry.path === '/admin/products/1').at(-1)?.body;
@@ -538,7 +609,7 @@ try {
     await page.screenshot({ path: `/tmp/fido-admin-products-${width}.png`, fullPage: true });
   }
   await page.setViewportSize({ width: 1440, height: 1000 });
-  me = { ...me, roles: [{ ...role, code: 'ADMIN' }], permissions: [] };
+  me = { ...me, roles: [{ ...meRole, code: 'ADMIN' }], permissions: [] };
   await goto('/admin/products');
   await page.getByRole('heading', { name: 'Không có quyền truy cập' }).waitFor();
   assert.deepEqual(errors, []);

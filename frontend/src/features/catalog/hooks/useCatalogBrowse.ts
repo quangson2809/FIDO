@@ -63,7 +63,7 @@ export const useCatalogBrowse = (meta: CatalogMetaDto | null, categoryId?: numbe
   const applyFilters = (): boolean => {
     const validPrice = (value: string) =>
       !value.trim() ||
-      (/^\d+(?:\.\d{1,2})?$/.test(value.trim()) && Number(value) <= Number.MAX_SAFE_INTEGER);
+      (/^\d+$/.test(value.trim()) && Number.isSafeInteger(Number(value)));
     if (
       !validPrice(draft.min) ||
       !validPrice(draft.max) ||

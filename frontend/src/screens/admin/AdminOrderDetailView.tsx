@@ -209,7 +209,7 @@ export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
     try {
       applyOrder(
         await adminOrderService.returnOrder(order.order_id, {
-          operation: 'RETURN',
+          action: 'RETURN_AND_REFUND_FULL',
           reason: reason.trim(),
         }),
       );
@@ -320,7 +320,7 @@ export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold">{item.product_name}</p>
                       <p className="mt-1 text-xs text-[#606863]">
-                        {item.sku ?? '—'} · {item.size} · {item.color}
+                        SKU {item.sku ?? '—'}
                       </p>
                       <p className="mt-2 text-sm">
                         {item.quantity} × {item.unit_price.toLocaleString('vi-VN')}₫

@@ -132,7 +132,7 @@ export const CatalogFiltersPanel: React.FC<{
         <p className="mb-2 text-sm font-semibold">Khoảng giá cơ bản (đ)</p>
         <div className="grid grid-cols-2 gap-2">
           <input
-            inputMode="decimal"
+            inputMode="numeric"
             value={minPriceInput}
             onChange={(event) => onMinPriceInputChange(event.target.value)}
             aria-label="Giá từ"
@@ -142,7 +142,7 @@ export const CatalogFiltersPanel: React.FC<{
             className="min-w-0 border border-[#D9DDD6] bg-white px-3 py-2 text-sm outline-none focus:border-[#0B2419]"
           />
           <input
-            inputMode="decimal"
+            inputMode="numeric"
             value={maxPriceInput}
             onChange={(event) => onMaxPriceInputChange(event.target.value)}
             aria-label="Giá đến"

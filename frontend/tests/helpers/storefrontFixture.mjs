@@ -27,7 +27,7 @@ export const meta = {
 };
 export const me = {
   account: {
-    account_id: 1,
+    id: 1,
     full_name: 'Test Customer',
     phone: '0900000000',
     email: 'user@example.test',
@@ -36,10 +36,10 @@ export const me = {
     updated_at: date,
   },
   addresses: [
-    { address_id: 1, address_text: 'Hà Nội', created_at: date },
-    { address_id: 2, address_text: 'Nghệ An', created_at: date },
+    { id: 1, recipient_name: 'Test Customer', recipient_phone: '0900000000', province: 'Hà Nội', district: 'Ba Đình', ward: 'Liễu Giai', address_line: '12 Đội Cấn', is_default: true },
+    { id: 2, recipient_name: 'Test Customer', recipient_phone: '0900000000', province: 'Nghệ An', district: 'Vinh', ward: 'Hà Huy Tập', address_line: '15 Nguyễn Trãi', is_default: false },
   ],
-  roles: [{ role_id: 1, code: 'CUSTOMER', name: 'Khách hàng', description: null }],
+  roles: [{ id: 1, code: 'CUSTOMER', name: 'Khách hàng', description: null, status: 'ACTIVE' }],
   permissions: [],
 };
 export const product = {
@@ -92,11 +92,10 @@ export function storefrontFixture() {
     paymentStatus: 'UNPAID',
     orders: 0,
     emptyOrders: false,
-    expiresAt: undefined,
-    quoteNumber: 0,
     loseOrderResponse: false,
   };
-  const createdQuotes = new Map();
+  const profile = structuredClone(me);
+  const createdOrders = new Map();
   const cartItem = () => ({
     cart_item_id: 1,
     product_id: product.product_id,
@@ -109,17 +108,13 @@ export function storefrontFixture() {
     line_total: state.quantity * product.selling_price,
     available_quantity: 5,
   });
-  // Checkout retains its own legacy contract until the dedicated Checkout/Address phase.
   const checkoutItem = () => ({
-    cart_item_id: 1,
-    variant_id: 1,
     product_id: product.product_id,
     product_name: product.name,
     sku: product.sku,
-    size: 'M',
-    color: 'Đen',
     quantity: state.quantity,
     unit_price: product.selling_price,
+    discount_amount: 0,
     line_total: state.quantity * product.selling_price,
     available_quantity: 5,
     thumbnail: null,
@@ -136,8 +131,14 @@ export function storefrontFixture() {
     order_id: 1,
     order_code: 'FIDO-001',
     order_status: state.orderStatus,
-    recipient: { phone: me.account.phone, email: me.account.email, address: 'Nghệ An' },
-    items: [{ ...checkoutItem(), order_item_id: 1, quantity: 1, line_total: product.selling_price }],
+    recipient: { phone: profile.account.phone, email: profile.account.email, address: 'Nghệ An' },
+    items: [{
+      ...checkoutItem(),
+      order_item_id: 1,
+      image_url: null,
+      quantity: 1,
+      line_total: product.selling_price,
+    }],
     subtotal: product.selling_price,
     discount: 0,
     shipping_fee: 30000,
@@ -165,22 +166,48 @@ export function storefrontFixture() {
       method: request.method(),
       query: url.search,
       body: request.postData() ? request.postDataJSON() : null,
+      headers: request.headers(),
     });
     if (state.failures.has(path))
       return send(
         { message: 'java.sql.SQLException: private internal detail' },
         state.failures.get(path),
       );
-    if (path === '/me') return send({ data: me });
+    if (path === '/me') return send({ data: profile });
     if (path === '/auth/login')
       return send({
         data: {
           access_token: 'fixture',
           token_type: 'Bearer',
           expires_in: 3600,
-          account: me.account,
+          account: profile.account,
         },
       });
+    if (path === '/me/addresses' && request.method() === 'POST') {
+      const input = request.postDataJSON();
+      const nextId = Math.max(0, ...profile.addresses.map((address) => address.id)) + 1;
+      const address = {
+        ...input,
+        id: nextId,
+        is_default: typeof input.is_default === 'boolean' ? input.is_default : profile.addresses.length === 0,
+      };
+      profile.addresses.push(address);
+      return send({ data: address }, 201);
+    }
+    if (path.startsWith('/me/addresses/')) {
+      const addressId = Number(path.split('/').at(-1));
+      const addressIndex = profile.addresses.findIndex((address) => address.id === addressId);
+      if (addressIndex < 0) return send({ message: 'Address not found' }, 404);
+      if (request.method() === 'PATCH') {
+        const updated = { ...profile.addresses[addressIndex], ...request.postDataJSON(), id: addressId };
+        profile.addresses[addressIndex] = updated;
+        return send({ data: updated });
+      }
+      if (request.method() === 'DELETE') {
+        profile.addresses.splice(addressIndex, 1);
+        return route.fulfill({ status: 204, body: '' });
+      }
+    }
     if (path === '/catalog/meta') return send({ data: meta });
     if (path === '/catalog/products/1') return send({ data: product });
     if (path === '/catalog/products') {
@@ -217,25 +244,27 @@ export function storefrontFixture() {
       const code = request.postDataJSON().voucher_code;
       if (code === 'INVALID')
         return send({ message: 'Mã ưu đãi không hợp lệ hoặc bạn chưa đủ điều kiện.' }, 422);
+      const discountAmount = code === 'VALID' ? 20000 : 0;
+      const subtotal = state.quantity * product.selling_price;
       return send({
         data: {
-          quote_id: `fixture-quote-${++state.quoteNumber}`,
-          expires_at: state.expiresAt,
           items: [checkoutItem()],
-          subtotal: state.quantity * product.selling_price,
-          discount: code === 'VALID' ? 20000 : 0,
+          subtotal,
+          discount_amount: discountAmount,
           shipping_fee: 30000,
-          total: state.quantity * product.selling_price + 30000 - (code === 'VALID' ? 20000 : 0),
+          total_amount: subtotal + 30000 - discountAmount,
           voucher: code === 'VALID' ? { voucher_id: 1, code } : null,
         },
       });
     }
     if (path === '/orders' && request.method() === 'POST') {
-      const quoteId = request.postDataJSON().quote_id;
-      if (createdQuotes.has(quoteId)) return send({ data: createdQuotes.get(quoteId) }, 201);
+      const idempotencyKey = request.headers()['idempotency-key'];
+      if (!idempotencyKey) return send({ message: 'Idempotency-Key is required' }, 400);
+      if (createdOrders.has(idempotencyKey))
+        return send({ data: createdOrders.get(idempotencyKey) }, 201);
       state.orders++;
       const created = { ...order(), order_id: 1 };
-      createdQuotes.set(quoteId, created);
+      createdOrders.set(idempotencyKey, created);
       state.quantity = 0;
       if (state.loseOrderResponse) {
         state.loseOrderResponse = false;

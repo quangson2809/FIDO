@@ -93,10 +93,10 @@ try {
   await page.keyboard.press('Escape');
   fixture.state.quantity = 1;
   await go('/checkout');
-  await page.getByLabel('Chọn địa chỉ nhận hàng').waitFor();
-  assert.equal(await page.getByLabel('Chọn địa chỉ nhận hàng').inputValue(), 'new');
+  await page.getByLabel('Địa chỉ đã lưu').waitFor();
+  assert.equal(await page.getByLabel('Địa chỉ đã lưu').inputValue(), 'new');
   assert.equal(
-    await page.getByLabel('Địa chỉ nhận hàng *').inputValue(),
+    await page.getByLabel('Địa chỉ cụ thể *').inputValue(),
     '',
     'never select first saved address implicitly',
   );
@@ -109,12 +109,13 @@ try {
   );
   assert.equal(quoteCount(), quotesBefore);
   await page.getByLabel('Số điện thoại người nhận *').fill('0900000000');
-  await page.getByLabel('Email người nhận').fill('bad');
-  await quoteButton.click();
-  assert.equal(await page.getByLabel('Email người nhận').getAttribute('aria-invalid'), 'true');
-  await page.getByLabel('Email người nhận').fill('user@example.test');
-  await page.getByLabel('Địa chỉ nhận hàng *').fill('Địa chỉ mới giữ lại');
-  await page.getByLabel('Chọn địa chỉ nhận hàng').selectOption('2');
+  await page.getByLabel('Tỉnh / thành phố *').fill('Hà Nội');
+  await page.getByLabel('Quận / huyện *').fill('Ba Đình');
+  await page.getByLabel('Phường / xã *').fill('Liễu Giai');
+  await page.getByLabel('Địa chỉ cụ thể *').fill('Địa chỉ mới giữ lại');
+  await page.getByLabel('Địa chỉ đã lưu').selectOption('2');
+  assert.equal(await page.getByLabel('Tỉnh / thành phố *').inputValue(), 'Nghệ An');
+  assert.equal(await page.getByLabel('Địa chỉ cụ thể *').inputValue(), '15 Nguyễn Trãi');
   await page.getByLabel('Mã voucher').fill('INVALID');
   await quoteButton.click();
   await page.getByRole('alert').filter({ hasText: 'Mã ưu đãi không hợp lệ' }).waitFor();
@@ -126,25 +127,28 @@ try {
   const request = fixture.state.requests
     .filter((request) => request.path === '/checkout/quote')
     .at(-1);
-  assert.equal(request.body.recipient_address, 'Nghệ An');
+  assert.equal(request.body.province, 'Nghệ An');
+  assert.equal(request.body.district, 'Vinh');
+  assert.equal(request.body.ward, 'Hà Huy Tập');
+  assert.equal(request.body.address_line, '15 Nguyễn Trãi');
   await page.getByText('Đã áp dụng VALID: giảm 20.000₫', { exact: true }).waitFor();
-  await page.getByLabel('Chọn địa chỉ nhận hàng').selectOption('new');
-  assert.equal(await page.getByLabel('Địa chỉ nhận hàng *').inputValue(), 'Địa chỉ mới giữ lại');
+  await page.getByLabel('Địa chỉ đã lưu').selectOption('new');
+  await page.getByLabel('Địa chỉ cụ thể *').fill('Địa chỉ mới giữ lại');
+  assert.equal(await page.getByLabel('Địa chỉ cụ thể *').inputValue(), 'Địa chỉ mới giữ lại');
   assert.equal(await orderButton.count(), 0, 'address invalidates quote');
-  fixture.state.expiresAt = new Date(Date.now() + 1500).toISOString();
   await quoteButton.click();
   await orderButton.waitFor();
   await orderButton.click();
   const confirmation = page.getByRole('dialog', { name: 'Xác nhận đặt hàng', exact: true });
   await confirmation.getByRole('button', { name: 'Xác nhận đặt hàng COD' }).waitFor();
-  await confirmation.getByRole('alert').filter({ hasText: 'Báo giá đã hết hạn.' }).waitFor();
+  assert.equal(await confirmation.getByRole('alert').count(), 0);
   assert.equal(
-    await confirmation.getByRole('button', { name: 'Xác nhận đặt hàng COD' }).isDisabled(),
+    await confirmation.getByRole('button', { name: 'Xác nhận đặt hàng COD', exact: true }).isEnabled(),
     true,
+    'Backend decides whether the advisory quote can be submitted',
   );
   assert.equal(fixture.state.orders, 0);
   await confirmation.getByRole('button', { name: 'Quay lại chỉnh sửa' }).click();
-  fixture.state.expiresAt = undefined;
   await quoteButton.click();
   await orderButton.waitFor();
   assert.equal(
@@ -305,6 +309,60 @@ try {
       .filter((target) => target.width < 43.5 || target.height < 43.5),
   );
   assert.deepEqual(touchTargets, [], 'visible buttons have 44px touch targets');
+  // Profile address CRUD uses the structured Backend request/response contract.
+  await go('/account');
+  await page.getByRole('heading', { name: 'Hồ sơ của tôi', exact: true }).waitFor();
+  const newAddressFields = {
+    recipient_name: 'FIDO Test',
+    recipient_phone: '0900111222',
+    province: 'Hà Nội',
+    district: 'Ba Đình',
+    ward: 'Liễu Giai',
+    address_line: '99 P5 Lane',
+  };
+  for (const [label, value] of [
+    ['Họ tên người nhận', newAddressFields.recipient_name],
+    ['Số điện thoại người nhận', newAddressFields.recipient_phone],
+    ['Tỉnh / thành phố', newAddressFields.province],
+    ['Quận / huyện', newAddressFields.district],
+    ['Phường / xã', newAddressFields.ward],
+    ['Địa chỉ cụ thể', newAddressFields.address_line],
+  ]) {
+    await page.getByLabel(label + ' (địa chỉ mới)').fill(value);
+  }
+  await page.getByRole('button', { name: 'Thêm địa chỉ', exact: true }).click();
+  const addedAddress = page.locator('article').filter({ hasText: newAddressFields.address_line });
+  await addedAddress.waitFor();
+  const createAddressRequest = fixture.state.requests
+    .filter((request) => request.path === '/me/addresses' && request.method === 'POST')
+    .at(-1);
+  assert.deepEqual(createAddressRequest.body, newAddressFields);
+
+  await addedAddress.getByRole('button', { name: 'Sửa', exact: true }).click();
+  const updatedAddressFields = {
+    ...newAddressFields,
+    recipient_name: 'FIDO Test Updated',
+    address_line: '100 P5 Lane',
+    is_default: false,
+  };
+  for (const [label, value] of [
+    ['Họ tên người nhận', updatedAddressFields.recipient_name],
+    ['Số điện thoại người nhận', updatedAddressFields.recipient_phone],
+    ['Tỉnh / thành phố', updatedAddressFields.province],
+    ['Quận / huyện', updatedAddressFields.district],
+    ['Phường / xã', updatedAddressFields.ward],
+    ['Địa chỉ cụ thể', updatedAddressFields.address_line],
+  ]) {
+    await page.getByLabel(label + ' (sửa địa chỉ)').fill(value);
+  }
+  await page.getByRole('button', { name: 'Lưu', exact: true }).click();
+  const updatedAddress = page.locator('article').filter({ hasText: updatedAddressFields.address_line });
+  await updatedAddress.waitFor();
+  const updateAddressRequest = fixture.state.requests
+    .filter((request) => request.path.startsWith('/me/addresses/') && request.method === 'PATCH')
+    .at(-1);
+  assert.deepEqual(updateAddressRequest.body, updatedAddressFields);
+
   // Responsive review on every customer page and drawer, including reduced motion.
   for (const width of [375, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
@@ -324,7 +382,7 @@ try {
       await page.locator('main h1').first().waitFor();
       if (['home', 'catalog'].includes(name))
         await page.getByText('Áo FIDO', { exact: true }).waitFor();
-      if (name === 'checkout') await page.getByLabel('Chọn địa chỉ nhận hàng').waitFor();
+      if (name === 'checkout') await page.getByLabel('Địa chỉ đã lưu').waitFor();
       if (name === 'orders') await page.getByText('FIDO-001', { exact: true }).waitFor();
       if (name === 'policies')
         await page.getByRole('heading', { name: 'Chính sách trả hàng', exact: true }).waitFor();
@@ -378,7 +436,7 @@ try {
   fixture.state.failures.clear();
   await guest.getByRole('button', { name: 'Đăng nhập', exact: true }).last().click();
   await guest.waitForURL('**/checkout');
-  await guest.getByLabel('Chọn địa chỉ nhận hàng').waitFor();
+  await guest.getByLabel('Địa chỉ đã lưu').waitFor();
   await guest.close();
   // One continuous purchase journey through real route transitions, with fixture-backed HTTP.
   fixture.state.quantity = 0;
@@ -394,7 +452,7 @@ try {
     .at(-1);
   assert.deepEqual(addRequest.body, { product_id: 1, quantity: 1 });
   assert.equal(addRequest.body.quantity, 1);
-  await page.getByLabel('Chọn địa chỉ nhận hàng').selectOption('2');
+  await page.getByLabel('Địa chỉ đã lưu').selectOption('2');
   await quoteButton.click();
   await orderButton.click();
   await confirmation.getByRole('button', { name: 'Xác nhận đặt hàng COD', exact: true }).click();
@@ -416,7 +474,7 @@ try {
   fixture.state.loseOrderResponse = true;
   const ordersBeforeLostResponse = fixture.state.orders;
   await go('/checkout');
-  await page.getByLabel('Chọn địa chỉ nhận hàng').selectOption('2');
+  await page.getByLabel('Địa chỉ đã lưu').selectOption('2');
   await quoteButton.click();
   await orderButton.click();
   await confirmation.getByRole('button', { name: 'Xác nhận đặt hàng COD', exact: true }).click();
@@ -440,7 +498,12 @@ try {
   const attempts = fixture.state.requests
     .filter((request) => request.path === '/orders' && request.method === 'POST')
     .slice(-2);
-  assert.equal(attempts[0].body.quote_id, attempts[1].body.quote_id);
+  assert.deepEqual(attempts[0].body, attempts[1].body, 'replay sends the same structured request');
+  assert.equal(
+    attempts[0].headers['idempotency-key'],
+    attempts[1].headers['idempotency-key'],
+    'replay reuses the original Idempotency-Key',
+  );
   assert.equal(await cartTrigger.getAttribute('aria-label'), 'Giỏ hàng (0 sản phẩm)');
   // Startup /me read failures retain credentials but never expose protected content before verification.
   for (const path of ['/checkout', '/account', '/orders']) {

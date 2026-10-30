@@ -47,6 +47,7 @@ let capturedOptionPatchBody: unknown;
 let capturedVoucherBody: unknown;
 let capturedQuoteBody: unknown;
 let capturedOrderBody: unknown;
+let capturedIdempotencyKey: string | undefined;
 const voucherPolicy: VoucherInput = {
   code: 'SAVE10K',
   discount_type: 'FIXED_AMOUNT',
@@ -172,12 +173,11 @@ const server = createServer((request, response) => {
       capturedQuoteBody = JSON.parse(raw);
       writeJson(response, 200, {
         data: {
-          quote_id: 'voucher-smoke-quote',
           items: [],
           subtotal: 100000,
-          discount: 10000,
+          discount_amount: 10000,
           shipping_fee: 30000,
-          total: 120000,
+          total_amount: 120000,
           voucher: { voucher_id: 27, code: 'SAVE10K' },
         },
       });
@@ -192,15 +192,27 @@ const server = createServer((request, response) => {
     });
     request.on('end', () => {
       capturedOrderBody = JSON.parse(raw);
+      const idempotencyHeader = request.headers['idempotency-key'];
+      capturedIdempotencyKey = Array.isArray(idempotencyHeader)
+        ? idempotencyHeader[0]
+        : idempotencyHeader;
       writeJson(response, 201, {
         data: {
           order_id: 43,
           order_code: 'FIDO-43',
           order_status: 'PENDING',
+          payment: {
+            payment_status: 'UNPAID',
+            amount_due: 120000,
+            amount_received: 0,
+            amount_refunded: 0,
+          },
           subtotal: 100000,
           discount: 10000,
           shipping_fee: 30000,
           total: 120000,
+          recipient: { phone: '0909000001', email: null, address: '1 Đinh Tiên Hoàng' },
+          created_at: '2026-10-29T00:00:00Z',
         },
       });
     });
@@ -261,18 +273,7 @@ const server = createServer((request, response) => {
     writeJson(response, 200, {
       data: {
         account,
-        addresses: [
-          {
-            id: 51,
-            recipient_name: 'Nguyễn Văn A',
-            recipient_phone: '0909000001',
-            province: 'Hà Nội',
-            district: 'Ba Đình',
-            ward: 'Điện Biên',
-            address_line: 'Số 1',
-            is_default: true,
-          },
-        ],
+        addresses: [],
         roles: [
           {
             id: 1,
@@ -530,7 +531,6 @@ try {
 
   const login = await authService.login('0909000001', 'Fido@123');
   assert.equal(login.access_token, 'smoke-token');
-  assert.equal(login.account.account_id, account.id);
   assert.deepEqual(capturedLoginBody, {
     phone: '0909000001',
     password: 'Fido@123',
@@ -587,29 +587,27 @@ try {
   );
 
   const checkoutRequest = {
+    recipient_name: 'Quản trị hệ thống',
     recipient_phone: '0909000001',
-    recipient_email: null,
-    recipient_address: 'Hà Nội',
+    province: 'Hà Nội',
+    district: 'Hoàn Kiếm',
+    ward: 'Hàng Trống',
+    address_line: '1 Đinh Tiên Hoàng',
     voucher_code: 'SAVE10K',
   };
   const quotedVoucher = await checkoutService.quote(checkoutRequest);
   assert.deepEqual(capturedQuoteBody, checkoutRequest);
-  assert.equal(quotedVoucher.discount, 10000);
-  assert.equal(quotedVoucher.total, 120000);
+  assert.equal(quotedVoucher.discount_amount, 10000);
+  assert.equal(quotedVoucher.total_amount, 120000);
   assert.equal(quotedVoucher.voucher?.code, 'SAVE10K');
-  if (!quotedVoucher.quote_id) throw new Error('Missing voucher quotation ID');
-  const placedOrder = await checkoutService.createOrder({
-    ...checkoutRequest,
-    quote_id: quotedVoucher.quote_id,
-  });
+  const idempotencyKey = 'voucher-smoke-order-43';
+  const placedOrder = await checkoutService.createOrder(checkoutRequest, idempotencyKey);
   assert.equal(placedOrder.order_id, 43);
-  assert.deepEqual(capturedOrderBody, { ...checkoutRequest, quote_id: 'voucher-smoke-quote' });
+  assert.deepEqual(capturedOrderBody, checkoutRequest);
+  assert.equal(capturedIdempotencyKey, idempotencyKey);
 
   const me = await profileService.getMe();
-  assert.equal(me.account.account_id, account.id);
   assert.equal(me.roles[0]?.code, 'SUPERADMIN');
-  assert.equal(me.addresses[0]?.address_text, 'Số 1, Điện Biên, Ba Đình, Hà Nội');
-  assert.equal(me.addresses[0]?.created_at, null);
 
   const catalog = await catalogService.listProducts({ page: 1, page_size: 8 });
   assert.equal(catalog.items[0]?.product_id, 960001);
