@@ -164,19 +164,19 @@ class DatabaseBaselineTests {
     }
 
     @Test
-    void canonicalBaselineCreatesAllFortyFourForeignKeysWithoutDanglingTargets() {
+    void canonicalBaselineCreatesAllFortyThreeForeignKeysWithoutDanglingTargets() {
         var dataSource = newTestDataSource("foreign-keys");
 
         try {
             installSchema(dataSource);
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
             assertEquals(
-                    44,
+                    43,
                     jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.REFERENTIAL_CONSTRAINTS "
                                     + "WHERE CONSTRAINT_SCHEMA = DATABASE()",
                             Integer.class),
-                    "All 44 approved ERD relationships must be installed as foreign keys");
+                    "All 43 approved ERD relationships must be installed as foreign keys");
             assertEquals(
                     0,
                     jdbc.queryForObject(

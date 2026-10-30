@@ -8,19 +8,8 @@ import { useRemoteQuery } from '../../../shared/hooks/useRemoteQuery';
 import { getStorefrontErrorMessage } from '../../../services/http/storefrontError';
 import { productSummaryMetadata } from '../model/productSummary';
 
-const attributeValueText = (value: ProductAttributeValueDto): string | null => {
-  switch (value.data_type) {
-    case 'OPTION':
-      return value.option_label ?? value.option_value;
-    case 'TEXT':
-      return value.text_value;
-    case 'NUMBER':
-      return value.number_value === null ? null : String(value.number_value);
-    case 'BOOLEAN':
-      return value.boolean_value === null ? null : value.boolean_value ? 'Có' : 'Không';
-  }
-  return null;
-};
+const attributeValueText = (value: ProductAttributeValueDto): string | null =>
+  value.label.trim() || value.value.trim() || null;
 
 function ProductSummaryDetails({ productId }: { productId: number }) {
   const detail = useRemoteQuery(

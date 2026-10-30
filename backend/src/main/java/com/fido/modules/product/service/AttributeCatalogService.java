@@ -64,6 +64,10 @@ public class AttributeCatalogService {
 
         attributes.save(attribute);
         flushOrConflict("Attribute code conflicts with existing data");
+        if (attribute.isRequired()
+                && productValues.existsActiveProductMissingAttributeValue(attribute.getAttributeId())) {
+            throw conflict("Required Attribute is missing from an ACTIVE Product");
+        }
         audit.record(AuditEvent.of(actor, AuditAction.ATTRIBUTE_CREATE,
                 AuditTargetType.ATTRIBUTE, attribute.getAttributeId()));
         return AttributeMapper.attribute(attribute, List.of());

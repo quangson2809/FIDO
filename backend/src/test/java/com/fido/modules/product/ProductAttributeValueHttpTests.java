@@ -122,6 +122,29 @@ class ProductAttributeValueHttpTests extends CatalogHttpSupport {
         assertEquals(400, duplicate.status(), duplicate.body());
     }
 
+    @Test
+    void rejectsCreatingOrEnablingRequiredAttributeWhileActiveProductsLackIt() throws Exception {
+        Employee writer = catalogWriter();
+        String suffix = UUID.randomUUID().toString().replace("-", "");
+        createProduct(writer, "REQUIRED-GUARD-" + suffix, "Active product", 10000,
+                null, "ACTIVE", List.of());
+
+        String requiredCode = "REQUIRED_NEW_" + suffix;
+        Result rejectedCreate = call("POST", "/api/v1/admin/catalog/attributes", writer.token(),
+                Map.of("code", requiredCode, "name", "New required attribute",
+                        "is_required", true, "is_variant_defining", false, "sort_order", 0));
+        assertEquals(409, rejectedCreate.status(), rejectedCreate.body());
+        assertEquals(0, db.queryForObject(
+                "SELECT COUNT(*) FROM attributes WHERE code = ?", Integer.class, requiredCode));
+
+        long optionalId = createAttribute(writer, "OPTIONAL_GUARD", "Optional attribute", false);
+        Result rejectedPatch = call("PATCH", "/api/v1/admin/catalog/attributes/" + optionalId,
+                writer.token(), Map.of("is_required", true));
+        assertEquals(409, rejectedPatch.status(), rejectedPatch.body());
+        assertEquals(0, db.queryForObject(
+                "SELECT is_required FROM attributes WHERE id = ?", Integer.class, optionalId));
+    }
+
     private Employee catalogWriter() throws Exception {
         long roleId = customRole(ensurePermission("CATALOG_WRITE"));
         long readPermissionId = ensurePermission("CATALOG_READ");

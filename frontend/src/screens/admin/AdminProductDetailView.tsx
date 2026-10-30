@@ -94,7 +94,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
               adminMeta?.attributes ?? [],
               attributeDraft,
               status,
-            ).values,
+            ).attributeValueIds,
           ),
           productAttributeValuesToIds(product.attribute_values),
         )),
@@ -477,7 +477,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
               <textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" />
             </label>
             <div className="space-y-3 border-t border-[#E2E5DE] pt-4">
-              <h3 className="font-semibold">Typed Attribute values</h3>
+              <h3 className="font-semibold">Option-backed Attribute values</h3>
               <ProductAttributeFields
                 attributes={adminMeta?.attributes ?? []}
                 draft={attributeDraft}

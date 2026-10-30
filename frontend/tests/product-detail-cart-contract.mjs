@@ -27,13 +27,9 @@ const attribute = {
   attribute_id: 1,
   attribute_code: 'MATERIAL',
   attribute_name: 'Chất liệu',
-  data_type: 'TEXT',
-  option_id: null,
-  option_value: null,
-  option_label: null,
-  text_value: 'Cotton',
-  number_value: null,
-  boolean_value: null,
+  attribute_value_id: 101,
+  value: 'COTTON',
+  label: 'Cotton',
 };
 const product = {
   product_id: 1,
@@ -95,9 +91,6 @@ await page.route('**/api/v1/**', async (route) => {
       data: {
         categories: [category],
         brands: [brand],
-        attribute_types: [
-          { id: 1, code: 'TEXT', name: 'Văn bản', data_type: 'TEXT' },
-        ],
         attributes: [],
       },
     });
