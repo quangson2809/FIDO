@@ -49,6 +49,7 @@ class ProductAttributeValueValidatorTests {
         assertThrows(ResponseStatusException.class,
                 () -> validator.validateCompleteSet(500L, "DRAFT", List.of(999L)));
         when(options.findById(101L)).thenReturn(Optional.of(option(101L, 1L)));
+        when(attributes.findById(1L)).thenReturn(Optional.of(attribute(1L, false)));
         assertThrows(ResponseStatusException.class,
                 () -> validator.validateCompleteSet(500L, "DRAFT", List.of(101L, 101L)));
     }
