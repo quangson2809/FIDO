@@ -24,7 +24,7 @@ const profile = {
     updated_at: date,
   },
   addresses: [],
-  roles: [{ role_id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null }],
+  roles: [{ id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null, status: 'ACTIVE' }],
   permissions: [],
 };
 let metadata = {

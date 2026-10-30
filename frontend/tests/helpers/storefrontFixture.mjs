@@ -39,7 +39,7 @@ export const me = {
     { id: 1, recipient_name: 'Test Customer', recipient_phone: '0900000000', province: 'Hà Nội', district: 'Ba Đình', ward: 'Liễu Giai', address_line: '12 Đội Cấn', is_default: true },
     { id: 2, recipient_name: 'Test Customer', recipient_phone: '0900000000', province: 'Nghệ An', district: 'Vinh', ward: 'Hà Huy Tập', address_line: '15 Nguyễn Trãi', is_default: false },
   ],
-  roles: [{ role_id: 1, code: 'CUSTOMER', name: 'Khách hàng', description: null }],
+  roles: [{ id: 1, code: 'CUSTOMER', name: 'Khách hàng', description: null, status: 'ACTIVE' }],
   permissions: [],
 };
 export const product = {

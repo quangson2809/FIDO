@@ -85,7 +85,7 @@ await page.route('**/api/v1/**', async (route) => {
           updated_at: date,
         },
         addresses: [],
-        roles: [{ role_id: 1, code: 'CUSTOMER', name: 'Khách hàng', description: null }],
+        roles: [{ id: 1, code: 'CUSTOMER', name: 'Khách hàng', description: null, status: 'ACTIVE' }],
         permissions: [],
       },
     });

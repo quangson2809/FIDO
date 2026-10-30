@@ -238,6 +238,11 @@ const server = createServer((request, response) => {
   }
 
   if (request.method === 'POST' && url.pathname === '/api/v1/auth/login') {
+    assert.equal(
+      request.headers.authorization,
+      undefined,
+      'Public login must not inherit a stale bearer token from the previous session',
+    );
     let raw = '';
     request.on('data', (chunk: Buffer) => {
       raw += chunk.toString();
@@ -271,14 +276,15 @@ const server = createServer((request, response) => {
         addresses: [],
         roles: [
           {
-            role_id: 1,
+            id: 1,
             code: 'SUPERADMIN',
             name: 'Superadmin',
             description: null,
+            status: 'ACTIVE',
           },
         ],
         permissions: malformedMeResponse
-          ? [{ permission_id: 1, code: 42, name: 'Broken permission' }]
+          ? [{ id: 1, code: 42, name: 'Broken permission', description: null }]
           : [],
       },
     });

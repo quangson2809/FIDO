@@ -138,7 +138,7 @@ const parseAddress = (value: unknown, endpoint: string, fieldPath: string): Addr
 const parseRole = (value: unknown, endpoint: string, fieldPath: string): RoleDto => {
   const role = expectObject(value, endpoint, fieldPath);
   return {
-    role_id: expectInteger(role.role_id, endpoint, `${fieldPath}.role_id`),
+    role_id: expectInteger(role.id, endpoint, `${fieldPath}.id`),
     code: expectNonBlankString(role.code, endpoint, `${fieldPath}.code`),
     name: expectString(role.name, endpoint, `${fieldPath}.name`),
     description: expectNullableString(role.description, endpoint, `${fieldPath}.description`),
@@ -148,7 +148,7 @@ const parseRole = (value: unknown, endpoint: string, fieldPath: string): RoleDto
 const parsePermission = (value: unknown, endpoint: string, fieldPath: string): PermissionDto => {
   const permission = expectObject(value, endpoint, fieldPath);
   return {
-    permission_id: expectInteger(permission.permission_id, endpoint, `${fieldPath}.permission_id`),
+    permission_id: expectInteger(permission.id, endpoint, `${fieldPath}.id`),
     code: expectNonBlankString(permission.code, endpoint, `${fieldPath}.code`),
     name: expectString(permission.name, endpoint, `${fieldPath}.name`),
   };

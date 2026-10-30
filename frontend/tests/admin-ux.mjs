@@ -19,10 +19,11 @@ const reportStatusCounts = {
 };
 const permission = { permission_id: 1, code: 'CATALOG_READ', name: 'Xem danh mục' };
 const role = { role_id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null };
+const meRole = { id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null, status: 'ACTIVE' };
 let me = {
   account: { id: 1, full_name: 'Test Account', phone: '0900000000', email: null, status: 'ACTIVE', created_at: date, updated_at: date },
   addresses: [],
-  roles: [role],
+  roles: [meRole],
   permissions: [],
 };
 const pagination = (data, pageNumber = 1, total = data.length) => ({
@@ -608,7 +609,7 @@ try {
     await page.screenshot({ path: `/tmp/fido-admin-products-${width}.png`, fullPage: true });
   }
   await page.setViewportSize({ width: 1440, height: 1000 });
-  me = { ...me, roles: [{ ...role, code: 'ADMIN' }], permissions: [] };
+  me = { ...me, roles: [{ ...meRole, code: 'ADMIN' }], permissions: [] };
   await goto('/admin/products');
   await page.getByRole('heading', { name: 'Không có quyền truy cập' }).waitFor();
   assert.deepEqual(errors, []);

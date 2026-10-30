@@ -19,7 +19,7 @@ const timestamp = '2026-10-28T00:00:00Z';
 const profile = {
   account: { id: 1, full_name: 'Product admin regression', phone: '0900000000', email: null, status: 'ACTIVE', created_at: timestamp, updated_at: timestamp },
   addresses: [],
-  roles: [{ role_id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null }],
+  roles: [{ id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null, status: 'ACTIVE' }],
   permissions: [],
 };
 const catalogMeta = {

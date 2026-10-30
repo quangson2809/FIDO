@@ -72,7 +72,7 @@ const me = {
     address_line: '1 Đinh Tiên Hoàng',
     is_default: true,
   }],
-  roles: [{ role_id: 1, code: 'CUSTOMER', name: 'Customer', description: null }],
+  roles: [{ id: 1, code: 'CUSTOMER', name: 'Customer', description: null, status: 'ACTIVE' }],
   permissions: [],
 };
 await page.addInitScript(() => sessionStorage.setItem('fido.accessToken', 'fixture'));
