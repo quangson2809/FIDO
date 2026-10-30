@@ -9,6 +9,7 @@ on:
   pull_request:
     branches:
       - main
+      - demo1
       - feature/customer-shopping-journey-ux-improvements
     paths:
       - "frontend/**"
