@@ -35,22 +35,15 @@ const metadata = {
     { category_id: 1, parent_category_id: null, name: 'Áo', slug: 'ao', status: 'ACTIVE' },
   ],
   brands: [],
-  attribute_types: [
-    { id: 1, code: 'OPTION', name: 'Lựa chọn', data_type: 'OPTION' },
-    { id: 2, code: 'TEXT', name: 'Văn bản', data_type: 'TEXT' },
-    { id: 3, code: 'NUMBER', name: 'Số', data_type: 'NUMBER' },
-    { id: 4, code: 'BOOLEAN', name: 'Có/Không', data_type: 'BOOLEAN' },
-  ],
   attributes: [
     {
       id: 1,
       code: 'MATERIAL',
       name: 'Chất liệu',
-      data_type: 'TEXT',
-      is_required: false,
+      is_required: true,
       is_variant_defining: false,
       sort_order: 0,
-      options: [],
+      options: [{ id: 101, attribute_id: 1, value: 'COTTON', label: 'Cotton', sort_order: 0 }],
     },
   ],
 };
@@ -77,13 +70,9 @@ let product = {
       attribute_id: 1,
       attribute_code: 'MATERIAL',
       attribute_name: 'Chất liệu',
-      data_type: 'TEXT',
-      option_id: null,
-      option_value: null,
-      option_label: null,
-      text_value: 'Cotton',
-      number_value: null,
-      boolean_value: null,
+      attribute_value_id: 101,
+      value: 'COTTON',
+      label: 'Cotton',
     },
   ],
   created_at: date,
@@ -235,7 +224,7 @@ await page.route('**/api/v1/**', async (route) => {
     return send(pagination([{ ...order, payment_status: order.payment.payment_status }]));
   if (path === '/catalog/meta') return send({ data: metadata });
   if (path === '/admin/catalog/meta') return send({
-    data: { attribute_types: metadata.attribute_types, attributes: metadata.attributes },
+    data: { attributes: metadata.attributes },
   });
   if (path === '/admin/customers/1') return send({ message: 'Không tải được hồ sơ' }, 500);
   if (path === '/admin/customers') {
@@ -464,6 +453,8 @@ try {
   assert.equal(await page.getByText('123.456₫').count(), 0, 'stale report hidden');
   await goto('/admin/products/1');
   await page.getByRole('button', { name: 'Chỉnh sửa', exact: true }).click();
+  assert.equal(await page.getByLabel('Giá trị thuộc tính MATERIAL').inputValue(), '101',
+    'editing an ACTIVE Product preserves its required Option selection');
   const price = page.getByRole('spinbutton', { name: 'Giá bán (VND)' });
   await price.fill('250000');
   await page.getByRole('button', { name: 'Lưu', exact: true }).click();
@@ -472,7 +463,11 @@ try {
   await page.getByRole('button', { name: 'Lưu', exact: true }).click();
   await page.getByText('250.000₫', { exact: true }).waitFor();
   const productPatch = writes.filter((entry) => entry.path === '/admin/products/1').at(-1)?.body;
-  assert.ok(productPatch && !Object.hasOwn(productPatch, 'attribute_values'), 'PATCH omits untouched attribute_values');
+  assert.ok(productPatch && !Object.hasOwn(productPatch, 'attribute_values')
+    && !Object.hasOwn(productPatch, 'attribute_value_ids'),
+    'price-only PATCH must omit untouched Option-backed Attribute values');
+  assert.equal(product.attribute_values[0].attribute_value_id, 101,
+    'price-only PATCH retains the existing Product Option selection');
   await goto('/admin/orders/1');
   const beforeAction = writes.length;
   page.once('dialog', (dialog) => dialog.dismiss());

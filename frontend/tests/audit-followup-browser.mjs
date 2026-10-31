@@ -43,17 +43,15 @@ const metadata = {
       id: 1,
       code: 'MATERIAL',
       name: 'Chất liệu',
-      data_type: 'TEXT',
       is_required: false,
       is_variant_defining: false,
       sort_order: 0,
-      options: [],
+      options: baseMeta.attributes[0].options,
     },
     {
       id: 2,
       code: 'FABRIC_TYPE',
       name: 'Loại vải',
-      data_type: 'OPTION',
       is_required: false,
       is_variant_defining: false,
       sort_order: 1,
@@ -70,7 +68,7 @@ const detail = {
   category: metadata.categories[3],
   attribute_values: baseProduct.attribute_values.map((value) => ({
     ...value,
-    text_value: 'Cotton; giặt nhẹ',
+    label: 'Cotton; giặt nhẹ',
   })),
 };
 const summary = {

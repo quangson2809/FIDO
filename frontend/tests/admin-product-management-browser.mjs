@@ -87,20 +87,6 @@ let products = new Map([[101, clone(initialProduct)]]);
 let nextProductId = 202;
 let failNextUpload = false;
 const requests = [];
-const valuesFromIds = (ids) => (ids ?? []).map((optionId) => {
-  const attribute = adminMeta.attributes.find((item) =>
-    item.options.some((option) => option.id === optionId));
-  const option = attribute?.options.find((item) => item.id === optionId);
-  if (!attribute || !option) throw new Error('Unknown attribute_value_id: ' + optionId);
-  return {
-    attribute_id: attribute.id,
-    attribute_code: attribute.code,
-    attribute_name: attribute.name,
-    attribute_value_id: option.id,
-    value: option.value,
-    label: option.label,
-  };
-});
 const summary = (product) => ({
   product_id: product.product_id, parent_product_id: product.parent_product_id, sku: product.sku,
   name: product.name, thumbnail: product.images.find((image) => image.is_primary)?.image_url ?? null,
