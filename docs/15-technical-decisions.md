@@ -32,6 +32,8 @@
 - This is a clean-install contract change, not a migration of existing populated databases. Existing installations require a separately reviewed data-preserving migration.
 - Keep `is_required`, `is_variant_defining` and `sort_order`; `is_variant_defining` remains informational and never generates saleable Products.
 
+- **Public Product detail family projection (2026-10-31):** keep the existing ProductDetailDto fields and add `family: {root_product_id, members[]}`. Each member is an independently sellable ACTIVE, non-deleted Product with its own Product ID/SKU/price, ordered images and Option-only Attribute values. Include the public root (when ACTIVE) and all public direct children even if the request targets a child; never expose non-public siblings or infer inheritance. Use batched family image/Attribute reads. COLOR/SIZE are frontend selectors of existing Product IDs, never Product generators; other Attributes remain descriptive. Ambiguous color/size combinations must not automatically choose a SKU.
+
 ## 5. Cart, checkout, Order and vouchers
 
 - Persisted Cart and Order creation require authentication; Account scope comes from the security principal; guest Cart, checkout and merge are excluded.

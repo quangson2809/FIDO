@@ -49,8 +49,11 @@ class PublicCatalogQueryServiceTests {
     void publicDetailLoadsTheProductByProductIdWithoutVariantExpansion() {
         Product product = product(41L, "CORE-41", 125000L);
         when(references.publicProduct(41L)).thenReturn(product);
-        when(images.findAllByProductIdOrderBySortOrderAsc(41L)).thenReturn(List.of());
-        when(attributeValueRead.forProduct(41L)).thenReturn(List.of());
+        when(products.findAllByParentProductIdOrderByProductIdAsc(41L)).thenReturn(List.of());
+        when(images.findAllByProductIdInOrderByProductIdAscSortOrderAscImageIdAsc(List.of(41L)))
+                .thenReturn(List.of());
+        when(attributeValueRead.forProducts(List.of(41L)))
+                .thenReturn(Map.of(41L, List.of()));
 
         var detail = service.publicDetail(41L);
 
@@ -60,7 +63,38 @@ class PublicCatalogQueryServiceTests {
         assertEquals("ACTIVE", detail.status());
         assertEquals(List.of(), detail.images());
         assertEquals(List.of(), detail.attribute_values());
+        assertEquals(41L, detail.family().root_product_id());
+        assertEquals(List.of(41L), detail.family().members().stream()
+                .map(member -> member.product_id()).toList());
         verify(references).publicProduct(41L);
+    }
+
+    @Test
+    void childDetailIncludesPublicSiblingsButNeverInactiveOrDeletedParent() {
+        Product child = product(42L, "CHILD-42", 200000L);
+        child.setParentProductId(41L);
+        Product sibling = product(43L, "CHILD-43", 210000L);
+        sibling.setParentProductId(41L);
+        Product inactive = product(44L, "CHILD-44", 100000L);
+        inactive.setParentProductId(41L);
+        inactive.setStatus("DRAFT");
+        Product root = product(41L, "CORE-41", 125000L);
+        root.setStatus("INACTIVE");
+        when(references.publicProduct(42L)).thenReturn(child);
+        when(products.findById(41L)).thenReturn(java.util.Optional.of(root));
+        when(products.findAllByParentProductIdOrderByProductIdAsc(41L))
+                .thenReturn(List.of(child, sibling, inactive));
+        when(images.findAllByProductIdInOrderByProductIdAscSortOrderAscImageIdAsc(List.of(42L, 43L)))
+                .thenReturn(List.of());
+        when(attributeValueRead.forProducts(List.of(42L, 43L))).thenReturn(Map.of());
+
+        var detail = service.publicDetail(42L);
+
+        assertEquals(41L, detail.family().root_product_id());
+        assertEquals(List.of(42L, 43L), detail.family().members().stream()
+                .map(member -> member.product_id()).toList());
+        assertEquals(42L, detail.product_id());
+        assertEquals("CHILD-42", detail.family().members().get(0).sku());
     }
 
     @Test

@@ -3,6 +3,10 @@ package com.fido.modules.product.service;
 import com.fido.common.response.ApiListResponse;
 import com.fido.common.response.Pagination;
 import com.fido.modules.product.dto.response.CatalogMetaDto;
+import com.fido.modules.product.dto.response.ProductFamilyDto;
+import com.fido.modules.product.dto.response.ProductFamilyMemberDto;
+import com.fido.modules.product.dto.response.ProductImageDto;
+import com.fido.modules.product.dto.response.ProductAttributeValueDto;
 import com.fido.modules.product.dto.response.ProductDetailDto;
 import com.fido.modules.product.dto.response.ProductSummaryDto;
 import com.fido.modules.product.entity.Attribute;
@@ -24,7 +28,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -105,13 +111,41 @@ public class PublicCatalogQueryService {
 
     public ProductDetailDto publicDetail(Long productId) {
         Product product = references.publicProduct(productId);
+        Long rootId = product.getParentProductId() == null
+                ? product.getProductId() : product.getParentProductId();
+        List<Product> familyProducts = new ArrayList<>();
+        if (rootId.equals(product.getProductId())) {
+            familyProducts.add(product);
+        } else {
+            products.findById(rootId).filter(PublicCatalogQueryService::isPublic)
+                    .ifPresent(familyProducts::add);
+        }
+        products.findAllByParentProductIdOrderByProductIdAsc(rootId).stream()
+                .filter(PublicCatalogQueryService::isPublic)
+                .forEach(familyProducts::add);
+        // The requested ACTIVE child must appear even if the parent is not public.
+        if (familyProducts.stream().noneMatch(row -> row.getProductId().equals(productId))) {
+            familyProducts.add(product);
+        }
+        familyProducts.sort(Comparator.comparing((Product row) -> !row.getProductId().equals(rootId))
+                .thenComparing(Product::getProductId));
+        List<Long> ids = familyProducts.stream().map(Product::getProductId).toList();
+        Map<Long, List<ProductImageDto>> galleries = new LinkedHashMap<>();
+        ids.forEach(id -> galleries.put(id, new ArrayList<>()));
+        images.findAllByProductIdInOrderByProductIdAscSortOrderAscImageIdAsc(ids)
+                .forEach(image -> galleries.get(image.getProductId()).add(CatalogMapper.image(image)));
+        Map<Long, List<ProductAttributeValueDto>> familyValues = attributeValueRead.forProducts(ids);
+        List<ProductFamilyMemberDto> members = familyProducts.stream().map(row ->
+                new ProductFamilyMemberDto(
+                        row.getProductId(), row.getParentProductId(), row.getSku(), row.getName(),
+                        row.getSellingPrice(), row.getStatus(),
+                        List.copyOf(galleries.get(row.getProductId())),
+                        familyValues.getOrDefault(row.getProductId(), List.of())))
+                .toList();
         Category category =
                 product.getCategoryId() == null ? null : references.category(product.getCategoryId());
         Brand brand = product.getBrandId() == null ? null : references.brand(product.getBrandId());
-        var productImages =
-                images.findAllByProductIdOrderBySortOrderAsc(productId).stream()
-                        .map(CatalogMapper::image)
-                        .toList();
+        var productImages = List.copyOf(galleries.get(productId));
         return new ProductDetailDto(
                 product.getProductId(),
                 product.getParentProductId(),
@@ -126,7 +160,12 @@ public class PublicCatalogQueryService {
                 productImages,
                 product.getCreatedAt(),
                 product.getUpdatedAt(),
-                attributeValueRead.forProduct(productId));
+                familyValues.getOrDefault(productId, List.of()),
+                new ProductFamilyDto(rootId, members));
+    }
+
+    private static boolean isPublic(Product product) {
+        return !product.isDeleted() && "ACTIVE".equals(product.getStatus());
     }
 
     public CatalogMetaDto publicMeta() {

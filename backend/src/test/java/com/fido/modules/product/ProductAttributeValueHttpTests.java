@@ -67,9 +67,47 @@ class ProductAttributeValueHttpTests extends CatalogHttpSupport {
         assertEquals(1, parentDetail.data().get("data").get("children").size());
         assertEquals(childId, parentDetail.data().get("data").get("child_product_ids").get(0).asLong());
 
+        String galleryUrl = "https://cdn.example.test/product-child-gallery.jpg";
+        db.update("INSERT INTO product_images(product_id,image_url,is_primary,sort_order) VALUES (?,?,TRUE,0)",
+                childId, galleryUrl);
+        String secondGalleryUrl = "https://cdn.example.test/product-child-gallery-second.jpg";
+        db.update("INSERT INTO product_images(product_id,image_url,is_primary,sort_order) VALUES (?,?,FALSE,1)",
+                childId, secondGalleryUrl);
+        long draftId = createProduct(writer, "CHILD-DRAFT-" + suffix,
+                "Child not published", 145000, parentId, "DRAFT", List.of());
+
         Result publicDetail = call("GET", "/api/v1/catalog/products/" + childId, null, null);
         assertEquals(200, publicDetail.status(), publicDetail.body());
-        assertEquals(2, publicDetail.data().get("data").get("attribute_values").size());
+        var childPublic = publicDetail.data().get("data");
+        assertEquals(2, childPublic.get("attribute_values").size());
+        assertEquals(2, childPublic.get("images").size());
+        assertEquals(galleryUrl, childPublic.get("images").get(0).get("image_url").asText());
+        assertEquals(secondGalleryUrl, childPublic.get("images").get(1).get("image_url").asText());
+        assertEquals(parentId, childPublic.get("family").get("root_product_id").asLong());
+        var members = childPublic.get("family").get("members");
+        assertEquals(2, members.size(), "Public family excludes DRAFT siblings");
+        assertEquals(parentId, members.get(0).get("product_id").asLong());
+        assertEquals(childId, members.get(1).get("product_id").asLong());
+        assertEquals(0, members.get(0).get("images").size(), "Root does not inherit child gallery");
+        assertEquals(galleryUrl, members.get(1).get("images").get(0).get("image_url").asText());
+        assertEquals("COTTON", findValue(members.get(1).get("attribute_values"), materialId)
+                .get("value").asText());
+
+        Result rootPublic = call("GET", "/api/v1/catalog/products/" + parentId, null, null);
+        assertEquals(200, rootPublic.status(), rootPublic.body());
+        assertEquals(2, rootPublic.data().get("data").get("family").get("members").size());
+
+        Result hidden = call("GET", "/api/v1/catalog/products/" + draftId, null, null);
+        assertEquals(404, hidden.status(), hidden.body());
+        Result rootDisabled = call("PATCH", "/api/v1/admin/products/" + parentId,
+                writer.token(), Map.of("status", "INACTIVE"));
+        assertEquals(200, rootDisabled.status(), rootDisabled.body());
+        Result childWithHiddenRoot = call("GET", "/api/v1/catalog/products/" + childId, null, null);
+        assertEquals(200, childWithHiddenRoot.status(), childWithHiddenRoot.body());
+        assertEquals(1, childWithHiddenRoot.data().get("data").get("family").get("members").size(),
+                "Inactive root is not disclosed to public family");
+        assertEquals(childId, childWithHiddenRoot.data().get("data").get("family")
+                .get("members").get(0).get("product_id").asLong());
     }
 
     @Test

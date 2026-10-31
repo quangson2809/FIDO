@@ -9,6 +9,12 @@ import {
   ProductSpecsSection,
 } from '../features/catalog/components/ProductDetailSections';
 import type { ProductDetailDto } from '../features/catalog/types';
+import { ProductFamilySelector } from '../features/catalog/components/ProductFamilySelector';
+import {
+  matchingFamilyMembers,
+  memberOption,
+  type FamilyOptionCode,
+} from '../features/catalog/model/productFamilySelection';
 import { sortProductImages } from '../features/catalog/model/productImageOrder';
 import { useAuthSession } from '../features/auth/session/useAuthSession';
 import { useToast } from '../shared/ui/toast/useToast';
@@ -28,6 +34,8 @@ export const ProductDetailScreen: React.FC = () => {
   const { productId = '' } = useParams<{ productId: string }>();
   const metadata = useCatalogMetadata();
   const [product, setProduct] = useState<ProductDetailDto | null>(null);
+  const [colorId, setColorId] = useState<number | null>(null);
+  const [sizeId, setSizeId] = useState<number | null>(null);
   const recommendationQuery = useRemoteQuery(
     useCallback(() => catalogService.listProducts({ page: 1, page_size: 5 }), []),
   );
@@ -58,6 +66,10 @@ export const ProductDetailScreen: React.FC = () => {
         const detail = await catalogService.getProductDetail(productId);
         if (!active) return;
         setProduct(detail);
+        setColorId(detail.attribute_values.find((value) => value.attribute_code === 'COLOR')
+          ?.attribute_value_id ?? null);
+        setSizeId(detail.attribute_values.find((value) => value.attribute_code === 'SIZE')
+          ?.attribute_value_id ?? null);
         setActiveImageIndex(0);
         setQuantity(1);
         setError(null);
@@ -84,6 +96,28 @@ export const ProductDetailScreen: React.FC = () => {
       active = false;
     };
   }, [productId, retry]);
+
+  const openFamilyProduct = (nextProductId: number) => {
+    if (nextProductId !== product?.product_id) {
+      navigate(productDetailPath(nextProductId));
+    }
+  };
+
+  const selectFamilyOption = (code: FamilyOptionCode, optionId: number) => {
+    if (!product) return;
+    let nextColor = code === 'COLOR' ? optionId : colorId;
+    let nextSize = code === 'SIZE' ? optionId : sizeId;
+    let matches = matchingFamilyMembers(product.family.members, nextColor, nextSize);
+    if (matches.length === 0) {
+      // Color/size choices are independent; reset the incompatible opposite axis.
+      if (code === 'COLOR') nextSize = null;
+      else nextColor = null;
+      matches = matchingFamilyMembers(product.family.members, nextColor, nextSize);
+    }
+    setColorId(nextColor);
+    setSizeId(nextSize);
+    if (matches.length === 1) openFamilyProduct(matches[0].product_id);
+  };
 
   const gallery = useMemo(
     () => sortProductImages(product?.images ?? []).map((image) => image.image_url),
@@ -171,8 +205,21 @@ export const ProductDetailScreen: React.FC = () => {
     categoryName ? { label: 'Danh mục', value: categoryName } : null,
     brandName ? { label: 'Thương hiệu', value: brandName } : null,
     { label: 'Trạng thái', value: product.status },
+    ...product.attribute_values
+      .filter((value) => value.attribute_code !== 'COLOR' && value.attribute_code !== 'SIZE')
+      .map((value) => ({
+        label: metadata.data?.attributes.find((attribute) => attribute.id === value.attribute_id)
+          ?.name ?? value.attribute_name,
+        value: value.label || value.value,
+      })),
   ].filter((item): item is { label: string; value: string } => item !== null);
   const displayName = product.name ?? product.sku;
+  const familyMember = product.family.members.find(
+    (member) => member.product_id === product.product_id,
+  );
+  const selectionReady = familyMember !== undefined
+    && (colorId === null || memberOption(familyMember, 'COLOR')?.attribute_value_id === colorId)
+    && (sizeId === null || memberOption(familyMember, 'SIZE')?.attribute_value_id === sizeId);
 
   return (
     <div className="w-full bg-white text-[#0B2419]">
@@ -221,8 +268,17 @@ export const ProductDetailScreen: React.FC = () => {
           quantity={quantity}
           onQuantityChange={setQuantity}
           onAddToCart={addCurrentProductToCart}
-          attributeDefinitions={metadata.data?.attributes ?? []}
-        />
+          selectionReady={selectionReady}
+        >
+          <ProductFamilySelector
+            family={product.family}
+            currentProductId={product.product_id}
+            colorId={colorId}
+            sizeId={sizeId}
+            onSelectOption={selectFamilyOption}
+            onSelectProduct={openFamilyProduct}
+          />
+        </ProductPurchasePanel>
       </section>
 
       {zoomOpen && (

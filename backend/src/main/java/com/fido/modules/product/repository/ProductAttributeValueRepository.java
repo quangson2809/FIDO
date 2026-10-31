@@ -5,11 +5,14 @@ import com.fido.modules.product.entity.ProductAttributeValueId;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
+import java.util.Collection;
 import java.util.List;
 
 public interface ProductAttributeValueRepository
         extends Repository<ProductAttributeValue, ProductAttributeValueId> {
     List<ProductAttributeValue> findAllByProductIdOrderByAttributeIdAsc(Long productId);
+    List<ProductAttributeValue> findAllByProductIdInOrderByProductIdAscAttributeIdAsc(
+            Collection<Long> productIds);
     ProductAttributeValue save(ProductAttributeValue entity);
     void deleteAllByProductId(Long productId);
 

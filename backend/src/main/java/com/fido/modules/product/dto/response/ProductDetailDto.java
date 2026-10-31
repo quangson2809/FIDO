@@ -17,4 +17,5 @@ public record ProductDetailDto(
         List<ProductImageDto> images,
         LocalDateTime created_at,
         LocalDateTime updated_at,
-        List<ProductAttributeValueDto> attribute_values) {}
+        List<ProductAttributeValueDto> attribute_values,
+        ProductFamilyDto family) {}

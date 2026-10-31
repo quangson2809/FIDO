@@ -3,23 +3,12 @@ import { StorefrontIcon } from '../../../components/StorefrontIcon';
 import { StorefrontImage } from '../../../shared/ui/storefront/StorefrontImage';
 import { QueryFeedback } from '../../../shared/ui/storefront/QueryFeedback';
 import type {
-  AttributeDto,
   CatalogProductView,
-  ProductAttributeValueDto,
   ProductDetailDto,
 } from '../types';
 import { ProductSummaryCard } from './ProductSummaryCard';
 
 const productName = (product: ProductDetailDto): string => product.name ?? product.sku;
-
-const attributeValueLabel = (
-  value: ProductAttributeValueDto,
-  definitions: readonly AttributeDto[],
-): string => {
-  const definition = definitions.find((item) => item.id === value.attribute_id);
-  return definition?.options.find((option) => option.id === value.attribute_value_id)?.label
-    ?? value.label ?? value.value ?? '—';
-};
 
 export const ProductGallerySection: React.FC<{
   product: ProductDetailDto;
@@ -122,9 +111,12 @@ export const ProductPurchasePanel: React.FC<{
   quantity: number;
   onQuantityChange: (quantity: number) => void;
   onAddToCart: () => void;
-  attributeDefinitions?: readonly AttributeDto[];
-}> = ({ product, quantity, onQuantityChange, onAddToCart, attributeDefinitions = [] }) => {
-  const canPurchase = product.status === 'ACTIVE';
+  children?: React.ReactNode;
+  selectionReady?: boolean;
+}> = ({ product, quantity, onQuantityChange, onAddToCart, children,
+  selectionReady = true }) => {
+  const isActive = product.status === 'ACTIVE';
+  const canPurchase = isActive && selectionReady;
   const displayName = productName(product);
 
   return (
@@ -142,7 +134,7 @@ export const ProductPurchasePanel: React.FC<{
           <span
             className={
               'border px-3 py-1 text-[10px] font-bold uppercase tracking-wider ' +
-              (canPurchase
+              (isActive
                 ? 'border-[#C8DDCC] bg-[#EEF6EE] text-[#245A32]'
                 : 'border-[#E2E5DE] bg-[#F3F4EF] text-[#687069]')
             }
@@ -160,39 +152,16 @@ export const ProductPurchasePanel: React.FC<{
         <p className="text-sm text-[#687069]">Sản phẩm chưa có mô tả.</p>
       )}
 
-      <section aria-label="Thuộc tính sản phẩm" className="space-y-3">
-        <h2 className="text-[11px] font-bold uppercase tracking-[0.16em]">
-          Thông tin thuộc tính
-        </h2>
-        {product.attribute_values.length > 0 ? (
-          <dl className="divide-y divide-[#E8E9E3] border-y border-[#E8E9E3]">
-            {product.attribute_values.map((value) => {
-              const definition = attributeDefinitions.find(
-                (item) => item.id === value.attribute_id,
-              );
-              return (
-                <div
-                  key={value.attribute_id}
-                  className="flex items-start justify-between gap-5 py-3 text-sm"
-                >
-                  <dt className="text-[#687069]">{definition?.name ?? value.attribute_name}</dt>
-                  <dd className="max-w-[62%] whitespace-pre-wrap break-words text-right font-semibold">
-                    {attributeValueLabel(value, attributeDefinitions)}
-                  </dd>
-                </div>
-              );
-            })}
-          </dl>
-        ) : (
-          <p className="border-y border-[#E8E9E3] py-4 text-sm text-[#687069]">
-            Sản phẩm chưa có thuộc tính mô tả.
-          </p>
-        )}
-      </section>
+      {children}
 
-      {!canPurchase && (
+      {!isActive && (
         <p className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Sản phẩm hiện chưa khả dụng để mua.
+        </p>
+      )}
+      {isActive && !selectionReady && (
+        <p role="status" className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Chọn SKU phù hợp với màu sắc và kích thước trước khi thêm vào giỏ hàng.
         </p>
       )}
 
@@ -225,7 +194,7 @@ export const ProductPurchasePanel: React.FC<{
             onClick={onAddToCart}
             className="h-12 flex-1 bg-[#0B2419] px-5 text-xs font-bold uppercase tracking-[0.16em] text-white transition hover:bg-[#1B5038] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {canPurchase ? 'Thêm vào giỏ hàng' : 'Không khả dụng'}
+            {!isActive ? 'Không khả dụng' : selectionReady ? 'Thêm vào giỏ hàng' : 'Chọn SKU phù hợp'}
           </button>
         </div>
         <p className="mt-3 text-[10px] leading-5 text-[#687069]">

@@ -44,7 +44,7 @@ Account contract rules:
 | Method | Route | Access | Contract |
 |---|---|---|---|
 | GET | `/catalog/products` | Public | Product search/list; supported filters must be explicitly defined against Product fields and approved attribute behavior. |
-| GET | `/catalog/products/{productId}` | Public | Product detail and descriptive attribute values. |
+| GET | `/catalog/products/{productId}` | Public | Row-owned Product detail, descriptive Option values, ordered gallery and `family` projection of all ACTIVE, non-deleted Products sharing the same root. Public family excludes non-public parents/siblings; no variant generation. |
 | GET | `/catalog/meta` | Public | Product-facing metadata definitions/options, with deterministic ordering. |
 | GET | `/cart` | JWT | Read the sole account-owned `OPEN` Cart. If none exists, return `CartDto(id=null, items=[], subtotal=0)` without writing. Multiple OPEN rows return `409 CART_SELECTION_AMBIGUOUS`; do not merge/select arbitrarily. |
 | POST | `/cart/items` | JWT | Request `product_id, quantity>0`. Add quantity to an existing same-Product line or insert if absent; create an OPEN Cart atomically if none exists. Product must be ACTIVE/non-deleted. Cart does not reserve stock. |

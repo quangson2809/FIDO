@@ -85,6 +85,22 @@ export interface ProductSummaryDto {
   status: ProductStatus;
 }
 
+export interface ProductFamilyMemberDto {
+  product_id: number;
+  parent_product_id: number | null;
+  sku: string;
+  name: string | null;
+  selling_price: number;
+  status: ProductStatus;
+  images: ProductImageDto[];
+  attribute_values: ProductAttributeValueDto[];
+}
+
+export interface ProductFamilyDto {
+  root_product_id: number;
+  members: ProductFamilyMemberDto[];
+}
+
 export interface ProductDetailDto {
   product_id: number;
   parent_product_id: number | null;
@@ -100,6 +116,7 @@ export interface ProductDetailDto {
   created_at: string;
   updated_at: string;
   attribute_values: ProductAttributeValueDto[];
+  family: ProductFamilyDto;
 }
 
 export interface AdminProductSummaryDto {

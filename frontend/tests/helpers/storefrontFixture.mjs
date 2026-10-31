@@ -60,6 +60,20 @@ export const product = {
     },
   ],
 };
+// Public detail now includes the selected Product and its ACTIVE family members.
+product.family = {
+  root_product_id: product.product_id,
+  members: [{
+    product_id: product.product_id,
+    parent_product_id: product.parent_product_id,
+    sku: product.sku,
+    name: product.name,
+    selling_price: product.selling_price,
+    status: product.status,
+    images: product.images,
+    attribute_values: product.attribute_values,
+  }],
+};
 export const productSummary = {
   product_id: product.product_id,
   parent_product_id: product.parent_product_id,

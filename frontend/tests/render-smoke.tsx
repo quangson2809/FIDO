@@ -220,6 +220,14 @@ const product: ProductDetailDto = {
   images: [],
   created_at: '2026-10-07T00:00:00Z',
   updated_at: '2026-10-07T00:00:00Z',
+  family: {
+    root_product_id: 1,
+    members: [{
+      product_id: 1, parent_product_id: null, sku: 'FIDO-TEE',
+      name: 'FIDO Essential Tee', selling_price: 199000, status: 'ACTIVE',
+      images: [], attribute_values: [],
+    }],
+  },
   attribute_values: [
     {
       attribute_id: 1,
@@ -232,14 +240,33 @@ const product: ProductDetailDto = {
   ],
 };
 
+const { familyOptions, matchingFamilyMembers } = await import(
+  '../src/features/catalog/model/productFamilySelection'
+);
+const familyMembers = [
+  { ...product.family.members[0], product_id: 2,
+    attribute_values: [{ attribute_id: 9, attribute_code: 'COLOR',
+      attribute_name: 'Màu', attribute_value_id: 51, value: 'BLACK', label: 'Đen' },
+      { attribute_id: 10, attribute_code: 'SIZE',
+        attribute_name: 'Kích thước', attribute_value_id: 61, value: 'M', label: 'M' }] },
+  { ...product.family.members[0], product_id: 3,
+    attribute_values: [{ attribute_id: 9, attribute_code: 'COLOR',
+      attribute_name: 'Màu', attribute_value_id: 52, value: 'WHITE', label: 'Trắng' },
+      { attribute_id: 10, attribute_code: 'SIZE',
+        attribute_name: 'Kích thước', attribute_value_id: 62, value: 'L', label: 'L' }] },
+];
+assert.deepEqual(matchingFamilyMembers(familyMembers, 51, 61).map(v => v.product_id), [2]);
+assert.deepEqual(matchingFamilyMembers(familyMembers, 51, 62), []);
+assert.equal(familyOptions(familyMembers, 'COLOR').length, 2);
+
 const purchasePanelHtml = renderToStaticMarkup(
   <ProductPurchasePanel product={product} quantity={1} onQuantityChange={noOp} onAddToCart={noOp} />,
 );
 assert.match(purchasePanelHtml, /FIDO Essential Tee/);
 assert.match(purchasePanelHtml, /199\.000₫/);
 assert.match(purchasePanelHtml, /Thêm vào giỏ hàng/);
-assert.match(purchasePanelHtml, /Chất liệu/);
-assert.match(purchasePanelHtml, /Cotton/);
+assert.doesNotMatch(purchasePanelHtml, /Chất liệu|Cotton/,
+  'descriptive Attributes appear in the separate Product specs grid');
 
 const adminProduct: AdminProductDetailDto = {
   ...product,
