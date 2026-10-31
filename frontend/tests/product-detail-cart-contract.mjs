@@ -223,7 +223,8 @@ try {
   await page.getByText('219.000₫', { exact: true }).waitFor();
   await page.locator('img.object-contain[src*="wardrobe.svg"]').waitFor({ state: 'attached' });
   await page.getByRole('button', { name: 'Xem ảnh 2' }).click();
-  await page.locator('img.object-contain[src*="details.svg"]').waitFor({ state: 'attached' });
+  await page.locator('img.h-full.w-full.object-contain[src*="details.svg"]')
+    .waitFor({ state: 'attached' });
   await page.getByText('Chất liệu', { exact: true }).waitFor();
   await page.getByText('Cotton', { exact: true }).waitFor();
   assert.equal(await page.getByRole('button', { name: 'Đen', exact: true })
