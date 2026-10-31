@@ -11,7 +11,7 @@ const displayMoney = (value: number | null): string =>
 const primaryImage = (images: readonly ProductImageDto[]): string | null => {
   const primary = images.find((image) => image.is_primary);
   const first = [...images].sort((left, right) => left.sort_order - right.sort_order)[0];
-  return resolveImageUrl((primary ?? first)?.image_url ?? null);
+  return resolveImageUrl((primary ?? first)?.image_url ?? null) ?? null;
 };
 
 const RelationCard: React.FC<{
