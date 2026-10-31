@@ -197,7 +197,7 @@ try {
   await page.getByText('199.000₫', { exact: true }).waitFor();
   await page.getByText('Chất liệu', { exact: true }).waitFor();
   await page.getByText('Cotton', { exact: true }).waitFor();
-  await page.getByRole('heading', { name: 'MÔ TẢ SẢN PHẨM' }).waitFor();
+  await page.locator('h3').filter({ hasText: 'MÔ TẢ SẢN PHẨM' }).waitFor();
   await page.getByText('Áo thun mềm mại, dễ phối đồ.').waitFor();
   assert.equal(await page.locator('img[onerror]').count(), 0,
     'HTML description cannot inject event handlers');

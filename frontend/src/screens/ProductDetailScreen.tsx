@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useCart } from '../features/cart/hooks/useCart';
 import { catalogService } from '../features/catalog/api/service';
@@ -146,12 +146,10 @@ export const ProductDetailScreen: React.FC = () => {
       && rootMember && rootMember.product_id !== displayProduct.product_id
       && rootMember.images.length > 0,
   );
-  const gallery = useMemo(
-    () => sortProductImages(
-      usingFamilyFallback ? rootMember?.images ?? [] : displayProduct?.images ?? [],
-    ).map((image) => image.image_url),
-    [usingFamilyFallback, rootMember?.images, displayProduct?.images],
-  );
+  // Rendering a small family gallery is cheaper and safer than memoizing mutable DTO arrays.
+  const gallery = sortProductImages(
+    usingFamilyFallback ? rootMember?.images ?? [] : displayProduct?.images ?? [],
+  ).map((image) => image.image_url);
   const selectionReady = detailReady && routedMember !== undefined
     && (colorId === null || memberOption(routedMember, 'COLOR')?.attribute_value_id === colorId)
     && (sizeId === null || memberOption(routedMember, 'SIZE')?.attribute_value_id === sizeId);
