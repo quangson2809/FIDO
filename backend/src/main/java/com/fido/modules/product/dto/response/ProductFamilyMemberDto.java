@@ -10,4 +10,6 @@ public record ProductFamilyMemberDto(
         Long selling_price,
         String status,
         List<ProductImageDto> images,
-        List<ProductAttributeValueDto> attribute_values) {}
+        List<ProductAttributeValueDto> attribute_values,
+        Integer available_quantity,
+        boolean purchasable) {}

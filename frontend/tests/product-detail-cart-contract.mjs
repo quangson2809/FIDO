@@ -37,12 +37,17 @@ const product = {
   sku: 'FIDO-TEE-001',
   name: 'Áo FIDO',
   slug: 'ao-fido',
-  description: 'Thiết kế tối giản',
+  description: '<h3>MÔ TẢ SẢN PHẨM</h3><p>Áo thun mềm mại, dễ phối đồ.</p>'
+    + '<img src="/images/about/details.svg" onerror="window.__unsafe = true">'
+    + '<script>window.__unsafe = true</script>',
   category,
   brand,
   selling_price: 199000,
   status: 'ACTIVE',
-  images: [],
+  images: [{
+    id: 1001, image_url: '/images/about/palette.svg',
+    is_primary: true, sort_order: 0,
+  }],
   created_at: date,
   updated_at: date,
   attribute_values: [attribute],
@@ -88,17 +93,21 @@ blackM.images.push({
 });
 const blackL = child(3, 'FIDO-TEE-BLACK-L', 'Áo FIDO Đen L', 239000,
   colorValue(201, 'BLACK', 'Đen'), sizeValue(302, 'L'), 'black-l');
+blackL.images = []; // A family member with no gallery falls back to root images in the UI.
 const whiteL = child(4, 'FIDO-TEE-WHITE-L', 'Áo FIDO Trắng L', 229000,
   colorValue(202, 'WHITE', 'Trắng'), sizeValue(302, 'L'), 'white-l');
 const whiteLAlt = child(5, 'FIDO-TEE-WHITE-L-ALT', 'Áo FIDO Trắng L kiểu khác', 249000,
   colorValue(202, 'WHITE', 'Trắng'), sizeValue(302, 'L'), 'white-l-alt');
 const familyProducts = [product, blackM, blackL, whiteL, whiteLAlt];
+const availableByProduct = new Map([[1, 8], [2, 2], [3, 0], [4, 3], [5, 4]]);
 const family = {
   root_product_id: 1,
   members: familyProducts.map(({ product_id, parent_product_id, sku, name,
     selling_price, status, images, attribute_values }) => ({
     product_id, parent_product_id, sku, name, selling_price,
     status, images, attribute_values,
+    available_quantity: availableByProduct.get(product_id),
+    purchasable: availableByProduct.get(product_id) > 0,
   })),
 };
 const detailed = new Map(familyProducts.map((p) => [p.product_id, { ...p, family }]));
@@ -188,6 +197,12 @@ try {
   await page.getByText('199.000₫', { exact: true }).waitFor();
   await page.getByText('Chất liệu', { exact: true }).waitFor();
   await page.getByText('Cotton', { exact: true }).waitFor();
+  await page.getByRole('heading', { name: 'MÔ TẢ SẢN PHẨM' }).waitFor();
+  await page.getByText('Áo thun mềm mại, dễ phối đồ.').waitFor();
+  assert.equal(await page.locator('img[onerror]').count(), 0,
+    'HTML description cannot inject event handlers');
+  assert.equal(await page.evaluate(() => window.__unsafe), undefined,
+    'HTML description cannot run scripts');
   await page.getByRole('button', { name: 'Tăng số lượng' }).click();
   await page.getByRole('button', { name: 'Thêm vào giỏ hàng', exact: true }).click();
   await page.getByRole('dialog', { name: 'Giỏ hàng của bạn' }).waitFor();
@@ -213,6 +228,12 @@ try {
   await page.getByText('Cotton', { exact: true }).waitFor();
   assert.equal(await page.getByRole('button', { name: 'Đen', exact: true })
     .getAttribute('aria-pressed'), 'true');
+  assert.equal(await page.getByRole('button', { name: 'L · Hết hàng' }).isDisabled(),
+    true, 'out-of-stock size must be disabled for selected color');
+  await page.getByRole('button', { name: 'Tăng số lượng' }).click();
+  assert.equal(await page.getByRole('button', { name: 'Tăng số lượng' }).isDisabled(),
+    true, 'quantity cannot exceed the current stock');
+  await page.getByRole('button', { name: 'Giảm số lượng' }).click();
 
   await page.getByRole('button', { name: 'Thêm vào giỏ hàng', exact: true }).click();
   assert.deepEqual(cartRequests.at(-1), { product_id: 2, quantity: 1 },
@@ -222,7 +243,7 @@ try {
 
   // White/M does not exist. Switching color clears the incompatible size.
   await page.getByRole('button', { name: 'Trắng', exact: true }).click();
-  assert.equal(await page.getByRole('button', { name: 'M', exact: true }).isDisabled(),
+  assert.equal(await page.getByRole('button', { name: 'M · Hết hàng' }).isDisabled(),
     true, 'unavailable COLOR/SIZE combination must be disabled');
   await page.getByRole('button', { name: 'L', exact: true }).click();
   await page.getByText('Có nhiều SKU cùng màu và kích thước.', { exact: false }).waitFor();
@@ -238,6 +259,13 @@ try {
     'Ambiguous COLOR/SIZE requires explicit SKU selection');
   await page.getByRole('dialog', { name: 'Giỏ hàng của bạn' })
     .getByRole('button', { name: 'Đóng giỏ hàng' }).click();
+
+  await page.goto('http://localhost:5184/products/3');
+  await page.getByText('SKU: FIDO-TEE-BLACK-L', { exact: true }).waitFor();
+  await page.getByText('Gallery tham khảo từ Product gốc', { exact: false }).waitFor();
+  await page.locator('img.object-contain[src*="palette.svg"]').waitFor({ state: 'attached' });
+  assert.equal(await page.getByRole('button', { name: 'Hết hàng', exact: true }).isDisabled(),
+    true, 'sold-out Product is viewable but cannot be added to Cart');
 
   detail = { ...detailed.get(1), status: 'INACTIVE' };
   await page.goto('http://localhost:5184/products/1');

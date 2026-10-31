@@ -10,8 +10,12 @@ import {
 } from '../features/catalog/components/ProductDetailSections';
 import type { ProductDetailDto } from '../features/catalog/types';
 import { ProductFamilySelector } from '../features/catalog/components/ProductFamilySelector';
+import { ProductLongDescription } from '../features/catalog/components/ProductLongDescription';
 import {
+  familyOptions,
   matchingFamilyMembers,
+  matchingPurchasableMembers,
+  memberIsPurchasable,
   memberOption,
   type FamilyOptionCode,
 } from '../features/catalog/model/productFamilySelection';
@@ -98,7 +102,9 @@ export const ProductDetailScreen: React.FC = () => {
   }, [productId, retry]);
 
   const openFamilyProduct = (nextProductId: number) => {
-    if (nextProductId !== product?.product_id) {
+    if (String(nextProductId) !== productId) {
+      setActiveImageIndex(0);
+      setZoomOpen(false);
       navigate(productDetailPath(nextProductId));
     }
   };
@@ -107,25 +113,54 @@ export const ProductDetailScreen: React.FC = () => {
     if (!product) return;
     let nextColor = code === 'COLOR' ? optionId : colorId;
     let nextSize = code === 'SIZE' ? optionId : sizeId;
-    let matches = matchingFamilyMembers(product.family.members, nextColor, nextSize);
+    const matches = matchingFamilyMembers(product.family.members, nextColor, nextSize);
     if (matches.length === 0) {
       // Color/size choices are independent; reset the incompatible opposite axis.
       if (code === 'COLOR') nextSize = null;
       else nextColor = null;
-      matches = matchingFamilyMembers(product.family.members, nextColor, nextSize);
+      // The opposite selected Option does not exist in this family combination.
     }
     setColorId(nextColor);
     setSizeId(nextSize);
-    if (matches.length === 1) openFamilyProduct(matches[0].product_id);
+    const buyable = matchingPurchasableMembers(product.family.members, nextColor, nextSize);
+    const hasColor = familyOptions(product.family.members, 'COLOR').length > 0;
+    const hasSize = familyOptions(product.family.members, 'SIZE').length > 0;
+    // Do not silently choose a size when the customer only selected a color.
+    if (buyable.length === 1 && (!hasColor || nextColor !== null)
+        && (!hasSize || nextSize !== null)) {
+      openFamilyProduct(buyable[0].product_id);
+    }
   };
 
-  const gallery = useMemo(
-    () => sortProductImages(product?.images ?? []).map((image) => image.image_url),
-    [product],
+  // Optimistically use already-fetched family data while the selected Product detail loads.
+  // Keep Cart disabled until the matching Product ID is confirmed by the detail API.
+  const routedMember = product?.family.members.find((member) =>
+    String(member.product_id) === productId);
+  const detailReady = product !== null && String(product.product_id) === productId;
+  const displayProduct: ProductDetailDto | null =
+    product && routedMember && !detailReady ? { ...product, ...routedMember } : product;
+  const rootMember = product?.family.members.find(
+    (member) => member.product_id === product.family.root_product_id);
+  const usingFamilyFallback = Boolean(
+    displayProduct && !displayProduct.images.length
+      && rootMember && rootMember.product_id !== displayProduct.product_id
+      && rootMember.images.length > 0,
   );
+  const gallery = useMemo(
+    () => sortProductImages(
+      usingFamilyFallback ? rootMember?.images ?? [] : displayProduct?.images ?? [],
+    ).map((image) => image.image_url),
+    [usingFamilyFallback, rootMember?.images, displayProduct?.images],
+  );
+  const selectionReady = detailReady && routedMember !== undefined
+    && (colorId === null || memberOption(routedMember, 'COLOR')?.attribute_value_id === colorId)
+    && (sizeId === null || memberOption(routedMember, 'SIZE')?.attribute_value_id === sizeId);
+  const availableQuantity = routedMember?.available_quantity ?? 0;
+  const purchasable = routedMember ? memberIsPurchasable(routedMember) : false;
 
   const addCurrentProductToCart = () => {
-    if (!product || product.status !== 'ACTIVE') return;
+    if (!product || !detailReady || !selectionReady || !purchasable
+      || quantity < 1 || quantity > availableQuantity || product.status !== 'ACTIVE') return;
     if (!isAuthenticated) {
       showToast('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.');
       navigate('/login', { state: { from: '/products/' + encodeURIComponent(productId) } });
@@ -155,7 +190,7 @@ export const ProductDetailScreen: React.FC = () => {
     );
   }
 
-  if (loading) {
+  if (loading && (!product || !routedMember)) {
     return (
       <div
         role="status"
@@ -166,7 +201,7 @@ export const ProductDetailScreen: React.FC = () => {
     );
   }
 
-  if (error || !product) {
+  if (error || !product || !displayProduct) {
     return (
       <div className="min-h-[60vh] bg-[#FFFDF5] p-14 text-center">
         <p role="alert" className="text-sm text-red-700">
@@ -213,13 +248,7 @@ export const ProductDetailScreen: React.FC = () => {
         value: value.label || value.value,
       })),
   ].filter((item): item is { label: string; value: string } => item !== null);
-  const displayName = product.name ?? product.sku;
-  const familyMember = product.family.members.find(
-    (member) => member.product_id === product.product_id,
-  );
-  const selectionReady = familyMember !== undefined
-    && (colorId === null || memberOption(familyMember, 'COLOR')?.attribute_value_id === colorId)
-    && (sizeId === null || memberOption(familyMember, 'SIZE')?.attribute_value_id === sizeId);
+  const displayName = displayProduct.name ?? displayProduct.sku;
 
   return (
     <div className="w-full bg-white text-[#0B2419]">
@@ -233,14 +262,14 @@ export const ProductDetailScreen: React.FC = () => {
           </Link>
           <span aria-hidden="true">/</span>
           <Link to="/products">Sản phẩm</Link>
-          {product.category && (
+          {detailReady && displayProduct.category && (
             <>
               <span aria-hidden="true">/</span>
               <Link
-                to={categoryProductsPath(product.category.category_id)}
+                to={categoryProductsPath(displayProduct.category.category_id)}
                 className="hover:text-[#0B2419]"
               >
-                {categoryName ?? product.category.name}
+                {categoryName ?? displayProduct.category.name}
               </Link>
             </>
           )}
@@ -254,25 +283,33 @@ export const ProductDetailScreen: React.FC = () => {
       <section className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-7 sm:px-8 lg:grid-cols-12 lg:gap-10 lg:px-14">
         <div className="space-y-6 lg:col-span-7 xl:col-span-8">
           <ProductGallerySection
-            product={product}
+            product={displayProduct}
             gallery={gallery}
             activeImageIndex={activeImageIndex}
             onSelectImage={setActiveImageIndex}
             onMoveImage={moveImage}
             onZoom={() => setZoomOpen(true)}
+            usingFamilyFallback={usingFamilyFallback}
           />
-          <ProductSpecsSection items={specItems} />
+          <ProductSpecsSection items={detailReady ? specItems : []} />
         </div>
         <ProductPurchasePanel
-          product={product}
+          product={displayProduct}
           quantity={quantity}
           onQuantityChange={setQuantity}
           onAddToCart={addCurrentProductToCart}
           selectionReady={selectionReady}
+          availableQuantity={availableQuantity}
+          purchasable={purchasable}
         >
+          {loading && !detailReady && (
+            <p role="status" className="text-xs text-[#687069]">
+              Đang cập nhật thông tin Product được chọn...
+            </p>
+          )}
           <ProductFamilySelector
             family={product.family}
-            currentProductId={product.product_id}
+            currentProductId={displayProduct.product_id}
             colorId={colorId}
             sizeId={sizeId}
             onSelectOption={selectFamilyOption}
@@ -280,6 +317,8 @@ export const ProductDetailScreen: React.FC = () => {
           />
         </ProductPurchasePanel>
       </section>
+
+      <ProductLongDescription description={detailReady ? displayProduct.description : null} />
 
       {zoomOpen && (
         <StorefrontDialog

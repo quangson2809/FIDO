@@ -108,6 +108,7 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
     void productIdQueriesAndCategoryBrandSlugsUseCanonicalRows() throws Exception {
         Employee writer = catalogWriter();
         CatalogFixture fixture = createCatalog(writer);
+        createOperationalWarehouse();
         var adminDetail = call("GET", "/api/v1/admin/products/" + fixture.productId(), writer.token(), null);
         var publicDetail = call("GET", "/api/v1/catalog/products/" + fixture.productId(), null, null);
 

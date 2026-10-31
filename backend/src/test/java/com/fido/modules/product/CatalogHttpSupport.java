@@ -163,6 +163,16 @@ abstract class CatalogHttpSupport {
         for (Long accountId : accounts) db.update("DELETE FROM accounts WHERE id=?", accountId);
     }
 
+    /** Explicit operational warehouse fixture for public stock-aware Product detail tests. */
+    long createOperationalWarehouse() {
+        String code = "CATALOG-STOCK-" + UUID.randomUUID();
+        db.update("INSERT INTO warehouses(code,name,status) VALUES (?,?, 'ACTIVE')",
+                code, "Catalog stock test");
+        long id = db.queryForObject("SELECT id FROM warehouses WHERE code=?", Long.class, code);
+        warehouses.add(id);
+        return id;
+    }
+
     CatalogFixture createCatalog(Employee writer) throws Exception {
         var categoryResponse = call("POST", "/api/v1/admin/categories", writer.token(),
                 Map.of("name", "Category " + UUID.randomUUID()));

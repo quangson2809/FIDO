@@ -3,6 +3,7 @@ package com.fido.modules.product.service;
 import com.fido.common.response.ApiListResponse;
 import com.fido.common.response.Pagination;
 import com.fido.modules.product.dto.response.CatalogMetaDto;
+import com.fido.modules.inventory.service.InventoryAvailabilityService;
 import com.fido.modules.product.dto.response.ProductFamilyDto;
 import com.fido.modules.product.dto.response.ProductFamilyMemberDto;
 import com.fido.modules.product.dto.response.ProductImageDto;
@@ -42,6 +43,7 @@ import java.util.stream.Collectors;
 public class PublicCatalogQueryService {
 
     private final ProductRepository products;
+    private final InventoryAvailabilityService inventory;
     private final ProductImageRepository images;
     private final ProductImageReadService imageRead;
     private final ProductAttributeValueReadService attributeValueRead;
@@ -54,6 +56,7 @@ public class PublicCatalogQueryService {
 
     public PublicCatalogQueryService(
             ProductRepository products,
+            InventoryAvailabilityService inventory,
             ProductImageRepository images,
             ProductImageReadService imageRead,
             ProductAttributeValueReadService attributeValueRead,
@@ -64,6 +67,7 @@ public class PublicCatalogQueryService {
             AttributeRepository attributes,
             AttributeOptionRepository options) {
         this.products = products;
+        this.inventory = inventory;
         this.images = images;
         this.imageRead = imageRead;
         this.attributeValueRead = attributeValueRead;
@@ -135,13 +139,18 @@ public class PublicCatalogQueryService {
         images.findAllByProductIdInOrderByProductIdAscSortOrderAscImageIdAsc(ids)
                 .forEach(image -> galleries.get(image.getProductId()).add(CatalogMapper.image(image)));
         Map<Long, List<ProductAttributeValueDto>> familyValues = attributeValueRead.forProducts(ids);
-        List<ProductFamilyMemberDto> members = familyProducts.stream().map(row ->
-                new ProductFamilyMemberDto(
-                        row.getProductId(), row.getParentProductId(), row.getSku(), row.getName(),
-                        row.getSellingPrice(), row.getStatus(),
-                        List.copyOf(galleries.get(row.getProductId())),
-                        familyValues.getOrDefault(row.getProductId(), List.of())))
-                .toList();
+        // Inventory is keyed by Product ID in the configured operational warehouse.
+        // Read all family balances at once; an absent balance is zero, never inherited.
+        Map<Long, Integer> balances = inventory.availableQuantities(ids);
+        List<ProductFamilyMemberDto> members = familyProducts.stream().map(row -> {
+            int available = balances.getOrDefault(row.getProductId(), 0);
+            return new ProductFamilyMemberDto(
+                    row.getProductId(), row.getParentProductId(), row.getSku(), row.getName(),
+                    row.getSellingPrice(), row.getStatus(),
+                    List.copyOf(galleries.get(row.getProductId())),
+                    familyValues.getOrDefault(row.getProductId(), List.of()),
+                    available, isPublic(row) && available > 0);
+        }).toList();
         Category category =
                 product.getCategoryId() == null ? null : references.category(product.getCategoryId());
         Brand brand = product.getBrandId() == null ? null : references.brand(product.getBrandId());

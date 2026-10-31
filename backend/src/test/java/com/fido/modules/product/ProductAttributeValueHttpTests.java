@@ -75,6 +75,9 @@ class ProductAttributeValueHttpTests extends CatalogHttpSupport {
                 childId, secondGalleryUrl);
         long draftId = createProduct(writer, "CHILD-DRAFT-" + suffix,
                 "Child not published", 145000, parentId, "DRAFT", List.of());
+        long warehouseId = createOperationalWarehouse();
+        db.update("INSERT INTO inventories(warehouse_id,product_id,quantity_on_hand) VALUES (?,?,?)",
+                warehouseId, childId, 8);
 
         Result publicDetail = call("GET", "/api/v1/catalog/products/" + childId, null, null);
         assertEquals(200, publicDetail.status(), publicDetail.body());
@@ -87,7 +90,12 @@ class ProductAttributeValueHttpTests extends CatalogHttpSupport {
         var members = childPublic.get("family").get("members");
         assertEquals(2, members.size(), "Public family excludes DRAFT siblings");
         assertEquals(parentId, members.get(0).get("product_id").asLong());
+        assertEquals(0, members.get(0).get("available_quantity").asInt());
+        assertEquals(false, members.get(0).get("purchasable").asBoolean(),
+                "Parent cannot inherit its child's stock");
         assertEquals(childId, members.get(1).get("product_id").asLong());
+        assertEquals(8, members.get(1).get("available_quantity").asInt());
+        assertEquals(true, members.get(1).get("purchasable").asBoolean());
         assertEquals(0, members.get(0).get("images").size(), "Root does not inherit child gallery");
         assertEquals(galleryUrl, members.get(1).get("images").get(0).get("image_url").asText());
         assertEquals("COTTON", findValue(members.get(1).get("attribute_values"), materialId)
@@ -106,6 +114,13 @@ class ProductAttributeValueHttpTests extends CatalogHttpSupport {
         assertEquals(200, childWithHiddenRoot.status(), childWithHiddenRoot.body());
         assertEquals(1, childWithHiddenRoot.data().get("data").get("family").get("members").size(),
                 "Inactive root is not disclosed to public family");
+        db.update("UPDATE inventories SET quantity_on_hand=0 WHERE warehouse_id=? AND product_id=?",
+                warehouseId, childId);
+        Result soldOut = call("GET", "/api/v1/catalog/products/" + childId, null, null);
+        assertEquals(200, soldOut.status(), soldOut.body());
+        var soldOutMember = soldOut.data().get("data").get("family").get("members").get(0);
+        assertEquals(0, soldOutMember.get("available_quantity").asInt());
+        assertEquals(false, soldOutMember.get("purchasable").asBoolean());
         assertEquals(childId, childWithHiddenRoot.data().get("data").get("family")
                 .get("members").get(0).get("product_id").asLong());
     }

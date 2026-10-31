@@ -94,6 +94,8 @@ export interface ProductFamilyMemberDto {
   status: ProductStatus;
   images: ProductImageDto[];
   attribute_values: ProductAttributeValueDto[];
+  available_quantity: number;
+  purchasable: boolean;
 }
 
 export interface ProductFamilyDto {

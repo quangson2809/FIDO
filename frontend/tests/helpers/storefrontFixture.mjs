@@ -72,6 +72,8 @@ product.family = {
     status: product.status,
     images: product.images,
     attribute_values: product.attribute_values,
+    available_quantity: 8,
+    purchasable: true,
   }],
 };
 export const productSummary = {

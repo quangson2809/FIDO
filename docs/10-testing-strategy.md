@@ -8,6 +8,8 @@ This is the target testing plan for the revised 30-table option-only catalog ERD
 - Order, COD Payment, ShippingInfo and GoodsReceipt transition/actor policy.
 - Product parent/child depth and cycle validation.
 - Option-only Attribute equality filtering, same-Attribute Option ownership and rejection of typed filters.
+- Public Product-family stock projection: zero for absent inventory, positive per Product ID in the operational warehouse, purchasable false at zero and no parent-stock inheritance.
+- Client COLOR/SIZE selectors: stock-disabled options, duplicate-SKU disambiguation, quantity cap, gallery root-only display fallback, exact Product-ID Cart request and safe HTML description rendering.
 - Integer-VND calculation, HALF-UP order discount and largest-remainder line allocation with Product-ID tie-break.
 - Request mapping, safe error codes and DTO projection without persistence.
 
