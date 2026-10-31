@@ -206,9 +206,9 @@ try {
   await page.waitForURL('**/products/2');
   await page.getByText('SKU: FIDO-TEE-BLACK-M', { exact: true }).waitFor();
   await page.getByText('219.000₫', { exact: true }).waitFor();
-  await page.locator('img[src*="wardrobe.svg"]').first().waitFor();
+  await page.locator('img.object-contain[src*="wardrobe.svg"]').waitFor({ state: 'attached' });
   await page.getByRole('button', { name: 'Xem ảnh 2' }).click();
-  await page.locator('img.object-contain[src*="details.svg"]').waitFor();
+  await page.locator('img.object-contain[src*="details.svg"]').waitFor({ state: 'attached' });
   await page.getByText('Chất liệu', { exact: true }).waitFor();
   await page.getByText('Cotton', { exact: true }).waitFor();
   assert.equal(await page.getByRole('button', { name: 'Đen', exact: true })
@@ -232,7 +232,7 @@ try {
   await page.waitForURL('**/products/5');
   await page.getByText('SKU: FIDO-TEE-WHITE-L-ALT', { exact: true }).waitFor();
   await page.getByText('249.000₫', { exact: true }).waitFor();
-  await page.locator('img.object-contain[src*="wardrobe.svg"]').first().waitFor();
+  await page.locator('img.object-contain[src*="wardrobe.svg"]').waitFor({ state: 'attached' });
   await page.getByRole('button', { name: 'Thêm vào giỏ hàng', exact: true }).click();
   assert.deepEqual(cartRequests.at(-1), { product_id: 5, quantity: 1 },
     'Ambiguous COLOR/SIZE requires explicit SKU selection');
