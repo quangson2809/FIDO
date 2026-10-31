@@ -165,7 +165,7 @@ try {
     requests.find((item) => item.method === 'POST' && item.path === '/admin/catalog/attributes')?.body,
     {
       code: 'WEIGHT',
-      name: 'Trọng lượng',
+      name: 'Định lượng',
       is_required: false,
       is_variant_defining: false,
       sort_order: 2,
