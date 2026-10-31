@@ -83,6 +83,25 @@ const initialProduct = {
   parent_product: null, children: [],
 };
 const clone = (value) => structuredClone(value);
+const relation = (product) => ({
+  product_id: product.product_id,
+  parent_product_id: product.parent_product_id,
+  sku: product.sku,
+  name: product.name,
+  slug: product.slug,
+  description: product.description,
+  category: product.category,
+  brand: product.brand,
+  category_id: product.category_id,
+  brand_id: product.brand_id,
+  selling_price: product.selling_price,
+  cost_price: product.cost_price,
+  status: product.status,
+  attribute_values: product.attribute_values,
+  images: product.images,
+  created_at: product.created_at,
+  updated_at: product.updated_at,
+});
 let products = new Map([[101, clone(initialProduct)]]);
 let nextProductId = 202;
 let failNextUpload = false;
@@ -169,7 +188,17 @@ await page.route('**/api/v1/**', async (route) => {
   const detailMatch = path.match(/^\/admin\/products\/(\d+)$/);
   if (method === 'GET' && detailMatch) {
     const product = products.get(Number(detailMatch[1]));
-    return product ? send(route, { data: clone(product) }) : send(route, { message: 'Product not found' }, 404);
+    if (!product) return send(route, { message: 'Product not found' }, 404);
+    const parent = product.parent_product_id === null
+      ? null : products.get(product.parent_product_id);
+    const children = [...products.values()].filter((candidate) =>
+      candidate.parent_product_id === product.product_id);
+    return send(route, { data: {
+      ...clone(product),
+      parent_product: parent ? relation(parent) : null,
+      child_product_ids: children.map((child) => child.product_id),
+      children: children.map(relation),
+    } });
   }
   if (method === 'PATCH' && path === '/admin/products/101') {
     const product = products.get(101);
@@ -237,6 +266,24 @@ try {
   await page.getByRole('button', { name: 'Thử tải ảnh lại', exact: true }).click();
   await page.getByText('Product #202 đã được tạo.', { exact: true }).waitFor();
   assert.equal(requests.filter((item) => item.method === 'POST' && item.path === '/admin/products').length, 1, 'retry must not create duplicate Product');
+
+  // The parent detail must expose every direct child as a navigable Product,
+  // and the child detail must provide a route back to its parent.
+  await page.goto('http://localhost:5182/admin/products/101', { waitUntil: 'domcontentloaded' });
+  const relations = page.getByRole('region', { name: 'Quan hệ Product' });
+  await relations.getByText('TEE-NEW', { exact: true }).waitFor();
+  await relations.getByText('Trắng', { exact: true }).waitFor();
+  await relations.getByText('320.000₫', { exact: true }).waitFor();
+  await relations.getByRole('link', { name: 'Xem chi tiết Product #202' }).click();
+  await page.waitForURL('**/admin/products/202');
+  await page.getByRole('heading', { name: 'Áo mới', exact: true }).waitFor();
+  assert.ok(requests.some((item) =>
+    item.method === 'GET' && item.path === '/admin/products/202'),
+  'child navigation loads the independent Product detail');
+  await page.getByRole('region', { name: 'Quan hệ Product' })
+    .getByRole('link', { name: 'Xem Product cha #101' }).click();
+  await page.waitForURL('**/admin/products/101');
+  await page.getByRole('heading', { name: 'Áo thử nghiệm', exact: true }).waitFor();
 
   await page.goto('http://localhost:5182/admin/products/101?edit=1', { waitUntil: 'domcontentloaded' });
   await page.getByRole('heading', { name: 'Chỉnh sửa Product', exact: true }).waitFor();

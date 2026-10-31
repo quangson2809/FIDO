@@ -8,6 +8,7 @@ import {
   AdminProductGallerySection,
   AdminProductInfoSection,
 } from '../../features/catalog/components/AdminProductDetailSections';
+import { AdminProductRelationsSection } from '../../features/catalog/components/AdminProductRelationsSection';
 import {
   attributeDraftFromValues,
   buildProductAttributeValueIds,
@@ -518,6 +519,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
           onCancel={cancelProductEdit}
         />
       )}
+      <AdminProductRelationsSection product={product} />
       <AdminProductGallerySection
         productName={product.name ?? product.sku}
         images={orderedImages}

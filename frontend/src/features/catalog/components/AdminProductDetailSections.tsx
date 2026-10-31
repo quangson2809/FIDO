@@ -40,9 +40,10 @@ export const AdminProductInfoSection: React.FC<{
       <div><dt className="text-xs text-[#606863]">Giá vốn</dt><dd>{product.cost_price === null ? '—' : product.cost_price.toLocaleString('vi-VN') + '₫'}</dd></div>
       <div><dt className="text-xs text-[#606863]">Product cha</dt><dd>{product.parent_product === null ? '—' : '#' + product.parent_product.product_id + ' · ' + product.parent_product.sku}</dd></div>
       <div><dt className="text-xs text-[#606863]">Slug</dt><dd>{product.slug ?? '—'}</dd></div>
+      <div><dt className="text-xs text-[#606863]">Ngày tạo</dt><dd>{product.created_at.replace('T', ' ')}</dd></div>
+      <div><dt className="text-xs text-[#606863]">Cập nhật lần cuối</dt><dd>{product.updated_at.replace('T', ' ')}</dd></div>
       <div className="sm:col-span-2"><dt className="text-xs text-[#606863]">Mô tả</dt><dd className="whitespace-pre-line">{product.description ?? '—'}</dd></div>
     </dl>}
-    {product.children.length > 0 && <div className="mt-5 border-t border-[#E2E5DE] pt-4"><h3 className="text-xs font-bold uppercase tracking-wider">Sản phẩm con</h3><ul className="mt-2 space-y-1 text-sm">{product.children.map((child) => <li key={child.product_id}>#{child.product_id} · {child.sku} · {child.name ?? 'Chưa đặt tên'} · {child.status}</li>)}</ul></div>}
     {product.attribute_values.length > 0 && <div className="mt-5 border-t border-[#E2E5DE] pt-4"><h3 className="text-xs font-bold uppercase tracking-wider">Thuộc tính sản phẩm</h3><dl className="mt-2 divide-y divide-[#E2E5DE]">{product.attribute_values.map((value) => <div key={value.attribute_id} className="flex justify-between gap-4 py-2 text-sm"><dt className="text-[#606863]">{value.attribute_name}</dt><dd className="text-right font-medium">{attributeDisplayValue(value)}</dd></div>)}</dl></div>}
   </section>;
 };
