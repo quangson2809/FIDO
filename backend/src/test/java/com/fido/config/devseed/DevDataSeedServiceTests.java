@@ -91,6 +91,33 @@ class DevDataSeedServiceTests {
         assertEquals(17, firstCounts.get("inventories"));
         assertEquals(25, firstCounts.get("inventory_transactions"));
 
+        // Each +84 seed number must map to exactly ten national digits (0 + nine digits).
+        List<String> accountPhones = jdbc.queryForList(
+                "SELECT phone FROM accounts WHERE id BETWEEN 900001 AND 900008 ORDER BY id",
+                String.class);
+        assertEquals(
+                List.of(
+                        "+84909000001", "+84909000002", "+84909000003", "+84909000004",
+                        "+84909000005", "+84909000006", "+84909000007", "+84909000008"),
+                accountPhones);
+        List<String> allSeedPhones = jdbc.queryForList(
+                """
+                SELECT phone FROM accounts WHERE id BETWEEN 900001 AND 900008
+                UNION ALL SELECT recipient_phone FROM addresses WHERE id BETWEEN 910001 AND 910003
+                UNION ALL SELECT recipient_phone FROM order_addresses
+                    WHERE order_id IN (1001001,1001002,1001003,1001004,1001005,1001006,1001101,1001102,1001103)
+                UNION ALL SELECT recipient_phone FROM shipping_infos
+                    WHERE order_id IN (1001001,1001002,1001003,1001004,1001005,1001006,1001101,1001102,1001103)
+                """,
+                String.class);
+        assertEquals(29, allSeedPhones.size());
+        for (String phone : allSeedPhones) {
+            assertTrue(phone.matches("\\+84[0-9]{9}"),
+                    "Seed phone must use +84 followed by exactly nine digits: " + phone);
+            assertTrue(("0" + phone.substring(3)).matches("0[0-9]{9}"),
+                    "Seed phone must map to a ten-digit national phone: " + phone);
+        }
+
         String passwordHash =
                 jdbc.queryForObject(
                         "SELECT password_hash FROM accounts WHERE id=900002", String.class);
@@ -193,7 +220,7 @@ class DevDataSeedServiceTests {
                     id,full_name,password_hash,phone,email,status,created_at,updated_at
                 ) VALUES (
                     900003,'Conflicting partial demo account','not-a-login-hash',
-                    '+8490900003','partial@fido.local','ACTIVE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
+                    '+84909000003','partial@fido.local','ACTIVE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
                 )
                 """);
 
