@@ -3,42 +3,12 @@ import { StorefrontIcon } from '../../../components/StorefrontIcon';
 import { StorefrontImage } from '../../../shared/ui/storefront/StorefrontImage';
 import { QueryFeedback } from '../../../shared/ui/storefront/QueryFeedback';
 import type {
-  AttributeDto,
   CatalogProductView,
-  ProductAttributeValueDto,
   ProductDetailDto,
 } from '../types';
 import { ProductSummaryCard } from './ProductSummaryCard';
 
 const productName = (product: ProductDetailDto): string => product.name ?? product.sku;
-
-const attributeValueLabel = (
-  value: ProductAttributeValueDto,
-  definitions: readonly AttributeDto[],
-): string => {
-  const definition = definitions.find((item) => item.id === value.attribute_id);
-  const dataType = definition?.data_type ?? value.data_type;
-
-  switch (dataType) {
-    case 'OPTION':
-      return (
-        definition?.options.find((option) => option.id === value.option_id)?.label ??
-        value.option_label ??
-        value.option_value ??
-        '—'
-      );
-    case 'TEXT':
-      return value.text_value ?? '—';
-    case 'NUMBER':
-      return value.number_value === null
-        ? '—'
-        : value.number_value.toLocaleString('vi-VN', { maximumFractionDigits: 4 });
-    case 'BOOLEAN':
-      return value.boolean_value === null ? '—' : value.boolean_value ? 'Có' : 'Không';
-    default:
-      return '—';
-  }
-};
 
 export const ProductGallerySection: React.FC<{
   product: ProductDetailDto;
@@ -47,8 +17,11 @@ export const ProductGallerySection: React.FC<{
   onSelectImage: (index: number) => void;
   onMoveImage: (offset: -1 | 1) => void;
   onZoom?: () => void;
-}> = ({ product, gallery, activeImageIndex, onSelectImage, onMoveImage, onZoom }) => (
-  <div className="min-w-0 flex flex-col-reverse gap-4 md:flex-row md:items-start">
+  usingFamilyFallback?: boolean;
+}> = ({ product, gallery, activeImageIndex, onSelectImage, onMoveImage, onZoom,
+  usingFamilyFallback = false }) => (
+  <div className="min-w-0 space-y-3">
+    <div className="flex min-w-0 flex-col-reverse gap-4 md:flex-row md:items-start">
     {gallery.length > 1 && (
       <div className="flex max-w-full gap-3 overflow-x-auto p-1 md:max-h-[640px] md:w-28 md:shrink-0 md:flex-col md:overflow-y-auto">
         {gallery.map((image, index) => (
@@ -78,9 +51,10 @@ export const ProductGallerySection: React.FC<{
       {gallery.length > 0 ? (
         <StorefrontImage
           loading="eager"
+          key={gallery[activeImageIndex] ?? gallery[0]}
           src={gallery[activeImageIndex] ?? gallery[0]}
           alt={productName(product)}
-          className="h-full w-full object-contain"
+          className="h-full w-full object-contain transition-opacity duration-300"
         />
       ) : (
         <div className="flex h-full items-center justify-center text-sm text-[#606863]">
@@ -117,6 +91,12 @@ export const ProductGallerySection: React.FC<{
         </>
       )}
     </div>
+    </div>
+    {usingFamilyFallback && gallery.length > 0 && (
+      <p className="text-xs text-[#687069]">
+        Gallery tham khảo từ Product gốc; ảnh chỉ được dùng để hiển thị.
+      </p>
+    )}
   </div>
 );
 
@@ -141,9 +121,16 @@ export const ProductPurchasePanel: React.FC<{
   quantity: number;
   onQuantityChange: (quantity: number) => void;
   onAddToCart: () => void;
-  attributeDefinitions?: readonly AttributeDto[];
-}> = ({ product, quantity, onQuantityChange, onAddToCart, attributeDefinitions = [] }) => {
-  const canPurchase = product.status === 'ACTIVE';
+  children?: React.ReactNode;
+  selectionReady?: boolean;
+  availableQuantity: number;
+  purchasable: boolean;
+}> = ({ product, quantity, onQuantityChange, onAddToCart, children,
+  selectionReady = true, availableQuantity, purchasable }) => {
+  const isActive = product.status === 'ACTIVE';
+  const maxQuantity = Math.min(99, Math.max(0, availableQuantity));
+  const canPurchase = isActive && purchasable && selectionReady
+    && quantity > 0 && quantity <= maxQuantity;
   const displayName = productName(product);
 
   return (
@@ -161,7 +148,7 @@ export const ProductPurchasePanel: React.FC<{
           <span
             className={
               'border px-3 py-1 text-[10px] font-bold uppercase tracking-wider ' +
-              (canPurchase
+              (isActive
                 ? 'border-[#C8DDCC] bg-[#EEF6EE] text-[#245A32]'
                 : 'border-[#E2E5DE] bg-[#F3F4EF] text-[#687069]')
             }
@@ -171,50 +158,33 @@ export const ProductPurchasePanel: React.FC<{
         </div>
       </div>
 
-      {product.description ? (
-        <p className="whitespace-pre-line text-sm leading-7 text-[#606863]">
-          {product.description}
-        </p>
-      ) : (
-        <p className="text-sm text-[#687069]">Sản phẩm chưa có mô tả.</p>
-      )}
+      {children}
 
-      <section aria-label="Thuộc tính sản phẩm" className="space-y-3">
-        <h2 className="text-[11px] font-bold uppercase tracking-[0.16em]">
-          Thông tin thuộc tính
-        </h2>
-        {product.attribute_values.length > 0 ? (
-          <dl className="divide-y divide-[#E8E9E3] border-y border-[#E8E9E3]">
-            {product.attribute_values.map((value) => {
-              const definition = attributeDefinitions.find(
-                (item) => item.id === value.attribute_id,
-              );
-              return (
-                <div
-                  key={value.attribute_id}
-                  className="flex items-start justify-between gap-5 py-3 text-sm"
-                >
-                  <dt className="text-[#687069]">{definition?.name ?? value.attribute_name}</dt>
-                  <dd className="max-w-[62%] whitespace-pre-wrap break-words text-right font-semibold">
-                    {attributeValueLabel(value, attributeDefinitions)}
-                  </dd>
-                </div>
-              );
-            })}
-          </dl>
-        ) : (
-          <p className="border-y border-[#E8E9E3] py-4 text-sm text-[#687069]">
-            Sản phẩm chưa có thuộc tính mô tả.
-          </p>
-        )}
-      </section>
+      <p role="status" className={
+        'text-sm font-medium ' +
+        (purchasable && isActive ? 'text-[#245A32]' : 'text-amber-800')
+      }>
+        {!isActive ? 'Sản phẩm không hoạt động'
+          : purchasable ? 'Còn ' + availableQuantity + ' sản phẩm'
+            : 'Hết hàng'}
+      </p>
 
-      {!canPurchase && (
+      {!isActive && (
         <p className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Sản phẩm hiện chưa khả dụng để mua.
         </p>
       )}
+      {isActive && !selectionReady && (
+        <p role="status" className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Chọn SKU phù hợp với màu sắc và kích thước trước khi thêm vào giỏ hàng.
+        </p>
+      )}
 
+      {isActive && purchasable && quantity > maxQuantity && (
+        <p role="status" className="text-sm text-amber-800">
+          Số lượng đặt vượt quá tồn kho hiện tại.
+        </p>
+      )}
       <div className="border-t border-[#E8E9E3] pt-5">
         <div className="flex flex-col items-stretch gap-3 sm:flex-row">
           <div className="flex h-12 shrink-0 items-center justify-center border border-[#D9DDD6] bg-white">
@@ -231,8 +201,8 @@ export const ProductPurchasePanel: React.FC<{
             <button
               type="button"
               aria-label="Tăng số lượng"
-              disabled={quantity >= 99}
-              onClick={() => onQuantityChange(Math.min(99, quantity + 1))}
+              disabled={quantity >= maxQuantity}
+              onClick={() => onQuantityChange(Math.min(maxQuantity, quantity + 1))}
               className="h-full w-10 transition hover:bg-[#F3F4EF] disabled:opacity-40"
             >
               +
@@ -244,11 +214,14 @@ export const ProductPurchasePanel: React.FC<{
             onClick={onAddToCart}
             className="h-12 flex-1 bg-[#0B2419] px-5 text-xs font-bold uppercase tracking-[0.16em] text-white transition hover:bg-[#1B5038] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {canPurchase ? 'Thêm vào giỏ hàng' : 'Không khả dụng'}
+            {!isActive ? 'Không khả dụng'
+              : !purchasable ? 'Hết hàng'
+                : !selectionReady ? 'Chọn SKU phù hợp'
+                  : quantity > maxQuantity ? 'Vượt số lượng tồn' : 'Thêm vào giỏ hàng'}
           </button>
         </div>
         <p className="mt-3 text-[10px] leading-5 text-[#687069]">
-          Giá, trạng thái và thuộc tính được lấy từ thông tin Product hiện hành.
+          Giá và trạng thái thuộc Product được chọn; tồn kho là dữ liệu tại kho vận hành.
         </p>
       </div>
     </aside>

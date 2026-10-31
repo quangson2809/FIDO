@@ -1,6 +1,6 @@
 # 06 — Business Rules & State Machines
 
-> **Owner-approved target contract (2026-10-23):** the 31-table ERD v2 and DB-01..DB-12 defaults are approved except where a specific artifact records an unresolved approval conflict below. This document defines target behavior; runtime enforcement and acceptance tests remain pending. Inventory balance, source/sign, receipt, concurrency and reconciliation details are governed by [P1.4 Inventory Contract](refactor-v2/p1/P1.4-inventory-contract.md). Do not introduce persistence outside the approved target without an explicit owner amendment.
+> **Owner-approved target contract (2026-10-23):** the revised 30-table option-only catalog ERD v2 and DB-01..DB-12 defaults are approved except where a specific artifact records an unresolved approval conflict below. This document defines target behavior; runtime enforcement and acceptance tests remain pending. Inventory balance, source/sign, receipt, concurrency and reconciliation details are governed by [P1.4 Inventory Contract](refactor-v2/p1/P1.4-inventory-contract.md). Do not introduce persistence outside the approved target without an explicit owner amendment.
 
 ## 1. Target status/type literals and approval caveats
 
@@ -82,7 +82,7 @@ All other transitions are rejected. Cancellation is not allowed directly from SH
 - Category hierarchy is acyclic.
 - Product parent-child depth is limited to one level; children are explicit Product records.
 - Dynamic attributes are descriptive only and never create Products automatically.
-- A typed attribute value must match its Attribute type; an option must belong to the same Attribute.
+- Product Attribute values are Option-only. Each `attribute_value_id` must identify an existing Option; Backend derives its owning Attribute. Each Product may select at most one Option per Attribute, and required Attributes must be selected before activation.
 - Product lifecycle and available stock are separate: zero stock does not silently change Product status.
 
 ## 6. Scope exclusions

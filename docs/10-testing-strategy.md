@@ -1,13 +1,15 @@
 # 10 — Testing Strategy and ERD v2 Acceptance Matrix
 
-This is the target testing plan for the approved 31-table ERD v2. Historical P0/Phase reports record results on their original code revisions only; they do not prove the target runtime has passed.
+This is the target testing plan for the revised 30-table option-only catalog ERD v2. Historical P0/Phase reports record results on their original code revisions only; they do not prove the target runtime has passed.
 
 ## 1. Test levels
 
 ### Unit
 - Order, COD Payment, ShippingInfo and GoodsReceipt transition/actor policy.
 - Product parent/child depth and cycle validation.
-- Typed Attribute value matching and same-Attribute option ownership.
+- Option-only Attribute equality filtering, same-Attribute Option ownership and rejection of typed filters.
+- Public Product-family stock projection: zero for absent inventory, positive per Product ID in the operational warehouse, purchasable false at zero and no parent-stock inheritance.
+- Client COLOR/SIZE selectors: stock-disabled options, duplicate-SKU disambiguation, quantity cap, gallery root-only display fallback, exact Product-ID Cart request and safe HTML description rendering.
 - Integer-VND calculation, HALF-UP order discount and largest-remainder line allocation with Product-ID tie-break.
 - Request mapping, safe error codes and DTO projection without persistence.
 
@@ -33,7 +35,7 @@ This is the target testing plan for the approved 31-table ERD v2. Historical P0/
 | ID | Required automated behavior |
 |---|---|
 | T-01 | Parent/child Products have independent IDs, SKUs, required prices and stock; depth > 1, self-parent and cycles are rejected. |
-| T-02 | Attributes support OPTION/TEXT/NUMBER/BOOLEAN; exactly one matching typed value is accepted; cross-Attribute options are rejected; attributes never generate Products. |
+| T-02 | Attributes are option-only; valid `attribute_value_ids` resolve to owning Attributes; unknown Options, multiple selected Options for one Attribute and missing required Options on activation are rejected; attributes never generate Products. |
 | T-03 | Duplicate Product SKU and duplicate active phone are rejected; a phone becomes reusable after Account soft deletion. |
 | T-04 | Authenticated Cart lines use product_id; non-positive quantity and foreign Cart/item ownership are rejected. If multiple Cart rows exist, the current-Cart selection policy must be explicitly agreed and tested; do not infer one-active-Cart uniqueness or a merge from the schema. |
 | T-05 | Quote is stateless/advisory: no quote row/ID, stock reservation, voucher use or Order side effect. Order placement re-reads and reprices current data. |

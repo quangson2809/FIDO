@@ -16,14 +16,14 @@ public class DevSeedIdentityData {
 
     private static final List<ReservedNaturalKey> RESERVED_NATURAL_KEYS =
             List.of(
-                    reserved(900001L, "+8490900001"),
-                    reserved(900002L, "+8490900002"),
-                    reserved(900003L, "+8490900003"),
-                    reserved(900004L, "+8490900004"),
-                    reserved(900005L, "+8490900005"),
-                    reserved(900006L, "+8490900006"),
-                    reserved(900007L, "+8490900007"),
-                    reserved(900008L, "+8490900008"));
+                    reserved(900001L, "+84909000001"),
+                    reserved(900002L, "+84909000002"),
+                    reserved(900003L, "+84909000003"),
+                    reserved(900004L, "+84909000004"),
+                    reserved(900005L, "+84909000005"),
+                    reserved(900006L, "+84909000006"),
+                    reserved(900007L, "+84909000007"),
+                    reserved(900008L, "+84909000008"));
 
     private final JdbcTemplate jdbc;
 
@@ -81,21 +81,21 @@ public class DevSeedIdentityData {
                 INSERT INTO accounts(
                     id, full_name, password_hash, phone, email, status, created_at, updated_at
                 ) VALUES
-                (900001,'FIDO Superadmin',?,'+8490900001','superadmin@fido.local','ACTIVE',
+                (900001,'FIDO Superadmin',?,'+84909000001','superadmin@fido.local','ACTIVE',
                     '2026-09-01 00:00:00','2026-09-01 00:00:00'),
-                (900002,'Demo Customer',?,'+8490900002','customer@fido.local','ACTIVE',
+                (900002,'Demo Customer',?,'+84909000002','customer@fido.local','ACTIVE',
                     '2026-09-01 00:00:00','2026-09-01 00:00:00'),
-                (900003,'Demo Admin Catalog',?,'+8490900003','catalog@fido.local','ACTIVE',
+                (900003,'Demo Admin Catalog',?,'+84909000003','catalog@fido.local','ACTIVE',
                     '2026-09-01 00:00:00','2026-09-01 00:00:00'),
-                (900004,'Demo Admin Inventory',?,'+8490900004','inventory@fido.local','ACTIVE',
+                (900004,'Demo Admin Inventory',?,'+84909000004','inventory@fido.local','ACTIVE',
                     '2026-09-01 00:00:00','2026-09-01 00:00:00'),
-                (900005,'Demo Admin Orders',?,'+8490900005','order@fido.local','ACTIVE',
+                (900005,'Demo Admin Orders',?,'+84909000005','order@fido.local','ACTIVE',
                     '2026-09-01 00:00:00','2026-09-01 00:00:00'),
-                (900006,'Demo Admin Operations',?,'+8490900006','ops@fido.local','ACTIVE',
+                (900006,'Demo Admin Operations',?,'+84909000006','ops@fido.local','ACTIVE',
                     '2026-09-01 00:00:00','2026-09-01 00:00:00'),
-                (900007,'Demo Admin No Grants',?,'+8490900007','admin.noperm@fido.local','ACTIVE',
+                (900007,'Demo Admin No Grants',?,'+84909000007','admin.noperm@fido.local','ACTIVE',
                     '2026-09-01 00:00:00','2026-09-01 00:00:00'),
-                (900008,'Demo Customer Two',?,'+8490900008','customer2@fido.local','ACTIVE',
+                (900008,'Demo Customer Two',?,'+84909000008','customer2@fido.local','ACTIVE',
                     '2026-09-01 00:00:00','2026-09-01 00:00:00')
                 """,
                 passwordHash,
@@ -115,13 +115,13 @@ public class DevSeedIdentityData {
                     id, account_id, recipient_name, recipient_phone,
                     province, district, ward, address_line, is_default, created_at, updated_at
                 ) VALUES
-                (910001,900002,'Demo Customer','+8490900002',
+                (910001,900002,'Demo Customer','+84909000002',
                     'Hà Nội','Cầu Giấy','Dịch Vọng','123 Cầu Giấy',TRUE,
                     '2026-09-01 00:00:00','2026-09-01 00:00:00'),
-                (910002,900002,'Demo Customer','+8490900002',
+                (910002,900002,'Demo Customer','+84909000002',
                     'Hà Nội','Cầu Giấy','Dịch Vọng','45 Xuân Thủy',FALSE,
                     '2026-09-02 00:00:00','2026-09-02 00:00:00'),
-                (910003,900008,'Demo Customer Two','+8490900008',
+                (910003,900008,'Demo Customer Two','+84909000008',
                     'Hà Nội','Nam Từ Liêm','Mai Dịch','88 Hồ Tùng Mậu',TRUE,
                     '2026-09-01 00:00:00','2026-09-01 00:00:00')
                 """);

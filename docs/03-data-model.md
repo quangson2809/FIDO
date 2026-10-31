@@ -4,12 +4,12 @@
 
 This document describes the approved target model only. The canonical source for exact columns, keys and relationships is [ERD v2](refactor-v2/target/erd-v2-approved.mmd); the physical contract is [P1 Data Dictionary](refactor-v2/p1/P1-data-dictionary.csv). Do not infer target fields from implementation classes.
 
-## 2. Target table inventory — 31 tables
+## 2. Target table inventory — 30 tables
 
 | Domain | Tables |
 |---|---|
 | Account and RBAC | `ACCOUNTS`, `ADDRESSES`, `ROLES`, `PERMISSIONS`, `ACCOUNT_ROLES`, `ROLE_PERMISSIONS` |
-| Catalog | `CATEGORIES`, `BRANDS`, `PRODUCTS`, `ATTRIBUTE_TYPES`, `ATTRIBUTES`, `ATTRIBUTE_OPTIONS`, `PRODUCT_ATTRIBUTE_VALUES`, `PRODUCT_IMAGES` |
+| Catalog | `CATEGORIES`, `BRANDS`, `PRODUCTS`, `ATTRIBUTES`, `ATTRIBUTE_OPTIONS`, `PRODUCT_ATTRIBUTE_VALUES`, `PRODUCT_IMAGES` |
 | Cart, vouchers and orders | `CARTS`, `CART_ITEMS`, `VOUCHERS`, `ORDERS`, `ORDER_ITEMS`, `ORDER_ADDRESSES`, `ORDER_VOUCHER_SNAPSHOTS`, `PAYMENTS`, `SHIPPING_INFOS` |
 | Procurement and inventory | `SUPPLIERS`, `GOODS_RECEIPTS`, `GOODS_RECEIPT_ITEMS`, `WAREHOUSES`, `INVENTORIES`, `INVENTORY_TRANSACTIONS` |
 | Audit and content | `AUDIT_LOGS`, `CONTENT_PAGES` |
@@ -22,7 +22,7 @@ The inventory above is the complete logical target table set. Schema additions r
 - Parent and child records share `PRODUCTS`. A child is created explicitly, has its own identity, SKU, required selling price and stock, and is independently sellable. v1 allows one parent-child level only.
 - No implicit field inheritance exists. In particular, NULL `name`, `slug` or `description` does not trigger a parent fallback. SKU, selling price and inventory belong to the individual Product row.
 - Category hierarchy must remain acyclic. Product parent/child depth is a separate invariant limited to one level. Validate each hierarchy mutation in its owning service under concurrent updates.
-- Dynamic metadata is descriptive. The supported types are `OPTION`, `TEXT`, `NUMBER` and `BOOLEAN`. A Product/Attribute pair has one typed value; exactly the column matching the Attribute type is populated. An `OPTION` value must reference an option owned by the same Attribute.
+- Dynamic metadata is descriptive and option-only. A Product/Attribute pair has at most one value, stored in a required `option_id` referencing an Option owned by the same Attribute. Backend derives `attribute_id` from the selected Option ID. Values never generate Product records.
 - `is_variant_defining` is informational metadata only; it must not trigger automatic Product creation or combinations.
 - Product images belong to the Product. Primary-image behavior follows `is_primary` and the approved image contract. Order image references must continue to resolve to the retained order-time content.
 

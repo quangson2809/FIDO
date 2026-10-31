@@ -1,5 +1,5 @@
 -- FIDO — SINGLE canonical fresh-database baseline (approved ERD v2).
--- Exactly 31 tables plus the approved 3-role / 13-permission seed. This is the only schema SQL.
+-- Exactly 30 tables plus the approved 3-role / 13-permission seed. This is the only schema SQL.
 -- Requires MySQL 8.0.16+ (CHECK constraints).
 -- Flyway applies this file once to a newly created, empty database. For manual install, connect to an empty database first.
 -- Never run against production/shared/persistent data. This file does not DROP existing objects or upgrade populated databases.
@@ -73,22 +73,14 @@ CREATE TABLE brands (
  CONSTRAINT ck_brands_status CHECK (status IN ('ACTIVE','INACTIVE'))
 );
 
-CREATE TABLE attribute_types (
- id BIGINT NOT NULL AUTO_INCREMENT, code VARCHAR(80) NOT NULL, name VARCHAR(150) NOT NULL,
- data_type VARCHAR(20) NOT NULL, CONSTRAINT pk_attribute_types PRIMARY KEY (id),
- CONSTRAINT uq_attribute_types_code UNIQUE (code),
- CONSTRAINT ck_attribute_types_data_type CHECK (data_type IN ('OPTION','TEXT','NUMBER','BOOLEAN'))
-);
-
 CREATE TABLE attributes (
- id BIGINT NOT NULL AUTO_INCREMENT, attribute_type_id BIGINT NOT NULL, code VARCHAR(80) NOT NULL,
+ id BIGINT NOT NULL AUTO_INCREMENT, code VARCHAR(80) NOT NULL,
  name VARCHAR(150) NOT NULL, is_required BOOLEAN NOT NULL DEFAULT FALSE,
  is_variant_defining BOOLEAN NOT NULL DEFAULT FALSE, sort_order INT NOT NULL DEFAULT 0,
  CONSTRAINT pk_attributes PRIMARY KEY (id), CONSTRAINT uq_attributes_code UNIQUE (code),
- CONSTRAINT fk_attributes_type FOREIGN KEY (attribute_type_id) REFERENCES attribute_types (id),
  CONSTRAINT ck_attributes_sort_order CHECK (sort_order >= 0)
 );
-CREATE INDEX ix_attributes_type_order ON attributes (attribute_type_id, sort_order);
+CREATE INDEX ix_attributes_sort_order ON attributes (sort_order, id);
 
 CREATE TABLE attribute_options (
  id BIGINT NOT NULL AUTO_INCREMENT, attribute_id BIGINT NOT NULL, `value` VARCHAR(120) NOT NULL,
@@ -121,19 +113,12 @@ CREATE INDEX ix_products_category_status ON products (category_id, status);
 CREATE INDEX ix_products_brand ON products (brand_id);
 
 CREATE TABLE product_attribute_values (
- product_id BIGINT NOT NULL, attribute_id BIGINT NOT NULL, option_id BIGINT NULL,
- text_value VARCHAR(1000) NULL, number_value DECIMAL(18,4) NULL, boolean_value BOOLEAN NULL,
+ product_id BIGINT NOT NULL, attribute_id BIGINT NOT NULL, option_id BIGINT NOT NULL,
  CONSTRAINT pk_product_attribute_values PRIMARY KEY (product_id, attribute_id),
  CONSTRAINT fk_product_attribute_values_product FOREIGN KEY (product_id) REFERENCES products (id),
  CONSTRAINT fk_product_attribute_values_attribute FOREIGN KEY (attribute_id) REFERENCES attributes (id),
  CONSTRAINT fk_product_attribute_values_option_attribute FOREIGN KEY (option_id, attribute_id)
-   REFERENCES attribute_options (id, attribute_id),
- CONSTRAINT ck_product_attribute_values_one_value CHECK (
-  (option_id IS NOT NULL AND text_value IS NULL AND number_value IS NULL AND boolean_value IS NULL)
-  OR (option_id IS NULL AND text_value IS NOT NULL AND number_value IS NULL AND boolean_value IS NULL)
-  OR (option_id IS NULL AND text_value IS NULL AND number_value IS NOT NULL AND boolean_value IS NULL)
-  OR (option_id IS NULL AND text_value IS NULL AND number_value IS NULL AND boolean_value IS NOT NULL)
- )
+   REFERENCES attribute_options (id, attribute_id)
 );
 CREATE INDEX ix_product_attribute_values_attribute ON product_attribute_values (attribute_id, option_id);
 
@@ -395,8 +380,3 @@ INSERT INTO permissions (code, name, description) VALUES
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r CROSS JOIN permissions p WHERE r.code = 'SUPERADMIN';
 
-INSERT INTO attribute_types (code, name, data_type) VALUES
- ('OPTION', 'Option', 'OPTION'),
- ('TEXT', 'Text', 'TEXT'),
- ('NUMBER', 'Number', 'NUMBER'),
- ('BOOLEAN', 'Boolean', 'BOOLEAN');

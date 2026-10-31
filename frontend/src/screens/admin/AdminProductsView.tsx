@@ -10,7 +10,7 @@ import { ImageFilePreview } from '../../features/catalog/components/ImageFilePre
 import { ProductAttributeFields } from '../../features/catalog/components/ProductAttributeFields';
 import {
   attributeDraftFromValues,
-  buildProductAttributeInputs,
+  buildProductAttributeValueIds,
   type ProductAttributeDraft,
 } from '../../features/catalog/model/productAttributeForm';
 import type {
@@ -193,7 +193,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
       };
     }
 
-    const attributeResult = buildProductAttributeInputs(
+    const attributeResult = buildProductAttributeValueIds(
       adminMeta.attributes,
       attributeDraft,
       form.status,
@@ -214,7 +214,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
         selling_price: price,
         cost_price: cost,
         status: form.status,
-        attribute_values: attributeResult.values,
+        attribute_value_ids: attributeResult.attributeValueIds,
       },
       message: null,
     };

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useCart } from '../features/cart/hooks/useCart';
 import { catalogService } from '../features/catalog/api/service';
@@ -9,6 +9,16 @@ import {
   ProductSpecsSection,
 } from '../features/catalog/components/ProductDetailSections';
 import type { ProductDetailDto } from '../features/catalog/types';
+import { ProductFamilySelector } from '../features/catalog/components/ProductFamilySelector';
+import { ProductLongDescription } from '../features/catalog/components/ProductLongDescription';
+import {
+  familyOptions,
+  matchingFamilyMembers,
+  matchingPurchasableMembers,
+  memberIsPurchasable,
+  memberOption,
+  type FamilyOptionCode,
+} from '../features/catalog/model/productFamilySelection';
 import { sortProductImages } from '../features/catalog/model/productImageOrder';
 import { useAuthSession } from '../features/auth/session/useAuthSession';
 import { useToast } from '../shared/ui/toast/useToast';
@@ -28,6 +38,8 @@ export const ProductDetailScreen: React.FC = () => {
   const { productId = '' } = useParams<{ productId: string }>();
   const metadata = useCatalogMetadata();
   const [product, setProduct] = useState<ProductDetailDto | null>(null);
+  const [colorId, setColorId] = useState<number | null>(null);
+  const [sizeId, setSizeId] = useState<number | null>(null);
   const recommendationQuery = useRemoteQuery(
     useCallback(() => catalogService.listProducts({ page: 1, page_size: 5 }), []),
   );
@@ -58,6 +70,10 @@ export const ProductDetailScreen: React.FC = () => {
         const detail = await catalogService.getProductDetail(productId);
         if (!active) return;
         setProduct(detail);
+        setColorId(detail.attribute_values.find((value) => value.attribute_code === 'COLOR')
+          ?.attribute_value_id ?? null);
+        setSizeId(detail.attribute_values.find((value) => value.attribute_code === 'SIZE')
+          ?.attribute_value_id ?? null);
         setActiveImageIndex(0);
         setQuantity(1);
         setError(null);
@@ -85,13 +101,64 @@ export const ProductDetailScreen: React.FC = () => {
     };
   }, [productId, retry]);
 
-  const gallery = useMemo(
-    () => sortProductImages(product?.images ?? []).map((image) => image.image_url),
-    [product],
+  const openFamilyProduct = (nextProductId: number) => {
+    if (String(nextProductId) !== productId) {
+      setActiveImageIndex(0);
+      setZoomOpen(false);
+      navigate(productDetailPath(nextProductId));
+    }
+  };
+
+  const selectFamilyOption = (code: FamilyOptionCode, optionId: number) => {
+    if (!product) return;
+    let nextColor = code === 'COLOR' ? optionId : colorId;
+    let nextSize = code === 'SIZE' ? optionId : sizeId;
+    const matches = matchingFamilyMembers(product.family.members, nextColor, nextSize);
+    if (matches.length === 0) {
+      // Color/size choices are independent; reset the incompatible opposite axis.
+      if (code === 'COLOR') nextSize = null;
+      else nextColor = null;
+      // The opposite selected Option does not exist in this family combination.
+    }
+    setColorId(nextColor);
+    setSizeId(nextSize);
+    const buyable = matchingPurchasableMembers(product.family.members, nextColor, nextSize);
+    const hasColor = familyOptions(product.family.members, 'COLOR').length > 0;
+    const hasSize = familyOptions(product.family.members, 'SIZE').length > 0;
+    // Do not silently choose a size when the customer only selected a color.
+    if (buyable.length === 1 && (!hasColor || nextColor !== null)
+        && (!hasSize || nextSize !== null)) {
+      openFamilyProduct(buyable[0].product_id);
+    }
+  };
+
+  // Optimistically use already-fetched family data while the selected Product detail loads.
+  // Keep Cart disabled until the matching Product ID is confirmed by the detail API.
+  const routedMember = product?.family.members.find((member) =>
+    String(member.product_id) === productId);
+  const detailReady = product !== null && String(product.product_id) === productId;
+  const displayProduct: ProductDetailDto | null =
+    product && routedMember && !detailReady ? { ...product, ...routedMember } : product;
+  const rootMember = product?.family.members.find(
+    (member) => member.product_id === product.family.root_product_id);
+  const usingFamilyFallback = Boolean(
+    displayProduct && !displayProduct.images.length
+      && rootMember && rootMember.product_id !== displayProduct.product_id
+      && rootMember.images.length > 0,
   );
+  // Rendering a small family gallery is cheaper and safer than memoizing mutable DTO arrays.
+  const gallery = sortProductImages(
+    usingFamilyFallback ? rootMember?.images ?? [] : displayProduct?.images ?? [],
+  ).map((image) => image.image_url);
+  const selectionReady = detailReady && routedMember !== undefined
+    && (colorId === null || memberOption(routedMember, 'COLOR')?.attribute_value_id === colorId)
+    && (sizeId === null || memberOption(routedMember, 'SIZE')?.attribute_value_id === sizeId);
+  const availableQuantity = routedMember?.available_quantity ?? 0;
+  const purchasable = routedMember ? memberIsPurchasable(routedMember) : false;
 
   const addCurrentProductToCart = () => {
-    if (!product || product.status !== 'ACTIVE') return;
+    if (!product || !detailReady || !selectionReady || !purchasable
+      || quantity < 1 || quantity > availableQuantity || product.status !== 'ACTIVE') return;
     if (!isAuthenticated) {
       showToast('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.');
       navigate('/login', { state: { from: '/products/' + encodeURIComponent(productId) } });
@@ -121,7 +188,7 @@ export const ProductDetailScreen: React.FC = () => {
     );
   }
 
-  if (loading) {
+  if (loading && (!product || !routedMember)) {
     return (
       <div
         role="status"
@@ -132,7 +199,7 @@ export const ProductDetailScreen: React.FC = () => {
     );
   }
 
-  if (error || !product) {
+  if (error || !product || !displayProduct) {
     return (
       <div className="min-h-[60vh] bg-[#FFFDF5] p-14 text-center">
         <p role="alert" className="text-sm text-red-700">
@@ -171,8 +238,15 @@ export const ProductDetailScreen: React.FC = () => {
     categoryName ? { label: 'Danh mục', value: categoryName } : null,
     brandName ? { label: 'Thương hiệu', value: brandName } : null,
     { label: 'Trạng thái', value: product.status },
+    ...product.attribute_values
+      .filter((value) => value.attribute_code !== 'COLOR' && value.attribute_code !== 'SIZE')
+      .map((value) => ({
+        label: metadata.data?.attributes.find((attribute) => attribute.id === value.attribute_id)
+          ?.name ?? value.attribute_name,
+        value: value.label || value.value,
+      })),
   ].filter((item): item is { label: string; value: string } => item !== null);
-  const displayName = product.name ?? product.sku;
+  const displayName = displayProduct.name ?? displayProduct.sku;
 
   return (
     <div className="w-full bg-white text-[#0B2419]">
@@ -186,14 +260,14 @@ export const ProductDetailScreen: React.FC = () => {
           </Link>
           <span aria-hidden="true">/</span>
           <Link to="/products">Sản phẩm</Link>
-          {product.category && (
+          {detailReady && displayProduct.category && (
             <>
               <span aria-hidden="true">/</span>
               <Link
-                to={categoryProductsPath(product.category.category_id)}
+                to={categoryProductsPath(displayProduct.category.category_id)}
                 className="hover:text-[#0B2419]"
               >
-                {categoryName ?? product.category.name}
+                {categoryName ?? displayProduct.category.name}
               </Link>
             </>
           )}
@@ -207,23 +281,42 @@ export const ProductDetailScreen: React.FC = () => {
       <section className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-7 sm:px-8 lg:grid-cols-12 lg:gap-10 lg:px-14">
         <div className="space-y-6 lg:col-span-7 xl:col-span-8">
           <ProductGallerySection
-            product={product}
+            product={displayProduct}
             gallery={gallery}
             activeImageIndex={activeImageIndex}
             onSelectImage={setActiveImageIndex}
             onMoveImage={moveImage}
             onZoom={() => setZoomOpen(true)}
+            usingFamilyFallback={usingFamilyFallback}
           />
-          <ProductSpecsSection items={specItems} />
+          <ProductSpecsSection items={detailReady ? specItems : []} />
         </div>
         <ProductPurchasePanel
-          product={product}
+          product={displayProduct}
           quantity={quantity}
           onQuantityChange={setQuantity}
           onAddToCart={addCurrentProductToCart}
-          attributeDefinitions={metadata.data?.attributes ?? []}
-        />
+          selectionReady={selectionReady}
+          availableQuantity={availableQuantity}
+          purchasable={purchasable}
+        >
+          {loading && !detailReady && (
+            <p role="status" className="text-xs text-[#687069]">
+              Đang cập nhật thông tin Product được chọn...
+            </p>
+          )}
+          <ProductFamilySelector
+            family={product.family}
+            currentProductId={displayProduct.product_id}
+            colorId={colorId}
+            sizeId={sizeId}
+            onSelectOption={selectFamilyOption}
+            onSelectProduct={openFamilyProduct}
+          />
+        </ProductPurchasePanel>
       </section>
+
+      <ProductLongDescription description={detailReady ? displayProduct.description : null} />
 
       {zoomOpen && (
         <StorefrontDialog

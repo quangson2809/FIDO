@@ -61,9 +61,9 @@ const detailForSummary = (item) => ({
   images: [],
   attribute_values:
     item.product_id === 1
-      ? product.attribute_values.map((value) => ({ ...value, text_value: 'Cotton; giặt nhẹ.' }))
+      ? product.attribute_values.map((value) => ({ ...value, label: 'Cotton; giặt nhẹ.' }))
       : item.product_id === 3
-        ? product.attribute_values.map((value) => ({ ...value, text_value: 'Giặt mặt trái. Không sấy.' }))
+        ? product.attribute_values.map((value) => ({ ...value, label: 'Vải mềm' }))
         : [],
 });
 const fixture = storefrontFixture();

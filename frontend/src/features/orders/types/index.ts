@@ -34,6 +34,7 @@ export interface OrderItemDto {
   quantity: number;
   line_total: number;
   discount_amount: number;
+  attribute_snapshot: string;
 }
 
 export interface RecipientDto {

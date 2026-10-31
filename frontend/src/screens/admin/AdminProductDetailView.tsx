@@ -8,12 +8,13 @@ import {
   AdminProductGallerySection,
   AdminProductInfoSection,
 } from '../../features/catalog/components/AdminProductDetailSections';
+import { AdminProductRelationsSection } from '../../features/catalog/components/AdminProductRelationsSection';
 import {
   attributeDraftFromValues,
-  buildProductAttributeInputs,
-  preserveUnmanagedProductAttributeValues,
-  productAttributeValuesToInputs,
-  sameProductAttributeValues,
+  buildProductAttributeValueIds,
+  preserveUnmanagedProductAttributeValueIds,
+  productAttributeValuesToIds,
+  sameProductAttributeValueIds,
   type ProductAttributeDraft,
 } from '../../features/catalog/model/productAttributeForm';
 import { buildMovedImageOrder, sortProductImages } from '../../features/catalog/model/productImageOrder';
@@ -86,17 +87,17 @@ export const AdminProductDetailView: React.FC<Props> = ({
         sellingPrice !== String(product.selling_price) ||
         costPrice !== (product.cost_price === null ? '' : String(product.cost_price)) ||
         status !== product.status ||
-        !sameProductAttributeValues(
-          preserveUnmanagedProductAttributeValues(
+        !sameProductAttributeValueIds(
+          preserveUnmanagedProductAttributeValueIds(
             product.attribute_values,
             adminMeta?.attributes ?? [],
-            buildProductAttributeInputs(
+            buildProductAttributeValueIds(
               adminMeta?.attributes ?? [],
               attributeDraft,
               status,
-            ).values,
+            ).attributeValueIds,
           ),
-          productAttributeValuesToInputs(product.attribute_values),
+          productAttributeValuesToIds(product.attribute_values),
         )),
   );
   const canDiscard = useDirtyForm(infoDirty || imageFiles.length > 0);
@@ -240,16 +241,16 @@ export const AdminProductDetailView: React.FC<Props> = ({
       return;
     }
 
-    const attributesResult = buildProductAttributeInputs(adminMeta.attributes, attributeDraft, status);
+    const attributesResult = buildProductAttributeValueIds(adminMeta.attributes, attributeDraft, status);
     if (attributesResult.errors.length > 0) {
       setError(attributesResult.errors.join(' '));
       return;
     }
 
-    const fullAttributeValues = preserveUnmanagedProductAttributeValues(
+    const fullAttributeValues = preserveUnmanagedProductAttributeValueIds(
       product.attribute_values,
       adminMeta.attributes,
-      attributesResult.values,
+      attributesResult.attributeValueIds,
     );
     const patch: ProductPatchInput = {};
     if (sku.trim() !== product.sku) patch.sku = sku.trim();
@@ -266,12 +267,12 @@ export const AdminProductDetailView: React.FC<Props> = ({
     if (cost !== product.cost_price) patch.cost_price = cost;
     if (status !== product.status) patch.status = status;
     if (
-      !sameProductAttributeValues(
+      !sameProductAttributeValueIds(
         fullAttributeValues,
-        productAttributeValuesToInputs(product.attribute_values),
+        productAttributeValuesToIds(product.attribute_values),
       )
     ) {
-      patch.attribute_values = fullAttributeValues;
+      patch.attribute_value_ids = fullAttributeValues;
     }
 
     if (Object.keys(patch).length === 0) {
@@ -477,7 +478,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
               <textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" />
             </label>
             <div className="space-y-3 border-t border-[#E2E5DE] pt-4">
-              <h3 className="font-semibold">Typed Attribute values</h3>
+              <h3 className="font-semibold">Option-backed Attribute values</h3>
               <ProductAttributeFields
                 attributes={adminMeta?.attributes ?? []}
                 draft={attributeDraft}
@@ -518,6 +519,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
           onCancel={cancelProductEdit}
         />
       )}
+      <AdminProductRelationsSection product={product} />
       <AdminProductGallerySection
         productName={product.name ?? product.sku}
         images={orderedImages}

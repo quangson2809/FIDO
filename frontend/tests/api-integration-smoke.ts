@@ -71,12 +71,6 @@ const server = createServer((request, response) => {
     requireBearer(request);
     writeJson(response, 200, {
       data: {
-        attribute_types: [
-          { id: 1, code: 'OPTION', name: 'Lựa chọn', data_type: 'OPTION' },
-          { id: 2, code: 'TEXT', name: 'Văn bản', data_type: 'TEXT' },
-          { id: 3, code: 'NUMBER', name: 'Số', data_type: 'NUMBER' },
-          { id: 4, code: 'BOOLEAN', name: 'Có/Không', data_type: 'BOOLEAN' },
-        ],
         attributes: [],
       },
     });
@@ -98,7 +92,6 @@ const server = createServer((request, response) => {
         id: 1,
         code: 'MATERIAL',
         name: 'Material',
-        data_type: 'TEXT',
         is_required: false,
         is_variant_defining: false,
         sort_order: 0,
@@ -330,7 +323,6 @@ const server = createServer((request, response) => {
       data: {
         categories: [],
         brands: [],
-        attribute_types: [],
         attributes: [],
       },
     });
@@ -536,9 +528,9 @@ try {
     password: 'Fido@123',
   });
 
-  await adminCatalogMetaService.getMeta();
+  const optionOnlyMeta = await adminCatalogMetaService.getMeta();
+  assert.equal('attribute_types' in optionOnlyMeta, false);
   const attributeInput = {
-    attribute_type_id: 2,
     code: 'MATERIAL',
     name: 'Material',
     is_required: false,

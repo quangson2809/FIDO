@@ -31,7 +31,6 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
 
   const [name, setName] = useState('');
   const [parentId, setParentId] = useState('');
-  const [attributeTypeId, setAttributeTypeId] = useState('');
   const [attributeCode, setAttributeCode] = useState('');
   const [attributeRequired, setAttributeRequired] = useState(false);
   const [variantDefining, setVariantDefining] = useState(false);
@@ -76,7 +75,6 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
   const resetForm = () => {
     setName('');
     setParentId('');
-    setAttributeTypeId('');
     setAttributeCode('');
     setAttributeRequired(false);
     setVariantDefining(false);
@@ -101,12 +99,8 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
       } else if (activeTab === 'brands') {
         await adminCatalogMetaService.createBrand({ name: name.trim() });
       } else {
-        const typeId = Number(attributeTypeId);
-        if (!Number.isSafeInteger(typeId) || typeId <= 0 || !attributeCode.trim()) {
-          throw new Error('Chọn kiểu dữ liệu và nhập mã thuộc tính hợp lệ.');
-        }
+        if (!attributeCode.trim()) throw new Error('Nhập mã thuộc tính hợp lệ.');
         await adminCatalogMetaService.createAttribute({
-          attribute_type_id: typeId,
           code: attributeCode.trim(),
           name: name.trim(),
           is_required: attributeRequired,
@@ -396,24 +390,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
                   required
                 />
               </label>
-              <label className="space-y-1">
-                <span className="text-xs font-semibold">Kiểu dữ liệu *</span>
-                <select
-                  value={attributeTypeId}
-                  onChange={(event) => setAttributeTypeId(event.target.value)}
-                  className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
-                  disabled={busy}
-                  required
-                >
-                  <option value="">Chọn kiểu</option>
-                  {(adminMeta?.attribute_types ?? []).map((type) => (
-                    <option key={type.id} value={type.id}>
-                      {type.code} · {type.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex items-center gap-2 text-sm">
+<label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
                   checked={attributeRequired}
@@ -555,7 +532,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
                   <div>
                     <h2 className="font-semibold">{attribute.name}</h2>
                     <p className="mt-1 text-xs text-[#606863]">
-                      {attribute.code} · {attribute.data_type} · Thứ tự {attribute.sort_order}
+                      {attribute.code} · Thứ tự {attribute.sort_order}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -628,7 +605,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
                     </div>
                   </form>
                 )}
-                {attribute.data_type === 'OPTION' && (
+                {(
                   <div className="mt-4 space-y-3">
                     <h3 className="text-sm font-semibold">Options</h3>
                     {attribute.options.map((option) => {

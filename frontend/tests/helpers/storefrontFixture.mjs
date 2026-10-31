@@ -6,22 +6,15 @@ export const meta = {
     { category_id: 2, parent_category_id: null, name: 'Quần', slug: 'quan', status: 'ACTIVE' },
   ],
   brands: [{ brand_id: 1, name: 'FIDO', slug: 'fido', status: 'ACTIVE' }],
-  attribute_types: [
-    { id: 1, code: 'OPTION', name: 'Lựa chọn', data_type: 'OPTION' },
-    { id: 2, code: 'TEXT', name: 'Văn bản', data_type: 'TEXT' },
-    { id: 3, code: 'NUMBER', name: 'Số', data_type: 'NUMBER' },
-    { id: 4, code: 'BOOLEAN', name: 'Có/Không', data_type: 'BOOLEAN' },
-  ],
   attributes: [
     {
       id: 1,
       code: 'MATERIAL',
       name: 'Chất liệu',
-      data_type: 'TEXT',
       is_required: false,
       is_variant_defining: false,
       sort_order: 0,
-      options: [],
+      options: [{ id: 101, attribute_id: 1, value: 'COTTON', label: 'Cotton', sort_order: 0 }],
     },
   ],
 };
@@ -61,15 +54,27 @@ export const product = {
       attribute_id: 1,
       attribute_code: 'MATERIAL',
       attribute_name: 'Chất liệu',
-      data_type: 'TEXT',
-      option_id: null,
-      option_value: null,
-      option_label: null,
-      text_value: 'Cotton',
-      number_value: null,
-      boolean_value: null,
+      attribute_value_id: 101,
+      value: 'COTTON',
+      label: 'Cotton',
     },
   ],
+};
+// Public detail now includes the selected Product and its ACTIVE family members.
+product.family = {
+  root_product_id: product.product_id,
+  members: [{
+    product_id: product.product_id,
+    parent_product_id: product.parent_product_id,
+    sku: product.sku,
+    name: product.name,
+    selling_price: product.selling_price,
+    status: product.status,
+    images: product.images,
+    attribute_values: product.attribute_values,
+    available_quantity: 8,
+    purchasable: true,
+  }],
 };
 export const productSummary = {
   product_id: product.product_id,

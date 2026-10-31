@@ -2,7 +2,7 @@
 
 > Navigation: the detailed artifact layout and P0 → P1.1–P1.9 reconstruction sequence are maintained in [`docs/refactor-v2/README.md`](refactor-v2/README.md). This roadmap governs runtime implementation phases; historical implementation reports are indexed under `docs/archive/`.
 
-> **Current authority — 2026-10-25:** the owner-approved 31-table ERD v2, original target business defaults and P1.9 owner amendment are recorded. This roadmap describes delivery against that target only. Historical audit reports are evidence, not target requirements.
+> **Current authority — 2026-10-25:** the owner-directed 30-table option-only catalog ERD v2, original target business defaults and P1.9 owner amendment are recorded. This roadmap describes delivery against that target only. Historical audit reports are evidence, not target requirements.
 
 ## 1. Current status
 
@@ -22,7 +22,7 @@
 1. Reconfirm the target commit and work from a new feature branch based on the exact remote `demo1` SHA. Preserve unrelated work; do not use force-push or rewrite unrelated history.
 2. Apply the target-first schema and required system seed to an empty, isolated disposable MySQL database. Keep the destructive reset path explicitly gated by environment and database identity.
 3. Align package-by-feature Entities, composite keys, Repositories, owning Services and transactions to the target table/column contract.
-4. Align catalog and APIs to Product identity, explicit parent/child Products, typed descriptive attributes, row-owned SKU/price/stock and active-phone lifecycle.
+4. Align catalog and APIs to Product identity, explicit parent/child Products, option-only descriptive attributes, row-owned SKU/price/stock and active-phone lifecycle.
 5. Align Cart, checkout, Order, voucher, Payment, shipping and snapshots to the authenticated, stateless-quote, integer-VND and idempotency contracts.
 6. Align procurement and inventory to Product IDs, the resolved operational warehouse, guarded balances, append-only movements, source deduplication and atomic audit.
 7. Align public/admin DTOs and frontend types/API clients/screens. Do not keep a parallel wire contract whose identifiers or money semantics contradict the target.

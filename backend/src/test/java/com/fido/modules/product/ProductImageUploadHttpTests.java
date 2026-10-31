@@ -70,6 +70,7 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
                 "https://storage.test/front.png",
                 publicList.data().get("data").get(0).get("thumbnail").asText());
 
+        createOperationalWarehouse();
         var publicDetail =
                 call("GET", "/api/v1/catalog/products/" + fixture.productId(), null, null);
         assertEquals(200, publicDetail.status(), publicDetail.body());

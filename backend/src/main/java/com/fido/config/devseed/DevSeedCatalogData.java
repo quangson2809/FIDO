@@ -5,8 +5,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * Product-based demo catalog. Attribute types are system data seeded by Flyway;
- * this seed creates only domain rows supported by the approved target schema.
+ * Product-based demo catalog. Attributes are defined directly and Product values select predefined Options only.
  */
 @Component
 @Profile({"dev", "test"})
@@ -56,12 +55,10 @@ public class DevSeedCatalogData {
         jdbc.update(
                 """
                 INSERT INTO attributes(
-                    id,attribute_type_id,code,name,is_required,is_variant_defining,sort_order
+                    id,code,name,is_required,is_variant_defining,sort_order
                 ) VALUES
-                (940001,(SELECT id FROM attribute_types WHERE code='OPTION'),
-                    'SIZE','Kích thước',FALSE,FALSE,1),
-                (940002,(SELECT id FROM attribute_types WHERE code='OPTION'),
-                    'COLOR','Màu sắc',FALSE,FALSE,2)
+                (940001,'SIZE','Kích thước',FALSE,FALSE,1),
+                (940002,'COLOR','Màu sắc',FALSE,FALSE,2)
                 """);
     }
 
@@ -143,15 +140,13 @@ public class DevSeedCatalogData {
     private void seedProductAttributeValues() {
         jdbc.update(
                 """
-                INSERT INTO product_attribute_values(
-                    product_id,attribute_id,option_id,text_value,number_value,boolean_value
-                ) VALUES
-                (960001,940001,941002,NULL,NULL,NULL),
-                (960001,940002,941004,NULL,NULL,NULL),
-                (960002,940001,941003,NULL,NULL,NULL),
-                (960002,940002,941007,NULL,NULL,NULL),
-                (960006,940001,941001,NULL,NULL,NULL),
-                (960006,940002,941005,NULL,NULL,NULL)
+                INSERT INTO product_attribute_values(product_id,attribute_id,option_id) VALUES
+                (960001,940001,941002),
+                (960001,940002,941004),
+                (960002,940001,941003),
+                (960002,940002,941007),
+                (960006,940001,941001),
+                (960006,940002,941005)
                 """);
     }
 

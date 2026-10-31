@@ -2,12 +2,12 @@
 
 ## 1. Ownership map
 
-Package ownership remains Modular Monolith + Package by Feature + layered architecture. Persistence ownership follows the approved 31-table target ERD.
+Package ownership remains Modular Monolith + Package by Feature + layered architecture. Persistence ownership follows the revised 30-table option-only target ERD.
 
 | Module | Business responsibility | Target tables owned |
 |---|---|---|
 | `account` | Authentication, account lifecycle/profile/address book, staff/customer queries and RBAC | `ACCOUNTS`, `ADDRESSES`, `ROLES`, `PERMISSIONS`, `ACCOUNT_ROLES`, `ROLE_PERMISSIONS` |
-| `product` | Public/admin catalog, category/brand, Product parent-child hierarchy, Product images and descriptive typed attributes | `CATEGORIES`, `BRANDS`, `PRODUCTS`, `PRODUCT_IMAGES`, `ATTRIBUTE_TYPES`, `ATTRIBUTES`, `ATTRIBUTE_OPTIONS`, `PRODUCT_ATTRIBUTE_VALUES` |
+| `product` | Public/admin catalog, category/brand, Product parent-child hierarchy, Product images and option-backed descriptive attributes | `CATEGORIES`, `BRANDS`, `PRODUCTS`, `PRODUCT_IMAGES`, `ATTRIBUTES`, `ATTRIBUTE_OPTIONS`, `PRODUCT_ATTRIBUTE_VALUES` |
 | `cart` | Authenticated Cart and Cart lines | `CARTS`, `CART_ITEMS` |
 | `promotion` | Voucher definition, eligibility and global usage count | `VOUCHERS` |
 | `order` | Stateless checkout quote orchestration, order placement/state transitions, COD Payment, manual shipping and in-scope after-sales commands | `ORDERS`, `ORDER_ITEMS`, `ORDER_ADDRESSES`, `ORDER_VOUCHER_SNAPSHOTS`, `PAYMENTS`, `SHIPPING_INFOS` |
@@ -16,7 +16,7 @@ Package ownership remains Modular Monolith + Package by Feature + layered archit
 | `report` | Sales and Order-state reporting; query-only aggregation | No dedicated target table |
 | `content` | Public content and admin content lifecycle | `CONTENT_PAGES` |
 
-The table sets above cover all 31 approved target tables. A target schema addition needs explicit owner approval and an ERD/dictionary/API amendment.
+The table sets above cover all 30 approved target tables. A target schema addition needs explicit owner approval and an ERD/dictionary/API amendment.
 
 ## 2. API responsibility by domain
 
@@ -30,7 +30,7 @@ The table sets above cover all 31 approved target tables. A target schema additi
 - `report`: report query API over target Order/Payment data.
 - `content`: public page reads and admin content lifecycle.
 
-The target has no separate Variant, SizeSystem or Color-master API. Child Products use Product resources with a Product ID; typed attributes remain descriptive. Do not turn old route numbers into target API obligations.
+The target has no separate Variant, SizeSystem or Color-master API. Child Products use Product resources with a Product ID; option-backed attributes remain descriptive. Do not turn old route numbers into target API obligations.
 
 ## 3. Dependency direction
 

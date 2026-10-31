@@ -3,7 +3,7 @@
 ## 1. Validation layers
 
 1. **Request validation:** required fields, string bounds, valid enum literals, integer-VND amounts, positive quantities and request shape.
-2. **Business validation:** ownership, permissions, account lifecycle, Product hierarchy, typed attribute values, price/stock eligibility, voucher rules and state transitions.
+2. **Business validation:** ownership, permissions, account lifecycle, Product hierarchy, option-only Attribute values, price/stock eligibility, voucher rules and state transitions.
 3. **Database invariants:** PK/FK/unique/check constraints, optimistic version guards and source-derived uniqueness. Database checks reinforce but do not replace service validation.
 
 Cross-module writes must go through the owning module service. Validation and mutation that protect the same business invariant must run in one transaction or use database concurrency controls that make the invariant atomic.
@@ -22,7 +22,7 @@ Cross-module writes must go through the owning module service. Validation and mu
 - Product SKU is unique according to the target database contract.
 - Parent/child depth is limited to one; reject self-parenting, cycles and invalid referenced parents.
 - Each Product owns its required selling price and stock. No nullable field silently inherits from a parent.
-- Attribute values must match the Attribute's authoritative type: `OPTION`, `TEXT`, `NUMBER` or `BOOLEAN`. Exactly one compatible value is populated. A selected option must belong to the same Attribute.
+- Product attribute values accept only `attribute_value_ids`. Each ID must resolve to an existing Option; Backend derives the owning Attribute and rejects selecting more than one Option for the same Attribute. Required Attributes must be satisfied before activation.
 - Attribute metadata is descriptive; it must not generate Product rows automatically.
 - A Product image operation validates ownership, supported media/URL contract and ordering rules from the approved image API contract.
 

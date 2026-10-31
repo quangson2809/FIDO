@@ -8,6 +8,9 @@ import java.util.List;
 import java.util.Optional;
 
 public interface AttributeOptionRepository extends Repository<AttributeOption, Long> {
+    Optional<AttributeOption> findById(Long optionId);
+    Optional<AttributeOption> findByAttributeIdAndValue(Long attributeId, String value);
+    List<AttributeOption> findAllByAttributeOptionIdIn(Collection<Long> optionIds);
     Optional<AttributeOption> findByAttributeIdAndAttributeOptionId(Long attributeId, Long optionId);
     boolean existsByAttributeIdAndValue(Long attributeId, String value);
     boolean existsByAttributeIdAndAttributeOptionId(Long attributeId, Long optionId);

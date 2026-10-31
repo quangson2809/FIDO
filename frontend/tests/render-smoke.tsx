@@ -7,6 +7,7 @@ import { AdminScreen } from '../src/screens/AdminScreen';
 import { VoucherForm } from '../src/features/promotion/components/VoucherForm';
 import type { VoucherDetail } from '../src/features/promotion/types';
 import { ProductPurchasePanel } from '../src/features/catalog/components/ProductDetailSections';
+import { ProductLongDescription } from '../src/features/catalog/components/ProductLongDescription';
 import { ProductSummaryCard } from '../src/features/catalog/components/ProductSummaryCard';
 import {
   BenefitCardIllustration,
@@ -220,30 +221,87 @@ const product: ProductDetailDto = {
   images: [],
   created_at: '2026-10-07T00:00:00Z',
   updated_at: '2026-10-07T00:00:00Z',
+  family: {
+    root_product_id: 1,
+    members: [{
+      product_id: 1, parent_product_id: null, sku: 'FIDO-TEE',
+      name: 'FIDO Essential Tee', selling_price: 199000, status: 'ACTIVE',
+      images: [], attribute_values: [],
+      available_quantity: 8, purchasable: true,
+    }],
+  },
   attribute_values: [
     {
       attribute_id: 1,
       attribute_code: 'MATERIAL',
       attribute_name: 'Chất liệu',
-      data_type: 'TEXT',
-      option_id: null,
-      option_value: null,
-      option_label: null,
-      text_value: 'Cotton',
-      number_value: null,
-      boolean_value: null,
+      attribute_value_id: 101,
+      value: 'COTTON',
+      label: 'Cotton',
     },
   ],
 };
 
+const {
+  familyOptions,
+  matchingFamilyMembers,
+  matchingPurchasableMembers,
+  deriveProductSelectionMetadata,
+} = await import(
+  '../src/features/catalog/model/productFamilySelection'
+);
+const familyMembers = [
+  { ...product.family.members[0], product_id: 2,
+    attribute_values: [{ attribute_id: 9, attribute_code: 'COLOR',
+      attribute_name: 'Màu', attribute_value_id: 51, value: 'BLACK', label: 'Đen' },
+      { attribute_id: 10, attribute_code: 'SIZE',
+        attribute_name: 'Kích thước', attribute_value_id: 61, value: 'M', label: 'M' }] },
+  { ...product.family.members[0], product_id: 3,
+    attribute_values: [{ attribute_id: 9, attribute_code: 'COLOR',
+      attribute_name: 'Màu', attribute_value_id: 52, value: 'WHITE', label: 'Trắng' },
+      { attribute_id: 10, attribute_code: 'SIZE',
+        attribute_name: 'Kích thước', attribute_value_id: 62, value: 'L', label: 'L' }] },
+];
+assert.deepEqual(matchingFamilyMembers(familyMembers, 51, 61).map(v => v.product_id), [2]);
+assert.deepEqual(matchingFamilyMembers(familyMembers, 51, 62), []);
+assert.equal(familyOptions(familyMembers, 'COLOR').length, 2);
+const stockMembers = [
+  { ...familyMembers[0], available_quantity: 0, purchasable: false },
+  { ...familyMembers[1], available_quantity: 4, purchasable: true },
+];
+assert.deepEqual(matchingPurchasableMembers(stockMembers, 51, 61), []);
+assert.deepEqual(matchingPurchasableMembers(stockMembers, 52, 62).map(m => m.product_id), [3]);
+const derivedMeta = deriveProductSelectionMetadata({
+  root_product_id: 1, members: stockMembers,
+});
+assert.equal(derivedMeta.product_choices[0].purchasable, false);
+assert.equal(derivedMeta.product_choices[1].available_quantity, 4);
+assert.equal(derivedMeta.color_options.length, 2);
+
 const purchasePanelHtml = renderToStaticMarkup(
-  <ProductPurchasePanel product={product} quantity={1} onQuantityChange={noOp} onAddToCart={noOp} />,
+  <ProductPurchasePanel product={product} quantity={1} onQuantityChange={noOp}
+    onAddToCart={noOp} availableQuantity={8} purchasable />,
 );
 assert.match(purchasePanelHtml, /FIDO Essential Tee/);
 assert.match(purchasePanelHtml, /199\.000₫/);
 assert.match(purchasePanelHtml, /Thêm vào giỏ hàng/);
-assert.match(purchasePanelHtml, /Chất liệu/);
-assert.match(purchasePanelHtml, /Cotton/);
+assert.doesNotMatch(purchasePanelHtml, /Chất liệu|Cotton/,
+  'descriptive Attributes appear in the separate Product specs grid');
+assert.match(purchasePanelHtml, /Còn 8 sản phẩm/);
+const soldOutPanel = renderToStaticMarkup(
+  <ProductPurchasePanel product={product} quantity={1} onQuantityChange={noOp}
+    onAddToCart={noOp} availableQuantity={0} purchasable={false} />,
+);
+assert.match(soldOutPanel, /Hết hàng/);
+assert.match(soldOutPanel, /disabled/);
+const richDescriptionHtml = renderToStaticMarkup(
+  <ProductLongDescription
+    description={'<h3>Chi tiết sản phẩm</h3><p>Vải jeans</p>'
+      + '<script>alert(1)</script><img src="javascript:alert(1)">'}
+  />,
+);
+assert.match(richDescriptionHtml, /Chi tiết sản phẩm/);
+assert.doesNotMatch(richDescriptionHtml, /<script|javascript:|alert\(1\)/i);
 
 const adminProduct: AdminProductDetailDto = {
   ...product,
@@ -287,6 +345,8 @@ const inactiveProductPanelHtml = renderToStaticMarkup(
     quantity={1}
     onQuantityChange={noOp}
     onAddToCart={noOp}
+    availableQuantity={8}
+    purchasable
   />,
 );
 assert.match(inactiveProductPanelHtml, /Sản phẩm hiện chưa khả dụng để mua/);
