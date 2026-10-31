@@ -145,6 +145,48 @@ class ProductAttributeValueHttpTests extends CatalogHttpSupport {
                 "SELECT is_required FROM attributes WHERE id = ?", Integer.class, optionalId));
     }
 
+    @Test
+    void publicListingSupportsOptionEqualityAndRejectsInvalidAttributeFilters() throws Exception {
+        Employee writer = catalogWriter();
+        long color = createAttribute(writer, "FILTER_COLOR", "Filter color", false);
+        long material = createAttribute(writer, "FILTER_MATERIAL", "Filter material", false);
+        long black = createOption(writer, color, "BLACK", "Black");
+        long white = createOption(writer, color, "WHITE", "White");
+        long cotton = createOption(writer, material, "COTTON", "Cotton");
+        long linen = createOption(writer, material, "LINEN", "Linen");
+        String suffix = UUID.randomUUID().toString().replace("-", "");
+        long target = createProduct(writer, "FILTER-A-" + suffix, "Black cotton", 10000,
+                null, "ACTIVE", List.of(black, cotton));
+        createProduct(writer, "FILTER-B-" + suffix, "Black linen", 11000,
+                null, "ACTIVE", List.of(black, linen));
+        createProduct(writer, "FILTER-C-" + suffix, "White cotton", 12000,
+                null, "ACTIVE", List.of(white, cotton));
+        createProduct(writer, "FILTER-D-" + suffix, "Draft black cotton", 13000,
+                null, "DRAFT", List.of(black, cotton));
+
+        String colorCode = db.queryForObject("SELECT code FROM attributes WHERE id=?", String.class, color);
+        String materialCode = db.queryForObject("SELECT code FROM attributes WHERE id=?", String.class, material);
+        String colorQuery = "attribute_filters%5B" + colorCode + "%5D";
+        String materialQuery = "attribute_filters%5B" + materialCode + "%5D";
+        String base = "/api/v1/catalog/products?";
+
+        Result blackList = call("GET", base + colorQuery + "=BLACK", null, null);
+        assertEquals(200, blackList.status(), blackList.body());
+        assertEquals(2, blackList.data().get("meta").get("total").asInt());
+
+        Result exact = call("GET", base + colorQuery + "=BLACK&" + materialQuery + "=COTTON", null, null);
+        assertEquals(200, exact.status(), exact.body());
+        assertEquals(1, exact.data().get("meta").get("total").asInt());
+        assertEquals(target, exact.data().get("data").get(0).get("product_id").asLong());
+
+        assertEquals(400, call("GET", base + colorQuery + "=COTTON", null, null).status(),
+                "Option value must belong to the requested Attribute");
+        assertEquals(400, call("GET", base + "attribute_filters%5BUNKNOWN%5D=BLACK", null, null).status());
+        assertEquals(400, call("GET", base + colorQuery + "=BLACK&" + colorQuery + "=WHITE", null, null).status());
+        assertEquals(400, call("GET", base + "attribute_min%5B" + colorCode + "%5D=1", null, null).status());
+        assertEquals(400, call("GET", base + "attribute_filters%5B" + colorCode + "=BLACK", null, null).status());
+    }
+
     private Employee catalogWriter() throws Exception {
         long roleId = customRole(ensurePermission("CATALOG_WRITE"));
         long readPermissionId = ensurePermission("CATALOG_READ");

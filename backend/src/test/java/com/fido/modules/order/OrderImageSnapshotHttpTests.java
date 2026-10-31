@@ -8,10 +8,14 @@ import org.junit.jupiter.api.Test;
 
 import tools.jackson.databind.JsonNode;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.Map;
 
 class OrderImageSnapshotHttpTests extends OrderHttpSupport {
+    private final List<Long> attributeIds = new ArrayList<>();
+    private final List<Long> optionIds = new ArrayList<>();
 
     @Test
     void createdOrderKeepsImageSnapshotAfterCoverChangeAndDeletion() throws Exception {
@@ -67,6 +71,47 @@ class OrderImageSnapshotHttpTests extends OrderHttpSupport {
         assertAdminOrderImage(root, orderId, coverA);
         assertOrderListImage(customer, "/api/v1/me/orders", orderId, coverA);
         assertOrderListImage(root, "/api/v1/admin/orders", orderId, coverA);
+    }
+
+    @Test
+    void orderDetailsExposeFrozenOptionSnapshotAfterAttributeChanges() throws Exception {
+        User customer = user();
+        User admin = superadmin();
+        CatalogFixture fixture = createVariant(5, 100000, 90000);
+        String code = "ORDER_MATERIAL_" + UUID.randomUUID().toString().replace("-", "");
+        db.update("INSERT INTO attributes(code,name,is_required,is_variant_defining,sort_order) "
+                + "VALUES (?,'Order material',FALSE,FALSE,0)", code);
+        long attributeId = db.queryForObject("SELECT id FROM attributes WHERE code=?", Long.class, code);
+        attributeIds.add(attributeId);
+        db.update("INSERT INTO attribute_options(attribute_id,`value`,label,sort_order) "
+                + "VALUES (?,'COTTON','Cotton',0)", attributeId);
+        long optionId = db.queryForObject("SELECT id FROM attribute_options WHERE attribute_id=?",
+                Long.class, attributeId);
+        optionIds.add(optionId);
+        db.update("INSERT INTO product_attribute_values(product_id,attribute_id,option_id) "
+                + "VALUES (?,?,?)", fixture.productId(), attributeId, optionId);
+
+        long orderId = createOrder(customer, fixture, 1);
+        String saved = db.queryForObject("SELECT attribute_snapshot FROM order_items WHERE order_id=?",
+                String.class, orderId);
+        var entries = json.readTree(saved);
+        assertEquals(1, entries.size());
+        assertEquals(optionId, entries.get(0).get("attribute_value_id").asLong());
+        assertEquals("COTTON", entries.get(0).get("option_value_snapshot").asText());
+
+        assertOrderAttributes("/api/v1/me/orders/" + orderId, customer.token(), saved);
+        assertOrderAttributes("/api/v1/admin/orders/" + orderId, admin.token(), saved);
+        db.update("UPDATE attributes SET name='Renamed material' WHERE id=?", attributeId);
+        db.update("UPDATE attribute_options SET label='Updated cotton' WHERE id=?", optionId);
+        assertOrderAttributes("/api/v1/me/orders/" + orderId, customer.token(), saved);
+        assertOrderAttributes("/api/v1/admin/orders/" + orderId, admin.token(), saved);
+    }
+
+    private void assertOrderAttributes(String path, String token, String expected) throws Exception {
+        Result detail = call("GET", path, token, null);
+        assertEquals(200, detail.status(), detail.body());
+        assertEquals(expected, detail.data().get("data").get("items").get(0)
+                .get("attribute_snapshot").asText());
     }
 
     private long insertImage(long productId, String imageUrl, int sortOrder) {
@@ -148,7 +193,10 @@ class OrderImageSnapshotHttpTests extends OrderHttpSupport {
     @AfterEach
     void cleanProductImages() {
         for (CatalogFixture fixture : fixtures) {
+            db.update("DELETE FROM product_attribute_values WHERE product_id=?", fixture.productId());
             db.update("DELETE FROM product_images WHERE product_id=?", fixture.productId());
         }
+        for (Long optionId : optionIds) db.update("DELETE FROM attribute_options WHERE id=?", optionId);
+        for (Long attributeId : attributeIds) db.update("DELETE FROM attributes WHERE id=?", attributeId);
     }
 }

@@ -6,6 +6,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fido.modules.product.entity.Product;
+import com.fido.modules.product.repository.AttributeOptionRepository;
+import com.fido.modules.product.repository.AttributeRepository;
 import com.fido.modules.product.repository.BrandRepository;
 import com.fido.modules.product.repository.CategoryRepository;
 import com.fido.modules.product.repository.ProductImageRepository;
@@ -31,6 +33,8 @@ class PublicCatalogQueryServiceTests {
     @Mock private BrandRepository brands;
     @Mock private CatalogReferenceService references;
     @Mock private CatalogMetaService metaService;
+    @Mock private AttributeRepository attributes;
+    @Mock private AttributeOptionRepository options;
 
     private PublicCatalogQueryService service;
 
@@ -38,7 +42,7 @@ class PublicCatalogQueryServiceTests {
     void setUp() {
         service = new PublicCatalogQueryService(
                 products, images, imageRead, attributeValueRead,
-                categories, brands, references, metaService);
+                categories, brands, references, metaService, attributes, options);
     }
 
     @Test

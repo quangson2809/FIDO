@@ -8,6 +8,7 @@ import java.util.Optional;
 
 public interface AttributeRepository extends Repository<Attribute, Long> {
     Optional<Attribute> findById(Long id);
+    Optional<Attribute> findByCode(String code);
     boolean existsByCode(String code);
     List<Attribute> findAllByOrderBySortOrderAscAttributeIdAsc();
     Attribute save(Attribute entity);

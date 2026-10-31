@@ -9,4 +9,5 @@ public record OrderItemDto(
         Long unit_price,
         Integer quantity,
         Long line_total,
-        Long discount_amount) {}
+        Long discount_amount,
+        String attribute_snapshot) {}

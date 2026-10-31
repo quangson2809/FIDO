@@ -7,7 +7,7 @@ This is the target testing plan for the revised 30-table option-only catalog ERD
 ### Unit
 - Order, COD Payment, ShippingInfo and GoodsReceipt transition/actor policy.
 - Product parent/child depth and cycle validation.
-- Typed Attribute value matching and same-Attribute option ownership.
+- Option-only Attribute equality filtering, same-Attribute Option ownership and rejection of typed filters.
 - Integer-VND calculation, HALF-UP order discount and largest-remainder line allocation with Product-ID tie-break.
 - Request mapping, safe error codes and DTO projection without persistence.
 

@@ -35,7 +35,8 @@ public final class OrderMapper {
                 item.getUnitPrice(),
                 item.getQuantity(),
                 item.getLineTotal(),
-                item.getDiscountAmount());
+                item.getDiscountAmount(),
+                item.getAttributeSnapshot());
     }
 
     public static PaymentPublicDto paymentPublic(Payment payment) {
