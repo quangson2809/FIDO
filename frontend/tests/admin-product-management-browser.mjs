@@ -106,6 +106,10 @@ const relation = (product) => ({
 let products = new Map([[101, clone(initialProduct)]]);
 let nextProductId = 202;
 let failNextUpload = false;
+let failNextCreate = false;
+let holdNextCreate = false;
+let releaseCreate;
+let notifyCreateStarted;
 const requests = [];
 const summary = (product) => ({
   product_id: product.product_id, parent_product_id: product.parent_product_id, sku: product.sku,
@@ -141,6 +145,11 @@ await page.route('**/api/v1/**', async (route) => {
     } });
   }
   if (method === 'POST' && path === '/admin/products') {
+    if (failNextCreate) { failNextCreate = false; return send(route, { message: 'create rejected' }, 400); }
+    if (holdNextCreate) {
+      holdNextCreate = false;
+      await new Promise((resolve) => { releaseCreate = resolve; notifyCreateStarted(); });
+    }
     const id = nextProductId++;
     const product = {
       ...clone(initialProduct), product_id: id, parent_product_id: body.parent_product_id ?? null,
@@ -265,6 +274,7 @@ try {
   });
   await page.getByLabel('Ảnh Product mới').setInputFiles({ name: 'retry-shirt.png', mimeType: 'image/png', buffer: Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0]) });
   await page.getByRole('button', { name: 'Thử tải ảnh lại', exact: true }).click();
+  await page.getByRole('heading', { name: 'Thông tin Product mới', exact: true }).waitFor({ state: 'detached' });
   await page.getByText('Product #202 đã được tạo.', { exact: true }).waitFor();
   assert.equal(requests.filter((item) => item.method === 'POST' && item.path === '/admin/products').length, 1, 'retry must not create duplicate Product');
 
@@ -275,7 +285,10 @@ try {
   await relations.getByText('TEE-NEW', { exact: true }).waitFor();
   await relations.getByText('Trắng', { exact: true }).waitFor();
   await relations.getByText('320.000₫', { exact: true }).waitFor();
+  const childLoaded = page.waitForResponse((response) => response.url().endsWith('/admin/products/202')
+    && response.request().method() === 'GET');
   await relations.getByRole('link', { name: 'Xem chi tiết Product #202' }).click();
+  await childLoaded;
   await page.waitForURL('**/admin/products/202');
   await page.getByRole('heading', { name: 'Áo mới', exact: true }).waitFor();
   assert.ok(requests.some((item) =>
@@ -332,6 +345,67 @@ try {
   await page.getByRole('button', { name: 'Xóa Product', exact: true }).click();
   await page.getByRole('heading', { name: 'Sản phẩm', level: 1, exact: true }).waitFor();
   assert.ok(requests.some((item) => item.method === 'DELETE' && item.path === '/admin/products/101'));
+  const createRequests = () => requests.filter((item) => item.method === 'POST' && item.path === '/admin/products');
+  const prepareCreate = async (sku, withImage = false) => {
+    await page.getByRole('button', { name: 'Thêm Product', exact: true }).click();
+    await page.getByLabel('SKU *').fill(sku);
+    await page.getByLabel('Giá bán (VND) *').fill('100000');
+    if (withImage) await page.getByLabel('Ảnh Product mới').setInputFiles({
+      name: 'shirt.png', mimeType: 'image/png', buffer: Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0]),
+    });
+  };
+  await prepareCreate('CREATE-REJECT');
+  failNextCreate = true;
+  const sizeBeforeFailure = products.size;
+  await page.getByRole('button', { name: 'Tạo Product', exact: true }).click();
+  await page.getByText('create rejected', { exact: true }).waitFor();
+  assert.equal(products.size, sizeBeforeFailure, 'failed Create must not claim a new persisted Product');
+  await page.getByLabel('SKU *').fill('NO-IMAGE');
+  const beforeDoubleSubmit = createRequests().length;
+  const createStarted = new Promise((resolve) => { notifyCreateStarted = resolve; });
+  holdNextCreate = true;
+  await page.getByRole('button', { name: 'Tạo Product', exact: true }).evaluate((button) => {
+    button.form.requestSubmit();
+    button.form.requestSubmit();
+  });
+  await page.getByRole('button', { name: 'Đang tạo Product...', exact: true }).waitFor();
+  await createStarted;
+  assert.equal(createRequests().length, beforeDoubleSubmit + 1, 'synchronous duplicate submit must send Create once');
+  const createdResponse = page.waitForResponse((response) => response.url().endsWith('/admin/products')
+    && response.request().method() === 'POST');
+  releaseCreate();
+  await createdResponse;
+  const noImageId = nextProductId - 1;
+  await page.getByText('Product #' + noImageId + ' đã được tạo.', { exact: true }).waitFor();
+  assert.equal(products.get(noImageId).images.length, 0);
+
+  await prepareCreate('WITH-IMAGE', true);
+  const withImageId = nextProductId;
+  await page.getByRole('button', { name: 'Tạo Product', exact: true }).click();
+  await page.getByText('Product #' + withImageId + ' đã được tạo.', { exact: true }).waitFor();
+  await page.getByRole('heading', { name: 'Thông tin Product mới', exact: true }).waitFor({ state: 'detached' });
+  assert.equal(products.get(nextProductId - 1).images.length, 1);
+
+  for (const action of ['Hoàn tất không ảnh', 'Đóng form (Product đã lưu)', 'Mở Product đã tạo']) {
+    await prepareCreate('RECOVER-' + action, true);
+    failNextUpload = true;
+    await page.getByRole('button', { name: 'Tạo Product', exact: true }).click();
+    await page.getByText('Chỉ còn bước tải ảnh', { exact: false }).waitFor();
+    const saved = nextProductId - 1;
+    const posts = createRequests().length;
+    assert.ok(products.has(saved));
+    await page.getByRole('button', { name: action, exact: true }).click();
+    if (action === 'Mở Product đã tạo') {
+      await page.waitForURL('**/admin/products/' + saved);
+      await page.getByRole('heading', { name: 'RECOVER-' + action, exact: true }).waitFor();
+    } else {
+      await page.getByText('Product #' + saved + ' đã được tạo.', { exact: true }).waitFor();
+    }
+    assert.equal(createRequests().length, posts);
+    assert.ok(products.has(saved), 'closing or finishing must not delete the saved Product');
+    assert.equal(products.get(saved).images.length, 0);
+    assert.ok(!requests.some((item) => item.method === 'DELETE' && item.path === '/admin/products/' + saved));
+  }
   assert.deepEqual(pageErrors, [], 'no uncaught runtime errors');
   process.stdout.write('Admin Product management browser regression: PASS\n');
 } catch (failure) {

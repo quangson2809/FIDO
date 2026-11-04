@@ -44,6 +44,8 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
         var fixture = createCatalog(writer);
         clearImages(fixture.productId());
 
+        var old = java.time.LocalDateTime.of(2000, 1, 1, 0, 0);
+        db.update("UPDATE products SET updated_at=? WHERE id=?", old, fixture.productId());
         storage.succeed("https://storage.test/front.png", "https://storage.test/back.png");
 
         var response =
@@ -53,6 +55,9 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
                         List.of(imagePart("front.png"), imagePart("back.png")));
 
         assertEquals(201, response.status(), response.body());
+        var timestamp = db.queryForObject("SELECT updated_at FROM products WHERE id=?", java.time.LocalDateTime.class, fixture.productId());
+        org.junit.jupiter.api.Assertions.assertTrue(timestamp.isAfter(old));
+        assertEquals(timestamp, java.time.LocalDateTime.parse(response.data().get("data").get("updated_at").asText()));
         assertEquals(
                 List.of("https://storage.test/front.png", "https://storage.test/back.png"),
                 responseImageUrls(response));
@@ -180,6 +185,7 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
         var fixture = createCatalog(writer);
         clearImages(fixture.productId());
 
+        var beforeTimestamp = db.queryForObject("SELECT updated_at FROM products WHERE id=?", java.time.LocalDateTime.class, fixture.productId());
         storage.fail(HttpStatus.BAD_GATEWAY, "Image storage request failed");
 
         var response =
@@ -187,6 +193,7 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
 
         assertEquals(502, response.status(), response.body());
         assertEquals(List.of("failed.png"), storage.uploadedFilenames());
+        assertEquals(beforeTimestamp, db.queryForObject("SELECT updated_at FROM products WHERE id=?", java.time.LocalDateTime.class, fixture.productId()));
         assertEquals(0, imageCount(fixture.productId()));
     }
 

@@ -7,6 +7,7 @@ import com.fido.modules.audit.service.AuditWriteService;
 import com.fido.modules.product.dto.request.ProductImageReorderRequest;
 import com.fido.modules.product.dto.response.AdminProductDetailDto;
 import com.fido.modules.product.entity.ProductImage;
+import com.fido.modules.product.entity.Product;
 import com.fido.modules.product.repository.ProductImageRepository;
 
 import org.springframework.http.HttpStatus;
@@ -49,7 +50,7 @@ public class ProductImageAdminService {
     @PreAuthorize(WRITE)
     public AdminProductDetailDto appendUploadedImages(
             Long actor, Long productId, List<ImageStorageGateway.UploadedImage> uploaded) {
-        references.productForUpdate(productId);
+        Product product = references.productForUpdate(productId);
         List<ProductImage> current = images.findAllByProductIdForUpdate(productId);
         assertGalleryInvariant(current);
 
@@ -69,6 +70,7 @@ public class ProductImageAdminService {
             images.save(image);
         }
 
+        if (!uploaded.isEmpty()) product.touch();
         images.flush();
         recordProductUpdate(actor, productId);
         return query.detailInternal(productId);
@@ -76,7 +78,7 @@ public class ProductImageAdminService {
 
     @PreAuthorize(WRITE)
     public void removeImage(Long actor, Long productId, Long imageId) {
-        references.productForUpdate(productId);
+        Product product = references.productForUpdate(productId);
         List<ProductImage> current = images.findAllByProductIdForUpdate(productId);
         assertGalleryInvariant(current);
 
@@ -94,6 +96,7 @@ public class ProductImageAdminService {
                         .filter(image -> !Objects.equals(image.getImageId(), imageId))
                         .toList();
 
+        product.touch();
         normalizeSortOrder(remaining);
         recordProductUpdate(actor, productId);
     }
@@ -101,13 +104,16 @@ public class ProductImageAdminService {
     @PreAuthorize(WRITE)
     public AdminProductDetailDto reorderImages(
             Long actor, Long productId, ProductImageReorderRequest request) {
-        references.productForUpdate(productId);
+        Product product = references.productForUpdate(productId);
         List<ProductImage> current = images.findAllByProductIdForUpdate(productId);
         assertGalleryInvariant(current);
 
         Map<Long, Integer> requestedOrders = validateRequestedOrders(current, request.images());
         List<ProductImage> finalOrder = resolveFinalOrder(current, requestedOrders);
 
+        boolean changed = java.util.stream.IntStream.range(0, finalOrder.size())
+                .anyMatch(index -> !Objects.equals(finalOrder.get(index).getSortOrder(), index));
+        if (changed) product.touch();
         normalizeSortOrder(finalOrder);
         recordProductUpdate(actor, productId);
 

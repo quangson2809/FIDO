@@ -12,6 +12,43 @@ import java.util.UUID;
 class ProductImageAdminHttpTests extends CatalogHttpSupport {
 
     @Test
+    void onlyGalleryChangesTouchProductAndEquivalentReplacementPreservesImageIds() throws Exception {
+        Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
+        long id = createCatalog(writer).productId();
+        Result gallery = replaceImages(writer, id);
+        var inputs = gallery.data().get("data").get("images");
+        List<Map<String, Object>> same = new ArrayList<>();
+        for (var input : inputs) same.add(Map.of("image_url", input.get("image_url").asText(),
+                "sort_order", input.get("sort_order").asInt()));
+        var old = java.time.LocalDateTime.of(2000, 1, 1, 0, 0);
+        db.update("UPDATE products SET updated_at=? WHERE id=?", old, id);
+        Result noop = call("PATCH", "/api/v1/admin/products/" + id, writer.token(), Map.of("images", same));
+        assertEquals(200, noop.status(), noop.body());
+        assertEquals(imageIds(gallery), imageIds(noop));
+        assertEquals(old, productTimestamp(id));
+        List<Long> ids = imageIds(gallery);
+        Result reordered = call("PATCH", "/api/v1/admin/products/" + id + "/images", writer.token(),
+                Map.of("images", List.of(Map.of("image_id", ids.get(1), "sort_order", 0),
+                        Map.of("image_id", ids.get(0), "sort_order", 1))));
+        assertEquals(200, reordered.status(), reordered.body());
+        org.junit.jupiter.api.Assertions.assertTrue(productTimestamp(id).isAfter(old));
+        var changed = productTimestamp(id);
+        assertEquals(200, call("PATCH", "/api/v1/admin/products/" + id + "/images", writer.token(),
+                Map.of("images", List.of())).status());
+        assertEquals(changed, productTimestamp(id), "No-op reorder must keep updated_at");
+        db.update("UPDATE products SET updated_at=? WHERE id=?", old, id);
+        assertEquals(204, call("DELETE", "/api/v1/admin/products/" + id + "/images/" + ids.get(0), writer.token(), null).status());
+        org.junit.jupiter.api.Assertions.assertTrue(productTimestamp(id).isAfter(old));
+        db.update("UPDATE products SET updated_at=? WHERE id=?", old, id);
+        assertEquals(200, call("PATCH", "/api/v1/admin/products/" + id, writer.token(), Map.of("images", List.of())).status());
+        org.junit.jupiter.api.Assertions.assertTrue(productTimestamp(id).isAfter(old));
+    }
+
+    private java.time.LocalDateTime productTimestamp(long id) {
+        return db.queryForObject("SELECT updated_at FROM products WHERE id=?", java.time.LocalDateTime.class, id);
+    }
+
+    @Test
     void invalidImageUrlCannotReplaceExistingGallery() throws Exception {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         long productId = createCatalog(writer).productId();

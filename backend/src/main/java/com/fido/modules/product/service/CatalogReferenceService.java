@@ -118,6 +118,16 @@ public class CatalogReferenceService {
         return category;
     }
 
+    public Map<Long, Category> categoriesById(Collection<Long> categoryIds) {
+        var ids = distinctIds(categoryIds);
+        return ids.isEmpty() ? Map.of() : requireAll(ids, categories.findAllByCategoryIdIn(ids), Category::getCategoryId);
+    }
+
+    public Map<Long, Brand> brandsById(Collection<Long> brandIds) {
+        var ids = distinctIds(brandIds);
+        return ids.isEmpty() ? Map.of() : requireAll(ids, brands.findAllByBrandIdIn(ids), Brand::getBrandId);
+    }
+
     public Map<Long, Product> productsById(Collection<Long> productIds) {
         var requestedIds = distinctIds(productIds);
         if (requestedIds.isEmpty()) return Map.of();

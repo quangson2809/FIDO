@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDirtyForm } from '../../shared/admin/dirtyFormContext';
 import { QueryFeedback } from '../../shared/admin/QueryFeedback';
 import { useRemoteQuery } from '../../shared/hooks/useRemoteQuery';
@@ -15,7 +15,6 @@ import {
 } from '../../features/catalog/model/productAttributeForm';
 import type {
   AdminCatalogMetaDto,
-  AdminProductDetailDto,
   CatalogMetaDto,
   ProductCreateInput,
   ProductStatus,
@@ -102,17 +101,19 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
   const pagination = list.data?.meta ?? null;
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [createPhase, setCreatePhase] = useState<'idle' | 'creating' | 'uploading' | 'upload_failed'>('idle');
+  const submitting = createPhase === 'creating' || createPhase === 'uploading';
+  const submissionInFlight = useRef(false);
   const [form, setForm] = useState<ProductFormState>(initialForm);
   const [attributeDraft, setAttributeDraft] = useState<ProductAttributeDraft>({});
   const [images, setImages] = useState<File[]>([]);
   const [pendingProductId, setPendingProductId] = useState<number | null>(null);
   const [lastCreatedId, setLastCreatedId] = useState<number | null>(null);
-  const isDirty =
+  const isDirty = showCreate && pendingProductId === null && (
     JSON.stringify(form) !== JSON.stringify(initialForm) ||
     JSON.stringify(attributeDraft) !==
       JSON.stringify(attributeDraftFromValues(adminMeta?.attributes ?? [], [])) ||
-    images.length > 0;
+    images.length > 0);
   const canDiscard = useDirtyForm(isDirty);
 
   useEffect(() => {
@@ -226,6 +227,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
     setImages([]);
     setShowCreate(false);
     setPendingProductId(null);
+    setCreatePhase('idle');
     setLastCreatedId(productId);
     setError(null);
     list.reload();
@@ -233,7 +235,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
 
   const create = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!canWrite || submitting) return;
+    if (!canWrite || submitting || submissionInFlight.current) return;
     const validation =
       pendingProductId === null
         ? buildCreatePayload()
@@ -243,43 +245,38 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
       return;
     }
 
-    setSubmitting(true);
+    submissionInFlight.current = true;
+    setCreatePhase(pendingProductId === null ? 'creating' : 'uploading');
     setError(null);
     try {
-      let created: AdminProductDetailDto;
-      if (pendingProductId !== null) {
-        created = await adminProductService.getProduct(pendingProductId);
-      } else if (validation.payload) {
-        created = await adminProductService.createProduct(validation.payload);
-      } else {
-        return;
+      let productId = pendingProductId;
+      if (productId === null && validation.payload) {
+        const created = await adminProductService.createProduct(validation.payload);
+        productId = created.product_id;
+        setPendingProductId(productId);
+        setLastCreatedId(productId);
+        list.reload();
       }
+      if (productId === null) return;
 
       if (images.length > 0) {
+        setCreatePhase('uploading');
         try {
-          await adminProductService.uploadImages(created.product_id, images);
+          await adminProductService.uploadImages(productId, images);
         } catch (uploadError: unknown) {
-          setPendingProductId(created.product_id);
-          setLastCreatedId(created.product_id);
-          setError(
-            getApiErrorMessage(
-              uploadError,
-              'Product đã tạo nhưng tải ảnh thất bại. Chọn lại ảnh rồi thử lại.',
-            ),
-          );
-          list.reload();
-          showToast('Product đã tạo; tải ảnh thất bại. Có thể thử lại mà không tạo trùng Product.');
+          setCreatePhase('upload_failed');
+          setError(getApiErrorMessage(uploadError, 'Chưa xác nhận tải ảnh. Mở Product để kiểm tra hoặc chọn lại ảnh rồi thử lại.'));
+          showToast('Product #' + productId + ' đã tạo; chưa hoàn tất xác nhận tải ảnh. Có thể mở Product để kiểm tra hoặc thử lại mà không tạo trùng Product.');
           return;
         }
       }
-      finishCreate(created.product_id);
-      showToast('Đã tạo Product ' + created.sku + '.');
+      finishCreate(productId);
+      showToast('Đã hoàn tất Product #' + productId + '.');
     } catch (requestError: unknown) {
-      setError(
-        getApiErrorMessage(requestError, 'Không thể tạo Product. Kiểm tra quyền và dữ liệu catalog.'),
-      );
+      setCreatePhase('idle');
+      setError(getApiErrorMessage(requestError, 'Không thể tạo Product. Kiểm tra quyền và dữ liệu catalog.'));
     } finally {
-      setSubmitting(false);
+      submissionInFlight.current = false;
     }
   };
 
@@ -297,6 +294,12 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
   };
 
   const cancelCreate = () => {
+    if (submitting) return;
+    if (pendingProductId !== null) {
+      finishCreate(pendingProductId);
+      showToast('Product #' + pendingProductId + ' đã được lưu. Đóng form không xóa Product.');
+      return;
+    }
     if (!canDiscard()) return;
     setShowCreate(false);
     setPendingProductId(null);
@@ -324,10 +327,11 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
         {canWrite && (
           <button
             type="button"
-            onClick={() => setShowCreate((value) => !value)}
+            disabled={submitting}
+            onClick={() => showCreate ? cancelCreate() : setShowCreate(true)}
             className="admin-primary"
           >
-            {showCreate ? 'Đóng form' : 'Thêm Product'}
+            {showCreate ? pendingProductId !== null ? 'Đóng form (Product đã lưu)' : 'Đóng form' : 'Thêm Product'}
           </button>
         )}
       </header>
@@ -525,17 +529,17 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
           </div>
           {pendingProductId !== null && (
             <p role="status" className="text-sm text-amber-800">
-              Product #{pendingProductId} đã được tạo. Chỉ còn bước tải ảnh; chọn lại ảnh nếu cần,
-              không tạo lại Product.
+              Product #{pendingProductId} đã được tạo và tồn tại trong hệ thống.
+              {createPhase === 'uploading' ? ' Đang tải ảnh...' : ' Chỉ còn bước tải ảnh; chọn lại ảnh để thử lại, hoặc hoàn tất không ảnh. Đóng form không xóa Product.'}
             </p>
           )}
           <div className="flex flex-wrap gap-2">
             <button
               type="submit"
-              disabled={submitting || metaLoading || !adminMeta || !catalogMeta}
+              disabled={submitting || metaLoading || !adminMeta || !catalogMeta || (pendingProductId !== null && images.length === 0)}
               className="admin-primary disabled:opacity-40"
             >
-              {submitting ? 'Đang lưu...' : pendingProductId !== null ? 'Thử tải ảnh lại' : 'Tạo Product'}
+              {createPhase === 'creating' ? 'Đang tạo Product...' : createPhase === 'uploading' ? 'Đang tải ảnh...' : pendingProductId !== null ? 'Thử tải ảnh lại' : 'Tạo Product'}
             </button>
             <button
               type="button"
@@ -543,8 +547,18 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
               onClick={cancelCreate}
               className="admin-secondary"
             >
-              Hủy
+              {pendingProductId !== null ? 'Hoàn tất không ảnh' : 'Hủy'}
             </button>
+            {pendingProductId !== null && (
+              <button type="button" disabled={submitting} className="admin-secondary"
+                onClick={() => {
+                  const id = pendingProductId;
+                  finishCreate(id);
+                  openProduct(id);
+                }}>
+                Mở Product đã tạo
+              </button>
+            )}
           </div>
         </form>
       )}

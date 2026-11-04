@@ -15,6 +15,7 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 
 @Entity
 @Table(
@@ -71,7 +72,7 @@ public class Product {
 
     @PrePersist
     void onCreate() {
-        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
         if (status == null || status.isBlank()) status = "DRAFT";
         createdAt = now;
         updatedAt = now;
@@ -79,7 +80,11 @@ public class Product {
 
     @PreUpdate
     void onUpdate() {
-        updatedAt = LocalDateTime.now(ZoneOffset.UTC);
+        touch();
+    }
+
+    public void touch() {
+        updatedAt = LocalDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
     }
 
     public boolean isDeleted() {

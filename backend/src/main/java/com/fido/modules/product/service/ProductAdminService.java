@@ -146,19 +146,20 @@ public class ProductAdminService {
             product.setStatus(request.getStatus());
         }
 
+        List<Long> currentValueIds = productAttributeValues.findAllByProductIdOrderByAttributeIdAsc(productId)
+                .stream().map(ProductAttributeValue::getOptionId).toList();
         List<Long> resultingValueIds = request.isAttributeValueIdsPresent()
-                ? request.getAttributeValueIds()
-                : productAttributeValues.findAllByProductIdOrderByAttributeIdAsc(productId)
-                        .stream().map(ProductAttributeValue::getOptionId).toList();
+                ? request.getAttributeValueIds() : currentValueIds;
 
         List<ProductAttributeValue> validatedValues =
                 attributeValueValidator.validateCompleteSet(
                         productId, product.getStatus(), resultingValueIds);
 
-        replaceImagesIfPresent(productId, request);
-        products.save(product);
-
-        if (request.isAttributeValueIdsPresent()) {
+        boolean attributesChanged = request.isAttributeValueIdsPresent()
+                && !new HashSet<>(currentValueIds).equals(new HashSet<>(resultingValueIds));
+        if (attributesChanged) product.touch();
+        replaceImagesIfPresent(product, request);
+        if (attributesChanged) {
             replaceAttributeValues(productId, validatedValues);
         }
 
@@ -206,8 +207,9 @@ public class ProductAdminService {
         }
     }
 
-    private void replaceImagesIfPresent(Long productId, ProductPatchRequest request) {
+    private void replaceImagesIfPresent(Product product, ProductPatchRequest request) {
         if (!request.isImagesPresent()) return;
+        Long productId = product.getProductId();
         List<ProductImageInput> requested = request.getImages();
         var sortOrders = new HashSet<Integer>();
         for (ProductImageInput item : requested) {
@@ -225,6 +227,15 @@ public class ProductAdminService {
                 conflict("Image sort order must be contiguous");
             }
         }
+        List<ProductImage> current = images.findAllByProductIdOrderBySortOrderAscImageIdAsc(productId);
+        List<ProductImageInput> ordered = requested.stream()
+                .sorted(java.util.Comparator.comparing(ProductImageInput::sort_order)).toList();
+        boolean unchanged = current.size() == ordered.size() && java.util.stream.IntStream.range(0, current.size())
+                .allMatch(index -> Objects.equals(current.get(index).getSortOrder(), ordered.get(index).sort_order())
+                        && Objects.equals(current.get(index).getImageUrl(), ordered.get(index).image_url())
+                        && Objects.equals(current.get(index).getIsPrimary(), index == 0));
+        if (unchanged) return;
+        product.touch();
         images.deleteAllByProductId(productId);
         em.flush();
         for (ProductImageInput item : requested) {

@@ -21,6 +21,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -89,17 +92,35 @@ public class AdminCatalogQueryService {
     AdminProductDetailDto detailInternal(Long productId) {
         Product product = references.product(productId);
 
-        AdminProductRelationDto current = relation(product);
+        Product parentProduct = product.getParentProductId() == null
+                ? null : references.product(product.getParentProductId());
+        List<Product> childProducts = products.findAllByParentProductIdOrderByProductIdAsc(productId).stream()
+                .filter(child -> !child.isDeleted()).toList();
+        List<Product> related = new ArrayList<>();
+        related.add(product);
+        if (parentProduct != null) related.add(parentProduct);
+        related.addAll(childProducts);
+        List<Long> ids = related.stream().map(Product::getProductId).distinct().toList();
 
-        AdminProductRelationDto parent = product.getParentProductId() == null
-                ? null
-                : relation(references.product(product.getParentProductId()));
-
-        List<AdminProductRelationDto> children =
-                products.findAllByParentProductIdOrderByProductIdAsc(productId).stream()
-                        .filter(child -> !child.isDeleted())
-                        .map(this::relation)
-                        .toList();
+        var categories = references.categoriesById(related.stream().map(Product::getCategoryId).toList());
+        var brands = references.brandsById(related.stream().map(Product::getBrandId).toList());
+        Map<Long, List<ProductImageDto>> galleries = images
+                .findAllByProductIdInOrderByProductIdAscSortOrderAscImageIdAsc(ids).stream()
+                .collect(Collectors.groupingBy(com.fido.modules.product.entity.ProductImage::getProductId,
+                        Collectors.mapping(CatalogMapper::image, Collectors.toList())));
+        var values = attributeValueRead.forProducts(ids);
+        Map<Long, AdminProductRelationDto> relations = related.stream().collect(Collectors.toMap(
+                Product::getProductId,
+                item -> relation(item,
+                        item.getCategoryId() == null ? null : CatalogMapper.category(categories.get(item.getCategoryId())),
+                        item.getBrandId() == null ? null : CatalogMapper.brand(brands.get(item.getBrandId())),
+                        galleries.getOrDefault(item.getProductId(), List.of()),
+                        values.getOrDefault(item.getProductId(), List.of())),
+                (first, ignored) -> first));
+        AdminProductRelationDto current = relations.get(productId);
+        AdminProductRelationDto parent = parentProduct == null ? null : relations.get(parentProduct.getProductId());
+        List<AdminProductRelationDto> children = childProducts.stream()
+                .map(child -> relations.get(child.getProductId())).toList();
 
         return new AdminProductDetailDto(
                 current.product_id(),
@@ -124,25 +145,9 @@ public class AdminCatalogQueryService {
                 children);
     }
 
-    private AdminProductRelationDto relation(Product product) {
-        CategoryDto category = product.getCategoryId() == null
-                ? null
-                : CatalogMapper.category(references.category(product.getCategoryId()));
-
-        BrandDto brand = product.getBrandId() == null
-                ? null
-                : CatalogMapper.brand(references.brand(product.getBrandId()));
-
-        List<ProductImageDto> productImages =
-                images.findAllByProductIdOrderBySortOrderAscImageIdAsc(
-                                product.getProductId())
-                        .stream()
-                        .map(CatalogMapper::image)
-                        .toList();
-
-        List<ProductAttributeValueDto> values =
-                attributeValueRead.forProduct(product.getProductId());
-
+    private AdminProductRelationDto relation(
+            Product product, CategoryDto category, BrandDto brand,
+            List<ProductImageDto> productImages, List<ProductAttributeValueDto> values) {
         return new AdminProductRelationDto(
                 product.getProductId(),
                 product.getParentProductId(),

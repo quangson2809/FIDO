@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.UUID;
 
 class ProductAttributeValueHttpTests extends CatalogHttpSupport {
+    @org.springframework.beans.factory.annotation.Autowired jakarta.persistence.EntityManagerFactory entityManagerFactory;
+
     private final List<Long> createdAttributes = new ArrayList<>();
     private final List<Long> createdOptions = new ArrayList<>();
 
@@ -163,6 +165,44 @@ class ProductAttributeValueHttpTests extends CatalogHttpSupport {
         assertEquals(0, cleared.data().get("data").get("attribute_values").size());
         assertEquals(0, db.queryForObject(
                 "SELECT COUNT(*) FROM product_attribute_values WHERE product_id = ?", Integer.class, productId));
+    }
+
+    @Test
+    void attributeOnlyPatchTouchesProductButEquivalentSetsAndFieldsDoNot() throws Exception {
+        Employee writer = catalogWriter();
+        long attribute = createAttribute(writer, "TIME", "Timestamp", false);
+        long first = createOption(writer, attribute, "FIRST", "First");
+        long second = createOption(writer, attribute, "SECOND", "Second");
+        long id = createProduct(writer, "TIME-" + UUID.randomUUID(), "Timestamp", 10000,
+                null, "DRAFT", List.of(first));
+        var old = java.time.LocalDateTime.of(2000, 1, 1, 0, 0);
+        db.update("UPDATE products SET updated_at=? WHERE id=?", old, id);
+        var stats = entityManagerFactory.unwrap(org.hibernate.SessionFactory.class).getStatistics();
+        boolean enabled = stats.isStatisticsEnabled();
+        stats.setStatisticsEnabled(true);
+        try {
+            long updates = stats.getEntityStatistics("com.fido.modules.product.entity.Product").getUpdateCount();
+            Result changed = call("PATCH", "/api/v1/admin/products/" + id, writer.token(),
+                    Map.of("attribute_value_ids", List.of(second), "selling_price", 12000));
+            assertEquals(200, changed.status(), changed.body());
+            assertEquals(1, stats.getEntityStatistics("com.fido.modules.product.entity.Product").getUpdateCount() - updates,
+                    "Scalar plus Attribute changes must update Product once");
+            db.update("UPDATE products SET updated_at=? WHERE id=?", old, id);
+            Result attributeOnly = call("PATCH", "/api/v1/admin/products/" + id, writer.token(),
+                    Map.of("attribute_value_ids", List.of(first)));
+            assertEquals(200, attributeOnly.status(), attributeOnly.body());
+            var timestamp = db.queryForObject("SELECT updated_at FROM products WHERE id=?", java.time.LocalDateTime.class, id);
+            assertTrue(timestamp.isAfter(old));
+            assertEquals(timestamp, java.time.LocalDateTime.parse(attributeOnly.data().get("data").get("updated_at").asText()));
+            updates = stats.getEntityStatistics("com.fido.modules.product.entity.Product").getUpdateCount();
+            Result noop = call("PATCH", "/api/v1/admin/products/" + id, writer.token(),
+                    Map.of("attribute_value_ids", List.of(first), "selling_price", 12000));
+            assertEquals(200, noop.status(), noop.body());
+            assertEquals(timestamp, db.queryForObject("SELECT updated_at FROM products WHERE id=?", java.time.LocalDateTime.class, id));
+            assertEquals(updates, stats.getEntityStatistics("com.fido.modules.product.entity.Product").getUpdateCount());
+        } finally {
+            stats.setStatisticsEnabled(enabled);
+        }
     }
 
     @Test
