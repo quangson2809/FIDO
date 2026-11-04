@@ -1,3 +1,4 @@
+import { attributeDraftFromValues, buildProductAttributeValueIds, preserveUnmanagedProductAttributeValueIds, sameProductAttributeValueIds } from '../src/features/catalog/model/productAttributeForm';
 import assert from 'node:assert/strict';
 import { productSummaryMetadata } from '../src/features/catalog/model/productSummary';
 import { LatestMutationQueue } from '../src/features/cart/model/LatestMutationQueue';
@@ -609,3 +610,25 @@ assert.match(
   /không có quyền/,
 );
 console.log('Storefront URL, structured recipient and safe error models: PASS');
+
+// Product option drafts preserve persisted IDs even when metadata is partial.
+const optionAttribute = { id: 99, code: 'MATERIAL', name: 'Material', is_required: true,
+  is_variant_defining: false, sort_order: 0,
+  options: [{ id: 991, attribute_id: 99, value: 'COTTON', label: 'Cotton', sort_order: 0 }] };
+const savedOption = { attribute_id: 99, attribute_code: 'MATERIAL', attribute_name: 'Material',
+  attribute_value_id: 992, value: 'WOOL', label: 'Wool' };
+const savedDraft = attributeDraftFromValues([], [savedOption]);
+assert.equal(savedDraft['99'], '992');
+const retained = buildProductAttributeValueIds([optionAttribute], savedDraft, 'ACTIVE', [savedOption]);
+assert.deepEqual(retained, { attributeValueIds: [992], errors: [] });
+assert.deepEqual(preserveUnmanagedProductAttributeValueIds([savedOption], [], []), [992]);
+assert.ok(sameProductAttributeValueIds(retained.attributeValueIds, [992]));
+assert.deepEqual(buildProductAttributeValueIds([optionAttribute], { '99': '991' }, 'ACTIVE').attributeValueIds, [991]);
+assert.equal(buildProductAttributeValueIds([optionAttribute], {}, 'ACTIVE').errors.length, 1);
+assert.equal(buildProductAttributeValueIds([optionAttribute], {}, 'DRAFT').errors.length, 0);
+assert.equal(buildProductAttributeValueIds([optionAttribute], { '99': '992' }, 'DRAFT').errors.length, 1);
+console.log('Product option draft preservation: PASS');
+
+assert.equal(buildProductAttributeValueIds([], savedDraft, 'DRAFT').errors.length, 1,
+  'Create must not silently drop a selection when its Attribute disappears from metadata');
+assert.equal(buildProductAttributeValueIds([], savedDraft, 'DRAFT', [savedOption]).errors.length, 0);

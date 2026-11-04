@@ -67,8 +67,8 @@ public class ProductAdminService {
 
     @PreAuthorize(WRITE)
     public AdminProductDetailDto createProduct(Long actor, ProductCreateRequest request) {
-        if (request.category_id() != null) references.category(request.category_id());
-        if (request.brand_id() != null) references.brand(request.brand_id());
+        if (request.category_id() != null) references.requireActiveCategory(request.category_id());
+        if (request.brand_id() != null) references.requireActiveBrand(request.brand_id());
         validateParent(null, request.parent_product_id());
 
         String sku = request.sku().trim();
@@ -118,11 +118,15 @@ public class ProductAdminService {
             product.setParentProductId(request.getParentProductId());
         }
         if (request.isCategoryIdPresent()) {
-            if (request.getCategoryId() != null) references.category(request.getCategoryId());
+            if (request.getCategoryId() != null && !Objects.equals(request.getCategoryId(), product.getCategoryId())) {
+                references.requireActiveCategory(request.getCategoryId());
+            }
             product.setCategoryId(request.getCategoryId());
         }
         if (request.isBrandIdPresent()) {
-            if (request.getBrandId() != null) references.brand(request.getBrandId());
+            if (request.getBrandId() != null && !Objects.equals(request.getBrandId(), product.getBrandId())) {
+                references.requireActiveBrand(request.getBrandId());
+            }
             product.setBrandId(request.getBrandId());
         }
         if (request.isNamePresent()) product.setName(trimToNull(request.getName()));
@@ -170,7 +174,7 @@ public class ProductAdminService {
     @PreAuthorize(WRITE)
     public void deleteProduct(Long actor, Long productId) {
         Product product = references.productForUpdate(productId);
-        if (products.existsByParentProductId(productId)) {
+        if (products.existsByParentProductIdAndDeletedAtIsNull(productId)) {
             conflict("A parent product with children cannot be deleted");
         }
         product.setDeletedAt(LocalDateTime.now(ZoneOffset.UTC));

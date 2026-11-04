@@ -37,12 +37,21 @@ class ProductAttributeValueHttpTests extends CatalogHttpSupport {
                 writer.token(), Map.of("name", "Material type", "is_required", true, "sort_order", 2));
         assertEquals(200, attributeUpdate.status(), attributeUpdate.body());
 
+        assertEquals(200, call("PATCH", "/api/v1/admin/catalog/attributes/" + colorId,
+                writer.token(), Map.of("sort_order", 3)).status());
+        long whiteOptionId = createOption(writer, colorId, "WHITE", "White");
         Result metadata = call("GET", "/api/v1/admin/catalog/meta", writer.token(), null);
         assertEquals(200, metadata.status(), metadata.body());
         var metadataData = metadata.data().get("data");
         assertTrue(!metadataData.has("attribute_types"));
         assertTrue(containsAttribute(metadataData.get("attributes"), materialId, "Material type"));
         assertTrue(containsOptionLabel(metadataData.get("attributes"), colorId, blackOptionId, "Ink black"));
+        for (var attribute : metadataData.get("attributes")) {
+            if (attribute.get("id").asLong() == colorId) {
+                assertEquals(whiteOptionId, attribute.get("options").get(0).get("id").asLong(),
+                        "Option sort_order takes precedence over ID");
+            }
+        }
 
         String suffix = UUID.randomUUID().toString().replace("-", "");
         long parentId = createProduct(writer, "PARENT-" + suffix, "Tee", 120000, null, "ACTIVE",
@@ -53,6 +62,8 @@ class ProductAttributeValueHttpTests extends CatalogHttpSupport {
         Result childDetail = call("GET", "/api/v1/admin/products/" + childId, writer.token(), null);
         assertEquals(200, childDetail.status(), childDetail.body());
         var childData = childDetail.data().get("data");
+        assertEquals(materialId, childData.get("attribute_values").get(0).get("attribute_id").asLong(),
+                "Detail values follow Attribute sort_order before ID");
         assertEquals(parentId, childData.get("parent_product_id").asLong());
         assertEquals(parentId, childData.get("parent_product").get("product_id").asLong());
         assertEquals("PARENT-" + suffix, childData.get("parent_product").get("sku").asText());
@@ -165,6 +176,13 @@ class ProductAttributeValueHttpTests extends CatalogHttpSupport {
         Result missing = call("POST", "/api/v1/admin/products", writer.token(),
                 Map.of("sku", missingSku, "selling_price", 10000, "status", "ACTIVE"));
         assertEquals(400, missing.status(), missing.body());
+
+        long draftId = createProduct(writer, "ACTIVATE-" + UUID.randomUUID(), "Draft", 10000,
+                null, "DRAFT", List.of());
+        assertEquals(400, call("PATCH", "/api/v1/admin/products/" + draftId,
+                writer.token(), Map.of("status", "ACTIVE")).status());
+        assertEquals(200, call("PATCH", "/api/v1/admin/products/" + draftId,
+                writer.token(), Map.of("status", "ACTIVE", "attribute_value_ids", List.of(blackId))).status());
 
         Result unknown = createProductResult(writer,
                 "UNKNOWN-" + UUID.randomUUID().toString().replace("-", ""), "DRAFT", List.of(99999999L));

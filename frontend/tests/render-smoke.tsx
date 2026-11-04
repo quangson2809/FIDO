@@ -1,3 +1,4 @@
+import { ProductAttributeFields } from '../src/features/catalog/components/ProductAttributeFields';
 import assert from 'node:assert/strict';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -489,3 +490,21 @@ const footerHtml = renderToStaticMarkup(
 assert.match(footerHtml, /Chăm sóc khách hàng/);
 if (!import.meta.env.VITE_SUPPORT_EMAIL) assert.match(footerHtml, /Chưa cập nhật email CSKH/);
 if (!import.meta.env.VITE_SUPPORT_HOTLINE) assert.match(footerHtml, /Chưa cập nhật hotline CSKH/);
+
+const orderedAttributeMarkup = renderToStaticMarkup(<ProductAttributeFields
+  attributes={[
+    { id: 9, code: 'LAST', name: 'Last', is_required: false, is_variant_defining: false, sort_order: 2, options: [] },
+    { id: 3, code: 'SECOND', name: 'Second', is_required: false, is_variant_defining: false, sort_order: 0, options: [] },
+    { id: 2, code: 'FIRST', name: 'First', is_required: true, is_variant_defining: true, sort_order: 0, options: [
+      { id: 23, attribute_id: 2, value: 'C', label: 'Third option', sort_order: 1 },
+      { id: 22, attribute_id: 2, value: 'B', label: 'Second option', sort_order: 0 },
+      { id: 21, attribute_id: 2, value: 'A', label: 'First option', sort_order: 0 },
+    ] },
+  ]} draft={{ '2': '29' }} status="ACTIVE" onChange={() => undefined} />);
+assert.ok(orderedAttributeMarkup.indexOf('First ·') < orderedAttributeMarkup.indexOf('Second</span>'));
+assert.ok(orderedAttributeMarkup.indexOf('Second</span>') < orderedAttributeMarkup.indexOf('Last</span>'));
+assert.ok(orderedAttributeMarkup.indexOf('First option') < orderedAttributeMarkup.indexOf('Second option'));
+assert.ok(orderedAttributeMarkup.indexOf('Second option') < orderedAttributeMarkup.indexOf('Third option'));
+assert.ok(orderedAttributeMarkup.includes('Option #29'));
+assert.match(orderedAttributeMarkup, /<option(?=[^>]*value="29")(?=[^>]*selected="")[^>]*>/);
+console.log('Product Attribute/Option ordering and unavailable saved option rendering: PASS');

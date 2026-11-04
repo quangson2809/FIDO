@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +33,7 @@ public class ProductAttributeValueReadService {
     }
 
     public List<ProductAttributeValueDto> forProduct(Long productId) {
-        return values.findAllByProductIdOrderByAttributeIdAsc(productId).stream().map(this::toDto).toList();
+        return forProducts(List.of(productId)).get(productId);
     }
 
     /** Resolve a Product family without per-row Attribute or Option queries. */
@@ -61,18 +62,11 @@ public class ProductAttributeValueReadService {
                     attribute.getAttributeId(), attribute.getCode(), attribute.getName(),
                     option.getAttributeOptionId(), option.getValue(), option.getLabel()));
         }
+        grouped.values().forEach(productValues -> productValues.sort(Comparator
+                .comparing((ProductAttributeValueDto value) -> byAttribute.get(value.attribute_id()).getSortOrder())
+                .thenComparing(ProductAttributeValueDto::attribute_id)));
         return grouped.entrySet().stream().collect(Collectors.toUnmodifiableMap(
                 Map.Entry::getKey, entry -> List.copyOf(entry.getValue())));
     }
 
-    private ProductAttributeValueDto toDto(ProductAttributeValue value) {
-        Attribute attribute = attributes.findById(value.getAttributeId())
-                .orElseThrow(() -> new IllegalStateException("Product value refers to a missing Attribute"));
-        AttributeOption option = options.findByAttributeIdAndAttributeOptionId(
-                        attribute.getAttributeId(), value.getOptionId())
-                .orElseThrow(() -> new IllegalStateException("Product value refers to an invalid Attribute Option"));
-        return new ProductAttributeValueDto(
-                attribute.getAttributeId(), attribute.getCode(), attribute.getName(),
-                option.getAttributeOptionId(), option.getValue(), option.getLabel());
-    }
 }

@@ -98,6 +98,18 @@ public class CatalogReferenceService {
         return brands.findById(brandId).orElseThrow(CatalogReferenceService::notFound);
     }
 
+    public void requireActiveCategory(Long id) {
+        if (!"ACTIVE".equals(category(id).getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Category must be ACTIVE");
+        }
+    }
+
+    public void requireActiveBrand(Long id) {
+        if (!"ACTIVE".equals(brand(id).getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Brand must be ACTIVE");
+        }
+    }
+
     public Category leafCategory(Long categoryId) {
         Category category = category(categoryId);
         if (categories.existsByParentCategoryId(categoryId)) {

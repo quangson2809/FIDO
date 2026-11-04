@@ -95,6 +95,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
               adminMeta?.attributes ?? [],
               attributeDraft,
               status,
+              product.attribute_values,
             ).attributeValueIds,
           ),
           productAttributeValuesToIds(product.attribute_values),
@@ -209,7 +210,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
     }
     if (
       category === undefined ||
-      (category !== null &&
+      (category !== null && category !== product.category_id &&
         !catalogMeta.categories.some(
           (item) => item.category_id === category && item.status === 'ACTIVE',
         ))
@@ -219,7 +220,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
     }
     if (
       brand === undefined ||
-      (brand !== null &&
+      (brand !== null && brand !== product.brand_id &&
         !catalogMeta.brands.some(
           (item) => item.brand_id === brand && item.status === 'ACTIVE',
         ))
@@ -241,7 +242,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
       return;
     }
 
-    const attributesResult = buildProductAttributeValueIds(adminMeta.attributes, attributeDraft, status);
+    const attributesResult = buildProductAttributeValueIds(adminMeta.attributes, attributeDraft, status, product.attribute_values);
     if (attributesResult.errors.length > 0) {
       setError(attributesResult.errors.join(' '));
       return;

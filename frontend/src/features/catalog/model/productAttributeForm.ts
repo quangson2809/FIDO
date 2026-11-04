@@ -19,7 +19,7 @@ export const attributeDraftFromValues = (
   for (const attribute of attributes) draft[String(attribute.id)] = '';
   for (const value of values) {
     const key = String(value.attribute_id);
-    if (Object.hasOwn(draft, key)) draft[key] = String(value.attribute_value_id);
+    draft[key] = String(value.attribute_value_id);
   }
   return draft;
 };
@@ -32,6 +32,7 @@ export const buildProductAttributeValueIds = (
   attributes: readonly AttributeDto[],
   draft: ProductAttributeDraft,
   status: ProductStatus,
+  currentValues: readonly ProductAttributeValueDto[] = [],
 ): ProductAttributeBuildResult => {
   const attributeValueIds: number[] = [];
   const errors: string[] = [];
@@ -49,11 +50,21 @@ export const buildProductAttributeValueIds = (
 
     const optionId = Number(normalized);
     if (!Number.isSafeInteger(optionId) || optionId <= 0
-        || !attribute.options.some((option) => option.id === optionId)) {
+        || (!attribute.options.some((option) => option.id === optionId)
+          && !currentValues.some((value) => value.attribute_id === attribute.id
+            && value.attribute_value_id === optionId))) {
       errors.push('Hãy chọn một giá trị hợp lệ cho thuộc tính "' + attribute.name + '".');
       continue;
     }
     attributeValueIds.push(optionId);
+  }
+
+  for (const [attributeId, value] of Object.entries(draft)) {
+    if (value && !attributes.some((attribute) => String(attribute.id) === attributeId)
+        && !currentValues.some((current) => String(current.attribute_id) === attributeId
+          && String(current.attribute_value_id) === value)) {
+      errors.push('Metadata thuộc tính #' + attributeId + ' chưa có. Hãy tải lại trước khi lưu.');
+    }
   }
 
   return { attributeValueIds, errors };

@@ -23,7 +23,7 @@ export const ProductAttributeFields: React.FC<Props> = ({
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      {attributes.map((attribute) => {
+      {[...attributes].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id).map((attribute) => {
         const value = draft[String(attribute.id)] ?? '';
         const required = status === 'ACTIVE' && attribute.is_required;
         return (
@@ -40,7 +40,10 @@ export const ProductAttributeFields: React.FC<Props> = ({
               className="w-full border border-[#D9DDD6] bg-white px-3 py-2"
             >
               <option value="">Chưa thiết lập</option>
-              {attribute.options.map((option) => (
+              {value && !attribute.options.some((option) => String(option.id) === value) && (
+                <option value={value}>Đã lưu · Option #{value} (metadata chưa có)</option>
+              )}
+              {[...attribute.options].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id).map((option) => (
                 <option key={option.id} value={option.id}>{option.label}</option>
               ))}
             </select>

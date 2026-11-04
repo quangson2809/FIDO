@@ -27,7 +27,8 @@ const catalogMeta = {
     { category_id: 1, parent_category_id: null, name: 'Áo', slug: 'ao', status: 'ACTIVE' },
     { category_id: 2, parent_category_id: null, name: 'Danh mục ngừng', slug: 'ngung', status: 'INACTIVE' },
   ],
-  brands: [{ brand_id: 7, name: 'FIDO', slug: 'fido', status: 'ACTIVE' }],
+  brands: [{ brand_id: 7, name: 'FIDO', slug: 'fido', status: 'ACTIVE' },
+    { brand_id: 8, name: 'Old brand', slug: 'old-brand', status: 'INACTIVE' }],
   attributes: [],
 };
 const attributes = [
@@ -57,7 +58,7 @@ const initialValues = [
   { attribute_id: 14, attribute_code: 'WATERPROOF', attribute_name: 'Chống nước', attribute_value_id: 142, value: 'NO', label: 'Không' },
 ];
 const valuesFromIds = (ids) => (ids ?? []).map((optionId) => {
-  const attribute = adminMeta.attributes.find((item) =>
+  const attribute = attributes.find((item) =>
     item.options.some((option) => option.id === optionId));
   const option = attribute?.options.find((item) => item.id === optionId);
   if (!attribute || !option) throw new Error('Unknown attribute_value_id: ' + optionId);
@@ -73,7 +74,7 @@ const valuesFromIds = (ids) => (ids ?? []).map((optionId) => {
 const initialProduct = {
   product_id: 101, parent_product_id: null, child_product_ids: [], sku: 'TEE-101',
   name: 'Áo thử nghiệm', slug: 'ao-thu-nghiem', description: 'Mô tả gốc',
-  category: catalogMeta.categories[0], brand: catalogMeta.brands[0], category_id: 1, brand_id: 7,
+  category: catalogMeta.categories[1], brand: catalogMeta.brands[1], category_id: 2, brand_id: 8,
   selling_price: 200000, cost_price: 120000, status: 'DRAFT',
   images: [
     { id: 51, image_url: 'https://cdn.example.test/51.png', is_primary: true, sort_order: 0 },
@@ -297,7 +298,25 @@ try {
   await page.getByRole('button', { name: 'Lưu', exact: true }).click();
   assert.deepEqual(requests.filter((item) => item.method === 'PATCH' && item.path === '/admin/products/101').at(-1)?.body?.attribute_value_ids, [111, 122, 131, 142]);
 
+  // Partial metadata must preserve both an unavailable Option and an absent Attribute.
+  adminMeta.attributes = attributes.filter((attribute) => attribute.id !== 14).map((attribute) =>
+    attribute.id === 11 ? { ...attribute, options: attribute.options.filter((option) => option.id !== 111) } : attribute);
+  await page.goto('http://localhost:5182/admin/products/101', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: 'Chỉnh sửa', exact: true }).click();
+  assert.equal(await page.getByLabel('Giá trị thuộc tính COLOR').inputValue(), '111');
+  assert.equal(await page.getByLabel('Giá trị thuộc tính MATERIAL').inputValue(), '122');
+  await page.getByLabel('Giá bán (VND)').fill('260000');
+  await page.getByRole('button', { name: 'Lưu', exact: true }).click();
+  assert.deepEqual(requests.filter((item) => item.method === 'PATCH' && item.path === '/admin/products/101').at(-1)?.body,
+    { selling_price: 260000 });
+  await page.getByRole('button', { name: 'Chỉnh sửa', exact: true }).click();
+  await page.getByLabel('Giá trị thuộc tính MATERIAL').selectOption('121');
+  await page.getByRole('button', { name: 'Lưu', exact: true }).click();
+  assert.deepEqual(requests.filter((item) => item.method === 'PATCH' && item.path === '/admin/products/101').at(-1)?.body,
+    { attribute_value_ids: [111, 121, 131, 142] });
+  adminMeta.attributes = attributes;
+  await page.getByRole('button', { name: 'Chỉnh sửa', exact: true }).click();
+
   await page.getByLabel('Danh mục Product').selectOption('');
   await page.getByRole('button', { name: 'Lưu', exact: true }).click();
   assert.deepEqual(requests.filter((item) => item.method === 'PATCH' && item.path === '/admin/products/101').at(-1)?.body, { category_id: null });

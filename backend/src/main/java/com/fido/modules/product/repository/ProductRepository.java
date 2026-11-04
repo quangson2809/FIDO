@@ -38,4 +38,6 @@ public interface ProductRepository
     boolean existsByBrandId(Long brandId);
 
     boolean existsByParentProductId(Long parentProductId);
+
+    boolean existsByParentProductIdAndDeletedAtIsNull(Long parentProductId);
 }

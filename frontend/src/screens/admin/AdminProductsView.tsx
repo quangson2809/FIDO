@@ -126,7 +126,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
         if (!active) return;
         setCatalogMeta(catalog);
         setAdminMeta(admin);
-        setAttributeDraft(attributeDraftFromValues(admin.attributes, []));
+        setAttributeDraft((current) => ({ ...attributeDraftFromValues(admin.attributes, []), ...current }));
         setMetaError(null);
       })
       .catch((requestError: unknown) => {

@@ -198,6 +198,57 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
     }
 
 
+    @Test
+    void inactiveReferencesMayBeRetainedButNeverNewlyAssigned() throws Exception {
+        Employee writer = catalogWriter();
+        CatalogFixture fixture = createCatalog(writer);
+        long id = fixture.productId();
+        db.update("UPDATE categories SET status = 'INACTIVE' WHERE id = ?", fixture.categoryId());
+        db.update("UPDATE brands SET status = 'INACTIVE' WHERE id = ?", fixture.brandId());
+        assertEquals(200, call("PATCH", "/api/v1/admin/products/" + id, writer.token(),
+                Map.of("selling_price", 99000)).status());
+        assertEquals(200, call("PATCH", "/api/v1/admin/products/" + id, writer.token(),
+                Map.of("category_id", fixture.categoryId(), "brand_id", fixture.brandId(),
+                        "selling_price", 98000)).status());
+        for (var ref : Map.of("category_id", fixture.categoryId(), "brand_id", fixture.brandId()).entrySet()) {
+            var body = new HashMap<String, Object>();
+            body.put("sku", "INACTIVE-" + UUID.randomUUID());
+            body.put("selling_price", 10000);
+            body.put(ref.getKey(), ref.getValue());
+            assertEquals(409, call("POST", "/api/v1/admin/products", writer.token(), body).status());
+        }
+        var cleared = new HashMap<String, Object>();
+        cleared.put("category_id", null);
+        cleared.put("brand_id", null);
+        assertEquals(200, call("PATCH", "/api/v1/admin/products/" + id, writer.token(), cleared).status());
+        for (var ref : Map.of("category_id", fixture.categoryId(), "brand_id", fixture.brandId()).entrySet()) {
+            assertEquals(409, call("PATCH", "/api/v1/admin/products/" + id, writer.token(),
+                    Map.of(ref.getKey(), ref.getValue())).status());
+        }
+        db.update("UPDATE categories SET status = 'ACTIVE' WHERE id = ?", fixture.categoryId());
+        db.update("UPDATE brands SET status = 'ACTIVE' WHERE id = ?", fixture.brandId());
+        assertEquals(200, call("PATCH", "/api/v1/admin/products/" + id, writer.token(),
+                Map.of("category_id", fixture.categoryId(), "brand_id", fixture.brandId())).status());
+    }
+
+    @Test
+    void deletedChildrenAllowParentDeletionButStillPreventHistoricalReparenting() throws Exception {
+        Employee writer = catalogWriter();
+        long parent = createCatalog(writer).productId();
+        long other = createCatalog(writer).productId();
+        Result childResponse = createProduct(writer, "CHILD-" + UUID.randomUUID(), "Child", 10000, parent);
+        assertEquals(201, childResponse.status(), childResponse.body());
+        long child = childResponse.data().get("data").get("product_id").asLong();
+        products.add(child);
+        assertEquals(409, call("DELETE", "/api/v1/admin/products/" + parent, writer.token(), null).status());
+        assertEquals(204, call("DELETE", "/api/v1/admin/products/" + child, writer.token(), null).status());
+        assertEquals(409, call("PATCH", "/api/v1/admin/products/" + parent, writer.token(),
+                Map.of("parent_product_id", other)).status());
+        assertEquals(204, call("DELETE", "/api/v1/admin/products/" + parent, writer.token(), null).status());
+        assertEquals(parent, db.queryForObject("SELECT parent_product_id FROM products WHERE id = ?",
+                Long.class, child));
+    }
+
     private Employee catalogWriter() throws Exception {
         long roleId = customRole(ensurePermission("CATALOG_WRITE"));
         long readPermissionId = ensurePermission("CATALOG_READ");
