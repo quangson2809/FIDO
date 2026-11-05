@@ -25,6 +25,49 @@ class GoodsReceiptHttpTests extends InventoryHttpSupport {
     private AuditWriteService auditWriter;
 
     @Test
+    void skuLookupIncludesProductsWithoutBalancesAndDraftStoresSelectedProduct() throws Exception {
+        long read = ensurePermission("INVENTORY_READ");
+        long role = capabilityRole(ensurePermission("INVENTORY_WRITE"));
+        db.update("INSERT INTO role_permissions(role_id,permission_id) VALUES (?,?)", role, read);
+        Employee writer = employee(role);
+        CatalogFixture child = createProduct();
+        CatalogFixture parent = createProduct();
+        db.update("UPDATE products SET parent_product_id=? WHERE id=?", parent.productId(), child.productId());
+        db.update("DELETE FROM inventories WHERE product_id IN (?,?)", parent.productId(), child.productId());
+        long supplierId = createSupplier(writer.token(), "ACTIVE");
+
+        for (var fixture : List.of(parent, child)) {
+            String sku = java.net.URLEncoder.encode(fixture.sku(), java.nio.charset.StandardCharsets.UTF_8);
+            var lookup = call("GET", "/api/v1/admin/inventory?sku=" + sku, writer.token(), null);
+            assertEquals(200, lookup.status(), lookup.body());
+            assertEquals(1, lookup.data().get("data").size());
+            var selected = lookup.data().get("data").get(0);
+            assertEquals(fixture.sku(), selected.get("sku").asText());
+            assertEquals(fixture.productId(), selected.get("product_id").asLong());
+            assertEquals(0, selected.get("available_quantity").asInt());
+
+            var created = call("POST", "/api/v1/admin/goods-receipts", writer.token(),
+                    Map.of("supplier_id", supplierId, "items", List.of(Map.of(
+                            "product_id", selected.get("product_id").asLong(),
+                            "quantity_received", 3, "unit_cost", 25000))));
+            assertEquals(201, created.status(), created.body());
+            long receiptId = created.data().get("data").get("receipt_id").asLong();
+            receipts.add(receiptId);
+            assertEquals("DRAFT", created.data().get("data").get("receipt_status").asText());
+            assertEquals(fixture.productId(), db.queryForObject(
+                    "SELECT product_id FROM goods_receipt_items WHERE goods_receipt_id=?", Long.class, receiptId));
+            assertEquals(0, stock(fixture.productId()));
+            assertEquals(0, db.queryForObject(
+                    "SELECT COUNT(*) FROM inventory_transactions WHERE product_id=?", Integer.class, fixture.productId()));
+            var reloaded = call("GET", "/api/v1/admin/goods-receipts/" + receiptId, writer.token(), null);
+            assertEquals(200, reloaded.status(), reloaded.body());
+            assertEquals(fixture.productId(), reloaded.data().get("data").get("items").get(0).get("product_id").asLong());
+        }
+        assertEquals(parent.productId(), db.queryForObject(
+                "SELECT parent_product_id FROM products WHERE id=?", Long.class, child.productId()));
+    }
+
+    @Test
     void receiptLifecyclePreservesStockAndHistoricalSupplier() throws Exception {
         long readPermission = ensurePermission("INVENTORY_READ");
         long writePermission = ensurePermission("INVENTORY_WRITE");

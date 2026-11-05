@@ -1,6 +1,4 @@
 import { StorefrontImage } from '../shared/ui/storefront/StorefrontImage';
-import { CustomerOrderProgress } from '../features/orders/components/CustomerOrderProgress';
-import { customerOrderLabels, customerPaymentLabels } from '../features/orders/model/orderLabels';
 import { formatVietnamDateTime } from '../shared/time/formatVietnamDateTime';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -147,20 +145,11 @@ export const OrderDetailScreen: React.FC = () => {
                 Tạo lúc {formatVietnamDateTime(order.created_at)}
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="border border-white/15 bg-white/5 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white/70">
-                {customerPaymentLabels[order.payment.payment_status]}
-              </span>
-              <span className="bg-[#E8C75B] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[#071A12]">
-                {customerOrderLabels[order.order_status]}
-              </span>
-            </div>
           </div>
         </div>
       </section>
 
       <section className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-8">
-        <CustomerOrderProgress order={order} />
         {error && (
           <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
         )}
@@ -331,12 +320,6 @@ export const OrderDetailScreen: React.FC = () => {
                 <dt className="font-bold text-white">Tổng cộng</dt>
                 <dd className="font-serif text-xl font-bold text-[#E8C75B]">
                   {order.total.toLocaleString('vi-VN')}₫
-                </dd>
-              </div>
-              <div className="flex justify-between border-t border-white/10 pt-3">
-                <dt>Trạng thái thanh toán</dt>
-                <dd className="font-semibold text-white">
-                  {customerPaymentLabels[order.payment.payment_status]}
                 </dd>
               </div>
             </dl>

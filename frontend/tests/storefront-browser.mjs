@@ -158,7 +158,7 @@ try {
     0,
     'checkout never persists a new address',
   );
-  // Customer status/payment/date presentation uses real fields, not fabricated transition dates.
+  // Detail hides order/payment status and progress while preserving SKU and purchase facts.
   const labels = {
     PENDING: 'Chờ xác nhận',
     CONFIRMED: 'Đã xác nhận',
@@ -173,7 +173,14 @@ try {
     fixture.state.orderStatus = status;
     await go('/orders/1');
     await page.getByRole('heading', { name: 'FIDO-001', exact: true }).waitFor();
-    assert.match(await page.locator('#storefront-main').innerText(), new RegExp(label));
+    const detailText = await page.locator('#storefront-main').innerText();
+    assert.ok(!detailText.includes(label), `order detail hides ${status}`);
+    assert.ok(!detailText.includes(status), `order detail hides raw ${status}`);
+    assert.equal(await page.getByRole('heading', { name: 'Tiến trình đơn hàng' }).count(), 0);
+    assert.equal(await page.getByText('Trạng thái thanh toán', { exact: true }).count(), 0);
+    await page.getByText('SKU ' + product.sku + ' · Số lượng 1', { exact: true }).waitFor();
+    await page.getByRole('heading', { name: 'Thông tin người nhận', exact: true }).waitFor();
+    await page.getByText('Tổng cộng', { exact: true }).waitFor();
     const edits = await page.getByRole('button', { name: 'Chỉnh sửa', exact: true }).count();
     assert.equal(edits > 0, ['PENDING', 'CONFIRMED', 'PREPARING'].includes(status));
     assert.ok(!(await page.locator('#storefront-main').innerText()).includes('UNPAID'));
@@ -182,10 +189,17 @@ try {
     );
   }
   for (const [status, label] of [
+    ['UNPAID', 'Chưa thanh toán'],
     ['PAID', 'Đã thanh toán'],
     ['REFUNDED', 'Đã hoàn tiền'],
   ]) {
     fixture.state.paymentStatus = status;
+    await go('/orders/1');
+    await page.getByRole('heading', { name: 'FIDO-001', exact: true }).waitFor();
+    const detailText = await page.locator('#storefront-main').innerText();
+    assert.ok(!detailText.includes(label), `order detail hides payment ${status}`);
+    assert.ok(!detailText.includes(status), `order detail hides raw payment ${status}`);
+    await page.getByText('SKU ' + product.sku + ' · Số lượng 1', { exact: true }).waitFor();
     await go('/orders');
     await page.getByText(label, { exact: true }).waitFor();
   }
@@ -384,6 +398,13 @@ try {
         await page.getByText('Áo FIDO', { exact: true }).waitFor();
       if (name === 'checkout') await page.getByLabel('Địa chỉ đã lưu').waitFor();
       if (name === 'orders') await page.getByText('FIDO-001', { exact: true }).waitFor();
+      if (name === 'order') {
+        await page.getByText('SKU ' + product.sku + ' · Số lượng 1', { exact: true }).waitFor();
+        const text = await page.locator('#storefront-main').innerText();
+        for (const label of [...Object.values(labels), 'Chưa thanh toán', 'Đã thanh toán', 'Đã hoàn tiền'])
+          assert.ok(!text.includes(label), `order detail hides ${label} at ${width}px`);
+        assert.equal(await page.getByRole('heading', { name: 'Tiến trình đơn hàng' }).count(), 0);
+      }
       if (name === 'policies')
         await page.getByRole('heading', { name: 'Chính sách trả hàng', exact: true }).waitFor();
       await page.screenshot({
@@ -579,7 +600,7 @@ try {
   await staleSession.close();
   assert.deepEqual(errors, []);
   console.log(
-    'Storefront browser: PASS — cart keyboard/quantity/delete/failure recovery, saved/new addresses, validation/voucher/expiry, all order/payment statuses, empty/retry/network recovery, gallery/fallback, login and fail-closed session retry, continuous purchase/lost response journey, 10 pages × 4 viewports, touch/contrast/reduced motion, no unexpected console errors.',
+    'Storefront browser: PASS — cart keyboard/quantity/delete/failure recovery, saved/new addresses, validation/voucher/expiry, order detail hides statuses and retains SKU, order-list status labels, empty/retry/network recovery, gallery/fallback, login and fail-closed session retry, continuous purchase/lost response journey, 10 pages × 4 viewports, touch/contrast/reduced motion, no unexpected console errors.',
   );
 } finally {
   await browser.close();

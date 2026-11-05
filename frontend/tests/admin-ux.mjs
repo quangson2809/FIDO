@@ -129,6 +129,14 @@ let receipt = {
   confirmed_by_account_id: null,
   items: [{ receipt_item_id: 1, product_id: 1, quantity_received: 2, unit_cost: 100000 }],
 };
+let createdReceipt = null;
+let skuLookupError = false;
+const inventoryRows = [
+  { warehouse_id: 1, product_id: 1, sku: 'TEE-M-BLACK', product_name: 'Áo thử nghiệm',
+    available_quantity: 5, version: 0, updated_at: date },
+  { warehouse_id: 1, product_id: 2, sku: 'TEE-L-WHITE', product_name: 'Áo con ' + 'chưacótồn'.repeat(20),
+    available_quantity: 0, version: 0, updated_at: null },
+];
 let customerError = false;
 let reportError = false;
 let writes = [];
@@ -161,6 +169,16 @@ await page.route('**/api/v1/**', async (route) => {
   if (request.method() === 'GET') reads.push({ path, query: url.searchParams });
   if (request.method() !== 'GET') {
     writes.push({ path, body: request.postDataJSON() });
+    if (path === '/admin/goods-receipts' && request.method() === 'POST') {
+      const input = request.postDataJSON();
+      createdReceipt = { ...receipt, ...input, receipt_id: 2, receipt_code: 'GR-002', receipt_status: 'DRAFT',
+        items: input.items.map((item, index) => ({ ...item, receipt_item_id: index + 2 })) };
+      return send({ data: createdReceipt }, 201);
+    }
+    if (path === '/admin/goods-receipts/2' && request.method() === 'PATCH') {
+      createdReceipt = { ...createdReceipt, ...request.postDataJSON() };
+      return send({ data: createdReceipt });
+    }
     if (path === '/admin/vouchers' || path === '/admin/vouchers/27') {
       if (!['POST', 'PATCH'].includes(request.method())) return send({}, 405);
       voucher = { ...voucher, ...request.postDataJSON(), status: request.method() === 'POST' ? 'DRAFT' : request.postDataJSON().status };
@@ -331,22 +349,15 @@ await page.route('**/api/v1/**', async (route) => {
       },
     });
   if (path === '/admin/suppliers') return send(pagination([supplier]));
-  if (path === '/admin/goods-receipts') return send(pagination([receipt]));
+  if (path === '/admin/goods-receipts') return send(pagination([receipt, ...(createdReceipt ? [createdReceipt] : [])]));
   if (path === '/admin/goods-receipts/1') return send({ data: receipt });
-  if (path === '/admin/inventory')
-    return send(
-      pagination([
-        {
-          warehouse_id: 1,
-          product_id: 1,
-          sku: 'TEE-M-BLACK',
-          product_name: 'Áo thử nghiệm',
-          available_quantity: 5,
-          version: 0,
-          updated_at: date,
-        },
-      ]),
-    );
+  if (path === '/admin/goods-receipts/2') return send({ data: createdReceipt });
+  if (path === '/admin/inventory') {
+    if (skuLookupError && url.searchParams.has('sku')) return send({ message: 'Lỗi tìm SKU' }, 500);
+    return send(pagination(inventoryRows.filter((row) =>
+      (!url.searchParams.has('sku') || row.sku === url.searchParams.get('sku'))
+      && (!url.searchParams.has('product_id') || row.product_id === Number(url.searchParams.get('product_id'))))));
+  }
   if (path === '/admin/staff-accounts')
     return send(
       pagination(
@@ -435,7 +446,7 @@ try {
   await page.getByRole('dialog').getByRole('alert').waitFor();
   await page.getByRole('button', { name: 'Đóng hộp thoại' }).click();
   await goto('/admin/inventory');
-  await page.getByRole('button', { name: 'Điều chỉnh', exact: true }).click();
+  await page.getByRole('row').filter({ hasText: 'TEE-M-BLACK' }).getByRole('button', { name: 'Điều chỉnh', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Số lượng điều chỉnh', exact: true }).fill('2');
   await page.getByLabel('Mã lý do điều chỉnh').selectOption('DAMAGE');
   await withConfirm(() => page.getByRole('button', { name: 'Xác nhận', exact: true }).click(), 'accept');
@@ -483,6 +494,55 @@ try {
   await withConfirm(() => page.getByRole('button', { name: 'Xác nhận nhập kho', exact: true }).click(), 'accept');
   await page.getByText('Đã xác nhận nhập kho.', { exact: true }).waitFor();
   assert.equal(writes.length, writeCount + 1);
+  await page.getByRole('button', { name: 'Phiếu mới', exact: true }).first().click();
+  assert.equal(await page.getByLabel('Product ID dòng 1', { exact: true }).count(), 0);
+  await page.getByLabel('Chọn nhà cung cấp', { exact: true }).selectOption('1');
+  await page.getByRole('button', { name: 'Tạo bản nháp', exact: true }).click();
+  await page.getByRole('alert').filter({ hasText: 'Chọn nhà cung cấp ACTIVE và SKU' }).waitFor();
+  await page.getByRole('button', { name: 'Chọn SKU dòng 1', exact: true }).click();
+  const skuPicker = page.getByRole('dialog', { name: 'Chọn sản phẩm theo SKU' });
+  await skuPicker.getByRole('button', { name: /TEE-L-WHITE/ }).waitFor();
+  for (const width of [375, 768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true,
+      `receipt and SKU picker fit viewport ${width}`);
+    assert.equal(await skuPicker.evaluate((dialog) => dialog.scrollWidth <= dialog.clientWidth + 1), true,
+      `SKU picker fits long product names at ${width}`);
+  }
+  await skuPicker.getByLabel('SKU cần tìm', { exact: true }).fill('NOT-FOUND');
+  await skuPicker.getByRole('button', { name: 'Tìm SKU', exact: true }).click();
+  await skuPicker.getByText('Không có kết quả phù hợp.', { exact: false }).waitFor();
+  skuLookupError = true;
+  await skuPicker.getByLabel('SKU cần tìm', { exact: true }).fill('TEE-L-WHITE');
+  await skuPicker.getByRole('button', { name: 'Tìm SKU', exact: true }).click();
+  await skuPicker.getByRole('alert').waitFor();
+  skuLookupError = false;
+  await skuPicker.getByRole('button', { name: 'Thử lại', exact: true }).click();
+  await skuPicker.getByRole('button', { name: /TEE-L-WHITE/ }).click();
+  await skuPicker.waitFor({ state: 'detached' });
+  await page.getByText('SKU: TEE-L-WHITE', { exact: true }).waitFor();
+  await page.getByRole('button', { name: '+ Dòng', exact: true }).click();
+  await page.getByRole('button', { name: 'Chọn SKU dòng 2', exact: true }).click();
+  assert.equal(await skuPicker.getByRole('button', { name: /TEE-L-WHITE/ }).isDisabled(), true,
+    'a selected SKU cannot be duplicated on another line');
+  await skuPicker.getByRole('button', { name: /TEE-M-BLACK/ }).click();
+  await skuPicker.waitFor({ state: 'detached' });
+  await page.getByLabel('Số lượng nhận dòng 1', { exact: true }).fill('3');
+  await page.getByLabel('Giá vốn VND dòng 1', { exact: true }).fill('25000');
+  await page.getByRole('button', { name: 'Tạo bản nháp', exact: true }).click();
+  await page.getByText('Đã tạo phiếu nhập DRAFT.', { exact: true }).waitFor();
+  const receiptWrite = writes.find((entry) => entry.path === '/admin/goods-receipts');
+  assert.deepEqual(receiptWrite.body, { supplier_id: 1, items: [
+    { product_id: 2, quantity_received: 3, unit_cost: 25000 },
+    { product_id: 1, quantity_received: 1, unit_cost: 0 },
+  ] }, 'SKU selection persists the exact selected Product IDs through the existing API');
+  await page.reload();
+  await page.getByRole('row').filter({ hasText: 'GR-002' }).getByRole('button', { name: 'Chi tiết', exact: true }).click();
+  await page.getByText('SKU: TEE-L-WHITE', { exact: true }).waitFor();
+  await page.getByLabel('Số lượng nhận dòng 1', { exact: true }).fill('4');
+  await page.getByRole('button', { name: 'Lưu bản nháp', exact: true }).click();
+  await page.getByText('Đã cập nhật phiếu nhập DRAFT.', { exact: true }).waitFor();
+  assert.equal(writes.filter((entry) => entry.path === '/admin/goods-receipts/2').at(-1).body.items[0].product_id, 2);
   await goto('/admin/reports');
   await page.getByText('123.456₫').first().waitFor();
   reportError = true;
