@@ -93,7 +93,13 @@ try {
       homeMeasurements.push({ width, ...homeLayout });
     }
     await capture('home');
-    await page.getByRole('button', { name: 'Danh mục sản phẩm', exact: true }).click();
+    if (width >= 1024) {
+      // Desktop hover already opens the disclosure; clicking its toggle would close it.
+      await page.getByRole('navigation', { name: 'Điều hướng chính', exact: true })
+        .getByRole('link', { name: 'Sản phẩm', exact: true }).hover();
+    } else {
+      await page.getByRole('button', { name: 'Danh mục sản phẩm', exact: true }).click();
+    }
     await page
       .getByRole('navigation', { name: 'Danh mục phân cấp', exact: true })
       .getByRole('link', { name: 'Áo sơ mi', exact: true })

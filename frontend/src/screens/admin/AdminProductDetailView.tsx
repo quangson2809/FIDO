@@ -399,7 +399,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
           <h1 className="mt-2 font-serif text-2xl font-bold">{product.name ?? product.sku}</h1>
           <p className="mt-1 font-mono text-xs text-[#606863]">Product #{product.product_id} · {product.sku}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <StatusBadge status={product.status} />
           {canWrite && !editing && product.parent_product_id === null && onCreateChild && (
             <button type="button" disabled={busy} className="admin-secondary" onClick={() => {

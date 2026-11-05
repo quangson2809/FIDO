@@ -391,6 +391,18 @@ const goto = async (path) => {
   await page.goto(`http://localhost:5180${path}`, { waitUntil: 'domcontentloaded' });
   await page.getByText('Hệ thống quản trị', { exact: true }).waitFor();
 };
+// A click can finish before React Router renders its confirmation. Wait for the
+// dialog to be handled so a later navigation cannot consume the wrong handler.
+const withConfirm = async (action, decision, messagePattern) => {
+  const handled = page.waitForEvent('dialog').then(async (dialog) => {
+    const type = dialog.type();
+    const message = dialog.message();
+    await dialog[decision]();
+    assert.equal(type, 'confirm', 'the action must show its expected confirm dialog');
+    if (messagePattern) assert.match(message, messagePattern);
+  });
+  await Promise.all([handled, action()]);
+};
 try {
   await goto('/admin/customers');
   await page.getByRole('cell', { name: '0900111222', exact: true }).waitFor();
@@ -426,8 +438,7 @@ try {
   await page.getByRole('button', { name: 'Điều chỉnh', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Số lượng điều chỉnh', exact: true }).fill('2');
   await page.getByLabel('Mã lý do điều chỉnh').selectOption('DAMAGE');
-  page.once('dialog', (dialog) => dialog.accept());
-  await page.getByRole('button', { name: 'Xác nhận', exact: true }).click();
+  await withConfirm(() => page.getByRole('button', { name: 'Xác nhận', exact: true }).click(), 'accept');
   await page.getByText('Đã điều chỉnh tồn kho.', { exact: true }).waitFor();
   const adjustment = writes.filter((entry) => entry.path === '/admin/inventory/adjustments').at(-1)?.body;
   assert.ok(adjustment);
@@ -451,14 +462,14 @@ try {
   assert.equal(await page.getByRole('button', { name: 'Lưu nội dung' }).isEnabled(), true,
     'selecting the current summary must not clear its loaded detail');
   await page.getByRole('textbox', { name: 'Tiêu đề' }).fill('Bản chưa lưu');
-  page.once('dialog', (dialog) => dialog.dismiss());
-  await page.getByRole('button', { name: /Đơn hàng/ }).click();
+  await withConfirm(() => page.getByRole('button', { name: /Đơn hàng/ }).click(), 'dismiss');
   assert.match(page.url(), /admin\/content/);
   await page.getByRole('button', { name: 'Lưu nội dung' }).click();
   await page.getByText('Lỗi lưu thử nghiệm', { exact: false }).waitFor();
   assert.equal(await page.getByRole('textbox', { name: 'Tiêu đề' }).inputValue(), 'Bản chưa lưu');
-  page.once('dialog', (dialog) => dialog.accept());
-  await page.getByRole('button', { name: /Đơn hàng/ }).click();
+  await withConfirm(() => page.getByRole('button', { name: /Đơn hàng/ }).click(), 'accept');
+  await page.waitForURL('**/admin/orders');
+  await page.getByRole('cell', { name: 'ORD-001', exact: true }).waitFor();
   await goto('/admin/goods-receipts');
   await page.getByRole('button', { name: 'Chi tiết', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Số lượng nhận dòng 1', exact: true }).fill('3');
@@ -467,11 +478,9 @@ try {
   await page.getByText('Phiếu có thay đổi chưa lưu.', { exact: false }).waitFor();
   assert.equal(writes.length, writeCount, 'dirty receipt cannot confirm');
   await page.getByRole('spinbutton', { name: 'Số lượng nhận dòng 1', exact: true }).fill('2');
-  page.once('dialog', (dialog) => dialog.dismiss());
-  await page.getByRole('button', { name: 'Xác nhận nhập kho', exact: true }).click();
+  await withConfirm(() => page.getByRole('button', { name: 'Xác nhận nhập kho', exact: true }).click(), 'dismiss');
   assert.equal(writes.length, writeCount, 'cancelled confirmation sends no request');
-  page.once('dialog', (dialog) => dialog.accept());
-  await page.getByRole('button', { name: 'Xác nhận nhập kho', exact: true }).click();
+  await withConfirm(() => page.getByRole('button', { name: 'Xác nhận nhập kho', exact: true }).click(), 'accept');
   await page.getByText('Đã xác nhận nhập kho.', { exact: true }).waitFor();
   assert.equal(writes.length, writeCount + 1);
   await goto('/admin/reports');
@@ -499,11 +508,9 @@ try {
     'price-only PATCH retains the existing Product Option selection');
   await goto('/admin/orders/1');
   const beforeAction = writes.length;
-  page.once('dialog', (dialog) => dialog.dismiss());
-  await page.getByRole('button', { name: 'Xác nhận', exact: true }).click();
+  await withConfirm(() => page.getByRole('button', { name: 'Xác nhận', exact: true }).click(), 'dismiss');
   assert.equal(writes.length, beforeAction);
-  page.once('dialog', (dialog) => dialog.accept());
-  await page.getByRole('button', { name: 'Xác nhận', exact: true }).click();
+  await withConfirm(() => page.getByRole('button', { name: 'Xác nhận', exact: true }).click(), 'accept');
   await page.getByRole('button', { name: 'Bắt đầu chuẩn bị', exact: true }).waitFor();
   assert.equal(writes.length, beforeAction + 1);
   assert.equal(await page.getByRole('button', { name: 'Chỉnh sửa', exact: true }).count(), 0,
@@ -511,11 +518,9 @@ try {
   assert.equal(await page.getByRole('button', { name: /thu COD/i }).count(), 0,
     'COD collection is available only while shipping');
   for (const label of ['Bắt đầu chuẩn bị', 'Bắt đầu giao']) {
-    page.once('dialog', (dialog) => dialog.accept());
-    await page.getByRole('button', { name: label, exact: true }).click();
+    await withConfirm(() => page.getByRole('button', { name: label, exact: true }).click(), 'accept');
   }
-  page.once('dialog', (dialog) => { assert.match(dialog.message(), /200.000/); dialog.accept(); });
-  await page.getByRole('button', { name: 'Hoàn tất giao hàng & thu COD', exact: true }).click();
+  await withConfirm(() => page.getByRole('button', { name: 'Hoàn tất giao hàng & thu COD', exact: true }).click(), 'accept', /200.000/);
   await page.getByText('Thanh toán: Đã thu tiền', { exact: false }).waitFor();
   assert.equal(writes.filter((entry) => entry.path === '/admin/orders/1/payment-actions').at(-1).body.action,
     'COMPLETE_DELIVERY_AND_COLLECT_COD');
@@ -541,8 +546,7 @@ try {
     .getByRole('dialog')
     .getByRole('textbox', { name: 'Số điện thoại', exact: true })
     .fill('0900999888');
-  page.once('dialog', (dialog) => dialog.accept());
-  await page.getByRole('button', { name: 'Lưu thay đổi', exact: true }).click();
+  await withConfirm(() => page.getByRole('button', { name: 'Lưu thay đổi', exact: true }).click(), 'accept');
   await page.getByRole('dialog').getByRole('alert').waitFor();
   assert.equal(
     await page
@@ -551,11 +555,10 @@ try {
       .inputValue(),
     '0900999888',
   );
-  page.once('dialog', (dialog) => dialog.dismiss());
-  await page.keyboard.press('Escape');
+  await withConfirm(() => page.keyboard.press('Escape'), 'dismiss');
   assert.equal(await page.getByRole('dialog').count(), 1, 'dirty modal survives cancelled Escape');
-  page.once('dialog', (dialog) => dialog.accept());
-  await page.keyboard.press('Escape');
+  await withConfirm(() => page.keyboard.press('Escape'), 'accept');
+  await page.getByRole('dialog').waitFor({ state: 'detached' });
   await goto('/admin/roles');
   await page.getByRole('button', { name: 'Chỉnh sửa', exact: true }).click();
   await page
@@ -563,8 +566,7 @@ try {
     .getByRole('checkbox', { name: 'CATALOG_READ', exact: true })
     .uncheck();
   await page.getByText('Gỡ: CATALOG_READ', { exact: true }).waitFor();
-  page.once('dialog', (dialog) => dialog.accept());
-  await page.getByRole('dialog').getByRole('button', { name: 'Lưu', exact: true }).click();
+  await withConfirm(() => page.getByRole('dialog').getByRole('button', { name: 'Lưu', exact: true }).click(), 'accept');
   await page.getByRole('dialog').getByRole('alert').waitFor();
   assert.equal(
     await page
@@ -573,8 +575,8 @@ try {
       .isChecked(),
     false,
   );
-  page.once('dialog', (dialog) => dialog.accept());
-  await page.getByRole('button', { name: 'Đóng hộp thoại' }).click();
+  await withConfirm(() => page.getByRole('button', { name: 'Đóng hộp thoại' }).click(), 'accept');
+  await page.getByRole('dialog').waitFor({ state: 'detached' });
   await goto('/admin/audit');
   await page.getByRole('button', { name: 'Sau', exact: true }).click();
   await page.getByText('Trang 2', { exact: false }).waitFor();
@@ -654,6 +656,9 @@ try {
     for (const path of routes) {
       await goto(path);
       await page.locator('main h1').waitFor();
+      if (path === '/admin/products/1') {
+        await page.getByRole('button', { name: 'Tạo sản phẩm con', exact: true }).waitFor();
+      }
       await page.waitForTimeout(80);
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth > window.innerWidth + 1,

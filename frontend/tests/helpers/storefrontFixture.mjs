@@ -291,7 +291,7 @@ export function storefrontFixture() {
     if (path.startsWith('/content-pages/'))
       return send({
         data: {
-          page_code: path.split('/').at(-1),
+          slug: path.split('/').at(-1),
           title: path.endsWith('return-policy')
             ? 'Chính sách trả hàng'
             : path.endsWith('privacy-policy')
