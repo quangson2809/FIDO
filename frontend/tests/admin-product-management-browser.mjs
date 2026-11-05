@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { createServer } from 'vite';
 
@@ -49,7 +50,7 @@ const attributes = [
     { id: 142, attribute_id: 14, value: 'NO', label: 'Không', sort_order: 1 },
   ] },
 ];
-const adminMeta = { attributes };
+const adminMeta = { attributes, image_upload: { max_files: 10, max_file_bytes: 32 * 1024 * 1024, max_request_bytes: 64 * 1024 * 1024, content_types: ['image/jpeg', 'image/png', 'image/webp'] } };
 catalogMeta.attributes = attributes;
 const initialValues = [
   { attribute_id: 11, attribute_code: 'COLOR', attribute_name: 'Màu sắc', attribute_value_id: 111, value: 'BLACK', label: 'Đen' },
@@ -106,7 +107,13 @@ const relation = (product) => ({
 let products = new Map([[101, clone(initialProduct)]]);
 let nextProductId = 202;
 let failNextUpload = false;
+let loseNextUploadResponse = false;
 let failNextCreate = false;
+let rejectNextCreateCode;
+let loseNextCreateResponse = false;
+let holdNextMeta = false;
+let releaseMeta;
+let notifyMetaStarted;
 let holdNextCreate = false;
 let releaseCreate;
 let notifyCreateStarted;
@@ -136,15 +143,29 @@ await page.route('**/api/v1/**', async (route) => {
   } });
   if (method === 'GET' && path === '/me') return send(route, { data: profile });
   if (method === 'GET' && path === '/catalog/meta') return send(route, { data: catalogMeta });
-  if (method === 'GET' && path === '/admin/catalog/meta') return send(route, { data: adminMeta });
+  if (method === 'GET' && path === '/admin/catalog/meta') {
+    if (holdNextMeta) {
+      holdNextMeta = false;
+      await new Promise((resolve) => { releaseMeta = resolve; notifyMetaStarted?.(); });
+    }
+    return send(route, { data: adminMeta });
+  }
   if (method === 'GET' && path === '/admin/products') {
-    const all = [...products.values()].map(summary);
+    let all = [...products.values()].map(summary);
+    if (url.searchParams.get('root_only') === 'true') {
+      const search = (url.searchParams.get('q') ?? '').toLowerCase();
+      all = all.filter((product) => product.parent_product_id === null && `${product.sku} ${product.name ?? ''}`.toLowerCase().includes(search));
+      const page = Number(url.searchParams.get('page') || 1);
+      const size = Number(url.searchParams.get('page_size') || 20);
+      return send(route, { data: all.slice((page - 1) * size, page * size), meta: { page, page_size: size, total: all.length, total_pages: Math.ceil(all.length / size) } });
+    }
     return send(route, { data: all, meta: {
       page: Number(url.searchParams.get('page') || 1), page_size: Number(url.searchParams.get('page_size') || 20),
       total: all.length, total_pages: 1,
     } });
   }
   if (method === 'POST' && path === '/admin/products') {
+    if (rejectNextCreateCode) { const code = rejectNextCreateCode; rejectNextCreateCode = undefined; return send(route, { code, message: 'Product SKU already exists.' }, 409); }
     if (failNextCreate) { failNextCreate = false; return send(route, { message: 'create rejected' }, 400); }
     if (holdNextCreate) {
       holdNextCreate = false;
@@ -162,6 +183,7 @@ await page.route('**/api/v1/**', async (route) => {
       images: [], attribute_values: valuesFromIds(body.attribute_value_ids), parent_product: null, children: [],
     };
     products.set(id, product);
+    if (loseNextCreateResponse) { loseNextCreateResponse = false; return route.abort('failed'); }
     return send(route, { data: clone(product) }, 201);
   }
   const uploadMatch = path.match(/^\/admin\/products\/(\d+)\/images$/);
@@ -173,8 +195,10 @@ await page.route('**/api/v1/**', async (route) => {
     assert.ok(contentType.includes('multipart/form-data'), 'image upload uses multipart form data');
     assert.ok(rawBody?.includes('filename="shirt.png"') || rawBody?.includes('filename="retry-shirt.png"'), 'upload contains selected image');
     const start = product.images.length;
-    product.images = [...product.images, { id: id * 10 + start + 1, image_url: 'https://cdn.example.test/upload.png', is_primary: start === 0, sort_order: start }]
+    const uploadedNames = [...rawBody.matchAll(/filename="([^"]+)"/g)].map((match) => match[1]);
+    product.images = [...product.images, ...uploadedNames.map((name, index) => ({ id: id * 10 + start + index + 1, image_url: 'https://cdn.example.test/' + name, is_primary: false, sort_order: start + index }))]
       .map((image, index) => ({ ...image, sort_order: index, is_primary: index === 0 }));
+    if (loseNextUploadResponse) { loseNextUploadResponse = false; return route.abort('failed'); }
     return send(route, { data: clone(product) }, 201);
   }
   const reorderMatch = path.match(/^\/admin\/products\/(\d+)\/images$/);
@@ -250,8 +274,10 @@ try {
   await page.getByRole('button', { name: 'Thêm Product', exact: true }).click();
   await page.getByLabel('SKU *').fill('TEE-NEW');
   await page.getByLabel('Tên Product').fill('Áo mới');
+  await page.getByText('Thông tin bổ sung (slug, giá vốn, mô tả)', { exact: true }).click();
   await page.getByLabel('Slug').fill('ao-moi');
-  await page.getByLabel('Product cha ID', { exact: true }).fill('101');
+  await page.getByRole('button', { name: 'Chọn sản phẩm cha', exact: true }).click();
+  await page.getByRole('button', { name: /^Chọn TEE-101/ }).click();
   await page.getByLabel('Danh mục Product').selectOption('1');
   await page.getByLabel('Thương hiệu Product').selectOption('7');
   await page.getByLabel('Giá bán (VND) *').fill('320000');
@@ -264,7 +290,7 @@ try {
   await page.getByLabel('Giá trị thuộc tính WATERPROOF').selectOption('141');
   await page.getByLabel('Ảnh Product mới').setInputFiles({ name: 'shirt.png', mimeType: 'image/png', buffer: Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0]) });
   failNextUpload = true;
-  await page.getByRole('button', { name: 'Tạo Product', exact: true }).click();
+  await page.getByRole('button', { name: /^(Tạo Product|Lưu nháp)$/, exact: true }).click();
   await page.getByText('Chỉ còn bước tải ảnh', { exact: false }).waitFor();
   assert.equal(requests.filter((item) => item.method === 'POST' && item.path === '/admin/products').length, 1);
   assert.deepEqual(requests.find((item) => item.method === 'POST' && item.path === '/admin/products')?.body, {
@@ -354,17 +380,24 @@ try {
       name: 'shirt.png', mimeType: 'image/png', buffer: Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0]),
     });
   };
+  const submitNew = async (label) => {
+    const response = page.waitForResponse((reply) => reply.url().endsWith('/admin/products') && reply.request().method() === 'POST' && reply.status() === 201);
+    await page.getByRole('button', { name: label, exact: true }).click();
+    const id = (await (await response).json()).data.product_id;
+    await page.getByText('Product #' + id + ' đã được tạo.', { exact: true }).waitFor();
+    return id;
+  };
   await prepareCreate('CREATE-REJECT');
   failNextCreate = true;
   const sizeBeforeFailure = products.size;
-  await page.getByRole('button', { name: 'Tạo Product', exact: true }).click();
+  await page.getByRole('button', { name: /^(Tạo Product|Lưu nháp)$/, exact: true }).click();
   await page.getByText('create rejected', { exact: true }).waitFor();
   assert.equal(products.size, sizeBeforeFailure, 'failed Create must not claim a new persisted Product');
   await page.getByLabel('SKU *').fill('NO-IMAGE');
   const beforeDoubleSubmit = createRequests().length;
   const createStarted = new Promise((resolve) => { notifyCreateStarted = resolve; });
   holdNextCreate = true;
-  await page.getByRole('button', { name: 'Tạo Product', exact: true }).evaluate((button) => {
+  await page.getByRole('button', { name: /^(Tạo Product|Lưu nháp)$/, exact: true }).evaluate((button) => {
     button.form.requestSubmit();
     button.form.requestSubmit();
   });
@@ -381,15 +414,15 @@ try {
 
   await prepareCreate('WITH-IMAGE', true);
   const withImageId = nextProductId;
-  await page.getByRole('button', { name: 'Tạo Product', exact: true }).click();
+  await page.getByRole('button', { name: /^(Tạo Product|Lưu nháp)$/, exact: true }).click();
   await page.getByText('Product #' + withImageId + ' đã được tạo.', { exact: true }).waitFor();
   await page.getByRole('heading', { name: 'Thông tin Product mới', exact: true }).waitFor({ state: 'detached' });
   assert.equal(products.get(nextProductId - 1).images.length, 1);
 
-  for (const action of ['Hoàn tất không ảnh', 'Đóng form (Product đã lưu)', 'Mở Product đã tạo']) {
+  for (const action of ['Hoàn tất, không tải thêm ảnh', 'Đóng form (Product đã lưu)', 'Mở Product đã tạo']) {
     await prepareCreate('RECOVER-' + action, true);
     failNextUpload = true;
-    await page.getByRole('button', { name: 'Tạo Product', exact: true }).click();
+    await page.getByRole('button', { name: /^(Tạo Product|Lưu nháp)$/, exact: true }).click();
     await page.getByText('Chỉ còn bước tải ảnh', { exact: false }).waitFor();
     const saved = nextProductId - 1;
     const posts = createRequests().length;
@@ -406,6 +439,178 @@ try {
     assert.equal(products.get(saved).images.length, 0);
     assert.ok(!requests.some((item) => item.method === 'DELETE' && item.path === '/admin/products/' + saved));
   }
+  // Creation starts from a root Product without inheriting its data.
+  const parentId = nextProductId - 1;
+  await page.getByRole('button', { name: 'Tạo sản phẩm con', exact: true }).click();
+  await page.waitForURL('**/admin/products?parent_product_id=' + parentId);
+  await page.getByText(products.get(parentId).sku, { exact: true }).first().waitFor();
+  assert.equal(await page.getByLabel('SKU *').inputValue(), '');
+  assert.equal(await page.getByLabel('Giá bán (VND) *').inputValue(), '');
+  await page.getByLabel('SKU *').fill('CHILD-FROM-DETAIL');
+  await page.getByLabel('Giá bán (VND) *').fill('0');
+  await submitNew('Lưu nháp');
+  const newChild = products.get(nextProductId - 1);
+  assert.equal(newChild.parent_product_id, parentId);
+  assert.equal(newChild.selling_price, 0);
+  assert.equal(newChild.name, null);
+  assert.equal(newChild.category_id, null);
+  assert.deepEqual(newChild.attribute_values, []);
+  await page.goto('http://localhost:5182/admin/products/' + newChild.product_id);
+  await page.getByRole('heading', { name: 'CHILD-FROM-DETAIL', exact: true }).waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Tạo sản phẩm con', exact: true }).count(), 0);
+
+  // Basic fields remain usable while metadata is pending; minimal DRAFT needs no references.
+  const metadataStarted = new Promise((resolve) => { notifyMetaStarted = resolve; });
+  holdNextMeta = true;
+  await page.goto('http://localhost:5182/admin/products');
+  await metadataStarted;
+  await prepareCreate('DRAFT-WITHOUT-META');
+  await submitNew('Lưu nháp');
+  const metadataReleased = page.waitForResponse((response) => response.url().endsWith('/admin/catalog/meta'));
+  releaseMeta();
+  await metadataReleased;
+  await prepareCreate('ACTIVE-NEEDS-OPTIONS');
+  await page.getByLabel('Giá trị thuộc tính MATERIAL').waitFor();
+  await page.getByLabel('Trạng thái Product').selectOption('ACTIVE');
+  const beforeRequired = createRequests().length;
+  await page.getByRole('button', { name: 'Tạo Product', exact: true }).click();
+  await page.locator('#product-create-attribute-12[aria-invalid="true"]').waitFor();
+  assert.equal(createRequests().length, beforeRequired);
+  await page.getByLabel('Giá trị thuộc tính MATERIAL').selectOption('121');
+  await submitNew('Tạo Product');
+
+  // A safe public server code is attached to SKU, without discarding the form.
+  await prepareCreate('DUPLICATE-SKU');
+  rejectNextCreateCode = 'PRODUCT_SKU_ALREADY_EXISTS';
+  await page.getByRole('button', { name: 'Lưu nháp', exact: true }).click();
+  await page.locator('#product-create-sku[aria-invalid="true"]').waitFor();
+  await page.waitForFunction(() => document.activeElement?.id === 'product-create-sku');
+  assert.equal(await page.getByLabel('Giá bán (VND) *').inputValue(), '100000');
+  await page.getByLabel('SKU *').fill('CORRECTED-SKU');
+  await submitNew('Lưu nháp');
+
+  // Metadata refresh must never erase an Option selection silently.
+  await prepareCreate('METADATA-CHANGED');
+  await page.getByLabel('Giá trị thuộc tính MATERIAL').selectOption('121');
+  adminMeta.attributes = attributes.filter((attribute) => attribute.id !== 12);
+  await Promise.all([
+    page.waitForResponse((response) => response.url().endsWith('/admin/catalog/meta')),
+    page.getByRole('button', { name: 'Tải lại thuộc tính và danh mục', exact: true }).click(),
+  ]);
+  await page.getByRole('button', { name: 'Bỏ lựa chọn #12', exact: true }).waitFor();
+  const beforeMissing = createRequests().length;
+  await page.getByRole('button', { name: 'Lưu nháp', exact: true }).click();
+  await page.getByText('Một lựa chọn thuộc tính không còn trong metadata.', { exact: false }).waitFor();
+  assert.equal(createRequests().length, beforeMissing);
+  adminMeta.attributes = attributes;
+  await Promise.all([
+    page.waitForResponse((response) => response.url().endsWith('/admin/catalog/meta')),
+    page.getByRole('button', { name: 'Tải lại thuộc tính và danh mục', exact: true }).click(),
+  ]);
+  await page.getByLabel('Giá trị thuộc tính MATERIAL').waitFor();
+  assert.equal(await page.getByLabel('Giá trị thuộc tính MATERIAL').inputValue(), '121');
+  await submitNew('Lưu nháp');
+  assert.deepEqual(products.get(nextProductId - 1).attribute_values.map((value) => value.attribute_value_id), [121]);
+
+  // Batch entry retains only explicitly chosen fields and always clears SKU, Options and images.
+  await prepareCreate('BATCH-ONE', true);
+  await page.getByLabel('Danh mục Product').selectOption('1');
+  await page.getByLabel('Thương hiệu Product').selectOption('7');
+  await page.getByRole('checkbox', { name: 'Giữ danh mục', exact: true }).check();
+  await page.getByLabel('Giá trị thuộc tính MATERIAL').selectOption('121');
+  await submitNew('Lưu và tạo tiếp');
+  assert.equal(await page.getByLabel('SKU *').inputValue(), '');
+  assert.equal(await page.getByLabel('Giá bán (VND) *').inputValue(), '');
+  assert.equal(await page.getByLabel('Danh mục Product').inputValue(), '1');
+  assert.equal(await page.getByLabel('Thương hiệu Product').inputValue(), '');
+  assert.equal(await page.getByLabel('Giá trị thuộc tính MATERIAL').inputValue(), '');
+  assert.equal(await page.getByRole('region', { name: 'Ảnh sản phẩm mới' }).getByRole('img').count(), 0);
+  await page.getByRole('button', { name: 'Chọn sản phẩm cha', exact: true }).click();
+  await page.getByRole('button', { name: 'Trang cha sau', exact: true }).waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Trang cha sau', exact: true }).isEnabled(), true);
+  await Promise.all([
+    page.waitForResponse((response) => response.url().includes('root_only=true') && new URL(response.url()).searchParams.get('page') === '2'),
+    page.getByRole('button', { name: 'Trang cha sau', exact: true }).click(),
+  ]);
+  assert.ok(requests.some((request) => request.query.root_only === 'true' && request.query.page === '2'));
+  await page.getByRole('button', { name: 'Đóng form', exact: true }).click();
+
+  // Invalid files cannot create a Product; selected image order controls the upload order.
+  await prepareCreate('IMAGE-ORDER');
+  const png = Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0]);
+  await page.getByLabel('Ảnh Product mới').setInputFiles(Array.from({ length: 11 }, (_, i) => ({ name: 'too-many-' + i + '.png', mimeType: 'image/png', buffer: png })));
+  const beforeFiles = createRequests().length;
+  await page.getByRole('button', { name: 'Lưu nháp', exact: true }).click();
+  await page.getByText('Mỗi lần tải tối đa 10 ảnh.', { exact: false }).waitFor();
+  assert.equal(createRequests().length, beforeFiles);
+  await page.getByRole('button', { name: 'Bỏ tất cả ảnh', exact: true }).click();
+  assert.equal(await page.getByText('Mỗi lần tải tối đa 10 ảnh.', { exact: false }).count(), 0, 'file errors clear when the selection is fixed');
+  await page.getByLabel('Ảnh Product mới').setInputFiles([{ name: 'shirt.png', mimeType: 'image/png', buffer: png }, { name: 'retry-shirt.png', mimeType: 'image/png', buffer: png }]);
+  await page.getByRole('button', { name: 'Đưa ảnh 2 lên trước', exact: true }).click();
+  assert.equal(await page.getByRole('region', { name: 'Ảnh sản phẩm mới' }).getByRole('img').first().getAttribute('alt'), 'retry-shirt.png');
+  await page.getByRole('button', { name: 'Bỏ ảnh shirt.png', exact: true }).click();
+  await page.getByLabel('Ảnh Product mới').setInputFiles({ name: 'shirt.png', mimeType: 'image/png', buffer: png });
+  await submitNew('Lưu nháp');
+  const uploaded = products.get(nextProductId - 1).images;
+  assert.equal(uploaded.length, 2);
+  assert.ok(uploaded[0].image_url.endsWith('retry-shirt.png'));
+  assert.equal(uploaded[0].is_primary, true);
+  assert.equal(uploaded[1].sort_order, 1);
+
+  // Pending image retry does not depend on an in-flight metadata request or call Create again.
+  await prepareCreate('RETRY-DURING-META', true);
+  const retryMetadata = new Promise((resolve) => { notifyMetaStarted = resolve; });
+  holdNextMeta = true;
+  await page.getByRole('button', { name: 'Tải lại thuộc tính và danh mục', exact: true }).click();
+  await retryMetadata;
+  failNextUpload = true;
+  await page.getByRole('button', { name: 'Lưu nháp', exact: true }).click();
+  await page.getByText('Chỉ còn bước tải ảnh', { exact: false }).waitFor();
+  const retryPosts = createRequests().length;
+  assert.equal(await page.getByRole('button', { name: 'Thử tải ảnh lại', exact: true }).isEnabled(), true);
+  await page.getByRole('button', { name: 'Thử tải ảnh lại', exact: true }).click();
+  await page.getByText('Product #' + (nextProductId - 1) + ' đã được tạo.', { exact: true }).waitFor();
+  assert.equal(createRequests().length, retryPosts);
+  const retryMetaReleased = page.waitForResponse((response) => response.url().endsWith('/admin/catalog/meta'));
+  releaseMeta();
+  await retryMetaReleased;
+
+  // Upload may commit while its response is lost. Finishing preserves those images and sends no new upload.
+  await prepareCreate('UPLOAD-RESPONSE-LOST', true);
+  loseNextUploadResponse = true;
+  await page.getByRole('button', { name: 'Lưu nháp', exact: true }).click();
+  await page.getByText('Chỉ còn bước tải ảnh', { exact: false }).waitFor();
+  const committedUploadId = nextProductId - 1;
+  assert.equal(products.get(committedUploadId).images.length, 1);
+  const uploadsBeforeFinish = requests.filter((request) => request.method === 'POST' && request.path === '/admin/products/' + committedUploadId + '/images').length;
+  const createsBeforeFinish = createRequests().length;
+  await page.getByRole('button', { name: 'Hoàn tất, không tải thêm ảnh', exact: true }).click();
+  await page.getByRole('heading', { name: 'Thông tin Product mới', exact: true }).waitFor({ state: 'detached' });
+  assert.equal(createRequests().length, createsBeforeFinish);
+  assert.equal(requests.filter((request) => request.method === 'POST' && request.path === '/admin/products/' + committedUploadId + '/images').length, uploadsBeforeFinish);
+  assert.equal(products.get(committedUploadId).images.length, 1);
+
+  // A lost Create response must not be treated as a definite failure or silently resubmitted.
+  await prepareCreate('CREATE-RESPONSE-LOST');
+  loseNextCreateResponse = true;
+  const lostPosts = createRequests().length;
+  await page.getByRole('button', { name: 'Lưu nháp', exact: true }).click();
+  await page.getByText('Chưa xác nhận được kết quả tạo sản phẩm.', { exact: false }).waitFor();
+  assert.equal(createRequests().length, lostPosts + 1);
+  assert.equal(await page.getByRole('button', { name: 'Lưu nháp', exact: true }).isDisabled(), true);
+  assert.equal([...products.values()].filter((product) => product.sku === 'CREATE-RESPONSE-LOST').length, 1);
+  await page.getByRole('button', { name: 'Kiểm tra sản phẩm theo SKU', exact: true }).click();
+  await page.getByRole('row').filter({ hasText: 'CREATE-RESPONSE-LOST' }).waitFor();
+  assert.equal(createRequests().length, lostPosts + 1);
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Đóng form', exact: true }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await prepareCreate('MOBILE-CREATE');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, 'Create form fits mobile viewport');
+  await mkdir('.browser-evidence', { recursive: true });
+  await page.screenshot({ path: '.browser-evidence/admin-product-create-mobile.png', fullPage: true });
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Đóng form', exact: true }).click();
   assert.deepEqual(pageErrors, [], 'no uncaught runtime errors');
   process.stdout.write('Admin Product management browser regression: PASS\n');
 } catch (failure) {

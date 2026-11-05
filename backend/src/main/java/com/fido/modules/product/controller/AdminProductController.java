@@ -57,10 +57,11 @@ public class AdminProductController {
             @RequestParam(name = "category_id", required = false) Long categoryId,
             @RequestParam(name = "brand_id", required = false) Long brandId,
             @RequestParam(name = "parent_product_id", required = false) Long parentProductId,
+            @RequestParam(name = "root_only", defaultValue = "false") boolean rootOnly,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Integer page,
             @RequestParam(name = "page_size", required = false) Integer pageSize) {
-        return query.adminProducts(q, categoryId, brandId, parentProductId, status, page, pageSize);
+        return query.adminProducts(q, categoryId, brandId, parentProductId, rootOnly, status, page, pageSize);
     }
 
     @GetMapping("/products/{productId}")

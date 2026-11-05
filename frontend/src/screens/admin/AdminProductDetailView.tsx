@@ -34,6 +34,7 @@ interface Props {
   showToast: (message: string) => void;
   canWrite: boolean;
   startEditing?: boolean;
+  onCreateChild?: (id: number) => void;
 }
 
 const nullableText = (value: string): string | null => value.trim() || null;
@@ -50,6 +51,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
   showToast,
   canWrite,
   startEditing = false,
+  onCreateChild,
 }) => {
   const validId = Number.isInteger(productId) && productId > 0;
   const [product, setProduct] = useState<AdminProductDetailDto | null>(null);
@@ -399,6 +401,11 @@ export const AdminProductDetailView: React.FC<Props> = ({
         </div>
         <div className="flex items-center gap-3">
           <StatusBadge status={product.status} />
+          {canWrite && !editing && product.parent_product_id === null && onCreateChild && (
+            <button type="button" disabled={busy} className="admin-secondary" onClick={() => {
+              if (canDiscard()) onCreateChild(product.product_id);
+            }}>Tạo sản phẩm con</button>
+          )}
           {canWrite && !editing && (
             <button
               type="button"

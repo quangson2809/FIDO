@@ -26,8 +26,8 @@ public class InventoryReconciliationService {
         Pagination pagination = Pagination.of(page, pageSize);
         Page<InventoryReconciliationView> result = transactions.reconcile(pagination.toPageable());
         var rows = result.getContent().stream().map(row -> {
-            boolean quantityMatches = Boolean.TRUE.equals(row.getQuantityMatches());
-            boolean versionMatches = Boolean.TRUE.equals(row.getVersionMatches());
+            boolean quantityMatches = row.getQuantityMatches() != null && row.getQuantityMatches().intValue() != 0;
+            boolean versionMatches = row.getVersionMatches() != null && row.getVersionMatches().intValue() != 0;
             return new InventoryReconciliationRowDto(
                     row.getWarehouseId(),
                     row.getProductId(),

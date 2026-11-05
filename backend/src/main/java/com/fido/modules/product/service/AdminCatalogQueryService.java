@@ -60,14 +60,19 @@ public class AdminCatalogQueryService {
             Long categoryId,
             Long brandId,
             Long parentProductId,
+            boolean rootOnly,
             String status,
             Integer page,
             Integer pageSize) {
         if (status != null) CatalogPolicy.requireProductStatus(status);
         Pagination pagination = Pagination.of(page, pageSize);
         Specification<Product> spec =
-                CatalogSpecifications.adminProducts(q, categoryId, brandId, parentProductId, status);
-        var result = products.findAll(spec, pagination.toPageable());
+                CatalogSpecifications.adminProducts(q, categoryId, brandId, parentProductId, rootOnly, status);
+        var pageable = rootOnly
+                ? org.springframework.data.domain.PageRequest.of(pagination.page() - 1, pagination.pageSize(),
+                        org.springframework.data.domain.Sort.by("productId").ascending())
+                : pagination.toPageable();
+        var result = products.findAll(spec, pageable);
         var pageProducts = result.getContent();
         var thumbnails =
                 imageRead.representativeByProductIds(

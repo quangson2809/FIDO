@@ -1,22 +1,14 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useDirtyForm } from '../../shared/admin/dirtyFormContext';
+import React, { useCallback, useEffect, useState } from 'react';
 import { QueryFeedback } from '../../shared/admin/QueryFeedback';
 import { useRemoteQuery } from '../../shared/hooks/useRemoteQuery';
 import { catalogService } from '../../features/catalog/api/service';
 import { adminCatalogMetaService } from '../../features/catalog/api/adminCatalogMetaService';
 import { adminProductService } from '../../features/catalog/api/adminService';
 import { AdminProductTable } from '../../features/catalog/components/AdminProductTable';
-import { ImageFilePreview } from '../../features/catalog/components/ImageFilePreview';
-import { ProductAttributeFields } from '../../features/catalog/components/ProductAttributeFields';
-import {
-  attributeDraftFromValues,
-  buildProductAttributeValueIds,
-  type ProductAttributeDraft,
-} from '../../features/catalog/model/productAttributeForm';
+import { AdminProductCreateForm } from '../../features/catalog/components/AdminProductCreateForm';
 import type {
   AdminCatalogMetaDto,
   CatalogMetaDto,
-  ProductCreateInput,
   ProductStatus,
 } from '../../features/catalog/types';
 import { getApiErrorMessage } from '../../services/http/apiError';
@@ -27,33 +19,8 @@ interface AdminProductsViewProps {
   onNavigateTab?: (tab: string, breadcrumb: string) => void;
   showToast: (message: string) => void;
   canWrite: boolean;
+  initialParentId?: number | null;
 }
-
-interface ProductFormState {
-  sku: string;
-  name: string;
-  slug: string;
-  categoryId: string;
-  brandId: string;
-  parentProductId: string;
-  sellingPrice: string;
-  costPrice: string;
-  description: string;
-  status: ProductStatus;
-}
-
-const initialForm: ProductFormState = {
-  sku: '',
-  name: '',
-  slug: '',
-  categoryId: '',
-  brandId: '',
-  parentProductId: '',
-  sellingPrice: '',
-  costPrice: '',
-  description: '',
-  status: 'DRAFT',
-};
 
 const optionalId = (value: string): number | null | undefined => {
   if (!value.trim()) return null;
@@ -67,6 +34,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
   onNavigateTab,
   showToast,
   canWrite,
+  initialParentId,
 }) => {
   const [catalogMeta, setCatalogMeta] = useState<CatalogMetaDto | null>(null);
   const [adminMeta, setAdminMeta] = useState<AdminCatalogMetaDto | null>(null);
@@ -100,21 +68,8 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
   const products = list.data?.data ?? [];
   const pagination = list.data?.meta ?? null;
   const [error, setError] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [createPhase, setCreatePhase] = useState<'idle' | 'creating' | 'uploading' | 'upload_failed'>('idle');
-  const submitting = createPhase === 'creating' || createPhase === 'uploading';
-  const submissionInFlight = useRef(false);
-  const [form, setForm] = useState<ProductFormState>(initialForm);
-  const [attributeDraft, setAttributeDraft] = useState<ProductAttributeDraft>({});
-  const [images, setImages] = useState<File[]>([]);
-  const [pendingProductId, setPendingProductId] = useState<number | null>(null);
+  const [showCreate, setShowCreate] = useState(Boolean(initialParentId));
   const [lastCreatedId, setLastCreatedId] = useState<number | null>(null);
-  const isDirty = showCreate && pendingProductId === null && (
-    JSON.stringify(form) !== JSON.stringify(initialForm) ||
-    JSON.stringify(attributeDraft) !==
-      JSON.stringify(attributeDraftFromValues(adminMeta?.attributes ?? [], [])) ||
-    images.length > 0);
-  const canDiscard = useDirtyForm(isDirty);
 
   useEffect(() => {
     let active = true;
@@ -127,7 +82,6 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
         if (!active) return;
         setCatalogMeta(catalog);
         setAdminMeta(admin);
-        setAttributeDraft((current) => ({ ...attributeDraftFromValues(admin.attributes, []), ...current }));
         setMetaError(null);
       })
       .catch((requestError: unknown) => {
@@ -143,143 +97,6 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
     };
   }, [metaRevision]);
 
-  const updateForm = <K extends keyof ProductFormState>(key: K, value: ProductFormState[K]) => {
-    setForm((current) => ({ ...current, [key]: value }));
-  };
-
-  const buildCreatePayload = (): { payload: ProductCreateInput | null; message: string | null } => {
-    if (!catalogMeta || !adminMeta) {
-      return { payload: null, message: 'Metadata catalog chưa sẵn sàng. Hãy tải lại metadata.' };
-    }
-    const parent = optionalId(form.parentProductId);
-    const category = optionalId(form.categoryId);
-    const brand = optionalId(form.brandId);
-    const price = Number(form.sellingPrice);
-    const cost = form.costPrice.trim() ? Number(form.costPrice) : null;
-
-    if (parent === undefined) {
-      return { payload: null, message: 'Mã Product cha phải là số nguyên dương.' };
-    }
-    if (
-      category === undefined ||
-      (category !== null &&
-        !catalogMeta.categories.some(
-          (item) => item.category_id === category && item.status === 'ACTIVE',
-        ))
-    ) {
-      return { payload: null, message: 'Danh mục được chọn không hợp lệ hoặc không còn ACTIVE.' };
-    }
-    if (
-      brand === undefined ||
-      (brand !== null &&
-        !catalogMeta.brands.some(
-          (item) => item.brand_id === brand && item.status === 'ACTIVE',
-        ))
-    ) {
-      return { payload: null, message: 'Thương hiệu được chọn không hợp lệ hoặc không còn ACTIVE.' };
-    }
-    if (
-      !form.sku.trim() ||
-      form.sku.trim().length > 100 ||
-      form.name.length > 255 ||
-      form.slug.length > 200 ||
-      !form.sellingPrice.trim() ||
-      !Number.isSafeInteger(price) ||
-      price < 0 ||
-      (cost !== null && (!Number.isSafeInteger(cost) || cost < 0))
-    ) {
-      return {
-        payload: null,
-        message: 'Kiểm tra SKU (bắt buộc, tối đa 100 ký tự), tên/slug và giá VND nguyên không âm.',
-      };
-    }
-
-    const attributeResult = buildProductAttributeValueIds(
-      adminMeta.attributes,
-      attributeDraft,
-      form.status,
-    );
-    if (attributeResult.errors.length > 0) {
-      return { payload: null, message: attributeResult.errors.join(' ') };
-    }
-
-    return {
-      payload: {
-        sku: form.sku.trim(),
-        name: form.name.trim() || null,
-        slug: form.slug.trim() || null,
-        description: form.description.trim() || null,
-        parent_product_id: parent,
-        category_id: category,
-        brand_id: brand,
-        selling_price: price,
-        cost_price: cost,
-        status: form.status,
-        attribute_value_ids: attributeResult.attributeValueIds,
-      },
-      message: null,
-    };
-  };
-
-  const finishCreate = (productId: number) => {
-    setForm(initialForm);
-    setAttributeDraft(attributeDraftFromValues(adminMeta?.attributes ?? [], []));
-    setImages([]);
-    setShowCreate(false);
-    setPendingProductId(null);
-    setCreatePhase('idle');
-    setLastCreatedId(productId);
-    setError(null);
-    list.reload();
-  };
-
-  const create = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!canWrite || submitting || submissionInFlight.current) return;
-    const validation =
-      pendingProductId === null
-        ? buildCreatePayload()
-        : { payload: null, message: null };
-    if (pendingProductId === null && !validation.payload) {
-      setError(validation.message ?? 'Dữ liệu Product chưa hợp lệ.');
-      return;
-    }
-
-    submissionInFlight.current = true;
-    setCreatePhase(pendingProductId === null ? 'creating' : 'uploading');
-    setError(null);
-    try {
-      let productId = pendingProductId;
-      if (productId === null && validation.payload) {
-        const created = await adminProductService.createProduct(validation.payload);
-        productId = created.product_id;
-        setPendingProductId(productId);
-        setLastCreatedId(productId);
-        list.reload();
-      }
-      if (productId === null) return;
-
-      if (images.length > 0) {
-        setCreatePhase('uploading');
-        try {
-          await adminProductService.uploadImages(productId, images);
-        } catch (uploadError: unknown) {
-          setCreatePhase('upload_failed');
-          setError(getApiErrorMessage(uploadError, 'Chưa xác nhận tải ảnh. Mở Product để kiểm tra hoặc chọn lại ảnh rồi thử lại.'));
-          showToast('Product #' + productId + ' đã tạo; chưa hoàn tất xác nhận tải ảnh. Có thể mở Product để kiểm tra hoặc thử lại mà không tạo trùng Product.');
-          return;
-        }
-      }
-      finishCreate(productId);
-      showToast('Đã hoàn tất Product #' + productId + '.');
-    } catch (requestError: unknown) {
-      setCreatePhase('idle');
-      setError(getApiErrorMessage(requestError, 'Không thể tạo Product. Kiểm tra quyền và dữ liệu catalog.'));
-    } finally {
-      submissionInFlight.current = false;
-    }
-  };
-
   const requestSearch = (event: React.FormEvent) => {
     event.preventDefault();
     const parent = optionalId(parentFilterInput);
@@ -293,24 +110,8 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
     setError(null);
   };
 
-  const cancelCreate = () => {
-    if (submitting) return;
-    if (pendingProductId !== null) {
-      finishCreate(pendingProductId);
-      showToast('Product #' + pendingProductId + ' đã được lưu. Đóng form không xóa Product.');
-      return;
-    }
-    if (!canDiscard()) return;
-    setShowCreate(false);
-    setPendingProductId(null);
-    setForm(initialForm);
-    setAttributeDraft(attributeDraftFromValues(adminMeta?.attributes ?? [], []));
-    setImages([]);
-    setError(null);
-  };
-
   const openProduct = (id: number, edit = false) => {
-    const callback = edit ? onEditProduct ?? onSelectProduct : onSelectProduct ?? onEditProduct;
+    const callback = edit ? (onEditProduct ?? onSelectProduct) : (onSelectProduct ?? onEditProduct);
     if (callback) callback(String(id));
     else onNavigateTab?.('product-detail', 'Chi tiết Product #' + id);
   };
@@ -321,17 +122,12 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
         <div>
           <h1 className="font-serif text-2xl font-bold">Sản phẩm</h1>
           <p className="mt-1 text-sm text-[#606863]">
-            Quản lý Product theo contract hiện tại; Product cha và Product con có SKU, giá riêng.
+            Quản lý sản phẩm độc lập và sản phẩm con, mỗi sản phẩm có SKU, giá và ảnh riêng.
           </p>
         </div>
-        {canWrite && (
-          <button
-            type="button"
-            disabled={submitting}
-            onClick={() => showCreate ? cancelCreate() : setShowCreate(true)}
-            className="admin-primary"
-          >
-            {showCreate ? pendingProductId !== null ? 'Đóng form (Product đã lưu)' : 'Đóng form' : 'Thêm Product'}
+        {canWrite && !showCreate && (
+          <button type="button" onClick={() => setShowCreate(true)} className="admin-primary">
+            Thêm Product
           </button>
         )}
       </header>
@@ -356,211 +152,32 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
       )}
 
       {showCreate && canWrite && (
-        <form
-          onSubmit={create}
-          className="space-y-4 rounded-xl border border-[#E2E5DE] bg-white p-5"
-        >
-          <h2 className="font-serif text-xl font-bold">Thông tin Product mới</h2>
-          {metaLoading && (
-            <p role="status" className="text-sm text-[#606863]">
-              Đang tải metadata Attribute, Category và Brand...
-            </p>
-          )}
-          <fieldset
-            disabled={metaLoading || submitting || pendingProductId !== null}
-            className="space-y-4"
-          >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="space-y-1 text-sm">
-                <span className="block text-xs font-semibold">SKU *</span>
-                <input
-                  required
-                  maxLength={100}
-                  value={form.sku}
-                  onChange={(event) => updateForm('sku', event.target.value)}
-                  className="w-full border border-[#D9DDD6] px-3 py-2"
-                />
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="block text-xs font-semibold">Tên Product</span>
-                <input
-                  maxLength={255}
-                  value={form.name}
-                  onChange={(event) => updateForm('name', event.target.value)}
-                  className="w-full border border-[#D9DDD6] px-3 py-2"
-                />
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="block text-xs font-semibold">Slug</span>
-                <input
-                  maxLength={200}
-                  value={form.slug}
-                  onChange={(event) => updateForm('slug', event.target.value)}
-                  className="w-full border border-[#D9DDD6] px-3 py-2"
-                />
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="block text-xs font-semibold">Product cha ID (tùy chọn)</span>
-                <input
-                  aria-label="Product cha ID"
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={form.parentProductId}
-                  onChange={(event) => updateForm('parentProductId', event.target.value)}
-                  className="w-full border border-[#D9DDD6] px-3 py-2"
-                />
-                <span className="block text-xs text-[#606863]">
-                  Để trống nếu Product độc lập. Backend xác thực quan hệ cha/con một cấp.
-                </span>
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="block text-xs font-semibold">Danh mục</span>
-                <select
-                  aria-label="Danh mục Product"
-                  value={form.categoryId}
-                  onChange={(event) => updateForm('categoryId', event.target.value)}
-                  className="w-full border border-[#D9DDD6] bg-white px-3 py-2"
-                >
-                  <option value="">Không chọn danh mục</option>
-                  {catalogMeta?.categories
-                    .filter((item) => item.status === 'ACTIVE')
-                    .map((item) => (
-                      <option key={item.category_id} value={item.category_id}>
-                        {item.name}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="block text-xs font-semibold">Thương hiệu</span>
-                <select
-                  aria-label="Thương hiệu Product"
-                  value={form.brandId}
-                  onChange={(event) => updateForm('brandId', event.target.value)}
-                  className="w-full border border-[#D9DDD6] bg-white px-3 py-2"
-                >
-                  <option value="">Không chọn thương hiệu</option>
-                  {catalogMeta?.brands
-                    .filter((item) => item.status === 'ACTIVE')
-                    .map((item) => (
-                      <option key={item.brand_id} value={item.brand_id}>
-                        {item.name}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="block text-xs font-semibold">Giá bán (VND) *</span>
-                <input
-                  required
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={form.sellingPrice}
-                  onChange={(event) => updateForm('sellingPrice', event.target.value)}
-                  className="w-full border border-[#D9DDD6] px-3 py-2"
-                />
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="block text-xs font-semibold">Giá vốn (VND, tùy chọn)</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={form.costPrice}
-                  onChange={(event) => updateForm('costPrice', event.target.value)}
-                  className="w-full border border-[#D9DDD6] px-3 py-2"
-                />
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="block text-xs font-semibold">Trạng thái Product</span>
-                <select
-                  aria-label="Trạng thái Product"
-                  value={form.status}
-                  onChange={(event) => updateForm('status', event.target.value as ProductStatus)}
-                  className="w-full border border-[#D9DDD6] bg-white px-3 py-2"
-                >
-                  <option value="DRAFT">DRAFT</option>
-                  <option value="ACTIVE">ACTIVE</option>
-                  <option value="INACTIVE">INACTIVE</option>
-                  <option value="ARCHIVED">ARCHIVED</option>
-                </select>
-              </label>
-            </div>
-            <label className="block space-y-1 text-sm">
-              <span className="block text-xs font-semibold">Mô tả</span>
-              <textarea
-                rows={3}
-                value={form.description}
-                onChange={(event) => updateForm('description', event.target.value)}
-                className="w-full border border-[#D9DDD6] px-3 py-2"
-              />
-            </label>
-            <div className="space-y-3 rounded-lg border border-[#E2E5DE] p-4">
-              <h3 className="font-semibold">Typed Attribute values</h3>
-              <ProductAttributeFields
-                attributes={adminMeta?.attributes ?? []}
-                draft={attributeDraft}
-                status={form.status}
-                onChange={(attributeId, value) =>
-                  setAttributeDraft((current) => ({
-                    ...current,
-                    [String(attributeId)]: value,
-                  }))
-                }
-              />
-            </div>
-          </fieldset>
-          <div className="border border-dashed border-[#D9DDD6] bg-[#F8FAF4] p-3">
-            <label className="block space-y-2 text-sm">
-              <span className="text-xs font-semibold">Ảnh Product (tùy chọn)</span>
-              <input
-                aria-label="Ảnh Product mới"
-                type="file"
-                multiple
-                accept="image/jpeg,image/png,image/webp"
-                disabled={metaLoading || submitting}
-                onChange={(event) => setImages(Array.from(event.target.files ?? []))}
-                className="block max-w-full text-xs"
-              />
-            </label>
-            <ImageFilePreview files={images} />
-          </div>
-          {pendingProductId !== null && (
-            <p role="status" className="text-sm text-amber-800">
-              Product #{pendingProductId} đã được tạo và tồn tại trong hệ thống.
-              {createPhase === 'uploading' ? ' Đang tải ảnh...' : ' Chỉ còn bước tải ảnh; chọn lại ảnh để thử lại, hoặc hoàn tất không ảnh. Đóng form không xóa Product.'}
-            </p>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="submit"
-              disabled={submitting || metaLoading || !adminMeta || !catalogMeta || (pendingProductId !== null && images.length === 0)}
-              className="admin-primary disabled:opacity-40"
-            >
-              {createPhase === 'creating' ? 'Đang tạo Product...' : createPhase === 'uploading' ? 'Đang tải ảnh...' : pendingProductId !== null ? 'Thử tải ảnh lại' : 'Tạo Product'}
-            </button>
-            <button
-              type="button"
-              disabled={submitting}
-              onClick={cancelCreate}
-              className="admin-secondary"
-            >
-              {pendingProductId !== null ? 'Hoàn tất không ảnh' : 'Hủy'}
-            </button>
-            {pendingProductId !== null && (
-              <button type="button" disabled={submitting} className="admin-secondary"
-                onClick={() => {
-                  const id = pendingProductId;
-                  finishCreate(id);
-                  openProduct(id);
-                }}>
-                Mở Product đã tạo
-              </button>
-            )}
-          </div>
-        </form>
+        <AdminProductCreateForm
+          catalogMeta={catalogMeta}
+          adminMeta={adminMeta}
+          metaLoading={metaLoading}
+          metaError={metaError}
+          initialParentId={initialParentId}
+          onReloadMeta={() => setMetaRevision((value) => value + 1)}
+          onClose={() => setShowCreate(false)}
+          onSaved={(id) => {
+            setLastCreatedId(id);
+            list.reload();
+          }}
+          onOpen={(id) => openProduct(id)}
+          onFindSku={(sku) => {
+            setQueryInput(sku);
+            setQuery(sku);
+            setCategoryId('');
+            setBrandId('');
+            setParentFilter('');
+            setParentFilterInput('');
+            setStatus('');
+            setPage(1);
+            list.reload();
+          }}
+          showToast={showToast}
+        />
       )}
 
       <form
@@ -651,7 +268,9 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
 
       <QueryFeedback
         loading={list.loading}
-        error={list.error ? getApiErrorMessage(list.error, 'Không thể tải danh sách Product.') : null}
+        error={
+          list.error ? getApiErrorMessage(list.error, 'Không thể tải danh sách Product.') : null
+        }
         onRetry={list.reload}
       />
       {!list.loading && !list.error && products.length === 0 && (

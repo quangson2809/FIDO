@@ -2,7 +2,7 @@ import { ListSearch } from '../../shared/admin/ListSearch';
 import { useDirtyForm } from '../../shared/admin/dirtyFormContext';
 import React, { useEffect, useState } from 'react';
 import { contentService } from '../../features/content/api/service';
-import type { ContentPageDto } from '../../features/content/types';
+import type { ContentPageDto, ContentPageSummaryDto } from '../../features/content/types';
 import { getApiErrorMessage } from '../../services/http/apiError';
 
 export const AdminSettingsView: React.FC<{
@@ -11,7 +11,9 @@ export const AdminSettingsView: React.FC<{
 }> = ({ showToast, canWrite }) => {
   const [search, setSearch] = useState('');
   const [preview, setPreview] = useState(false);
-  const [pages, setPages] = useState<ContentPageDto[]>([]);
+  const [pages, setPages] = useState<ContentPageSummaryDto[]>([]);
+  const [detail, setDetail] = useState<ContentPageDto | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -20,14 +22,14 @@ export const AdminSettingsView: React.FC<{
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const selectedPage = pages.find((page) => page.page_id === selectedId);
+  const selectedPage = detail;
   const canDiscard = useDirtyForm(
     Boolean(selectedPage && (title !== selectedPage.title || content !== selectedPage.content)),
   );
-  const selectPage = (page: ContentPageDto) => {
+  const selectPage = (page: ContentPageSummaryDto) => {
+    if (page.page_id === selectedId) return;
+    setDetail(null);
     setSelectedId(page.page_id);
-    setTitle(page.title);
-    setContent(page.content);
   };
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export const AdminSettingsView: React.FC<{
         const result = await contentService.getAdminPages();
         if (!active) return;
         setPages(result);
-        if (result.length > 0) selectPage(result[0]);
+        if (result.length > 0) setSelectedId((current) => current ?? result[0].page_id);
         setError(null);
       } catch (requestError: unknown) {
         if (active) setError(getApiErrorMessage(requestError, 'Không thể tải content pages.'));
@@ -51,9 +53,27 @@ export const AdminSettingsView: React.FC<{
     };
   }, [revision]);
 
+  useEffect(() => {
+    if (selectedId === null) return;
+    let active = true;
+    void Promise.resolve().then(() => {
+      if (active) { setDetailLoading(true); setDetail(null); }
+      return contentService.getAdminPage(selectedId);
+    }).then((page) => {
+      if (!active) return;
+      setDetail(page);
+      setTitle(page.title);
+      setContent(page.content);
+      setError(null);
+    }).catch((requestError: unknown) => {
+      if (active) setError(getApiErrorMessage(requestError, 'Không thể tải nội dung trang.'));
+    }).finally(() => { if (active) setDetailLoading(false); });
+    return () => { active = false; };
+  }, [selectedId, revision]);
+
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (saving || !canWrite || selectedId == null || !title.trim() || !content.trim()) return;
+    if (saving || detailLoading || !detail || !canWrite || selectedId == null || !title.trim() || !content.trim()) return;
     setSaving(true);
     try {
       const updated = await contentService.updatePage(selectedId, {
@@ -63,7 +83,9 @@ export const AdminSettingsView: React.FC<{
       setPages((current) =>
         current.map((page) => (page.page_id === updated.page_id ? updated : page)),
       );
-      selectPage(updated);
+      setDetail(updated);
+      setTitle(updated.title);
+      setContent(updated.content);
       showToast('Đã cập nhật nội dung.');
     } catch (requestError: unknown) {
       showToast(getApiErrorMessage(requestError, 'Không thể cập nhật nội dung.'));
@@ -95,7 +117,7 @@ export const AdminSettingsView: React.FC<{
       >
         {preview ? 'Ẩn xem trước' : 'Xem trước nội dung'}
       </button>
-      {preview && (
+      {preview && detail && (
         <article className="rounded-xl border border-[#E2E5DE] bg-white p-6">
           <h2 className="font-serif text-2xl">{title}</h2>
           <p className="mt-4 whitespace-pre-wrap leading-7">{content}</p>
@@ -156,7 +178,8 @@ export const AdminSettingsView: React.FC<{
             </div>
           </aside>
           <form onSubmit={save} className="border border-[#E8E9E3] bg-white p-5">
-            <fieldset disabled={saving} className="contents">
+            <fieldset disabled={saving || detailLoading || !detail} className="contents">
+              {detailLoading && <p role="status">Đang tải nội dung trang...</p>}
               <label className="block text-xs font-semibold">
                 Tiêu đề
                 <input
@@ -184,7 +207,7 @@ export const AdminSettingsView: React.FC<{
                 <button
                   type="submit"
                   disabled={
-                    !canWrite || saving || selectedId == null || !title.trim() || !content.trim()
+                    !canWrite || saving || detailLoading || !detail || selectedId == null || !title.trim() || !content.trim()
                   }
                   className="bg-[#0B2419] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white disabled:opacity-50"
                 >

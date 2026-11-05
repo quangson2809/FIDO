@@ -72,7 +72,7 @@ public class ProductAdminService {
         validateParent(null, request.parent_product_id());
 
         String sku = request.sku().trim();
-        if (products.existsBySku(sku)) conflict("SKU already exists");
+        if (products.existsBySku(sku)) conflict("PRODUCT_SKU_ALREADY_EXISTS");
         String status = request.status() == null ? "DRAFT" : request.status();
         CatalogPolicy.requireProductStatus(status);
 
@@ -134,7 +134,7 @@ public class ProductAdminService {
         if (request.isSkuPresent()) {
             String sku = request.getSku().trim();
             if (products.existsBySkuAndProductIdNot(sku, productId)) {
-                conflict("SKU already exists");
+                conflict("PRODUCT_SKU_ALREADY_EXISTS");
             }
             product.setSku(sku);
         }
@@ -196,14 +196,22 @@ public class ProductAdminService {
     private void validateParent(Long productId, Long parentProductId) {
         if (parentProductId == null) return;
         if (Objects.equals(productId, parentProductId)) {
-            conflict("A product cannot be its own parent");
+            conflict("PRODUCT_PARENT_INVALID");
         }
-        Product parent = references.productForUpdate(parentProductId);
+        Product parent;
+        try {
+            parent = references.productForUpdate(parentProductId);
+        } catch (ResponseStatusException failure) {
+            if (failure.getStatusCode().value() == 404) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "PRODUCT_PARENT_NOT_FOUND");
+            }
+            throw failure;
+        }
         if (parent.getParentProductId() != null) {
-            conflict("Product hierarchy is limited to one child level");
+            conflict("PRODUCT_PARENT_INVALID");
         }
         if (productId != null && products.existsByParentProductId(productId)) {
-            conflict("A product with children cannot become a child");
+            conflict("PRODUCT_PARENT_INVALID");
         }
     }
 

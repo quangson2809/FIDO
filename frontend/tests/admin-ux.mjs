@@ -17,8 +17,8 @@ const reportStatusCounts = {
   PENDING: 2, CONFIRMED: 0, PREPARING: 0, SHIPPING: 0,
   COMPLETED: 1, DELIVERY_FAILED: 0, CANCELLED: 0, RETURNED: 0,
 };
-const permission = { permission_id: 1, code: 'CATALOG_READ', name: 'Xem danh mục' };
-const role = { role_id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null };
+const permission = { id: 1, code: 'CATALOG_READ', name: 'Xem danh mục' };
+const role = { id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null };
 const meRole = { id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null, status: 'ACTIVE' };
 let me = {
   account: { id: 1, full_name: 'Test Account', phone: '0900000000', email: null, status: 'ACTIVE', created_at: date, updated_at: date },
@@ -95,8 +95,6 @@ let order = {
   updated_at: date,
   customer_account_id: 1,
   voucher_id: null,
-  customer_service_note: null,
-  cancel_reason: null,
   payment: {
     payment_status: 'UNPAID',
     amount_due: 200000,
@@ -134,6 +132,10 @@ let receipt = {
 let customerError = false;
 let reportError = false;
 let writes = [];
+const reads = [];
+let voucher = { id: 27, code: 'SAVE10K', discount_type: 'FIXED', discount_value: 10000,
+  minimum_order_value: 0, maximum_discount: null, starts_at: null, ends_at: null,
+  usage_limit: null, usage_count: 2, status: 'ACTIVE' };
 let customerRequests = 0;
 await page.addInitScript(() => sessionStorage.setItem('fido.accessToken', 'fixture'));
 await page.route('**/api/v1/**', async (route) => {
@@ -156,8 +158,22 @@ await page.route('**/api/v1/**', async (route) => {
         'access-control-allow-methods': '*',
       },
     });
+  if (request.method() === 'GET') reads.push({ path, query: url.searchParams });
   if (request.method() !== 'GET') {
     writes.push({ path, body: request.postDataJSON() });
+    if (path === '/admin/vouchers' || path === '/admin/vouchers/27') {
+      if (!['POST', 'PATCH'].includes(request.method())) return send({}, 405);
+      voucher = { ...voucher, ...request.postDataJSON(), status: request.method() === 'POST' ? 'DRAFT' : request.postDataJSON().status };
+      return send({ data: voucher }, request.method() === 'POST' ? 201 : 200);
+    }
+    if (path === '/admin/staff-accounts' && request.method() === 'POST') {
+      const input = request.postDataJSON();
+      return send({ data: { account: { ...me.account, full_name: input.full_name, phone: input.phone }, roles: [role], permissions: [permission] } }, 201);
+    }
+    if (path === '/admin/permissions/1' && request.method() === 'PATCH') {
+      Object.assign(permission, request.postDataJSON());
+      return send({ data: permission });
+    }
     if (path === '/admin/inventory/adjustments') {
       const input = request.postDataJSON();
       return send({
@@ -177,15 +193,22 @@ await page.route('**/api/v1/**', async (route) => {
       }, 201);
     }
     if (path === '/admin/orders/1/actions') {
-      order = { ...order, order_status: 'CONFIRMED', allowed_actions: ['PREPARE', 'CANCEL'] };
+      const transitions = {
+        CONFIRM: ['CONFIRMED', ['START_PREPARING', 'CANCEL']],
+        START_PREPARING: ['PREPARING', ['DISPATCH', 'CANCEL']],
+        DISPATCH: ['SHIPPING', ['MARK_DELIVERY_FAILED']],
+      };
+      const [status, actions] = transitions[request.postDataJSON().action];
+      order = { ...order, order_status: status, allowed_actions: actions };
       return send({ data: order });
     }
     if (path === '/admin/orders/1/payment-actions') {
       order = {
         ...order,
+        order_status: 'COMPLETED', allowed_actions: [],
         payment: { ...order.payment, payment_status: 'PAID', amount_received: 200000 },
       };
-      return send({ data: order.payment });
+      return send({ data: order });
     }
     if (path === '/admin/products/1' && request.method() === 'PATCH') {
       productPatchAttempts += 1;
@@ -199,6 +222,7 @@ await page.route('**/api/v1/**', async (route) => {
     }
     return send({ message: 'Lỗi lưu thử nghiệm' }, 500);
   }
+  if (path === '/admin/vouchers') return send(pagination([voucher]));
   if (path === '/me') return send({ data: me });
   if (path === '/cart')
     return send({ data: { cart_id: 1, account_id: 1, items: [], subtotal: 0 } });
@@ -338,12 +362,12 @@ await page.route('**/api/v1/**', async (route) => {
       pagination(
         [
           {
-            audit_id: 1,
+            id: 1,
             actor_account_id: 1,
             action: 'PRODUCT_UPDATE',
-            target_type: 'PRODUCT',
-            target_id: '1',
-            description: 'Cập nhật sản phẩm',
+            entity_type: 'PRODUCT',
+            entity_id: '1',
+            before_data: null, after_data: { name: 'Sản phẩm mới' }, correlation_id: null,
             created_at: date,
           },
         ],
@@ -355,9 +379,10 @@ await page.route('**/api/v1/**', async (route) => {
     return send({
       data: { roles: [{ ...role, permissions: [permission] }], permissions: [permission] },
     });
+  if (path === '/admin/content-pages/1') return send({ data: { id: 1, slug: 'policy', title: 'Chính sách', content: 'Nội dung gốc', status: 'DRAFT', updated_at: date, updated_by_account_id: 1 } });
   if (path === '/admin/content-pages')
     return send({
-      data: [{ page_id: 1, page_code: 'POLICY', title: 'Chính sách', content: 'Nội dung gốc' }],
+      data: [{ id: 1, slug: 'policy', title: 'Chính sách', status: 'DRAFT', updated_at: date }],
     });
   return send(pagination([]));
 });
@@ -421,6 +446,10 @@ try {
   await page.goBack();
   assert.match(page.url(), /catalog\/categories/);
   await goto('/admin/content');
+  await page.getByRole('button', { name: /Chính sách policy/ }).click();
+  assert.equal(await page.getByRole('textbox', { name: 'Nội dung', exact: true }).inputValue(), 'Nội dung gốc');
+  assert.equal(await page.getByRole('button', { name: 'Lưu nội dung' }).isEnabled(), true,
+    'selecting the current summary must not clear its loaded detail');
   await page.getByRole('textbox', { name: 'Tiêu đề' }).fill('Bản chưa lưu');
   page.once('dialog', (dialog) => dialog.dismiss());
   await page.getByRole('button', { name: /Đơn hàng/ }).click();
@@ -477,12 +506,22 @@ try {
   await page.getByRole('button', { name: 'Xác nhận', exact: true }).click();
   await page.getByRole('button', { name: 'Bắt đầu chuẩn bị', exact: true }).waitFor();
   assert.equal(writes.length, beforeAction + 1);
-  page.once('dialog', (dialog) => {
-    assert.match(dialog.message(), /200.000/);
-    dialog.accept();
-  });
-  await page.getByRole('button', { name: 'Thu COD', exact: true }).click();
+  assert.equal(await page.getByRole('button', { name: 'Chỉnh sửa', exact: true }).count(), 0,
+    'admin recipient edits have no supported API');
+  assert.equal(await page.getByRole('button', { name: /thu COD/i }).count(), 0,
+    'COD collection is available only while shipping');
+  for (const label of ['Bắt đầu chuẩn bị', 'Bắt đầu giao']) {
+    page.once('dialog', (dialog) => dialog.accept());
+    await page.getByRole('button', { name: label, exact: true }).click();
+  }
+  page.once('dialog', (dialog) => { assert.match(dialog.message(), /200.000/); dialog.accept(); });
+  await page.getByRole('button', { name: 'Hoàn tất giao hàng & thu COD', exact: true }).click();
   await page.getByText('Thanh toán: Đã thu tiền', { exact: false }).waitFor();
+  assert.equal(writes.filter((entry) => entry.path === '/admin/orders/1/payment-actions').at(-1).body.action,
+    'COMPLETE_DELIVERY_AND_COLLECT_COD');
+  assert.deepEqual(writes.filter((entry) => entry.path === '/admin/orders/1/actions').map((entry) => entry.body.action),
+    ['CONFIRM', 'START_PREPARING', 'DISPATCH']);
+  assert.equal(writes.filter((entry) => entry.path === '/admin/orders/1').length, 0);
   await goto('/admin/orders?status=PENDING');
   assert.equal(
     await page.getByRole('combobox', { name: 'Trạng thái đơn' }).inputValue(),
@@ -539,6 +578,55 @@ try {
   await goto('/admin/audit');
   await page.getByRole('button', { name: 'Sau', exact: true }).click();
   await page.getByText('Trang 2', { exact: false }).waitFor();
+  await page.getByRole('textbox', { name: 'Target type' }).fill('PRODUCT');
+  await Promise.all([
+    page.waitForResponse((response) => response.url().includes('/admin/audit-logs?') && new URL(response.url()).searchParams.get('entity_type') === 'PRODUCT'),
+    page.getByRole('button', { name: 'Lọc', exact: true }).click(),
+  ]);
+  await page.getByRole('cell', { name: 'PRODUCT 1', exact: true }).waitFor();
+  assert.equal(reads.filter((entry) => entry.path === '/admin/audit-logs').at(-1).query.get('entity_type'), 'PRODUCT');
+  assert.equal(reads.filter((entry) => entry.path === '/admin/audit-logs').at(-1).query.has('target_type'), false);
+  await goto('/admin/roles');
+  const permissionPanel = page.locator('div').filter({ has: page.getByRole('heading', { name: 'Danh mục quyền', exact: true }) }).last();
+  await permissionPanel.getByRole('button', { name: 'Sửa', exact: true }).click();
+  const permissionEditor = page.getByRole('dialog');
+  assert.equal(await permissionEditor.getByLabel('Mã quyền', { exact: true }).getAttribute('readonly'), '');
+  await permissionEditor.getByLabel('Tên quyền', { exact: true }).fill('Xem danh mục cập nhật');
+  await permissionEditor.getByRole('button', { name: 'Lưu', exact: true }).click();
+  await page.getByText('Đã cập nhật permission.', { exact: true }).waitFor();
+  assert.deepEqual(writes.filter((entry) => entry.path === '/admin/permissions/1').at(-1).body, { name: 'Xem danh mục cập nhật' });
+  assert.equal(writes.some((entry) => entry.path.includes('undefined')), false);
+  await goto('/admin/staff');
+  await page.getByRole('button', { name: 'Thêm nhân viên', exact: true }).click();
+  await page.getByLabel('Họ tên *', { exact: true }).fill('Nguyễn Văn Test');
+  await page.getByLabel('Số điện thoại *', { exact: true }).fill('0900222333');
+  await page.getByPlaceholder('Mật khẩu *', { exact: true }).fill('Test-password-123');
+  await page.getByRole('checkbox', { name: 'SUPERADMIN', exact: true }).check();
+  await page.getByRole('button', { name: 'Tạo tài khoản', exact: true }).click();
+  await page.getByText('Đã tạo tài khoản nhân viên.', { exact: true }).waitFor();
+  const staffWrite = writes.filter((entry) => entry.path === '/admin/staff-accounts').at(-1).body;
+  assert.equal(staffWrite.full_name, 'Nguyễn Văn Test');
+  assert.deepEqual(staffWrite.role_ids, [1]);
+  await goto('/admin/vouchers');
+  await page.getByRole('button', { name: 'Xem / Sửa', exact: true }).click();
+  const voucherEditor = page.getByRole('dialog');
+  await voucherEditor.getByRole('combobox', { name: 'Loại giảm', exact: true }).selectOption('PERCENT');
+  await voucherEditor.getByLabel('Giá trị giảm (%)', { exact: true }).fill('12.50');
+  await voucherEditor.getByRole('combobox', { name: 'Trạng thái', exact: true }).selectOption('INACTIVE');
+  await voucherEditor.getByRole('button', { name: 'Lưu voucher', exact: true }).click();
+  await page.getByText('Đã lưu voucher.', { exact: true }).waitFor();
+  assert.deepEqual(writes.filter((entry) => entry.path === '/admin/vouchers/27').at(-1).body,
+    { code: 'SAVE10K', discount_type: 'PERCENT', discount_value: 1250, minimum_order_value: 0,
+      maximum_discount: null, starts_at: null, ends_at: null, usage_limit: null, status: 'INACTIVE' });
+  await page.getByRole('button', { name: 'Tạo voucher', exact: true }).click();
+  await voucherEditor.getByLabel('Mã voucher', { exact: true }).fill('NEW10K');
+  await voucherEditor.getByLabel('Giá trị giảm (VND)', { exact: true }).fill('10000');
+  await voucherEditor.getByRole('button', { name: 'Lưu voucher', exact: true }).click();
+  await page.getByRole('cell', { name: 'NEW10K', exact: true }).waitFor();
+  assert.deepEqual(writes.filter((entry) => entry.path === '/admin/vouchers').at(-1).body,
+    { code: 'NEW10K', discount_type: 'FIXED', discount_value: 10000, minimum_order_value: 0,
+      maximum_discount: null, starts_at: null, ends_at: null, usage_limit: null });
+
   // Visual layout and accessible form naming across every Admin module.
   const routes = [
     '/admin/dashboard',

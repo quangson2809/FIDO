@@ -85,9 +85,9 @@ const summary = {
 };
 const access = {
   roles: [
-    { role_id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null, permissions: [] },
+    { id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null, permissions: [] },
     {
-      role_id: 2,
+      id: 2,
       code: 'STAFF',
       name: 'Nhân viên',
       description: 'Nhân viên cửa hàng',
@@ -95,21 +95,21 @@ const access = {
     },
   ],
   permissions: [
-    { permission_id: 1, code: 'CATALOG_READ', name: 'Xem danh mục' },
-    { permission_id: 2, code: 'CONTENT_WRITE', name: 'Sửa nội dung' },
+    { id: 1, code: 'CATALOG_READ', name: 'Xem danh mục' },
+    { id: 2, code: 'CONTENT_WRITE', name: 'Sửa nội dung' },
   ],
 };
 const pages = [
   {
-    page_id: 1,
-    page_code: 'shipping-policy',
+    id: 1,
+    slug: 'shipping-policy',
     title: 'Giao hàng',
     content: 'Nội dung giao hàng',
     updated_by_account_id: 1,
   },
   {
-    page_id: 2,
-    page_code: 'return-policy',
+    id: 2,
+    slug: 'return-policy',
     title: 'Trả hàng',
     content: 'Nội dung trả hàng',
     updated_by_account_id: 1,
@@ -149,7 +149,8 @@ await page.route('**/api/v1/**', async (route) => {
     });
   }
   if (path === '/admin/access-control') return send({ data: access });
-  if (path === '/admin/content-pages') return send({ data: pages });
+  if (path === '/admin/content-pages') return send({ data: pages.map(({ content, updated_by_account_id, ...summary }) => ({ ...summary, status: 'DRAFT' })) });
+  if (path.startsWith('/admin/content-pages/')) return send({ data: { ...pages.find((item) => item.id === Number(path.split('/').at(-1))), status: 'DRAFT' } });
   if (path === '/admin/catalog/attributes/1' && request.method() === 'PATCH') {
     if (attributeFailure) return send({}, 409);
     metadata.attributes[0] = { ...metadata.attributes[0], ...request.postDataJSON() };
@@ -401,7 +402,7 @@ try {
   profile = {
     ...customer,
     roles: [{ id: 2, code: 'ADMIN', name: 'Nhân viên', description: null }],
-    permissions: [{ id: access.permissions[0].permission_id, code: access.permissions[0].code, name: access.permissions[0].name }],
+    permissions: [{ id: access.permissions[0].id, code: access.permissions[0].code, name: access.permissions[0].name }],
   };
   await go('/admin/catalog/sizes');
   await page.waitForURL('**/admin/catalog/attributes');

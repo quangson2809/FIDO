@@ -8,6 +8,6 @@ public interface InventoryReconciliationView {
     Integer getBalanceVersion();
     Long getLedgerQuantity();
     Long getMovementCount();
-    Boolean getQuantityMatches();
-    Boolean getVersionMatches();
+    Number getQuantityMatches();
+    Number getVersionMatches();
 }

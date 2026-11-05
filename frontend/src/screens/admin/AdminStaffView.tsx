@@ -10,13 +10,14 @@ import type { AccessControlDto, StaffAccountDetailDto } from '../../features/adm
 import { getApiErrorMessage } from '../../services/http/apiError';
 
 interface StaffDraft {
+  fullName: string;
   phone: string;
   email: string;
   password: string;
   roleIds: number[];
 }
 
-const emptyDraft: StaffDraft = { phone: '', email: '', password: '', roleIds: [] };
+const emptyDraft: StaffDraft = { fullName: '', phone: '', email: '', password: '', roleIds: [] };
 
 export const AdminStaffView: React.FC<{ showToast: (msg: string) => void }> = ({ showToast }) => {
   const [access, setAccess] = useState<AccessControlDto | null>(null);
@@ -103,10 +104,11 @@ export const AdminStaffView: React.FC<{ showToast: (msg: string) => void }> = ({
 
   const createStaff = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (busy || !createDraft.phone.trim() || !createDraft.password) return;
+    if (busy || !createDraft.fullName.trim() || !createDraft.phone.trim() || !createDraft.password) return;
     setBusy(true);
     try {
       const created = await adminAccessService.createStaff({
+        full_name: createDraft.fullName.trim(),
         phone: createDraft.phone.trim(),
         email: createDraft.email.trim() || null,
         password: createDraft.password,
@@ -184,6 +186,10 @@ export const AdminStaffView: React.FC<{ showToast: (msg: string) => void }> = ({
         <form onSubmit={createStaff} className="space-y-4 border border-[#E8E9E3] bg-white p-5">
           <fieldset disabled={busy} className="contents">
             <div className="grid gap-3 md:grid-cols-3">
+              <input aria-label="Họ tên *" required maxLength={150}
+                value={createDraft.fullName} placeholder="Họ tên *"
+                onChange={(event) => setCreateDraft((current) => ({ ...current, fullName: event.target.value }))}
+                className="border border-[#D9DDD6] px-3 py-2 text-sm" />
               <input
                 aria-label="Số điện thoại *"
                 value={createDraft.phone}

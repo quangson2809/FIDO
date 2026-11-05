@@ -1,6 +1,7 @@
 package com.fido.modules.content.service;
 
 import com.fido.modules.content.dto.response.ContentPageSummaryDto;
+import com.fido.modules.content.dto.response.ContentPageDto;
 import com.fido.modules.content.dto.response.PublicContentPageDto;
 import com.fido.modules.content.mapper.ContentMapper;
 import com.fido.modules.content.repository.ContentPageRepository;
@@ -37,6 +38,12 @@ public class ContentPageQueryService {
     public List<ContentPageSummaryDto> list() {
         // API-73's current response contract is {data:[...]}; keep its envelope and expose summaries only.
         return pages.findAllByOrderByPageIdAsc().stream().map(ContentMapper::summary).toList();
+    }
+
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_CONTENT_READ')")
+    public ContentPageDto detail(Long id) {
+        return ContentMapper.admin(pages.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "CONTENT_PAGE_NOT_FOUND")));
     }
 
     private String normalizePublicSlug(String input) {

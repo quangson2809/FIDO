@@ -1,3 +1,4 @@
+import { buildProductCreate, emptyProductCreateForm, validateProductImageFiles, productCreateServerError } from '../src/features/catalog/model/productCreateForm';
 import { attributeDraftFromValues, buildProductAttributeValueIds, preserveUnmanagedProductAttributeValueIds, sameProductAttributeValueIds } from '../src/features/catalog/model/productAttributeForm';
 import assert from 'node:assert/strict';
 import { productSummaryMetadata } from '../src/features/catalog/model/productSummary';
@@ -14,8 +15,7 @@ import {
 import { canPurchaseProduct } from '../src/features/catalog/model/purchaseAvailability';
 import { buildCheckoutQuoteKey } from '../src/features/orders/model/checkoutQuoteKey';
 import {
-  changeVoucherScope,
-  changeVoucherDiscountType,
+  voucherStatusOptions,
   voucherRequestFields,
   voucherSubmission,
 } from '../src/features/promotion/model/voucherFormModel';
@@ -108,89 +108,18 @@ const voucherStaff = profileWithRole('ADMIN', ['VOUCHER_WRITE']);
 assert.equal(canAccessAdminModule('vouchers', voucherStaff, ['VOUCHER_WRITE']), true);
 assert.equal(canAccessAdminModule('products', voucherStaff, ['VOUCHER_WRITE']), false);
 const voucherFixture: VoucherInput = {
-  code: ' WELCOME10 ',
-  discount_type: 'FIXED_AMOUNT',
-  discount_value: 10000,
-  maximum_discount: 10,
-  minimum_amount: 400000,
-  scope: 'CATEGORY',
-  category_ids: [5, 8],
-  product_ids: [],
-  starts_at: '2026-10-09T00:00:00Z',
-  ends_at: '2026-10-12T00:00:00Z',
-  global_limit: 10,
-  customer_limit: 1,
-  enabled: true,
+  code: ' WELCOME10 ', discount_type: 'PERCENT', discount_value: 1250,
+  maximum_discount: null, minimum_order_value: 400000,
+  starts_at: null, ends_at: null, usage_limit: 10,
 };
-assert.deepEqual(
-  voucherSubmission(voucherFixture, false).category_ids,
-  [5, 8],
-  'do not replace real category IDs with labels',
-);
-assert.equal(
-  voucherSubmission(voucherFixture, false).maximum_discount,
-  null,
-  'fixed amount has no cap',
-);
-assert.equal(
-  voucherSubmission(voucherFixture, true).maximum_discount,
-  10,
-  'preserve immutable historical cap for used voucher',
-);
-const voucherServerDetail = {
-  ...voucherFixture,
-  voucher_id: 990001,
-  active_usage: 0,
-  ever_used: true,
-};
-const expectedVoucherFields = {
-  ...voucherFixture,
-  code: 'WELCOME10',
-  maximum_discount: null,
-};
-assert.deepEqual(
-  voucherRequestFields(voucherServerDetail),
-  voucherFixture,
-  'response-only metadata must not enter editing state',
-);
-assert.deepEqual(
-  voucherSubmission(voucherServerDetail, false),
-  expectedVoucherFields,
-  'submission must contain only request fields, even if input is a server detail',
-);
-assert.deepEqual(
-  voucherSubmission(voucherServerDetail, true),
-  {
-    ...voucherFixture,
-    code: 'WELCOME10',
-  },
-  'used voucher retains immutable policy without leaking response metadata',
-);
-assert.equal(
-  Object.keys(voucherSubmission(voucherServerDetail, true)).length,
-  Object.keys(voucherFixture).length,
-  'no additional property can leak from VoucherDetail to VoucherRequest',
-);
-const productScope = changeVoucherScope(voucherFixture, 'PRODUCT');
-assert.deepEqual(productScope.category_ids, []);
-assert.deepEqual(productScope.product_ids, []);
-assert.equal(productScope.scope, 'PRODUCT');
-assert.deepEqual(
-  voucherSubmission({ ...productScope, product_ids: [21, 22] }, false).product_ids,
-  [21, 22],
-);
-assert.deepEqual(
-  voucherSubmission({ ...productScope, product_ids: [21, 22] }, false).category_ids,
-  [],
-);
-const allScope = changeVoucherScope({ ...productScope, product_ids: [21] }, 'ALL');
-assert.deepEqual(voucherSubmission(allScope, false).product_ids, []);
-assert.deepEqual(voucherSubmission(allScope, false).category_ids, []);
-assert.equal(
-  changeVoucherDiscountType({ ...voucherFixture, discount_type: 'PERCENTAGE' }, 'FIXED_AMOUNT')
-    .maximum_discount,
-  null,
-);
+const voucherServerDetail = { ...voucherFixture, id: 990001, usage_count: 2, status: 'ACTIVE' };
+assert.deepEqual(voucherRequestFields(voucherServerDetail), voucherFixture);
+assert.deepEqual(voucherSubmission(voucherServerDetail), { ...voucherFixture, code: 'WELCOME10' });
+assert.equal(voucherSubmission(voucherServerDetail).discount_value, 1250, 'percent is stored as basis points');
+assert.equal(voucherSubmission({ ...voucherFixture, discount_type: 'FIXED', maximum_discount: 1000 }).maximum_discount, 1000,
+  'do not erase a valid server cap');
+assert.deepEqual(voucherStatusOptions.EXPIRED, ['EXPIRED'], 'expired vouchers cannot be reactivated');
+assert.deepEqual(voucherStatusOptions.DRAFT, ['DRAFT', 'ACTIVE', 'INACTIVE']);
 
 const catalogStaff = profileWithRole('ADMIN', ['CATALOG_READ', 'CATALOG_WRITE']);
 assert.equal(
@@ -632,3 +561,33 @@ console.log('Product option draft preservation: PASS');
 assert.equal(buildProductAttributeValueIds([], savedDraft, 'DRAFT').errors.length, 1,
   'Create must not silently drop a selection when its Attribute disappears from metadata');
 assert.equal(buildProductAttributeValueIds([], savedDraft, 'DRAFT', [savedOption]).errors.length, 0);
+
+// Create feedback uses the same option-only and integer VND contract as the server.
+const createBase = { ...emptyProductCreateForm, sku: ' NEW-SKU ', sellingPrice: '0' };
+const minimalCreate = buildProductCreate(createBase, {}, null, null);
+assert.ok(minimalCreate.payload, 'minimal DRAFT does not require metadata');
+assert.equal(minimalCreate.payload.selling_price, 0);
+assert.equal(minimalCreate.payload.sku, 'NEW-SKU');
+assert.equal(minimalCreate.payload.category_id, null);
+assert.equal(buildProductCreate({ ...createBase, sellingPrice: '' }, {}, null, null).payload, null);
+assert.ok(buildProductCreate({ ...createBase, sellingPrice: '1.50' }, {}, null, null).errors.sellingPrice);
+assert.ok(buildProductCreate({ ...createBase, costPrice: '-1' }, {}, null, null).errors.costPrice);
+assert.ok(buildProductCreate({ ...createBase, status: 'ACTIVE' }, {}, null, null).errors.attributes);
+const createMeta = { attributes: [optionAttribute] };
+assert.ok(buildProductCreate({ ...createBase, status: 'ACTIVE' }, {}, null, createMeta).errors['attribute:99']);
+assert.deepEqual(buildProductCreate({ ...createBase, status: 'ACTIVE' }, { '99': '991' }, null, createMeta).payload?.attribute_value_ids, [991]);
+assert.equal(buildProductCreate(createBase, { '99': '991' }, null, { attributes: [] }).payload, null,
+  'metadata refresh cannot silently discard a selected Option');
+assert.ok(buildProductCreate({ ...createBase, categoryId: '1' }, {}, {
+  categories: [{ category_id: 1, parent_category_id: null, name: 'Old', slug: 'old', status: 'INACTIVE' }], brands: [], attributes: [],
+}, createMeta).errors.categoryId);
+assert.deepEqual(productCreateServerError('PRODUCT_SKU_ALREADY_EXISTS')?.[0], 'sku');
+assert.equal(productCreateServerError('CONFLICT'), null, 'a generic conflict is never assumed to be a duplicate SKU');
+const uploadLimits = { max_files: 2, max_file_bytes: 10, max_request_bytes: 30, content_types: ['image/png'] };
+const smallImage = new File([new Uint8Array(8)], 'small.png', { type: 'image/png' });
+assert.equal(validateProductImageFiles([smallImage], uploadLimits), null);
+assert.ok(validateProductImageFiles([smallImage], undefined));
+assert.ok(validateProductImageFiles([smallImage, smallImage, smallImage], uploadLimits));
+assert.ok(validateProductImageFiles([new File([new Uint8Array(11)], 'big.png', { type: 'image/png' })], uploadLimits));
+assert.ok(validateProductImageFiles([new File(['text'], 'fake.txt', { type: 'text/plain' })], uploadLimits));
+console.log('Product Create contract and upload validation: PASS');

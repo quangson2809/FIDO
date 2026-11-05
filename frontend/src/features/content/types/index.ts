@@ -5,7 +5,16 @@ export interface PublicContentPageDto {
   updated_at: string;
 }
 
+export interface ContentPageSummaryDto {
+  page_id: number;
+  page_code: string;
+  title: string;
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  updated_at: string;
+}
+
 export interface ContentPageDto extends PublicContentPageDto {
+  status: ContentPageSummaryDto['status'];
   page_id: number;
   updated_by_account_id: number;
 }

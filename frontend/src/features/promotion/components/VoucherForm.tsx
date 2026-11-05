@@ -1,33 +1,26 @@
 import { useRef, useState, type FormEvent } from 'react';
-import type { VoucherDetail, VoucherInput } from '../types';
+import type { VoucherDetail, VoucherInput, VoucherStatus } from '../types';
 import { voucherService } from '../api/service';
 import { Modal } from '../../../shared/admin/Modal';
 import { getApiErrorMessage } from '../../../services/http/apiError';
-import { VoucherCategoryPicker, VoucherProductPicker } from './VoucherScopePicker';
 import {
-  changeVoucherDiscountType,
-  changeVoucherScope,
   voucherRequestFields,
   voucherSubmission,
+  voucherStatusOptions,
+  voucherStatusLabel,
 } from '../model/voucherFormModel';
 
 const blank: VoucherInput = {
   code: '',
-  discount_type: 'FIXED_AMOUNT',
+  discount_type: 'FIXED',
   discount_value: 0,
+  minimum_order_value: 0,
   maximum_discount: null,
-  minimum_amount: 0,
-  starts_at: '',
-  ends_at: '',
-  scope: 'ALL',
-  product_ids: [],
-  category_ids: [],
-  global_limit: null,
-  customer_limit: 1,
-  enabled: false,
+  starts_at: null,
+  ends_at: null,
+  usage_limit: null,
 };
-
-const localTime = (value: string): string => {
+const localTime = (value: string | null): string => {
   if (!value) return '';
   const date = new Date(value);
   return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -47,44 +40,34 @@ export function VoucherForm({
   const [form, setForm] = useState<VoucherInput>(() =>
     voucher ? voucherRequestFields(voucher) : blank,
   );
+  const [status, setStatus] = useState<VoucherStatus>(voucher?.status ?? 'DRAFT');
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
   const [error, setError] = useState<string | null>(null);
-  const locked = voucher?.ever_used === true;
-
   const field = <K extends keyof VoucherInput>(key: K, value: VoucherInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
     if (pending.current || !canWrite) return;
-    const input = voucherSubmission(form, locked);
-    const scopedIds = input.scope === 'CATEGORY' ? input.category_ids : input.product_ids;
-    if (input.scope !== 'ALL' && scopedIds.length === 0) {
-      setError('Vui lòng chọn ít nhất một danh mục hoặc sản phẩm phù hợp.');
+    const input = voucherSubmission(form);
+    if (
+      !Number.isSafeInteger(input.discount_value) ||
+      input.discount_value <= 0 ||
+      (input.discount_type === 'PERCENT' && input.discount_value > 10000)
+    ) {
+      setError('Giá trị giảm phải là số tiền VND nguyên dương hoặc tỷ lệ từ 0,01% đến 100%.');
       return;
     }
-    if (
-      input.discount_type === 'PERCENTAGE' &&
-      (input.maximum_discount === null || input.maximum_discount <= 0)
-    ) {
-      setError('Voucher giảm theo phần trăm cần có mức giảm tối đa.');
-      return;
-    }
-    if (
-      !input.starts_at ||
-      !input.ends_at ||
-      new Date(input.ends_at) <= new Date(input.starts_at)
-    ) {
+    if (input.starts_at && input.ends_at && new Date(input.ends_at) <= new Date(input.starts_at)) {
       setError('Ngày kết thúc phải sau ngày bắt đầu.');
       return;
     }
-
     pending.current = true;
     setBusy(true);
     setError(null);
     try {
-      if (voucher) await voucherService.update(voucher.voucher_id, input);
+      if (voucher) await voucherService.update(voucher.id, { ...input, status });
       else await voucherService.create(input);
       onSaved();
     } catch (requestError: unknown) {
@@ -102,16 +85,11 @@ export function VoucherForm({
       busy={busy}
     >
       <form onSubmit={save} className="space-y-4">
-        {locked && (
-          <p className="text-sm">
-            Đã có lượt sử dụng: chỉ được gia hạn, tăng giới hạn hoặc bật/tắt.
-          </p>
-        )}
-        {voucher && (
-          <p className="text-sm">
-            Lượt đang tính: {voucher.active_usage}. Hủy đơn hoàn lượt; trả hàng không hoàn lượt.
-          </p>
-        )}
+        <p className="text-sm">
+          {voucher
+            ? `Đã sử dụng: ${voucher.usage_count} lượt.`
+            : 'Voucher mới được lưu ở trạng thái bản nháp. Mở lại để kích hoạt.'}
+        </p>
         {error && (
           <p role="alert" className="text-red-700">
             {error}
@@ -124,7 +102,6 @@ export function VoucherForm({
               className="field-input"
               required
               maxLength={80}
-              disabled={locked}
               value={form.code}
               onChange={(event) => field('code', event.target.value)}
             />
@@ -133,133 +110,62 @@ export function VoucherForm({
             Loại giảm
             <select
               className="field-input"
-              disabled={locked}
               value={form.discount_type}
               onChange={(event) => {
-                if (event.target.value === 'FIXED_AMOUNT' || event.target.value === 'PERCENTAGE') {
-                  setForm((current) =>
-                    changeVoucherDiscountType(
-                      current,
-                      event.target.value as VoucherInput['discount_type'],
-                    ),
-                  );
-                }
+                const value = event.target.value;
+                if (value === 'FIXED' || value === 'PERCENT')
+                  setForm((current) => ({ ...current, discount_type: value, discount_value: 0 }));
               }}
             >
-              <option value="FIXED_AMOUNT">Số tiền</option>
-              <option value="PERCENTAGE">Phần trăm</option>
+              <option value="FIXED">Số tiền</option>
+              <option value="PERCENT">Phần trăm</option>
             </select>
           </label>
           <label>
-            Giá trị giảm
+            {form.discount_type === 'PERCENT' ? 'Giá trị giảm (%)' : 'Giá trị giảm (VND)'}
             <input
               className="field-input"
               type="number"
               required
-              min="0.01"
-              step="0.01"
-              max={form.discount_type === 'PERCENTAGE' ? 100 : undefined}
-              disabled={locked}
-              value={form.discount_value}
-              onChange={(event) => field('discount_value', Number(event.target.value))}
+              min={form.discount_type === 'PERCENT' ? '0.01' : '1'}
+              step={form.discount_type === 'PERCENT' ? '0.01' : '1'}
+              max={form.discount_type === 'PERCENT' ? 100 : undefined}
+              value={
+                form.discount_type === 'PERCENT' ? form.discount_value / 100 : form.discount_value
+              }
+              onChange={(event) =>
+                field(
+                  'discount_value',
+                  form.discount_type === 'PERCENT'
+                    ? Math.round(Number(event.target.value) * 100)
+                    : Number(event.target.value),
+                )
+              }
             />
           </label>
-          {form.discount_type === 'PERCENTAGE' && (
-            <label>
-              Giảm tối đa *
-              <input
-                className="field-input"
-                type="number"
-                min="0.01"
-                step="0.01"
-                required
-                disabled={locked}
-                value={form.maximum_discount ?? ''}
-                onChange={(event) =>
-                  field('maximum_discount', event.target.value ? Number(event.target.value) : null)
-                }
-              />
-            </label>
-          )}
           <label>
-            Tiền hàng đủ điều kiện tối thiểu
+            Giảm tối đa (VND, trống = không giới hạn)
+            <input
+              className="field-input"
+              type="number"
+              min="0"
+              step="1"
+              value={form.maximum_discount ?? ''}
+              onChange={(event) =>
+                field('maximum_discount', event.target.value ? Number(event.target.value) : null)
+              }
+            />
+          </label>
+          <label>
+            Giá trị đơn hàng tối thiểu (VND)
             <input
               className="field-input"
               type="number"
               required
               min="0"
-              step="0.01"
-              disabled={locked}
-              value={form.minimum_amount}
-              onChange={(event) => field('minimum_amount', Number(event.target.value))}
-            />
-          </label>
-          <label>
-            Phạm vi
-            <select
-              className="field-input"
-              disabled={locked}
-              value={form.scope}
-              onChange={(event) => {
-                if (
-                  event.target.value === 'ALL' ||
-                  event.target.value === 'PRODUCT' ||
-                  event.target.value === 'CATEGORY'
-                ) {
-                  setForm((current) =>
-                    changeVoucherScope(current, event.target.value as VoucherInput['scope']),
-                  );
-                }
-              }}
-            >
-              <option value="ALL">Toàn bộ sản phẩm</option>
-              <option value="CATEGORY">Danh mục và danh mục con</option>
-              <option value="PRODUCT">Sản phẩm</option>
-            </select>
-          </label>
-          {form.scope === 'CATEGORY' && (
-            <VoucherCategoryPicker
-              selectedIds={form.category_ids}
-              onChange={(ids) => field('category_ids', ids)}
-              disabled={locked || !canWrite}
-            />
-          )}
-          {form.scope === 'PRODUCT' && (
-            <VoucherProductPicker
-              selectedIds={form.product_ids}
-              onChange={(ids) => field('product_ids', ids)}
-              disabled={locked || !canWrite}
-            />
-          )}
-          <label>
-            Bắt đầu (giờ địa phương)
-            <input
-              className="field-input"
-              type="datetime-local"
-              required
-              disabled={locked}
-              value={localTime(form.starts_at)}
-              onChange={(event) =>
-                field(
-                  'starts_at',
-                  event.target.value ? new Date(event.target.value).toISOString() : '',
-                )
-              }
-            />
-          </label>
-          <label>
-            Kết thúc (giờ địa phương)
-            <input
-              className="field-input"
-              type="datetime-local"
-              required
-              value={localTime(form.ends_at)}
-              onChange={(event) =>
-                field(
-                  'ends_at',
-                  event.target.value ? new Date(event.target.value).toISOString() : '',
-                )
-              }
+              step="1"
+              value={form.minimum_order_value}
+              onChange={(event) => field('minimum_order_value', Number(event.target.value))}
             />
           </label>
           <label>
@@ -267,40 +173,64 @@ export function VoucherForm({
             <input
               className="field-input"
               type="number"
-              min="1"
+              min={Math.max(1, voucher?.usage_count ?? 0)}
               step="1"
-              value={form.global_limit ?? ''}
+              value={form.usage_limit ?? ''}
               onChange={(event) =>
-                field('global_limit', event.target.value ? Number(event.target.value) : null)
+                field('usage_limit', event.target.value ? Number(event.target.value) : null)
               }
             />
           </label>
           <label>
-            Lượt mỗi khách hàng
+            Bắt đầu (giờ địa phương, tùy chọn)
             <input
               className="field-input"
-              type="number"
-              required
-              min="1"
-              step="1"
-              value={form.customer_limit}
-              onChange={(event) => field('customer_limit', Number(event.target.value))}
+              type="datetime-local"
+              value={localTime(form.starts_at)}
+              onChange={(event) =>
+                field(
+                  'starts_at',
+                  event.target.value ? new Date(event.target.value).toISOString() : null,
+                )
+              }
             />
           </label>
-          <label className="flex gap-2">
+          <label>
+            Kết thúc (giờ địa phương, tùy chọn)
             <input
-              type="checkbox"
-              checked={form.enabled}
-              onChange={(event) => field('enabled', event.target.checked)}
+              className="field-input"
+              type="datetime-local"
+              value={localTime(form.ends_at)}
+              onChange={(event) =>
+                field(
+                  'ends_at',
+                  event.target.value ? new Date(event.target.value).toISOString() : null,
+                )
+              }
             />
-            Bật voucher
           </label>
+          {voucher && (
+            <label>
+              Trạng thái
+              <select
+                className="field-input"
+                value={status}
+                onChange={(event) => {
+                  const next = voucherStatusOptions[voucher.status].find(
+                    (value) => value === event.target.value,
+                  );
+                  if (next) setStatus(next);
+                }}
+              >
+                {voucherStatusOptions[voucher.status].map((value) => (
+                  <option key={value} value={value}>
+                    {voucherStatusLabel[value]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </fieldset>
-        {form.scope === 'ALL' && (
-          <p className="text-xs text-[#606863]">
-            Áp dụng cho tất cả sản phẩm đủ điều kiện. Không cần chọn danh mục hoặc sản phẩm.
-          </p>
-        )}
         <div className="flex gap-3">
           {canWrite && (
             <button disabled={busy} className="admin-primary">

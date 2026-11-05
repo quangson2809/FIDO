@@ -92,6 +92,32 @@ class ContentPageApiTest extends OperationsHttpSupport {
     }
 
     @Test
+    void adminDetailReadsDraftContentWithoutPublishingAndRequiresReadCapability() throws Exception {
+        var root = user("SUPERADMIN");
+        var reader = user("ADMIN");
+        String slug = "draft-" + UUID.randomUUID().toString().replace("-", "");
+        var created = call("POST", ADMIN, root.token(),
+                Map.of("slug", slug, "title", "Draft policy", "content", "Preserve this text"));
+        assertEquals(201, created.status());
+        long id = created.body().get("data").get("id").asLong();
+        assertEquals(401, call("GET", ADMIN + "/" + id, null, null).status());
+        assertEquals(403, call("GET", ADMIN + "/" + id, reader.token(), null).status());
+        capability(reader, "CONTENT_READ");
+        var detail = call("GET", ADMIN + "/" + id, reader.token(), null);
+        assertEquals(200, detail.status(), String.valueOf(detail.body()));
+        assertEquals(created.body().get("data"), detail.body().get("data"));
+        assertEquals("Preserve this text", detail.body().get("data").get("content").asText());
+        assertEquals("DRAFT", detail.body().get("data").get("status").asText());
+        assertEquals(404, call("GET", "/api/v1/content-pages/" + slug, null, null).status());
+        assertEquals(404, call("GET", ADMIN + "/9223372036854775807", reader.token(), null).status());
+        assertEquals("Preserve this text", db.queryForObject(
+                "SELECT content FROM content_pages WHERE id=?", String.class, id));
+        assertEquals(1, db.queryForObject(
+                "SELECT COUNT(*) FROM audit_logs WHERE entity_type='CONTENT_PAGE' AND entity_id=?",
+                Integer.class, Long.toString(id)));
+    }
+
+    @Test
     void auditFailureRollsBackContentMutation() throws Exception {
         var root = user("SUPERADMIN");
         String slug = "rollback-" + UUID.randomUUID().toString().replace("-", "");

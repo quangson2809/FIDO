@@ -46,6 +46,11 @@ public class ContentPageController {
         return ApiResponse.of(query.list());
     }
 
+    @GetMapping("/admin/content-pages/{pageId}")
+    public ApiResponse<ContentPageDto> detail(@PathVariable Long pageId) {
+        return ApiResponse.of(query.detail(pageId));
+    }
+
     @PostMapping("/admin/content-pages")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ContentPageDto> create(

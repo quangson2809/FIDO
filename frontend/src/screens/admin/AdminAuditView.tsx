@@ -16,7 +16,7 @@ export const AdminAuditView: React.FC<{ showToast: (msg: string) => void }> = ()
       () =>
         adminAccessService.getAuditLogs({
           action: action || undefined,
-          target_type: targetType || undefined,
+          entity_type: targetType || undefined,
           page,
           page_size: 20,
         }),
@@ -94,7 +94,7 @@ export const AdminAuditView: React.FC<{ showToast: (msg: string) => void }> = ()
               </tr>
             ) : (
               logs.map((log) => (
-                <tr key={log.audit_id}>
+                <tr key={log.id}>
                   <td className="whitespace-nowrap px-4 py-3">
                     {formatVietnamDateTime(log.created_at)}
                   </td>
@@ -103,10 +103,10 @@ export const AdminAuditView: React.FC<{ showToast: (msg: string) => void }> = ()
                   </td>
                   <td className="px-4 py-3 font-mono text-xs font-bold">{log.action}</td>
                   <td className="px-4 py-3">
-                    <span className="font-semibold">{log.target_type}</span>
-                    <span className="ml-1 font-mono text-xs text-[#687069]">{log.target_id}</span>
+                    <span className="font-semibold">{log.entity_type}</span>
+                    <span className="ml-1 font-mono text-xs text-[#687069]">{' '}{log.entity_id}</span>
                   </td>
-                  <td className="max-w-xl px-4 py-3 text-[#606863]">{log.description ?? '—'}</td>
+                  <td className="max-w-xl break-words px-4 py-3 text-[#606863]">{JSON.stringify({ before: log.before_data, after: log.after_data })}</td>
                 </tr>
               ))
             )}

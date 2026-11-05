@@ -1,20 +1,19 @@
+export type VoucherStatus = 'DRAFT' | 'ACTIVE' | 'INACTIVE' | 'EXPIRED';
+
 export interface VoucherInput {
   code: string;
-  discount_type: 'FIXED_AMOUNT' | 'PERCENTAGE';
+  discount_type: 'FIXED' | 'PERCENT';
+  /** Whole VND for FIXED; basis points for PERCENT (100 = 1%). */
   discount_value: number;
+  minimum_order_value: number;
   maximum_discount: number | null;
-  minimum_amount: number;
-  starts_at: string;
-  ends_at: string;
-  scope: 'ALL' | 'CATEGORY' | 'PRODUCT';
-  product_ids: number[];
-  category_ids: number[];
-  global_limit: number | null;
-  customer_limit: number;
-  enabled: boolean;
+  starts_at: string | null;
+  ends_at: string | null;
+  usage_limit: number | null;
 }
 export interface VoucherDetail extends VoucherInput {
-  voucher_id: number;
-  active_usage: number;
-  ever_used: boolean;
+  id: number;
+  usage_count: number;
+  status: VoucherStatus;
 }
+export type VoucherPatchInput = VoucherInput & { status: VoucherStatus };

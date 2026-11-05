@@ -58,8 +58,13 @@ export interface PaymentAdminDto extends PaymentPublicDto {
 }
 
 export interface ShippingInfoDto {
-  delivery_mode: string;
+  shipping_status: string;
+  recipient_name: string;
+  recipient_phone: string;
   carrier_name: string | null;
+  tracking_number: string | null;
+  shipped_at: string | null;
+  delivered_at: string | null;
 }
 
 export interface OrderCustomerDetailDto {
@@ -147,15 +152,13 @@ export interface OrderConfirmationDto {
 
 export type AdminOrderAction =
   | 'CONFIRM'
-  | 'PREPARE'
-  | 'SHIP'
-  | 'DELIVERY_FAILED'
+  | 'START_PREPARING'
+  | 'DISPATCH'
+  | 'MARK_DELIVERY_FAILED'
   | 'RETRY_DELIVERY'
-  | 'CANCEL'
-  | 'COMPLETE'
-  | 'DELIVERY_RETURN_IN';
+  | 'CANCEL';
 
-export type PaymentAction = 'COLLECT_COD' | 'REFUND';
+export type PaymentAction = 'COMPLETE_DELIVERY_AND_COLLECT_COD';
 
 export interface AdminOrderDetailDto {
   order_id: number;
@@ -174,8 +177,6 @@ export interface AdminOrderDetailDto {
   updated_at: string;
   customer_account_id: number | null;
   voucher_id: number | null;
-  customer_service_note: string | null;
-  cancel_reason: string | null;
   payment: PaymentAdminDto;
   allowed_actions: AdminOrderAction[];
 }
@@ -188,17 +189,6 @@ export interface AdminOrderListQuery {
   created_to?: string;
   page?: number;
   page_size?: number;
-}
-
-export interface AdminOrderPatchInput {
-  recipient_phone?: string;
-  recipient_email?: string | null;
-  recipient_address?: string;
-  customer_service_note?: string | null;
-  shipping_info?: {
-    delivery_mode: string;
-    carrier_name: string | null;
-  };
 }
 
 export interface OrderActionInput {

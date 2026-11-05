@@ -3,12 +3,10 @@ import { apiClient } from '../../../services/http/apiClient';
 import type {
   AdminOrderDetailDto,
   AdminOrderListQuery,
-  AdminOrderPatchInput,
   AfterSalesReturnInput,
   OrderActionInput,
   OrderSummaryDto,
   PaymentAction,
-  PaymentAdminDto,
 } from '../types';
 
 export const adminOrderService = {
@@ -26,14 +24,6 @@ export const adminOrderService = {
     return response.data;
   },
 
-  async update(orderId: number, input: AdminOrderPatchInput) {
-    const response = await apiClient.patch<ApiResponse<AdminOrderDetailDto>>(
-      `/admin/orders/${orderId}`,
-      input,
-    );
-    return response.data;
-  },
-
   async action(orderId: number, input: OrderActionInput) {
     const response = await apiClient.post<ApiResponse<AdminOrderDetailDto>>(
       `/admin/orders/${orderId}/actions`,
@@ -43,7 +33,7 @@ export const adminOrderService = {
   },
 
   async paymentAction(orderId: number, action: PaymentAction) {
-    const response = await apiClient.post<ApiResponse<PaymentAdminDto>>(
+    const response = await apiClient.post<ApiResponse<AdminOrderDetailDto>>(
       `/admin/orders/${orderId}/payment-actions`,
       { action },
     );

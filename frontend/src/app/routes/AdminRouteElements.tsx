@@ -74,6 +74,8 @@ export const AdminDashboardRoute = () => {
 export const AdminProductsRoute = () => {
   const { navigate, navigateTab, showToast } = useAdminRouteDeps();
   const canWrite = useAdminWriteAccess('products');
+  const [searchParams] = useSearchParams();
+  const parentId = positiveInteger(searchParams.get('parent_product_id') ?? undefined);
   const openProduct = (productId: string) =>
     navigate(`/admin/products/${encodeURIComponent(productId)}`);
   const editProduct = (productId: string) =>
@@ -81,6 +83,8 @@ export const AdminProductsRoute = () => {
 
   return (
     <AdminProductsView
+      key={parentId ?? 'standalone'}
+      initialParentId={parentId}
       onSelectProduct={openProduct}
       onEditProduct={editProduct}
       onNavigateTab={navigateTab}
@@ -94,7 +98,7 @@ export const AdminProductDetailRoute = () => {
   const { productId } = useParams<{ productId: string }>();
   const [searchParams] = useSearchParams();
   const parsedProductId = positiveInteger(productId);
-  const { navigateTab, showToast } = useAdminRouteDeps();
+  const { navigate, navigateTab, showToast } = useAdminRouteDeps();
   const canWrite = useAdminWriteAccess('products');
 
   if (!parsedProductId) return <Navigate to="/admin/products" replace />;
@@ -104,6 +108,7 @@ export const AdminProductDetailRoute = () => {
       key={parsedProductId}
       productId={parsedProductId}
       startEditing={searchParams.get('edit') === '1'}
+      onCreateChild={(id) => navigate('/admin/products?parent_product_id=' + id)}
       onNavigateTab={navigateTab}
       showToast={showToast}
       canWrite={canWrite}

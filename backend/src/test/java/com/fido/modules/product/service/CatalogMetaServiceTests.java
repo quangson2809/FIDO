@@ -9,6 +9,7 @@ import com.fido.modules.product.repository.AttributeRepository;
 import com.fido.modules.product.repository.BrandRepository;
 import com.fido.modules.product.repository.CategoryRepository;
 import org.junit.jupiter.api.Test;
+import org.springframework.util.unit.DataSize;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -20,7 +21,7 @@ class CatalogMetaServiceTests {
     private final BrandRepository brands = mock(BrandRepository.class);
     private final AttributeRepository attributes = mock(AttributeRepository.class);
     private final AttributeOptionRepository options = mock(AttributeOptionRepository.class);
-    private final CatalogMetaService service = new CatalogMetaService(categories, brands, attributes, options);
+    private final CatalogMetaService service = new CatalogMetaService(categories, brands, attributes, options, DataSize.ofMegabytes(2), DataSize.ofMegabytes(8), DataSize.ofMegabytes(1), 3);
 
     @Test
     void publicAndAdminMetadataReturnOptionOnlyAttributes() {
@@ -36,6 +37,10 @@ class CatalogMetaServiceTests {
         CatalogMetaDto publicMeta = service.publicMeta();
         AdminCatalogMetaDtoV2 adminMeta = service.adminMeta();
 
+        assertEquals(1024 * 1024, adminMeta.image_upload().max_file_bytes());
+        assertEquals(8 * 1024 * 1024, adminMeta.image_upload().max_request_bytes());
+        assertEquals(3, adminMeta.image_upload().max_files());
+        assertEquals(List.of("image/jpeg", "image/png", "image/webp"), adminMeta.image_upload().content_types());
         assertEquals(List.of(11L, 12L), adminMeta.attributes().stream().map(a -> a.id()).toList());
         assertEquals(List.of(201L, 202L),
                 adminMeta.attributes().get(1).options().stream().map(o -> o.id()).toList());

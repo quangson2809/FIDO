@@ -51,6 +51,7 @@ class ApiBaselineRouteContractTests {
                     PRODUCT_IMAGE_UPLOAD,
                     new Route("GET", "/api/v1/content-pages/{slug}"),
                     new Route("GET", "/api/v1/admin/inventory/reconciliation"),
+                    new Route("GET", "/api/v1/admin/content-pages/{pageId}"),
                     new Route("POST", "/api/v1/admin/inventory/transactions/{transactionId}/reversal"),
                     new Route("DELETE", "/api/v1/admin/products/{productId}/images/{imageId}"),
                     new Route("PATCH", "/api/v1/admin/products/{productId}/images"),

@@ -1,46 +1,31 @@
-import type { VoucherInput } from '../types';
+import type { VoucherInput, VoucherStatus } from '../types';
 
-export const changeVoucherScope = (
-  current: VoucherInput,
-  scope: VoucherInput['scope'],
-): VoucherInput =>
-  current.scope === scope ? current : { ...current, scope, product_ids: [], category_ids: [] };
-
-export const changeVoucherDiscountType = (
-  current: VoucherInput,
-  discountType: VoucherInput['discount_type'],
-): VoucherInput => ({
-  ...current,
-  discount_type: discountType,
-  maximum_discount: discountType === 'FIXED_AMOUNT' ? null : current.maximum_discount,
-});
-
-// Explicit request projection: TypeScript's structural typing does not strip
-// response-only fields (voucher_id, active_usage, ever_used) at runtime.
+// Project request fields explicitly so response metadata never reaches strict DTOs.
 export const voucherRequestFields = (form: VoucherInput): VoucherInput => ({
   code: form.code,
   discount_type: form.discount_type,
   discount_value: form.discount_value,
+  minimum_order_value: form.minimum_order_value,
   maximum_discount: form.maximum_discount,
-  minimum_amount: form.minimum_amount,
   starts_at: form.starts_at,
   ends_at: form.ends_at,
-  scope: form.scope,
-  product_ids: [...form.product_ids],
-  category_ids: [...form.category_ids],
-  global_limit: form.global_limit,
-  customer_limit: form.customer_limit,
-  enabled: form.enabled,
+  usage_limit: form.usage_limit,
 });
 
-export const voucherSubmission = (form: VoucherInput, alreadyUsed: boolean): VoucherInput => {
-  const request = voucherRequestFields(form);
-  return {
-    ...request,
-    code: request.code.trim(),
-    maximum_discount:
-      request.discount_type === 'PERCENTAGE' || alreadyUsed ? request.maximum_discount : null,
-    product_ids: request.scope === 'PRODUCT' ? request.product_ids : [],
-    category_ids: request.scope === 'CATEGORY' ? request.category_ids : [],
-  };
+export const voucherSubmission = (form: VoucherInput): VoucherInput => ({
+  ...voucherRequestFields(form),
+  code: form.code.trim(),
+});
+
+export const voucherStatusOptions: Record<VoucherStatus, VoucherStatus[]> = {
+  DRAFT: ['DRAFT', 'ACTIVE', 'INACTIVE'],
+  ACTIVE: ['ACTIVE', 'INACTIVE', 'EXPIRED'],
+  INACTIVE: ['INACTIVE', 'ACTIVE', 'EXPIRED'],
+  EXPIRED: ['EXPIRED'],
+};
+export const voucherStatusLabel: Record<VoucherStatus, string> = {
+  DRAFT: 'Bản nháp',
+  ACTIVE: 'Đang hoạt động',
+  INACTIVE: 'Ngừng hoạt động',
+  EXPIRED: 'Hết hạn',
 };

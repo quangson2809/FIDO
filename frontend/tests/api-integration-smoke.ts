@@ -1,3 +1,5 @@
+import { adminAccessService } from '../src/features/adminAccess/api/service';
+import { adminOrderService } from '../src/features/orders/api/adminService';
 import { adminCatalogMetaService } from '../src/features/catalog/api/adminCatalogMetaService';
 import assert from 'node:assert/strict';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
@@ -49,23 +51,63 @@ let capturedQuoteBody: unknown;
 let capturedOrderBody: unknown;
 let capturedIdempotencyKey: string | undefined;
 const voucherPolicy: VoucherInput = {
-  code: 'SAVE10K',
-  discount_type: 'FIXED_AMOUNT',
-  discount_value: 10000,
-  maximum_discount: null,
-  minimum_amount: 0,
-  starts_at: '2026-10-09T00:00:00Z',
-  ends_at: '2026-11-09T00:00:00Z',
-  scope: 'ALL',
-  product_ids: [],
-  category_ids: [],
-  global_limit: null,
-  customer_limit: 1,
-  enabled: true,
+  code: 'SAVE10K', discount_type: 'FIXED', discount_value: 10000,
+  maximum_discount: null, minimum_order_value: 0,
+  starts_at: null, ends_at: null, usage_limit: null,
 };
-const voucherDetail = { ...voucherPolicy, voucher_id: 27, active_usage: 0, ever_used: false };
+const voucherDetail = { ...voucherPolicy, id: 27, usage_count: 0, status: 'DRAFT' as const };
+const adminPermission = { id: 17, code: 'CONTENT_READ', name: 'Read content' };
+const adminRole = { id: 8, code: 'EDITOR', name: 'Editor', description: null, permissions: [adminPermission] };
+const staffDetail = { account, roles: [adminRole], permissions: [adminPermission] };
+const contentSummary = { id: 31, slug: 'draft-policy', title: 'Draft', status: 'DRAFT', updated_at: account.updated_at };
+const contentDetail = { ...contentSummary, content: 'Saved draft text', updated_by_account_id: account.id };
+const adminWrites: { path: string; method: string; body: unknown }[] = [];
 const server = createServer((request, response) => {
   const url = new URL(request.url ?? '/', 'http://localhost');
+
+  if (url.pathname === '/api/v1/admin/access-control') {
+    requireBearer(request); writeJson(response, 200, { data: { roles: [adminRole], permissions: [adminPermission] } }); return;
+  }
+  if (url.pathname === '/api/v1/admin/permissions' && request.method === 'GET') {
+    requireBearer(request); writeJson(response, 200, { data: [adminPermission] }); return;
+  }
+  if (url.pathname === '/api/v1/admin/staff-accounts' && request.method === 'GET') {
+    requireBearer(request); writeJson(response, 200, { data: [staffDetail], meta: { page: 1, page_size: 20, total: 1, total_pages: 1 } }); return;
+  }
+  if (url.pathname === '/api/v1/admin/staff-accounts/900001' && request.method === 'GET') {
+    requireBearer(request); writeJson(response, 200, { data: staffDetail }); return;
+  }
+  if (url.pathname === '/api/v1/admin/content-pages' && request.method === 'GET') {
+    requireBearer(request); writeJson(response, 200, { data: [contentSummary] }); return;
+  }
+  if (url.pathname === '/api/v1/admin/content-pages/31' && request.method === 'GET') {
+    requireBearer(request); writeJson(response, 200, { data: contentDetail }); return;
+  }
+  if (url.pathname === '/api/v1/admin/audit-logs') {
+    requireBearer(request);
+    assert.equal(url.searchParams.get('entity_type'), 'CONTENT_PAGE');
+    assert.equal(url.searchParams.has('target_type'), false);
+    writeJson(response, 200, { data: [{ id: 4, entity_type: 'CONTENT_PAGE', entity_id: '31', before_data: null, after_data: { title: 'Draft' } }] }); return;
+  }
+  const adminMutationResponses: Record<string, unknown> = {
+    '/api/v1/admin/staff-accounts': staffDetail,
+    '/api/v1/admin/staff-accounts/900001': staffDetail,
+    '/api/v1/admin/roles': adminRole,
+    '/api/v1/admin/roles/8': adminRole,
+    '/api/v1/admin/permissions': adminPermission,
+    '/api/v1/admin/permissions/17': adminPermission,
+    '/api/v1/admin/content-pages/31': contentDetail,
+    '/api/v1/admin/orders/42/payment-actions': { order_id: 42, order_status: 'COMPLETED', payment: { payment_status: 'PAID' }, allowed_actions: [] },
+  };
+  if (url.pathname in adminMutationResponses && (request.method === 'POST' || request.method === 'PATCH')) {
+    requireBearer(request);
+    let raw = '';
+    request.on('data', (chunk: Buffer) => { raw += chunk.toString(); });
+    request.on('end', () => {
+      adminWrites.push({ path: url.pathname, method: request.method!, body: JSON.parse(raw) });
+      writeJson(response, 200, { data: adminMutationResponses[url.pathname] });
+    }); return;
+  }
 
   if (url.pathname === '/api/v1/admin/catalog/meta' && request.method === 'GET') {
     requireBearer(request);
@@ -143,7 +185,7 @@ const server = createServer((request, response) => {
   }
   if (
     (url.pathname === '/api/v1/admin/vouchers' && request.method === 'POST') ||
-    (url.pathname === '/api/v1/admin/vouchers/27' && request.method === 'PUT')
+    (url.pathname === '/api/v1/admin/vouchers/27' && request.method === 'PATCH')
   ) {
     requireBearer(request);
     let raw = '';
@@ -391,7 +433,7 @@ const server = createServer((request, response) => {
   if (request.method === 'GET' && url.pathname === '/api/v1/content-pages/shipping-policy') {
     writeJson(response, 200, {
       data: {
-        page_code: 'shipping-policy',
+        slug: 'shipping-policy',
         title: 'Chính sách giao hàng',
         content: 'Smoke policy',
         updated_at: '2026-09-01T00:00:00',
@@ -557,26 +599,43 @@ try {
   const listed = await voucherService.list('SAVE', 1);
   assert.equal(listed.data[0]?.code, 'SAVE10K');
   const createdVoucher = await voucherService.create(voucherPolicy);
-  assert.equal(createdVoucher.voucher_id, 27);
+  assert.equal(createdVoucher.id, 27);
   assert.deepEqual(
     capturedVoucherBody,
     voucherPolicy,
     'Create must preserve the typed voucher policy',
   );
-  // Real editor receives VoucherDetail, not VoucherInput. Its response metadata
-  // must never be serialized into the strict VoucherRequest endpoint.
-  await voucherService.update(27, voucherSubmission({ ...voucherDetail, enabled: false }, false));
-  assert.deepEqual(
-    capturedVoucherBody,
-    { ...voucherPolicy, enabled: false },
-    'Updating from a server detail must send only the approved VoucherRequest fields',
-  );
-  await voucherService.update(27, { ...voucherDetail, enabled: false });
-  assert.deepEqual(
-    capturedVoucherBody,
-    { ...voucherPolicy, enabled: false },
-    'HTTP service boundary also strips response metadata for other callers',
-  );
+  await voucherService.update(27, { ...voucherSubmission(voucherDetail), status: 'ACTIVE' });
+  assert.deepEqual(capturedVoucherBody, { ...voucherPolicy, status: 'ACTIVE' });
+  await voucherService.update(27, { ...voucherDetail, status: 'INACTIVE' });
+  assert.deepEqual(capturedVoucherBody, { ...voucherPolicy, status: 'INACTIVE' },
+    'PATCH sends only canonical fields, never id or usage_count');
+
+  const access = await adminAccessService.getAccessControl();
+  assert.equal(access.roles[0].role_id, 8);
+  assert.equal(access.roles[0].permissions[0].permission_id, 17);
+  assert.equal(access.permissions[0].permission_id, 17);
+  assert.equal((await adminAccessService.getPermissions())[0].permission_id, 17);
+  assert.equal((await adminAccessService.getStaff()).data[0].roles[0].role_id, 8);
+  assert.equal((await adminAccessService.getStaffDetail(account.id)).permissions[0].permission_id, 17);
+  const staffInput = { full_name: account.full_name, phone: account.phone, email: null, password: 'Test-password-123', role_ids: [8] };
+  assert.equal((await adminAccessService.createStaff(staffInput)).roles[0].role_id, 8);
+  assert.deepEqual(adminWrites.at(-1)?.body, staffInput);
+  assert.equal((await adminAccessService.updateStaff(account.id, { role_ids: [8] })).roles[0].role_id, 8);
+  assert.equal((await adminAccessService.createRole({ code: 'EDITOR', name: 'Editor', permission_ids: [17] })).role_id, 8);
+  assert.equal((await adminAccessService.updateRole(8, { permission_ids: [17] })).permissions[0].permission_id, 17);
+  assert.equal((await adminAccessService.createPermission({ code: 'CONTENT_READ', name: 'Read content' })).permission_id, 17);
+  assert.equal((await adminAccessService.updatePermission(17, { name: 'Read content' })).permission_id, 17);
+  assert.deepEqual(adminWrites.at(-1), { path: '/api/v1/admin/permissions/17', method: 'PATCH', body: { name: 'Read content' } });
+  assert.equal((await contentService.getAdminPages())[0].page_id, 31);
+  assert.equal((await contentService.getAdminPage(31)).content, 'Saved draft text');
+  await contentService.updatePage(31, { title: 'Updated' });
+  assert.deepEqual(adminWrites.at(-1)?.body, { title: 'Updated' });
+  assert.equal((await adminAccessService.getAuditLogs({ entity_type: 'CONTENT_PAGE' })).data[0].entity_id, '31');
+  const paid = await adminOrderService.paymentAction(42, 'COMPLETE_DELIVERY_AND_COLLECT_COD');
+  assert.equal(paid.order_status, 'COMPLETED');
+  assert.equal(paid.payment.payment_status, 'PAID');
+  assert.deepEqual(adminWrites.at(-1)?.body, { action: 'COMPLETE_DELIVERY_AND_COLLECT_COD' });
 
   const checkoutRequest = {
     recipient_name: 'Quản trị hệ thống',

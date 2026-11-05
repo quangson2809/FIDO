@@ -14,6 +14,8 @@ import com.fido.modules.product.repository.AttributeRepository;
 import com.fido.modules.product.repository.BrandRepository;
 import com.fido.modules.product.repository.CategoryRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.util.unit.DataSize;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
@@ -27,14 +29,23 @@ public class CatalogMetaService {
     private final BrandRepository brands;
     private final AttributeRepository attributes;
     private final AttributeOptionRepository options;
+    private final AdminCatalogMetaDtoV2.ImageUploadLimits imageUploadLimits;
 
     public CatalogMetaService(
             CategoryRepository categories, BrandRepository brands,
-            AttributeRepository attributes, AttributeOptionRepository options) {
+            AttributeRepository attributes, AttributeOptionRepository options,
+            @Value("${app.image-storage.max-upload-size}") DataSize maxFileSize,
+            @Value("${spring.servlet.multipart.max-request-size}") DataSize maxRequestSize,
+            @Value("${spring.servlet.multipart.max-file-size}") DataSize multipartFileSize,
+            @Value("${app.image-storage.max-files-per-request}") int maxFiles) {
         this.categories = categories;
         this.brands = brands;
         this.attributes = attributes;
         this.options = options;
+        this.imageUploadLimits = new AdminCatalogMetaDtoV2.ImageUploadLimits(
+                multipartFileSize.toBytes() < 0 ? maxFileSize.toBytes() : Math.min(maxFileSize.toBytes(), multipartFileSize.toBytes()),
+                maxRequestSize.toBytes(), maxFiles,
+                ProductImageUploadService.SUPPORTED_CONTENT_TYPES.stream().sorted().toList());
     }
 
     public CatalogMetaDto publicMeta() {
@@ -46,7 +57,7 @@ public class CatalogMetaService {
     }
 
     public AdminCatalogMetaDtoV2 adminMeta() {
-        return new AdminCatalogMetaDtoV2(attributeMetadata());
+        return new AdminCatalogMetaDtoV2(attributeMetadata(), imageUploadLimits);
     }
 
     private List<AttributeDto> attributeMetadata() {

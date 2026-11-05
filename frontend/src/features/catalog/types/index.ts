@@ -51,8 +51,16 @@ export interface CatalogMetaDto {
   attributes: AttributeDto[];
 }
 
+export interface ImageUploadLimits {
+  max_file_bytes: number;
+  max_request_bytes: number;
+  max_files: number;
+  content_types: string[];
+}
+
 export interface AdminCatalogMetaDto {
   attributes: AttributeDto[];
+  image_upload?: ImageUploadLimits;
 }
 
 export interface ProductImageDto {
@@ -213,6 +221,7 @@ export interface ProductPatchInput {
 }
 
 export interface AdminProductQuery {
+  root_only?: boolean;
   q?: string;
   category_id?: number;
   brand_id?: number;

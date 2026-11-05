@@ -99,14 +99,16 @@ public class CatalogReferenceService {
     }
 
     public void requireActiveCategory(Long id) {
-        if (!"ACTIVE".equals(category(id).getStatus())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Category must be ACTIVE");
+        if (!"ACTIVE".equals(categories.findById(id).orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "PRODUCT_CATEGORY_NOT_FOUND")).getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "PRODUCT_CATEGORY_INACTIVE");
         }
     }
 
     public void requireActiveBrand(Long id) {
-        if (!"ACTIVE".equals(brand(id).getStatus())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Brand must be ACTIVE");
+        if (!"ACTIVE".equals(brands.findById(id).orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "PRODUCT_BRAND_NOT_FOUND")).getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "PRODUCT_BRAND_INACTIVE");
         }
     }
 

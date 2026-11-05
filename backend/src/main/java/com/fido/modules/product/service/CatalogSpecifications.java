@@ -61,7 +61,7 @@ public final class CatalogSpecifications {
     }
 
     public static Specification<Product> adminProducts(
-            String q, Long categoryId, Long brandId, Long parentProductId, String status) {
+            String q, Long categoryId, Long brandId, Long parentProductId, boolean rootOnly, String status) {
         return (root, query, cb) -> {
             var predicates = new ArrayList<Predicate>();
             predicates.add(cb.isNull(root.get("deletedAt")));
@@ -75,6 +75,7 @@ public final class CatalogSpecifications {
             }
             if (categoryId != null) predicates.add(cb.equal(root.get("categoryId"), categoryId));
             if (brandId != null) predicates.add(cb.equal(root.get("brandId"), brandId));
+            if (rootOnly) predicates.add(cb.isNull(root.get("parentProductId")));
             if (parentProductId != null) {
                 predicates.add(cb.equal(root.get("parentProductId"), parentProductId));
             }

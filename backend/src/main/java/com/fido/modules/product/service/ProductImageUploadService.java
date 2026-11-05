@@ -29,7 +29,7 @@ public class ProductImageUploadService {
     private static final String WRITE =
             "hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_CATALOG_WRITE')";
 
-    private static final Set<String> SUPPORTED_CONTENT_TYPES =
+    static final Set<String> SUPPORTED_CONTENT_TYPES =
             Set.of("image/jpeg", "image/png", "image/webp");
 
     private static final int SIGNATURE_BYTES = 12;
