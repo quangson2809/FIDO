@@ -49,7 +49,6 @@ class ProductImageAdminServiceTests {
         when(images.findAllByProductIdForUpdate(55L)).thenReturn(List.of(cover, second));
 
         service.appendUploadedImages(
-                7L,
                 55L,
                 List.of(
                         new ImageStorageGateway.UploadedImage("https://cdn.test/third.jpg"),
@@ -76,7 +75,7 @@ class ProductImageAdminServiceTests {
         ProductImage third = image(3L, 2, "https://cdn.test/third.jpg");
         when(images.findAllByProductIdForUpdate(55L)).thenReturn(List.of(cover, second, third));
 
-        service.removeImage(7L, 55L, 1L);
+        service.removeImage(55L, 1L);
 
         verify(images).delete(cover);
         assertEquals(0, second.getSortOrder());
@@ -95,7 +94,6 @@ class ProductImageAdminServiceTests {
         when(images.findAllByProductIdForUpdate(55L)).thenReturn(List.of(first, second, third));
 
         service.reorderImages(
-                7L,
                 55L,
                 new ProductImageReorderRequest(
                         List.of(
@@ -124,7 +122,6 @@ class ProductImageAdminServiceTests {
                         ResponseStatusException.class,
                         () ->
                                 service.reorderImages(
-                                        7L,
                                         55L,
                                         new ProductImageReorderRequest(
                                                 List.of(
@@ -143,7 +140,7 @@ class ProductImageAdminServiceTests {
         when(images.findAllByProductIdForUpdate(55L)).thenReturn(List.of());
 
         service.appendUploadedImages(
-                7L, 55L, List.of(new ImageStorageGateway.UploadedImage("https://cdn.test/first.jpg")));
+                55L, List.of(new ImageStorageGateway.UploadedImage("https://cdn.test/first.jpg")));
 
         ArgumentCaptor<ProductImage> saved = ArgumentCaptor.forClass(ProductImage.class);
         verify(images).save(saved.capture());
@@ -161,7 +158,7 @@ class ProductImageAdminServiceTests {
                 assertThrows(
                         ResponseStatusException.class,
                         () -> service.appendUploadedImages(
-                                7L, 55L,
+                                55L,
                                 List.of(new ImageStorageGateway.UploadedImage("https://cdn.test/new.jpg"))));
 
         assertEquals(HttpStatus.CONFLICT, error.getStatusCode());

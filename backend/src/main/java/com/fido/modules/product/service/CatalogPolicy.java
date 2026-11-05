@@ -9,8 +9,6 @@ public final class CatalogPolicy {
 
     public static final String CATALOG_READ = "CATALOG_READ";
     public static final String CATALOG_WRITE = "CATALOG_WRITE";
-    public static final String PRODUCT_READ = CATALOG_READ;
-    public static final String PRODUCT_WRITE = CATALOG_WRITE;
 
     private static final Set<String> PRODUCT_STATUSES =
             Set.of("DRAFT", "ACTIVE", "INACTIVE", "ARCHIVED");

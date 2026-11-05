@@ -16,8 +16,6 @@ import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -71,22 +69,21 @@ public class AdminProductController {
     @PostMapping(value = "/products", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<AdminProductDetailDto> createProduct(
-            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody ProductCreateRequest request) {
-        return ApiResponse.of(products.createProduct(actor(jwt), request));
+            @Valid @RequestBody ProductCreateRequest request) {
+        return ApiResponse.of(products.createProduct(request));
     }
 
     @PatchMapping("/products/{productId}")
     public ApiResponse<AdminProductDetailDto> updateProduct(
-            @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long productId,
             @Valid @RequestBody ProductPatchRequest request) {
-        return ApiResponse.of(products.updateProduct(actor(jwt), productId, request));
+        return ApiResponse.of(products.updateProduct(productId, request));
     }
 
     @DeleteMapping("/products/{productId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteProduct(@AuthenticationPrincipal Jwt jwt, @PathVariable Long productId) {
-        products.deleteProduct(actor(jwt), productId);
+    public void deleteProduct(@PathVariable Long productId) {
+        products.deleteProduct(productId);
     }
 
     @PostMapping(
@@ -94,30 +91,24 @@ public class AdminProductController {
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<AdminProductDetailDto> uploadImages(
-            @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long productId,
             @RequestPart("images") MultipartFile[] images) {
-        return ApiResponse.of(imageUploads.upload(actor(jwt), productId, images));
+        return ApiResponse.of(imageUploads.upload(productId, images));
     }
 
     @DeleteMapping("/products/{productId}/images/{imageId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void removeImage(
-            @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long productId,
             @PathVariable Long imageId) {
-        productImages.removeImage(actor(jwt), productId, imageId);
+        productImages.removeImage(productId, imageId);
     }
 
     @PatchMapping("/products/{productId}/images")
     public ApiResponse<AdminProductDetailDto> reorderImages(
-            @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long productId,
             @Valid @RequestBody ProductImageReorderRequest request) {
-        return ApiResponse.of(productImages.reorderImages(actor(jwt), productId, request));
+        return ApiResponse.of(productImages.reorderImages(productId, request));
     }
 
-    private Long actor(Jwt jwt) {
-        return Long.valueOf(jwt.getSubject());
-    }
 }

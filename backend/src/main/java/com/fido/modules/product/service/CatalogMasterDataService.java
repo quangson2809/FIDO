@@ -62,7 +62,7 @@ public class CatalogMasterDataService {
     }
 
     @PreAuthorize(WRITE)
-    public CategoryDto createCategory(Long actor, CategoryCreateRequest request) {
+    public CategoryDto createCategory(CategoryCreateRequest request) {
         validateParent(null, request.parent_category_id());
         String name = request.name().trim();
         String slug = slug(name);
@@ -83,7 +83,7 @@ public class CatalogMasterDataService {
     }
 
     @PreAuthorize(WRITE)
-    public CategoryDto updateCategory(Long actor, Long categoryId, CategoryPatchRequest request) {
+    public CategoryDto updateCategory(Long categoryId, CategoryPatchRequest request) {
         if (!request.hasChanges()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category patch must contain a change");
         }
@@ -110,7 +110,7 @@ public class CatalogMasterDataService {
     }
 
     @PreAuthorize(WRITE)
-    public void deleteCategory(Long actor, Long categoryId) {
+    public void deleteCategory(Long categoryId) {
         Category category = references.category(categoryId);
         if (categories.existsByParentCategoryId(categoryId) || products.existsByCategoryId(categoryId)) {
             conflict("Category is still referenced");
@@ -121,7 +121,7 @@ public class CatalogMasterDataService {
     }
 
     @PreAuthorize(WRITE)
-    public BrandDto createBrand(Long actor, BrandRequest request) {
+    public BrandDto createBrand(BrandRequest request) {
         String name = request.name().trim();
         String slug = slug(name);
         String status = request.status() == null ? "ACTIVE" : request.status();
@@ -139,7 +139,7 @@ public class CatalogMasterDataService {
     }
 
     @PreAuthorize(WRITE)
-    public BrandDto updateBrand(Long actor, Long brandId, BrandPatchRequest request) {
+    public BrandDto updateBrand(Long brandId, BrandPatchRequest request) {
         if (!request.hasChanges()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Brand patch must contain a change");
         }
@@ -162,7 +162,7 @@ public class CatalogMasterDataService {
     }
 
     @PreAuthorize(WRITE)
-    public void deleteBrand(Long actor, Long brandId) {
+    public void deleteBrand(Long brandId) {
         Brand brand = references.brand(brandId);
         if (products.existsByBrandId(brandId)) {
             conflict("Brand is still referenced");

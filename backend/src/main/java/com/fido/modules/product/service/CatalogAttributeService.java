@@ -1,9 +1,9 @@
 package com.fido.modules.product.service;
 
 import com.fido.modules.audit.service.AuditAction;
-import com.fido.modules.audit.service.AuditEvent;
-import com.fido.modules.audit.service.AuditService;
-import com.fido.modules.audit.service.AuditTargetType;
+import com.fido.modules.audit.service.AuditEntityType;
+import com.fido.modules.audit.service.AuditWriteEvent;
+import com.fido.modules.audit.service.AuditWriteService;
 import com.fido.modules.product.dto.request.AttributeCreateRequest;
 import com.fido.modules.product.dto.request.AttributeOptionCreateRequest;
 import com.fido.modules.product.dto.request.AttributeOptionPatchRequest;
@@ -33,7 +33,7 @@ import java.util.List;
 
 @Service
 @Transactional
-public class AttributeCatalogService {
+public class CatalogAttributeService {
     private static final String WRITE =
             "hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_CATALOG_WRITE')";
 
@@ -41,15 +41,15 @@ public class AttributeCatalogService {
     private final AttributeTypeRepository types;
     private final AttributeOptionRepository options;
     private final ProductAttributeValueRepository productValues;
-    private final AuditService audit;
+    private final AuditWriteService audit;
     private final EntityManager entityManager;
 
-    public AttributeCatalogService(
+    public CatalogAttributeService(
             AttributeRepository attributes,
             AttributeTypeRepository types,
             AttributeOptionRepository options,
             ProductAttributeValueRepository productValues,
-            AuditService audit,
+            AuditWriteService audit,
             EntityManager entityManager) {
         this.attributes = attributes;
         this.types = types;
@@ -60,7 +60,7 @@ public class AttributeCatalogService {
     }
 
     @PreAuthorize(WRITE)
-    public AttributeDto createAttribute(Long actor, AttributeCreateRequest request) {
+    public AttributeDto createAttribute(AttributeCreateRequest request) {
         AttributeType type = types.findById(request.attribute_type_id())
                 .orElseThrow(() -> badRequest("Unknown attribute_type_id"));
         AttributeValueType.from(type);
@@ -81,15 +81,15 @@ public class AttributeCatalogService {
 
         attributes.save(attribute);
         flushOrConflict("Attribute code or type conflicts with existing data");
-        audit.record(AuditEvent.of(
-                actor, AuditAction.ATTRIBUTE_CREATE, AuditTargetType.ATTRIBUTE,
-                attribute.getAttributeId()));
+        audit.record(AuditWriteEvent.of(
+                AuditAction.ATTRIBUTE_CREATE, AuditEntityType.ATTRIBUTE,
+                attribute.getAttributeId().toString()));
         return AttributeMapper.attribute(attribute, type, List.of());
     }
 
     @PreAuthorize(WRITE)
     public AttributeDto updateAttribute(
-            Long actor, Long attributeId, AttributePatchRequest request) {
+            Long attributeId, AttributePatchRequest request) {
         if (!request.hasChanges()) {
             throw badRequest("Attribute patch must contain a change");
         }
@@ -118,14 +118,14 @@ public class AttributeCatalogService {
 
         attributes.save(attribute);
         flushOrConflict("Attribute update conflicts with existing data");
-        audit.record(AuditEvent.of(
-                actor, AuditAction.ATTRIBUTE_UPDATE, AuditTargetType.ATTRIBUTE, attributeId));
+        audit.record(AuditWriteEvent.of(
+                AuditAction.ATTRIBUTE_UPDATE, AuditEntityType.ATTRIBUTE, attributeId.toString()));
         return AttributeMapper.attribute(attribute, type, findOptions(attributeId));
     }
 
     @PreAuthorize(WRITE)
     public AttributeOptionDto createOption(
-            Long actor, Long attributeId, AttributeOptionCreateRequest request) {
+            Long attributeId, AttributeOptionCreateRequest request) {
         Attribute attribute = requireAttribute(attributeId);
         AttributeType type = requireType(attribute);
         if (AttributeValueType.from(type) != AttributeValueType.OPTION) {
@@ -146,15 +146,14 @@ public class AttributeCatalogService {
 
         options.save(option);
         flushOrConflict("Option value conflicts with existing data");
-        audit.record(AuditEvent.of(
-                actor, AuditAction.ATTRIBUTE_OPTION_CREATE, AuditTargetType.ATTRIBUTE_OPTION,
-                option.getAttributeOptionId()));
+        audit.record(AuditWriteEvent.of(
+                AuditAction.ATTRIBUTE_OPTION_CREATE, AuditEntityType.ATTRIBUTE_OPTION,
+                option.getAttributeOptionId().toString()));
         return AttributeMapper.option(option);
     }
 
     @PreAuthorize(WRITE)
     public AttributeOptionDto updateOption(
-            Long actor,
             Long attributeId,
             Long optionId,
             AttributeOptionPatchRequest request) {
@@ -163,7 +162,7 @@ public class AttributeCatalogService {
             throw badRequest("Attribute option patch must contain a change");
         }
         AttributeOption option = options.findByAttributeIdAndAttributeOptionId(attributeId, optionId)
-                .orElseThrow(AttributeCatalogService::notFound);
+                .orElseThrow(CatalogAttributeService::notFound);
 
         if (request.isLabelPresent()) {
             option.setLabel(request.getLabel().trim());
@@ -174,13 +173,13 @@ public class AttributeCatalogService {
 
         options.save(option);
         flushOrConflict("Option update conflicts with existing data");
-        audit.record(AuditEvent.of(
-                actor, AuditAction.ATTRIBUTE_OPTION_UPDATE, AuditTargetType.ATTRIBUTE_OPTION, optionId));
+        audit.record(AuditWriteEvent.of(
+                AuditAction.ATTRIBUTE_OPTION_UPDATE, AuditEntityType.ATTRIBUTE_OPTION, optionId.toString()));
         return AttributeMapper.option(option);
     }
 
     private Attribute requireAttribute(Long attributeId) {
-        return attributes.findById(attributeId).orElseThrow(AttributeCatalogService::notFound);
+        return attributes.findById(attributeId).orElseThrow(CatalogAttributeService::notFound);
     }
 
     private AttributeType requireType(Attribute attribute) {
