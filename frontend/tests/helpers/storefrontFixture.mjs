@@ -70,7 +70,7 @@ product.family = {
     name: product.name,
     selling_price: product.selling_price,
     status: product.status,
-    images: product.images,
+    get images() { return product.images; },
     attribute_values: product.attribute_values,
     available_quantity: 8,
     purchasable: true,

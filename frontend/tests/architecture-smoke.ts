@@ -4,9 +4,11 @@ import assert from 'node:assert/strict';
 import { productSummaryMetadata } from '../src/features/catalog/model/productSummary';
 import { LatestMutationQueue } from '../src/features/cart/model/LatestMutationQueue';
 import {
+  buildFamilyGallery,
   buildMovedImageOrder,
   sortProductImages,
 } from '../src/features/catalog/model/productImageOrder';
+import type { ProductFamilyDto, ProductImageDto } from '../src/features/catalog/types';
 import { selectHomepageParentCategories } from '../src/features/catalog/model/categoryTree';
 import {
   canAccessAdminModule,
@@ -223,6 +225,28 @@ assert.deepEqual(buildMovedImageOrder(imageFixtures, 2, -1), [
 ]);
 assert.equal(buildMovedImageOrder(imageFixtures, 1, -1), null);
 assert.equal(buildMovedImageOrder(imageFixtures, 3, 1), null);
+
+const galleryMember = (id: number, images: ProductImageDto[]): ProductFamilyDto['members'][number] => ({
+  product_id: id, parent_product_id: id === 10 ? null : 10, sku: 'SKU-' + id, name: null,
+  selling_price: 100000, status: 'ACTIVE', images, attribute_values: [],
+  available_quantity: 0, purchasable: false,
+});
+const galleryImage = (id: number, sort: number, url: string): ProductImageDto => ({
+  id, sort_order: sort, image_url: url, is_primary: sort === 0,
+});
+const galleryFamily: ProductFamilyDto = { root_product_id: 10, members: [
+  galleryMember(30, [galleryImage(30, 0, 'child-30.jpg')]),
+  galleryMember(2, [galleryImage(22, 1, 'child-2.jpg'), galleryImage(21, 0, 'shared.jpg')]),
+  galleryMember(10, [galleryImage(12, 1, 'shared.jpg'), galleryImage(11, 1, 'root.jpg')]),
+] };
+const galleryBefore = structuredClone(galleryFamily);
+assert.deepEqual(buildFamilyGallery(galleryFamily), ['root.jpg', 'shared.jpg', 'child-2.jpg', 'child-30.jpg'],
+  'root first, children by ID, images by sort_order then ID, URLs unique, sold-out images included');
+assert.deepEqual(galleryFamily, galleryBefore, 'display gallery never mutates Product-owned images');
+assert.deepEqual(buildFamilyGallery({ ...galleryFamily, members: galleryFamily.members.filter(m => m.product_id !== 10) }),
+  ['shared.jpg', 'child-2.jpg', 'child-30.jpg'], 'gallery uses only the public members returned by the API');
+assert.deepEqual(buildFamilyGallery({ root_product_id: 10, members: [galleryMember(10, [])] }), []);
+assert.deepEqual(buildFamilyGallery({ root_product_id: 10, members: [] }), []);
 
 const tokenEvents: Array<string | null> = [];
 const unsubscribe = subscribeToApiAccessToken((token) => tokenEvents.push(token));

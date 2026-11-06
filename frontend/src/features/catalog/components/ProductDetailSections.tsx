@@ -11,15 +11,13 @@ import { ProductSummaryCard } from './ProductSummaryCard';
 const productName = (product: ProductDetailDto): string => product.name ?? product.sku;
 
 export const ProductGallerySection: React.FC<{
-  product: ProductDetailDto;
+  productName: string;
   gallery: readonly string[];
   activeImageIndex: number;
   onSelectImage: (index: number) => void;
   onMoveImage: (offset: -1 | 1) => void;
   onZoom?: () => void;
-  usingFamilyFallback?: boolean;
-}> = ({ product, gallery, activeImageIndex, onSelectImage, onMoveImage, onZoom,
-  usingFamilyFallback = false }) => (
+}> = ({ productName, gallery, activeImageIndex, onSelectImage, onMoveImage, onZoom }) => (
   <div className="min-w-0 space-y-3">
     <div className="flex min-w-0 flex-col-reverse gap-4 md:flex-row md:items-start">
     {gallery.length > 1 && (
@@ -40,7 +38,7 @@ export const ProductGallerySection: React.FC<{
           >
             <StorefrontImage
               src={image}
-              alt={productName(product) + ' ' + (index + 1)}
+              alt={productName + ' ' + (index + 1)}
               className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
             />
           </button>
@@ -53,7 +51,7 @@ export const ProductGallerySection: React.FC<{
           loading="eager"
           key={gallery[activeImageIndex] ?? gallery[0]}
           src={gallery[activeImageIndex] ?? gallery[0]}
-          alt={productName(product)}
+          alt={productName}
           className="h-full w-full object-contain transition-opacity duration-300"
         />
       ) : (
@@ -92,11 +90,6 @@ export const ProductGallerySection: React.FC<{
       )}
     </div>
     </div>
-    {usingFamilyFallback && gallery.length > 0 && (
-      <p className="text-xs text-[#687069]">
-        Gallery tham khảo từ Product gốc; ảnh chỉ được dùng để hiển thị.
-      </p>
-    )}
   </div>
 );
 

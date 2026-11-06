@@ -23,6 +23,11 @@ const detail = {
     { id: 2, image_url: '/images/about/details.svg', is_primary: false, sort_order: 1 },
   ],
 };
+detail.family = {
+  ...detail.family,
+  members: detail.family.members.map(member => member.product_id === detail.product_id
+    ? { ...member, images: detail.images } : member),
+};
 const server = await createServer({ server: { port: 5197, strictPort: true } });
 await server.listen();
 const browser = await chromium.launch({

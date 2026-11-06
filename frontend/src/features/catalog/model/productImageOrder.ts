@@ -1,7 +1,21 @@
-import type { ProductImageDto, ProductImageOrderInput } from '../types';
+import type { ProductFamilyDto, ProductImageDto, ProductImageOrderInput } from '../types';
 
 export const sortProductImages = (images: readonly ProductImageDto[]): ProductImageDto[] =>
   [...images].sort((left, right) => left.sort_order - right.sort_order);
+
+export const buildFamilyGallery = (family: ProductFamilyDto): string[] => {
+  const members = [...family.members].sort((left, right) =>
+    Number(right.product_id === family.root_product_id)
+      - Number(left.product_id === family.root_product_id)
+      || left.product_id - right.product_id);
+  const urls = new Set<string>();
+  for (const member of members) {
+    const images = [...member.images].sort((left, right) =>
+      left.sort_order - right.sort_order || left.id - right.id);
+    for (const image of images) urls.add(image.image_url);
+  }
+  return [...urls];
+};
 
 export const buildMovedImageOrder = (
   images: readonly ProductImageDto[],

@@ -19,7 +19,7 @@ import {
   memberOption,
   type FamilyOptionCode,
 } from '../features/catalog/model/productFamilySelection';
-import { sortProductImages } from '../features/catalog/model/productImageOrder';
+import { buildFamilyGallery } from '../features/catalog/model/productImageOrder';
 import { useAuthSession } from '../features/auth/session/useAuthSession';
 import { useToast } from '../shared/ui/toast/useToast';
 import { getStorefrontErrorMessage } from '../services/http/storefrontError';
@@ -52,7 +52,10 @@ export const ProductDetailScreen: React.FC = () => {
         'Không thể tải sản phẩm gợi ý. Bạn vẫn có thể xem thông tin sản phẩm này.',
       )
     : null;
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [selectedImage, setSelectedImage] = useState<{
+    rootProductId: number;
+    url: string;
+  } | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [zoomOpen, setZoomOpen] = useState(false);
   const [retry, setRetry] = useState(0);
@@ -74,7 +77,8 @@ export const ProductDetailScreen: React.FC = () => {
           ?.attribute_value_id ?? null);
         setSizeId(detail.attribute_values.find((value) => value.attribute_code === 'SIZE')
           ?.attribute_value_id ?? null);
-        setActiveImageIndex(0);
+        setSelectedImage((current) => current?.rootProductId === detail.family.root_product_id
+          ? current : null);
         setQuantity(1);
         setError(null);
       } catch (requestError: unknown) {
@@ -103,7 +107,6 @@ export const ProductDetailScreen: React.FC = () => {
 
   const openFamilyProduct = (nextProductId: number) => {
     if (String(nextProductId) !== productId) {
-      setActiveImageIndex(0);
       setZoomOpen(false);
       navigate(productDetailPath(nextProductId));
     }
@@ -141,15 +144,14 @@ export const ProductDetailScreen: React.FC = () => {
     product && routedMember && !detailReady ? { ...product, ...routedMember } : product;
   const rootMember = product?.family.members.find(
     (member) => member.product_id === product.family.root_product_id);
-  const usingFamilyFallback = Boolean(
-    displayProduct && !displayProduct.images.length
-      && rootMember && rootMember.product_id !== displayProduct.product_id
-      && rootMember.images.length > 0,
-  );
-  // Rendering a small family gallery is cheaper and safer than memoizing mutable DTO arrays.
-  const gallery = sortProductImages(
-    usingFamilyFallback ? rootMember?.images ?? [] : displayProduct?.images ?? [],
-  ).map((image) => image.image_url);
+  const gallery = product ? buildFamilyGallery(product.family) : [];
+  const galleryName = rootMember?.name ?? 'Ảnh sản phẩm';
+  const activeImageIndex = selectedImage && selectedImage.rootProductId === product?.family.root_product_id
+    ? Math.max(0, gallery.indexOf(selectedImage.url)) : 0;
+  const selectImage = (index: number) => {
+    const url = gallery[index];
+    if (product && url) setSelectedImage({ rootProductId: product.family.root_product_id, url });
+  };
   const selectionReady = detailReady && routedMember !== undefined
     && (colorId === null || memberOption(routedMember, 'COLOR')?.attribute_value_id === colorId)
     && (sizeId === null || memberOption(routedMember, 'SIZE')?.attribute_value_id === sizeId);
@@ -177,7 +179,7 @@ export const ProductDetailScreen: React.FC = () => {
 
   const moveImage = (offset: -1 | 1) => {
     if (gallery.length <= 1) return;
-    setActiveImageIndex((current) => (current + offset + gallery.length) % gallery.length);
+    selectImage((activeImageIndex + offset + gallery.length) % gallery.length);
   };
 
   if (!productId) {
@@ -281,13 +283,12 @@ export const ProductDetailScreen: React.FC = () => {
       <section className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-7 sm:px-8 lg:grid-cols-12 lg:gap-10 lg:px-14">
         <div className="space-y-6 lg:col-span-7 xl:col-span-8">
           <ProductGallerySection
-            product={displayProduct}
+            productName={galleryName}
             gallery={gallery}
             activeImageIndex={activeImageIndex}
-            onSelectImage={setActiveImageIndex}
+            onSelectImage={selectImage}
             onMoveImage={moveImage}
             onZoom={() => setZoomOpen(true)}
-            usingFamilyFallback={usingFamilyFallback}
           />
           <ProductSpecsSection items={detailReady ? specItems : []} />
         </div>
@@ -348,7 +349,7 @@ export const ProductDetailScreen: React.FC = () => {
             </header>
             <StorefrontImage
               src={gallery[activeImageIndex] ?? ''}
-              alt={displayName}
+              alt={galleryName}
               loading="eager"
               className="max-h-[66dvh] w-full object-contain"
             />

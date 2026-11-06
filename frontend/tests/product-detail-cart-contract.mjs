@@ -71,8 +71,8 @@ const sizeValue = (id, value) => ({
 const artwork = {
   'black-m': '/images/about/wardrobe.svg',
   'black-l': '/images/about/details.svg',
-  'white-l': '/images/about/palette.svg',
-  'white-l-alt': '/images/about/wardrobe.svg',
+  'white-l': '/images/about/palette.svg?sku=white-l',
+  'white-l-alt': '/images/about/wardrobe.svg?sku=white-l-alt',
 };
 const child = (id, sku, name, price, color, size, image) => ({
   ...product,
@@ -93,11 +93,12 @@ blackM.images.push({
 });
 const blackL = child(3, 'FIDO-TEE-BLACK-L', 'Áo FIDO Đen L', 239000,
   colorValue(201, 'BLACK', 'Đen'), sizeValue(302, 'L'), 'black-l');
-blackL.images = []; // A family member with no gallery falls back to root images in the UI.
+blackL.images = []; // This Product still displays the complete family gallery.
 const whiteL = child(4, 'FIDO-TEE-WHITE-L', 'Áo FIDO Trắng L', 229000,
   colorValue(202, 'WHITE', 'Trắng'), sizeValue(302, 'L'), 'white-l');
 const whiteLAlt = child(5, 'FIDO-TEE-WHITE-L-ALT', 'Áo FIDO Trắng L kiểu khác', 249000,
   colorValue(202, 'WHITE', 'Trắng'), sizeValue(302, 'L'), 'white-l-alt');
+whiteL.images.push({ id: 2004, image_url: artwork['black-m'], is_primary: false, sort_order: 1 });
 const familyProducts = [product, blackM, blackL, whiteL, whiteLAlt];
 const availableByProduct = new Map([[1, 8], [2, 2], [3, 0], [4, 3], [5, 4]]);
 const family = {
@@ -111,6 +112,32 @@ const family = {
   })),
 };
 const detailed = new Map(familyProducts.map((p) => [p.product_id, { ...p, family }]));
+const standalone = {
+  ...product, product_id: 6, sku: 'FIDO-SINGLE', name: 'Sản phẩm độc lập',
+  images: [
+    { id: 6002, image_url: artwork['black-m'], is_primary: false, sort_order: 1 },
+    { id: 6001, image_url: artwork['black-l'], is_primary: true, sort_order: 0 },
+  ],
+};
+const withoutImages = { ...product, product_id: 7, sku: 'FIDO-EMPTY', name: 'Sản phẩm chưa có ảnh', images: [] };
+for (const item of [standalone, withoutImages]) {
+  const { product_id, parent_product_id, sku, name, selling_price, status, images, attribute_values } = item;
+  detailed.set(item.product_id, {
+    ...item, family: { root_product_id: item.product_id, members: [{
+      product_id, parent_product_id, sku, name, selling_price, status, images, attribute_values,
+      available_quantity: 8, purchasable: true,
+    }] },
+  });
+}
+const expectedGallery = [product.images[0].image_url, artwork['black-m'], artwork['black-l'],
+  artwork['white-l'], artwork['white-l-alt']];
+const thumbnailButtons = () => page.getByRole('button', { name: /^Xem ảnh \d+$/ });
+const assertFamilyGallery = async () => {
+  await thumbnailButtons().nth(expectedGallery.length - 1).waitFor();
+  assert.deepEqual(await thumbnailButtons().locator('img').evaluateAll(images => images.map(image => image.getAttribute('src'))),
+    expectedGallery, 'all public family images keep the same order and shared URLs appear once');
+};
+const heroImage = () => page.locator('img.h-full.w-full.object-contain');
 let detail = detailed.get(1);
 const cartRequests = [];
 const cartQuantities = new Map();
@@ -173,7 +200,10 @@ await page.route('**/api/v1/**', async (route) => {
     return childDetail ? send({ data: childDetail }) : send({ message: 'Not found' }, 404);
   }
   if (path === '/catalog/products') {
-    return send({ data: [], meta: { page: 1, page_size: 4, total: 0, total_pages: 0 } });
+    return send({ data: [standalone, withoutImages].map(({ product_id, parent_product_id, sku, name, slug,
+      category, brand, selling_price, status }) => ({ product_id, parent_product_id, sku, name, slug,
+      category, brand, selling_price, status, thumbnail: null })),
+      meta: { page: 1, page_size: 5, total: 2, total_pages: 1 } });
   }
   if (path === '/cart') {
     return send({ data: cartQuantities.size ? cartResult() : emptyCart });
@@ -203,6 +233,10 @@ try {
     'HTML description cannot inject event handlers');
   assert.equal(await page.evaluate(() => window.__unsafe), undefined,
     'HTML description cannot run scripts');
+  await assertFamilyGallery();
+  await page.getByRole('button', { name: 'Xem ảnh 4', exact: true }).click();
+  assert.equal(await heroImage().getAttribute('src'), artwork['white-l']);
+  assert.match(page.url(), /\/products\/1$/, 'viewing another member photo never selects its SKU');
   await page.getByRole('button', { name: 'Tăng số lượng' }).click();
   await page.getByRole('button', { name: 'Thêm vào giỏ hàng', exact: true }).click();
   await page.getByRole('dialog', { name: 'Giỏ hàng của bạn' }).waitFor();
@@ -221,8 +255,10 @@ try {
   await page.waitForURL('**/products/2');
   await page.getByText('SKU: FIDO-TEE-BLACK-M', { exact: true }).waitFor();
   await page.getByText('219.000₫', { exact: true }).waitFor();
-  await page.locator('img.object-contain[src*="wardrobe.svg"]').waitFor({ state: 'attached' });
-  await page.getByRole('button', { name: 'Xem ảnh 2' }).click();
+  await assertFamilyGallery();
+  assert.equal(await heroImage().getAttribute('src'), artwork['white-l'], 'switching SKU preserves the current image');
+  assert.equal(await page.getByRole('button', { name: 'Xem ảnh 4', exact: true }).getAttribute('aria-pressed'), 'true');
+  await page.getByRole('button', { name: 'Xem ảnh 3', exact: true }).click();
   await page.locator('img.h-full.w-full.object-contain[src*="details.svg"]')
     .waitFor({ state: 'attached' });
   await page.getByText('Chất liệu', { exact: true }).waitFor();
@@ -254,7 +290,8 @@ try {
   await page.waitForURL('**/products/5');
   await page.getByText('SKU: FIDO-TEE-WHITE-L-ALT', { exact: true }).waitFor();
   await page.getByText('249.000₫', { exact: true }).waitFor();
-  await page.locator('img.object-contain[src*="wardrobe.svg"]').waitFor({ state: 'attached' });
+  await assertFamilyGallery();
+  assert.equal(await heroImage().getAttribute('src'), artwork['black-l'], 'explicit SKU selection also preserves gallery selection');
   await page.getByRole('button', { name: 'Thêm vào giỏ hàng', exact: true }).click();
   assert.deepEqual(cartRequests.at(-1), { product_id: 5, quantity: 1 },
     'Ambiguous COLOR/SIZE requires explicit SKU selection');
@@ -263,10 +300,44 @@ try {
 
   await page.goto('http://localhost:5184/products/3');
   await page.getByText('SKU: FIDO-TEE-BLACK-L', { exact: true }).waitFor();
-  await page.getByText('Gallery tham khảo từ Product gốc', { exact: false }).waitFor();
+  await assertFamilyGallery();
+  assert.equal(await page.getByText('Gallery tham khảo từ Product gốc', { exact: false }).count(), 0);
   await page.locator('img.object-contain[src*="palette.svg"]').waitFor({ state: 'attached' });
   assert.equal(await page.getByRole('button', { name: 'Hết hàng', exact: true }).isDisabled(),
     true, 'sold-out Product is viewable but cannot be added to Cart');
+
+  for (const width of [375, 768, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.getByRole('button', { name: 'Xem ảnh 5', exact: true }).click();
+    await page.getByRole('button', { name: 'Phóng to ảnh', exact: true }).click();
+    const zoom = page.getByRole('dialog', { name: 'Ảnh sản phẩm' });
+    await zoom.getByText('Ảnh 5 / 5', { exact: true }).waitFor();
+    assert.equal(await zoom.getByRole('img').getAttribute('src'), artwork['white-l-alt']);
+    await page.keyboard.press('ArrowRight');
+    await zoom.getByText('Ảnh 1 / 5', { exact: true }).waitFor();
+    assert.equal(await zoom.getByRole('img').getAttribute('src'), expectedGallery[0]);
+    await page.keyboard.press('ArrowLeft');
+    await zoom.getByText('Ảnh 5 / 5', { exact: true }).waitFor();
+    await page.keyboard.press('Escape');
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  }
+
+  await page.getByRole('button', { name: 'Xem ảnh 2', exact: true }).click();
+  await page.getByRole('button', { name: 'Xem chi tiết: Sản phẩm độc lập', exact: true }).click();
+  await page.waitForURL('**/products/6');
+  await page.getByText('SKU: FIDO-SINGLE', { exact: true }).waitFor();
+  assert.equal(await heroImage().getAttribute('src'), artwork['black-l'], 'changing family resets to its first photo');
+  assert.equal(await thumbnailButtons().count(), 2);
+  await page.goBack();
+  await page.getByText('SKU: FIDO-TEE-BLACK-L', { exact: true }).waitFor();
+  await assertFamilyGallery();
+  assert.equal(await heroImage().getAttribute('src'), expectedGallery[0]);
+  await page.getByRole('button', { name: 'Xem chi tiết: Sản phẩm chưa có ảnh', exact: true }).click();
+  await page.waitForURL('**/products/7');
+  await page.getByText('SKU: FIDO-EMPTY', { exact: true }).waitFor();
+  await page.getByText('Chưa có ảnh', { exact: true }).waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Phóng to ảnh', exact: true }).count(), 0);
+  assert.equal(await thumbnailButtons().count(), 0);
 
   detail = { ...detailed.get(1), status: 'INACTIVE' };
   await page.goto('http://localhost:5184/products/1');
@@ -283,7 +354,7 @@ try {
   ], 'inactive product is not added');
   assert.deepEqual(errors, [], 'no browser runtime errors');
   console.log(
-    'Product family browser: parent/child gallery, COLOR/SIZE, duplicate SKU selection, descriptive Attribute separation and exact Cart product_id guard.',
+    'Product family browser: shared deduplicated gallery, stable photo across SKU changes, independent-family reset, zoom/keyboard/responsive/empty gallery, COLOR/SIZE and exact Cart product_id guard: PASS.',
   );
 } finally {
   await browser.close();
