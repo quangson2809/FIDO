@@ -2,8 +2,20 @@ package com.fido.modules.product;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.argThat;
+
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditWriteService;
+import com.fido.modules.product.service.OrderProductSnapshotService;
+import jakarta.persistence.EntityManagerFactory;
+import org.hibernate.SessionFactory;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.test.util.AopTestUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,7 +23,9 @@ import java.util.Map;
 import java.util.UUID;
 
 class ProductAttributeValueHttpTests extends CatalogHttpSupport {
-    @org.springframework.beans.factory.annotation.Autowired jakarta.persistence.EntityManagerFactory entityManagerFactory;
+    @Autowired EntityManagerFactory entityManagerFactory;
+    @Autowired OrderProductSnapshotService snapshots;
+    @MockitoSpyBean AuditWriteService auditWriter;
 
     private final List<Long> createdAttributes = new ArrayList<>();
     private final List<Long> createdOptions = new ArrayList<>();
@@ -38,6 +52,10 @@ class ProductAttributeValueHttpTests extends CatalogHttpSupport {
         Result attributeUpdate = call("PATCH", "/api/v1/admin/catalog/attributes/" + materialId,
                 writer.token(), Map.of("name", "Material type", "is_required", true, "sort_order", 2));
         assertEquals(200, attributeUpdate.status(), attributeUpdate.body());
+        assertAudit(writer, "ATTRIBUTE_CREATE", "ATTRIBUTE", colorId);
+        assertAudit(writer, "ATTRIBUTE_OPTION_CREATE", "ATTRIBUTE_OPTION", blackOptionId);
+        assertAudit(writer, "ATTRIBUTE_UPDATE", "ATTRIBUTE", materialId);
+        assertAudit(writer, "ATTRIBUTE_OPTION_UPDATE", "ATTRIBUTE_OPTION", blackOptionId);
 
         assertEquals(200, call("PATCH", "/api/v1/admin/catalog/attributes/" + colorId,
                 writer.token(), Map.of("sort_order", 3)).status());
@@ -177,7 +195,7 @@ class ProductAttributeValueHttpTests extends CatalogHttpSupport {
                 null, "DRAFT", List.of(first));
         var old = java.time.LocalDateTime.of(2000, 1, 1, 0, 0);
         db.update("UPDATE products SET updated_at=? WHERE id=?", old, id);
-        var stats = entityManagerFactory.unwrap(org.hibernate.SessionFactory.class).getStatistics();
+        var stats = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
         boolean enabled = stats.isStatisticsEnabled();
         stats.setStatisticsEnabled(true);
         try {
@@ -303,6 +321,76 @@ class ProductAttributeValueHttpTests extends CatalogHttpSupport {
         long readPermissionId = ensurePermission("CATALOG_READ");
         db.update("INSERT INTO role_permissions(role_id,permission_id) VALUES (?,?)", roleId, readPermissionId);
         return employee(roleId);
+    }
+
+    @Test
+    void snapshotProjectionPreservesMetadataOrderAndBatchQueryCount() throws Exception {
+        Employee writer = catalogWriter();
+        long first = createAttribute(writer, "FIRST_SNAPSHOT", "First", false);
+        long second = createAttribute(writer, "SECOND_SNAPSHOT", "Second", false);
+        long firstOption = createOption(writer, first, "ONE", "One");
+        long secondOption = createOption(writer, second, "TWO", "Two");
+        assertEquals(200, call("PATCH", "/api/v1/admin/catalog/attributes/" + first,
+                writer.token(), Map.of("sort_order", 20)).status());
+        long small = createProduct(writer, "SNAP-" + UUID.randomUUID(), "Small", 1000,
+                null, "DRAFT", List.of(firstOption, secondOption));
+        long other = createProduct(writer, "SNAP-" + UUID.randomUUID(), "Other", 1000,
+                null, "DRAFT", List.of(firstOption));
+        var stats = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        boolean enabled = stats.isStatisticsEnabled();
+        stats.setStatisticsEnabled(true);
+        try {
+            stats.clear();
+            snapshots.attributeSnapshots(List.of(small));
+            long smallCount = stats.getPrepareStatementCount();
+            stats.clear();
+            var batch = snapshots.attributeSnapshots(List.of(small, other, small));
+            long batchCount = stats.getPrepareStatementCount();
+            assertTrue(smallCount > 0);
+            assertEquals(smallCount, batchCount, "Snapshot reads must not grow per Product/Option");
+            var entries = json.readTree(batch.get(small));
+            assertEquals(2, batch.size());
+            assertEquals(second, entries.get(0).get("attribute_id").asLong());
+            assertEquals(secondOption, entries.get(0).get("attribute_value_id").asLong());
+            assertEquals("TWO", entries.get(0).get("option_value_snapshot").asText());
+            assertEquals("Second", entries.get(0).get("attribute_name_snapshot").asText());
+            assertEquals(firstOption, entries.get(1).get("attribute_value_id").asLong());
+            assertEquals(1, json.readTree(batch.get(other)).size());
+            System.out.printf("Snapshot queries: one Product=%d, batch=%d%n", smallCount, batchCount);
+        } finally {
+            stats.setStatisticsEnabled(enabled);
+        }
+    }
+
+    @Test
+    void auditFailureRollsBackAttributeAndOptionEdits() throws Exception {
+        Employee writer = catalogWriter();
+        long attribute = createAttribute(writer, "AUDIT_ROLLBACK", "Original", false);
+        long option = createOption(writer, attribute, "ORIGINAL", "Original option");
+        AuditWriteService target =
+                AopTestUtils.getUltimateTargetObject(auditWriter);
+        try {
+            Mockito.doThrow(new IllegalStateException("Simulated audit failure"))
+                    .when(target).record(argThat(event ->
+                            event.action() == AuditAction.ATTRIBUTE_UPDATE
+                            || event.action() == AuditAction.ATTRIBUTE_OPTION_UPDATE));
+            assertEquals(500, call("PATCH", "/api/v1/admin/catalog/attributes/" + attribute,
+                    writer.token(), Map.of("name", "Changed")).status());
+            assertEquals(500, call("PATCH", "/api/v1/admin/catalog/attributes/" + attribute
+                    + "/options/" + option, writer.token(), Map.of("label", "Changed")).status());
+            assertEquals("Original", db.queryForObject("SELECT name FROM attributes WHERE id=?", String.class, attribute));
+            assertEquals("Original option", db.queryForObject("SELECT label FROM attribute_options WHERE id=?", String.class, option));
+            assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE actor_account_id=? "
+                    + "AND action IN ('ATTRIBUTE_UPDATE','ATTRIBUTE_OPTION_UPDATE')", Integer.class, writer.id()));
+        } finally {
+            Mockito.reset(target);
+        }
+    }
+
+    private void assertAudit(Employee writer, String action, String entityType, long id) {
+        assertEquals(1, db.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE actor_account_id=? "
+                + "AND action=? AND entity_type=? AND entity_id=? AND correlation_id IS NOT NULL",
+                Integer.class, writer.id(), action, entityType, Long.toString(id)));
     }
 
     private long createAttribute(Employee writer, String prefix, String name, boolean required) throws Exception {

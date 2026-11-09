@@ -7,8 +7,6 @@ import type { OrderCustomerDetailDto } from '../features/orders/types';
 import { getStorefrontErrorMessage } from '../services/http/storefrontError';
 import { resolveImageUrl } from '../services/media/imageUrl';
 
-const recipientEditableStatuses = new Set(['PENDING', 'CONFIRMED', 'PREPARING']);
-
 export const OrderDetailScreen: React.FC = () => {
   const navigate = useNavigate();
   const { orderId = '' } = useParams<{ orderId: string }>();
@@ -16,10 +14,6 @@ export const OrderDetailScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
-  const [editing, setEditing] = useState(false);
-  const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!orderId) return undefined;
@@ -31,8 +25,6 @@ export const OrderDetailScreen: React.FC = () => {
         const detail = await orderService.getOrder(orderId);
         if (active) {
           setOrder(detail);
-          setPhone(detail.recipient.phone);
-          setAddress(detail.recipient.address);
           setError(null);
         }
       } catch (requestError: unknown) {
@@ -49,31 +41,6 @@ export const OrderDetailScreen: React.FC = () => {
       active = false;
     };
   }, [orderId, retry]);
-
-  const saveRecipient = async () => {
-    if (!order || !phone.trim() || !address.trim() || saving) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const updated = await orderService.updateRecipient(order.order_id, {
-        recipient_phone: phone.trim(),
-        recipient_address: address.trim(),
-      });
-      setOrder(updated);
-      setPhone(updated.recipient.phone);
-      setAddress(updated.recipient.address);
-      setEditing(false);
-    } catch (requestError: unknown) {
-      setError(
-        getStorefrontErrorMessage(
-          requestError,
-          'Không thể cập nhật người nhận. Đơn hàng có thể đã chuyển sang trạng thái không cho phép chỉnh sửa.',
-        ),
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
 
   if (!orderId) {
     return (
@@ -114,8 +81,6 @@ export const OrderDetailScreen: React.FC = () => {
       </div>
     );
   }
-
-  const canEditRecipient = recipientEditableStatuses.has(order.order_status);
 
   return (
     <div className="min-h-screen bg-[#FFFDF5] text-[#0B2419]">
@@ -214,88 +179,28 @@ export const OrderDetailScreen: React.FC = () => {
                 </p>
                 <h2 className="font-serif text-xl">Thông tin người nhận</h2>
               </div>
-              {canEditRecipient && !editing && (
-                <button
-                  type="button"
-                  onClick={() => setEditing(true)}
-                  className="text-xs font-bold uppercase tracking-wider underline underline-offset-4"
-                >
-                  Chỉnh sửa
-                </button>
-              )}
             </div>
 
-            {editing ? (
-              <div className="mt-5 space-y-4">
-                <label className="block space-y-1.5">
-                  <span className="text-xs font-semibold">Điện thoại</span>
-                  <input
-                    maxLength={20}
-                    value={phone}
-                    onChange={(event) => setPhone(event.target.value)}
-                    className="w-full border border-[#D9DDD6] bg-[#FAF9F5] px-3 py-2.5 text-sm outline-none focus:border-[#0B2419]"
-                  />
-                </label>
-                <label className="block space-y-1.5">
-                  <span className="text-xs font-semibold">Địa chỉ</span>
-                  <textarea
-                    rows={4}
-                    maxLength={500}
-                    value={address}
-                    onChange={(event) => setAddress(event.target.value)}
-                    className="w-full resize-y border border-[#D9DDD6] bg-[#FAF9F5] px-3 py-2.5 text-sm outline-none focus:border-[#0B2419]"
-                  />
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    disabled={saving || !phone.trim() || !address.trim()}
-                    onClick={() => void saveRecipient()}
-                    className="bg-[#0B2419] px-4 py-2.5 text-xs font-bold uppercase text-white disabled:opacity-40"
-                  >
-                    {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={saving}
-                    onClick={() => {
-                      setPhone(order.recipient.phone);
-                      setAddress(order.recipient.address);
-                      setEditing(false);
-                    }}
-                    className="border border-[#D9DDD6] bg-white px-4 py-2.5 text-xs font-bold uppercase"
-                  >
-                    Hủy
-                  </button>
-                </div>
+            <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+              <div className="border border-[#E8E9E3] bg-[#FFFDF5] p-4">
+                <dt className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">
+                  Điện thoại
+                </dt>
+                <dd className="mt-1 font-semibold">{order.recipient.phone}</dd>
               </div>
-            ) : (
-              <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
-                <div className="border border-[#E8E9E3] bg-[#FFFDF5] p-4">
-                  <dt className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">
-                    Điện thoại
-                  </dt>
-                  <dd className="mt-1 font-semibold">{order.recipient.phone}</dd>
-                </div>
-                <div className="border border-[#E8E9E3] bg-[#FFFDF5] p-4">
-                  <dt className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">
-                    Email
-                  </dt>
-                  <dd className="mt-1 break-all font-semibold">{order.recipient.email ?? '—'}</dd>
-                </div>
-                <div className="border border-[#E8E9E3] bg-[#FFFDF5] p-4 sm:col-span-2">
-                  <dt className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">
-                    Địa chỉ
-                  </dt>
-                  <dd className="mt-1 leading-6 font-semibold">{order.recipient.address}</dd>
-                </div>
-              </dl>
-            )}
-            {!canEditRecipient && (
-              <p className="mt-4 text-xs leading-5 text-[#687069]">
-                Thông tin người nhận chỉ được sửa trước khi đơn chuyển sang giao hàng.
-              </p>
-            )}
+              <div className="border border-[#E8E9E3] bg-[#FFFDF5] p-4">
+                <dt className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">
+                  Email
+                </dt>
+                <dd className="mt-1 break-all font-semibold">{order.recipient.email ?? '—'}</dd>
+              </div>
+              <div className="border border-[#E8E9E3] bg-[#FFFDF5] p-4 sm:col-span-2">
+                <dt className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">
+                  Địa chỉ
+                </dt>
+                <dd className="mt-1 leading-6 font-semibold">{order.recipient.address}</dd>
+              </div>
+            </dl>
           </section>
 
           <aside className="border border-[#E8E9E3] bg-[#071A12] p-6 text-white shadow-sm">

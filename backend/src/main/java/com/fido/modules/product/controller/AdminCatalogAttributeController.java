@@ -12,8 +12,6 @@ import com.fido.modules.product.service.AttributeCatalogService;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,38 +32,31 @@ public class AdminCatalogAttributeController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<AttributeDto> createAttribute(
-            @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody AttributeCreateRequest request) {
-        return ApiResponse.of(service.createAttribute(actor(jwt), request));
+        return ApiResponse.of(service.createAttribute(request));
     }
 
     @PatchMapping("/{attributeId}")
     public ApiResponse<AttributeDto> updateAttribute(
-            @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long attributeId,
             @Valid @RequestBody AttributePatchRequest request) {
-        return ApiResponse.of(service.updateAttribute(actor(jwt), attributeId, request));
+        return ApiResponse.of(service.updateAttribute(attributeId, request));
     }
 
     @PostMapping("/{attributeId}/options")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<AttributeOptionDto> createOption(
-            @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long attributeId,
             @Valid @RequestBody AttributeOptionCreateRequest request) {
-        return ApiResponse.of(service.createOption(actor(jwt), attributeId, request));
+        return ApiResponse.of(service.createOption(attributeId, request));
     }
 
     @PatchMapping("/{attributeId}/options/{optionId}")
     public ApiResponse<AttributeOptionDto> updateOption(
-            @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long attributeId,
             @PathVariable Long optionId,
             @Valid @RequestBody AttributeOptionPatchRequest request) {
-        return ApiResponse.of(service.updateOption(actor(jwt), attributeId, optionId, request));
+        return ApiResponse.of(service.updateOption(attributeId, optionId, request));
     }
 
-    private Long actor(Jwt jwt) {
-        return Long.valueOf(jwt.getSubject());
-    }
 }

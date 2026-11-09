@@ -462,11 +462,20 @@ try {
   assert.equal(adjustment.expected_version, 0);
   assert.match(adjustment.source_operation_id, /^[A-Za-z0-9._:-]{1,80}$/);
 
+  const beforeMasterData = reads.length;
   await goto('/admin/catalog/categories');
+  await page.getByLabel('Tìm danh mục', { exact: true }).waitFor();
   await page.locator('main').getByRole('button', { name: 'Thương hiệu', exact: true }).click();
+  await page.getByLabel('Tìm thương hiệu', { exact: true }).waitFor();
   assert.match(page.url(), /catalog\/brands/);
+  assert.equal(reads.slice(beforeMasterData).filter((read) => read.path === '/admin/catalog/meta').length, 0,
+    'Category/Brand screens must load independently of Attribute metadata');
   await page.goBack();
+  await page.getByLabel('Tìm danh mục', { exact: true }).waitFor();
   assert.match(page.url(), /catalog\/categories/);
+  await page.goForward();
+  await page.getByLabel('Tìm thương hiệu', { exact: true }).waitFor();
+  assert.match(page.url(), /catalog\/brands/);
   await goto('/admin/content');
   await page.getByRole('button', { name: /Chính sách policy/ }).click();
   assert.equal(await page.getByRole('textbox', { name: 'Nội dung', exact: true }).inputValue(), 'Nội dung gốc');

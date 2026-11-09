@@ -182,12 +182,13 @@ try {
     await page.getByRole('heading', { name: 'Thông tin người nhận', exact: true }).waitFor();
     await page.getByText('Tổng cộng', { exact: true }).waitFor();
     const edits = await page.getByRole('button', { name: 'Chỉnh sửa', exact: true }).count();
-    assert.equal(edits > 0, ['PENDING', 'CONFIRMED', 'PREPARING'].includes(status));
+    assert.equal(edits, 0, 'recipient editing has no supported backend API');
     assert.ok(!(await page.locator('#storefront-main').innerText()).includes('UNPAID'));
     assert.ok(
       !(await page.locator('#storefront-main').innerText()).includes('2026-10-10T03:00:00Z'),
     );
   }
+  assert.equal(fixture.state.requests.filter((request) => request.path.endsWith('/recipient')).length, 0);
   for (const [status, label] of [
     ['UNPAID', 'Chưa thanh toán'],
     ['PAID', 'Đã thanh toán'],

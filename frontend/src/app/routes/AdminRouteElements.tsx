@@ -122,7 +122,7 @@ const AdminCatalogMetaRoute = ({ tab }: { tab: 'categories' | 'brands' }) => {
   return (
     <AdminCatalogMetaView
       key={tab}
-      initialTab={tab}
+      activeTab={tab}
       onNavigateTab={navigateTab}
       showToast={showToast}
       canWrite={canWrite}

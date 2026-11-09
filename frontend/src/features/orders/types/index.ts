@@ -96,11 +96,6 @@ export interface OrderPage {
   meta: PaginationMeta;
 }
 
-export interface RecipientPatchInput {
-  recipient_phone?: string;
-  recipient_address?: string;
-}
-
 export interface CheckoutRequest {
   recipient_name: string;
   recipient_phone: string;
@@ -204,10 +199,6 @@ export interface AfterSalesReturnInput {
 export interface OrderService {
   getOrders(query?: OrderListQuery): Promise<OrderPage>;
   getOrder(orderId: number | string): Promise<OrderCustomerDetailDto>;
-  updateRecipient(
-    orderId: number | string,
-    input: RecipientPatchInput,
-  ): Promise<OrderCustomerDetailDto>;
 }
 
 export interface CheckoutService {

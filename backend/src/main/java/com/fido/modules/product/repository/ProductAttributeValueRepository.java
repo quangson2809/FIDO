@@ -16,6 +16,30 @@ public interface ProductAttributeValueRepository
     ProductAttributeValue save(ProductAttributeValue entity);
     void deleteAllByProductId(Long productId);
 
+    // Load the whole checkout selection at once; services consume named fields, not SQL column positions.
+    @Query(value = """
+            select pav.product_id as productId, pav.attribute_id as attributeId,
+                   a.code as attributeCode, a.name as attributeName,
+                   pav.option_id as optionId, ao.`value` as optionValue, ao.label as optionLabel
+            from product_attribute_values pav
+            join attributes a on a.id = pav.attribute_id
+            join attribute_options ao
+                on ao.id = pav.option_id and ao.attribute_id = pav.attribute_id
+            where pav.product_id in (:productIds)
+            order by pav.product_id asc, a.sort_order asc, pav.attribute_id asc
+            """, nativeQuery = true)
+    List<OrderSnapshotValue> findOrderSnapshots(@Param("productIds") Collection<Long> productIds);
+
+    interface OrderSnapshotValue {
+        Long getProductId();
+        Long getAttributeId();
+        String getAttributeCode();
+        String getAttributeName();
+        Long getOptionId();
+        String getOptionValue();
+        String getOptionLabel();
+    }
+
     @Query("""
             select case when count(product) > 0 then true else false end
             from Product product
