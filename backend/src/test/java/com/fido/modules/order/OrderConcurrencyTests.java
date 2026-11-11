@@ -1,6 +1,8 @@
 package com.fido.modules.order;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -26,7 +28,7 @@ class OrderConcurrencyTests extends OrderHttpSupport {
                                 "/api/v1/cart/items",
                                 firstCustomer.token(),
                                 java.util.Map.of(
-                                        "variant_id", secondVariant.variantId(), "quantity", 1))
+                                        "product_id", secondVariant.productId(), "quantity", 1))
                         .status());
         long firstOrder = createOrder(firstCustomer, firstVariant, 1);
         assertEquals(
@@ -36,7 +38,7 @@ class OrderConcurrencyTests extends OrderHttpSupport {
                                 "/api/v1/cart/items",
                                 secondCustomer.token(),
                                 java.util.Map.of(
-                                        "variant_id", firstVariant.variantId(), "quantity", 1))
+                                        "product_id", firstVariant.productId(), "quantity", 1))
                         .status());
         long secondOrder = createOrder(secondCustomer, secondVariant, 1);
         var executor = Executors.newFixedThreadPool(2);
@@ -63,18 +65,18 @@ class OrderConcurrencyTests extends OrderHttpSupport {
         } finally {
             executor.shutdownNow();
         }
-        assertEquals(8, stock(firstVariant.variantId()));
-        assertEquals(8, stock(secondVariant.variantId()));
+        assertEquals(8, stock(firstVariant.productId()));
+        assertEquals(8, stock(secondVariant.productId()));
         for (long orderId : List.of(firstOrder, secondOrder)) {
-            assertEquals(2, movementCount(orderId, "ORDER_CONFIRM_OUT"));
+            assertEquals(2, movementCount(orderId, "ORDER"));
             var appliedOrder =
                     db.queryForList(
-                            "SELECT variant_id FROM inventory_transactions WHERE order_id=? AND"
-                                + " transaction_type='ORDER_CONFIRM_OUT' ORDER BY txn_id",
+                            "SELECT tx.product_id FROM inventory_transactions tx JOIN order_items oi ON oi.id=tx.order_item_id WHERE oi.order_id=? AND"
+                                + " tx.transaction_type='ORDER' ORDER BY tx.id",
                             Long.class,
                             orderId);
             assertEquals(
-                    List.of(firstVariant.variantId(), secondVariant.variantId()), appliedOrder);
+                    List.of(firstVariant.productId(), secondVariant.productId()), appliedOrder);
         }
     }
 
@@ -107,24 +109,30 @@ class OrderConcurrencyTests extends OrderHttpSupport {
             var results =
                     List.of(first.get(30, TimeUnit.SECONDS), second.get(30, TimeUnit.SECONDS));
 
-            assertEquals(List.of(200, 200), results.stream().map(Result::status).sorted().toList());
+            assertEquals(List.of(200, 409), results.stream().map(Result::status).sorted().toList());
         } finally {
             executor.shutdownNow();
         }
 
-        assertEquals(1, stock(fixture.variantId()));
+        assertEquals(1, stock(fixture.productId()));
 
-        assertEquals(1, movementCount(orderId, "ORDER_CONFIRM_OUT"));
+        assertEquals(1, movementCount(orderId, "ORDER"));
 
         assertEquals(
                 "CONFIRMED",
                 db.queryForObject(
                         """
-                        SELECT order_status
+                        SELECT status
                         FROM orders
-                        WHERE order_id=?
+                        WHERE id=?
                         """,
                         String.class,
                         orderId));
+
+        var detail = call("GET", "/api/v1/admin/orders/" + orderId, root.token(), null);
+        assertEquals(200, detail.status(), detail.body());
+        String allowedActions = detail.data().get("data").get("allowed_actions").toString();
+        assertTrue(allowedActions.contains("START_PREPARING"));
+        assertFalse(allowedActions.contains("CONFIRM"));
     }
 }

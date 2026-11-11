@@ -49,25 +49,25 @@ public abstract class OperationsHttpSupport {
     }
 
     protected User user(String role) throws Exception {
-        String phone = "09" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+        String phone = "+84" + java.util.concurrent.ThreadLocalRandom.current().nextLong(100_000_000L, 1_000_000_000L);
         var created =
                 call(
                         "POST",
                         "/api/v1/auth/register",
                         null,
-                        Map.of("phone", phone, "password", "Test-password-123"));
+                        Map.of("phone", phone, "full_name", "Operations Test Account", "password", "Test-password-123"));
         assertEquals(201, created.status());
-        long id = created.body().get("data").get("account_id").asLong();
+        long id = created.body().get("data").get("account").get("id").asLong();
         accounts.add(id);
-        if (role != null)
+        if (role != null && !"CUSTOMER".equals(role))
             db.update(
-                    "INSERT INTO account_roles SELECT ?,role_id FROM roles WHERE code=?", id, role);
+                    "INSERT INTO account_roles SELECT ?,id FROM roles WHERE code=?", id, role);
         var login =
                 call(
                         "POST",
                         "/api/v1/auth/login",
                         null,
-                        Map.of("identifier", phone, "password", "Test-password-123"));
+                        Map.of("phone", phone, "password", "Test-password-123"));
         assertEquals(200, login.status());
         return new User(id, login.body().get("data").get("access_token").asText(), phone);
     }
@@ -75,20 +75,20 @@ public abstract class OperationsHttpSupport {
     protected void capability(User user, String code) {
         Long permission =
                 db.query(
-                        "SELECT permission_id FROM permissions WHERE code=?",
+                        "SELECT id FROM permissions WHERE code=?",
                         rs -> rs.next() ? rs.getLong(1) : null,
                         code);
         if (permission == null) {
             db.update("INSERT INTO permissions(code,name) VALUES (?,?)", code, code);
             permission =
                     db.queryForObject(
-                            "SELECT permission_id FROM permissions WHERE code=?", Long.class, code);
+                            "SELECT id FROM permissions WHERE code=?", Long.class, code);
             permissions.add(permission);
         }
         String roleCode = "T" + UUID.randomUUID().toString().replace("-", "");
         db.update("INSERT INTO roles(code,name) VALUES (?,?)", roleCode, roleCode);
         long role =
-                db.queryForObject("SELECT role_id FROM roles WHERE code=?", Long.class, roleCode);
+                db.queryForObject("SELECT id FROM roles WHERE code=?", Long.class, roleCode);
         roles.add(role);
         db.update(
                 "INSERT INTO role_permissions(role_id,permission_id) VALUES (?,?)",
@@ -100,17 +100,17 @@ public abstract class OperationsHttpSupport {
     @AfterEach
     void cleanupOperations() {
         for (long id : accounts) {
-            db.update("DELETE FROM content_pages WHERE updated_by_account_id=?", id);
+            db.update("DELETE FROM content_pages WHERE updated_by=?", id);
             db.update("DELETE FROM audit_logs WHERE actor_account_id=?", id);
             db.update("DELETE FROM addresses WHERE account_id=?", id);
             db.update("DELETE FROM account_roles WHERE account_id=?", id);
-            db.update("DELETE FROM accounts WHERE account_id=?", id);
+            db.update("DELETE FROM accounts WHERE id=?", id);
         }
         for (long role : roles) {
             db.update("DELETE FROM role_permissions WHERE role_id=?", role);
-            db.update("DELETE FROM roles WHERE role_id=?", role);
+            db.update("DELETE FROM roles WHERE id=?", role);
         }
         for (long permission : permissions)
-            db.update("DELETE FROM permissions WHERE permission_id=?", permission);
+            db.update("DELETE FROM permissions WHERE id=?", permission);
     }
 }

@@ -28,7 +28,8 @@ public interface PermissionRepository extends Repository<Permission, Long> {
             select distinct p from Permission p
             join RolePermission rp on rp.permissionId = p.permissionId
             join AccountRole ar on ar.roleId = rp.roleId
-            where ar.accountId = :accountId
+            join Role r on r.roleId = ar.roleId
+            where ar.accountId = :accountId and r.status = 'ACTIVE'
             """)
     List<Permission> findGrantedToAccount(@Param("accountId") Long accountId);
 }

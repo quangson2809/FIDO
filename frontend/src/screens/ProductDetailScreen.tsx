@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useCart } from '../features/cart/hooks/useCart';
 import { catalogService } from '../features/catalog/api/service';
@@ -8,15 +8,27 @@ import {
   ProductRecommendationsSection,
   ProductSpecsSection,
 } from '../features/catalog/components/ProductDetailSections';
-import type { ProductDetailDto, ProductVariantDto } from '../features/catalog/types';
+import type { ProductDetailDto } from '../features/catalog/types';
+import { ProductFamilySelector } from '../features/catalog/components/ProductFamilySelector';
+import { ProductLongDescription } from '../features/catalog/components/ProductLongDescription';
+import {
+  familyOptions,
+  matchingFamilyMembers,
+  matchingPurchasableMembers,
+  memberIsPurchasable,
+  memberOption,
+  type FamilyOptionCode,
+} from '../features/catalog/model/productFamilySelection';
+import { buildFamilyGallery } from '../features/catalog/model/productImageOrder';
 import { useAuthSession } from '../features/auth/session/useAuthSession';
 import { useToast } from '../shared/ui/toast/useToast';
 import { getStorefrontErrorMessage } from '../services/http/storefrontError';
+import { normalizeApiError } from '../services/http/apiError';
 import { StorefrontDialog } from '../shared/ui/storefront/StorefrontDialog';
 import { StorefrontImage } from '../shared/ui/storefront/StorefrontImage';
-import { canPurchaseProductVariant } from '../features/catalog/model/purchaseAvailability';
 import { useRemoteQuery } from '../shared/hooks/useRemoteQuery';
-import { categoryProductsPath } from '../routes/paths';
+import { useCatalogMetadata } from '../features/catalog/hooks/useCatalogMetadata';
+import { categoryProductsPath, productDetailPath } from '../routes/paths';
 
 export const ProductDetailScreen: React.FC = () => {
   const { addToCart } = useCart();
@@ -24,7 +36,10 @@ export const ProductDetailScreen: React.FC = () => {
   const { isAuthenticated } = useAuthSession();
   const navigate = useNavigate();
   const { productId = '' } = useParams<{ productId: string }>();
+  const metadata = useCatalogMetadata();
   const [product, setProduct] = useState<ProductDetailDto | null>(null);
+  const [colorId, setColorId] = useState<number | null>(null);
+  const [sizeId, setSizeId] = useState<number | null>(null);
   const recommendationQuery = useRemoteQuery(
     useCallback(() => catalogService.listProducts({ page: 1, page_size: 5 }), []),
   );
@@ -34,14 +49,14 @@ export const ProductDetailScreen: React.FC = () => {
   const recommendationError = recommendationQuery.error
     ? getStorefrontErrorMessage(
         recommendationQuery.error,
-        'Không thể tải sản phẩm gợi ý. Bạn vẫn có thể chọn và mua sản phẩm này.',
+        'Không thể tải sản phẩm gợi ý. Bạn vẫn có thể xem thông tin sản phẩm này.',
       )
     : null;
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [selectedSizeValueId, setSelectedSizeValueId] = useState<number | null>(null);
-  const [selectedColorId, setSelectedColorId] = useState<number | null>(null);
+  const [selectedImage, setSelectedImage] = useState<{
+    rootProductId: number;
+    url: string;
+  } | null>(null);
   const [quantity, setQuantity] = useState(1);
-  const [colorSelectionNotice, setColorSelectionNotice] = useState<string | null>(null);
   const [zoomOpen, setZoomOpen] = useState(false);
   const [retry, setRetry] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -49,30 +64,35 @@ export const ProductDetailScreen: React.FC = () => {
 
   useEffect(() => {
     if (!productId) return undefined;
-
     let active = true;
+
     const load = async () => {
       setLoading(true);
       setZoomOpen(false);
       try {
         const detail = await catalogService.getProductDetail(productId);
         if (!active) return;
-
-        const onSale = detail.variants.filter((variant) => variant.sale_status === 'ON_SALE');
-        const initialVariant =
-          onSale.find((variant) => variant.available_quantity > 0) ?? onSale[0] ?? null;
-
         setProduct(detail);
-        setActiveImageIndex(0);
-        setColorSelectionNotice(null);
-        setSelectedSizeValueId(initialVariant?.size.size_value_id ?? null);
-        setSelectedColorId(initialVariant?.color.color_id ?? null);
+        setColorId(detail.attribute_values.find((value) => value.attribute_code === 'COLOR')
+          ?.attribute_value_id ?? null);
+        setSizeId(detail.attribute_values.find((value) => value.attribute_code === 'SIZE')
+          ?.attribute_value_id ?? null);
+        setSelectedImage((current) => current?.rootProductId === detail.family.root_product_id
+          ? current : null);
         setQuantity(1);
         setError(null);
       } catch (requestError: unknown) {
         if (active) {
+          const normalizedError = normalizeApiError(requestError);
+          const message =
+            normalizedError.status === 404
+              ? 'Không tìm thấy sản phẩm hoặc sản phẩm không còn được hiển thị.'
+              : getStorefrontErrorMessage(
+                  requestError,
+                  'Không thể tải chi tiết sản phẩm. Vui lòng thử lại.',
+                );
           setProduct(null);
-          setError(getStorefrontErrorMessage(requestError, 'Không thể tải chi tiết sản phẩm.'));
+          setError(message);
         }
       } finally {
         if (active) setLoading(false);
@@ -85,125 +105,81 @@ export const ProductDetailScreen: React.FC = () => {
     };
   }, [productId, retry]);
 
-  const gallery = useMemo(() => product?.images.map((image) => image.image_url) ?? [], [product]);
-  const onSaleVariants = useMemo(
-    () => product?.variants.filter((variant) => variant.sale_status === 'ON_SALE') ?? [],
-    [product],
-  );
-
-  const sizeOptions = useMemo(() => {
-    const byId = new Map<number, ProductVariantDto['size']>();
-    onSaleVariants.forEach((variant) => byId.set(variant.size.size_value_id, variant.size));
-    return [...byId.values()].sort((left, right) => left.sort_order - right.sort_order);
-  }, [onSaleVariants]);
-
-  const colorOptions = useMemo(() => {
-    const byId = new Map<number, ProductVariantDto['color']>();
-    onSaleVariants.forEach((variant) => byId.set(variant.color.color_id, variant.color));
-    return [...byId.values()];
-  }, [onSaleVariants]);
-
-  const selectedVariant = useMemo(
-    () =>
-      product?.variants.find(
-        (variant) =>
-          variant.size.size_value_id === selectedSizeValueId &&
-          variant.color.color_id === selectedColorId,
-      ) ?? null,
-    [product, selectedColorId, selectedSizeValueId],
-  );
-
-  const variantCanBePurchased = canPurchaseProductVariant(product?.sale_status, selectedVariant);
-
-  const selectSize = (sizeValueId: number) => {
-    setSelectedSizeValueId(sizeValueId);
-    const currentColorStillValid = onSaleVariants.some(
-      (variant) =>
-        variant.size.size_value_id === sizeValueId && variant.color.color_id === selectedColorId,
-    );
-    const colorWasCleared = selectedColorId !== null && !currentColorStillValid;
-    const stopped = product?.variants.some(
-      (variant) =>
-        variant.size.size_value_id === sizeValueId &&
-        variant.color.color_id === selectedColorId &&
-        variant.sale_status === 'STOPPED',
-    );
-    const sizeName =
-      sizeOptions.find((size) => size.size_value_id === sizeValueId)?.display_name ?? '';
-    setColorSelectionNotice(
-      colorWasCleared
-        ? stopped
-          ? `Màu đã chọn ngừng bán ở size ${sizeName}. Vui lòng chọn màu khác.`
-          : `Màu đã chọn không có ở size ${sizeName}. Vui lòng chọn màu khác.`
-        : null,
-    );
-    if (colorWasCleared) setSelectedColorId(null);
-    setQuantity(1);
+  const openFamilyProduct = (nextProductId: number) => {
+    if (String(nextProductId) !== productId) {
+      setZoomOpen(false);
+      navigate(productDetailPath(nextProductId));
+    }
   };
 
-  const selectColor = (colorId: number) => {
-    if (!colorCompatibility(colorId)) return;
-    setSelectedColorId(colorId);
-    setColorSelectionNotice(null);
-    setQuantity(1);
+  const selectFamilyOption = (code: FamilyOptionCode, optionId: number) => {
+    if (!product) return;
+    let nextColor = code === 'COLOR' ? optionId : colorId;
+    let nextSize = code === 'SIZE' ? optionId : sizeId;
+    const matches = matchingFamilyMembers(product.family.members, nextColor, nextSize);
+    if (matches.length === 0) {
+      // Color/size choices are independent; reset the incompatible opposite axis.
+      if (code === 'COLOR') nextSize = null;
+      else nextColor = null;
+      // The opposite selected Option does not exist in this family combination.
+    }
+    setColorId(nextColor);
+    setSizeId(nextSize);
+    const buyable = matchingPurchasableMembers(product.family.members, nextColor, nextSize);
+    const hasColor = familyOptions(product.family.members, 'COLOR').length > 0;
+    const hasSize = familyOptions(product.family.members, 'SIZE').length > 0;
+    // Do not silently choose a size when the customer only selected a color.
+    if (buyable.length === 1 && (!hasColor || nextColor !== null)
+        && (!hasSize || nextSize !== null)) {
+      openFamilyProduct(buyable[0].product_id);
+    }
   };
 
-  const colorCompatibility = (colorId: number): boolean =>
-    onSaleVariants.some(
-      (variant) =>
-        (selectedSizeValueId === null || variant.size.size_value_id === selectedSizeValueId) &&
-        variant.color.color_id === colorId,
-    );
-
-  const colorAvailability = (colorId: number): boolean =>
-    onSaleVariants.some(
-      (variant) =>
-        variant.size.size_value_id === selectedSizeValueId &&
-        variant.color.color_id === colorId &&
-        variant.available_quantity > 0,
-    );
-
-  const sizeAvailability = (sizeValueId: number): boolean =>
-    onSaleVariants.some(
-      (variant) => variant.size.size_value_id === sizeValueId && variant.available_quantity > 0,
-    );
-
-  const colorUnavailableReason = (colorId: number): string => {
-    const variant = product?.variants.find(
-      (item) => item.size.size_value_id === selectedSizeValueId && item.color.color_id === colorId,
-    );
-    if (!variant) return 'Tổ hợp size và màu này không tồn tại';
-    if (variant.sale_status === 'STOPPED') return 'Tổ hợp size và màu này đã ngừng bán';
-    return variant.available_quantity === 0
-      ? 'Tổ hợp size và màu này đã hết hàng'
-      : variant.color.name;
+  // Optimistically use already-fetched family data while the selected Product detail loads.
+  // Keep Cart disabled until the matching Product ID is confirmed by the detail API.
+  const routedMember = product?.family.members.find((member) =>
+    String(member.product_id) === productId);
+  const detailReady = product !== null && String(product.product_id) === productId;
+  const displayProduct: ProductDetailDto | null =
+    product && routedMember && !detailReady ? { ...product, ...routedMember } : product;
+  const rootMember = product?.family.members.find(
+    (member) => member.product_id === product.family.root_product_id);
+  const gallery = product ? buildFamilyGallery(product.family) : [];
+  const galleryName = rootMember?.name ?? 'Ảnh sản phẩm';
+  const activeImageIndex = selectedImage && selectedImage.rootProductId === product?.family.root_product_id
+    ? Math.max(0, gallery.indexOf(selectedImage.url)) : 0;
+  const selectImage = (index: number) => {
+    const url = gallery[index];
+    if (product && url) setSelectedImage({ rootProductId: product.family.root_product_id, url });
   };
+  const selectionReady = detailReady && routedMember !== undefined
+    && (colorId === null || memberOption(routedMember, 'COLOR')?.attribute_value_id === colorId)
+    && (sizeId === null || memberOption(routedMember, 'SIZE')?.attribute_value_id === sizeId);
+  const availableQuantity = routedMember?.available_quantity ?? 0;
+  const purchasable = routedMember ? memberIsPurchasable(routedMember) : false;
 
-  const addCurrentVariantToCart = () => {
-    if (!product || !selectedVariant || !variantCanBePurchased) return;
-
+  const addCurrentProductToCart = () => {
+    if (!product || !detailReady || !selectionReady || !purchasable
+      || quantity < 1 || quantity > availableQuantity || product.status !== 'ACTIVE') return;
     if (!isAuthenticated) {
       showToast('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.');
-      navigate('/login', { state: { from: `/products/${encodeURIComponent(productId)}` } });
+      navigate('/login', { state: { from: '/products/' + encodeURIComponent(productId) } });
       return;
     }
-
-    addToCart(selectedVariant.variant_id, product.name, quantity);
+    addToCart(product.product_id, product.name ?? product.sku, quantity);
   };
 
   const openRecommendation = (nextProductId: string) => {
-    navigate('/products/' + encodeURIComponent(nextProductId));
+    navigate(productDetailPath(nextProductId));
     window.scrollTo({
       top: 0,
-      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
-        ? 'instant'
-        : 'smooth',
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
     });
   };
 
   const moveImage = (offset: -1 | 1) => {
     if (gallery.length <= 1) return;
-    setActiveImageIndex((current) => (current + offset + gallery.length) % gallery.length);
+    selectImage((activeImageIndex + offset + gallery.length) % gallery.length);
   };
 
   if (!productId) {
@@ -214,7 +190,7 @@ export const ProductDetailScreen: React.FC = () => {
     );
   }
 
-  if (loading) {
+  if (loading && (!product || !routedMember)) {
     return (
       <div
         role="status"
@@ -225,16 +201,16 @@ export const ProductDetailScreen: React.FC = () => {
     );
   }
 
-  if (error || !product) {
+  if (error || !product || !displayProduct) {
     return (
       <div className="min-h-[60vh] bg-[#FFFDF5] p-14 text-center">
         <p role="alert" className="text-sm text-red-700">
-          {error ?? 'Không tìm thấy sản phẩm.'}
+          {error ?? 'Không tìm thấy sản phẩm hoặc sản phẩm không còn được hiển thị.'}
         </p>
         <button
           type="button"
           onClick={() => setRetry((value) => value + 1)}
-          className="mt-5 mr-3 border px-5 py-3 text-sm"
+          className="mr-3 mt-5 border px-5 py-3 text-sm"
         >
           Thử lại
         </button>
@@ -249,14 +225,30 @@ export const ProductDetailScreen: React.FC = () => {
     );
   }
 
-  const displayedPrice = selectedVariant?.effective_price ?? product.base_price;
+  const categoryName =
+    product.category &&
+    (metadata.data?.categories.find(
+      (item) => item.category_id === product.category?.category_id,
+    )?.name ??
+      product.category.name);
+  const brandName =
+    product.brand &&
+    (metadata.data?.brands.find((item) => item.brand_id === product.brand?.brand_id)?.name ??
+      product.brand.name);
   const specItems = [
-    product.brand?.name ? { label: 'Thương hiệu', value: product.brand.name } : null,
-    product.size_system?.name ? { label: 'Hệ kích cỡ', value: product.size_system.name } : null,
-    product.gender ? { label: 'Giới tính', value: product.gender } : null,
-    product.season ? { label: 'Mùa', value: product.season } : null,
-    product.style ? { label: 'Phong cách', value: product.style } : null,
+    product.sku ? { label: 'SKU', value: product.sku } : null,
+    categoryName ? { label: 'Danh mục', value: categoryName } : null,
+    brandName ? { label: 'Thương hiệu', value: brandName } : null,
+    { label: 'Trạng thái', value: product.status },
+    ...product.attribute_values
+      .filter((value) => value.attribute_code !== 'COLOR' && value.attribute_code !== 'SIZE')
+      .map((value) => ({
+        label: metadata.data?.attributes.find((attribute) => attribute.id === value.attribute_id)
+          ?.name ?? value.attribute_name,
+        value: value.label || value.value,
+      })),
   ].filter((item): item is { label: string; value: string } => item !== null);
+  const displayName = displayProduct.name ?? displayProduct.sku;
 
   return (
     <div className="w-full bg-white text-[#0B2419]">
@@ -270,16 +262,20 @@ export const ProductDetailScreen: React.FC = () => {
           </Link>
           <span aria-hidden="true">/</span>
           <Link to="/products">Sản phẩm</Link>
-          <span aria-hidden="true">/</span>
-          <Link
-            to={categoryProductsPath(product.category.category_id)}
-            className="hover:text-[#0B2419]"
-          >
-            {product.category.name}
-          </Link>
+          {detailReady && displayProduct.category && (
+            <>
+              <span aria-hidden="true">/</span>
+              <Link
+                to={categoryProductsPath(displayProduct.category.category_id)}
+                className="hover:text-[#0B2419]"
+              >
+                {categoryName ?? displayProduct.category.name}
+              </Link>
+            </>
+          )}
           <span aria-hidden="true">/</span>
           <span aria-current="page" className="min-w-0 font-semibold text-[#0B2419]">
-            {product.name}
+            {displayName}
           </span>
         </nav>
       </div>
@@ -287,38 +283,41 @@ export const ProductDetailScreen: React.FC = () => {
       <section className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-7 sm:px-8 lg:grid-cols-12 lg:gap-10 lg:px-14">
         <div className="space-y-6 lg:col-span-7 xl:col-span-8">
           <ProductGallerySection
-            product={product}
+            productName={galleryName}
             gallery={gallery}
             activeImageIndex={activeImageIndex}
-            onSelectImage={setActiveImageIndex}
+            onSelectImage={selectImage}
             onMoveImage={moveImage}
             onZoom={() => setZoomOpen(true)}
           />
-          <ProductSpecsSection items={specItems} materialCare={product.material_care} />
+          <ProductSpecsSection items={detailReady ? specItems : []} />
         </div>
-
         <ProductPurchasePanel
-          product={product}
-          selectedVariant={selectedVariant}
-          onSaleVariants={onSaleVariants}
-          sizeOptions={sizeOptions}
-          colorOptions={colorOptions}
-          selectedSizeValueId={selectedSizeValueId}
-          selectedColorId={selectedColorId}
+          product={displayProduct}
           quantity={quantity}
-          variantCanBePurchased={variantCanBePurchased}
-          displayedPrice={displayedPrice}
-          sizeAvailability={sizeAvailability}
-          colorAvailability={colorAvailability}
-          colorCompatibility={colorCompatibility}
-          colorUnavailableReason={colorUnavailableReason}
-          colorSelectionNotice={colorSelectionNotice}
-          onSelectSize={selectSize}
-          onSelectColor={selectColor}
           onQuantityChange={setQuantity}
-          onAddToCart={addCurrentVariantToCart}
-        />
+          onAddToCart={addCurrentProductToCart}
+          selectionReady={selectionReady}
+          availableQuantity={availableQuantity}
+          purchasable={purchasable}
+        >
+          {loading && !detailReady && (
+            <p role="status" className="text-xs text-[#687069]">
+              Đang cập nhật thông tin Product được chọn...
+            </p>
+          )}
+          <ProductFamilySelector
+            family={product.family}
+            currentProductId={displayProduct.product_id}
+            colorId={colorId}
+            sizeId={sizeId}
+            onSelectOption={selectFamilyOption}
+            onSelectProduct={openFamilyProduct}
+          />
+        </ProductPurchasePanel>
       </section>
+
+      <ProductLongDescription description={detailReady ? displayProduct.description : null} />
 
       {zoomOpen && (
         <StorefrontDialog
@@ -349,13 +348,16 @@ export const ProductDetailScreen: React.FC = () => {
               </button>
             </header>
             <StorefrontImage
-              src={gallery[activeImageIndex]}
-              alt={product.images[activeImageIndex]?.alt_text ?? product.name}
+              src={gallery[activeImageIndex] ?? ''}
+              alt={galleryName}
               loading="eager"
               className="max-h-[66dvh] w-full object-contain"
             />
             {gallery.length > 1 && (
-              <nav aria-label="Chuyển ảnh phóng to" className="mt-3 flex justify-between gap-3">
+              <nav
+                aria-label="Chuyển ảnh phóng to"
+                className="mt-3 flex justify-between gap-3"
+              >
                 <button
                   type="button"
                   onClick={() => moveImage(-1)}
@@ -363,7 +365,11 @@ export const ProductDetailScreen: React.FC = () => {
                 >
                   Ảnh trước
                 </button>
-                <button type="button" onClick={() => moveImage(1)} className="min-h-11 border px-4">
+                <button
+                  type="button"
+                  onClick={() => moveImage(1)}
+                  className="min-h-11 border px-4"
+                >
                   Ảnh tiếp theo
                 </button>
               </nav>
@@ -371,6 +377,7 @@ export const ProductDetailScreen: React.FC = () => {
           </div>
         </StorefrontDialog>
       )}
+
       <ProductRecommendationsSection
         recommendations={recommendations}
         loading={recommendationQuery.loading}

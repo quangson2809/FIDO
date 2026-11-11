@@ -4,12 +4,9 @@ import type {
   AdminProductDetailDto,
   AdminProductQuery,
   AdminProductSummaryDto,
-  AdminVariantDto,
   ProductCreateInput,
-  ProductCreateVariantInput,
   ProductImageOrderInput,
   ProductPatchInput,
-  VariantPatchInput,
 } from '../types';
 
 const createProduct = async (product: ProductCreateInput): Promise<AdminProductDetailDto> => {
@@ -60,6 +57,10 @@ export const adminProductService = {
     return response.data;
   },
 
+  deleteProduct(productId: number): Promise<void> {
+    return apiClient.delete<void>(`/admin/products/${productId}`);
+  },
+
   uploadImages,
 
   async reorderImages(
@@ -75,28 +76,5 @@ export const adminProductService = {
 
   async deleteImage(productId: number, imageId: number): Promise<void> {
     await apiClient.delete<void>(`/admin/products/${productId}/images/${imageId}`);
-  },
-
-  async createVariants(
-    productId: number,
-    variants: ProductCreateVariantInput[],
-  ): Promise<AdminVariantDto[]> {
-    const response = await apiClient.post<ApiResponse<AdminVariantDto[]>>(
-      `/admin/products/${productId}/variants`,
-      { variants },
-    );
-    return response.data;
-  },
-
-  async updateVariant(
-    productId: number,
-    variantId: number,
-    input: VariantPatchInput,
-  ): Promise<AdminVariantDto> {
-    const response = await apiClient.patch<ApiResponse<AdminVariantDto>>(
-      `/admin/products/${productId}/variants/${variantId}`,
-      input,
-    );
-    return response.data;
   },
 };

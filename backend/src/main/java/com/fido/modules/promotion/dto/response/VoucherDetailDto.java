@@ -1,23 +1,17 @@
 package com.fido.modules.promotion.dto.response;
 
-import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.Set;
 
+/** Admin view of the canonical vouchers row and its global quota counter. */
 public record VoucherDetailDto(
-        Long voucher_id,
+        Long id,
         String code,
         String discount_type,
-        BigDecimal discount_value,
-        BigDecimal maximum_discount,
-        BigDecimal minimum_amount,
+        Long discount_value,
+        Long minimum_order_value,
+        Long maximum_discount,
         Instant starts_at,
         Instant ends_at,
-        String scope,
-        Set<Long> product_ids,
-        Set<Long> category_ids,
-        Long global_limit,
-        Long customer_limit,
-        boolean enabled,
-        long active_usage,
-        boolean ever_used) {}
+        Integer usage_limit,
+        Integer usage_count,
+        String status) {}

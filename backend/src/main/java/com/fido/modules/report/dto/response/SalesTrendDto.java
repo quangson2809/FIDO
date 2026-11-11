@@ -2,10 +2,10 @@ package com.fido.modules.report.dto.response;
 
 import com.fido.modules.report.dto.request.ReportGranularity;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
+/** Monetary values are whole VND integers. */
 public record SalesTrendDto(
         LocalDate from,
         LocalDate to,
@@ -14,7 +14,7 @@ public record SalesTrendDto(
         List<Point> points) {
     public record Point(
             LocalDate period_start,
-            BigDecimal completed_sales,
-            BigDecimal returned_adjustment,
-            BigDecimal net_sales) {}
+            long completed_sales,
+            long returned_adjustment,
+            long net_sales) {}
 }

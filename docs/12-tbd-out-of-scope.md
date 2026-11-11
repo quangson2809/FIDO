@@ -1,121 +1,45 @@
-# 12 — TBD, Deferred Work, Hard Blockers & Explicit Exclusions
+# 12 — Remaining TBDs and Out-of-Scope Behavior
 
-This file prevents invented business behavior. It must not be used to stop implementation for ordinary technical choices.
+## 1. Remaining owner input
 
-## 1. How to use this file
+The [P1.8 operations contract](refactor-v2/p1/P1.8-operations-seed-contract.md) defines the default deletion/FK matrix, audit/content/report policy and existing system seed manifest. The following numeric retention/privacy decisions remain unresolved in the recorded P1 approval:
 
-Classify each unresolved point:
+- Numeric retention duration for audit logs.
+- Numeric retention duration for immutable order image assets.
+- Numeric retention duration for personal/business data, plus any legally required anonymization or deletion exceptions.
 
-- **HARD BLOCK** if proceeding requires inventing business behavior, public API/security semantics, persistent business meaning/schema, state/money/stock semantics or an external contract.
-- **DEFERRED FEATURE** if the source explicitly postpones the feature.
-- **TECHNICAL DECISION** if the semantics are already fixed and only implementation naming/organization remains. Technical decisions are recorded in `docs/15-technical-decisions.md` and do not block a phase.
+Until these rules are approved, do not implement scheduled purging of audit history, placed-order facts, content/business data or retained image assets. Do not improvise account anonymization, nulling audit actors or rewriting immutable snapshots to satisfy an unapproved deletion request. This does not prevent an explicitly authorized Clean Schema Reset of a verified disposable development/test database.
 
-## 2. Current hard/deferred business gaps
+## 2. Implementation contracts still requiring acceptance evidence
 
-### Guest Order lookup — HARD BLOCK for final guest-lookup security only
+- P1.6 now specifies fail-closed current-Cart resolution: zero OPEN rows yields an empty read/create-on-mutation; exactly one is current; multiple OPEN rows return CART_SELECTION_AMBIGUOUS with no mutation or merge. The approved schema still has no one-active-Cart unique constraint. P3.8 runtime enforcement and concurrency tests remain pending.
 
-`POST /api/v1/orders/lookup` is required, but token/OTP/secret, TTL, rate limit, masking and verification channel are not locked. Do not finalize a weak phone-only lookup. This does not block authenticated order APIs.
+These items are engineering acceptance gates, not open choices about the approved database model:
 
-### Voucher behavior — DEFERRED slice
+- Stable image object/version references, overwrite/delete protection and historical access for order image snapshots.
+- End-to-end integer-VND arithmetic, approved discount allocation, and consistent request/response/frontend/report representation.
+- Active-phone uniqueness and phone reuse after account soft deletion.
+- Authenticated Cart and order creation, stateless quote, order-time re-pricing, account-scoped idempotency/replay/conflict and full transaction rollback.
+- Product/Attribute Option validation, including same-Attribute ownership, one-Option-per-Attribute and the rule that metadata never creates Products.
+- Product hierarchy validation, independent parent/child sellability, row-owned SKU/price/stock and no implicit NULL inheritance.
+- Inventory source/sign/deduplication, deterministic locking, append-only reversal and atomic source/balance/ledger/audit behavior.
+- Voucher usage concurrency, Order/Payment/Shipping transition enforcement, authorization and historical snapshot stability; P1.7 defines the target contract, while P3.10 runtime evidence remains pending.
+- Explicit APIs for authoring Attribute/AttributeOption metadata must be designed and approved before implementing those write operations. The current metadata-read routes do not by themselves define such CRUD contracts.
+- P1.6 specifies the required Idempotency-Key HTTP header, Account-scoped stored key namespace, canonical SHA-256 fingerprint, replay response, changed-payload conflict and concurrent-loser behavior. P3.9 implementation/runtime acceptance remains pending.
+- P1.7 specifies the Order, Payment and ShippingInfo state/actor matrix; confirmation-time stock deduction, one-time cancellation compensation/Voucher release, immutable snapshots, manual COD collection, and one whole-order full refund only. P3.10 implementation/runtime acceptance remains pending.
+- P1.8 specifies audit actor/event/correlation/redaction/atomicity, content/report UC, the 30-table deletion lifecycle and existing role/permission seed manifest. P2.1 seed SQL, P3.0 audit-write and P3.11 audit-read/content/report runtime acceptance remain pending. DB-12 numeric retention/anonymization decisions remain blocked.
 
-Only `voucher_id` + `code` are locked. Still unresolved:
-- discount type/value;
-- effective dates;
-- minimum order;
-- product/category scope;
-- use limits;
-- stacking;
-- active/inactive lifecycle.
+## 3. Out of scope for the current target
 
-Do not add fields/tables/rules for these. Authenticated Cart and voucher-less Quote may proceed.
+Unless the owner formally amends the ERD/API scope, do not add:
 
-### Create Order dedupe — HARD BLOCK for retry guarantee only
+- Guest sessions, anonymous Cart persistence, guest checkout, guest order lookup or guest-Cart merge.
+- Online payment gateways, partial refunds, multiple refunds per Order, automated carrier integrations/tracking events, or generic post-create command-id persistence.
+- A detailed item-level return/exchange workflow, persisted return inspection/quantities, or separate return/refund event persistence. Order status alone cannot establish return sellability or trigger restocking.
+- Automatic creation of saleable Product rows from attribute combinations.
+- Persisted checkout quotes, stock reservations, voucher Product/Category targeting, or a per-account voucher usage ledger.
+- New event/timeline tables, content revision tables, report snapshots, audit-retention columns, or other tables absent from the approved 30-table ERD.
 
-API #20 remains baseline, but request-token/dedupe behavior for retry/double-click is physical/application design TBD. Do not add a schema field merely because it is common. Other Order creation/state logic may proceed; do not claim retry-safe create until this is resolved.
+## 4. Clean Schema Reset boundary
 
-### Guest cart — DEFERRED slice
-
-Logical Cart permits nullable account. Guest session key, TTL, persistence and login merge are not locked. Authenticated Cart may proceed.
-
-### Exchange-size automation — DEFERRED slice
-
-The baseline confirms in-store size exchange as a business scenario, but the implementation semantics remain unresolved:
-- target Variant selection/movement;
-- whether and when the old Variant returns to sellable stock;
-- price differences;
-- partial-line/partial-order exchange;
-- resulting OrderStatus/payment effects.
-
-API #26 accepts the operation name at the contract boundary, but the current implementation returns HTTP 501 for `EXCHANGE_SIZE` rather than inventing stock/payment/state behavior. The source-ready `RETURN` outcome remains implemented without automatic restock or automatic refund.
-
-### Employee permission matrix — DEFERRED assignment policy
-
-The exact mapping of employee roles/groups to business capabilities is not locked. Do not auto-grant operation permissions to ADMIN or other employee roles.
-
-This does **not** prohibit defining technical capability identifiers required by code. The current technical decision uses capability codes such as `CATALOG_READ` / `CATALOG_WRITE`; role assignment remains configuration/business policy.
-
-## 3. Technical points that are NOT blockers
-
-Do not block implementation solely because of:
-
-- Java class/method/repository method names;
-- mapper/private-helper structure;
-- query implementation choice;
-- exception class naming;
-- package decomposition inside an approved module;
-- technical enum literal names when source semantics are fixed;
-- capability/permission code names when authorization semantics are fixed.
-
-Example: Catalog source fixes the distinction between “đang bán”, “ngừng bán” and “hết tồn” but not the literal enum names. `ON_SALE` / `STOPPED` are therefore a technical encoding, not a new business rule.
-
-## 4. Phase later / not a separate baseline resource
-
-- Notification API/table/provider/template/event/retry/retention.
-- Detailed Size Guide content/measurement storage.
-- Order status timeline table/API.
-- Structured/item-level AfterSales case/resource/workflow.
-- GoodsReceipt `unit_cost`/cost-price extension.
-- Content draft/publish/version lifecycle.
-- Report materialized/aggregate tables without performance evidence.
-
-## 5. APIs explicitly invalid for current baseline
-
-Do not implement:
-- `POST /api/v1/admin/staff-accounts/{accountId}/disable`;
-- `POST /api/v1/admin/vouchers/{voucherId}/disable`;
-- shipping carrier tracking/reference endpoint;
-- `/api/v1/admin/shipping/options`;
-- generic `/api/v1/admin/business-configuration`;
-- `POST /api/v1/admin/content-pages/{pageId}/publish`.
-
-## 6. Product scope exclusions
-
-- online payment/payment gateway/bank callback;
-- marketplace/multi-vendor;
-- multiple warehouses/WMS/transfers;
-- Purchase Order/purchase approval;
-- automatic carrier tracking API;
-- online customer return request/pickup/automatic refund;
-- complex loyalty/recommendation AI;
-- ERP/WMS/POS/native mobile integration unless separately required.
-
-## 7. Metrics/operations still TBD
-
-Do not invent numeric targets for:
-- SLA/response time/load;
-- RPO/RTO;
-- product/SKU scale;
-- retention periods;
-- exact supported browser list.
-
-
-## 8. Phase 7 report decision — resolved 2026-09-28
-
-The user resolved API #71 / FR-30 / BRULE-13: include shipping in received sales, subtract the returned order value in its original completion period, count current statuses by order creation date, and use Asia/Ho_Chi_Minh dates. See docs/15 for formulas and boundaries. This is no longer a Phase 7 blocker. Existing guest/voucher/dedupe and other earlier-phase deferred items remain unchanged.
-
-### Voucher V1 override (2026-10-09)
-
-The approved policy recorded in `15-technical-decisions.md` resolves discount,
-time window, eligible merchandise minimum, product/category scope, usage limits,
-non-stacking, enable/disable and cancellation/return semantics for Voucher V1.
-Personal wallets/allocation and variant-specific promotions remain out of scope.
+Recreate and reseed only a specifically identified disposable local/development/test database. Verify host, database name and environment before any destructive action. Never apply the reset to production, staging, shared integration or a database containing real/persistent data. No database reset is implied or performed by this document.

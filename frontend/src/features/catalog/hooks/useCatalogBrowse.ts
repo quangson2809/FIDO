@@ -15,11 +15,8 @@ import {
 const toFilters = (query: CatalogProductQuery): CatalogFilters => ({
   category_id: query.category_id,
   brand_id: query.brand_id,
-  size_value_id: query.size_value_id,
-  color_id: query.color_id,
-  gender: query.gender,
-  season: query.season,
-  style: query.style,
+  min_price: query.min_price,
+  max_price: query.max_price,
 });
 
 export const useCatalogBrowse = (meta: CatalogMetaDto | null, categoryId?: number) => {
@@ -66,7 +63,7 @@ export const useCatalogBrowse = (meta: CatalogMetaDto | null, categoryId?: numbe
   const applyFilters = (): boolean => {
     const validPrice = (value: string) =>
       !value.trim() ||
-      (/^\d+(?:\.\d{1,2})?$/.test(value.trim()) && Number(value) <= Number.MAX_SAFE_INTEGER);
+      (/^\d+$/.test(value.trim()) && Number.isSafeInteger(Number(value)));
     if (
       !validPrice(draft.min) ||
       !validPrice(draft.max) ||

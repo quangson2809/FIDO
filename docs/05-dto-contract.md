@@ -1,225 +1,122 @@
-# 05 — JWT, JSON, DTO & Request/Response Contract
+# 05 — Target JSON, DTO and Request/Response Contract
+
+## 1. General rules
+
+- JSON properties use `snake_case`; controller DTOs are explicit and are not serialized JPA entities.
+- The standard response is `{ "data": ... }`. Paged lists also include `meta: { page, page_size, total, total_pages }`.
+- Authenticated actor/account scope comes from the access token. Never accept `account_id`, actor IDs, prices, totals, stock values or workflow state as authoritative client input.
+- All monetary values are whole VND integers from request through response. Do not emit JSON floating-point money.
+- A nullable field may be cleared only when the specific request contract explicitly allows it. Omitted and explicit null are not interchangeable by default.
+
+### Money and Voucher DTO rules
+
+- Every monetary JSON value is a whole-VND integer; no JSON float/decimal money. `unit_price`, line/order/payment totals, shipping and applied discount are VND. `discount_value`/`discount_value_snapshot` are VND for FIXED but basis points for PERCENT (100 bps=1%).
+- `CheckoutQuoteDto` and Order responses use the same subtotal/discount/shipping/total formulas and P1.5 HALF_UP plus largest-remainder allocation; the quote is not persisted and cannot mutate quota.
+- `VoucherDto` exposes `id, code, discount_type, discount_value, minimum_order_value, maximum_discount, starts_at, ends_at, usage_limit, usage_count, status` only to authorized admin reads. `usage_count` is read-only; do not expose per-account usage history. Dates are ISO-8601 instants normalized to UTC.
+- Create Voucher starts `status=DRAFT`, `usage_count=0`; clients cannot set `id` or `usage_count`. Patch may not lower `usage_limit` below current `usage_count`; EXPIRED is terminal. Historical Order snapshots do not change after Voucher edits.
 
-## 1. JWT minimum
+## 2. Account, Address and RBAC DTOs
+
+### Response DTOs
+
+- `AccountDto`: `id, full_name, phone, email, status`. Never expose `password_hash`, credential material, JWTs or secret configuration.
+- `AuthResponseDto`: `access_token, account: AccountDto`; returned after successful registration/login only when Account status is `ACTIVE`. Registration creates `ACTIVE` and returns this DTO without phone/email verification.
+- `AddressDto`: `id, recipient_name, recipient_phone, province, district, ward, address_line, is_default`. It describes a saved Address, not the immutable `ORDER_ADDRESSES` snapshot.
+- `RoleDto`: `id, code, name, description, status`; status values are `ACTIVE|INACTIVE`.
+- `PermissionDto`: `id, code, name, description`; the target Permission entity has no status field.
+- `RolePermissionDto`: `role_id, permission_id`; both IDs identify an existing grant relation, not a caller-supplied actor identity.
+- `MeDto`: `account, addresses[], roles[], permissions[]`. Roles/permissions are effective grants resolved for the authenticated principal; never use this payload as the source for authorizing a mutation.
+- `AccessControlDto`: `roles[], permissions[]`, matching the current target API mapping; it currently describes the role and permission catalogues but does not describe the `ROLE_PERMISSIONS` links for each role.
+- `RoleDetailDto`: `role, permissions[]`; returned from `GET /admin/roles/{roleId}` and relevant role create/patch operations. This read route allows the client to inspect current grants before editing.
+- `StaffAccountSummaryDto`: `account, roles[]`; `StaffAccountDetailDto`: `account, roles[], permissions[]`. Neither DTO contains password/hash, bootstrap secret or credential issuance data.
+- `MutationResultDto` for a successful delete: `id, deleted`; errors preserve the existing global error envelope.
+
+### Request DTOs
+
+- `RegisterRequest`: required fields are `phone` (max 20), `full_name` (max 150), and `password` (8–128 characters, do not trim); `email` optional (max 254). Normalize Vietnamese phone input before lookup/uniqueness: accept `0` + 9 digits or `+84` + 9 digits, allowing whitespace and `-()` separators; canonical stored form is `+84` + 9 digits. Registration creates `ACTIVE`, assigns the seeded `CUSTOMER` Role server-side in the same transaction, and returns `AuthResponseDto`; never accept `id`, `status`, `account_id`, `role_ids` or `password_hash` from the request.
+- `LoginRequest`: `phone, password`. Phone is the login identifier; canonicalize it by the same rule as registration before account lookup. Wrong credentials return generic `401 INVALID_CREDENTIALS`; valid credentials for any non-ACTIVE Account return `403 ACCOUNT_NOT_ACTIVE` without a token or disclosure of the exact state.
+- `ProfilePatchRequest`: target profile fields are `full_name?` and `email?`; `phone`, `status`, `id`, `role_ids`, timestamps and password/hash are excluded. Omitted fields retain the current value; explicit `null` is rejected for both fields because this endpoint does not explicitly allow clearing them. This follows the general DTO rule in §1; non-null `full_name` is required by the target schema.
+- `AddressCreateRequest`: `recipient_name, recipient_phone, province, district, ward, address_line, is_default?`. Required strings must be nonblank and fit bounds: recipient name 150, phone 20, province/district/ward 120 each, address line 500. `account_id`, IDs and timestamps are server/database-owned. If this is the first saved address, it becomes default automatically; explicit `true` switches default atomically.
+- `AddressPatchRequest`: partial form of `AddressCreateRequest`, excluding `account_id`, ID and timestamps. Omitted fields mean no requested change; explicit null is rejected for target non-null fields. At most one default is allowed; where at least one saved address remains, exactly one is default. Switch/unset/delete operations promote the most recently updated remaining address atomically; tie-break by descending ID.
+- `RoleCreateRequest`: `code, name, description?`; code is required/unique (max 80), name required (max 150), description optional (max 500).
+- `RolePatchRequest`: `name?, description?, status?, permission_ids?`. Omitted fields retain current values; `description: null` clears description; null for `name`/`status`/`permission_ids` is rejected. `permission_ids` omitted means retain grants, `[]` clears all grants, and a non-empty array replaces the full set atomically. Reject duplicate/missing IDs. For `SUPERADMIN`, an explicit set must equal the complete Permission catalogue and its status stays ACTIVE; each new Permission is granted to SUPERADMIN atomically. Role `code` is immutable after create.
+- `PermissionCreateRequest`: `code, name, description?`; code required/unique (max 120), name required (max 200), description optional (max 500).
+- `PermissionPatchRequest`: editable fields are `name?` and `description?`; Permission `code` is immutable after creation. Omitted fields retain values; `description: null` clears description; `name: null` is rejected.
+- `StaffAccountCreateRequest`: `phone, full_name, email?, password, role_ids[]`. Password is 8–128 characters and is not trimmed. SUPERADMIN sets the initial password; the server hashes it immediately and creates the Account as `ACTIVE`. Validate role IDs; commit Account, grants and audit atomically. Never return/log/audit plaintext password or hash.
+- `StaffAccountPatchRequest` may update approved profile/status fields and `role_ids?`; omitted roles retain assignments and a provided role ID list replaces assignments atomically. Account status is server-managed; no request may assign actor identity or change the authenticated principal's scope.
+
+## 3. Product/catalog DTOs
+
+- `ProductDto` / `AdminProductDto`: Product `id`, `parent_product_id`, `category_id`, `brand_id`, `name`, `slug`, `sku`, `description`, `selling_price`, `status`, and the fields permitted for the caller. Cost information is restricted to authorized administration.
+- `ProductSummaryDto`: Product identity/name, primary image, category/brand projection, selling price and status required for a list card.
+- `ProductDetailDto`: row-owned Product detail, description, gallery and descriptive Option values, plus `family: {root_product_id, members[]}`. Members contain their own Product ID, parent ID, SKU/name, selling price/status, ordered images, Option-only values, `available_quantity: number` and `purchasable: boolean`; only ACTIVE non-deleted Products are included. Stock is read in a single batch from the one operational warehouse by Product ID (missing balance = 0), not persisted in Product or inherited from a parent. Switching COLOR/SIZE resolves an existing Product ID, never an inferred SKU/variant. FE derives its `ProductSelectionMetadata` from the family without another backend route. If a child has no images, FE may show public-root images as an explicitly labeled UI-only fallback. Long Product descriptions may contain formatted HTML stored in the existing `products.description TEXT`; the UI must render only allowlisted tags/secure image links and discard scripts, inline styles and event handlers.
+- `ProductImageDto`: `id, image_url, is_primary, sort_order`. `image_url` must identify stable/immutable object-version content when used for an Order snapshot; do not rely on a mutable overwriteable URL.
+- Product image upload accepts multipart image files under the owning Product ID. Reorder accepts `images[]` entries `image_id, sort_order`; reject IDs belonging to another Product, duplicate positions, gaps or invalid positions. Image removal detaches it from the current gallery but must preserve content/version references required by placed Orders.
+- `AttributeDto`: `id, code, name, is_required, is_variant_defining, sort_order, options[]`.
+- `AttributeOptionDto`: `id, attribute_id, value, label, sort_order`.
+- `ProductAttributeValueDto`: `attribute_id, attribute_code, attribute_name, attribute_value_id, value, label`. Product create/update requests send `attribute_value_ids[]`; Backend resolves each Option and its owning Attribute. An Option must belong to the Attribute, and only one Option may be selected per Attribute. `is_variant_defining` is informational only; attribute values never create Products.
+
+A Product is the catalog sale unit. A child Product has a normal Product ID and independently owns SKU, required selling price and inventory. Do not encode a Product option-combination ID as a saleable item ID.
+
+## 4. Cart and checkout DTOs
+
+- `CartItemDto`: `id, product_id, quantity` plus server-derived Product display, current unit price, line total and advisory availability fields where required. Product ID is the sole sale-unit identity; there are no variant fields.
+- `CartDto`: `id: bigint | null, items[], subtotal`. With no OPEN Cart return `id=null, items=[], subtotal=0` without writing. More than one OPEN Cart returns `409 CART_SELECTION_AMBIGUOUS` and does not select/merge rows. Subtotal is computed by the server.
+- `AddCartItemRequest`: `product_id, quantity`; positive SQL INT quantity is added to an existing same-Product line or inserted when absent. `UpdateCartItemQuantityRequest`: `quantity`; positive SQL INT replaces the line quantity exactly. Combined quantity may not exceed 2,147,483,647. Return the resulting CartDto after mutation.
+- `CheckoutQuoteRequest` and `OrderCreateRequest`: `recipient_name, recipient_phone, province, district, ward, address_line, voucher_code?`. Recipient/address fields are required and follow target Data Dictionary limits. Omitted/null voucher_code means no Voucher; supplied codes follow P1.5 normalization. Neither request accepts account/cart IDs, line items, prices, discounts, shipping fee, totals or `quote_id`.
+- `CheckoutQuoteDto`: current item calculations, `subtotal`, order `discount_amount`, `shipping_fee`, `total_amount`, per-line allocated `discount_amount` and `line_total`, plus applicable Voucher summary. Monetary fields are integer VND and reconcile under P1.5. It has **no** `quote_id`, persisted record or stock/quota side effect.
+- Quote is advisory only. Order creation re-reads and revalidates all Product, stock, Voucher and shipping inputs. See [P1.6 Cart and Checkout Contract](refactor-v2/p1/P1.6-cart-checkout-contract.md).
+
+## 5. Order, voucher, Payment and shipping DTOs
+
+- `OrderSummaryDto`: `id, order_number, status, total_amount, currency, placed_at`.
+- `OrderItemDto`: `id, product_id, sku_snapshot, product_name_snapshot, attribute_snapshot, image_url_snapshot, quantity, unit_price, discount_amount, line_total`. `discount_amount` is the allocated whole-VND share of the order Voucher; `line_total = unit_price*quantity - discount_amount`.
+- `OrderAddressDto`: `recipient_name, recipient_phone, province, district, ward, address_line`.
+- `OrderVoucherSnapshotDto`: order-time voucher code, discount type/value and allocated discount facts.
+- `OrderDetailDto`: order identity/current state, immutable items/address/voucher snapshots, integer-VND totals, COD Payment, manual ShippingInfo and server-permitted actions. The allowed actions and transition preconditions come from [P1.7](refactor-v2/p1/P1.7-order-payment-contract.md), not from a client-writable status field.
+- `PaymentDto`: `method, payment_status, amount, currency, collected_by_account_id, collected_at, refund_amount, refunded_by_account_id, refunded_at, refund_reason`, with actor/time fields returned only to authorized users. COD collection is atomic with `SHIPPING → COMPLETED`; a full refund is a manually attested offline COD action combined with `COMPLETED → RETURNED`. One Payment/one full refund maximum; never accept client amount or actor/time.
+- `ShippingInfoDto`: `shipping_status`, recipient/carrier/tracking fields present in the approved target schema and available lifecycle timestamps. The v1 operational workflow is manual shipping; current fields are not an attempt-event timeline. State transitions follow [P1.7](refactor-v2/p1/P1.7-order-payment-contract.md).
+- `VoucherDto`: `id, code, discount_type, discount_value, minimum_order_value, maximum_discount, starts_at, ends_at, usage_limit, usage_count, status`, only for authorized admin reads. FIXED `discount_value` is VND; PERCENT is basis points. `usage_count` is server-owned and no per-account usage ledger exists.
+- `VoucherCreateRequest`: `code, discount_type, discount_value, minimum_order_value?, maximum_discount?, starts_at?, ends_at?, usage_limit?`; status begins DRAFT and usage_count begins zero.
+- `VoucherPatchRequest`: patch only allowed configuration/status fields; never accepts `usage_count`, IDs, actor or audit timestamps.
+- `POST /api/v1/orders` requires the `Idempotency-Key` HTTP header (1–128 ASCII characters matching `[A-Za-z0-9._~-]+`). The key is not in the JSON body. Response/replay status, canonical request fingerprint, Account namespace and conflict behavior are normative in [P1.6](refactor-v2/p1/P1.6-cart-checkout-contract.md). Client-computed monetary values are not authoritative.
+
+The target Order stores Product ID and order-time snapshots. Reading an existing Order must not resolve name, SKU, attributes or image content from mutable current catalog fields. `ORDER_ADDRESSES` is immutable after placement; the target does not expose recipient-snapshot PATCH. P1.7 limits `COMPLETED → RETURNED` to one full COD refund and explicitly excludes per-line return quantities/history.
+
+## 6. Procurement and inventory DTOs
+
+- `SupplierDto`: target Supplier identity/code/contact/status fields.
+- `GoodsReceiptItemDto`: `product_id, quantity_received, unit_cost` (unit cost is integer VND).
+- `GoodsReceiptDto`: receipt identity/number/status, Supplier, server-resolved warehouse, items and audit-relevant actor/timestamps.
+- `InventoryRowDto`: `warehouse_id, product_id, quantity_on_hand, version` plus Product display fields required by the authorized UI.
+- `InventoryTransactionDto`: `id, warehouse_id, product_id, transaction_type, quantity_delta, goods_receipt_item_id, order_item_id, idempotency_key, reason_code, reverses_transaction_id, created_by, created_at`.
+
+Inventory quantities and ledger movements are Product-based. Every adjustment has a non-zero signed delta, authenticated actor and reason code. Ledger entries are append-only.
+
+## 7. Audit, report and content DTOs
+
+- `AuditLogDto`: target fields `id, actor_account_id, action, entity_type, entity_id, before_data, after_data, correlation_id, created_at`. Apply P1.8 allowlist/redaction recursively before serialization; never expose credentials, tokens, signed URLs, raw payloads or unnecessary PII. Audit query permission/filter/order behavior is normative in [P1.8](refactor-v2/p1/P1.8-operations-seed-contract.md).
+- `ReportOverviewDto`: `from, to, completed_sales, returned_adjustment, net_sales, orders_by_status`; currency values are integer VND. Inclusive business-date bounds, source data, date basis, timezone and zero-fill behavior follow [P1.8](refactor-v2/p1/P1.8-operations-seed-contract.md); formulas and Order/Payment semantics remain P1.5/P1.7 owned.
+- `SalesTrendDto`: `from, to, granularity, timezone, points[]`; each point contains `period_start, completed_sales, returned_adjustment, net_sales`, with monetary values in integer VND.
+- `OrdersTrendDto`: `from, to, granularity, timezone, points[]`; each point contains `period_start, total_orders, orders_by_status`, including every approved Order status with zero-fill for empty buckets.
+- `ProductPerformanceDto`: `from, to, limit, items[]`; each item contains `product_id, product_name, thumbnail, completed_units, returned_units, net_units`. Use Product IDs, deterministic ranking/ties and a bounded limit (1–100; default 10).
+- `ContentPageDto` (admin): `id, slug, title, content, status, updated_by, updated_at`. Admin response requires the corresponding `CONTENT_READ`/`CONTENT_WRITE` action permission. Public `GET /content-pages/{slug}` uses `PublishedContentPageDto(slug, title, content)` for `PUBLISHED` pages only; it must not expose `updated_by` or other admin metadata. Content lifecycle, slug rules and sanitized rendering are specified by [P1.8](refactor-v2/p1/P1.8-operations-seed-contract.md).
+- Customer DTOs summarize only real Accounts, addresses and associated Orders.
 
-- Public: `/api/v1/auth/register`, `/api/v1/auth/login`, `/api/v1/catalog/**`, `/api/v1/content-pages/**`.
-- Authenticated: `/api/v1/me/**`, `/api/v1/admin/**` with `Authorization: Bearer <access_token>`.
-- Minimum token claims: `sub = account_id`, `iat`, `exp`.
-- Business actor for authenticated commands is server-derived from `JWT.sub`.
-- Do not add a refresh endpoint: baseline only locks access-token login.
+## 8. Validation and conflicts
 
-## 2. API envelopes
+Reject invalid option-only Attribute values, cross-Attribute options, duplicate active phone, duplicate Product SKU, invalid Product hierarchy, non-positive Cart/receipt quantities, insufficient stock, invalid voucher use and forbidden state transitions. Use stable typed errors for authorization, validation, stock conflicts and idempotency conflicts.
 
-```json
-{ "data": {} }
-```
+For order-creation idempotency, require the `Idempotency-Key` HTTP header on `POST /api/v1/orders`; scope the stored key to the authenticated account and fingerprint the canonical semantic payload with SHA-256. Same key/same payload replays; same key/different payload conflicts; another account cannot read the result. P1.6 is normative for transport/replay details. Post-create transition retries are guarded by locked state preconditions and source-deduplicated Inventory effects; they do not imply a new command-id table.
 
-List:
+This is the target DTO contract. Any old response shape not represented here must be deliberately retired or remapped; it must not be kept as a parallel persistence contract.
 
-```json
-{
-  "data": [],
-  "meta": {
-    "page": 1,
-    "page_size": 20,
-    "total": 0,
-    "total_pages": 0
-  }
-}
-```
 
-Pagination defaults: page 1, page_size 20, maximum 100.
+## P1.3 target DTO validation and ownership
 
-Type convention: ID `int64`; quantity integer; money decimal; date `YYYY-MM-DD`; timestamp ISO-8601.
-
-PATCH: omitted field means unchanged. `null` may clear a field only where the field is nullable and the specific API permits it.
-
-## 3. Server-derived fields
-
-Never trust/accept these from clients unless a source explicitly makes them configurable input:
-
-- generated IDs/codes;
-- password hash;
-- actor account ID;
-- timestamps;
-- workflow state transitions;
-- cart subtotal;
-- checkout/order subtotal, discount, shipping fee and total;
-- effective price;
-- availability.
-
-## 4. Core DTO inventory
-
-### account/RBAC
-
-`PaginationMeta(page,page_size,total,total_pages)`
-
-`AccountDto(account_id,phone?,email?,created_at,updated_at)`
-
-`AddressDto(address_id,address_text,created_at)`
-
-`RoleDto(role_id,code,name,description?)`
-
-`PermissionDto(permission_id,code,name)`
-
-`RoleDetailDto(role_id,code,name,description?,permissions[])`
-
-`MeDto(account,addresses[],roles[],permissions[])`
-
-`StaffAccountSummaryDto(account,roles[])`
-
-`StaffAccountDetailDto(account,roles[],permissions[])`
-
-`AccessControlDto(roles[],permissions[])`
-
-### product/catalog
-
-`CategoryDto(category_id,parent_category_id?,name)`
-
-`BrandDto(brand_id,name)`
-
-`SizeValueDto(size_value_id,size_system_id,code,display_name,sort_order)`
-
-`SizeSystemDto(size_system_id,code,name,size_values[])`
-
-`ColorDto(color_id,code,name)`
-
-`ProductImageDto(image_id,image_url,alt_text?,sort_order)`
-
-`ProductImageInput(image_url,alt_text?,sort_order)` — used by Product PATCH image replacement only; `sort_order` is required.
-
-`ProductVariantDto(variant_id,size,color,sku?,effective_price,sale_status,available_quantity)`
-
-`ProductSummaryDto(product_id,name,thumbnail?,category,brand?,base_price,sale_status,material_care?,sizes[])`
-
-`ProductDetailDto(product_id,name,description?,category,brand?,size_system,gender?,season?,style?,material_care?,base_price,sale_status,images[],variants[])`
-
-`AdminProductSummaryDto(product_id,name,thumbnail?,category_id,brand_id?,size_system_id,base_price,sale_status,created_at,updated_at)`
-
-API #11 addendum (2026-10-10): `material_care` is the managed Product field verbatim,
-including care instructions; it is not a separate extracted material name. `sizes` contains
-unique SizeValueDto values from ON_SALE variants, ordered by `sort_order`, then `size_value_id`.
-It covers all selling variants of each returned Product, independently of filter matches and stock.
-The page query already restricts Products to ON_SALE with an ON_SALE variant. Empty lists remain
-arrays. Existing `base_price` and detail effective-price semantics remain unchanged.
-
-`AdminVariantDto(variant_id,product_id,size_value_id,color_id,sku?,override_price?,sale_status,available_quantity,created_at,updated_at)`
-
-`CatalogMetaDto(categories[],brands[],size_systems[],colors[],genders[],seasons[],styles[])`; last three are derived from managed catalog values.
-
-<<<<<<< HEAD
-### cart/checkout/order
-
-`CartItemDto(cart_item_id,variant_id,quantity,product_name,size,color,unit_price,line_total,available_quantity)`
-=======
-The nullable Product summary `thumbnail` is live presentation data resolved from the ProductImage at `sort_order = 0`. A Product with no image returns `thumbnail = null`. Detail `images[]` remains the complete image collection ordered by `sort_order`.
-
-### cart/checkout/order
-
-`CartItemDto(cart_item_id,variant_id,quantity,product_name,image_url?,thumbnail?,size,color,unit_price,line_total,available_quantity)`
->>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
-
-`CartDto(cart_id?,account_id?,items[],subtotal,created_at?,updated_at?)` — for an authenticated account without a persisted cart, return the same fields with null cart ID/timestamps, an empty item list and zero subtotal; GET does not create a cart.
-
-`VoucherDto(voucher_id,code)` — do not add rule fields.
-
-`CheckoutQuoteDto(items[],subtotal,discount,shipping_fee,total,voucher?)`
-
-`RecipientDto(phone,email?,address)`
-
-`OrderItemDto(order_item_id,variant_id,product_name,sku?,size,color,unit_price,quantity,line_total)`
-
-`PaymentPublicDto(payment_status,amount_due,amount_received,amount_refunded)`
-
-`PaymentAdminDto` adds collection/refund actor/time.
-
-`ShippingInfoDto(delivery_mode,carrier_name?)`
-
-`OrderSummaryDto(order_id,order_code,order_status,payment_status,image_url?,total,created_at,completed_at?,returned_at?)`
-
-`OrderConfirmationDto(order_id,order_code,PENDING,payment,subtotal,discount,shipping_fee,total,recipient,created_at)`
-
-`OrderCustomerDetailDto`: recipient + items + money + payment + shipping + lifecycle timestamps.
-
-`OrderAdminDetailDto`: customer/voucher references, service note, cancel reason, admin payment and `allowed_actions` derived from state + permission.
-
-<<<<<<< HEAD
-=======
-Cart image fields are live catalog presentation data resolved from the Product cover at read/recalculation time; Cart does not persist an image snapshot. Order image fields are historical: `OrderItemDto.image_url` comes from `order_items.image_url_snapshot`, and `OrderSummaryDto.image_url` comes from the first OrderItem snapshot by smallest `order_item_id`. Historical Order reads must not query the current Product gallery. Existing null OrderItem snapshots remain null rather than being backfilled from current catalog state.
-
->>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
-### inventory/audit/report/content
-
-`SupplierDto`, `GoodsReceiptItemDto`, `GoodsReceiptSummaryDto`, `GoodsReceiptDetailDto`, `InventoryRowDto`, `InventoryTransactionDto`, `AuditLogDto`, `ReportOverviewDto`, `PublicContentPageDto`, `ContentPageDto`, `CustomerSummaryDto`, `CustomerDetailDto` follow the fields in Analyst API Appendix A; do not expose persistence-only secrets.
-
-## 5. High-risk request contracts
-
-### Register
-
-`phone?`, `email?`, `password` required. Login identifier/uniqueness/verification policy is still physical-design TBD. Never accept `role` or `account_id` from public registration.
-
-### Login
-
-`identifier`, `password` -> access token + AccountDto. Do not infer whether identifier is phone/email/both until physical design/repo configuration locks it.
-
-### Add/update cart item
-
-`variant_id`, `quantity > 0`; quantity zero is not delete.
-
-### Checkout quote/create Order
-
-Receiver phone/address required, email optional, voucher code optional. Server owns all totals/state/snapshots.
-
-### Product create — Phase 10 breaking contract
-
-<<<<<<< HEAD
-Required: category, SizeSystem, name, base price, sale status. Optional fields follow schema. Nested image/variant collections are allowed by API contract. Validate leaf Category, SizeSystem/SizeValue match and variant uniqueness.
-=======
-Required: category, SizeSystem, name, base price, sale status. Optional Product metadata and nested variants follow schema. Validate leaf Category, SizeSystem/SizeValue match and variant uniqueness.
-
-`POST /api/v1/admin/products` is JSON-only and does **not** accept an image collection or multipart files. The old JSON `images[]` and multipart create representations are intentionally removed. Clients must create Product first and then call the dedicated binary image upload command.
-
-### Product binary image upload
-
-`POST /api/v1/admin/products/{productId}/images` consumes `multipart/form-data` with one or more repeated `images` file parts. The backend validates all files, uploads them through the Product-owned storage gateway and appends the returned direct URLs to `product_images`. Server assigns contiguous `sort_order` values after the current collection. The first image of an image-less Product receives `sort_order = 0` and is the live cover.
-
-### Product PATCH image replacement
-
-`PATCH /api/v1/admin/products/{productId}` may contain `images: ProductImageInput[]`:
-
-- field omitted -> preserve current collection;
-- field present -> replace the entire collection;
-- `images: []` -> remove all Product images;
-- every item requires `image_url` and `sort_order`; `alt_text` is optional/nullable;
-- `sort_order` must be unique, non-negative and contiguous `0..n-1`; `0` is the cover.
-
-This URL-based replacement command is a distinct catalog editing use case from binary upload; it is not a compatibility path for Product creation.
-
-Provider credentials are backend-only. Provider-side remote deletion/compensation remains unsupported unless the provider exposes a verified machine-to-machine delete contract.
->>>>>>> fa78b77c4f9ff77546b2e352c6671bb30402c1d7
-
-### Inventory adjustment
-
-`variant_id`, non-zero `quantity_delta`, non-empty `reason`; server derives adjustment direction and actor.
-
-## 6. Error contract warning
-
-Analyst Docs require understandable business errors with no technical leakage, but do not lock a specific JSON error envelope/status-code matrix. Implement centralized exception handling according to the existing repository contract; do not invent a public error schema and declare it baseline without an explicit decision.
-
-## 7. Phase 7 Appendix A details
-
-Transcribed field contracts from the current consolidated API (checked 2026-09-27):
-
-| API | DTO | Fields |
-|---|---|---|
-| #70 | AuditLogDto | audit_id, actor_account_id, action, target_type, target_id (string), description?, created_at |
-| #72 | PublicContentPageDto | page_code, title, content, updated_at |
-| #73–75 | ContentPageDto | page_id, page_code, title, content, updated_by_account_id, updated_at |
-| #76 | CustomerSummaryDto | account_id, phone?, email?, order_count, last_order_at? |
-| #77 | CustomerDetailDto | account: AccountDto, addresses: AddressDto[], orders: OrderSummaryDto[] |
-
-#70 filters: actor_account_id, action, target_type, target_id, from, to, page, page_size. #76 filters: q, page, page_size. Both return data plus PaginationMeta.
-
-#73 specifically returns the full small content-page list as `{data: ContentPageDto[]}` without paging parameters. #74 requires page_code/title/content. #75 accepts only optional title/content, neither nullable; page_code stays stable. Public content never includes the internal page ID or actor ID.
-
-#71 requires from/to dates and returns ReportOverviewDto: from, to, completed_sales, returned_adjustment, net_sales and orders_by_status. The user-approved formulas, Vietnam timezone and completion/creation date bases are documented in docs/15 (2026-09-28). orders_by_status maps all eight baseline status codes to integer counts.
+- A Product is one sale-unit record identified by id. Parent and child records each expose their own sku, required integer-VND selling_price, status and stock relationship. A child is created by setting parent_product_id; no variants[], variant_id or option-combination identity is part of the target DTO.
+- category_id, brand_id, name, slug and description follow target nullability and never inherit from the parent. PATCH omission retains the current value; explicit null clears only a nullable target field. For `attribute_value_ids`, omission retains the set and a supplied array replaces the complete set.
+- ProductAttributeValueDto exposes the Attribute and selected Option (`attribute_value_id`, `value`, `label`). Product create/update accepts only `attribute_value_ids[]`; Backend derives the owning Attribute, rejects unknown IDs, duplicate IDs and multiple Option selections for one Attribute, and enforces required values before activation. Values never generate Products.
+- AttributeDto exposes id, code, name, is_required, is_variant_defining, sort_order and options[]. AttributeOptionDto exposes id, attribute_id, value, label and sort_order. Attribute code and Option machine value are immutable under the target write contract; display label/order may change.
+- ProductImageDto exposes id, image_url, is_primary and sort_order. A non-empty gallery has exactly one primary image at sort_order zero; writes atomically renumber the full gallery. Order snapshots never resolve through mutable current gallery state.
+- Exact routes, typed filter operators, errors and evidence are owned by [P1.3 Catalog Metadata Contract](refactor-v2/p1/P1.3-catalog-metadata-contract.md). This is target documentation, not a claim that current runtime DTOs conform.

@@ -1,6 +1,5 @@
 package com.fido.modules.order.dto.response;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record OrderSummaryDto(
@@ -9,7 +8,7 @@ public record OrderSummaryDto(
         String order_status,
         String payment_status,
         String image_url,
-        BigDecimal total,
+        Long total,
         LocalDateTime created_at,
         LocalDateTime completed_at,
         LocalDateTime returned_at) {}

@@ -1,50 +1,43 @@
-# 00 — Source of Truth & Conflict Resolution
+# FIDO — Source of Truth
 
-## 1. Purpose
+## 1. Authority order
 
-Codex must distinguish **locked business requirements** from **implementation choices** and **TBD**. This document defines which Analyst source wins when files overlap.
+The [ERD v2 reconstruction index](refactor-v2/README.md) organizes target assets, P0 evidence and the ordered P1.1–P1.9 package. Archived reports are evidence only; they do not outrank current contracts.
 
-## 2. Source precedence
+Use the following artifacts as the current development contract, in this order:
 
-| Priority | Source | Authority |
-|---:|---|---|
-| 1 | `07_Thiet_ke_du_lieu_CSDL_Website_Ban_Quan_Ao_v1.3.0_catalog_final.docx` | Current relational schema, 28-table baseline, data dictionary, invariants, transaction/concurrency rules |
-| 2 | `DANH MỤC API TINH GỌN THEO CSDL` | Current consolidated HTTP/JWT/DTO contract; latest baseline is **77 APIs** |
-| 3 | `02_SRS_Website_Ban_Quan_Ao.docx` | FR/NFR, business rules, state machine, acceptance criteria |
-| 4 | `03_FRS_Website_Ban_Quan_Ao.docx` | Functional processing rules and error/transaction expectations |
-| 5 | `04_Use Case_Website_Ban_Quan_Ao.docx` | Preconditions, happy path, alternatives, rejection flows |
-| 6 | `05_Process_Flow_Website_Ban_Quan_Ao.docx` | Operational workflow visualization |
-| 7 | `06_User_Story_Backlog_Website_Ban_Quan_Ao.docx` | Story/AC traceability and refinement flags |
-| 8 | `mo_hinh_hoa_Website_ban_quan_ao.docx` | Conceptual class/component/package boundaries; older details yield to DB v1.3.0/API consolidated doc |
-| 9 | `01_BRD_Website_Ban_Quan_Ao.docx` | Business scope and high-level decisions |
+1. **Owner decisions:** [P1 owner approval](refactor-v2/p1/P1-owner-approval-2026-10-23.md), the [P1.9 owner amendment](refactor-v2/p1/P1-owner-amendment-2026-10-25.md), and approved rows in [P1 Decision Log](refactor-v2/p1/P1-decision-log.md).
+2. **Logical data model:** [Owner-approved ERD v2](refactor-v2/target/erd-v2-approved.mmd).
+3. **Physical data contract:** [P1 Data Dictionary](refactor-v2/p1/P1-data-dictionary.csv), the single schema-and-seed baseline `backend/src/main/resources/db/migration/V1__fido_target_schema.sql`.
+4. **HTTP and wire contracts:** [API Contract](04-api-contract.md) and [DTO Contract](05-dto-contract.md).
+5. **Business and transaction invariants:** [Business Rules](06-business-rules-state-machines.md) and [Transactions, Concurrency and Idempotency](07-transactions-concurrency-idempotency.md).
+6. **Operations policy:** [P1.8 Operations, Audit, Content/Report and Seed Contract](refactor-v2/p1/P1.8-operations-seed-contract.md) plus its [operator runbook requirements](refactor-v2/p1/P1.8-operations-seed-runbook.md). It governs audit fields/correlation/redaction, content/report use cases, deletion/FK lifecycle, seed manifest and unresolved retention blockers; it does not override P1.2/P1.3/P1.5/P1.7 domain ownership.
+7. **Cross-domain gate and implementation status:** [P1.9 consistency report](refactor-v2/p1/P1.9-contract-consistency-report.md), [P1 exit gate](refactor-v2/p1/P1-exit-gate.md), and P1 API/use-case mapping and traceability artifacts under `docs/refactor-v2/p1/`. These describe delivery status and gaps; they do not override approved behavior. The image-order and target Order permission decisions are recorded; the P1.9 contract/schema gate is PASS on the current PR head. Runtime implementation remains pending.
+8. **Current code:** evidence of what must be aligned, never an automatic specification for the target design. The only fresh-install SQL is `backend/src/main/resources/db/migration/V1__fido_target_schema.sql`; removed V1–V14 migration files are historical implementation artifacts, not a current schema authority.
+9. **P0 reports and archived documents:** historical evidence only. Do not copy a superseded rule into a current contract.
 
-`Danh_muc_API_Website_Ban_Quan_Ao_v5_CSDL_v1.3.0_Tinh_gon.docx` is an older condensed API snapshot and contains 73 endpoints. It is useful for history, but the live consolidated API document now contains 77 baseline endpoints, including Permission CRUD. Do not regress the contract to 73.
+The older decision questionnaire is superseded by the dated owner approval and later owner amendments. It is not a source of open choices. If an active document conflicts with an authority above, update that document; do not preserve both alternatives in the current contract.
 
-## 3. Conflict rules
+## 2. Frozen target profile
 
-1. **Schema conflict:** DB v1.3.0 `catalog_final` wins for table/column/invariant design.
-2. **Endpoint conflict:** latest consolidated API document wins for URL, method, DTO and JWT rules.
-3. **Business-state conflict:** use the locked SRS state model and DB invariants. The canonical successful delivery terminal state is `COMPLETED`; `DELIVERED` from older wording must not be introduced as an extra OrderStatus.
-4. **Technology conflict:** Analyst Docs deliberately do not lock DBMS/framework version. Preserve the repository's existing technology; do not upgrade or replace it without an explicit task.
-5. **Missing rule:** mark `BLOCKED/TBD`; do not infer from generic e-commerce practice.
+- The target logical model is the revised **30-table option-only catalog ERD v2**.
+- A sellable catalog record is a row in `PRODUCTS`. Parent and child Products are explicit, independently sellable records. v1 permits one parent-child level; each row owns its SKU, required selling price and stock. NULL never means “inherit from parent.”
+- Catalog metadata uses `ATTRIBUTES`, `ATTRIBUTE_OPTIONS` and `PRODUCT_ATTRIBUTE_VALUES`. Every Product attribute value references one predefined Option owned by its Attribute. The current contract has no AttributeType registry or TEXT/NUMBER/BOOLEAN typed-value paths. Attribute metadata is descriptive and never creates Product records automatically.
+- `CART_ITEMS`, `ORDER_ITEMS`, `GOODS_RECEIPT_ITEMS`, `INVENTORIES` and `INVENTORY_TRANSACTIONS` refer to Product IDs. Stock balance is keyed by warehouse and Product.
+- Persisted Cart and order placement require an authenticated account. A quote is stateless/advisory and does not persist a quote identifier, reserve stock or consume a voucher.
+- Monetary values are whole VND, stored as integer values. The approved discount rule is order-level HALF-UP rounding followed by largest-remainder allocation to lines, with ascending Product ID as the stable tie-break.
+- v1 uses one operational warehouse, one COD Payment aggregate per Order and manual shipping. Approved stock, voucher, order, payment, snapshot and audit effects must be transactional.
+- Preserve order-time Product, address, voucher and image facts. A URL alone is not proof that image content is immutable.
+- The Clean Schema Reset policy applies only to a verified disposable development/test database. It never authorizes resetting production, staging, shared integration or persistent business data.
 
-## 4. Baseline identity
+## 3. Document maintenance rules
 
-The implementation target is:
+- Current contracts describe the target model only. Do not embed superseded table layouts, old column definitions, old money types or old DTOs as alternative target designs.
+- Where implementation still differs, record the mismatch as an implementation blocker in the P1 mapping/traceability artifacts, not as a competing schema or API contract.
+- Historical baseline reports may retain evidence needed to understand past work, but must be clearly historical and must not be referenced as target requirements.
+- Do not add tables, fields, routes or behavior absent from the approved target without an explicit owner-approved scope change.
+- Mark unresolved retention duration/anonymization policy as TBD. Do not schedule deletion or purging until it is approved.
 
-- single merchant;
-- COD only;
-- one warehouse;
-- guest checkout supported;
-- no automatic shipping tracking API;
-- Order and Payment states separated;
-- Catalog v1.3.0 with Category tree, leaf-only Product assignment, Product SizeSystem, Variant = Product + SizeValue + Color;
-- 28 baseline tables;
-- 77 green baseline APIs, with explicit yellow/TBD areas.
+## 4. Acceptance status
 
-## 5. Trace notation in this kit
-
-- `SRS FR-xx`, `NFR-xx`, `BRULE-xx`, `AC-xx` refer to SRS IDs.
-- `DB C-xx` refers to constraints in DD-DB-01.
-- `API #xx` refers to current 77-endpoint consolidated contract.
-- `TBD` means no production behavior may be invented.
+The [P1.9 owner amendment](refactor-v2/p1/P1-owner-amendment-2026-10-25.md) records the gallery unique-index and target Order permission decisions; both are reflected in isolated target artifacts. The [P1.9 cross-domain gate](refactor-v2/p1/P1-exit-gate.md) is PASS for contract/schema consistency, with checker, isolated MySQL and backend evidence on the current PR head. P2.1's P1.9 entry restriction is cleared; runtime Entity/Repository/Service, API/DTO, frontend, authorization, transaction/concurrency and end-to-end acceptance remain separate implementation gates. No live database reset is implied.

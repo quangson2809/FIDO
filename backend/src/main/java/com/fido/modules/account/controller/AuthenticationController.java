@@ -3,7 +3,6 @@ package com.fido.modules.account.controller;
 import com.fido.common.response.ApiResponse;
 import com.fido.modules.account.dto.request.LoginRequest;
 import com.fido.modules.account.dto.request.RegisterRequest;
-import com.fido.modules.account.dto.response.AccountDto;
 import com.fido.modules.account.dto.response.LoginResponse;
 import com.fido.modules.account.service.AuthenticationService;
 
@@ -28,7 +27,7 @@ public class AuthenticationController {
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<AccountDto> register(@Valid @RequestBody RegisterRequest request) {
+    public ApiResponse<LoginResponse> register(@Valid @RequestBody RegisterRequest request) {
         return ApiResponse.of(service.register(request));
     }
 

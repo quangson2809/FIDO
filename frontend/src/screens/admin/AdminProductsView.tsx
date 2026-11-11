@@ -1,16 +1,17 @@
-import { AdminProductTable } from '../../features/catalog/components/AdminProductTable';
-import { ImageFilePreview } from '../../features/catalog/components/ImageFilePreview';
-import { statusLabel } from '../../shared/admin/statusLabels';
-import { useDirtyForm } from '../../shared/admin/dirtyFormContext';
-import { useCallback } from 'react';
-import { useRemoteQuery } from '../../shared/hooks/useRemoteQuery';
+import React, { useCallback, useEffect, useState } from 'react';
 import { QueryFeedback } from '../../shared/admin/QueryFeedback';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useRemoteQuery } from '../../shared/hooks/useRemoteQuery';
+import { catalogService } from '../../features/catalog/api/service';
 import { adminCatalogMetaService } from '../../features/catalog/api/adminCatalogMetaService';
 import { adminProductService } from '../../features/catalog/api/adminService';
-import type { CatalogMetaDto, ProductCreateInput, SaleStatus } from '../../features/catalog/types';
+import { AdminProductTable } from '../../features/catalog/components/AdminProductTable';
+import { AdminProductCreateForm } from '../../features/catalog/components/AdminProductCreateForm';
+import type {
+  AdminCatalogMetaDto,
+  CatalogMetaDto,
+  ProductStatus,
+} from '../../features/catalog/types';
 import { getApiErrorMessage } from '../../services/http/apiError';
-import { resolveImageUrl } from '../../services/media/imageUrl';
 
 interface AdminProductsViewProps {
   onSelectProduct?: (id: string) => void;
@@ -18,34 +19,13 @@ interface AdminProductsViewProps {
   onNavigateTab?: (tab: string, breadcrumb: string) => void;
   showToast: (message: string) => void;
   canWrite: boolean;
+  initialParentId?: number | null;
 }
 
-type FormState = {
-  name: string;
-  categoryId: string;
-  brandId: string;
-  sizeSystemId: string;
-  basePrice: string;
-  description: string;
-  gender: string;
-  season: string;
-  style: string;
-  materialCare: string;
-  saleStatus: SaleStatus;
-};
-
-const initialForm: FormState = {
-  name: '',
-  categoryId: '',
-  brandId: '',
-  sizeSystemId: '',
-  basePrice: '',
-  description: '',
-  gender: '',
-  season: '',
-  style: '',
-  materialCare: '',
-  saleStatus: 'ON_SALE',
+const optionalId = (value: string): number | null | undefined => {
+  if (!value.trim()) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
 };
 
 export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
@@ -54,234 +34,177 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
   onNavigateTab,
   showToast,
   canWrite,
+  initialParentId,
 }) => {
-  const [meta, setMeta] = useState<CatalogMetaDto | null>(null);
+  const [catalogMeta, setCatalogMeta] = useState<CatalogMetaDto | null>(null);
+  const [adminMeta, setAdminMeta] = useState<AdminCatalogMetaDto | null>(null);
+  const [metaLoading, setMetaLoading] = useState(true);
+  const [metaRevision, setMetaRevision] = useState(0);
+  const [metaError, setMetaError] = useState<string | null>(null);
   const [queryInput, setQueryInput] = useState('');
   const [query, setQuery] = useState('');
-  const [saleStatus, setSaleStatus] = useState<SaleStatus | ''>('');
+  const [status, setStatus] = useState<ProductStatus | ''>('');
   const [categoryId, setCategoryId] = useState('');
   const [brandId, setBrandId] = useState('');
-  const [view, setView] = useState<'table' | 'cards'>('table');
-  const [pendingProductId, setPendingProductId] = useState<number | null>(null);
-  const [lastCreatedId, setLastCreatedId] = useState<number | null>(null);
+  const [parentFilterInput, setParentFilterInput] = useState('');
+  const [parentFilter, setParentFilter] = useState<number | ''>('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const list = useRemoteQuery(
     useCallback(
       () =>
         adminProductService.getProducts({
+          q: query || undefined,
           category_id: categoryId ? Number(categoryId) : undefined,
           brand_id: brandId ? Number(brandId) : undefined,
-          ...(query ? { q: query } : {}),
-          ...(saleStatus ? { sale_status: saleStatus } : {}),
+          parent_product_id: parentFilter === '' ? undefined : parentFilter,
+          status: status || undefined,
           page,
-          page_size: 20,
+          page_size: pageSize,
         }),
-      [page, query, saleStatus, categoryId, brandId],
+      [query, categoryId, brandId, parentFilter, status, page, pageSize],
     ),
   );
   const products = list.data?.data ?? [];
   const pagination = list.data?.meta ?? null;
-  const loading = list.loading;
   const [error, setError] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState<FormState>(initialForm);
-  const [images, setImages] = useState<File[]>([]);
-
-  const canDiscard = useDirtyForm(
-    JSON.stringify(form) !== JSON.stringify(initialForm) || images.length > 0,
-  );
+  const [showCreate, setShowCreate] = useState(Boolean(initialParentId));
+  const [lastCreatedId, setLastCreatedId] = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
-    void adminCatalogMetaService
-      .getMeta()
-      .then((result) => {
-        if (active) setMeta(result);
+    void Promise.resolve()
+      .then(() => {
+        if (active) setMetaLoading(true);
+        return Promise.all([catalogService.getMeta(), adminCatalogMetaService.getMeta()]);
+      })
+      .then(([catalog, admin]) => {
+        if (!active) return;
+        setCatalogMeta(catalog);
+        setAdminMeta(admin);
+        setMetaError(null);
       })
       .catch((requestError: unknown) => {
-        if (active) setError(getApiErrorMessage(requestError, 'Không thể tải metadata catalog.'));
+        if (active) {
+          setMetaError(getApiErrorMessage(requestError, 'Không thể tải metadata catalog.'));
+        }
+      })
+      .finally(() => {
+        if (active) setMetaLoading(false);
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [metaRevision]);
 
-  const leafCategories = useMemo(() => {
-    if (!meta) return [];
-    const parents = new Set(
-      meta.categories
-        .map((item) => item.parent_category_id)
-        .filter((id): id is number => id !== null),
-    );
-    return meta.categories.filter((item) => !parents.has(item.category_id));
-  }, [meta]);
-
-  const openProduct = (id: number, callback?: (id: string) => void) => {
-    callback?.(String(id));
-  };
-
-  const updateForm = <K extends keyof FormState>(key: K, value: FormState[K]) =>
-    setForm((current) => ({ ...current, [key]: value }));
-
-  const createPayload = (): ProductCreateInput | null => {
-    const categoryId = Number(form.categoryId);
-    const sizeSystemId = Number(form.sizeSystemId);
-    const basePrice = Number(form.basePrice);
-    const brandId = form.brandId ? Number(form.brandId) : null;
-    if (
-      !meta ||
-      !form.name.trim() ||
-      !leafCategories.some((item) => item.category_id === categoryId) ||
-      !meta.size_systems.some((item) => item.size_system_id === sizeSystemId) ||
-      !Number.isFinite(basePrice) ||
-      basePrice < 0 ||
-      (brandId !== null && !meta.brands.some((item) => item.brand_id === brandId))
-    )
-      return null;
-    return {
-      category_id: categoryId,
-      brand_id: brandId,
-      size_system_id: sizeSystemId,
-      name: form.name.trim(),
-      description: form.description.trim() || null,
-      gender: form.gender || null,
-      season: form.season || null,
-      style: form.style || null,
-      material_care: form.materialCare.trim() || null,
-      base_price: basePrice,
-      sale_status: form.saleStatus,
-      variants: [],
-    };
-  };
-
-  const finishCreate = (productId: number) => {
-    setForm(initialForm);
-    setImages([]);
-    setShowCreate(false);
-    setPendingProductId(null);
-    setLastCreatedId(productId);
-    list.reload();
-  };
-
-  const create = async (event: React.FormEvent) => {
+  const requestSearch = (event: React.FormEvent) => {
     event.preventDefault();
-    if (!canWrite || submitting) return;
-    const payload = createPayload();
-    if (!payload) {
-      showToast('Dữ liệu sản phẩm chưa hợp lệ.');
+    const parent = optionalId(parentFilterInput);
+    if (parent === undefined) {
+      setError('Bộ lọc Product cha phải là số nguyên dương.');
       return;
     }
-    if (images.length > 10) {
-      showToast('Mỗi lần chỉ tải tối đa 10 ảnh.');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const created = pendingProductId
-        ? { product_id: pendingProductId, name: form.name }
-        : await adminProductService.createProduct(payload);
-      setPendingProductId(created.product_id);
-
-      if (images.length > 0) {
-        try {
-          await adminProductService.uploadImages(created.product_id, images);
-        } catch (uploadError: unknown) {
-          setLastCreatedId(created.product_id);
-          showToast(
-            `Đã tạo ${created.name}, nhưng tải ảnh thất bại. Hãy bổ sung ảnh trong chi tiết sản phẩm.`,
-          );
-          setError(getApiErrorMessage(uploadError, 'Tải ảnh sản phẩm thất bại.'));
-          return;
-        }
-      }
-
-      finishCreate(created.product_id);
-      showToast(`Đã tạo ${created.name}.`);
-    } catch (requestError: unknown) {
-      showToast(
-        getApiErrorMessage(
-          requestError,
-          'Không thể tạo sản phẩm. Kiểm tra quyền và dữ liệu catalog.',
-        ),
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const requestSearch = (nextQuery: string, nextStatus: SaleStatus | '') => {
-    list.reload();
     setPage(1);
-    setQuery(nextQuery);
-    setSaleStatus(nextStatus);
+    setQuery(queryInput.trim());
+    setParentFilter(parent ?? '');
+    setError(null);
   };
 
-  const changePage = (nextPage: number) => {
-    list.reload();
-    setPage(nextPage);
+  const openProduct = (id: number, edit = false) => {
+    const callback = edit ? (onEditProduct ?? onSelectProduct) : (onSelectProduct ?? onEditProduct);
+    if (callback) callback(String(id));
+    else onNavigateTab?.('product-detail', 'Chi tiết Product #' + id);
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className="space-y-5">
+      <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1B5038]">
-            Catalog admin
-          </p>
-          <h1 className="mt-1 font-serif text-3xl font-bold text-[#0B2419]">Sản phẩm</h1>
-          <p className="mt-2 text-sm text-[#606863]">
-            Tìm kiếm và quản lý sản phẩm, hình ảnh, giá bán và biến thể.
+          <h1 className="font-serif text-2xl font-bold">Sản phẩm</h1>
+          <p className="mt-1 text-sm text-[#606863]">
+            Quản lý sản phẩm độc lập và sản phẩm con, mỗi sản phẩm có SKU, giá và ảnh riêng.
           </p>
         </div>
-        <div className="flex gap-2">
-          {onNavigateTab && (
-            <button
-              type="button"
-              onClick={() => onNavigateTab('categories', 'Danh mục')}
-              className="border border-[#D9DDD6] bg-white px-4 py-2 text-sm font-semibold"
-            >
-              Thuộc tính
-            </button>
-          )}
-          {canWrite && (
-            <button
-              type="button"
-              onClick={() => {
-                if (!showCreate || canDiscard()) setShowCreate((value) => !value);
-              }}
-              className="bg-[#0B2419] px-4 py-2 text-sm font-bold uppercase text-white"
-            >
-              {showCreate ? 'Đóng' : 'Thêm sản phẩm'}
-            </button>
-          )}
+        {canWrite && !showCreate && (
+          <button type="button" onClick={() => setShowCreate(true)} className="admin-primary">
+            Thêm Product
+          </button>
+        )}
+      </header>
+
+      {error && (
+        <div role="alert" className="border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          {error}
         </div>
-      </div>
+      )}
+      {metaError && (
+        <div role="alert" className="border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          {metaError}
+          <button
+            type="button"
+            className="ml-2 font-semibold underline"
+            disabled={metaLoading}
+            onClick={() => setMetaRevision((value) => value + 1)}
+          >
+            Tải lại metadata
+          </button>
+        </div>
+      )}
+
+      {showCreate && canWrite && (
+        <AdminProductCreateForm
+          catalogMeta={catalogMeta}
+          adminMeta={adminMeta}
+          metaLoading={metaLoading}
+          metaError={metaError}
+          initialParentId={initialParentId}
+          onReloadMeta={() => setMetaRevision((value) => value + 1)}
+          onClose={() => setShowCreate(false)}
+          onSaved={(id) => {
+            setLastCreatedId(id);
+            list.reload();
+          }}
+          onOpen={(id) => openProduct(id)}
+          onFindSku={(sku) => {
+            setQueryInput(sku);
+            setQuery(sku);
+            setCategoryId('');
+            setBrandId('');
+            setParentFilter('');
+            setParentFilterInput('');
+            setStatus('');
+            setPage(1);
+            list.reload();
+          }}
+          showToast={showToast}
+        />
+      )}
 
       <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          requestSearch(queryInput.trim(), saleStatus);
-        }}
-        className="flex flex-wrap gap-3 rounded-lg border border-[#E2E5DE] bg-white p-4"
+        onSubmit={requestSearch}
+        className="flex flex-wrap gap-2 rounded-xl border border-[#E2E5DE] bg-white p-3"
       >
         <input
-          aria-label="Tên sản phẩm"
+          aria-label="Tìm sản phẩm"
+          placeholder="Tìm theo tên hoặc SKU"
           value={queryInput}
           onChange={(event) => setQueryInput(event.target.value)}
-          placeholder="Tên sản phẩm"
-          className="min-w-64 flex-1 border border-[#D9DDD6] px-3 py-2 text-sm"
+          className="min-w-48 flex-1 border border-[#D9DDD6] px-3 py-2 text-sm"
         />
         <select
-          aria-label="Trạng thái bán"
-          value={saleStatus}
-          onChange={(event) => requestSearch(query, event.target.value as SaleStatus | '')}
-          className="border border-[#D9DDD6] px-3 py-2 text-sm"
+          aria-label="Lọc trạng thái"
+          value={status}
+          onChange={(event) => {
+            setStatus(event.target.value as ProductStatus | '');
+            setPage(1);
+          }}
+          className="border border-[#D9DDD6] bg-white px-3 py-2 text-sm"
         >
-          <option value="">Mọi trạng thái</option>
-          <option value="ON_SALE">{statusLabel('ON_SALE')}</option>
-          <option value="STOPPED">{statusLabel('STOPPED')}</option>
+          <option value="">Tất cả trạng thái</option>
+          <option value="DRAFT">DRAFT</option>
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="INACTIVE">INACTIVE</option>
+          <option value="ARCHIVED">ARCHIVED</option>
         </select>
         <select
           aria-label="Lọc danh mục"
@@ -290,9 +213,10 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
             setCategoryId(event.target.value);
             setPage(1);
           }}
+          className="border border-[#D9DDD6] bg-white px-3 py-2 text-sm"
         >
           <option value="">Tất cả danh mục</option>
-          {meta?.categories.map((item) => (
+          {catalogMeta?.categories.map((item) => (
             <option key={item.category_id} value={item.category_id}>
               {item.name}
             </option>
@@ -305,271 +229,95 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
             setBrandId(event.target.value);
             setPage(1);
           }}
+          className="border border-[#D9DDD6] bg-white px-3 py-2 text-sm"
         >
           <option value="">Tất cả thương hiệu</option>
-          {meta?.brands.map((item) => (
+          {catalogMeta?.brands.map((item) => (
             <option key={item.brand_id} value={item.brand_id}>
               {item.name}
             </option>
           ))}
         </select>
-        <button className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white">
-          Tìm
-        </button>
-        <button
-          type="button"
-          aria-pressed={view === 'table'}
-          className="admin-secondary"
-          onClick={() => setView(view === 'table' ? 'cards' : 'table')}
+        <input
+          aria-label="Lọc Product cha ID"
+          type="number"
+          min="1"
+          step="1"
+          placeholder="Product cha ID"
+          value={parentFilterInput}
+          onChange={(event) => setParentFilterInput(event.target.value)}
+          className="w-36 border border-[#D9DDD6] px-3 py-2 text-sm"
+        />
+        <select
+          aria-label="Kích thước trang"
+          value={String(pageSize)}
+          onChange={(event) => {
+            setPageSize(Number(event.target.value));
+            setPage(1);
+          }}
+          className="border border-[#D9DDD6] bg-white px-3 py-2 text-sm"
         >
-          {view === 'table' ? 'Xem dạng thẻ' : 'Xem dạng bảng'}
+          <option value="10">10 / trang</option>
+          <option value="20">20 / trang</option>
+          <option value="50">50 / trang</option>
+        </select>
+        <button type="submit" className="admin-secondary">
+          Tìm kiếm
         </button>
       </form>
 
-      {lastCreatedId && (
-        <div role="status" className="admin-state">
-          Đã tạo sản phẩm #{lastCreatedId}.{' '}
-          {pendingProductId && 'Ảnh chưa được tải lên. Các tệp vẫn được giữ để thử lại.'}
-          <button
-            type="button"
-            className="admin-secondary"
-            onClick={() => openProduct(lastCreatedId, onSelectProduct)}
-          >
-            Mở sản phẩm đã tạo
-          </button>
-        </div>
+      <QueryFeedback
+        loading={list.loading}
+        error={
+          list.error ? getApiErrorMessage(list.error, 'Không thể tải danh sách Product.') : null
+        }
+        onRetry={list.reload}
+      />
+      {!list.loading && !list.error && products.length === 0 && (
+        <p className="admin-state">Không có Product phù hợp.</p>
       )}
-      {canWrite && showCreate && (
-        <form
-          onSubmit={create}
-          className="space-y-4 rounded-lg border border-[#E2E5DE] bg-white p-5"
-        >
-          <fieldset disabled={submitting} className="contents">
-            <fieldset
-              disabled={pendingProductId !== null}
-              className="grid gap-3 md:grid-cols-2 xl:grid-cols-4"
-            >
-              <label className="space-y-1">
-                <span className="text-xs font-semibold">Tên *</span>
-                <input
-                  required
-                  maxLength={255}
-                  value={form.name}
-                  onChange={(event) => updateForm('name', event.target.value)}
-                  className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
-                />
-              </label>
-              <label className="space-y-1">
-                <span className="text-xs font-semibold">Danh mục lá *</span>
-                <select
-                  required
-                  value={form.categoryId}
-                  onChange={(event) => updateForm('categoryId', event.target.value)}
-                  className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
-                >
-                  <option value="">Chọn</option>
-                  {leafCategories.map((item) => (
-                    <option key={item.category_id} value={item.category_id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="space-y-1">
-                <span className="text-xs font-semibold">Hệ size *</span>
-                <select
-                  required
-                  value={form.sizeSystemId}
-                  onChange={(event) => updateForm('sizeSystemId', event.target.value)}
-                  className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
-                >
-                  <option value="">Chọn</option>
-                  {meta?.size_systems.map((item) => (
-                    <option key={item.size_system_id} value={item.size_system_id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="space-y-1">
-                <span className="text-xs font-semibold">Thương hiệu</span>
-                <select
-                  value={form.brandId}
-                  onChange={(event) => updateForm('brandId', event.target.value)}
-                  className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
-                >
-                  <option value="">Không gán</option>
-                  {meta?.brands.map((item) => (
-                    <option key={item.brand_id} value={item.brand_id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="space-y-1">
-                <span className="text-xs font-semibold">Giá *</span>
-                <input
-                  required
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.basePrice}
-                  onChange={(event) => updateForm('basePrice', event.target.value)}
-                  className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
-                />
-              </label>
-              <label className="space-y-1">
-                <span className="text-xs font-semibold">Trạng thái</span>
-                <select
-                  value={form.saleStatus}
-                  onChange={(event) => updateForm('saleStatus', event.target.value as SaleStatus)}
-                  className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
-                >
-                  <option value="ON_SALE">{statusLabel('ON_SALE')}</option>
-                  <option value="STOPPED">{statusLabel('STOPPED')}</option>
-                </select>
-              </label>
-              <label className="space-y-1">
-                <span className="text-xs font-semibold">Giới tính</span>
-                <select
-                  value={form.gender}
-                  onChange={(event) => updateForm('gender', event.target.value)}
-                  className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
-                >
-                  <option value="">—</option>
-                  {meta?.genders.map((item) => (
-                    <option key={item}>{item}</option>
-                  ))}
-                </select>
-              </label>
-            </fieldset>
-            <label className="space-y-1">
-              <span className="text-xs font-semibold">Chọn ảnh</span>
-              <input
-                type="file"
-                multiple
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(event) => setImages(Array.from(event.target.files ?? []))}
-                className="w-full text-xs"
-              />
-            </label>
-            <ImageFilePreview files={images} />
-            <label className="block space-y-1">
-              <span className="text-xs font-semibold">Mô tả</span>
-              <textarea
-                rows={3}
-                disabled={pendingProductId !== null}
-                value={form.description}
-                onChange={(event) => updateForm('description', event.target.value)}
-                className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
-              />
-            </label>
-            <button
-              disabled={submitting || !meta}
-              className="bg-[#0B2419] px-5 py-2.5 text-xs font-bold uppercase text-white disabled:opacity-40"
-            >
-              {submitting ? 'Đang lưu...' : pendingProductId ? 'Thử tải ảnh lại' : 'Tạo sản phẩm'}
-            </button>
-          </fieldset>
-        </form>
-      )}
-
-      <QueryFeedback error={list.error} onRetry={list.reload} />
-      {error && (
-        <div role="alert" className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {error}
-        </div>
-      )}
-      {loading ? (
-        <div className="rounded-lg border border-[#E2E5DE] bg-white p-10 text-center text-sm">
-          Đang tải...
-        </div>
-      ) : list.error ? null : products.length === 0 ? (
-        <div className="rounded-lg border border-[#E2E5DE] bg-white p-10 text-center text-sm">
-          Không có sản phẩm phù hợp.
-        </div>
-      ) : view === 'table' ? (
+      {products.length > 0 && (
         <AdminProductTable
           products={products}
-          meta={meta}
-          onOpen={(id) => openProduct(id, onSelectProduct)}
+          meta={catalogMeta}
+          onOpen={(id) => openProduct(id)}
+          onEdit={(id) => openProduct(id, true)}
         />
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {products.map((product) => {
-            const image = resolveImageUrl(product.thumbnail);
-            return (
-              <article
-                key={product.product_id}
-                className="overflow-hidden rounded-lg border border-[#E2E5DE] bg-white"
-              >
-                <div className="aspect-[3/2] bg-[#F5F6F2]">
-                  {image ? (
-                    <img src={image} alt={product.name} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-[#606863]">
-                      Chưa có ảnh
-                    </div>
-                  )}
-                </div>
-                <div className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-semibold">{product.name}</p>
-                      <p className="mt-1 text-xs text-[#606863]">
-                        Product #{product.product_id} · Category #{product.category_id}
-                      </p>
-                    </div>
-                    <span className="text-[10px] font-bold">
-                      {statusLabel(product.sale_status)}
-                    </span>
-                  </div>
-                  <p className="mt-3 font-bold">{product.base_price.toLocaleString('vi-VN')}₫</p>
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => openProduct(product.product_id, onSelectProduct)}
-                      className="border border-[#0B2419] px-3 py-2 text-xs font-bold uppercase"
-                    >
-                      Chi tiết
-                    </button>
-                    {canWrite && onEditProduct && (
-                      <button
-                        type="button"
-                        onClick={() => openProduct(product.product_id, onEditProduct)}
-                        className="bg-[#0B2419] px-3 py-2 text-xs font-bold uppercase text-white"
-                      >
-                        Chỉnh sửa
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </article>
-            );
-          })}
+      )}
+      {pagination && (
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+          <span>
+            Trang {pagination.page} / {pagination.total_pages} · {pagination.total} Product
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={list.loading || page <= 1}
+              onClick={() => setPage((current) => current - 1)}
+              className="admin-secondary"
+            >
+              Trước
+            </button>
+            <button
+              type="button"
+              disabled={list.loading || page >= pagination.total_pages}
+              onClick={() => setPage((current) => current + 1)}
+              className="admin-secondary"
+            >
+              Sau
+            </button>
+          </div>
         </div>
       )}
-
-      {pagination && pagination.total_pages > 1 && (
-        <div className="flex items-center justify-center gap-3 text-sm">
+      {lastCreatedId !== null && (
+        <div className="flex items-center gap-3 border border-[#C8DDCC] bg-[#EEF6EE] p-3 text-sm">
+          <span>Product #{lastCreatedId} đã được tạo.</span>
           <button
             type="button"
-            disabled={page <= 1 || loading}
-            onClick={() => changePage(Math.max(1, page - 1))}
-            className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40"
+            onClick={() => openProduct(lastCreatedId, true)}
+            className="font-bold underline"
           >
-            Trang trước
-          </button>
-          <span>
-            Trang {pagination.page} / {pagination.total_pages}
-          </span>
-          <button
-            type="button"
-            disabled={page >= pagination.total_pages || loading}
-            onClick={() => changePage(page + 1)}
-            className="border border-[#D9DDD6] bg-white px-4 py-2 disabled:opacity-40"
-          >
-            Trang sau
+            Mở chi tiết
           </button>
         </div>
       )}

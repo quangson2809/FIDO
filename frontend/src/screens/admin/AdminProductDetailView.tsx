@@ -1,283 +1,339 @@
-import { StatusBadge } from '../../shared/admin/StatusBadge';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDirtyForm } from '../../shared/admin/dirtyFormContext';
-import React, { useEffect, useMemo, useState } from 'react';
+import { StatusBadge } from '../../shared/admin/StatusBadge';
 import { adminCatalogMetaService } from '../../features/catalog/api/adminCatalogMetaService';
 import { adminProductService } from '../../features/catalog/api/adminService';
+import { ProductAttributeFields } from '../../features/catalog/components/ProductAttributeFields';
 import {
   AdminProductGallerySection,
   AdminProductInfoSection,
-  AdminProductVariantsPanel,
 } from '../../features/catalog/components/AdminProductDetailSections';
+import { AdminProductRelationsSection } from '../../features/catalog/components/AdminProductRelationsSection';
 import {
-  buildMovedImageOrder,
-  sortProductImages,
-} from '../../features/catalog/model/productImageOrder';
+  attributeDraftFromValues,
+  buildProductAttributeValueIds,
+  preserveUnmanagedProductAttributeValueIds,
+  productAttributeValuesToIds,
+  sameProductAttributeValueIds,
+  type ProductAttributeDraft,
+} from '../../features/catalog/model/productAttributeForm';
+import { buildMovedImageOrder, sortProductImages } from '../../features/catalog/model/productImageOrder';
+import { catalogService } from '../../features/catalog/api/service';
 import type {
+  AdminCatalogMetaDto,
   AdminProductDetailDto,
   CatalogMetaDto,
-  SaleStatus,
+  ProductPatchInput,
+  ProductStatus,
 } from '../../features/catalog/types';
-import { ApiClientError, getApiErrorMessage } from '../../services/http/apiError';
+import { getApiErrorMessage } from '../../services/http/apiError';
 
 interface Props {
   productId: number;
   onNavigateTab: (tab: string, breadcrumb: string) => void;
   showToast: (message: string) => void;
   canWrite: boolean;
+  startEditing?: boolean;
+  onCreateChild?: (id: number) => void;
 }
+
+const nullableText = (value: string): string | null => value.trim() || null;
+
+const optionalId = (value: string): number | null | undefined => {
+  if (!value.trim()) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
+};
 
 export const AdminProductDetailView: React.FC<Props> = ({
   productId,
   onNavigateTab,
   showToast,
   canWrite,
+  startEditing = false,
+  onCreateChild,
 }) => {
   const validId = Number.isInteger(productId) && productId > 0;
   const [product, setProduct] = useState<AdminProductDetailDto | null>(null);
-  const [meta, setMeta] = useState<CatalogMetaDto | null>(null);
+  const [catalogMeta, setCatalogMeta] = useState<CatalogMetaDto | null>(null);
+  const [adminMeta, setAdminMeta] = useState<AdminCatalogMetaDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState(false);
+  const [metaError, setMetaError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(startEditing);
   const [name, setName] = useState('');
+  const [sku, setSku] = useState('');
+  const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
-  const [basePrice, setBasePrice] = useState('');
-  const [saleStatus, setSaleStatus] = useState<SaleStatus>('ON_SALE');
-  const [sizeSystemId, setSizeSystemId] = useState('');
-  const [variantSize, setVariantSize] = useState('');
-  const [variantColor, setVariantColor] = useState('');
-  const [variantSku, setVariantSku] = useState('');
-  const [variantOverridePrice, setVariantOverridePrice] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [brandId, setBrandId] = useState('');
+  const [parentProductId, setParentProductId] = useState('');
+  const [sellingPrice, setSellingPrice] = useState('');
+  const [costPrice, setCostPrice] = useState('');
+  const [status, setStatus] = useState<ProductStatus>('DRAFT');
+  const [attributeDraft, setAttributeDraft] = useState<ProductAttributeDraft>({});
   const [imageFiles, setImageFiles] = useState<File[]>([]);
-
   const infoDirty = Boolean(
     product &&
       editing &&
-      (sizeSystemId !== String(product.size_system.size_system_id) ||
-        name !== product.name ||
+      (name !== (product.name ?? '') ||
+        sku !== product.sku ||
+        slug !== (product.slug ?? '') ||
         description !== (product.description ?? '') ||
-        basePrice !== String(product.base_price) ||
-        saleStatus !== product.sale_status),
+        categoryId !== (product.category_id === null ? '' : String(product.category_id)) ||
+        brandId !== (product.brand_id === null ? '' : String(product.brand_id)) ||
+        parentProductId !==
+          (product.parent_product_id === null ? '' : String(product.parent_product_id)) ||
+        sellingPrice !== String(product.selling_price) ||
+        costPrice !== (product.cost_price === null ? '' : String(product.cost_price)) ||
+        status !== product.status ||
+        !sameProductAttributeValueIds(
+          preserveUnmanagedProductAttributeValueIds(
+            product.attribute_values,
+            adminMeta?.attributes ?? [],
+            buildProductAttributeValueIds(
+              adminMeta?.attributes ?? [],
+              attributeDraft,
+              status,
+              product.attribute_values,
+            ).attributeValueIds,
+          ),
+          productAttributeValuesToIds(product.attribute_values),
+        )),
   );
-  const canDiscard = useDirtyForm(
-    infoDirty ||
-      Boolean(
-        variantSize || variantColor || variantSku || variantOverridePrice || imageFiles.length,
-      ),
-  );
+  const canDiscard = useDirtyForm(infoDirty || imageFiles.length > 0);
 
-  const applyProduct = (detail: AdminProductDetailDto, preserveDraft = true) => {
-    setProduct(detail);
-    if (editing && preserveDraft) return;
-    setName(detail.name);
+  const populateForm = useCallback((
+    detail: AdminProductDetailDto,
+    attributes: AdminCatalogMetaDto | null,
+  ) => {
+    setName(detail.name ?? '');
+    setSku(detail.sku);
+    setSlug(detail.slug ?? '');
     setDescription(detail.description ?? '');
-    setBasePrice(String(detail.base_price));
-    setSaleStatus(detail.sale_status);
-    setSizeSystemId(String(detail.size_system.size_system_id));
-  };
-
-  const refresh = async () => {
-    if (!validId) return;
-    const [detail, metadata] = await Promise.all([
-      adminProductService.getProduct(productId),
-      adminCatalogMetaService.getMeta(),
-    ]);
-    applyProduct(detail);
-    setMeta(metadata);
-    setError(null);
-  };
+    setCategoryId(detail.category_id === null ? '' : String(detail.category_id));
+    setBrandId(detail.brand_id === null ? '' : String(detail.brand_id));
+    setParentProductId(
+      detail.parent_product_id === null ? '' : String(detail.parent_product_id),
+    );
+    setSellingPrice(String(detail.selling_price));
+    setCostPrice(detail.cost_price === null ? '' : String(detail.cost_price));
+    setStatus(detail.status);
+    setAttributeDraft(
+      attributeDraftFromValues(attributes?.attributes ?? [], detail.attribute_values),
+    );
+  }, []);
 
   useEffect(() => {
     if (!validId) return undefined;
-
     let active = true;
-    void Promise.all([adminProductService.getProduct(productId), adminCatalogMetaService.getMeta()])
-      .then(([detail, metadata]) => {
-        if (!active) return;
-        setProduct(detail);
-        setName(detail.name);
-        setDescription(detail.description ?? '');
-        setBasePrice(String(detail.base_price));
-        setSaleStatus(detail.sale_status);
-        setSizeSystemId(String(detail.size_system.size_system_id));
-        setMeta(metadata);
-        setError(null);
+    void Promise.resolve()
+      .then(() => {
+        if (active) setLoading(true);
+        return Promise.allSettled([
+          adminProductService.getProduct(productId),
+          catalogService.getMeta(),
+          adminCatalogMetaService.getMeta(),
+        ]);
       })
-      .catch((requestError: unknown) => {
-        if (active) {
-          setError(getApiErrorMessage(requestError, 'Không thể tải chi tiết sản phẩm quản trị.'));
+      .then(([detailResult, catalogResult, adminResult]) => {
+        if (!active) return;
+
+        if (detailResult.status === 'fulfilled') {
+          setProduct(detailResult.value);
+          setError(null);
+          const attributes =
+            adminResult.status === 'fulfilled' ? adminResult.value : null;
+          populateForm(detailResult.value, attributes);
+        } else {
+          setError(
+            getApiErrorMessage(
+              detailResult.reason,
+              'Không thể tải chi tiết Product quản trị.',
+            ),
+          );
         }
+
+        const metadataIssues: string[] = [];
+        if (catalogResult.status === 'fulfilled') {
+          setCatalogMeta(catalogResult.value);
+        } else {
+          setCatalogMeta(null);
+          metadataIssues.push(
+            getApiErrorMessage(
+              catalogResult.reason,
+              'Không thể tải metadata Category/Brand.',
+            ),
+          );
+        }
+
+        if (adminResult.status === 'fulfilled') {
+          setAdminMeta(adminResult.value);
+        } else {
+          setAdminMeta(null);
+          metadataIssues.push(
+            getApiErrorMessage(
+              adminResult.reason,
+              'Không thể tải metadata Attribute.',
+            ),
+          );
+        }
+        setMetaError(metadataIssues.join(' '));
+        if (metadataIssues.length > 0) setEditing(false);
       })
       .finally(() => {
         if (active) setLoading(false);
       });
-
     return () => {
       active = false;
     };
-  }, [productId, validId, revision]);
+  }, [productId, validId, revision, populateForm]);
 
-  const colorsById = useMemo(
-    () => new Map(meta?.colors.map((item) => [item.color_id, item]) ?? []),
-    [meta],
-  );
-  const sizesById = useMemo(
-    () => new Map(product?.size_system.size_values.map((item) => [item.size_value_id, item]) ?? []),
-    [product],
-  );
   const orderedImages = useMemo(() => sortProductImages(product?.images ?? []), [product]);
+  if (!validId) return <div className="admin-state" role="alert">Mã Product không hợp lệ.</div>;
 
   const saveProduct = async () => {
     if (!canWrite || !product || busy) return;
-
-    if (!meta?.size_systems.some((system) => system.size_system_id === Number(sizeSystemId))) {
-      setError('Chọn hệ size hợp lệ.');
+    if (!catalogMeta || !adminMeta) {
+      setError('Không thể sửa Product khi metadata Category/Brand/Attribute chưa tải đầy đủ.');
       return;
     }
-    const price = Number(basePrice);
-    if (!name.trim() || !basePrice.trim() || !Number.isFinite(price) || price < 0) {
-      setError('Nhập tên sản phẩm và giá hợp lệ (không âm).');
+
+    const parent = optionalId(parentProductId);
+    const category = optionalId(categoryId);
+    const brand = optionalId(brandId);
+    const price = Number(sellingPrice);
+    const cost = costPrice.trim() ? Number(costPrice) : null;
+    if (parent === undefined) {
+      setError('Product cha ID phải là số nguyên dương hoặc để trống.');
+      return;
+    }
+    if (
+      category === undefined ||
+      (category !== null && category !== product.category_id &&
+        !catalogMeta.categories.some(
+          (item) => item.category_id === category && item.status === 'ACTIVE',
+        ))
+    ) {
+      setError('Danh mục không hợp lệ hoặc không còn ACTIVE.');
+      return;
+    }
+    if (
+      brand === undefined ||
+      (brand !== null && brand !== product.brand_id &&
+        !catalogMeta.brands.some(
+          (item) => item.brand_id === brand && item.status === 'ACTIVE',
+        ))
+    ) {
+      setError('Thương hiệu không hợp lệ hoặc không còn ACTIVE.');
+      return;
+    }
+    if (
+      !sku.trim() ||
+      sku.trim().length > 100 ||
+      name.length > 255 ||
+      slug.length > 200 ||
+      !sellingPrice.trim() ||
+      !Number.isSafeInteger(price) ||
+      price < 0 ||
+      (cost !== null && (!Number.isSafeInteger(cost) || cost < 0))
+    ) {
+      setError('Kiểm tra SKU, tên, slug và giá VND nguyên không âm.');
+      return;
+    }
+
+    const attributesResult = buildProductAttributeValueIds(adminMeta.attributes, attributeDraft, status, product.attribute_values);
+    if (attributesResult.errors.length > 0) {
+      setError(attributesResult.errors.join(' '));
+      return;
+    }
+
+    const fullAttributeValues = preserveUnmanagedProductAttributeValueIds(
+      product.attribute_values,
+      adminMeta.attributes,
+      attributesResult.attributeValueIds,
+    );
+    const patch: ProductPatchInput = {};
+    if (sku.trim() !== product.sku) patch.sku = sku.trim();
+    const nextName = nullableText(name);
+    if (nextName !== product.name) patch.name = nextName;
+    const nextSlug = nullableText(slug);
+    if (nextSlug !== product.slug) patch.slug = nextSlug;
+    const nextDescription = nullableText(description);
+    if (nextDescription !== product.description) patch.description = nextDescription;
+    if (category !== product.category_id) patch.category_id = category;
+    if (brand !== product.brand_id) patch.brand_id = brand;
+    if (parent !== product.parent_product_id) patch.parent_product_id = parent;
+    if (price !== product.selling_price) patch.selling_price = price;
+    if (cost !== product.cost_price) patch.cost_price = cost;
+    if (status !== product.status) patch.status = status;
+    if (
+      !sameProductAttributeValueIds(
+        fullAttributeValues,
+        productAttributeValuesToIds(product.attribute_values),
+      )
+    ) {
+      patch.attribute_value_ids = fullAttributeValues;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      setEditing(false);
+      setError(null);
+      showToast('Không có trường nào thay đổi.');
       return;
     }
 
     setBusy(true);
+    setError(null);
     try {
-      applyProduct(
-        await adminProductService.updateProduct(product.product_id, {
-          size_system_id: Number(sizeSystemId),
-          name: name.trim(),
-          description: description.trim() || null,
-          base_price: price,
-          sale_status: saleStatus,
-        }),
-        false,
-      );
-      setVariantSize('');
+      const detail = await adminProductService.updateProduct(product.product_id, patch);
+      setProduct(detail);
+      populateForm(detail, adminMeta);
       setEditing(false);
-      setError(null);
-      showToast('Đã cập nhật sản phẩm.');
+      setImageFiles([]);
+      showToast('Đã cập nhật Product.');
     } catch (requestError: unknown) {
-      setError(
-        requestError instanceof ApiClientError &&
-          requestError.status === 409 &&
-          Number(sizeSystemId) !== product.size_system.size_system_id
-          ? 'Không thể đổi hệ size: sản phẩm có biến thể không tương thích. Dữ liệu chưa được thay đổi.'
-          : getApiErrorMessage(requestError, 'Không thể cập nhật sản phẩm.'),
-      );
+      setError(getApiErrorMessage(requestError, 'Không thể cập nhật Product.'));
     } finally {
       setBusy(false);
     }
   };
 
   const cancelProductEdit = () => {
-    if (!product) return;
-    if (!canDiscard()) return;
-    setName(product.name);
-    setDescription(product.description ?? '');
-    setBasePrice(String(product.base_price));
-    setSaleStatus(product.sale_status);
-    setSizeSystemId(String(product.size_system.size_system_id));
+    if (!product || !canDiscard()) return;
+    populateForm(product, adminMeta);
     setEditing(false);
+    setError(null);
   };
 
-  const addVariant = async () => {
-    if (!canWrite || !product || busy) return;
-
-    const sizeId = Number(variantSize);
-    const colorId = Number(variantColor);
-    const override = variantOverridePrice.trim() ? Number(variantOverridePrice) : null;
-
-    if (
-      !sizesById.has(sizeId) ||
-      !colorsById.has(colorId) ||
-      (override !== null && (!Number.isFinite(override) || override < 0))
-    ) {
-      setError('Chọn size, màu và giá hợp lệ.');
-      return;
-    }
-    if (
-      product.variants.some((item) => item.size_value_id === sizeId && item.color_id === colorId)
-    ) {
-      setError('Tổ hợp size và màu này đã tồn tại.');
-      return;
-    }
-
+  const uploadImages = async () => {
+    if (!canWrite || !product || busy || editing || imageFiles.length === 0) return;
     setBusy(true);
+    setError(null);
     try {
-      await adminProductService.createVariants(product.product_id, [
-        {
-          size_value_id: sizeId,
-          color_id: colorId,
-          sku: variantSku.trim() || null,
-          override_price: override,
-          sale_status: 'ON_SALE',
-        },
-      ]);
-      setVariantSize('');
-      setVariantColor('');
-      setVariantSku('');
-      setVariantOverridePrice('');
-      await refresh();
-      showToast('Đã thêm biến thể.');
-    } catch (requestError: unknown) {
-      setError(
-        getApiErrorMessage(
-          requestError,
-          'Không thể thêm biến thể. Kiểm tra tổ hợp size/màu và SKU.',
-        ),
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const toggleVariant = async (variantId: number, current: SaleStatus) => {
-    if (!canWrite || !product || busy) return;
-
-    setBusy(true);
-    try {
-      await adminProductService.updateVariant(product.product_id, variantId, {
-        sale_status: current === 'ON_SALE' ? 'STOPPED' : 'ON_SALE',
-      });
-      await refresh();
-    } catch (requestError: unknown) {
-      setError(getApiErrorMessage(requestError, 'Không thể cập nhật trạng thái biến thể.'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const uploadProductImages = async () => {
-    if (!canWrite || !product || busy || imageFiles.length === 0) return;
-    if (imageFiles.length > 10) {
-      showToast('Mỗi lần chỉ tải tối đa 10 ảnh.');
-      return;
-    }
-
-    setBusy(true);
-    try {
-      applyProduct(await adminProductService.uploadImages(product.product_id, imageFiles));
+      const detail = await adminProductService.uploadImages(product.product_id, imageFiles);
+      setProduct(detail);
       setImageFiles([]);
-      setError(null);
-      showToast('Đã tải ảnh sản phẩm.');
+      showToast('Đã tải ảnh Product.');
     } catch (requestError: unknown) {
-      setError(getApiErrorMessage(requestError, 'Không thể tải ảnh sản phẩm.'));
+      setError(getApiErrorMessage(requestError, 'Không thể tải ảnh Product.'));
     } finally {
       setBusy(false);
     }
   };
 
   const moveImage = async (imageId: number, direction: -1 | 1) => {
-    if (!canWrite || !product || busy) return;
-
-    const nextOrder = buildMovedImageOrder(product.images, imageId, direction);
+    if (!canWrite || !product || busy || editing) return;
+    const nextOrder = buildMovedImageOrder(orderedImages, imageId, direction);
     if (!nextOrder) return;
-
     setBusy(true);
+    setError(null);
     try {
-      applyProduct(await adminProductService.reorderImages(product.product_id, nextOrder));
-      setError(null);
+      const detail = await adminProductService.reorderImages(product.product_id, nextOrder);
+      setProduct(detail);
+      showToast('Đã cập nhật thứ tự ảnh.');
     } catch (requestError: unknown) {
       setError(getApiErrorMessage(requestError, 'Không thể đổi thứ tự ảnh.'));
     } finally {
@@ -285,49 +341,48 @@ export const AdminProductDetailView: React.FC<Props> = ({
     }
   };
 
-  const deleteProductImage = async (imageId: number) => {
-    if (!canWrite || !product || busy) return;
-    if (
-      !window.confirm(
-        `Xóa ảnh #${imageId} của ${product.name}? Nếu là ảnh bìa, ảnh tiếp theo sẽ thay thế.`,
-      )
-    )
-      return;
-
+  const deleteImage = async (imageId: number) => {
+    if (!canWrite || !product || busy || editing) return;
+    if (!window.confirm('Xóa ảnh #' + imageId + ' khỏi Product?')) return;
     setBusy(true);
+    setError(null);
     try {
       await adminProductService.deleteImage(product.product_id, imageId);
-      applyProduct(await adminProductService.getProduct(product.product_id));
-      setError(null);
-      showToast('Đã xóa ảnh sản phẩm.');
+      const detail = await adminProductService.getProduct(product.product_id);
+      setProduct(detail);
+      populateForm(detail, adminMeta);
+      showToast('Đã xóa ảnh Product.');
     } catch (requestError: unknown) {
-      setError(getApiErrorMessage(requestError, 'Không thể xóa ảnh sản phẩm.'));
+      setError(getApiErrorMessage(requestError, 'Không thể xóa ảnh Product.'));
     } finally {
       setBusy(false);
     }
   };
 
-  if (!validId) {
-    return (
-      <div className="border border-red-200 bg-white p-6 text-sm text-red-700">
-        Product ID không hợp lệ.
-      </div>
-    );
-  }
-  if (loading && !product) {
-    return <div className="py-16 text-center text-sm">Đang tải sản phẩm...</div>;
+  const deleteProduct = async () => {
+    if (!canWrite || !product || busy) return;
+    if (!window.confirm('Xóa Product ' + product.sku + '? Thao tác có thể bị từ chối nếu Product có sản phẩm con.')) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await adminProductService.deleteProduct(product.product_id);
+      showToast('Đã xóa Product ' + product.sku + '.');
+      onNavigateTab('products', 'Sản phẩm');
+    } catch (requestError: unknown) {
+      setError(getApiErrorMessage(requestError, 'Không thể xóa Product.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (loading) {
+    return <div role="status" className="admin-state">Đang tải chi tiết Product...</div>;
   }
   if (!product) {
     return (
-      <div className="space-y-4 border border-red-200 bg-white p-6 text-sm text-red-700">
-        {error ?? 'Không tìm thấy sản phẩm.'}
-        <button
-          type="button"
-          onClick={() => {
-            setLoading(true);
-            setRevision((value) => value + 1);
-          }}
-        >
+      <div className="admin-state" role="alert">
+        <p>{error ?? 'Không tìm thấy Product.'}</p>
+        <button type="button" onClick={() => setRevision((value) => value + 1)} className="admin-secondary">
           Thử lại
         </button>
       </div>
@@ -335,103 +390,155 @@ export const AdminProductDetailView: React.FC<Props> = ({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className="space-y-5">
+      <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <button
-            type="button"
-            onClick={() => onNavigateTab('products', 'Sản phẩm')}
-            className="mb-3 text-xs font-bold uppercase underline"
-          >
-            ← Danh sách
+          <button type="button" onClick={() => onNavigateTab('products', 'Sản phẩm')} className="text-xs font-bold uppercase underline">
+            ← Danh sách Product
           </button>
-          <p className="font-mono text-xs text-[#606863]">Product #{product.product_id}</p>
-          <h1 className="mt-1 font-serif text-3xl font-bold">{product.name}</h1>
+          <h1 className="mt-2 font-serif text-2xl font-bold">{product.name ?? product.sku}</h1>
+          <p className="mt-1 font-mono text-xs text-[#606863]">Product #{product.product_id} · {product.sku}</p>
         </div>
-        <span className="bg-[#FAF4DF] px-3 py-2 text-xs font-bold">
-          <StatusBadge status={product.sale_status} />
-        </span>
-      </div>
-
-      {error && (
-        <div role="alert" className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {error}
+        <div className="flex flex-wrap items-center gap-3">
+          <StatusBadge status={product.status} />
+          {canWrite && !editing && product.parent_product_id === null && onCreateChild && (
+            <button type="button" disabled={busy} className="admin-secondary" onClick={() => {
+              if (canDiscard()) onCreateChild(product.product_id);
+            }}>Tạo sản phẩm con</button>
+          )}
+          {canWrite && !editing && (
+            <button
+              type="button"
+              disabled={busy || !catalogMeta || !adminMeta}
+              onClick={() => setEditing(true)}
+              className="admin-secondary disabled:opacity-40"
+            >
+              Chỉnh sửa
+            </button>
+          )}
+          {canWrite && !editing && (
+            <button type="button" disabled={busy} onClick={() => void deleteProduct()} className="admin-secondary text-red-700">
+              Xóa Product
+            </button>
+          )}
         </div>
-      )}
+      </header>
+      {error && <div role="alert" className="border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>}
+      {metaError && <div role="alert" className="border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{metaError} Việc sửa Product cần metadata đầy đủ; phần chi tiết vẫn có thể xem.</div>}
 
-      <nav aria-label="Các bước quản lý sản phẩm" className="admin-steps">
-        <a href="#product-info">1. Thông tin</a>
-        <a href="#product-images">2. Hình ảnh</a>
-        <a href="#product-variants">3. Biến thể</a>
-      </nav>
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="space-y-6">
-          <AdminProductInfoSection
-            product={product}
-            sizeSystems={meta?.size_systems ?? []}
-            sizeSystemId={sizeSystemId}
-            onSizeSystemChange={setSizeSystemId}
-            editing={editing}
-            busy={busy}
-            canWrite={canWrite}
-            name={name}
-            description={description}
-            basePrice={basePrice}
-            saleStatus={saleStatus}
-            onEditingChange={setEditing}
-            onNameChange={setName}
-            onDescriptionChange={setDescription}
-            onBasePriceChange={setBasePrice}
-            onSaleStatusChange={setSaleStatus}
-            onSave={() => void saveProduct()}
-            onCancel={cancelProductEdit}
-          />
-
-          <AdminProductGallerySection
-            productName={product.name}
-            images={orderedImages}
-            imageFiles={imageFiles}
-            busy={busy}
-            canWrite={canWrite}
-            onFilesChange={setImageFiles}
-            onUpload={() => void uploadProductImages()}
-            onMove={(imageId, direction) => void moveImage(imageId, direction)}
-            onDelete={(imageId) => void deleteProductImage(imageId)}
-          />
-        </div>
-
-        <AdminProductVariantsPanel
+      {editing && canWrite ? (
+        <section className="rounded-lg border border-[#E2E5DE] bg-white p-5">
+          <h2 className="font-serif text-xl font-bold">Chỉnh sửa Product</h2>
+          <fieldset disabled={busy} className="mt-4 space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block space-y-1">
+                <span className="text-xs font-semibold">SKU</span>
+                <input required maxLength={100} value={sku} onChange={(event) => setSku(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-semibold">Tên Product</span>
+                <input maxLength={255} value={name} onChange={(event) => setName(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-semibold">Slug</span>
+                <input maxLength={200} value={slug} onChange={(event) => setSlug(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-semibold">Product cha ID</span>
+                <input type="number" min="1" step="1" value={parentProductId} onChange={(event) => setParentProductId(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" />
+                <span className="block text-xs text-[#606863]">Để trống nếu Product độc lập. Product con không phải Variant legacy.</span>
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-semibold">Danh mục</span>
+                <select aria-label="Danh mục Product" value={categoryId} onChange={(event) => setCategoryId(event.target.value)} className="w-full border border-[#D9DDD6] bg-white px-3 py-2 text-sm">
+                  <option value="">Không chọn danh mục</option>
+                  {catalogMeta?.categories.filter((item) => item.status === 'ACTIVE' || item.category_id === product.category_id).map((item) => (
+                    <option key={item.category_id} value={item.category_id}>{item.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-semibold">Thương hiệu</span>
+                <select aria-label="Thương hiệu Product" value={brandId} onChange={(event) => setBrandId(event.target.value)} className="w-full border border-[#D9DDD6] bg-white px-3 py-2 text-sm">
+                  <option value="">Không chọn thương hiệu</option>
+                  {catalogMeta?.brands.filter((item) => item.status === 'ACTIVE' || item.brand_id === product.brand_id).map((item) => (
+                    <option key={item.brand_id} value={item.brand_id}>{item.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-semibold">Giá bán (VND)</span>
+                <input required aria-label="Giá bán (VND)" type="number" min="0" step="1" value={sellingPrice} onChange={(event) => setSellingPrice(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-semibold">Giá vốn (VND, tùy chọn)</span>
+                <input type="number" min="0" step="1" value={costPrice} onChange={(event) => setCostPrice(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-semibold">Trạng thái Product</span>
+                <select aria-label="Trạng thái Product" value={status} onChange={(event) => setStatus(event.target.value as ProductStatus)} className="w-full border border-[#D9DDD6] bg-white px-3 py-2 text-sm">
+                  <option value="DRAFT">DRAFT</option><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option><option value="ARCHIVED">ARCHIVED</option>
+                </select>
+              </label>
+            </div>
+            <label className="block space-y-1">
+              <span className="text-xs font-semibold">Mô tả</span>
+              <textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" />
+            </label>
+            <div className="space-y-3 border-t border-[#E2E5DE] pt-4">
+              <h3 className="font-semibold">Option-backed Attribute values</h3>
+              <ProductAttributeFields
+                attributes={adminMeta?.attributes ?? []}
+                draft={attributeDraft}
+                status={status}
+                disabled={busy}
+                onChange={(attributeId, value) => setAttributeDraft((current) => ({ ...current, [String(attributeId)]: value }))}
+              />
+              <p className="text-xs text-[#606863]">Khi thay đổi Attribute, API nhận tập thay thế đầy đủ; nếu không thay đổi thì trường này được bỏ khỏi PATCH.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={busy} onClick={() => void saveProduct()} className="admin-primary disabled:opacity-40">{busy ? 'Đang lưu...' : 'Lưu'}</button>
+              <button type="button" disabled={busy} onClick={cancelProductEdit} className="admin-secondary">Hủy</button>
+            </div>
+          </fieldset>
+        </section>
+      ) : (
+        <AdminProductInfoSection
           product={product}
-          meta={meta}
-          sizesById={sizesById}
-          colorsById={colorsById}
+          editing={false}
           busy={busy}
-          canWrite={canWrite}
-          variantSize={variantSize}
-          variantColor={variantColor}
-          variantSku={variantSku}
-          variantOverridePrice={variantOverridePrice}
-          onVariantSizeChange={setVariantSize}
-          onVariantColorChange={setVariantColor}
-          onVariantSkuChange={setVariantSku}
-          onVariantOverridePriceChange={setVariantOverridePrice}
-          onAddVariant={() => void addVariant()}
-          onBusyChange={setBusy}
-          onVariantSaved={(updated) =>
-            setProduct((current) =>
-              current
-                ? {
-                    ...current,
-                    variants: current.variants.map((variant) =>
-                      variant.variant_id === updated.variant_id ? updated : variant,
-                    ),
-                  }
-                : current,
-            )
-          }
-          onToggleVariant={(variantId, current) => void toggleVariant(variantId, current)}
+          canWrite={false}
+          name={name}
+          sku={sku}
+          slug={slug}
+          description={description}
+          sellingPrice={sellingPrice}
+          costPrice={costPrice}
+          status={status}
+          onEditingChange={setEditing}
+          onNameChange={setName}
+          onSkuChange={setSku}
+          onSlugChange={setSlug}
+          onDescriptionChange={setDescription}
+          onSellingPriceChange={setSellingPrice}
+          onCostPriceChange={setCostPrice}
+          onStatusChange={setStatus}
+          onSave={() => void saveProduct()}
+          onCancel={cancelProductEdit}
         />
-      </div>
+      )}
+      <AdminProductRelationsSection product={product} />
+      <AdminProductGallerySection
+        productName={product.name ?? product.sku}
+        images={orderedImages}
+        imageFiles={imageFiles}
+        busy={busy || editing}
+        canWrite={canWrite && !editing}
+        onFilesChange={setImageFiles}
+        onUpload={() => void uploadImages()}
+        onMove={(imageId, direction) => void moveImage(imageId, direction)}
+        onDelete={(imageId) => void deleteImage(imageId)}
+      />
     </div>
   );
 };

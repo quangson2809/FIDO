@@ -2,38 +2,26 @@ package com.fido.modules.promotion.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.fido.modules.pricing.PricingService;
 import org.junit.jupiter.api.Test;
 
-import java.math.BigDecimal;
-
 class VoucherDiscountTests {
+    private final PricingService pricing = new PricingService();
+
     @Test
-    void fixedAmountIsCappedAtEligibleMerchandiseSubtotal() {
-        assertEquals(
-                new BigDecimal("50000.00"),
-                VoucherRedemptionService.discount(
-                        "FIXED_AMOUNT", new BigDecimal("100000"), null, new BigDecimal("50000")));
+    void fixedDiscountIsCappedAtMerchandiseSubtotal() {
+        assertEquals(75L, pricing.calculateDiscountAmount("FIXED", 100L, null, 75L));
     }
 
     @Test
-    void percentageDiscountRespectsMaximumAndExcludesNonEligibleAmount() {
-        assertEquals(
-                new BigDecimal("15000.00"),
-                VoucherRedemptionService.discount(
-                        "PERCENTAGE",
-                        new BigDecimal("30"),
-                        new BigDecimal("15000"),
-                        new BigDecimal("100000")));
+    void percentageUsesBasisPointsAndHalfUpRounding() {
+        assertEquals(1L, pricing.calculateDiscountAmount("PERCENT", 1_000L, null, 5L));
+        assertEquals(750L, pricing.calculateDiscountAmount("PERCENT", 1_500L, null, 4_997L));
     }
 
     @Test
-    void percentageRoundsHalfUpToTwoDecimalPlaces() {
-        assertEquals(
-                new BigDecimal("0.13"),
-                VoucherRedemptionService.discount(
-                        "PERCENTAGE",
-                        new BigDecimal("12.50"),
-                        new BigDecimal("100"),
-                        new BigDecimal("1.00")));
+    void percentageDiscountAppliesTheIntegerVndCap() {
+        assertEquals(700L, pricing.calculateDiscountAmount("PERCENT", 1_500L, 700L, 4_997L));
+        assertEquals(20L, pricing.calculateDiscountAmount("PERCENT", 5_000L, 20L, 100L));
     }
 }

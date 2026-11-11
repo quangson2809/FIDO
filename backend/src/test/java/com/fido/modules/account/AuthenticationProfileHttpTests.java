@@ -22,6 +22,43 @@ import java.util.concurrent.TimeUnit;
 
 class AuthenticationProfileHttpTests extends AccountHttpSupport {
 
+
+    @Test
+    void legacyIdentifierAliasIsRejected() throws Exception {
+        var response = call("POST", "/api/v1/auth/login", null,
+                Map.of("identifier", phone(), "password", PASSWORD));
+        assertEquals(400, response.status(), response.body());
+        assertEquals("VALIDATION_ERROR", response.data().get("code").asText());
+    }
+
+    @Test
+    void authenticationErrorsReturnStableCodesAndDoNotRevealCredentialsOrStatus() throws Exception {
+        String knownPhone = phone();
+        long accountId = register(knownPhone);
+
+        var wrong = call("POST", "/api/v1/auth/login", null,
+                Map.of("phone", knownPhone, "password", "wrong-password"));
+        var unknown = call("POST", "/api/v1/auth/login", null,
+                Map.of("phone", phone(), "password", "wrong-password"));
+        assertEquals(401, wrong.status(), wrong.body());
+        assertEquals(401, unknown.status(), unknown.body());
+        assertEquals("INVALID_CREDENTIALS", wrong.data().get("code").asText());
+        assertEquals("INVALID_CREDENTIALS", unknown.data().get("code").asText());
+        assertEquals(wrong.data().get("message").asText(), unknown.data().get("message").asText());
+
+        var duplicate = call("POST", "/api/v1/auth/register", null,
+                Map.of("phone", knownPhone, "full_name", "Duplicate", "password", PASSWORD));
+        assertEquals(409, duplicate.status(), duplicate.body());
+        assertEquals("PHONE_ALREADY_IN_USE", duplicate.data().get("code").asText());
+
+        db.update("UPDATE accounts SET status='SUSPENDED' WHERE id=?", accountId);
+        var inactive = call("POST", "/api/v1/auth/login", null,
+                Map.of("phone", knownPhone, "password", PASSWORD));
+        assertEquals(403, inactive.status(), inactive.body());
+        assertEquals("ACCOUNT_NOT_ACTIVE", inactive.data().get("code").asText());
+        assertFalse(inactive.body().contains("SUSPENDED"));
+    }
+
     @Test
     void registrationLoginAndProfileContract() throws Exception {
         String phone = phone();
@@ -30,22 +67,17 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
 
         String storedHash =
                 db.queryForObject(
-                        "SELECT password_hash FROM accounts WHERE account_id=?",
+                        "SELECT password_hash FROM accounts WHERE id=?",
                         String.class,
                         accountId);
 
         assertNotEquals(PASSWORD, storedHash);
-
         assertTrue(passwords.matches(PASSWORD, storedHash));
 
         var me = call("GET", "/api/v1/me", token, null);
-
         assertEquals(200, me.status());
-
-        assertEquals(accountId, me.data().get("data").get("account").get("account_id").asLong());
-
-        assertEquals(0, me.data().get("data").get("roles").size());
-
+        assertEquals(accountId, me.data().get("data").get("account").get("id").asLong());
+        assertEquals(1, me.data().get("data").get("roles").size());
         assertFalse(me.body().contains("password"));
 
         assertEquals(
@@ -56,7 +88,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
         assertEquals(
                 phone,
                 db.queryForObject(
-                        "SELECT phone FROM accounts WHERE account_id=?", String.class, accountId));
+                        "SELECT phone FROM accounts WHERE id=?", String.class, accountId));
 
         assertEquals(200, call("PATCH", "/api/v1/me", token, Map.of()).status());
 
@@ -66,9 +98,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "POST",
                                 "/api/v1/auth/register",
                                 null,
-                                Map.of(
-                                        "phone", phone(),
-                                        "password", "x".repeat(73)))
+                                Map.of("phone", phone(), "full_name", "Validation Test Account", "password", "x".repeat(73)))
                         .status());
 
         assertEquals(
@@ -77,7 +107,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "POST",
                                 "/api/v1/auth/register",
                                 null,
-                                Map.of("phone", phone(), "password", " "))
+                                Map.of("phone", phone(), "full_name", "Validation Test Account", "password", " "))
                         .status());
 
         assertEquals(
@@ -86,13 +116,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "POST",
                                 "/api/v1/auth/register",
                                 null,
-                                Map.of(
-                                        "phone",
-                                        phone(),
-                                        "password",
-                                        PASSWORD,
-                                        "role",
-                                        "SUPERADMIN"))
+                                Map.of("phone", phone(), "full_name", "Validation Test Account", "password", PASSWORD, "role", "SUPERADMIN"))
                         .status());
 
         assertEquals(
@@ -100,13 +124,15 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                 call("PATCH", "/api/v1/me", token, Collections.singletonMap("phone", null))
                         .status());
 
+        assertEquals(400, call("PATCH", "/api/v1/me", token, Map.of("phone", phone)).status());
+
         assertEquals(
                 401,
                 call(
                                 "POST",
                                 "/api/v1/auth/login",
                                 null,
-                                Map.of("identifier", phone, "password", "wrong"))
+                                Map.of("phone", phone, "password", "wrong"))
                         .status());
 
         assertEquals(
@@ -115,8 +141,80 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "POST",
                                 "/api/v1/auth/login",
                                 null,
-                                Map.of("identifier", phone(), "password", "wrong"))
+                                Map.of("phone", phone(), "password", "wrong"))
                         .status());
+    }
+
+    @Test
+    void canonicalPhoneVariantsResolveToOneIdentity() throws Exception {
+        String nationalPhone = "0" + phone().substring(3);
+        long accountId = register(nationalPhone);
+        String internationalPhone = "+84" + nationalPhone.substring(1);
+
+        assertEquals(
+                409,
+                call(
+                                "POST",
+                                "/api/v1/auth/register",
+                                null,
+                                Map.of("phone", internationalPhone, "full_name", "Duplicate Test Account", "password", PASSWORD))
+                        .status());
+
+        var login =
+                call(
+                        "POST",
+                        "/api/v1/auth/login",
+                        null,
+                        Map.of("phone", internationalPhone, "password", PASSWORD));
+
+        assertEquals(200, login.status(), login.body());
+        assertEquals(
+                internationalPhone,
+                db.queryForObject(
+                        "SELECT phone FROM accounts WHERE id=?", String.class, accountId));
+    }
+
+    @Test
+    void nonActiveAccountsCannotLoginOrUseAnExistingToken() throws Exception {
+        String phone = phone();
+        long accountId = register(phone);
+        String existingToken = login(phone);
+
+        db.update("UPDATE accounts SET status='LOCKED' WHERE id=?", accountId);
+
+        assertEquals(
+                403,
+                call(
+                                "POST",
+                                "/api/v1/auth/login",
+                                null,
+                                Map.of("phone", phone, "password", PASSWORD))
+                        .status());
+        assertEquals(401, call("GET", "/api/v1/me", existingToken, null).status());
+    }
+
+    @Test
+    void softDeletedPhoneCanBeRegisteredAgain() throws Exception {
+        String phone = phone();
+        long oldAccountId = register(phone);
+
+        db.update("UPDATE accounts SET deleted_at=CURRENT_TIMESTAMP WHERE id=?", oldAccountId);
+
+        var reRegistered = call(
+                "POST",
+                "/api/v1/auth/register",
+                null,
+                Map.of("phone", phone, "full_name", "Replacement Account", "password", PASSWORD));
+
+        assertEquals(201, reRegistered.status(), reRegistered.body());
+        long newAccountId = reRegistered.data().get("data").get("account").get("id").asLong();
+        assertNotEquals(oldAccountId, newAccountId);
+        assertEquals(2, db.queryForObject(
+                "SELECT COUNT(*) FROM accounts WHERE phone=?", Integer.class, phone));
+        assertEquals(
+                200,
+                call("POST", "/api/v1/auth/login", null,
+                        Map.of("phone", phone, "password", PASSWORD)).status());
     }
 
     @Test
@@ -130,16 +228,23 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                                 "POST",
                                 "/api/v1/auth/register",
                                 null,
-                                Map.of(
-                                        "phone", phone,
-                                        "password", PASSWORD))
+                                Map.of("phone", phone, "full_name", "Duplicate Test Account", "password", PASSWORD))
+                        .status());
+
+        assertEquals(
+                409,
+                call(
+                                "POST",
+                                "/api/v1/auth/register",
+                                null,
+                                Map.of("phone", "0" + phone.substring(3), "full_name", "Duplicate Test Account", "password", PASSWORD))
                         .status());
 
         String otherPhone = phone();
         register(otherPhone);
 
         assertEquals(
-                409,
+                400,
                 call("PATCH", "/api/v1/me", login(otherPhone), Map.of("phone", phone)).status());
 
         String concurrentPhone = phone();
@@ -151,19 +256,15 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
             Callable<Result> task =
                     () -> {
                         gate.await();
-
                         return call(
                                 "POST",
                                 "/api/v1/auth/register",
                                 null,
-                                Map.of(
-                                        "phone", concurrentPhone,
-                                        "password", PASSWORD));
+                                Map.of("phone", concurrentPhone, "full_name", "Concurrent Test Account", "password", PASSWORD));
                     };
 
             var first = executor.submit(task);
             var second = executor.submit(task);
-
             gate.countDown();
 
             var results =
@@ -173,16 +274,18 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
 
             for (var result : results) {
                 if (result.status() == 201) {
-                    created.add(result.data().get("data").get("account_id").asLong());
+                    created.add(
+                            result.data().get("data").get("account").get("id").asLong());
                 }
             }
 
             assertEquals(
                     1,
                     db.queryForObject(
-                            "SELECT COUNT(*) FROM accounts WHERE phone=?",
+                            "SELECT COUNT(*) FROM accounts WHERE phone=? OR phone=?",
                             Integer.class,
-                            concurrentPhone));
+                            concurrentPhone,
+                            "0" + concurrentPhone.substring(3)));
         } finally {
             executor.shutdownNow();
         }
@@ -195,13 +298,10 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
         String token = login(phone);
 
         assertEquals(401, call("GET", "/api/v1/me", null, null).status());
-
         assertEquals(401, call("GET", "/api/v1/me", "not-a-jwt", null).status());
 
         String[] parts = token.split("\\.");
-
         parts[2] = (parts[2].startsWith("A") ? "B" : "A") + parts[2].substring(1);
-
         assertEquals(401, call("GET", "/api/v1/me", String.join(".", parts), null).status());
 
         for (String mode :
@@ -214,7 +314,6 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
             if (!mode.equals("missing_iat")) {
                 claims.issuedAt(Instant.now().minusSeconds(600));
             }
-
             if (!mode.equals("missing_exp")) {
                 claims.expiresAt(Instant.now().plusSeconds(mode.equals("expired") ? -300 : 300));
             }

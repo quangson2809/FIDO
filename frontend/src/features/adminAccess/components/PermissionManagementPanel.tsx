@@ -73,7 +73,6 @@ export const PermissionManagementPanel: React.FC<{
     setError(null);
     try {
       await adminAccessService.updatePermission(editingPermission.permission_id, {
-        code: editingDraft.code.trim(),
         name: editingDraft.name.trim(),
       });
       setEditingPermission(null);
@@ -200,9 +199,7 @@ export const PermissionManagementPanel: React.FC<{
             <input
               aria-label="Mã quyền"
               value={editingDraft.code}
-              onChange={(event) =>
-                setEditingDraft((current) => ({ ...current, code: event.target.value }))
-              }
+              readOnly
               maxLength={120}
               className="w-full border border-[#D9DDD6] px-3 py-2 text-sm"
             />

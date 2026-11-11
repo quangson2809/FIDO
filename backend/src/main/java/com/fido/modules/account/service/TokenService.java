@@ -39,7 +39,7 @@ public class TokenService {
         var claims =
                 JwtClaimsSet.builder()
                         .issuer(issuer)
-                        .subject(account.account_id().toString())
+                        .subject(account.id().toString())
                         .issuedAt(now)
                         .expiresAt(now.plusSeconds(ttl))
                         .build();

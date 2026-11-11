@@ -13,58 +13,66 @@ const page = await browser.newPage();
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 const date = '2026-10-08T03:00:00Z';
-const permission = { permission_id: 1, code: 'CATALOG_READ', name: 'Xem danh mục' };
-const role = { role_id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null };
+const reportStatusCounts = {
+  PENDING: 2, CONFIRMED: 0, PREPARING: 0, SHIPPING: 0,
+  COMPLETED: 1, DELIVERY_FAILED: 0, CANCELLED: 0, RETURNED: 0,
+};
+const permission = { id: 1, code: 'CATALOG_READ', name: 'Xem danh mục' };
+const role = { id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null };
+const meRole = { id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null, status: 'ACTIVE' };
 let me = {
-  account: { account_id: 1, phone: '0900000000', email: null, created_at: date, updated_at: date },
+  account: { id: 1, full_name: 'Test Account', phone: '0900000000', email: null, status: 'ACTIVE', created_at: date, updated_at: date },
   addresses: [],
-  roles: [role],
+  roles: [meRole],
   permissions: [],
 };
 const pagination = (data, pageNumber = 1, total = data.length) => ({
   data,
   meta: { page: pageNumber, page_size: 20, total, total_pages: Math.ceil(total / 20) },
 });
-const size = { size_value_id: 1, size_system_id: 1, code: 'M', display_name: 'M', sort_order: 0 };
-const color = { color_id: 1, code: 'BLACK', name: 'Đen' };
 const metadata = {
-  categories: [{ category_id: 1, parent_category_id: null, name: 'Áo' }],
+  categories: [
+    { category_id: 1, parent_category_id: null, name: 'Áo', slug: 'ao', status: 'ACTIVE' },
+  ],
   brands: [],
-  colors: [color, { color_id: 2, code: 'WHITE', name: 'Trắng' }],
-  size_systems: [{ size_system_id: 1, code: 'TOP', name: 'Áo', size_values: [size] }],
-  genders: [],
-  seasons: [],
-  styles: [],
+  attributes: [
+    {
+      id: 1,
+      code: 'MATERIAL',
+      name: 'Chất liệu',
+      is_required: true,
+      is_variant_defining: false,
+      sort_order: 0,
+      options: [{ id: 101, attribute_id: 1, value: 'COTTON', label: 'Cotton', sort_order: 0 }],
+    },
+  ],
 };
 let product = {
   product_id: 1,
+  parent_product_id: null,
+  child_product_ids: [],
+  sku: 'TEE-M-BLACK',
   name: 'Áo thử nghiệm',
+  slug: 'ao-thu-nghiem',
   description: null,
   category: metadata.categories[0],
-  category_id: 1,
   brand: null,
+  category_id: 1,
   brand_id: null,
-  size_system: metadata.size_systems[0],
-  size_system_id: 1,
-  gender: null,
-  season: null,
-  style: null,
-  material_care: null,
-  base_price: 200000,
-  sale_status: 'ON_SALE',
+  selling_price: 200000,
+  cost_price: null,
+  status: 'ACTIVE',
   images: [],
-  variants: [
+  parent_product: null,
+  children: [],
+  attribute_values: [
     {
-      variant_id: 10,
-      product_id: 1,
-      size_value_id: 1,
-      color_id: 1,
-      sku: 'TEE-M-BLACK',
-      override_price: null,
-      sale_status: 'ON_SALE',
-      available_quantity: 5,
-      created_at: date,
-      updated_at: date,
+      attribute_id: 1,
+      attribute_code: 'MATERIAL',
+      attribute_name: 'Chất liệu',
+      attribute_value_id: 101,
+      value: 'COTTON',
+      label: 'Cotton',
     },
   ],
   created_at: date,
@@ -87,8 +95,6 @@ let order = {
   updated_at: date,
   customer_account_id: 1,
   voucher_id: null,
-  customer_service_note: null,
-  cancel_reason: null,
   payment: {
     payment_status: 'UNPAID',
     amount_due: 200000,
@@ -101,33 +107,43 @@ let order = {
   },
   allowed_actions: ['CONFIRM', 'CANCEL'],
 };
-let priceError = true;
+let productPatchAttempts = 0;
 const supplier = {
   supplier_id: 1,
+  code: 'SUP-001',
   name: 'Nhà cung cấp mẫu',
   phone: null,
   email: null,
-  address: null,
-  usage_status: 'ACTIVE',
-  note: null,
+  status: 'ACTIVE',
 };
 let receipt = {
   receipt_id: 1,
   receipt_code: 'GR-001',
   supplier_id: 1,
+  warehouse_id: 1,
   receipt_status: 'DRAFT',
-  receipt_date: '2026-10-08',
   confirmed_at: null,
   created_at: date,
   updated_at: date,
   created_by_account_id: 1,
   confirmed_by_account_id: null,
-  note: null,
-  items: [{ receipt_item_id: 1, variant_id: 10, quantity: 2 }],
+  items: [{ receipt_item_id: 1, product_id: 1, quantity_received: 2, unit_cost: 100000 }],
 };
+let createdReceipt = null;
+let skuLookupError = false;
+const inventoryRows = [
+  { warehouse_id: 1, product_id: 1, sku: 'TEE-M-BLACK', product_name: 'Áo thử nghiệm',
+    available_quantity: 5, version: 0, updated_at: date },
+  { warehouse_id: 1, product_id: 2, sku: 'TEE-L-WHITE', product_name: 'Áo con ' + 'chưacótồn'.repeat(20),
+    available_quantity: 0, version: 0, updated_at: null },
+];
 let customerError = false;
 let reportError = false;
 let writes = [];
+const reads = [];
+let voucher = { id: 27, code: 'SAVE10K', discount_type: 'FIXED', discount_value: 10000,
+  minimum_order_value: 0, maximum_discount: null, starts_at: null, ends_at: null,
+  usage_limit: null, usage_count: 2, status: 'ACTIVE' };
 let customerRequests = 0;
 await page.addInitScript(() => sessionStorage.setItem('fido.accessToken', 'fixture'));
 await page.route('**/api/v1/**', async (route) => {
@@ -150,22 +166,73 @@ await page.route('**/api/v1/**', async (route) => {
         'access-control-allow-methods': '*',
       },
     });
+  if (request.method() === 'GET') reads.push({ path, query: url.searchParams });
   if (request.method() !== 'GET') {
     writes.push({ path, body: request.postDataJSON() });
+    if (path === '/admin/goods-receipts' && request.method() === 'POST') {
+      const input = request.postDataJSON();
+      createdReceipt = { ...receipt, ...input, receipt_id: 2, receipt_code: 'GR-002', receipt_status: 'DRAFT',
+        items: input.items.map((item, index) => ({ ...item, receipt_item_id: index + 2 })) };
+      return send({ data: createdReceipt }, 201);
+    }
+    if (path === '/admin/goods-receipts/2' && request.method() === 'PATCH') {
+      createdReceipt = { ...createdReceipt, ...request.postDataJSON() };
+      return send({ data: createdReceipt });
+    }
+    if (path === '/admin/vouchers' || path === '/admin/vouchers/27') {
+      if (!['POST', 'PATCH'].includes(request.method())) return send({}, 405);
+      voucher = { ...voucher, ...request.postDataJSON(), status: request.method() === 'POST' ? 'DRAFT' : request.postDataJSON().status };
+      return send({ data: voucher }, request.method() === 'POST' ? 201 : 200);
+    }
+    if (path === '/admin/staff-accounts' && request.method() === 'POST') {
+      const input = request.postDataJSON();
+      return send({ data: { account: { ...me.account, full_name: input.full_name, phone: input.phone }, roles: [role], permissions: [permission] } }, 201);
+    }
+    if (path === '/admin/permissions/1' && request.method() === 'PATCH') {
+      Object.assign(permission, request.postDataJSON());
+      return send({ data: permission });
+    }
+    if (path === '/admin/inventory/adjustments') {
+      const input = request.postDataJSON();
+      return send({
+        data: {
+          txn_id: 12,
+          product_id: input.product_id,
+          warehouse_id: 1,
+          quantity_delta: input.quantity_delta,
+          transaction_type: 'ADJUSTMENT',
+          order_item_id: null,
+          goods_receipt_item_id: null,
+          reverses_transaction_id: null,
+          actor_account_id: 1,
+          reason: input.reason_code,
+          created_at: date,
+        },
+      }, 201);
+    }
     if (path === '/admin/orders/1/actions') {
-      order = { ...order, order_status: 'CONFIRMED', allowed_actions: ['PREPARE', 'CANCEL'] };
+      const transitions = {
+        CONFIRM: ['CONFIRMED', ['START_PREPARING', 'CANCEL']],
+        START_PREPARING: ['PREPARING', ['DISPATCH', 'CANCEL']],
+        DISPATCH: ['SHIPPING', ['MARK_DELIVERY_FAILED']],
+      };
+      const [status, actions] = transitions[request.postDataJSON().action];
+      order = { ...order, order_status: status, allowed_actions: actions };
       return send({ data: order });
     }
     if (path === '/admin/orders/1/payment-actions') {
       order = {
         ...order,
+        order_status: 'COMPLETED', allowed_actions: [],
         payment: { ...order.payment, payment_status: 'PAID', amount_received: 200000 },
       };
-      return send({ data: order.payment });
+      return send({ data: order });
     }
-    if (path === '/admin/products/1/variants/10' && !priceError) {
-      product = { ...product, variants: [{ ...product.variants[0], ...request.postDataJSON() }] };
-      return send({ data: product.variants[0] });
+    if (path === '/admin/products/1' && request.method() === 'PATCH') {
+      productPatchAttempts += 1;
+      if (productPatchAttempts === 1) return send({ message: 'Lỗi lưu thử nghiệm' }, 500);
+      product = { ...product, ...request.postDataJSON() };
+      return send({ data: product });
     }
     if (path === '/admin/goods-receipts/1/actions') {
       receipt = { ...receipt, receipt_status: 'CONFIRMED' };
@@ -173,15 +240,34 @@ await page.route('**/api/v1/**', async (route) => {
     }
     return send({ message: 'Lỗi lưu thử nghiệm' }, 500);
   }
+  if (path === '/admin/vouchers') return send(pagination([voucher]));
   if (path === '/me') return send({ data: me });
   if (path === '/cart')
     return send({ data: { cart_id: 1, account_id: 1, items: [], subtotal: 0 } });
   if (path === '/admin/products/1') return send({ data: product });
-  if (path === '/admin/products') return send(pagination([product]));
+  if (path === '/admin/products')
+    return send(pagination([{
+      product_id: product.product_id,
+      parent_product_id: product.parent_product_id,
+      sku: product.sku,
+      name: product.name,
+      slug: product.slug,
+      category: product.category,
+      brand: product.brand,
+      selling_price: product.selling_price,
+      cost_price: product.cost_price,
+      status: product.status,
+      created_at: product.created_at,
+      updated_at: product.updated_at,
+      thumbnail: null,
+    }]));
   if (path === '/admin/orders/1') return send({ data: order });
   if (path === '/admin/orders')
     return send(pagination([{ ...order, payment_status: order.payment.payment_status }]));
-  if (path === '/admin/catalog/meta') return send({ data: metadata });
+  if (path === '/catalog/meta') return send({ data: metadata });
+  if (path === '/admin/catalog/meta') return send({
+    data: { attributes: metadata.attributes },
+  });
   if (path === '/admin/customers/1') return send({ message: 'Không tải được hồ sơ' }, 500);
   if (path === '/admin/customers') {
     customerRequests++;
@@ -214,28 +300,64 @@ await page.route('**/api/v1/**', async (route) => {
             completed_sales: 123456,
             returned_adjustment: 0,
             net_sales: 123456,
-            orders_by_status: { PENDING: 2, COMPLETED: 1 },
+            orders_by_status: reportStatusCounts,
           },
         });
-  if (path === '/admin/suppliers') return send(pagination([supplier]));
-  if (path === '/admin/goods-receipts') return send(pagination([receipt]));
-  if (path === '/admin/goods-receipts/1') return send({ data: receipt });
-  if (path === '/admin/inventory')
-    return send(
-      pagination([
-        {
-          variant_id: 10,
-          sku: 'TEE-M-BLACK',
+  if (path === '/admin/reports/sales-trend')
+    return send({
+      data: {
+        from: url.searchParams.get('from'),
+        to: url.searchParams.get('to'),
+        granularity: url.searchParams.get('granularity') || 'DAY',
+        timezone: 'Asia/Ho_Chi_Minh',
+        points: [{
+          period_start: url.searchParams.get('from'),
+          completed_sales: 123456,
+          returned_adjustment: 0,
+          net_sales: 123456,
+        }],
+      },
+    });
+  if (path === '/admin/reports/orders-trend')
+    return send({
+      data: {
+        from: url.searchParams.get('from'),
+        to: url.searchParams.get('to'),
+        granularity: url.searchParams.get('granularity') || 'DAY',
+        timezone: 'Asia/Ho_Chi_Minh',
+        points: [{
+          period_start: url.searchParams.get('from'),
+          total_orders: 3,
+          orders_by_status: reportStatusCounts,
+        }],
+      },
+    });
+  if (path === '/admin/reports/product-performance')
+    return send({
+      data: {
+        from: url.searchParams.get('from'),
+        to: url.searchParams.get('to'),
+        limit: Number(url.searchParams.get('limit') || 10),
+        items: [{
           product_id: 1,
           product_name: 'Áo thử nghiệm',
-          size: 'M',
-          color: 'Đen',
-          sale_status: 'ON_SALE',
-          available_quantity: 5,
-          updated_at: date,
-        },
-      ]),
-    );
+          thumbnail: null,
+          completed_units: 1,
+          returned_units: 0,
+          net_units: 1,
+        }],
+      },
+    });
+  if (path === '/admin/suppliers') return send(pagination([supplier]));
+  if (path === '/admin/goods-receipts') return send(pagination([receipt, ...(createdReceipt ? [createdReceipt] : [])]));
+  if (path === '/admin/goods-receipts/1') return send({ data: receipt });
+  if (path === '/admin/goods-receipts/2') return send({ data: createdReceipt });
+  if (path === '/admin/inventory') {
+    if (skuLookupError && url.searchParams.has('sku')) return send({ message: 'Lỗi tìm SKU' }, 500);
+    return send(pagination(inventoryRows.filter((row) =>
+      (!url.searchParams.has('sku') || row.sku === url.searchParams.get('sku'))
+      && (!url.searchParams.has('product_id') || row.product_id === Number(url.searchParams.get('product_id'))))));
+  }
   if (path === '/admin/staff-accounts')
     return send(
       pagination(
@@ -251,12 +373,12 @@ await page.route('**/api/v1/**', async (route) => {
       pagination(
         [
           {
-            audit_id: 1,
+            id: 1,
             actor_account_id: 1,
             action: 'PRODUCT_UPDATE',
-            target_type: 'PRODUCT',
-            target_id: '1',
-            description: 'Cập nhật sản phẩm',
+            entity_type: 'PRODUCT',
+            entity_id: '1',
+            before_data: null, after_data: { name: 'Sản phẩm mới' }, correlation_id: null,
             created_at: date,
           },
         ],
@@ -268,9 +390,10 @@ await page.route('**/api/v1/**', async (route) => {
     return send({
       data: { roles: [{ ...role, permissions: [permission] }], permissions: [permission] },
     });
+  if (path === '/admin/content-pages/1') return send({ data: { id: 1, slug: 'policy', title: 'Chính sách', content: 'Nội dung gốc', status: 'DRAFT', updated_at: date, updated_by_account_id: 1 } });
   if (path === '/admin/content-pages')
     return send({
-      data: [{ page_id: 1, page_code: 'POLICY', title: 'Chính sách', content: 'Nội dung gốc' }],
+      data: [{ id: 1, slug: 'policy', title: 'Chính sách', status: 'DRAFT', updated_at: date }],
     });
   return send(pagination([]));
 });
@@ -278,6 +401,18 @@ const goto = async (path) => {
   console.log('Check', path);
   await page.goto(`http://localhost:5180${path}`, { waitUntil: 'domcontentloaded' });
   await page.getByText('Hệ thống quản trị', { exact: true }).waitFor();
+};
+// A click can finish before React Router renders its confirmation. Wait for the
+// dialog to be handled so a later navigation cannot consume the wrong handler.
+const withConfirm = async (action, decision, messagePattern) => {
+  const handled = page.waitForEvent('dialog').then(async (dialog) => {
+    const type = dialog.type();
+    const message = dialog.message();
+    await dialog[decision]();
+    assert.equal(type, 'confirm', 'the action must show its expected confirm dialog');
+    if (messagePattern) assert.match(message, messagePattern);
+  });
+  await Promise.all([handled, action()]);
 };
 try {
   await goto('/admin/customers');
@@ -310,78 +445,157 @@ try {
   await page.getByRole('button', { name: 'Chi tiết', exact: true }).click();
   await page.getByRole('dialog').getByRole('alert').waitFor();
   await page.getByRole('button', { name: 'Đóng hộp thoại' }).click();
+  await goto('/admin/inventory');
+  await page.getByRole('row').filter({ hasText: 'TEE-M-BLACK' }).getByRole('button', { name: 'Điều chỉnh', exact: true }).click();
+  await page.getByRole('spinbutton', { name: 'Số lượng điều chỉnh', exact: true }).fill('2');
+  await page.getByLabel('Mã lý do điều chỉnh').selectOption('DAMAGE');
+  await withConfirm(() => page.getByRole('button', { name: 'Xác nhận', exact: true }).click(), 'accept');
+  await page.getByText('Đã điều chỉnh tồn kho.', { exact: true }).waitFor();
+  const adjustment = writes.filter((entry) => entry.path === '/admin/inventory/adjustments').at(-1)?.body;
+  assert.ok(adjustment);
+  assert.deepEqual(Object.keys(adjustment).sort(), [
+    'expected_version', 'product_id', 'quantity_delta', 'reason_code', 'source_operation_id',
+  ]);
+  assert.equal(adjustment.product_id, 1);
+  assert.equal(adjustment.quantity_delta, 2);
+  assert.equal(adjustment.reason_code, 'DAMAGE');
+  assert.equal(adjustment.expected_version, 0);
+  assert.match(adjustment.source_operation_id, /^[A-Za-z0-9._:-]{1,80}$/);
+
+  const beforeMasterData = reads.length;
   await goto('/admin/catalog/categories');
+  await page.getByLabel('Tìm danh mục', { exact: true }).waitFor();
   await page.locator('main').getByRole('button', { name: 'Thương hiệu', exact: true }).click();
+  await page.getByLabel('Tìm thương hiệu', { exact: true }).waitFor();
   assert.match(page.url(), /catalog\/brands/);
+  assert.equal(reads.slice(beforeMasterData).filter((read) => read.path === '/admin/catalog/meta').length, 0,
+    'Category/Brand screens must load independently of Attribute metadata');
   await page.goBack();
+  await page.getByLabel('Tìm danh mục', { exact: true }).waitFor();
   assert.match(page.url(), /catalog\/categories/);
+  await page.goForward();
+  await page.getByLabel('Tìm thương hiệu', { exact: true }).waitFor();
+  assert.match(page.url(), /catalog\/brands/);
   await goto('/admin/content');
+  await page.getByRole('button', { name: /Chính sách policy/ }).click();
+  assert.equal(await page.getByRole('textbox', { name: 'Nội dung', exact: true }).inputValue(), 'Nội dung gốc');
+  assert.equal(await page.getByRole('button', { name: 'Lưu nội dung' }).isEnabled(), true,
+    'selecting the current summary must not clear its loaded detail');
   await page.getByRole('textbox', { name: 'Tiêu đề' }).fill('Bản chưa lưu');
-  page.once('dialog', (dialog) => dialog.dismiss());
-  await page.getByRole('button', { name: /Đơn hàng/ }).click();
+  await withConfirm(() => page.getByRole('button', { name: /Đơn hàng/ }).click(), 'dismiss');
   assert.match(page.url(), /admin\/content/);
   await page.getByRole('button', { name: 'Lưu nội dung' }).click();
   await page.getByText('Lỗi lưu thử nghiệm', { exact: false }).waitFor();
   assert.equal(await page.getByRole('textbox', { name: 'Tiêu đề' }).inputValue(), 'Bản chưa lưu');
-  page.once('dialog', (dialog) => dialog.accept());
-  await page.getByRole('button', { name: /Đơn hàng/ }).click();
+  await withConfirm(() => page.getByRole('button', { name: /Đơn hàng/ }).click(), 'accept');
+  await page.waitForURL('**/admin/orders');
+  await page.getByRole('cell', { name: 'ORD-001', exact: true }).waitFor();
   await goto('/admin/goods-receipts');
   await page.getByRole('button', { name: 'Chi tiết', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Ghi chú' }).fill('Thay đổi chưa lưu');
+  await page.getByRole('spinbutton', { name: 'Số lượng nhận dòng 1', exact: true }).fill('3');
   const writeCount = writes.length;
   await page.getByRole('button', { name: 'Xác nhận nhập kho', exact: true }).click();
   await page.getByText('Phiếu có thay đổi chưa lưu.', { exact: false }).waitFor();
   assert.equal(writes.length, writeCount, 'dirty receipt cannot confirm');
-  await page.getByRole('textbox', { name: 'Ghi chú' }).fill('');
-  page.once('dialog', (dialog) => dialog.dismiss());
-  await page.getByRole('button', { name: 'Xác nhận nhập kho', exact: true }).click();
+  await page.getByRole('spinbutton', { name: 'Số lượng nhận dòng 1', exact: true }).fill('2');
+  await withConfirm(() => page.getByRole('button', { name: 'Xác nhận nhập kho', exact: true }).click(), 'dismiss');
   assert.equal(writes.length, writeCount, 'cancelled confirmation sends no request');
-  page.once('dialog', (dialog) => dialog.accept());
-  await page.getByRole('button', { name: 'Xác nhận nhập kho', exact: true }).click();
+  await withConfirm(() => page.getByRole('button', { name: 'Xác nhận nhập kho', exact: true }).click(), 'accept');
   await page.getByText('Đã xác nhận nhập kho.', { exact: true }).waitFor();
   assert.equal(writes.length, writeCount + 1);
+  await page.getByRole('button', { name: 'Phiếu mới', exact: true }).first().click();
+  assert.equal(await page.getByLabel('Product ID dòng 1', { exact: true }).count(), 0);
+  await page.getByLabel('Chọn nhà cung cấp', { exact: true }).selectOption('1');
+  await page.getByRole('button', { name: 'Tạo bản nháp', exact: true }).click();
+  await page.getByRole('alert').filter({ hasText: 'Chọn nhà cung cấp ACTIVE và SKU' }).waitFor();
+  await page.getByRole('button', { name: 'Chọn SKU dòng 1', exact: true }).click();
+  const skuPicker = page.getByRole('dialog', { name: 'Chọn sản phẩm theo SKU' });
+  await skuPicker.getByRole('button', { name: /TEE-L-WHITE/ }).waitFor();
+  for (const width of [375, 768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true,
+      `receipt and SKU picker fit viewport ${width}`);
+    assert.equal(await skuPicker.evaluate((dialog) => dialog.scrollWidth <= dialog.clientWidth + 1), true,
+      `SKU picker fits long product names at ${width}`);
+  }
+  await skuPicker.getByLabel('SKU cần tìm', { exact: true }).fill('NOT-FOUND');
+  await skuPicker.getByRole('button', { name: 'Tìm SKU', exact: true }).click();
+  await skuPicker.getByText('Không có kết quả phù hợp.', { exact: false }).waitFor();
+  skuLookupError = true;
+  await skuPicker.getByLabel('SKU cần tìm', { exact: true }).fill('TEE-L-WHITE');
+  await skuPicker.getByRole('button', { name: 'Tìm SKU', exact: true }).click();
+  await skuPicker.getByRole('alert').waitFor();
+  skuLookupError = false;
+  await skuPicker.getByRole('button', { name: 'Thử lại', exact: true }).click();
+  await skuPicker.getByRole('button', { name: /TEE-L-WHITE/ }).click();
+  await skuPicker.waitFor({ state: 'detached' });
+  await page.getByText('SKU: TEE-L-WHITE', { exact: true }).waitFor();
+  await page.getByRole('button', { name: '+ Dòng', exact: true }).click();
+  await page.getByRole('button', { name: 'Chọn SKU dòng 2', exact: true }).click();
+  assert.equal(await skuPicker.getByRole('button', { name: /TEE-L-WHITE/ }).isDisabled(), true,
+    'a selected SKU cannot be duplicated on another line');
+  await skuPicker.getByRole('button', { name: /TEE-M-BLACK/ }).click();
+  await skuPicker.waitFor({ state: 'detached' });
+  await page.getByLabel('Số lượng nhận dòng 1', { exact: true }).fill('3');
+  await page.getByLabel('Giá vốn VND dòng 1', { exact: true }).fill('25000');
+  await page.getByRole('button', { name: 'Tạo bản nháp', exact: true }).click();
+  await page.getByText('Đã tạo phiếu nhập DRAFT.', { exact: true }).waitFor();
+  const receiptWrite = writes.find((entry) => entry.path === '/admin/goods-receipts');
+  assert.deepEqual(receiptWrite.body, { supplier_id: 1, items: [
+    { product_id: 2, quantity_received: 3, unit_cost: 25000 },
+    { product_id: 1, quantity_received: 1, unit_cost: 0 },
+  ] }, 'SKU selection persists the exact selected Product IDs through the existing API');
+  await page.reload();
+  await page.getByRole('row').filter({ hasText: 'GR-002' }).getByRole('button', { name: 'Chi tiết', exact: true }).click();
+  await page.getByText('SKU: TEE-L-WHITE', { exact: true }).waitFor();
+  await page.getByLabel('Số lượng nhận dòng 1', { exact: true }).fill('4');
+  await page.getByRole('button', { name: 'Lưu bản nháp', exact: true }).click();
+  await page.getByText('Đã cập nhật phiếu nhập DRAFT.', { exact: true }).waitFor();
+  assert.equal(writes.filter((entry) => entry.path === '/admin/goods-receipts/2').at(-1).body.items[0].product_id, 2);
   await goto('/admin/reports');
   await page.getByText('123.456₫').first().waitFor();
   reportError = true;
-  await page.getByRole('button', { name: 'Xem báo cáo' }).click();
+  await page.getByRole('navigation', { name: 'Loại báo cáo' }).getByRole('button', { name: 'Đơn hàng', exact: true }).click();
   await page.getByRole('alert').waitFor();
   assert.equal(await page.getByText('123.456₫').count(), 0, 'stale report hidden');
-  await goto('/admin/goods-receipts');
-  await page.getByRole('button', { name: 'Chọn biến thể', exact: true }).click();
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: /Áo thử nghiệm/ })
-    .click();
-  await page.getByText('TEE-M-BLACK · M / Đen', { exact: true }).waitFor();
-  page.once('dialog', (dialog) => dialog.accept());
-  await page
-    .getByRole('button', { name: /Sản phẩm/ })
-    .first()
-    .click();
   await goto('/admin/products/1');
-  const price = page.getByRole('spinbutton', { name: 'Giá riêng TEE-M-BLACK' });
+  await page.getByRole('button', { name: 'Chỉnh sửa', exact: true }).click();
+  assert.equal(await page.getByLabel('Giá trị thuộc tính MATERIAL').inputValue(), '101',
+    'editing an ACTIVE Product preserves its required Option selection');
+  const price = page.getByRole('spinbutton', { name: 'Giá bán (VND)' });
   await price.fill('250000');
-  await page.getByRole('button', { name: 'Lưu giá', exact: true }).click();
+  await page.getByRole('button', { name: 'Lưu', exact: true }).click();
   await page.getByRole('alert').waitFor();
-  assert.equal(await price.inputValue(), '250000', 'failed price edit preserves input');
-  priceError = false;
-  await page.getByRole('button', { name: 'Lưu giá', exact: true }).click();
-  await page.getByText('Giá riêng: 250.000₫', { exact: false }).waitFor();
+  assert.equal(await price.inputValue(), '250000', 'failed product patch preserves input');
+  await page.getByRole('button', { name: 'Lưu', exact: true }).click();
+  await page.getByText('250.000₫', { exact: true }).waitFor();
+  const productPatch = writes.filter((entry) => entry.path === '/admin/products/1').at(-1)?.body;
+  assert.ok(productPatch && !Object.hasOwn(productPatch, 'attribute_values')
+    && !Object.hasOwn(productPatch, 'attribute_value_ids'),
+    'price-only PATCH must omit untouched Option-backed Attribute values');
+  assert.equal(product.attribute_values[0].attribute_value_id, 101,
+    'price-only PATCH retains the existing Product Option selection');
   await goto('/admin/orders/1');
   const beforeAction = writes.length;
-  page.once('dialog', (dialog) => dialog.dismiss());
-  await page.getByRole('button', { name: 'Xác nhận', exact: true }).click();
+  await withConfirm(() => page.getByRole('button', { name: 'Xác nhận', exact: true }).click(), 'dismiss');
   assert.equal(writes.length, beforeAction);
-  page.once('dialog', (dialog) => dialog.accept());
-  await page.getByRole('button', { name: 'Xác nhận', exact: true }).click();
+  await withConfirm(() => page.getByRole('button', { name: 'Xác nhận', exact: true }).click(), 'accept');
   await page.getByRole('button', { name: 'Bắt đầu chuẩn bị', exact: true }).waitFor();
   assert.equal(writes.length, beforeAction + 1);
-  page.once('dialog', (dialog) => {
-    assert.match(dialog.message(), /200.000/);
-    dialog.accept();
-  });
-  await page.getByRole('button', { name: 'Thu COD', exact: true }).click();
+  assert.equal(await page.getByRole('button', { name: 'Chỉnh sửa', exact: true }).count(), 0,
+    'admin recipient edits have no supported API');
+  assert.equal(await page.getByRole('button', { name: /thu COD/i }).count(), 0,
+    'COD collection is available only while shipping');
+  for (const label of ['Bắt đầu chuẩn bị', 'Bắt đầu giao']) {
+    await withConfirm(() => page.getByRole('button', { name: label, exact: true }).click(), 'accept');
+  }
+  await withConfirm(() => page.getByRole('button', { name: 'Hoàn tất giao hàng & thu COD', exact: true }).click(), 'accept', /200.000/);
   await page.getByText('Thanh toán: Đã thu tiền', { exact: false }).waitFor();
+  assert.equal(writes.filter((entry) => entry.path === '/admin/orders/1/payment-actions').at(-1).body.action,
+    'COMPLETE_DELIVERY_AND_COLLECT_COD');
+  assert.deepEqual(writes.filter((entry) => entry.path === '/admin/orders/1/actions').map((entry) => entry.body.action),
+    ['CONFIRM', 'START_PREPARING', 'DISPATCH']);
+  assert.equal(writes.filter((entry) => entry.path === '/admin/orders/1').length, 0);
   await goto('/admin/orders?status=PENDING');
   assert.equal(
     await page.getByRole('combobox', { name: 'Trạng thái đơn' }).inputValue(),
@@ -401,8 +615,7 @@ try {
     .getByRole('dialog')
     .getByRole('textbox', { name: 'Số điện thoại', exact: true })
     .fill('0900999888');
-  page.once('dialog', (dialog) => dialog.accept());
-  await page.getByRole('button', { name: 'Lưu thay đổi', exact: true }).click();
+  await withConfirm(() => page.getByRole('button', { name: 'Lưu thay đổi', exact: true }).click(), 'accept');
   await page.getByRole('dialog').getByRole('alert').waitFor();
   assert.equal(
     await page
@@ -411,11 +624,10 @@ try {
       .inputValue(),
     '0900999888',
   );
-  page.once('dialog', (dialog) => dialog.dismiss());
-  await page.keyboard.press('Escape');
+  await withConfirm(() => page.keyboard.press('Escape'), 'dismiss');
   assert.equal(await page.getByRole('dialog').count(), 1, 'dirty modal survives cancelled Escape');
-  page.once('dialog', (dialog) => dialog.accept());
-  await page.keyboard.press('Escape');
+  await withConfirm(() => page.keyboard.press('Escape'), 'accept');
+  await page.getByRole('dialog').waitFor({ state: 'detached' });
   await goto('/admin/roles');
   await page.getByRole('button', { name: 'Chỉnh sửa', exact: true }).click();
   await page
@@ -423,8 +635,7 @@ try {
     .getByRole('checkbox', { name: 'CATALOG_READ', exact: true })
     .uncheck();
   await page.getByText('Gỡ: CATALOG_READ', { exact: true }).waitFor();
-  page.once('dialog', (dialog) => dialog.accept());
-  await page.getByRole('dialog').getByRole('button', { name: 'Lưu', exact: true }).click();
+  await withConfirm(() => page.getByRole('dialog').getByRole('button', { name: 'Lưu', exact: true }).click(), 'accept');
   await page.getByRole('dialog').getByRole('alert').waitFor();
   assert.equal(
     await page
@@ -433,11 +644,60 @@ try {
       .isChecked(),
     false,
   );
-  page.once('dialog', (dialog) => dialog.accept());
-  await page.getByRole('button', { name: 'Đóng hộp thoại' }).click();
+  await withConfirm(() => page.getByRole('button', { name: 'Đóng hộp thoại' }).click(), 'accept');
+  await page.getByRole('dialog').waitFor({ state: 'detached' });
   await goto('/admin/audit');
   await page.getByRole('button', { name: 'Sau', exact: true }).click();
   await page.getByText('Trang 2', { exact: false }).waitFor();
+  await page.getByRole('textbox', { name: 'Target type' }).fill('PRODUCT');
+  await Promise.all([
+    page.waitForResponse((response) => response.url().includes('/admin/audit-logs?') && new URL(response.url()).searchParams.get('entity_type') === 'PRODUCT'),
+    page.getByRole('button', { name: 'Lọc', exact: true }).click(),
+  ]);
+  await page.getByRole('cell', { name: 'PRODUCT 1', exact: true }).waitFor();
+  assert.equal(reads.filter((entry) => entry.path === '/admin/audit-logs').at(-1).query.get('entity_type'), 'PRODUCT');
+  assert.equal(reads.filter((entry) => entry.path === '/admin/audit-logs').at(-1).query.has('target_type'), false);
+  await goto('/admin/roles');
+  const permissionPanel = page.locator('div').filter({ has: page.getByRole('heading', { name: 'Danh mục quyền', exact: true }) }).last();
+  await permissionPanel.getByRole('button', { name: 'Sửa', exact: true }).click();
+  const permissionEditor = page.getByRole('dialog');
+  assert.equal(await permissionEditor.getByLabel('Mã quyền', { exact: true }).getAttribute('readonly'), '');
+  await permissionEditor.getByLabel('Tên quyền', { exact: true }).fill('Xem danh mục cập nhật');
+  await permissionEditor.getByRole('button', { name: 'Lưu', exact: true }).click();
+  await page.getByText('Đã cập nhật permission.', { exact: true }).waitFor();
+  assert.deepEqual(writes.filter((entry) => entry.path === '/admin/permissions/1').at(-1).body, { name: 'Xem danh mục cập nhật' });
+  assert.equal(writes.some((entry) => entry.path.includes('undefined')), false);
+  await goto('/admin/staff');
+  await page.getByRole('button', { name: 'Thêm nhân viên', exact: true }).click();
+  await page.getByLabel('Họ tên *', { exact: true }).fill('Nguyễn Văn Test');
+  await page.getByLabel('Số điện thoại *', { exact: true }).fill('0900222333');
+  await page.getByPlaceholder('Mật khẩu *', { exact: true }).fill('Test-password-123');
+  await page.getByRole('checkbox', { name: 'SUPERADMIN', exact: true }).check();
+  await page.getByRole('button', { name: 'Tạo tài khoản', exact: true }).click();
+  await page.getByText('Đã tạo tài khoản nhân viên.', { exact: true }).waitFor();
+  const staffWrite = writes.filter((entry) => entry.path === '/admin/staff-accounts').at(-1).body;
+  assert.equal(staffWrite.full_name, 'Nguyễn Văn Test');
+  assert.deepEqual(staffWrite.role_ids, [1]);
+  await goto('/admin/vouchers');
+  await page.getByRole('button', { name: 'Xem / Sửa', exact: true }).click();
+  const voucherEditor = page.getByRole('dialog');
+  await voucherEditor.getByRole('combobox', { name: 'Loại giảm', exact: true }).selectOption('PERCENT');
+  await voucherEditor.getByLabel('Giá trị giảm (%)', { exact: true }).fill('12.50');
+  await voucherEditor.getByRole('combobox', { name: 'Trạng thái', exact: true }).selectOption('INACTIVE');
+  await voucherEditor.getByRole('button', { name: 'Lưu voucher', exact: true }).click();
+  await page.getByText('Đã lưu voucher.', { exact: true }).waitFor();
+  assert.deepEqual(writes.filter((entry) => entry.path === '/admin/vouchers/27').at(-1).body,
+    { code: 'SAVE10K', discount_type: 'PERCENT', discount_value: 1250, minimum_order_value: 0,
+      maximum_discount: null, starts_at: null, ends_at: null, usage_limit: null, status: 'INACTIVE' });
+  await page.getByRole('button', { name: 'Tạo voucher', exact: true }).click();
+  await voucherEditor.getByLabel('Mã voucher', { exact: true }).fill('NEW10K');
+  await voucherEditor.getByLabel('Giá trị giảm (VND)', { exact: true }).fill('10000');
+  await voucherEditor.getByRole('button', { name: 'Lưu voucher', exact: true }).click();
+  await page.getByRole('cell', { name: 'NEW10K', exact: true }).waitFor();
+  assert.deepEqual(writes.filter((entry) => entry.path === '/admin/vouchers').at(-1).body,
+    { code: 'NEW10K', discount_type: 'FIXED', discount_value: 10000, minimum_order_value: 0,
+      maximum_discount: null, starts_at: null, ends_at: null, usage_limit: null });
+
   // Visual layout and accessible form naming across every Admin module.
   const routes = [
     '/admin/dashboard',
@@ -457,8 +717,7 @@ try {
     '/admin/content',
     '/admin/catalog/categories',
     '/admin/catalog/brands',
-    '/admin/catalog/sizes',
-    '/admin/catalog/colors',
+    '/admin/catalog/attributes',
   ];
   reportError = false;
   for (const width of [1440, 768, 375]) {
@@ -466,6 +725,9 @@ try {
     for (const path of routes) {
       await goto(path);
       await page.locator('main h1').waitFor();
+      if (path === '/admin/products/1') {
+        await page.getByRole('button', { name: 'Tạo sản phẩm con', exact: true }).waitFor();
+      }
       await page.waitForTimeout(80);
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth > window.innerWidth + 1,
@@ -504,7 +766,7 @@ try {
     await page.screenshot({ path: `/tmp/fido-admin-products-${width}.png`, fullPage: true });
   }
   await page.setViewportSize({ width: 1440, height: 1000 });
-  me = { ...me, roles: [{ ...role, code: 'ADMIN' }], permissions: [] };
+  me = { ...me, roles: [{ ...meRole, code: 'ADMIN' }], permissions: [] };
   await goto('/admin/products');
   await page.getByRole('heading', { name: 'Không có quyền truy cập' }).waitFor();
   assert.deepEqual(errors, []);

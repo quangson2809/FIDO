@@ -12,16 +12,21 @@ const phase = process.env.JOURNEY_BASELINE
     : 'after';
 const categories = [
   ...meta.categories,
-  { category_id: 3, parent_category_id: 1, name: 'Áo công sở' },
-  { category_id: 4, parent_category_id: 3, name: 'Áo sơ mi' },
+  { category_id: 3, parent_category_id: 1, name: 'Áo công sở', slug: 'ao-cong-so', status: 'ACTIVE' },
+  { category_id: 4, parent_category_id: 3, name: 'Áo sơ mi', slug: 'ao-so-mi', status: 'ACTIVE' },
 ];
 const detail = {
   ...product,
   category: categories[3],
   images: [
-    { image_id: 1, image_url: '/images/about/wardrobe.svg', alt_text: 'Ảnh một', sort_order: 0 },
-    { image_id: 2, image_url: '/images/about/details.svg', alt_text: 'Ảnh hai', sort_order: 1 },
+    { id: 1, image_url: '/images/about/wardrobe.svg', is_primary: true, sort_order: 0 },
+    { id: 2, image_url: '/images/about/details.svg', is_primary: false, sort_order: 1 },
   ],
+};
+detail.family = {
+  ...detail.family,
+  members: detail.family.members.map(member => member.product_id === detail.product_id
+    ? { ...member, images: detail.images } : member),
 };
 const server = await createServer({ server: { port: 5197, strictPort: true } });
 await server.listen();
@@ -93,7 +98,13 @@ try {
       homeMeasurements.push({ width, ...homeLayout });
     }
     await capture('home');
-    await page.getByRole('button', { name: 'Danh mục sản phẩm', exact: true }).click();
+    if (width >= 1024) {
+      // Desktop hover already opens the disclosure; clicking its toggle would close it.
+      await page.getByRole('navigation', { name: 'Điều hướng chính', exact: true })
+        .getByRole('link', { name: 'Sản phẩm', exact: true }).hover();
+    } else {
+      await page.getByRole('button', { name: 'Danh mục sản phẩm', exact: true }).click();
+    }
     await page
       .getByRole('navigation', { name: 'Danh mục phân cấp', exact: true })
       .getByRole('link', { name: 'Áo sơ mi', exact: true })
@@ -133,7 +144,7 @@ try {
       );
       assert.equal(
         await page
-          .getByRole('img', { name: 'Ảnh một', exact: true })
+          .getByRole('img', { name: product.name, exact: true })
           .last()
           .evaluate((el) => getComputedStyle(el).objectFit),
         'contain',
@@ -142,14 +153,19 @@ try {
       const zoomTrigger = page.getByRole('button', { name: 'Phóng to ảnh', exact: true });
       await zoomTrigger.click();
       const zoom = page.getByRole('dialog', { name: 'Ảnh sản phẩm', exact: true });
-      await zoom.getByRole('img', { name: 'Ảnh một', exact: true }).waitFor();
+      const zoomImage = zoom.getByRole('img', { name: product.name, exact: true });
+      await zoomImage.waitFor();
+      assert.equal(await zoomImage.getAttribute('src'), '/images/about/wardrobe.svg');
       await zoom.getByRole('button', { name: 'Ảnh tiếp theo', exact: true }).click();
-      await zoom.getByRole('img', { name: 'Ảnh hai', exact: true }).waitFor();
+      await zoom.getByText('Ảnh 2 / 2', { exact: true }).waitFor();
+      assert.equal(await zoomImage.getAttribute('src'), '/images/about/details.svg');
       await zoom.getByRole('button', { name: 'Đóng ảnh', exact: true }).focus();
       await page.keyboard.press('ArrowRight');
-      await zoom.getByRole('img', { name: 'Ảnh một', exact: true }).waitFor();
+      await zoom.getByText('Ảnh 1 / 2', { exact: true }).waitFor();
+      assert.equal(await zoomImage.getAttribute('src'), '/images/about/wardrobe.svg');
       await page.keyboard.press('ArrowLeft');
-      await zoom.getByRole('img', { name: 'Ảnh hai', exact: true }).waitFor();
+      await zoom.getByText('Ảnh 2 / 2', { exact: true }).waitFor();
+      assert.equal(await zoomImage.getAttribute('src'), '/images/about/details.svg');
       await capture('zoom');
       await page.keyboard.press('Escape');
       assert.equal(
@@ -178,7 +194,10 @@ try {
     await capture('cart');
     await page.keyboard.press('Escape');
     await page.goto('http://localhost:5197/checkout');
-    await page.getByLabel('Địa chỉ nhận hàng *').fill('Nghệ An');
+    await page.getByLabel('Tỉnh / thành phố *').fill('Nghệ An');
+    await page.getByLabel('Quận / huyện *').fill('Vinh');
+    await page.getByLabel('Phường / xã *').fill('Hà Huy Tập');
+    await page.getByLabel('Địa chỉ cụ thể *').fill('15 Nguyễn Trãi');
     await page.getByRole('button', { name: 'Kiểm tra & báo giá', exact: true }).click();
     await page.getByRole('button', { name: /^Đặt hàng COD/ }).waitFor();
     await capture('checkout');
@@ -193,10 +212,12 @@ try {
     const fixture = storefrontFixture();
     await page.route('**/api/v1/**', fixture.handler);
     await page.clock.install();
-    fixture.state.expiresAt = new Date(Date.now() + 30000).toISOString();
     fixture.state.loseOrderResponse = true;
     await page.goto('http://localhost:5197/checkout');
-    await page.getByLabel('Địa chỉ nhận hàng *').fill('Địa chỉ cần giữ nguyên');
+    await page.getByLabel('Tỉnh / thành phố *').fill('Hà Nội');
+    await page.getByLabel('Quận / huyện *').fill('Ba Đình');
+    await page.getByLabel('Phường / xã *').fill('Liễu Giai');
+    await page.getByLabel('Địa chỉ cụ thể *').fill('Địa chỉ cần giữ nguyên');
     await page.getByLabel('Mã voucher', { exact: true }).fill('VALID');
     await page.getByRole('button', { name: 'Kiểm tra & báo giá', exact: true }).click();
     await page.getByRole('button', { name: /^Đặt hàng COD/ }).click();
@@ -214,13 +235,16 @@ try {
     await page.getByRole('button', { name: 'Kiểm tra đơn hàng của tôi', exact: true }).waitFor();
     assert.equal(fixture.state.orders, 1);
     assert.equal(
-      await page.getByLabel('Địa chỉ nhận hàng *').inputValue(),
+      await page.getByLabel('Địa chỉ cụ thể *').inputValue(),
       'Địa chỉ cần giữ nguyên',
     );
     for (const label of [
+      'Họ tên người nhận *',
       'Số điện thoại người nhận *',
-      'Email người nhận',
-      'Địa chỉ nhận hàng *',
+      'Tỉnh / thành phố *',
+      'Quận / huyện *',
+      'Phường / xã *',
+      'Địa chỉ cụ thể *',
       'Mã voucher',
     ]) {
       assert.equal(
@@ -263,7 +287,12 @@ try {
     assert.deepEqual(
       attempts[1].body,
       attempts[0].body,
-      'replay uses exactly the original request and quote ID',
+      'replay sends the exact original structured request',
+    );
+    assert.equal(
+      attempts[1].headers['idempotency-key'],
+      attempts[0].headers['idempotency-key'],
+      'replay reuses the original Idempotency-Key',
     );
     assert.equal(fixture.state.orders, 1, 'Backend replay fixture creates only one order');
     await page.close();

@@ -6,6 +6,8 @@ import static org.mockito.Mockito.when;
 
 import com.fido.modules.cart.service.CartQueryService;
 import com.fido.modules.cart.service.CheckoutCartView;
+import com.fido.modules.pricing.PricingService;
+import com.fido.modules.promotion.service.VoucherRedemptionService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,87 +17,51 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 @ExtendWith(MockitoExtension.class)
 class CheckoutCalculationServiceTests {
-
     @Mock private CartQueryService cart;
-
+    @Mock private VoucherRedemptionService vouchers;
     private CheckoutCalculationService service;
 
     @BeforeEach
     void setUp() {
-        service =
-                new CheckoutCalculationService(
-                        cart,
-                        org.mockito.Mockito.mock(
-                                com.fido.modules.promotion.service.VoucherRedemptionService.class),
-                        new BigDecimal("30000.00"));
+        service = new CheckoutCalculationService(cart, vouchers, 30_000L, new PricingService());
     }
 
     @Test
     void calculatesValidatedCheckoutTotalsFromCurrentCart() {
-        when(cart.checkoutView(10L))
-                .thenReturn(
-                        new CheckoutCartView(
-                                1L,
-                                List.of(item(100L, 2, new BigDecimal("80000.00"), 5, true)),
-                                new BigDecimal("160000.00")));
-
-        CheckoutCalculation result = service.calculate(10L, null);
-
-        assertEquals(new BigDecimal("160000.00"), result.subtotal());
-        assertEquals(BigDecimal.ZERO, result.discount());
-        assertEquals(new BigDecimal("30000.00"), result.shippingFee());
-        assertEquals(new BigDecimal("190000.00"), result.total());
+        when(cart.checkoutView(10L)).thenReturn(new CheckoutCartView(
+                1L, List.of(item(100L, 2, 80_000L, 5, true)), 160_000L));
+        CheckoutCalculation result = service.calculateForOrder(10L, null);
+        assertEquals(160_000L, result.subtotal());
+        assertEquals(0L, result.discount());
+        assertEquals(30_000L, result.shippingFee());
+        assertEquals(190_000L, result.total());
         assertEquals(1, result.items().size());
     }
 
     @Test
     void rejectsEmptyCart() {
-        when(cart.checkoutView(10L))
-                .thenReturn(new CheckoutCartView(null, List.of(), BigDecimal.ZERO));
-
-        ResponseStatusException error =
-                assertThrows(ResponseStatusException.class, () -> service.calculate(10L, null));
-
+        when(cart.checkoutView(10L)).thenReturn(new CheckoutCartView(null, List.of(), 0L));
+        ResponseStatusException error = assertThrows(ResponseStatusException.class,
+                () -> service.calculateForOrder(10L, null));
         assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
     }
 
     @Test
     void rejectsUnavailableOrInsufficientStockItem() {
-        when(cart.checkoutView(10L))
-                .thenReturn(
-                        new CheckoutCartView(
-                                1L,
-                                List.of(item(100L, 2, new BigDecimal("80000.00"), 1, true)),
-                                new BigDecimal("160000.00")));
-
-        ResponseStatusException error =
-                assertThrows(ResponseStatusException.class, () -> service.calculate(10L, null));
-
+        when(cart.checkoutView(10L)).thenReturn(new CheckoutCartView(
+                1L, List.of(item(100L, 2, 80_000L, 1, true)), 160_000L));
+        ResponseStatusException error = assertThrows(ResponseStatusException.class,
+                () -> service.calculateForOrder(10L, null));
         assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
     }
 
     private CheckoutCartView.Item item(
-            Long variantId,
-            int quantity,
-            BigDecimal unitPrice,
-            int availableQuantity,
-            boolean purchasable) {
-        return new CheckoutCartView.Item(
-                variantId,
-                quantity,
-                "Product",
-                null,
-                "SKU",
-                "M",
-                "Black",
-                unitPrice,
-                unitPrice.multiply(BigDecimal.valueOf(quantity)),
-                availableQuantity,
-                purchasable);
+            Long productId, int quantity, long unitPrice, int availableQuantity, boolean purchasable) {
+        return new CheckoutCartView.Item(productId, quantity, "Product", null, "SKU", unitPrice,
+                Math.multiplyExact(unitPrice, quantity), availableQuantity, purchasable);
     }
 }

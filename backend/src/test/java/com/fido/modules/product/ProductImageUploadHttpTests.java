@@ -44,6 +44,8 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
         var fixture = createCatalog(writer);
         clearImages(fixture.productId());
 
+        var old = java.time.LocalDateTime.of(2000, 1, 1, 0, 0);
+        db.update("UPDATE products SET updated_at=? WHERE id=?", old, fixture.productId());
         storage.succeed("https://storage.test/front.png", "https://storage.test/back.png");
 
         var response =
@@ -53,10 +55,15 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
                         List.of(imagePart("front.png"), imagePart("back.png")));
 
         assertEquals(201, response.status(), response.body());
+        var timestamp = db.queryForObject("SELECT updated_at FROM products WHERE id=?", java.time.LocalDateTime.class, fixture.productId());
+        org.junit.jupiter.api.Assertions.assertTrue(timestamp.isAfter(old));
+        assertEquals(timestamp, java.time.LocalDateTime.parse(response.data().get("data").get("updated_at").asText()));
         assertEquals(
                 List.of("https://storage.test/front.png", "https://storage.test/back.png"),
                 responseImageUrls(response));
         assertEquals(List.of(0, 1), responseSortOrders(response));
+        assertEquals(List.of(true, false), responsePrimaryFlags(response));
+        assertPrimaryInvariant(fixture.productId());
         assertEquals(List.of("front.png", "back.png"), storage.uploadedFilenames());
         assertEquals(
                 List.of("https://storage.test/front.png", "https://storage.test/back.png"),
@@ -68,6 +75,7 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
                 "https://storage.test/front.png",
                 publicList.data().get("data").get(0).get("thumbnail").asText());
 
+        createOperationalWarehouse();
         var publicDetail =
                 call("GET", "/api/v1/catalog/products/" + fixture.productId(), null, null);
         assertEquals(200, publicDetail.status(), publicDetail.body());
@@ -177,6 +185,7 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
         var fixture = createCatalog(writer);
         clearImages(fixture.productId());
 
+        var beforeTimestamp = db.queryForObject("SELECT updated_at FROM products WHERE id=?", java.time.LocalDateTime.class, fixture.productId());
         storage.fail(HttpStatus.BAD_GATEWAY, "Image storage request failed");
 
         var response =
@@ -184,6 +193,7 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
 
         assertEquals(502, response.status(), response.body());
         assertEquals(List.of("failed.png"), storage.uploadedFilenames());
+        assertEquals(beforeTimestamp, db.queryForObject("SELECT updated_at FROM products WHERE id=?", java.time.LocalDateTime.class, fixture.productId()));
         assertEquals(0, imageCount(fixture.productId()));
     }
 
@@ -338,6 +348,47 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
             orders.add(image.get("sort_order").asInt());
         }
         return List.copyOf(orders);
+    }
+
+    private List<Boolean> responsePrimaryFlags(Result response) {
+        var primaryFlags = new ArrayList<Boolean>();
+        for (var image : response.data().get("data").get("images")) {
+            primaryFlags.add(image.get("is_primary").asBoolean());
+        }
+        return List.copyOf(primaryFlags);
+    }
+
+    private void assertPrimaryInvariant(long productId) {
+        long gallerySize =
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM product_images WHERE product_id=?",
+                        Long.class,
+                        productId);
+        long primaryCount =
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM product_images WHERE product_id=? AND is_primary=TRUE",
+                        Long.class,
+                        productId);
+        assertEquals(gallerySize == 0 ? 0L : 1L, primaryCount);
+        int mismatchCount =
+                db.queryForObject(
+                        """
+                        SELECT COUNT(*)
+                        FROM product_images
+                        WHERE product_id=?
+                          AND ((sort_order=0 AND is_primary=FALSE)
+                            OR (sort_order<>0 AND is_primary=TRUE))
+                        """,
+                        Integer.class,
+                        productId);
+        assertEquals(0, mismatchCount);
+        List<Integer> orders =
+                db.query(
+                        "SELECT sort_order FROM product_images WHERE product_id=? ORDER BY sort_order,id",
+                        (resultSet, rowNumber) -> resultSet.getInt(1),
+                        productId);
+        assertEquals(
+                java.util.stream.IntStream.range(0, orders.size()).boxed().toList(), orders);
     }
 
     private record UploadPart(String filename, String contentType, byte[] content) {}

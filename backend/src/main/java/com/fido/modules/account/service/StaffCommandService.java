@@ -10,9 +10,10 @@ import com.fido.modules.account.repository.AccountRepository;
 import com.fido.modules.account.repository.AccountRoleRepository;
 import com.fido.modules.account.repository.RoleRepository;
 import com.fido.modules.audit.service.AuditAction;
-import com.fido.modules.audit.service.AuditEvent;
-import com.fido.modules.audit.service.AuditService;
-import com.fido.modules.audit.service.AuditTargetType;
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEntityType;
+import com.fido.modules.audit.service.AuditWriteEvent;
+import com.fido.modules.audit.service.AuditWriteService;
 
 import jakarta.persistence.EntityManager;
 
@@ -24,6 +25,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -36,7 +38,8 @@ public class StaffCommandService {
     private final AccountRoleRepository assignments;
     private final AccountAccessService access;
     private final AuthenticationService authentication;
-    private final AuditService audit;
+    private final PhoneNumberCanonicalizer phoneNumbers;
+    private final AuditWriteService audit;
     private final EntityManager em;
 
     public StaffCommandService(
@@ -45,35 +48,45 @@ public class StaffCommandService {
             AccountRoleRepository assignments,
             AccountAccessService access,
             AuthenticationService authentication,
-            AuditService audit,
+            PhoneNumberCanonicalizer phoneNumbers,
+            AuditWriteService audit,
             EntityManager em) {
         this.accounts = accounts;
         this.roles = roles;
         this.assignments = assignments;
         this.access = access;
         this.authentication = authentication;
+        this.phoneNumbers = phoneNumbers;
         this.audit = audit;
         this.em = em;
     }
 
     public StaffAccountDetailDto create(Long actor, StaffCreateRequest request) {
         lockSuperadminRole();
-        requireCreatePhoneAvailable(request.phone());
+        String phone = phoneNumbers.canonicalize(request.phone());
+        requireCreatePhoneAvailable(phone);
 
-        List<Role> selectedRoles = resolveCreateRoles(request.role_ids());
+        List<Role> selectedRoles =
+                resolveCreateRoles(request.role_ids() == null ? List.of(defaultAdminRoleId()) : request.role_ids());
 
-        Account account = createAccount(request);
+        Account account = new Account();
+        account.setFullName(request.full_name().trim());
+        account.setPhone(phone);
+        account.setEmail(request.email());
+        account.setStatus("ACTIVE");
+        account.setPasswordHash(authentication.hashPassword(request.password()));
+        account = accounts.save(account);
 
         replace(account.getAccountId(), selectedRoles);
-
         em.flush();
 
         audit.record(
-                AuditEvent.of(
-                        actor,
+                AuditWriteEvent.withChanges(
                         AuditAction.STAFF_CREATE,
-                        AuditTargetType.ACCOUNT,
-                        account.getAccountId()));
+                        AuditEntityType.ACCOUNT,
+                        account.getAccountId().toString(),
+                        Map.of(),
+                        Map.of("status", "ACTIVE", "active", true, "role_count", selectedRoles.size())));
 
         return access.findAccess(account.getAccountId()).orElseThrow();
     }
@@ -83,38 +96,68 @@ public class StaffCommandService {
 
         requireStaff(accountId);
 
-        Account account = accounts.findById(accountId).orElseThrow();
+        Account account =
+                accounts.findByIdForUpdate(accountId)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if (account.getDeletedAt() != null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+
+        int oldRoleCount = access.findAccess(accountId).map(detail -> detail.roles().size()).orElse(0);
+        String oldStatus = account.getStatus();
+        boolean oldActive = account.isActive();
+        List<Role> selectedRoles =
+                request.role_ids() == null ? null : resolveCreateRoles(request.role_ids());
+        boolean finalSuperadmin =
+                selectedRoles == null
+                        ? access.isSuperadmin(accountId)
+                        : selectedRoles.stream().anyMatch(role -> "SUPERADMIN".equals(role.getCode()));
+        String finalStatus = request.status() == null ? account.getStatus() : request.status();
+
+        // The locked SUPERADMIN row serializes role and lifecycle changes, so concurrent updates
+        // cannot both observe a count of two and remove both final ACTIVE assignments.
+        if (account.isActive()
+                && access.isSuperadmin(accountId)
+                && (!"ACTIVE".equals(finalStatus) || !finalSuperadmin)
+                && assignments.countActiveAccountsByRoleId(superadminRole.getRoleId()) <= 1) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "LAST_SUPERADMIN_REQUIRED");
+        }
 
         applyAccountPatch(account, request);
-
-        applyRolePatch(accountId, request, superadminRole);
+        if (selectedRoles != null) {
+            replace(accountId, selectedRoles);
+        }
 
         em.flush();
-
+        int newRoleCount = access.findAccess(accountId).map(detail -> detail.roles().size()).orElse(0);
         audit.record(
-                AuditEvent.of(actor, AuditAction.STAFF_UPDATE, AuditTargetType.ACCOUNT, accountId));
+                AuditWriteEvent.withChanges(
+                        AuditAction.STAFF_UPDATE,
+                        AuditEntityType.ACCOUNT,
+                        accountId.toString(),
+                        Map.of("status", oldStatus, "active", oldActive, "role_count", oldRoleCount),
+                        Map.of("status", account.getStatus(), "active", account.isActive(), "role_count", newRoleCount)));
 
         return access.findAccess(accountId).orElseThrow();
     }
 
-    private void requireCreatePhoneAvailable(String phone) {
-        if (accounts.existsByPhone(phone)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
+    private void requireCreatePhoneAvailable(String canonicalPhone) {
+        if (accounts.existsByPhoneInAndNotDeleted(phoneNumbers.lookupValues(canonicalPhone))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "PHONE_ALREADY_IN_USE");
         }
     }
 
     private List<Role> resolveCreateRoles(List<Long> requestedRoleIds) {
-        List<Long> roleIds =
-                requestedRoleIds == null ? List.of(defaultAdminRoleId()) : requestedRoleIds;
-
-        List<Role> selectedRoles = resolve(roleIds);
+        List<Role> selectedRoles = resolve(requestedRoleIds);
         requireStaffRole(selectedRoles);
-
         return selectedRoles;
     }
 
     private Long defaultAdminRoleId() {
-        return roles.findByCode("ADMIN").orElseThrow().getRoleId();
+        return roles.findByCode("ADMIN")
+                .filter(role -> "ACTIVE".equals(role.getStatus()))
+                .orElseThrow(() -> new IllegalStateException("ACTIVE ADMIN role is missing"))
+                .getRoleId();
     }
 
     private void requireStaffRole(List<Role> selectedRoles) {
@@ -127,55 +170,26 @@ public class StaffCommandService {
         }
     }
 
-    private Account createAccount(StaffCreateRequest request) {
-        Account account = new Account();
-        account.setPhone(request.phone());
-        account.setEmail(request.email());
-        account.setPasswordHash(authentication.hashPassword(request.password()));
-
-        return accounts.save(account);
-    }
-
     private void applyAccountPatch(Account account, StaffPatchRequest request) {
         if (request.phone() != null) {
-            requireUpdatePhoneAvailable(request.phone(), account.getAccountId());
-            account.setPhone(request.phone());
+            String canonicalPhone = phoneNumbers.canonicalize(request.phone());
+            if (accounts.existsByPhoneInAndNotDeletedAndAccountIdNot(
+                    phoneNumbers.lookupValues(canonicalPhone), account.getAccountId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "PHONE_ALREADY_IN_USE");
+            }
+            account.setPhone(canonicalPhone);
+        }
+
+        if (request.full_name() != null) {
+            account.setFullName(request.full_name().trim());
         }
 
         if (request.email() != null) {
             account.setEmail(request.email());
         }
-    }
 
-    private void requireUpdatePhoneAvailable(String phone, Long accountId) {
-        if (accounts.existsByPhoneAndAccountIdNot(phone, accountId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
-        }
-    }
-
-    private void applyRolePatch(Long accountId, StaffPatchRequest request, Role superadminRole) {
-        if (request.role_ids() == null) {
-            return;
-        }
-
-        List<Role> selectedRoles = resolve(request.role_ids());
-
-        requireStaffRole(selectedRoles);
-
-        protectLastSuperadmin(accountId, selectedRoles, superadminRole);
-
-        replace(accountId, selectedRoles);
-    }
-
-    private void protectLastSuperadmin(
-            Long accountId, List<Role> selectedRoles, Role superadminRole) {
-        boolean removingSuperadmin =
-                access.isSuperadmin(accountId)
-                        && selectedRoles.stream()
-                                .noneMatch(role -> "SUPERADMIN".equals(role.getCode()));
-
-        if (removingSuperadmin && assignments.countByRoleId(superadminRole.getRoleId()) <= 1) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
+        if (request.status() != null) {
+            account.setStatus(request.status());
         }
     }
 
@@ -190,16 +204,19 @@ public class StaffCommandService {
     }
 
     private List<Role> resolve(List<Long> roleIds) {
-        return new LinkedHashSet<>(roleIds)
-                .stream()
-                        .map(
-                                roleId ->
-                                        roles.findById(roleId)
-                                                .orElseThrow(
-                                                        () ->
-                                                                new ResponseStatusException(
-                                                                        HttpStatus.NOT_FOUND)))
-                        .toList();
+        LinkedHashSet<Long> uniqueRoleIds = new LinkedHashSet<>(roleIds);
+        if (uniqueRoleIds.size() != roleIds.size()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        }
+
+        return uniqueRoleIds.stream()
+                .map(
+                        roleId ->
+                                roles.findById(roleId)
+                                        .filter(role -> "ACTIVE".equals(role.getStatus()))
+                                        .orElseThrow(
+                                                () -> new ResponseStatusException(HttpStatus.NOT_FOUND)))
+                .toList();
     }
 
     private void replace(Long accountId, List<Role> selectedRoles) {

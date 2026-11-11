@@ -13,13 +13,15 @@ const numericStatus = (value: unknown): number | undefined =>
 
 export class ApiClientError extends Error {
   readonly status?: number;
+  readonly code?: string;
   readonly path?: string;
   readonly cause: unknown;
 
-  constructor(message: string, status?: number, path?: string, cause?: unknown) {
+  constructor(message: string, status?: number, path?: string, cause?: unknown, code?: string) {
     super(message);
     this.name = 'ApiClientError';
     this.status = status;
+    this.code = code;
     this.path = path;
     this.cause = cause;
   }
@@ -37,7 +39,7 @@ export const normalizeApiError = (error: unknown): ApiClientError => {
       (status ? `Yêu cầu API thất bại (${status}).` : nonBlank(error.message)) ??
       'Không thể kết nối tới API.';
 
-    return new ApiClientError(message, status, nonBlank(objectProperty(payload, 'path')), error);
+    return new ApiClientError(message, status, nonBlank(objectProperty(payload, 'path')), error, nonBlank(objectProperty(payload, 'code')));
   }
 
   if (error instanceof Error) {

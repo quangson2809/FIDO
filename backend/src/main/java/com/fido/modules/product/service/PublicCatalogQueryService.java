@@ -2,36 +2,39 @@ package com.fido.modules.product.service;
 
 import com.fido.common.response.ApiListResponse;
 import com.fido.common.response.Pagination;
-import com.fido.modules.inventory.service.InventoryAvailabilityService;
-import com.fido.modules.product.dto.response.BrandDto;
 import com.fido.modules.product.dto.response.CatalogMetaDto;
+import com.fido.modules.inventory.service.InventoryAvailabilityService;
+import com.fido.modules.product.dto.response.ProductFamilyDto;
+import com.fido.modules.product.dto.response.ProductFamilyMemberDto;
+import com.fido.modules.product.dto.response.ProductImageDto;
+import com.fido.modules.product.dto.response.ProductAttributeValueDto;
 import com.fido.modules.product.dto.response.ProductDetailDto;
 import com.fido.modules.product.dto.response.ProductSummaryDto;
-import com.fido.modules.product.dto.response.ProductVariantDto;
-import com.fido.modules.product.dto.response.SizeValueDto;
+import com.fido.modules.product.entity.Attribute;
+import com.fido.modules.product.entity.AttributeOption;
 import com.fido.modules.product.entity.Brand;
 import com.fido.modules.product.entity.Category;
-import com.fido.modules.product.entity.Color;
 import com.fido.modules.product.entity.Product;
-import com.fido.modules.product.entity.ProductVariant;
-import com.fido.modules.product.entity.SizeValue;
 import com.fido.modules.product.mapper.CatalogMapper;
+import com.fido.modules.product.repository.AttributeOptionRepository;
+import com.fido.modules.product.repository.AttributeRepository;
 import com.fido.modules.product.repository.BrandRepository;
 import com.fido.modules.product.repository.CategoryRepository;
 import com.fido.modules.product.repository.ProductImageRepository;
 import com.fido.modules.product.repository.ProductRepository;
-import com.fido.modules.product.repository.ProductVariantRepository;
 
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -40,253 +43,189 @@ import java.util.stream.Collectors;
 public class PublicCatalogQueryService {
 
     private final ProductRepository products;
-    private final ProductVariantRepository variants;
+    private final InventoryAvailabilityService inventory;
     private final ProductImageRepository images;
     private final ProductImageReadService imageRead;
+    private final ProductAttributeValueReadService attributeValueRead;
     private final CategoryRepository categories;
     private final BrandRepository brands;
-    private final InventoryAvailabilityService inventory;
     private final CatalogReferenceService references;
     private final CatalogMetaService metaService;
+    private final AttributeRepository attributes;
+    private final AttributeOptionRepository options;
 
     public PublicCatalogQueryService(
             ProductRepository products,
-            ProductVariantRepository variants,
+            InventoryAvailabilityService inventory,
             ProductImageRepository images,
             ProductImageReadService imageRead,
+            ProductAttributeValueReadService attributeValueRead,
             CategoryRepository categories,
             BrandRepository brands,
-            InventoryAvailabilityService inventory,
             CatalogReferenceService references,
-            CatalogMetaService metaService) {
+            CatalogMetaService metaService,
+            AttributeRepository attributes,
+            AttributeOptionRepository options) {
         this.products = products;
-        this.variants = variants;
+        this.inventory = inventory;
         this.images = images;
         this.imageRead = imageRead;
+        this.attributeValueRead = attributeValueRead;
         this.categories = categories;
         this.brands = brands;
-        this.inventory = inventory;
         this.references = references;
         this.metaService = metaService;
+        this.attributes = attributes;
+        this.options = options;
     }
 
     public ApiListResponse<ProductSummaryDto> publicProducts(CatalogProductFilter filter) {
         validatePriceRange(filter);
-
+        Map<Long, Long> selectedOptions = resolveAttributeFilters(filter.attributeFilters());
         Pagination pagination = Pagination.of(filter.page(), filter.pageSize());
-
-        Specification<Product> specification =
+        Specification<Product> spec =
                 CatalogSpecifications.publicProducts(
                         filter,
                         filter.categoryId() == null
                                 ? List.of()
-                                : references.categoryIdsIncludingDescendants(filter.categoryId()));
-
-        var result = products.findAll(specification, pagination.toPageable());
-
-        List<Product> productsOnPage = result.getContent();
-        var productIds = productsOnPage.stream().map(Product::getProductId).toList();
-
-        Map<Long, Category> categoriesById = categoryMap(productsOnPage);
-        Map<Long, Brand> brandsById = brandMap(productsOnPage);
-        Map<Long, String> thumbnailsByProductId = imageRead.representativeByProductIds(productIds);
-        Map<Long, List<SizeValueDto>> sizesByProductId = sellingSizesByProductId(productIds);
-
+                                : references.categoryIdsIncludingDescendants(filter.categoryId()),
+                        selectedOptions);
+        var result = products.findAll(spec, pagination.toPageable());
+        List<Product> pageProducts = result.getContent();
+        var ids = pageProducts.stream().map(Product::getProductId).toList();
+        Map<Long, Category> categoriesById = categoryMap(pageProducts);
+        Map<Long, Brand> brandsById = brandMap(pageProducts);
+        Map<Long, String> thumbnails = imageRead.representativeByProductIds(ids);
         var data =
-                productsOnPage.stream()
+                pageProducts.stream()
                         .map(
-                                product ->
-                                        new ProductSummaryDto(
-                                                product.getProductId(),
-                                                product.getName(),
-                                                thumbnailsByProductId.get(product.getProductId()),
-                                                CatalogMapper.category(
-                                                        required(
-                                                                categoriesById,
-                                                                product.getCategoryId(),
-                                                                "Missing category")),
-                                                product.getBrandId() == null
+                                p ->
+                                        CatalogMapper.publicSummary(
+                                                p,
+                                                thumbnails.get(p.getProductId()),
+                                                p.getCategoryId() == null
                                                         ? null
-                                                        : CatalogMapper.brand(
-                                                                required(
-                                                                        brandsById,
-                                                                        product.getBrandId(),
-                                                                        "Missing brand")),
-                                                product.getBasePrice(),
-                                                product.getSaleStatus(),
-                                                product.getMaterialCare(),
-                                                sizesByProductId.getOrDefault(
-                                                        product.getProductId(), List.of())))
+                                                        : categoriesById.get(p.getCategoryId()),
+                                                p.getBrandId() == null
+                                                        ? null
+                                                        : brandsById.get(p.getBrandId())))
                         .toList();
-
         return ApiListResponse.of(data, pagination.meta(result.getTotalElements()));
     }
 
     public ProductDetailDto publicDetail(Long productId) {
-        return detailInternal(references.product(productId));
+        Product product = references.publicProduct(productId);
+        Long rootId = product.getParentProductId() == null
+                ? product.getProductId() : product.getParentProductId();
+        List<Product> familyProducts = new ArrayList<>();
+        if (rootId.equals(product.getProductId())) {
+            familyProducts.add(product);
+        } else {
+            products.findById(rootId).filter(PublicCatalogQueryService::isPublic)
+                    .ifPresent(familyProducts::add);
+        }
+        products.findAllByParentProductIdOrderByProductIdAsc(rootId).stream()
+                .filter(PublicCatalogQueryService::isPublic)
+                .forEach(familyProducts::add);
+        // The requested ACTIVE child must appear even if the parent is not public.
+        if (familyProducts.stream().noneMatch(row -> row.getProductId().equals(productId))) {
+            familyProducts.add(product);
+        }
+        familyProducts.sort(Comparator.comparing((Product row) -> !row.getProductId().equals(rootId))
+                .thenComparing(Product::getProductId));
+        List<Long> ids = familyProducts.stream().map(Product::getProductId).toList();
+        Map<Long, List<ProductImageDto>> galleries = new LinkedHashMap<>();
+        ids.forEach(id -> galleries.put(id, new ArrayList<>()));
+        images.findAllByProductIdInOrderByProductIdAscSortOrderAscImageIdAsc(ids)
+                .forEach(image -> galleries.get(image.getProductId()).add(CatalogMapper.image(image)));
+        Map<Long, List<ProductAttributeValueDto>> familyValues = attributeValueRead.forProducts(ids);
+        // Inventory is keyed by Product ID in the configured operational warehouse.
+        // Read all family balances at once; an absent balance is zero, never inherited.
+        Map<Long, Integer> balances = inventory.availableQuantities(ids);
+        List<ProductFamilyMemberDto> members = familyProducts.stream().map(row -> {
+            int available = balances.getOrDefault(row.getProductId(), 0);
+            return new ProductFamilyMemberDto(
+                    row.getProductId(), row.getParentProductId(), row.getSku(), row.getName(),
+                    row.getSellingPrice(), row.getStatus(),
+                    List.copyOf(galleries.get(row.getProductId())),
+                    familyValues.getOrDefault(row.getProductId(), List.of()),
+                    available, isPublic(row) && available > 0);
+        }).toList();
+        Category category =
+                product.getCategoryId() == null ? null : references.category(product.getCategoryId());
+        Brand brand = product.getBrandId() == null ? null : references.brand(product.getBrandId());
+        var productImages = List.copyOf(galleries.get(productId));
+        return new ProductDetailDto(
+                product.getProductId(),
+                product.getParentProductId(),
+                product.getSku(),
+                product.getName(),
+                product.getSlug(),
+                product.getDescription(),
+                category == null ? null : CatalogMapper.category(category),
+                CatalogMapper.brand(brand),
+                product.getSellingPrice(),
+                product.getStatus(),
+                productImages,
+                product.getCreatedAt(),
+                product.getUpdatedAt(),
+                familyValues.getOrDefault(productId, List.of()),
+                new ProductFamilyDto(rootId, members));
+    }
+
+    private static boolean isPublic(Product product) {
+        return !product.isDeleted() && "ACTIVE".equals(product.getStatus());
     }
 
     public CatalogMetaDto publicMeta() {
-        return metaService.meta();
+        return metaService.publicMeta();
     }
 
-    private Map<Long, List<SizeValueDto>> sellingSizesByProductId(List<Long> productIds) {
-        if (productIds.isEmpty()) {
-            return Map.of();
+    private Map<Long, Long> resolveAttributeFilters(Map<String, String> filters) {
+        Map<Long, Long> selected = new LinkedHashMap<>();
+        for (var entry : filters.entrySet()) {
+            Attribute attribute = attributes.findByCode(entry.getKey())
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST, "Unknown Attribute filter code"));
+            AttributeOption option = options.findByAttributeIdAndValue(
+                            attribute.getAttributeId(), entry.getValue())
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST, "Unknown Option for Attribute filter"));
+            selected.put(attribute.getAttributeId(), option.getAttributeOptionId());
         }
-        var sellingVariants =
-                variants.findAllByProductIdInAndSaleStatus(productIds, CatalogPolicy.ON_SALE);
-        var sizesById =
-                references.sizeValuesById(
-                        sellingVariants.stream()
-                                .map(ProductVariant::getSizeValueId)
-                                .distinct()
-                                .toList());
-
-        // Batch references before mapping: page size must not determine the query count.
-        return sellingVariants.stream()
-                .collect(
-                        Collectors.groupingBy(
-                                ProductVariant::getProductId,
-                                Collectors.collectingAndThen(
-                                        Collectors.toList(),
-                                        productVariants ->
-                                                productVariants.stream()
-                                                        .map(ProductVariant::getSizeValueId)
-                                                        .distinct()
-                                                        .map(
-                                                                id ->
-                                                                        required(
-                                                                                sizesById,
-                                                                                id,
-                                                                                "Variant references"
-                                                                                    + " missing"
-                                                                                    + " size"))
-                                                        .sorted(
-                                                                Comparator.comparing(
-                                                                                SizeValue
-                                                                                        ::getSortOrder)
-                                                                        .thenComparing(
-                                                                                SizeValue
-                                                                                        ::getSizeValueId))
-                                                        .map(CatalogMapper::sizeValue)
-                                                        .toList())));
-    }
-
-    private ProductDetailDto detailInternal(Product product) {
-        var productVariants =
-                variants.findAllByProductIdOrderByVariantIdAsc(product.getProductId());
-
-        var availabilityByVariantId =
-                inventory.availableQuantities(
-                        productVariants.stream().map(ProductVariant::getVariantId).toList());
-
-        Map<Long, SizeValue> sizesById =
-                references.sizeValuesById(
-                        productVariants.stream().map(ProductVariant::getSizeValueId).toList());
-
-        Map<Long, Color> colorsById =
-                references.colorsById(
-                        productVariants.stream().map(ProductVariant::getColorId).toList());
-
-        var publicVariants =
-                productVariants.stream()
-                        .map(
-                                variant -> {
-                                    SizeValue size =
-                                            required(
-                                                    sizesById,
-                                                    variant.getSizeValueId(),
-                                                    "Variant references missing size");
-                                    Color color =
-                                            required(
-                                                    colorsById,
-                                                    variant.getColorId(),
-                                                    "Variant references missing color");
-                                    BigDecimal effectivePrice =
-                                            variant.getOverridePrice() == null
-                                                    ? product.getBasePrice()
-                                                    : variant.getOverridePrice();
-
-                                    return new ProductVariantDto(
-                                            variant.getVariantId(),
-                                            CatalogMapper.sizeValue(size),
-                                            CatalogMapper.color(color),
-                                            variant.getSku(),
-                                            effectivePrice,
-                                            variant.getSaleStatus(),
-                                            availabilityByVariantId.getOrDefault(
-                                                    variant.getVariantId(), 0));
-                                })
-                        .toList();
-
-        var productImages =
-                images.findAllByProductIdOrderBySortOrderAsc(product.getProductId()).stream()
-                        .map(CatalogMapper::image)
-                        .toList();
-
-        return new ProductDetailDto(
-                product.getProductId(),
-                product.getName(),
-                product.getDescription(),
-                CatalogMapper.category(references.category(product.getCategoryId())),
-                brandDto(product.getBrandId()),
-                metaService.sizeSystemDto(product.getSizeSystemId()),
-                product.getGender(),
-                product.getSeason(),
-                product.getStyle(),
-                product.getMaterialCare(),
-                product.getBasePrice(),
-                product.getSaleStatus(),
-                productImages,
-                publicVariants);
-    }
-
-    private BrandDto brandDto(Long brandId) {
-        return brandId == null ? null : CatalogMapper.brand(references.brand(brandId));
+        return selected;
     }
 
     private void validatePriceRange(CatalogProductFilter filter) {
-        BigDecimal minPrice = filter.minPrice();
-        BigDecimal maxPrice = filter.maxPrice();
-        boolean invalidMin = minPrice != null && minPrice.signum() < 0;
-        boolean invalidMax = maxPrice != null && maxPrice.signum() < 0;
-        boolean invalidRange =
-                minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0;
-
-        if (invalidMin || invalidMax || invalidRange) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        Long min = filter.minPrice();
+        Long max = filter.maxPrice();
+        if ((min != null && min < 0) || (max != null && max < 0)
+                || (min != null && max != null && min > max)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid price range");
         }
     }
 
-    private Map<Long, Category> categoryMap(List<Product> productsOnPage) {
-        var categoryIds = productsOnPage.stream().map(Product::getCategoryId).distinct().toList();
-        if (categoryIds.isEmpty()) {
-            return Map.of();
-        }
-        return categories.findAllByCategoryIdIn(categoryIds).stream()
+    private Map<Long, Category> categoryMap(List<Product> pageProducts) {
+        var ids =
+                pageProducts.stream()
+                        .map(Product::getCategoryId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList();
+        if (ids.isEmpty()) return Map.of();
+        return categories.findAllByCategoryIdIn(ids).stream()
                 .collect(Collectors.toMap(Category::getCategoryId, Function.identity()));
     }
 
-    private Map<Long, Brand> brandMap(List<Product> productsOnPage) {
-        var brandIds =
-                productsOnPage.stream()
+    private Map<Long, Brand> brandMap(List<Product> pageProducts) {
+        var ids =
+                pageProducts.stream()
                         .map(Product::getBrandId)
-                        .filter(java.util.Objects::nonNull)
+                        .filter(Objects::nonNull)
                         .distinct()
                         .toList();
-        if (brandIds.isEmpty()) {
-            return Map.of();
-        }
-        return brands.findAllByBrandIdIn(brandIds).stream()
+        if (ids.isEmpty()) return Map.of();
+        return brands.findAllByBrandIdIn(ids).stream()
                 .collect(Collectors.toMap(Brand::getBrandId, Function.identity()));
-    }
-
-    private <T> T required(Map<Long, T> values, Long id, String message) {
-        T value = values.get(id);
-        if (value == null) {
-            throw new IllegalStateException(message);
-        }
-        return value;
     }
 }

@@ -1,3 +1,4 @@
+import { ProductAttributeFields } from '../src/features/catalog/components/ProductAttributeFields';
 import assert from 'node:assert/strict';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -7,6 +8,7 @@ import { AdminScreen } from '../src/screens/AdminScreen';
 import { VoucherForm } from '../src/features/promotion/components/VoucherForm';
 import type { VoucherDetail } from '../src/features/promotion/types';
 import { ProductPurchasePanel } from '../src/features/catalog/components/ProductDetailSections';
+import { ProductLongDescription } from '../src/features/catalog/components/ProductLongDescription';
 import { ProductSummaryCard } from '../src/features/catalog/components/ProductSummaryCard';
 import {
   BenefitCardIllustration,
@@ -25,7 +27,6 @@ import type { MeDto } from '../src/features/auth/types';
 import type {
   AdminProductDetailDto,
   ProductDetailDto,
-  ProductVariantDto,
 } from '../src/features/catalog/types';
 
 const noOp = () => undefined;
@@ -34,34 +35,31 @@ const summaryHtml = renderToStaticMarkup(
     product={{
       id: '37',
       product_id: 37,
+      sku: 'FIDO-PANTS-37',
       name: 'Sản phẩm thật từ catalog',
       category: 'Quần',
       brand: 'FIDO',
-      base_price: 890000,
+      selling_price: 890000,
+      status: 'ACTIVE',
       imageUrl: '/managed-product.jpg',
-      sale_status: 'ON_SALE',
-      materialCare: null,
-      sizes: [
-        { size_value_id: 1, size_system_id: 1, code: '29', display_name: '29', sort_order: 1 },
-        { size_value_id: 2, size_system_id: 1, code: '34', display_name: '34', sort_order: 2 },
-      ],
+      slug: 'san-pham-that-tu-catalog',
     }}
     onOpenProduct={noOp}
   />,
 );
 assert.match(summaryHtml, /Sản phẩm thật từ catalog/);
 assert.match(summaryHtml, /890\.000 đ/);
-assert.match(summaryHtml, /Size 29 · 34/);
-assert.match(summaryHtml, /cơ bản/);
 assert.match(summaryHtml, /aria-haspopup="dialog"/);
 assert.doesNotMatch(summaryHtml, /HÀNG MỚI|WOOL BLEND|Yêu thích|Giá cơ bản<\/|>Xem chi tiết</);
 const asyncNoOp = async () => undefined;
 
 const profile: MeDto = {
   account: {
-    account_id: 1,
+    id: 1,
+    full_name: 'Catalog Test Account',
     phone: '0900000000',
     email: 'catalog@fido.local',
+    status: 'ACTIVE',
     created_at: '2026-10-07T00:00:00Z',
     updated_at: '2026-10-07T00:00:00Z',
   },
@@ -99,11 +97,12 @@ const cartValue: CartContextValue = {
     {
       id: '1',
       name: 'FIDO Tee',
-      variantId: 101,
+      productId: 1,
+      sku: 'FIDO-TEE',
       price: 199000,
+      lineTotal: 398000,
+      availableQuantity: 8,
       imageUrl: '',
-      size: 'M',
-      color: 'Black',
       quantity: 2,
     },
   ],
@@ -153,186 +152,171 @@ assert.doesNotMatch(adminHtml, />Vai trò &amp; quyền</);
 const voucherAllHtml = renderToStaticMarkup(
   <VoucherForm voucher={null} canWrite onClose={noOp} onSaved={noOp} />,
 );
-assert.match(voucherAllHtml, /Toàn bộ sản phẩm/);
-assert.doesNotMatch(voucherAllHtml, /Tìm danh mục|Tìm sản phẩm|ID danh mục|Giảm tối đa/);
-const voucherCategory: VoucherDetail = {
-  voucher_id: 30,
-  code: 'WELCOME10',
-  discount_type: 'FIXED_AMOUNT',
-  discount_value: 10000,
-  maximum_discount: null,
-  minimum_amount: 400000,
-  starts_at: '2026-10-09T00:00:00Z',
-  ends_at: '2026-10-12T00:00:00Z',
-  scope: 'CATEGORY',
-  product_ids: [],
-  category_ids: [5],
-  global_limit: 10,
-  customer_limit: 1,
-  enabled: true,
-  active_usage: 0,
-  ever_used: false,
+assert.match(voucherAllHtml, /bản nháp/);
+assert.doesNotMatch(voucherAllHtml, /Phạm vi|Lượt mỗi khách hàng/);
+const voucher: VoucherDetail = {
+  id: 30, code: 'WELCOME10', discount_type: 'PERCENT', discount_value: 1250,
+  maximum_discount: null, minimum_order_value: 400000,
+  starts_at: null, ends_at: null, usage_limit: 10, usage_count: 2, status: 'ACTIVE',
 };
-const voucherCategoryHtml = renderToStaticMarkup(
-  <VoucherForm voucher={voucherCategory} canWrite onClose={noOp} onSaved={noOp} />,
-);
-assert.match(voucherCategoryHtml, /Chọn danh mục áp dụng/);
-assert.doesNotMatch(voucherCategoryHtml, /ID danh mục/);
-const voucherProductHtml = renderToStaticMarkup(
-  <VoucherForm
-    voucher={{ ...voucherCategory, scope: 'PRODUCT', category_ids: [], product_ids: [12] }}
-    canWrite
-    onClose={noOp}
-    onSaved={noOp}
-  />,
-);
-assert.match(voucherProductHtml, /Tìm sản phẩm/);
-assert.doesNotMatch(voucherProductHtml, /ID sản phẩm/);
-const voucherPercentHtml = renderToStaticMarkup(
-  <VoucherForm
-    voucher={{
-      ...voucherCategory,
-      discount_type: 'PERCENTAGE',
-      discount_value: 10,
-      maximum_discount: 10000,
-    }}
-    canWrite
-    onClose={noOp}
-    onSaved={noOp}
-  />,
-);
-assert.match(voucherPercentHtml, /Giảm tối đa/);
-
-const variant: ProductVariantDto = {
-  variant_id: 101,
-  size: {
-    size_value_id: 10,
-    size_system_id: 1,
-    code: 'M',
-    display_name: 'M',
-    sort_order: 1,
-  },
-  color: {
-    color_id: 20,
-    code: 'BLACK',
-    name: 'Đen',
-  },
-  sku: 'FIDO-TEE-M-BLK',
-  effective_price: 199000,
-  sale_status: 'ON_SALE',
-  available_quantity: 5,
-};
+const voucherHtml = renderToStaticMarkup(<VoucherForm voucher={voucher} canWrite onClose={noOp} onSaved={noOp} />);
+assert.match(voucherHtml, /value="12.5"/);
+assert.match(voucherHtml, /Đã sử dụng: 2 lượt/);
+assert.match(voucherHtml, /Giảm tối đa/);
+assert.match(voucherHtml, /value="INACTIVE"/);
+assert.doesNotMatch(voucherHtml, /value="DRAFT"/);
 
 const product: ProductDetailDto = {
   product_id: 1,
+  parent_product_id: null,
+  sku: 'FIDO-TEE',
   name: 'FIDO Essential Tee',
+  slug: 'fido-essential-tee',
   description: 'Áo thun cơ bản.',
   category: {
     category_id: 1,
     parent_category_id: null,
     name: 'Áo',
+    slug: 'ao',
+    status: 'ACTIVE',
   },
   brand: null,
-  size_system: {
-    size_system_id: 1,
-    code: 'TOP',
-    name: 'Áo',
-    size_values: [variant.size],
-  },
-  gender: null,
-  season: null,
-  style: null,
-  material_care: null,
-  base_price: 199000,
-  sale_status: 'ON_SALE',
+  selling_price: 199000,
+  status: 'ACTIVE',
   images: [],
-  variants: [variant],
+  created_at: '2026-10-07T00:00:00Z',
+  updated_at: '2026-10-07T00:00:00Z',
+  family: {
+    root_product_id: 1,
+    members: [{
+      product_id: 1, parent_product_id: null, sku: 'FIDO-TEE',
+      name: 'FIDO Essential Tee', selling_price: 199000, status: 'ACTIVE',
+      images: [], attribute_values: [],
+      available_quantity: 8, purchasable: true,
+    }],
+  },
+  attribute_values: [
+    {
+      attribute_id: 1,
+      attribute_code: 'MATERIAL',
+      attribute_name: 'Chất liệu',
+      attribute_value_id: 101,
+      value: 'COTTON',
+      label: 'Cotton',
+    },
+  ],
 };
 
+const {
+  familyOptions,
+  matchingFamilyMembers,
+  matchingPurchasableMembers,
+  deriveProductSelectionMetadata,
+} = await import(
+  '../src/features/catalog/model/productFamilySelection'
+);
+const familyMembers = [
+  { ...product.family.members[0], product_id: 2,
+    attribute_values: [{ attribute_id: 9, attribute_code: 'COLOR',
+      attribute_name: 'Màu', attribute_value_id: 51, value: 'BLACK', label: 'Đen' },
+      { attribute_id: 10, attribute_code: 'SIZE',
+        attribute_name: 'Kích thước', attribute_value_id: 61, value: 'M', label: 'M' }] },
+  { ...product.family.members[0], product_id: 3,
+    attribute_values: [{ attribute_id: 9, attribute_code: 'COLOR',
+      attribute_name: 'Màu', attribute_value_id: 52, value: 'WHITE', label: 'Trắng' },
+      { attribute_id: 10, attribute_code: 'SIZE',
+        attribute_name: 'Kích thước', attribute_value_id: 62, value: 'L', label: 'L' }] },
+];
+assert.deepEqual(matchingFamilyMembers(familyMembers, 51, 61).map(v => v.product_id), [2]);
+assert.deepEqual(matchingFamilyMembers(familyMembers, 51, 62), []);
+assert.equal(familyOptions(familyMembers, 'COLOR').length, 2);
+const stockMembers = [
+  { ...familyMembers[0], available_quantity: 0, purchasable: false },
+  { ...familyMembers[1], available_quantity: 4, purchasable: true },
+];
+assert.deepEqual(matchingPurchasableMembers(stockMembers, 51, 61), []);
+assert.deepEqual(matchingPurchasableMembers(stockMembers, 52, 62).map(m => m.product_id), [3]);
+const derivedMeta = deriveProductSelectionMetadata({
+  root_product_id: 1, members: stockMembers,
+});
+assert.equal(derivedMeta.product_choices[0].purchasable, false);
+assert.equal(derivedMeta.product_choices[1].available_quantity, 4);
+assert.equal(derivedMeta.color_options.length, 2);
+
 const purchasePanelHtml = renderToStaticMarkup(
-  <ProductPurchasePanel
-    product={product}
-    selectedVariant={variant}
-    onSaleVariants={[variant]}
-    sizeOptions={[variant.size]}
-    colorOptions={[variant.color]}
-    selectedSizeValueId={variant.size.size_value_id}
-    selectedColorId={variant.color.color_id}
-    quantity={1}
-    variantCanBePurchased
-    displayedPrice={variant.effective_price}
-    sizeAvailability={() => true}
-    colorAvailability={() => true}
-    colorCompatibility={() => true}
-    colorUnavailableReason={() => 'Tổ hợp size và màu này đã hết hàng'}
-    onSelectSize={noOp}
-    onSelectColor={noOp}
-    onQuantityChange={noOp}
-    onAddToCart={noOp}
-  />,
+  <ProductPurchasePanel product={product} quantity={1} onQuantityChange={noOp}
+    onAddToCart={noOp} availableQuantity={8} purchasable />,
 );
 assert.match(purchasePanelHtml, /FIDO Essential Tee/);
+assert.match(purchasePanelHtml, /199\.000₫/);
 assert.match(purchasePanelHtml, /Thêm vào giỏ hàng/);
-assert.match(purchasePanelHtml, /Còn 5/);
+assert.doesNotMatch(purchasePanelHtml, /Chất liệu|Cotton/,
+  'descriptive Attributes appear in the separate Product specs grid');
+assert.match(purchasePanelHtml, /Còn 8 sản phẩm/);
+const soldOutPanel = renderToStaticMarkup(
+  <ProductPurchasePanel product={product} quantity={1} onQuantityChange={noOp}
+    onAddToCart={noOp} availableQuantity={0} purchasable={false} />,
+);
+assert.match(soldOutPanel, /Hết hàng/);
+assert.match(soldOutPanel, /disabled/);
+const richDescriptionHtml = renderToStaticMarkup(
+  <ProductLongDescription
+    description={'<h3>Chi tiết sản phẩm</h3><p>Vải jeans</p>'
+      + '<script>alert(1)</script><img src="javascript:alert(1)">'}
+  />,
+);
+assert.match(richDescriptionHtml, /Chi tiết sản phẩm/);
+assert.doesNotMatch(richDescriptionHtml, /<script|javascript:|alert\(1\)/i);
 
 const adminProduct: AdminProductDetailDto = {
   ...product,
-  category_id: product.category.category_id,
+  category_id: product.category?.category_id ?? null,
   brand_id: null,
-  size_system_id: product.size_system.size_system_id,
-  variants: [],
-  created_at: '2026-10-07T00:00:00Z',
-  updated_at: '2026-10-07T00:00:00Z',
+  cost_price: null,
+  child_product_ids: [],
+  parent_product: null,
+  children: [],
 };
 const readOnlyProductInfoHtml = renderToStaticMarkup(
   <AdminProductInfoSection
     product={adminProduct}
-    sizeSystems={[adminProduct.size_system]}
-    sizeSystemId={String(adminProduct.size_system.size_system_id)}
-    onSizeSystemChange={noOp}
     editing={false}
     busy={false}
     canWrite={false}
-    name={adminProduct.name}
+    name={adminProduct.name ?? ''}
+    sku={adminProduct.sku}
+    slug={adminProduct.slug ?? ''}
     description={adminProduct.description ?? ''}
-    basePrice={String(adminProduct.base_price)}
-    saleStatus={adminProduct.sale_status}
+    sellingPrice={String(adminProduct.selling_price)}
+    costPrice=""
+    status={adminProduct.status}
     onEditingChange={noOp}
     onNameChange={noOp}
+    onSkuChange={noOp}
+    onSlugChange={noOp}
     onDescriptionChange={noOp}
-    onBasePriceChange={noOp}
-    onSaleStatusChange={noOp}
+    onSellingPriceChange={noOp}
+    onCostPriceChange={noOp}
+    onStatusChange={noOp}
     onSave={noOp}
     onCancel={noOp}
   />,
 );
 assert.doesNotMatch(readOnlyProductInfoHtml, /Chỉnh sửa/);
 
-const stoppedProductPanelHtml = renderToStaticMarkup(
+const inactiveProductPanelHtml = renderToStaticMarkup(
   <ProductPurchasePanel
-    product={{ ...product, sale_status: 'STOPPED' }}
-    selectedVariant={variant}
-    onSaleVariants={[variant]}
-    sizeOptions={[variant.size]}
-    colorOptions={[variant.color]}
-    selectedSizeValueId={variant.size.size_value_id}
-    selectedColorId={variant.color.color_id}
+    product={{ ...product, status: 'INACTIVE' }}
     quantity={1}
-    variantCanBePurchased={false}
-    displayedPrice={variant.effective_price}
-    sizeAvailability={() => true}
-    colorAvailability={() => true}
-    colorCompatibility={() => true}
-    colorUnavailableReason={() => 'Tổ hợp size và màu này đã hết hàng'}
-    onSelectSize={noOp}
-    onSelectColor={noOp}
     onQuantityChange={noOp}
     onAddToCart={noOp}
+    availableQuantity={8}
+    purchasable
   />,
 );
-assert.match(stoppedProductPanelHtml, /Sản phẩm đã ngừng bán/);
-assert.match(stoppedProductPanelHtml, /Không khả dụng/);
-assert.doesNotMatch(stoppedProductPanelHtml, />Thêm vào giỏ hàng</);
+assert.match(inactiveProductPanelHtml, /Sản phẩm hiện chưa khả dụng để mua/);
+assert.match(inactiveProductPanelHtml, /Không khả dụng/);
+assert.doesNotMatch(inactiveProductPanelHtml, />Thêm vào giỏ hàng</);
 
 for (const [name, expected] of [
   ['Áo sơ mi', 'tops'],
@@ -470,3 +454,21 @@ const footerHtml = renderToStaticMarkup(
 assert.match(footerHtml, /Chăm sóc khách hàng/);
 if (!import.meta.env.VITE_SUPPORT_EMAIL) assert.match(footerHtml, /Chưa cập nhật email CSKH/);
 if (!import.meta.env.VITE_SUPPORT_HOTLINE) assert.match(footerHtml, /Chưa cập nhật hotline CSKH/);
+
+const orderedAttributeMarkup = renderToStaticMarkup(<ProductAttributeFields
+  attributes={[
+    { id: 9, code: 'LAST', name: 'Last', is_required: false, is_variant_defining: false, sort_order: 2, options: [] },
+    { id: 3, code: 'SECOND', name: 'Second', is_required: false, is_variant_defining: false, sort_order: 0, options: [] },
+    { id: 2, code: 'FIRST', name: 'First', is_required: true, is_variant_defining: true, sort_order: 0, options: [
+      { id: 23, attribute_id: 2, value: 'C', label: 'Third option', sort_order: 1 },
+      { id: 22, attribute_id: 2, value: 'B', label: 'Second option', sort_order: 0 },
+      { id: 21, attribute_id: 2, value: 'A', label: 'First option', sort_order: 0 },
+    ] },
+  ]} draft={{ '2': '29' }} status="ACTIVE" onChange={() => undefined} />);
+assert.ok(orderedAttributeMarkup.indexOf('First ·') < orderedAttributeMarkup.indexOf('Second</span>'));
+assert.ok(orderedAttributeMarkup.indexOf('Second</span>') < orderedAttributeMarkup.indexOf('Last</span>'));
+assert.ok(orderedAttributeMarkup.indexOf('First option') < orderedAttributeMarkup.indexOf('Second option'));
+assert.ok(orderedAttributeMarkup.indexOf('Second option') < orderedAttributeMarkup.indexOf('Third option'));
+assert.ok(orderedAttributeMarkup.includes('Option #29'));
+assert.match(orderedAttributeMarkup, /<option(?=[^>]*value="29")(?=[^>]*selected="")[^>]*>/);
+console.log('Product Attribute/Option ordering and unavailable saved option rendering: PASS');

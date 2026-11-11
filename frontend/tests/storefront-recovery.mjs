@@ -17,8 +17,20 @@ const secondProduct = {
   name: 'Quần FIDO',
   category: meta.categories[1],
 };
+const toSummary = (item) => ({
+  product_id: item.product_id,
+  parent_product_id: item.parent_product_id,
+  sku: item.sku,
+  name: item.name,
+  slug: item.slug,
+  thumbnail: null,
+  category: item.category,
+  brand: item.brand,
+  selling_price: item.selling_price,
+  status: item.status,
+});
 const recommendations = {
-  data: [product, secondProduct].map((item) => ({ ...item, thumbnail: null })),
+  data: [product, secondProduct].map(toSummary),
   meta: { page: 1, page_size: 5, total: 2, total_pages: 1 },
 };
 
@@ -313,11 +325,13 @@ try {
     },
   );
   await check(
-    'Confirmation traps focus, locks scroll and explains quote expiry',
+    'Confirmation traps focus, locks scroll and shows the authoritative quote',
     async (page, fixture, go) => {
       await go('/checkout');
-      await page.getByLabel('Chọn địa chỉ nhận hàng').selectOption('2');
-      fixture.state.expiresAt = new Date(Date.now() + 2000).toISOString();
+      await page.getByLabel('Tỉnh / thành phố *').fill('Hà Nội');
+      await page.getByLabel('Quận / huyện *').fill('Ba Đình');
+      await page.getByLabel('Phường / xã *').fill('Liễu Giai');
+      await page.getByLabel('Địa chỉ cụ thể *').fill('12 Đội Cấn');
       await page.getByRole('button', { name: 'Kiểm tra & báo giá', exact: true }).click();
       const trigger = page.getByRole('button', { name: /^Đặt hàng COD/ });
       await trigger.click();
@@ -331,12 +345,13 @@ try {
         );
       }
       assert.equal(await page.evaluate(() => document.body.style.overflow), 'hidden');
-      await dialog.getByRole('alert').filter({ hasText: 'Báo giá đã hết hạn' }).waitFor();
+      assert.equal(await dialog.getByRole('alert').count(), 0);
       assert.equal(
         await dialog
           .getByRole('button', { name: 'Xác nhận đặt hàng COD', exact: true })
-          .isDisabled(),
+          .isEnabled(),
         true,
+        'Backend owns final quote and inventory validation',
       );
       assert.equal(fixture.state.orders, 0);
       await page.screenshot({
@@ -354,7 +369,19 @@ try {
       const longProduct = {
         ...product,
         name: 'FIDO'.repeat(63) + 'ABC',
-        variants: [{ ...product.variants[0], sku: 'FIDO' + 'X'.repeat(96) }],
+        sku: 'FIDO' + 'X'.repeat(96),
+      };
+      const longSummary = {
+        product_id: longProduct.product_id,
+        parent_product_id: longProduct.parent_product_id,
+        sku: longProduct.sku,
+        name: longProduct.name,
+        slug: longProduct.slug,
+        thumbnail: null,
+        category: longProduct.category,
+        brand: longProduct.brand,
+        selling_price: longProduct.selling_price,
+        status: longProduct.status,
       };
       await page.route('**/api/v1/catalog/products/1', (route) =>
         route.fulfill({ json: { data: longProduct } }),
@@ -362,7 +389,7 @@ try {
       await page.route('**/api/v1/catalog/products?*', (route) =>
         route.fulfill({
           json: {
-            data: [{ ...longProduct, thumbnail: null }],
+            data: [longSummary],
             meta: { page: 1, page_size: 12, total: 1, total_pages: 1 },
           },
         }),

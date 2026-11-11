@@ -18,6 +18,8 @@ public interface OrderRepository extends Repository<Order, Long>, JpaSpecificati
 
     Optional<Order> findById(Long id);
 
+    Optional<Order> findByIdempotencyKeyAndCustomerAccountId(String idempotencyKey, Long accountId);
+
     Order save(Order entity);
 
     @Query(

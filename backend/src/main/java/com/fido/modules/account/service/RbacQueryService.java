@@ -49,7 +49,6 @@ public class RbacQueryService {
                         .toList();
 
         var permissionDtos = allPermissions.stream().map(AccountMapper::permission).toList();
-
         return new AccessControlDto(roleDtos, permissionDtos);
     }
 
@@ -63,17 +62,14 @@ public class RbacQueryService {
         if (allRoles.isEmpty()) {
             return Map.of();
         }
-
         var result = new HashMap<Long, Set<Long>>();
 
         mappings.findAllByRoleIdIn(allRoles.stream().map(Role::getRoleId).toList())
                 .forEach(
                         mapping ->
                                 result.computeIfAbsent(
-                                                mapping.getRoleId(),
-                                                ignored -> new LinkedHashSet<>())
+                                                mapping.getRoleId(), ignored -> new LinkedHashSet<>())
                                         .add(mapping.getPermissionId()));
-
         return result;
     }
 
@@ -92,6 +88,7 @@ public class RbacQueryService {
                 role.getCode(),
                 role.getName(),
                 role.getDescription(),
+                role.getStatus(),
                 permissionDtos);
     }
 }

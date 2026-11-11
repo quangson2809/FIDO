@@ -3,6 +3,7 @@ import { useRemoteQuery } from '../../shared/hooks/useRemoteQuery';
 import { QueryFeedback } from '../../shared/admin/QueryFeedback';
 import { voucherService } from '../../features/promotion/api/service';
 import { VoucherForm } from '../../features/promotion/components/VoucherForm';
+import { voucherStatusLabel } from '../../features/promotion/model/voucherFormModel';
 import type { VoucherDetail } from '../../features/promotion/types';
 
 export function AdminVouchersView({
@@ -63,7 +64,6 @@ export function AdminVouchersView({
                 {[
                   'Mã',
                   'Mức giảm',
-                  'Phạm vi',
                   'Hiệu lực',
                   'Lượt đang tính',
                   'Trạng thái',
@@ -77,14 +77,11 @@ export function AdminVouchersView({
             </thead>
             <tbody>
               {list.data?.data.map((v) => (
-                <tr key={v.voucher_id} className="border-t">
+                <tr key={v.id} className="border-t">
                   <td className="p-3 font-semibold">{v.code}</td>
                   <td className="p-3">
-                    {v.discount_value?.toLocaleString('vi-VN')}
-                    {v.discount_type === 'PERCENTAGE' ? '%' : '₫'}
-                  </td>
-                  <td className="p-3">
-                    {v.scope === 'ALL' ? 'Tất cả' : v.scope === 'PRODUCT' ? 'Sản phẩm' : 'Danh mục'}
+                    {(v.discount_type === 'PERCENT' ? v.discount_value / 100 : v.discount_value).toLocaleString('vi-VN')}
+                    {v.discount_type === 'PERCENT' ? '%' : '₫'}
                   </td>
                   <td className="p-3">
                     {v.starts_at ? new Date(v.starts_at).toLocaleString('vi-VN') : 'Chưa cấu hình'}
@@ -92,9 +89,9 @@ export function AdminVouchersView({
                     {v.ends_at && new Date(v.ends_at).toLocaleString('vi-VN')}
                   </td>
                   <td className="p-3">
-                    {v.active_usage} / {v.global_limit ?? '∞'}
+                    {v.usage_count} / {v.usage_limit ?? '∞'}
                   </td>
-                  <td className="p-3">{v.enabled ? 'Đang bật' : 'Đang tắt'}</td>
+                  <td className="p-3">{voucherStatusLabel[v.status]}</td>
                   <td className="p-3">
                     <button className="underline" onClick={() => setEditing({ voucher: v })}>
                       {canWrite ? 'Xem / Sửa' : 'Chi tiết'}

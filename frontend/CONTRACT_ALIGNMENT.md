@@ -1,17 +1,20 @@
-# Frontend contract-alignment baseline
+# Frontend Contract Alignment — Target Specification Review
 
-Branch: `feature/frontend-contract-alignment`
-Base: `main` @ `cdc04a7d3743dd1d9cc47c755acafd202fa33b32`
+**Review branch:** `docs/p1-9-contract-acceptance`  
+**Compared baseline:** `demo1@6b7c759dd0931fccff98645331cd72e6970ad16f`  
+**Disposition:** documentation/specification review only; frontend implementation acceptance remains pending.
 
 ## Source of truth
 
-For frontend integration work, use this order:
+For target refactor contract work, use this authority order:
 
-1. Actual backend Controller + request/response DTO + current state literals.
-2. Explicit project-owner decisions that intentionally supersede an older documented baseline.
-3. `docs/04-api-contract.md` and domain docs when the backend implementation is incomplete or a behavior is explicitly deferred.
-4. Frontend types/services.
-5. UI presentation.
+1. Explicit, dated project-owner decisions for business semantics.
+2. `docs/refactor-v2/target/erd-v2-approved.mmd` for target logical persistence shape, within approved business decisions.
+3. `docs/refactor-v2/p1/P1-api-contract-mapping.csv`, `docs/04-api-contract.md` and `docs/05-dto-contract.md` for accepted target API/DTO decisions and recorded blockers.
+4. Actual backend Controller + request/response DTO + current state literals as evidence of **legacy runtime behavior**, not as a reason to override target decisions.
+5. Frontend types/services, then UI presentation.
+
+Current runtime/frontend fields such as ProductVariant IDs, `variant_id`, persisted `quote_id` and BigDecimal money are legacy implementation evidence. The target contract decisions are documented; runtime migration and acceptance are still pending. This document does not assert that current frontend code already matches the target.
 
 Do not add fields, workflows, payment methods, shipping capabilities, loyalty behavior, showroom behavior, or state transitions because a screen/template expects them.
 
@@ -61,7 +64,7 @@ Frontend code must not be edited when moving between local development and deplo
 | Reports | `features/report/api/service.ts` | `/admin/reports/overview` | Displays backend `completed_sales`, `returned_adjustment`, `net_sales`, `orders_by_status`. |
 | Content | `features/content/api/service.ts` | `/content-pages/{pageCode}`, `/admin/content-pages*` | No generic settings or showroom API is invented. |
 
-The current service boundary maps the 80 endpoints in `FIDO_API_Postman_Test_Matrix_updated.xlsx`, including the three product-image endpoints added after the 77-endpoint baseline. A route being represented in a service does not imply every screen must expose every operation; UI exposure follows actual feature scope and permissions.
+The historical Postman/77-route endpoint count is superseded for target-contract tracing by `docs/refactor-v2/p1/P1-api-contract-mapping.csv` (96 mapping entries, including retired routes and explicitly superseded aliases; not a count of active runtime routes). A route represented in legacy code does not imply target support or UI exposure; screens follow approved scope and permissions.
 
 ## Product image transaction boundary
 
@@ -76,7 +79,7 @@ This avoids a false client-side transaction across database and external image s
 
 ## Locked frontend business boundary
 
-Project-owner decision on 2026-10-05: **a user must be logged in to use the persisted cart and place an order**. The frontend therefore requires an access token before cart/checkout/order flows. Older documentation that describes guest cart/checkout is pending backend/documentation alignment; frontend must not implement guest identity, guest cookies, anonymous accounts or local guest-cart persistence as a workaround.
+Project-owner decision on 2026-10-05: **a user must be logged in to use the persisted cart and place an order**. The frontend therefore requires an access token before cart/checkout/order flows. This decision supersedes older guest-TBD annotations in the legacy 77-endpoint snapshot. The active target API contract now marks APIs #14–20 as JWT-required; remaining mentions of guest behavior are historical/source-only and must not be implemented. Do not add guest identity, guest cookies, anonymous accounts or local guest-cart persistence as a workaround.
 
 Other locked boundaries:
 
@@ -89,3 +92,10 @@ Other locked boundaries:
 ## Migration rule
 
 Refactor vertical slices. New code uses feature contract types and feature services. Unsupported template behavior must be removed rather than preserved through fake data or local business-rule fallbacks. Visual presentation from the established storefront should be retained unless it is inseparable from unsupported business claims. A phase only passes after typecheck/build, lint and structural/behavioral review succeed.
+
+
+## P1.9 cross-domain disposition
+
+The review baseline is `demo1@6b7c759dd0931fccff98645331cd72e6970ad16f`. This is a documentation alignment artifact, not evidence of a successful frontend build, type-check or end-to-end run. Use the canonical ERD, Data Dictionary and target API/DTO/domain contracts; do not use current components or legacy runtime DTOs as target authority.
+
+Known target replacement rules remain explicit: Product IDs replace Variant identity; authenticated Cart replaces guest Cart; checkout quote is stateless and has no `quote_id`; monetary contracts use integer VND. Retired size/color-master and variant routes must not be reintroduced to satisfy old UI templates. Implementation remains pending until feature services/types/screens and responsive acceptance are verified against the target contracts.

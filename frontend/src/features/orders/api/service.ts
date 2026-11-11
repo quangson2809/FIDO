@@ -7,7 +7,6 @@ import type {
   OrderPage,
   OrderService,
   OrderSummaryDto,
-  RecipientPatchInput,
 } from '../types';
 
 const emptyOrderPage: OrderPage = {
@@ -22,9 +21,6 @@ const mockOrderService: OrderService = {
   async getOrder(orderId) {
     throw new Error(`Mock order ${orderId} is not configured`);
   },
-  async updateRecipient(orderId) {
-    throw new Error(`Mock order ${orderId} is not configured`);
-  },
 };
 
 const realOrderService: OrderService = {
@@ -37,13 +33,6 @@ const realOrderService: OrderService = {
   async getOrder(orderId) {
     const response = await apiClient.get<ApiResponse<OrderCustomerDetailDto>>(
       `/me/orders/${orderId}`,
-    );
-    return response.data;
-  },
-  async updateRecipient(orderId, input: RecipientPatchInput) {
-    const response = await apiClient.patch<ApiResponse<OrderCustomerDetailDto>>(
-      `/me/orders/${orderId}/recipient`,
-      input,
     );
     return response.data;
   },

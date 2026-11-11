@@ -4,6 +4,7 @@ import com.fido.common.response.ApiResponse;
 import com.fido.modules.content.dto.request.ContentPageCreateRequest;
 import com.fido.modules.content.dto.request.ContentPagePatchRequest;
 import com.fido.modules.content.dto.response.ContentPageDto;
+import com.fido.modules.content.dto.response.ContentPageSummaryDto;
 import com.fido.modules.content.dto.response.PublicContentPageDto;
 import com.fido.modules.content.service.ContentPageCommandService;
 import com.fido.modules.content.service.ContentPageQueryService;
@@ -35,14 +36,19 @@ public class ContentPageController {
         this.query = query;
     }
 
-    @GetMapping("/content-pages/{pageCode}")
-    public ApiResponse<PublicContentPageDto> publicPage(@PathVariable String pageCode) {
-        return ApiResponse.of(query.publicPage(pageCode));
+    @GetMapping("/content-pages/{slug}")
+    public ApiResponse<PublicContentPageDto> publicPage(@PathVariable String slug) {
+        return ApiResponse.of(query.publicPage(slug));
     }
 
     @GetMapping("/admin/content-pages")
-    public ApiResponse<List<ContentPageDto>> list() {
+    public ApiResponse<List<ContentPageSummaryDto>> list() {
         return ApiResponse.of(query.list());
+    }
+
+    @GetMapping("/admin/content-pages/{pageId}")
+    public ApiResponse<ContentPageDto> detail(@PathVariable Long pageId) {
+        return ApiResponse.of(query.detail(pageId));
     }
 
     @PostMapping("/admin/content-pages")

@@ -1,101 +1,73 @@
 package com.fido.modules.product.service;
 
+import com.fido.modules.product.dto.response.AdminCatalogMetaDtoV2;
+import com.fido.modules.product.dto.response.AttributeDto;
+import com.fido.modules.product.dto.response.BrandDto;
 import com.fido.modules.product.dto.response.CatalogMetaDto;
-import com.fido.modules.product.dto.response.SizeSystemDto;
-import com.fido.modules.product.entity.SizeSystem;
-import com.fido.modules.product.entity.SizeValue;
+import com.fido.modules.product.dto.response.CategoryDto;
+import com.fido.modules.product.entity.Attribute;
+import com.fido.modules.product.entity.AttributeOption;
+import com.fido.modules.product.mapper.AttributeMapper;
 import com.fido.modules.product.mapper.CatalogMapper;
+import com.fido.modules.product.repository.AttributeOptionRepository;
+import com.fido.modules.product.repository.AttributeRepository;
 import com.fido.modules.product.repository.BrandRepository;
 import com.fido.modules.product.repository.CategoryRepository;
-import com.fido.modules.product.repository.ColorRepository;
-import com.fido.modules.product.repository.ProductRepository;
-import com.fido.modules.product.repository.SizeSystemRepository;
-import com.fido.modules.product.repository.SizeValueRepository;
-
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.util.unit.DataSize;
 import org.springframework.transaction.annotation.Transactional;
-
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
 public class CatalogMetaService {
-
     private final CategoryRepository categories;
     private final BrandRepository brands;
-    private final SizeSystemRepository sizeSystems;
-    private final SizeValueRepository sizeValues;
-    private final ColorRepository colors;
-    private final ProductRepository products;
-    private final CatalogReferenceService references;
+    private final AttributeRepository attributes;
+    private final AttributeOptionRepository options;
+    private final AdminCatalogMetaDtoV2.ImageUploadLimits imageUploadLimits;
 
     public CatalogMetaService(
-            CategoryRepository categories,
-            BrandRepository brands,
-            SizeSystemRepository sizeSystems,
-            SizeValueRepository sizeValues,
-            ColorRepository colors,
-            ProductRepository products,
-            CatalogReferenceService references) {
+            CategoryRepository categories, BrandRepository brands,
+            AttributeRepository attributes, AttributeOptionRepository options,
+            @Value("${app.image-storage.max-upload-size}") DataSize maxFileSize,
+            @Value("${spring.servlet.multipart.max-request-size}") DataSize maxRequestSize,
+            @Value("${spring.servlet.multipart.max-file-size}") DataSize multipartFileSize,
+            @Value("${app.image-storage.max-files-per-request}") int maxFiles) {
         this.categories = categories;
         this.brands = brands;
-        this.sizeSystems = sizeSystems;
-        this.sizeValues = sizeValues;
-        this.colors = colors;
-        this.products = products;
-        this.references = references;
+        this.attributes = attributes;
+        this.options = options;
+        this.imageUploadLimits = new AdminCatalogMetaDtoV2.ImageUploadLimits(
+                multipartFileSize.toBytes() < 0 ? maxFileSize.toBytes() : Math.min(maxFileSize.toBytes(), multipartFileSize.toBytes()),
+                maxRequestSize.toBytes(), maxFiles,
+                ProductImageUploadService.SUPPORTED_CONTENT_TYPES.stream().sorted().toList());
     }
 
-    public SizeSystemDto sizeSystemDto(Long sizeSystemId) {
-        SizeSystem sizeSystem = references.sizeSystem(sizeSystemId);
-
-        var values =
-                sizeValues
-                        .findAllBySizeSystemIdOrderBySortOrderAscSizeValueIdAsc(sizeSystemId)
-                        .stream()
-                        .map(CatalogMapper::sizeValue)
-                        .toList();
-
-        return CatalogMapper.sizeSystem(sizeSystem, values);
+    public CatalogMetaDto publicMeta() {
+        List<CategoryDto> categoryDtos = categories.findAllByOrderByCategoryIdAsc().stream()
+                .map(CatalogMapper::category).toList();
+        List<BrandDto> brandDtos = brands.findAllByOrderByBrandIdAsc().stream()
+                .map(CatalogMapper::brand).toList();
+        return new CatalogMetaDto(categoryDtos, brandDtos, attributeMetadata());
     }
 
-    public CatalogMetaDto meta() {
-        var categoryDtos =
-                categories.findAllByOrderByCategoryIdAsc().stream()
-                        .map(CatalogMapper::category)
-                        .toList();
+    public AdminCatalogMetaDtoV2 adminMeta() {
+        return new AdminCatalogMetaDtoV2(attributeMetadata(), imageUploadLimits);
+    }
 
-        var brandDtos =
-                brands.findAllByOrderByBrandIdAsc().stream().map(CatalogMapper::brand).toList();
-
-        var valuesBySystem =
-                sizeValues.findAllByOrderBySizeSystemIdAscSortOrderAscSizeValueIdAsc().stream()
-                        .collect(
-                                Collectors.groupingBy(
-                                        SizeValue::getSizeSystemId,
-                                        Collectors.mapping(
-                                                CatalogMapper::sizeValue, Collectors.toList())));
-        var sizeSystemDtos =
-                sizeSystems.findAllByOrderBySizeSystemIdAsc().stream()
-                        .map(
-                                system ->
-                                        CatalogMapper.sizeSystem(
-                                                system,
-                                                valuesBySystem.getOrDefault(
-                                                        system.getSizeSystemId(), List.of())))
-                        .toList();
-
-        var colorDtos =
-                colors.findAllByOrderByColorIdAsc().stream().map(CatalogMapper::color).toList();
-
-        return new CatalogMetaDto(
-                categoryDtos,
-                brandDtos,
-                sizeSystemDtos,
-                colorDtos,
-                products.findDistinctGenders(),
-                products.findDistinctSeasons(),
-                products.findDistinctStyles());
+    private List<AttributeDto> attributeMetadata() {
+        List<Attribute> rows = attributes.findAllByOrderBySortOrderAscAttributeIdAsc();
+        List<Long> ids = rows.stream().map(Attribute::getAttributeId).toList();
+        List<AttributeOption> optionRows = ids.isEmpty() ? List.of()
+                : options.findAllByAttributeIdInOrderBySortOrderAscAttributeOptionIdAsc(ids);
+        Map<Long, List<AttributeOption>> byAttribute = optionRows.stream()
+                .collect(Collectors.groupingBy(AttributeOption::getAttributeId, HashMap::new, Collectors.toList()));
+        return rows.stream().map(a -> AttributeMapper.attribute(
+                a, byAttribute.getOrDefault(a.getAttributeId(), List.of()))).toList();
     }
 }

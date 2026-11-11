@@ -12,16 +12,13 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 @Service
-@PreAuthorize(
-        "hasAuthority('ROLE_SUPERADMIN') or (hasAuthority('ROLE_ADMIN') and"
-            + " hasAuthority('PERMISSION_REPORT_READ'))")
+@PreAuthorize("hasAnyAuthority('ROLE_SUPERADMIN', 'PERMISSION_REPORT_READ')")
 @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
 public class ReportService {
     private final ReportRepository reports;
@@ -40,25 +37,22 @@ public class ReportService {
                 to,
                 sales.completed(),
                 sales.returned(),
-                sales.completed().subtract(sales.returned()),
+                netSales(sales.completed(), sales.returned()),
                 counts);
     }
 
     public SalesTrendDto salesTrend(LocalDate from, LocalDate to, ReportGranularity granularity) {
         var range = ReportRange.of(from, to);
         var buckets =
-                periods(
-                        range,
-                        granularity,
-                        new ReportRepository.SalesTotals(BigDecimal.ZERO, BigDecimal.ZERO));
+                periods(range, granularity, new ReportRepository.SalesTotals(0L, 0L));
         for (var daily : reports.dailySales(range.startUtc(), range.endUtc())) {
             var period = granularity.periodStart(daily.date());
             var previous = buckets.get(period);
             buckets.put(
                     period,
                     new ReportRepository.SalesTotals(
-                            previous.completed().add(daily.completed()),
-                            previous.returned().add(daily.returned())));
+                            addVnd(previous.completed(), daily.completed()),
+                            addVnd(previous.returned(), daily.returned())));
         }
         var points =
                 buckets.entrySet().stream()
@@ -68,9 +62,9 @@ public class ReportService {
                                                 entry.getKey(),
                                                 entry.getValue().completed(),
                                                 entry.getValue().returned(),
-                                                entry.getValue()
-                                                        .completed()
-                                                        .subtract(entry.getValue().returned())))
+                                                netSales(
+                                                        entry.getValue().completed(),
+                                                        entry.getValue().returned())))
                         .toList();
         return new SalesTrendDto(from, to, granularity, ReportRange.TIMEZONE, points);
     }
@@ -82,8 +76,11 @@ public class ReportService {
                 .keySet()
                 .forEach(period -> buckets.put(period, emptyStatusCounts()));
         for (var daily : reports.dailyOrders(range.startUtc(), range.endUtc())) {
-            buckets.get(granularity.periodStart(daily.date()))
-                    .merge(daily.status(), daily.count(), Long::sum);
+            var period = granularity.periodStart(daily.date());
+            var statusCounts = buckets.get(period);
+            if (statusCounts != null && statusCounts.containsKey(daily.status())) {
+                statusCounts.merge(daily.status(), daily.count(), Long::sum);
+            }
         }
         var points =
                 buckets.entrySet().stream()
@@ -106,7 +103,33 @@ public class ReportService {
                     HttpStatus.BAD_REQUEST, "Limit must be between 1 and 100");
         }
         return new ProductPerformanceDto(
-                from, to, reports.topProducts(range.startUtc(), range.endUtc(), limit));
+                from, to, limit, reports.topProducts(range.startUtc(), range.endUtc(), limit));
+    }
+
+    private static long netSales(long completed, long returned) {
+        try {
+            long net = Math.subtractExact(completed, returned);
+            if (net < 0) {
+                throw new ArithmeticException("Returned adjustment exceeds completed sales");
+            }
+            return net;
+        } catch (ArithmeticException exception) {
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Report totals are inconsistent or exceed the supported integer VND range",
+                    exception);
+        }
+    }
+
+    private static long addVnd(long left, long right) {
+        try {
+            return Math.addExact(left, right);
+        } catch (ArithmeticException exception) {
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Report totals exceed the supported integer VND range",
+                    exception);
+        }
     }
 
     private static Map<String, Long> emptyStatusCounts() {

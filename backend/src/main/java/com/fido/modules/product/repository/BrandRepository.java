@@ -1,7 +1,6 @@
 package com.fido.modules.product.repository;
 
 import com.fido.modules.product.entity.Brand;
-
 import org.springframework.data.repository.Repository;
 
 import java.util.Collection;
@@ -10,12 +9,10 @@ import java.util.Optional;
 
 public interface BrandRepository extends Repository<Brand, Long> {
     Optional<Brand> findById(Long id);
-
     Brand save(Brand entity);
-
     List<Brand> findAllByOrderByBrandIdAsc();
-
     List<Brand> findAllByBrandIdIn(Collection<Long> brandIds);
-
+    boolean existsBySlug(String slug);
+    boolean existsBySlugAndBrandIdNot(String slug, Long brandId);
     void delete(Brand entity);
 }

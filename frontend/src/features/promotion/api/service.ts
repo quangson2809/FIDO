@@ -1,6 +1,6 @@
 import { apiClient } from '../../../services/http/apiClient';
 import type { ApiListResponse, ApiResponse } from '../../../types/api';
-import type { VoucherDetail, VoucherInput } from '../types';
+import type { VoucherDetail, VoucherInput, VoucherPatchInput } from '../types';
 import { voucherRequestFields } from '../model/voucherFormModel';
 export const voucherService = {
   list: (search: string, page: number) =>
@@ -15,11 +15,11 @@ export const voucherService = {
       )
     ).data;
   },
-  async update(id: number, input: VoucherInput) {
+  async update(id: number, input: VoucherPatchInput) {
     return (
-      await apiClient.put<ApiResponse<VoucherDetail>>(
+      await apiClient.patch<ApiResponse<VoucherDetail>>(
         `/admin/vouchers/${id}`,
-        voucherRequestFields(input),
+        { ...voucherRequestFields(input), status: input.status },
       )
     ).data;
   },

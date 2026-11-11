@@ -1,24 +1,22 @@
 package com.fido.modules.cart.service;
 
-import java.math.BigDecimal;
 import java.util.List;
 
-/**
- * Internal cross-module checkout input. Values are recalculated from current Catalog and Inventory
- * state.
- */
-public record CheckoutCartView(Long cartId, List<Item> items, BigDecimal subtotal) {
+public record CheckoutCartView(Long cartId, List<Item> items, Long subtotal) {
+    public CheckoutCartView {
+        items = items == null ? List.of() : List.copyOf(items);
+    }
 
     public record Item(
-            Long variantId,
+            Long productId,
             Integer quantity,
             String productName,
             String thumbnail,
             String sku,
-            String size,
-            String color,
-            BigDecimal unitPrice,
-            BigDecimal lineTotal,
+            Long unitPrice,
+            Long lineTotal,
             Integer availableQuantity,
-            boolean purchasable) {}
+            boolean purchasable) {
+    }
+
 }

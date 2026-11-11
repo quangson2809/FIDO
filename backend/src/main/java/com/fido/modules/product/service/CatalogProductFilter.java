@@ -1,17 +1,22 @@
 package com.fido.modules.product.service;
 
-import java.math.BigDecimal;
+import java.util.Map;
 
 public record CatalogProductFilter(
         String query,
         Long categoryId,
         Long brandId,
-        BigDecimal minPrice,
-        BigDecimal maxPrice,
-        Long sizeValueId,
-        Long colorId,
-        String gender,
-        String season,
-        String style,
+        Long minPrice,
+        Long maxPrice,
         Integer page,
-        Integer pageSize) {}
+        Integer pageSize,
+        Map<String, String> attributeFilters) {
+    public CatalogProductFilter {
+        attributeFilters = Map.copyOf(attributeFilters == null ? Map.of() : attributeFilters);
+    }
+
+    public CatalogProductFilter(String query, Long categoryId, Long brandId,
+            Long minPrice, Long maxPrice, Integer page, Integer pageSize) {
+        this(query, categoryId, brandId, minPrice, maxPrice, page, pageSize, Map.of());
+    }
+}

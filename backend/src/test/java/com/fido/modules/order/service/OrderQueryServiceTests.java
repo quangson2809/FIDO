@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import com.fido.modules.order.entity.Order;
 import com.fido.modules.order.entity.OrderItem;
 import com.fido.modules.order.entity.Payment;
+import com.fido.modules.order.repository.OrderAddressRepository;
 import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
@@ -27,13 +28,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 @ExtendWith(MockitoExtension.class)
 class OrderQueryServiceTests {
 
     @Mock private OrderRepository orders;
+    @Mock private OrderAddressRepository addresses;
     @Mock private OrderItemRepository items;
     @Mock private PaymentRepository payments;
     @Mock private ShippingInfoRepository shipping;
@@ -47,10 +48,11 @@ class OrderQueryServiceTests {
         service =
                 new OrderQueryService(
                         orders,
+                        addresses,
                         items,
                         payments,
                         shipping,
-                        new OrderSummaryReadService(items, payments),
+                        new OrderSummaryReadService(items, payments, shipping),
                         actionPolicy,
                         authorization);
     }
@@ -58,8 +60,8 @@ class OrderQueryServiceTests {
     @Test
     @SuppressWarnings("unchecked")
     void customerOrderListLoadsPaymentsAndPreviewImagesInBatches() {
-        Order first = order(1L, "ORD-1", new BigDecimal("100000.00"));
-        Order second = order(2L, "ORD-2", new BigDecimal("200000.00"));
+        Order first = order(1L, "ORD-1", 100_000L);
+        Order second = order(2L, "ORD-2", 200_000L);
         when(orders.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(first, second), PageRequest.of(0, 20), 2));
         when(payments.findAllByOrderIdIn(List.of(1L, 2L)))
@@ -87,7 +89,7 @@ class OrderQueryServiceTests {
     @Test
     @SuppressWarnings("unchecked")
     void orderListStillRejectsBrokenOrderPaymentInvariant() {
-        Order order = order(1L, "ORD-1", new BigDecimal("100000.00"));
+        Order order = order(1L, "ORD-1", 100_000L);
         when(orders.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(order), PageRequest.of(0, 20), 1));
         when(payments.findAllByOrderIdIn(List.of(1L))).thenReturn(List.of());
@@ -101,13 +103,13 @@ class OrderQueryServiceTests {
         assertEquals("Order payment is missing", error.getMessage());
     }
 
-    private Order order(Long orderId, String orderCode, BigDecimal total) {
+    private Order order(Long orderId, String orderCode, long total) {
         Order order = new Order();
         order.setOrderId(orderId);
         order.setCustomerAccountId(10L);
         order.setOrderCode(orderCode);
         order.setOrderStatus(OrderPolicy.PENDING);
-        order.setTotalSnapshot(total);
+        order.setTotalAmount(total);
         return order;
     }
 

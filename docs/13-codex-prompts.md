@@ -1,177 +1,78 @@
-# 13 — Codex Task Prompts
+# 13 — Implementation and Review Prompts for ERD v2
 
 ## A. Master implementation prompt
 
-```text
-ROLE
-You are the backend implementer for FIDO.
+**Role and objective**
 
-OBJECTIVE
-Implement only the requested backend phase using the repository's current Java/Spring/Gradle/MySQL stack.
+You are the Senior Backend Engineer and integration owner for FIDO. Implement the requested phase against the owner-approved ERD v2, not the existing legacy data model.
 
-MANDATORY INPUT
-Read:
-- backend/AGENTS.md
-- docs/00-source-of-truth.md
-- docs/01-architecture-package-structure.md
-- docs/02-module-ownership.md
-- relevant docs/03..10
-- docs/11-implementation-phases.md
-- docs/12-tbd-out-of-scope.md
-- docs/15-technical-decisions.md
+**Repository and baseline**
 
-Inspect current branch HEAD before changing code.
+Inspect the exact remote branch HEAD before changing anything. For work targeting demo1, fetch origin/demo1 and create the feature branch from that exact SHA. Preserve unrelated uncommitted work; never force-push or rewrite unrelated history.
 
-DECISION CLASSIFICATION
-For every unresolved point classify it as:
+**Source of truth**
 
-HARD BLOCK:
-Only when proceeding would invent/change business behavior, public API semantics, security guarantee, persistent business meaning/schema, state machine, money/stock semantics or external integration contract.
-Stop only the affected slice.
+Read backend/AGENTS.md, docs/00-source-of-truth.md, docs/01-architecture-package-structure.md, docs/02-module-ownership.md, docs/03-data-model.md through docs/12-tbd-out-of-scope.md, docs/15-technical-decisions.md, the owner-approved ERD v2, P1 owner approval, data dictionary and decision log. If an older document conflicts, the owner-approved target files win.
 
-TECHNICAL DECISION:
-Class/method/repository naming, query strategy, mapper/private helper design, technical enum literal names with fixed semantics, capability code naming, package decomposition inside an approved module.
-Choose the smallest conventional implementation, record it in docs/15-technical-decisions.md, add tests, and CONTINUE.
+**Locked target rules**
 
-DEFERRED FEATURE:
-Explicit source TBD/phase-later functionality.
-Skip only that slice and CONTINUE all independent work.
+- Exactly 31 target tables.
+- Product IDs are the sellable identity in Cart, OrderItems, goods receiving and inventory.
+- Parent/child Products are explicit, independently sellable rows; each owns SKU, required integer-VND price and stock; one parent-child level; no implicit NULL inheritance.
+- OPTION/TEXT/NUMBER/BOOLEAN attributes are descriptive only, validate typed values and same-Attribute option ownership, and never generate Products.
+- Authenticated Cart/order placement; stateless/advisory quote; order-time repricing; account-scoped idempotency with canonical SHA-256 fingerprint.
+- Integer VND; approved HALF-UP order discount then largest-remainder line allocation, Product-ID tie-break.
+- Product stock, source state, append-only ledger and audit must commit atomically; use source-derived duplicate prevention and deterministic locks.
+- Global order-wide non-stacking voucher quota; COD; one operational warehouse; manual shipping; approved Order/Payment/ShippingInfo state matrix.
+- Clean Schema Reset is permitted only against a verified disposable local/development/test database. Never reset production, staging, shared integration or persistent business data.
 
-Never mark a whole phase BLOCKED solely because of a technical naming/design choice.
+**Decision handling**
 
-ARCHITECTURE
-Preserve com.fido Modular Monolith + Package by Feature:
-account, product, cart, promotion, order, inventory, audit, report, content.
-No cross-module Repository calls.
-Controller has no business logic.
-Service owns orchestration/transactions.
-Entity never leaves Controller as REST output.
+Stop only the affected slice for a genuine unresolved business/security/API/schema contract. Make and test conventional implementation decisions inside the approved architecture. Do not use legacy persistence or DTOs to fill an approved target gap. Record newly discovered contract gaps in the target docs before guessing behavior.
 
-PROCESS
-1. Inspect branch/code.
-2. Map phase to source IDs/APIs/tables.
-3. Classify unresolved points.
-4. Implement all non-blocked work.
-5. Record technical decisions.
-6. Run relevant tests/build.
-7. Review diff.
-8. Report PASS/PARTIAL only from evidence.
-Do not open the next phase before the gate passes.
-```
+**Architecture**
 
-## B. Phase 3 — Catalog continuation prompt
+Preserve Java/Spring/Gradle and Modular Monolith + Package by Feature. Keep Controller → Service → Repository. No cross-module Repository calls; each module owns its writes and transactions. DTOs are explicit; no Entity leakage. Use Flyway and validate mappings against a fresh isolated target database.
 
-```text
-Implement Phase 3 only from docs/11-implementation-phases.md.
+**Workflow**
 
-Do NOT stop for ordinary technical choices.
+1. Understand the task and source contracts.
+2. Inspect branch, working tree, current code, target ERD/DDL and tests.
+3. Discover all impacted modules, routes, DTOs and client consumers.
+4. Plan the smallest coherent cross-module implementation.
+5. Implement; update target documentation/contracts when justified.
+6. Run targeted tests, the relevant full suite, build/type checks and static schema gate.
+7. Review architecture, permissions, transactions, concurrency, snapshots and accidental scope.
+8. Report base SHA, changed files, tested SHA, exact commands/results, blockers and whether changes were committed/pushed/merged.
 
-Implement public/admin Catalog APIs #11–13 and #27–45.
+Do not claim implementation acceptance from a documentation-only or schema-only pass.
 
-Locked business/data rules:
-- Category is a tree; prevent cycles.
-- Product only belongs to a leaf Category.
-- Product selects one SizeSystem.
-- Variant SizeValue must belong to Product SizeSystem.
-- Product + SizeValue + Color is unique.
-- effective_price = override_price when non-null, otherwise base_price.
-- sellable availability derives from Product sale state + Variant sale state + inventory.available_quantity.
-- zero inventory is not the same as stopped sale.
-- do not rewrite historical Variant identity after order history.
+## B. P2 — Target persistence and backend mapping
 
-Approved technical encodings:
-- sale-state literals: ON_SALE and STOPPED.
-- catalog capabilities: CATALOG_READ and CATALOG_WRITE.
-- SUPERADMIN may perform both.
-- do not automatically grant either capability to ADMIN or any employee role; role assignment remains business/configuration data.
+Implement P2 from docs/11-implementation-phases.md using the exact current origin/demo1 SHA. First reconcile target DDL, P1-data-dictionary.csv, generated/physical keys and system seed. Test on a newly created disposable isolated MySQL database only. Do not activate the target Flyway location against an existing shared/persistent database.
 
-Source TBD that must NOT block the rest:
-- default public sort;
-- special direct-URL behavior for a stopped Product;
-- detailed size-guide model;
-- exact gender/season/style enum sets.
+Implement target Entities/composite keys, Repositories, owning Services and module transactions against the 31-table target. Remove/replace legacy persistence assumptions rather than preserving a parallel contract. Product, Cart, Order, GoodsReceipt and Inventory use Product IDs. Implement typed descriptive attributes and the approved Account, voucher, COD, shipping, image-snapshot and integer-VND rules.
 
-For TBD slices, implement no speculative lifecycle/redirect/model. Continue all independent Catalog work.
+Add schema, repository, transaction and concurrency tests. If any physical target files disagree, follow the owner-approved ERD/dictionary and document the inconsistency before changing DDL. Do not proceed to client integration until target mapping checks pass. Report exact-SHA evidence.
 
-Add service/repository/API/authorization tests.
-Run backend tests.
-Stop after Phase 3 and report evidence.
-```
+## C. P3 — API/DTO/frontend integration
 
-## C. Phase 4 — Inventory & Receiving
+Implement P3 against docs/04-api-contract.md and docs/05-dto-contract.md. Reconcile Controller, request/response DTO, validation, authorization, API clients, frontend types and screens together.
 
-```text
-Implement Phase 4 only.
-Supplier/GoodsReceipt/Inventory/InventoryTransaction APIs #46–57.
-GoodsReceipt confirm must increase availability exactly once.
-Every stock mutation must create immutable ledger movement in the same transaction.
-Manual adjustment requires permission, actor, reason and audit.
-No unit_cost and no direct overwrite endpoint.
-Do not block on technical method/query naming.
-Run transaction/idempotency tests and stop after Phase 4.
-```
+Remove target routes/data shapes that rely on ProductVariant, SizeSystem, SizeValue, Color master resources, persisted quote IDs, decimal money or guest checkout. A child Product is edited via Product resources and its own Product ID. Dynamic Attribute/AttributeOption write routes must not be invented if their request/response contract has not been approved.
 
-## D. Phase 5 — Cart / Quote
+Verify authenticated Cart/checkout, Product search/detail, image selection and order-time snapshot, inventory receiving/ledger, COD/shipping, admin permissions and report flows. Run lint/type-check/build plus responsive smoke tests at 375/768/1024/1440. Report every unverified route honestly.
 
-```text
-Implement Phase 5 only.
-Implement all non-deferred Cart/Quote behavior for #14–19.
-Cart never reserves/deducts inventory.
-Quote recalculates server-side and has no side effect.
-Guest-session mechanics and voucher rules are deferred slices, not reasons to block authenticated Cart or voucher-less Quote.
-Run tests and stop after Phase 5.
-```
+## D. P4 — Acceptance and integration
 
-## E. Phase 6 — Order / COD
+Verify the exact candidate SHA against docs/10-testing-strategy.md and P1-traceability-matrix.csv. Test fresh isolated MySQL schema/seed, Entity/Repository mapping, account/RBAC, Product hierarchy/attributes, Cart ownership, quote side-effect freedom, order repricing/idempotency, integer-VND math, voucher quota, inventory/ledger concurrency, COD/state transitions, immutable snapshots, rollback and frontend contracts.
 
-```text
-Implement Phase 6 only: APIs #8–10 and #20–26.
-Implement snapshots, exact Order/Payment state machines, atomic confirm, cancel restore, COD collect/refund, delivery-failure and baseline after-sales behavior.
-Use Inventory service contract, never InventoryRepository directly.
-Create-order dedupe is a blocker only for the retry/double-submit guarantee; continue independent Order behavior.
-Add concurrency/idempotency/rollback tests.
-Stop after Phase 6.
-```
+Review the full diff for stale fields/routes, direct cross-module Repository access, duplicate abstractions, secrets, unapproved tables and old-schema test assumptions. Do not run destructive reset commands unless the exact disposable database identity is verified. Produce evidence tied to the tested SHA; do not report PASS for skipped/unverified behavior.
 
-## F. Phase 7 — Operations
+## E. Independent review
 
-```text
-Implement Phase 7 only: audit #70, report #71, content #72–75, customers #76–77.
-No aggregate report table without evidence.
-No content publish/version lifecycle.
-Guest Orders do not become Accounts.
-Run permission/query/API tests and stop after Phase 7.
-```
+Act as an independent reviewer. Do not modify code or start the next phase. Review changed code/docs against the owner-approved ERD v2 and backend/AGENTS.md.
 
-## G. Independent review prompt
+Check target schema/DTO/route mismatch, residual ProductVariant/variant-ID or old money/quote assumptions in active code, module boundary violations, validation/auth/RBAC/audit gaps, stock/order/voucher transaction and rollback defects, snapshot immutability/retention assumptions, missing target MySQL or frontend evidence, and destructive commands not limited to a verified disposable DB.
 
-```text
-ROLE
-You are an independent backend reviewer for the completed phase.
-
-Do not modify code and do not open the next phase.
-
-Review against backend/AGENTS.md and docs/00..15.
-Check:
-- source deviations;
-- invented business fields/rules/endpoints;
-- module-boundary violations;
-- cross-module Repository calls;
-- transaction/state/stock/idempotency defects;
-- Entity leakage;
-- missing authorization/audit;
-- missing tests;
-- false blockers where a technical decision should have been made and documented.
-
-For each finding:
-ID
-SEVERITY
-FILE/LOCATION
-SOURCE/CONTRACT
-PROBLEM
-IMPACT
-MINIMAL FIX
-
-Verdict:
-PHASE X: PASS | REJECT
-```
+For each finding include ID, severity, exact file/location, target contract, impact and minimal correction. Verdict each gate PASS/PARTIAL/FAIL only from verified evidence.

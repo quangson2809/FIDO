@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
+import java.util.UUID;
 
 class InventoryAdjustmentHttpTests extends InventoryHttpSupport {
 
@@ -12,142 +13,149 @@ class InventoryAdjustmentHttpTests extends InventoryHttpSupport {
     void adjustmentsPreserveNonNegativeStockAndLedger() throws Exception {
         long readPermission = ensurePermission("INVENTORY_READ");
         long writePermission = ensurePermission("INVENTORY_WRITE");
-
         Employee reader = employee(capabilityRole(readPermission));
-
         Employee writer = employee(capabilityRole(writePermission));
 
-        CatalogFixture fixture = createVariant();
-        db.update(
-                "UPDATE inventories SET available_quantity=5 WHERE variant_id=?",
-                fixture.variantId());
-        String inventoryPath =
-                "/api/v1/admin/inventory"
-                        + "?variant_id="
-                        + fixture.variantId()
-                        + "&sku="
-                        + fixture.sku()
-                        + "&product_id="
-                        + fixture.productId()
-                        + "&size_value_id="
-                        + fixture.sizeValueId()
-                        + "&color_id="
-                        + fixture.colorId();
+        CatalogFixture fixture = createProduct();
+        db.update("UPDATE inventories SET quantity_on_hand=5, version=0 WHERE warehouse_id=? AND product_id=?",
+                fixture.warehouseId(), fixture.productId());
 
-        var inventory = call("GET", inventoryPath, reader.token(), null);
-
+        var inventory = call("GET", "/api/v1/admin/inventory?product_id=" + fixture.productId()
+                + "&sku=" + fixture.sku(), reader.token(), null);
         assertEquals(200, inventory.status(), inventory.body());
-
         assertEquals(1, inventory.data().get("meta").get("total").asInt());
-
         assertEquals(5, inventory.data().get("data").get(0).get("available_quantity").asInt());
+        assertEquals(0, inventory.data().get("data").get(0).get("version").asInt());
 
-        var increase =
-                call(
-                        "POST",
-                        "/api/v1/admin/inventory/adjustments",
-                        writer.token(),
-                        Map.of(
-                                "variant_id",
-                                fixture.variantId(),
-                                "quantity_delta",
-                                2,
-                                "reason",
-                                "Cycle count correction"));
-
+        var increase = call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
+                Map.of("product_id", fixture.productId(), "quantity_delta", 2, "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID()));
         assertEquals(201, increase.status(), increase.body());
+        assertEquals("ADJUSTMENT", increase.data().get("data").get("transaction_type").asText());
+        assertEquals(7, stock(fixture.productId()));
+        assertEquals(1, version(fixture));
 
-        assertEquals("ADJUSTMENT_IN", increase.data().get("data").get("transaction_type").asText());
-
-        assertEquals(7, stock(fixture.variantId()));
-
-        var decrease =
-                call(
-                        "POST",
-                        "/api/v1/admin/inventory/adjustments",
-                        writer.token(),
-                        Map.of(
-                                "variant_id",
-                                fixture.variantId(),
-                                "quantity_delta",
-                                -3,
-                                "reason",
-                                "Damaged stock"));
-
+        var decrease = call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
+                Map.of("product_id", fixture.productId(), "quantity_delta", -3, "reason_code", "DAMAGE", "source_operation_id", "test-" + UUID.randomUUID()));
         assertEquals(201, decrease.status(), decrease.body());
+        assertEquals("ADJUSTMENT", decrease.data().get("data").get("transaction_type").asText());
+        assertEquals(-3, decrease.data().get("data").get("quantity_delta").asInt());
+        assertEquals("DAMAGE", decrease.data().get("data").get("reason").asText());
+        assertEquals(4, stock(fixture.productId()));
+        assertEquals(2, version(fixture));
 
-        assertEquals(
-                "ADJUSTMENT_OUT", decrease.data().get("data").get("transaction_type").asText());
+        int movementCountBeforeFailure = movements(fixture.productId());
+        assertEquals(409, call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
+                Map.of("product_id", fixture.productId(), "quantity_delta", -5,
+                        "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID())).status());
+        assertEquals(4, stock(fixture.productId()));
+        assertEquals(2, version(fixture));
+        assertEquals(movementCountBeforeFailure, movements(fixture.productId()));
 
-        assertEquals("Damaged stock", decrease.data().get("data").get("reason").asText());
+        assertEquals(400, call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
+                Map.of("product_id", fixture.productId(), "quantity_delta", 0, "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID())).status());
 
-        assertEquals(4, stock(fixture.variantId()));
+        var movementPage = call("GET", "/api/v1/admin/inventory/transactions"
+                + "?product_id=" + fixture.productId() + "&transaction_type=ADJUSTMENT", reader.token(), null);
+        assertEquals(200, movementPage.status(), movementPage.body());
+        assertEquals(2, movementPage.data().get("meta").get("total").asInt());
+        assertEquals(fixture.productId(), movementPage.data().get("data").get(0).get("product_id").asLong());
+        assertEquals(fixture.productId(), movementPage.data().get("data").get(1).get("product_id").asLong());
+    }
 
-        int movementCountBeforeFailure =
-                db.queryForObject(
-                        """
-                        SELECT COUNT(*)
-                        FROM inventory_transactions
-                        WHERE variant_id=?
-                        """,
-                        Integer.class,
-                        fixture.variantId());
+    @Test
+    void missingBalanceReadsZeroRejectsUnderflowAndCreatesOnPositiveMovement() throws Exception {
+        long readPermission = ensurePermission("INVENTORY_READ");
+        long writePermission = ensurePermission("INVENTORY_WRITE");
+        long role = capabilityRole(writePermission);
+        db.update("INSERT INTO role_permissions(role_id,permission_id) VALUES (?,?)", role, readPermission);
+        Employee writer = employee(role);
+        CatalogFixture fixture = createProduct();
+        db.update("DELETE FROM inventories WHERE warehouse_id=? AND product_id=?",
+                fixture.warehouseId(), fixture.productId());
 
-        assertEquals(
-                409,
-                call(
-                                "POST",
-                                "/api/v1/admin/inventory/adjustments",
-                                writer.token(),
-                                Map.of(
-                                        "variant_id",
-                                        fixture.variantId(),
-                                        "quantity_delta",
-                                        -5,
-                                        "reason",
-                                        "Would become negative"))
-                        .status());
+        var before = call("GET", "/api/v1/admin/inventory?product_id=" + fixture.productId(),
+                writer.token(), null);
+        assertEquals(200, before.status(), before.body());
+        assertEquals(1, before.data().get("meta").get("total").asInt());
+        assertEquals(0, before.data().get("data").get(0).get("available_quantity").asInt());
+        assertEquals(0, before.data().get("data").get(0).get("version").asInt());
 
-        assertEquals(4, stock(fixture.variantId()));
+        assertEquals(409, call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
+                Map.of("product_id", fixture.productId(), "quantity_delta", -1,
+                        "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID())).status());
+        assertEquals(0, db.queryForObject(
+                "SELECT COUNT(*) FROM inventories WHERE warehouse_id=? AND product_id=?",
+                Integer.class, fixture.warehouseId(), fixture.productId()));
+        assertEquals(0, movements(fixture.productId()));
 
-        assertEquals(
-                movementCountBeforeFailure,
-                db.queryForObject(
-                        """
-                        SELECT COUNT(*)
-                        FROM inventory_transactions
-                        WHERE variant_id=?
-                        """,
-                        Integer.class,
-                        fixture.variantId()));
+        var increase = call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
+                Map.of("product_id", fixture.productId(), "quantity_delta", 4,
+                        "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID()));
+        assertEquals(201, increase.status(), increase.body());
+        assertEquals(fixture.warehouseId(), increase.data().get("data").get("warehouse_id").asLong());
+        assertEquals(4, stock(fixture.productId()));
+        assertEquals(1, version(fixture));
+    }
 
-        assertEquals(
-                400,
-                call(
-                                "POST",
-                                "/api/v1/admin/inventory/adjustments",
-                                writer.token(),
-                                Map.of(
-                                        "variant_id",
-                                        fixture.variantId(),
-                                        "quantity_delta",
-                                        0,
-                                        "reason",
-                                        "No movement"))
-                        .status());
+    @Test
+    void quantityAndVersionOverflowAreRejectedWithoutWritingMovements() throws Exception {
+        Employee writer = employee(capabilityRole(ensurePermission("INVENTORY_WRITE")));
+        CatalogFixture fixture = createProduct();
 
-        var movementPage =
-                call(
-                        "GET",
-                        "/api/v1/admin/inventory/transactions"
-                                + "?variant_id="
-                                + fixture.variantId()
-                                + "&transaction_type=ADJUSTMENT_OUT",
-                        reader.token(),
-                        null);
+        db.update("UPDATE inventories SET quantity_on_hand=?, version=0 WHERE warehouse_id=? AND product_id=?",
+                Integer.MAX_VALUE, fixture.warehouseId(), fixture.productId());
+        assertEquals(409, call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
+                Map.of("product_id", fixture.productId(), "quantity_delta", 1, "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID())).status());
+        assertEquals(Integer.MAX_VALUE, stock(fixture.productId()));
+        assertEquals(0, version(fixture));
 
-        assertEquals(200, movementPage.status());
+        db.update("UPDATE inventories SET quantity_on_hand=0, version=? WHERE warehouse_id=? AND product_id=?",
+                Integer.MAX_VALUE, fixture.warehouseId(), fixture.productId());
+        assertEquals(409, call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
+                Map.of("product_id", fixture.productId(), "quantity_delta", 1, "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID())).status());
+        assertEquals(0, stock(fixture.productId()));
+        assertEquals(Integer.MAX_VALUE, version(fixture));
+        assertEquals(0, movements(fixture.productId()));
+    }
 
-        assertEquals(1, movementPage.data().get("meta").get("total").asInt());
+    @Test
+    void warehouseResolutionFailsClosedWhenZeroOrMultipleWarehousesAreActive() throws Exception {
+        Employee writer = employee(capabilityRole(ensurePermission("INVENTORY_WRITE")));
+        CatalogFixture fixture = createProduct();
+        String suffix = UUID.randomUUID().toString().replace("-", "");
+        db.update("INSERT INTO warehouses(code,name,status) VALUES (?,?,'ACTIVE')",
+                "INV-AMB-" + suffix, "Ambiguous operational warehouse");
+        long extraWarehouse = db.queryForObject(
+                "SELECT id FROM warehouses WHERE code=?", Long.class, "INV-AMB-" + suffix);
+
+        try {
+            var ambiguous = call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
+                    Map.of("product_id", fixture.productId(), "quantity_delta", 1,
+                            "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID()));
+            assertEquals(500, ambiguous.status(), ambiguous.body());
+
+            db.update("UPDATE warehouses SET status='INACTIVE' WHERE id=?", extraWarehouse);
+            db.update("UPDATE warehouses SET status='INACTIVE' WHERE id=?", fixture.warehouseId());
+            var missing = call("POST", "/api/v1/admin/inventory/adjustments", writer.token(),
+                    Map.of("product_id", fixture.productId(), "quantity_delta", 1,
+                            "reason_code", "COUNT_CORRECTION", "source_operation_id", "test-" + UUID.randomUUID()));
+            assertEquals(500, missing.status(), missing.body());
+            assertEquals(0, movements(fixture.productId()));
+        } finally {
+            db.update("UPDATE warehouses SET status='ACTIVE' WHERE id=?", fixture.warehouseId());
+            db.update("DELETE FROM warehouses WHERE id=?", extraWarehouse);
+        }
+    }
+
+    private int version(CatalogFixture fixture) {
+        return db.queryForObject(
+                "SELECT version FROM inventories WHERE warehouse_id=? AND product_id=?",
+                Integer.class, fixture.warehouseId(), fixture.productId());
+    }
+
+    private int movements(long productId) {
+        return db.queryForObject(
+                "SELECT COUNT(*) FROM inventory_transactions WHERE product_id=?",
+                Integer.class, productId);
     }
 }

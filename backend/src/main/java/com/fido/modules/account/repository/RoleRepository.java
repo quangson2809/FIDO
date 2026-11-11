@@ -29,8 +29,12 @@ public interface RoleRepository extends Repository<Role, Long> {
     Optional<Role> lockSuperadminRole();
 
     @Query(
-            "select r from Role r join AccountRole ar on ar.roleId = r.roleId where ar.accountId ="
-                + " :accountId")
+            """
+            select r from Role r
+            join AccountRole ar on ar.roleId = r.roleId
+            where ar.accountId = :accountId and r.status = 'ACTIVE'
+            order by r.roleId
+            """)
     List<Role> findAssignedToAccount(@Param("accountId") Long accountId);
 
     @Query(
@@ -40,6 +44,7 @@ public interface RoleRepository extends Repository<Role, Long> {
             join AccountRole ar on ar.roleId = r.roleId
             where ar.accountId = :accountId
               and r.code = :roleCode
+              and r.status = 'ACTIVE'
             """)
     boolean existsAssignedToAccountByCode(
             @Param("accountId") Long accountId, @Param("roleCode") String roleCode);

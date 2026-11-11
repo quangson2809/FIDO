@@ -37,6 +37,7 @@ export interface AccessControlDto {
 }
 
 export interface StaffCreateInput {
+  full_name: string;
   phone: string;
   email: string | null;
   password: string;
@@ -68,17 +69,18 @@ export interface PermissionCreateInput {
 }
 
 export interface PermissionPatchInput {
-  code?: string;
   name?: string;
 }
 
 export interface AuditLogDto {
-  audit_id: number;
+  id: number;
   actor_account_id: number | null;
   action: string;
-  target_type: string;
-  target_id: string;
-  description: string | null;
+  entity_type: string;
+  entity_id: string;
+  before_data: Record<string, unknown> | null;
+  after_data: Record<string, unknown> | null;
+  correlation_id: string | null;
   created_at: string;
 }
 
@@ -90,8 +92,8 @@ export interface PageResult<T> {
 export interface AuditQuery {
   actor_account_id?: number;
   action?: string;
-  target_type?: string;
-  target_id?: string;
+  entity_type?: string;
+  entity_id?: string;
   from?: string;
   to?: string;
   page?: number;

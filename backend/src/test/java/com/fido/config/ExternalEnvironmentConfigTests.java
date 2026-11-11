@@ -38,6 +38,7 @@ class ExternalEnvironmentConfigTests {
             assertArrayEquals(new String[] {"dev"}, environment.getActiveProfiles());
             assertEquals(encodedKey, environment.getProperty("app.jwt.secret-base64"));
             assertEquals("local-fido", environment.getProperty("app.jwt.issuer"));
+            assertEquals("http://localhost:5173", environment.getProperty("app.cors.allowed-origins"));
         }
     }
 

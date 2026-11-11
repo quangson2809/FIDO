@@ -1,5 +1,6 @@
 package com.fido.config.security;
 
+import com.fido.common.exception.ApiExceptionHandler;
 import com.fido.modules.account.service.AccountAccessService;
 
 import jakarta.servlet.DispatcherType;
@@ -13,10 +14,10 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 import java.util.ArrayList;
@@ -26,103 +27,56 @@ import java.util.ArrayList;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, AccountAccessService access)
+    SecurityFilterChain securityFilterChain(
+            HttpSecurity http, AccountAccessService access, ApiExceptionHandler errors)
             throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .sessionManagement(
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(
+                        exceptions -> exceptions
+                                .authenticationEntryPoint((request, response, failure) ->
+                                        errors.writeSecurityError(request, response, 401, "UNAUTHENTICATED"))
+                                .accessDeniedHandler((request, response, failure) ->
+                                        errors.writeSecurityError(request, response, 403, "FORBIDDEN")))
                 .authorizeHttpRequests(
-                        auth ->
-                                auth.dispatcherTypeMatchers(DispatcherType.ERROR)
-                                        .permitAll()
-                                        .requestMatchers(
-                                                HttpMethod.POST,
-                                                "/api/v1/auth/register",
-                                                "/api/v1/auth/login")
-                                        .permitAll()
-                                        .requestMatchers(
-                                                HttpMethod.GET,
-                                                "/api/v1/catalog/**",
-                                                "/api/v1/content-pages/**",
-                                                "/actuator/health",
-                                                "/v3/api-docs/**",
-                                                "/swagger-ui/**",
-                                                "/swagger-ui.html")
-                                        .permitAll()
-                                        .requestMatchers("/api/v1/admin/**")
-                                        .access(
-                                                (authentication, context) ->
-                                                        new AuthorizationDecision(
-                                                                authentication
-                                                                                .get()
-                                                                                .isAuthenticated()
-                                                                        && authentication
-                                                                                .get()
-                                                                                .getAuthorities()
-                                                                                .stream()
-                                                                                .anyMatch(
-                                                                                        authority ->
-                                                                                                "ROLE_SUPERADMIN"
-                                                                                                                .equals(
-                                                                                                                        authority
-                                                                                                                                .getAuthority())
-                                                                                                        || authority
-                                                                                                                .getAuthority()
-                                                                                                                .startsWith(
-                                                                                                                        "PERMISSION_"))))
-                                        .requestMatchers(
-                                                "/api/v1/me",
-                                                "/api/v1/me/**",
-                                                "/api/v1/cart",
-                                                "/api/v1/cart/**",
-                                                "/api/v1/checkout/quote",
-                                                "/api/v1/orders")
-                                        .authenticated()
-                                        .anyRequest()
-                                        .denyAll())
+                        auth -> auth.dispatcherTypeMatchers(DispatcherType.ERROR)
+                                .permitAll()
+                                .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login")
+                                .permitAll()
+                                .requestMatchers(
+                                        HttpMethod.GET, "/api/v1/catalog/**", "/api/v1/content-pages/**",
+                                        "/actuator/health", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+                                .permitAll()
+                                .requestMatchers("/api/v1/admin/**")
+                                .access((authentication, context) ->
+                                        new AuthorizationDecision(authentication.get().isAuthenticated()
+                                                && authentication.get().getAuthorities().stream().anyMatch(
+                                                        authority -> "ROLE_SUPERADMIN".equals(authority.getAuthority())
+                                                                || authority.getAuthority().startsWith("PERMISSION_"))))
+                                .requestMatchers(
+                                        "/api/v1/me", "/api/v1/me/**", "/api/v1/cart", "/api/v1/cart/**",
+                                        "/api/v1/checkout/quote", "/api/v1/orders")
+                                .authenticated()
+                                .anyRequest()
+                                .denyAll())
                 .oauth2ResourceServer(
-                        oauth ->
-                                oauth.jwt(
-                                        jwt ->
-                                                jwt.jwtAuthenticationConverter(
-                                                        token -> {
-                                                            var account =
-                                                                    access.findAccess(
-                                                                                    Long.valueOf(
-                                                                                            token
-                                                                                                    .getSubject()))
-                                                                            .orElseThrow(
-                                                                                    () ->
-                                                                                            new OAuth2AuthenticationException(
-                                                                                                    "invalid_token"));
-
-                                                            var authorities =
-                                                                    new ArrayList<
-                                                                            SimpleGrantedAuthority>();
-
-                                                            account.roles()
-                                                                    .forEach(
-                                                                            role ->
-                                                                                    authorities.add(
-                                                                                            new SimpleGrantedAuthority(
-                                                                                                    "ROLE_"
-                                                                                                            + role
-                                                                                                                    .code())));
-
-                                                            account.permissions()
-                                                                    .forEach(
-                                                                            permission ->
-                                                                                    authorities.add(
-                                                                                            new SimpleGrantedAuthority(
-                                                                                                    "PERMISSION_"
-                                                                                                            + permission
-                                                                                                                    .code())));
-
-                                                            return new JwtAuthenticationToken(
-                                                                    token, authorities);
-                                                        })));
-
+                        oauth -> oauth
+                                .authenticationEntryPoint((request, response, failure) ->
+                                        errors.writeSecurityError(request, response, 401, "UNAUTHENTICATED"))
+                                .accessDeniedHandler((request, response, failure) ->
+                                        errors.writeSecurityError(request, response, 403, "FORBIDDEN"))
+                                .jwt(jwt -> jwt.jwtAuthenticationConverter(token -> {
+                                    var account = access.findActiveAccess(Long.valueOf(token.getSubject()))
+                                            .orElseThrow(() -> new OAuth2AuthenticationException("invalid_token"));
+                                    var authorities = new ArrayList<SimpleGrantedAuthority>();
+                                    account.roles().forEach(role -> authorities.add(
+                                            new SimpleGrantedAuthority("ROLE_" + role.code())));
+                                    account.permissions().forEach(permission -> authorities.add(
+                                            new SimpleGrantedAuthority("PERMISSION_" + permission.code())));
+                                    return new JwtAuthenticationToken(token, authorities);
+                                })));
         return http.build();
     }
 

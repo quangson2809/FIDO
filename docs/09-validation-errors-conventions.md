@@ -1,55 +1,52 @@
-# 09 — Validation, Errors & Backend Conventions
+# 09 — Validation, Errors and Backend Conventions
 
 ## 1. Validation layers
 
-Use layered validation:
+1. **Request validation:** required fields, string bounds, valid enum literals, integer-VND amounts, positive quantities and request shape.
+2. **Business validation:** ownership, permissions, account lifecycle, Product hierarchy, option-only Attribute values, price/stock eligibility, voucher rules and state transitions.
+3. **Database invariants:** PK/FK/unique/check constraints, optimistic version guards and source-derived uniqueness. Database checks reinforce but do not replace service validation.
 
-1. **DTO syntactic validation**: required fields, positive/non-zero numeric constraints, max lengths where schema defines them.
-2. **Service business validation**: ownership, state transition, leaf Category, SizeSystem match, permissions, stock availability.
-3. **Database invariant**: FK/UQ/CHECK/atomic condition for constraints that must survive concurrent requests.
+Cross-module writes must go through the owning module service. Validation and mutation that protect the same business invariant must run in one transaction or use database concurrency controls that make the invariant atomic.
 
-Do not place business rules only in controller annotations.
+## 2. Target-specific validation
 
-## 2. Mandatory examples
+### Accounts and authorization
+- Registration and authentication must not reveal whether an account identifier exists. The target login identifier is phone; do not retain the legacy generic `identifier`/email-login contract.
+- Active phone identity is unique after canonicalization. Accept Vietnamese `0` + 9 digit or `+84` + 9 digit forms with optional whitespace/`-()` separators; canonical storage/lookup uses `+84` + 9 digits. Phone may be reused only after soft deletion.
+- Registration/staff creation sets `ACTIVE`; only `ACTIVE` may receive tokens/use protected endpoints. Wrong credentials return generic `401 INVALID_CREDENTIALS`; correct credentials for any non-ACTIVE Account return the same `403 ACCOUNT_NOT_ACTIVE` without disclosing exact status.
+- Never accept an account ID, role/grant assignment or actor identity from an unauthenticated/public request. `/me` and saved Address operations derive ownership from the authenticated principal.
+- Saved Address reads/writes are owner-scoped and must not change `ORDER_ADDRESSES` snapshots. If any saved address exists there is exactly one default; first address defaults automatically and switch/delete/unset promotes the most recently updated remaining address atomically (tie-break ID descending).
+- Protect role/permission changes with audit and a concurrency-safe last-SUPERADMIN guard. The `SUPERADMIN` Role stays ACTIVE with every current Permission; new Permission creation auto-grants it. Other Roles use atomic full replacement (`permission_ids` omitted = retain, `[]` = clear, non-empty = replace). Seed Permissions are protected; custom Permissions cannot be deleted while used by a business Role. Role/Permission codes are immutable after creation.
 
-- cart/order/receipt quantity > 0;
-- adjustment delta != 0;
-- money >= 0;
-- receiver phone + address required at checkout;
-- Variant SizeValue belongs to Product SizeSystem;
-- Product Category is leaf;
-- Category parent update creates no self-parent/cycle;
-- cannot delete Category with children/Product;
-- cannot delete Brand/Size/Color while referenced;
-- recipient update rejected from SHIPPING onward;
-- state transition not in state machine rejected without partial write;
-- COMPLETE rejected when payment is not PAID;
-- inventory update rejected if result would be negative.
+### Product and attributes
+- Product SKU is unique according to the target database contract.
+- Parent/child depth is limited to one; reject self-parenting, cycles and invalid referenced parents.
+- Each Product owns its required selling price and stock. No nullable field silently inherits from a parent.
+- Product attribute values accept only `attribute_value_ids`. Each ID must resolve to an existing Option; Backend derives the owning Attribute and rejects selecting more than one Option for the same Attribute. Required Attributes must be satisfied before activation.
+- Attribute metadata is descriptive; it must not generate Product rows automatically.
+- A Product image operation validates ownership, supported media/URL contract and ordering rules from the approved image API contract.
 
-## 3. Business errors
+### Cart, orders and money
+- Cart and order operations require an authenticated account and enforce ownership of each Cart/line/Order.
+- Cart and receipt quantities must be positive integers. Inventory adjustment delta must be non-zero with a valid reason code.
+- All money is integer VND. Reject fractional-VND inputs; do not accept client-computed total/price/discount/shipping values as authoritative.
+- Order creation revalidates current Product status, selling price, stock, voucher and server-owned shipping input.
+- Same scoped idempotency key + same semantic payload replays. Same key + different payload conflicts. Cross-account result access is forbidden.
 
-SRS requires errors to be understandable and must not leak technical internals. The public error JSON envelope/status matrix is not locked in Analyst docs.
+### Inventory, payment and lifecycle
+- Inventory balance must never be negative. Every successful movement has the matching source, balance update, ledger row and required audit in one transaction.
+- Prevent repeated receipt confirmation, duplicate source movements, repeated stock reversal, duplicate COD collection and duplicate refund.
+- Apply the approved actor/state matrix to Order, Payment, ShippingInfo and GoodsReceipt transitions.
+- Do not hard-delete placed Orders, Payment facts, ledger entries, snapshots or audit history through ordinary catalog/account deletion.
 
-Codex must:
+## 3. HTTP error convention
 
-- use the repository's established exception/error response convention;
-- centralize exception translation;
-- avoid returning stack traces/SQL details/class names;
-- distinguish validation/not-found/authorization/conflict/business-state conditions using the existing API standard;
-- not introduce a new incompatible error schema without explicit approval.
+Return a stable public envelope with a machine-readable error code and safe user-facing message. Map request validation to 400, authentication to 401, authorization to 403, missing resources to 404, and state/stock/idempotency conflicts to 409 where that matches the approved API contract. Preserve the existing global error envelope unless an explicit API-contract change is approved.
 
-## 4. Naming and serialization
+Account/RBAC target error codes defined by P1.2: `VALIDATION_ERROR` (400), `UNAUTHENTICATED` (401), `INVALID_CREDENTIALS` (401, generic wrong-credential message), `FORBIDDEN` (403), `ACCOUNT_NOT_ACTIVE` (403 for valid credentials against any non-ACTIVE Account), `RESOURCE_NOT_FOUND` (404), `PHONE_ALREADY_IN_USE` (409), `ROLE_CODE_ALREADY_EXISTS` / `PERMISSION_CODE_ALREADY_EXISTS` (409), `LAST_SUPERADMIN_REQUIRED` (409), `ROLE_IN_USE` / `PERMISSION_IN_USE` (409), `SYSTEM_ROLE_PROTECTED` / `SYSTEM_PERMISSION_PROTECTED` (409), `ACCOUNT_STATE_CONFLICT` (409 for a conflicting status mutation only). Keep the current global envelope unchanged. Do not reveal account existence on wrong-credential failure.
 
-- Java class names: normal Java conventions.
-- JSON: snake_case according to API Appendix A.
-- DB: snake_case.
-- Money: BigDecimal/DECIMAL semantics.
-- Do not map persistence Entity directly to JSON.
+Never return SQL text, database/provider errors, stack traces, credentials, JWTs or secret configuration. Logs must exclude raw request bodies and query strings where they may contain credentials or personal data; retain safe route template, method, status, internal exception category and correlation ID.
 
-## 5. Search and pagination
+## 4. Test requirements
 
-Do not create separate search endpoints when the baseline uses query parameters. Implement default `page=1`, `page_size=20`, maximum 100. Sorting behavior not explicitly locked should follow an existing repository convention or remain an explicit decision rather than silently invented.
-
-## 6. Deletion semantics
-
-Use physical DELETE only where the baseline endpoint explicitly allows deleting master data and reference checks prove it is unused (e.g. empty Category, unused Brand/Size/Color/Role/Permission). Historical business records are immutable/lifecycle-driven and must not be hard-deleted.
+For each target rule, test both invalid requests and concurrency/replay paths where applicable: hierarchy/cycle races, duplicate active phone, same-Attribute option ownership, Product SKU conflicts, Cart ownership, last-stock race, receipt double-confirm, source-key duplication, voucher final-use race, order idempotency replay/conflict, full transaction rollback, state authorization and retained snapshot stability. Report real test results; a documentation change does not establish runtime acceptance.

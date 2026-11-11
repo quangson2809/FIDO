@@ -9,7 +9,7 @@ import lombok.Setter;
 @Entity
 @Table(
         name = "brands",
-        uniqueConstraints = {@UniqueConstraint(columnNames = {"name"})})
+        uniqueConstraints = @UniqueConstraint(name = "uq_brands_slug", columnNames = {"slug"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -17,9 +17,15 @@ public class Brand {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "brand_id", nullable = false)
+    @Column(name = "id", nullable = false)
     private Long brandId;
 
     @Column(name = "name", nullable = false, length = 150)
     private String name;
+
+    @Column(name = "slug", nullable = false, length = 180)
+    private String slug;
+
+    @Column(name = "status", nullable = false, length = 20)
+    private String status = "ACTIVE";
 }

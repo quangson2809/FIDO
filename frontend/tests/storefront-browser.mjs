@@ -58,7 +58,8 @@ try {
   await cartDialog.getByRole('button', { name: 'Tăng số lượng' }).click();
   await cartDialog.getByRole('alert').waitFor();
   assert.match(await cartDialog.innerText(), /Chưa thể xác nhận thay đổi/);
-  assert.match(await cartDialog.innerText(), /480|440\.000/);
+  assert.match(await cartDialog.innerText(), /400\.000₫/);
+  assert.doesNotMatch(await cartDialog.innerText(), /600\.000₫/, 'failed mutation keeps the last confirmed total');
   assert.equal(
     await cartDialog.getByRole('button', { name: 'Tiếp tục đặt hàng' }).isDisabled(),
     true,
@@ -77,12 +78,25 @@ try {
     'focus stays in drawer after deletion',
   );
   await page.keyboard.press('Escape');
+  fixture.state.quantity = 2;
+  await page.reload();
+  await cartTrigger.click();
+  page.once('dialog', (dialog) => void dialog.accept());
+  await cartDialog.getByRole('button', { name: 'Xóa toàn bộ giỏ hàng', exact: true }).click();
+  await cartDialog.getByText('Giỏ hàng đang trống', { exact: false }).waitFor();
+  assert.equal(fixture.state.quantity, 0);
+  assert.equal(
+    fixture.state.requests.filter((request) => request.path === '/cart' && request.method === 'DELETE').length,
+    1,
+    'clear cart uses DELETE /cart',
+  );
+  await page.keyboard.press('Escape');
   fixture.state.quantity = 1;
   await go('/checkout');
-  await page.getByLabel('Chọn địa chỉ nhận hàng').waitFor();
-  assert.equal(await page.getByLabel('Chọn địa chỉ nhận hàng').inputValue(), 'new');
+  await page.getByLabel('Địa chỉ đã lưu').waitFor();
+  assert.equal(await page.getByLabel('Địa chỉ đã lưu').inputValue(), 'new');
   assert.equal(
-    await page.getByLabel('Địa chỉ nhận hàng *').inputValue(),
+    await page.getByLabel('Địa chỉ cụ thể *').inputValue(),
     '',
     'never select first saved address implicitly',
   );
@@ -95,12 +109,13 @@ try {
   );
   assert.equal(quoteCount(), quotesBefore);
   await page.getByLabel('Số điện thoại người nhận *').fill('0900000000');
-  await page.getByLabel('Email người nhận').fill('bad');
-  await quoteButton.click();
-  assert.equal(await page.getByLabel('Email người nhận').getAttribute('aria-invalid'), 'true');
-  await page.getByLabel('Email người nhận').fill('user@example.test');
-  await page.getByLabel('Địa chỉ nhận hàng *').fill('Địa chỉ mới giữ lại');
-  await page.getByLabel('Chọn địa chỉ nhận hàng').selectOption('2');
+  await page.getByLabel('Tỉnh / thành phố *').fill('Hà Nội');
+  await page.getByLabel('Quận / huyện *').fill('Ba Đình');
+  await page.getByLabel('Phường / xã *').fill('Liễu Giai');
+  await page.getByLabel('Địa chỉ cụ thể *').fill('Địa chỉ mới giữ lại');
+  await page.getByLabel('Địa chỉ đã lưu').selectOption('2');
+  assert.equal(await page.getByLabel('Tỉnh / thành phố *').inputValue(), 'Nghệ An');
+  assert.equal(await page.getByLabel('Địa chỉ cụ thể *').inputValue(), '15 Nguyễn Trãi');
   await page.getByLabel('Mã voucher').fill('INVALID');
   await quoteButton.click();
   await page.getByRole('alert').filter({ hasText: 'Mã ưu đãi không hợp lệ' }).waitFor();
@@ -112,25 +127,28 @@ try {
   const request = fixture.state.requests
     .filter((request) => request.path === '/checkout/quote')
     .at(-1);
-  assert.equal(request.body.recipient_address, 'Nghệ An');
+  assert.equal(request.body.province, 'Nghệ An');
+  assert.equal(request.body.district, 'Vinh');
+  assert.equal(request.body.ward, 'Hà Huy Tập');
+  assert.equal(request.body.address_line, '15 Nguyễn Trãi');
   await page.getByText('Đã áp dụng VALID: giảm 20.000₫', { exact: true }).waitFor();
-  await page.getByLabel('Chọn địa chỉ nhận hàng').selectOption('new');
-  assert.equal(await page.getByLabel('Địa chỉ nhận hàng *').inputValue(), 'Địa chỉ mới giữ lại');
+  await page.getByLabel('Địa chỉ đã lưu').selectOption('new');
+  await page.getByLabel('Địa chỉ cụ thể *').fill('Địa chỉ mới giữ lại');
+  assert.equal(await page.getByLabel('Địa chỉ cụ thể *').inputValue(), 'Địa chỉ mới giữ lại');
   assert.equal(await orderButton.count(), 0, 'address invalidates quote');
-  fixture.state.expiresAt = new Date(Date.now() + 1500).toISOString();
   await quoteButton.click();
   await orderButton.waitFor();
   await orderButton.click();
   const confirmation = page.getByRole('dialog', { name: 'Xác nhận đặt hàng', exact: true });
   await confirmation.getByRole('button', { name: 'Xác nhận đặt hàng COD' }).waitFor();
-  await confirmation.getByRole('alert').filter({ hasText: 'Báo giá đã hết hạn.' }).waitFor();
+  assert.equal(await confirmation.getByRole('alert').count(), 0);
   assert.equal(
-    await confirmation.getByRole('button', { name: 'Xác nhận đặt hàng COD' }).isDisabled(),
+    await confirmation.getByRole('button', { name: 'Xác nhận đặt hàng COD', exact: true }).isEnabled(),
     true,
+    'Backend decides whether the advisory quote can be submitted',
   );
   assert.equal(fixture.state.orders, 0);
   await confirmation.getByRole('button', { name: 'Quay lại chỉnh sửa' }).click();
-  fixture.state.expiresAt = undefined;
   await quoteButton.click();
   await orderButton.waitFor();
   assert.equal(
@@ -140,7 +158,7 @@ try {
     0,
     'checkout never persists a new address',
   );
-  // Customer status/payment/date presentation uses real fields, not fabricated transition dates.
+  // Detail hides order/payment status and progress while preserving SKU and purchase facts.
   const labels = {
     PENDING: 'Chờ xác nhận',
     CONFIRMED: 'Đã xác nhận',
@@ -155,19 +173,34 @@ try {
     fixture.state.orderStatus = status;
     await go('/orders/1');
     await page.getByRole('heading', { name: 'FIDO-001', exact: true }).waitFor();
-    assert.match(await page.locator('#storefront-main').innerText(), new RegExp(label));
+    const detailText = await page.locator('#storefront-main').innerText();
+    assert.ok(!detailText.includes(label), `order detail hides ${status}`);
+    assert.ok(!detailText.includes(status), `order detail hides raw ${status}`);
+    assert.equal(await page.getByRole('heading', { name: 'Tiến trình đơn hàng' }).count(), 0);
+    assert.equal(await page.getByText('Trạng thái thanh toán', { exact: true }).count(), 0);
+    await page.getByText('SKU ' + product.sku + ' · Số lượng 1', { exact: true }).waitFor();
+    await page.getByRole('heading', { name: 'Thông tin người nhận', exact: true }).waitFor();
+    await page.getByText('Tổng cộng', { exact: true }).waitFor();
     const edits = await page.getByRole('button', { name: 'Chỉnh sửa', exact: true }).count();
-    assert.equal(edits > 0, ['PENDING', 'CONFIRMED', 'PREPARING'].includes(status));
+    assert.equal(edits, 0, 'recipient editing has no supported backend API');
     assert.ok(!(await page.locator('#storefront-main').innerText()).includes('UNPAID'));
     assert.ok(
       !(await page.locator('#storefront-main').innerText()).includes('2026-10-10T03:00:00Z'),
     );
   }
+  assert.equal(fixture.state.requests.filter((request) => request.path.endsWith('/recipient')).length, 0);
   for (const [status, label] of [
+    ['UNPAID', 'Chưa thanh toán'],
     ['PAID', 'Đã thanh toán'],
     ['REFUNDED', 'Đã hoàn tiền'],
   ]) {
     fixture.state.paymentStatus = status;
+    await go('/orders/1');
+    await page.getByRole('heading', { name: 'FIDO-001', exact: true }).waitFor();
+    const detailText = await page.locator('#storefront-main').innerText();
+    assert.ok(!detailText.includes(label), `order detail hides payment ${status}`);
+    assert.ok(!detailText.includes(status), `order detail hides raw payment ${status}`);
+    await page.getByText('SKU ' + product.sku + ' · Số lượng 1', { exact: true }).waitFor();
     await go('/orders');
     await page.getByText(label, { exact: true }).waitFor();
   }
@@ -224,18 +257,13 @@ try {
   await page.getByRole('heading', { name: 'Áo FIDO', exact: true }).waitFor();
   // Gallery order, keyboard enlargement, and broken media.
   product.images = [
-    { image_id: 2, image_url: '/images/about/palette.svg', alt_text: 'Ảnh thứ hai', sort_order: 2 },
-    {
-      image_id: 1,
-      image_url: '/images/about/wardrobe.svg',
-      alt_text: 'Ảnh thứ nhất',
-      sort_order: 1,
-    },
+    { id: 2, image_url: '/images/about/palette.svg', is_primary: false, sort_order: 1 },
+    { id: 1, image_url: '/images/about/wardrobe.svg', is_primary: true, sort_order: 0 },
   ];
   await go('/products/1');
   await page.getByRole('button', { name: 'Phóng to ảnh' }).waitFor();
   assert.equal(
-    await page.getByRole('img', { name: 'Ảnh thứ nhất', exact: true }).last().getAttribute('src'),
+    await page.getByRole('img', { name: 'Áo FIDO 1', exact: true }).first().getAttribute('src'),
     '/images/about/wardrobe.svg',
   );
   await page.getByRole('button', { name: 'Xem ảnh 2', exact: true }).click();
@@ -247,24 +275,19 @@ try {
   await page.getByRole('dialog', { name: 'Ảnh sản phẩm' }).waitFor();
   await page.keyboard.press('Escape');
   product.images = [
-    { image_id: 1, image_url: '/broken-fixture.png', alt_text: 'Ảnh lỗi', sort_order: 1 },
+    { id: 1, image_url: '/broken-fixture.png', is_primary: true, sort_order: 0 },
   ];
   await page.route('**/broken-fixture.png', (route) => route.fulfill({ status: 404, body: '' }));
   await go('/products/1');
-  await page.getByRole('img', { name: 'Ảnh lỗi: ảnh chưa khả dụng' }).waitFor();
+  await page.getByRole('img', { name: 'Áo FIDO: ảnh chưa khả dụng' }).waitFor();
   product.images = [
-    {
-      image_id: 1,
-      image_url: '/images/about/wardrobe.svg',
-      alt_text: 'Ảnh thứ nhất',
-      sort_order: 1,
-    },
-    { image_id: 2, image_url: '/images/about/palette.svg', alt_text: 'Ảnh thứ hai', sort_order: 2 },
+    { id: 1, image_url: '/images/about/wardrobe.svg', is_primary: true, sort_order: 0 },
+    { id: 2, image_url: '/images/about/palette.svg', is_primary: false, sort_order: 1 },
   ];
   await go('/products/1');
-  const selectedSize = page.getByRole('button', { name: 'M', exact: true });
-  await selectedSize.waitFor();
-  const contrast = await selectedSize.evaluate((element) => {
+  const addToCart = page.getByRole('button', { name: 'Thêm vào giỏ hàng', exact: true });
+  await addToCart.waitFor();
+  const contrast = await addToCart.evaluate((element) => {
     const style = getComputedStyle(element);
     const luminance = (value) =>
       value
@@ -280,13 +303,13 @@ try {
       background = luminance(style.backgroundColor);
     return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
   });
-  assert.ok(contrast >= 4.5, `selected purchase control contrast ${contrast}`);
-  await selectedSize.focus();
-  await page.keyboard.press('Tab');
-  const focusOutline = await page.evaluate(
-    () => getComputedStyle(document.activeElement).outlineStyle,
+  assert.ok(contrast >= 4.5, `add-to-cart contrast ${contrast}`);
+  await addToCart.focus();
+  assert.equal(
+    await addToCart.evaluate((element) => getComputedStyle(element).outlineStyle),
+    'solid',
+    'keyboard focus is visible',
   );
-  assert.equal(focusOutline, 'solid', 'keyboard focus is visible');
   const touchTargets = await page.locator('button').evaluateAll((elements) =>
     elements
       .filter(
@@ -301,6 +324,60 @@ try {
       .filter((target) => target.width < 43.5 || target.height < 43.5),
   );
   assert.deepEqual(touchTargets, [], 'visible buttons have 44px touch targets');
+  // Profile address CRUD uses the structured Backend request/response contract.
+  await go('/account');
+  await page.getByRole('heading', { name: 'Hồ sơ của tôi', exact: true }).waitFor();
+  const newAddressFields = {
+    recipient_name: 'FIDO Test',
+    recipient_phone: '0900111222',
+    province: 'Hà Nội',
+    district: 'Ba Đình',
+    ward: 'Liễu Giai',
+    address_line: '99 P5 Lane',
+  };
+  for (const [label, value] of [
+    ['Họ tên người nhận', newAddressFields.recipient_name],
+    ['Số điện thoại người nhận', newAddressFields.recipient_phone],
+    ['Tỉnh / thành phố', newAddressFields.province],
+    ['Quận / huyện', newAddressFields.district],
+    ['Phường / xã', newAddressFields.ward],
+    ['Địa chỉ cụ thể', newAddressFields.address_line],
+  ]) {
+    await page.getByLabel(label + ' (địa chỉ mới)').fill(value);
+  }
+  await page.getByRole('button', { name: 'Thêm địa chỉ', exact: true }).click();
+  const addedAddress = page.locator('article').filter({ hasText: newAddressFields.address_line });
+  await addedAddress.waitFor();
+  const createAddressRequest = fixture.state.requests
+    .filter((request) => request.path === '/me/addresses' && request.method === 'POST')
+    .at(-1);
+  assert.deepEqual(createAddressRequest.body, newAddressFields);
+
+  await addedAddress.getByRole('button', { name: 'Sửa', exact: true }).click();
+  const updatedAddressFields = {
+    ...newAddressFields,
+    recipient_name: 'FIDO Test Updated',
+    address_line: '100 P5 Lane',
+    is_default: false,
+  };
+  for (const [label, value] of [
+    ['Họ tên người nhận', updatedAddressFields.recipient_name],
+    ['Số điện thoại người nhận', updatedAddressFields.recipient_phone],
+    ['Tỉnh / thành phố', updatedAddressFields.province],
+    ['Quận / huyện', updatedAddressFields.district],
+    ['Phường / xã', updatedAddressFields.ward],
+    ['Địa chỉ cụ thể', updatedAddressFields.address_line],
+  ]) {
+    await page.getByLabel(label + ' (sửa địa chỉ)').fill(value);
+  }
+  await page.getByRole('button', { name: 'Lưu', exact: true }).click();
+  const updatedAddress = page.locator('article').filter({ hasText: updatedAddressFields.address_line });
+  await updatedAddress.waitFor();
+  const updateAddressRequest = fixture.state.requests
+    .filter((request) => request.path.startsWith('/me/addresses/') && request.method === 'PATCH')
+    .at(-1);
+  assert.deepEqual(updateAddressRequest.body, updatedAddressFields);
+
   // Responsive review on every customer page and drawer, including reduced motion.
   for (const width of [375, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
@@ -320,8 +397,15 @@ try {
       await page.locator('main h1').first().waitFor();
       if (['home', 'catalog'].includes(name))
         await page.getByText('Áo FIDO', { exact: true }).waitFor();
-      if (name === 'checkout') await page.getByLabel('Chọn địa chỉ nhận hàng').waitFor();
+      if (name === 'checkout') await page.getByLabel('Địa chỉ đã lưu').waitFor();
       if (name === 'orders') await page.getByText('FIDO-001', { exact: true }).waitFor();
+      if (name === 'order') {
+        await page.getByText('SKU ' + product.sku + ' · Số lượng 1', { exact: true }).waitFor();
+        const text = await page.locator('#storefront-main').innerText();
+        for (const label of [...Object.values(labels), 'Chưa thanh toán', 'Đã thanh toán', 'Đã hoàn tiền'])
+          assert.ok(!text.includes(label), `order detail hides ${label} at ${width}px`);
+        assert.equal(await page.getByRole('heading', { name: 'Tiến trình đơn hàng' }).count(), 0);
+      }
       if (name === 'policies')
         await page.getByRole('heading', { name: 'Chính sách trả hàng', exact: true }).waitFor();
       await page.screenshot({
@@ -374,7 +458,7 @@ try {
   fixture.state.failures.clear();
   await guest.getByRole('button', { name: 'Đăng nhập', exact: true }).last().click();
   await guest.waitForURL('**/checkout');
-  await guest.getByLabel('Chọn địa chỉ nhận hàng').waitFor();
+  await guest.getByLabel('Địa chỉ đã lưu').waitFor();
   await guest.close();
   // One continuous purchase journey through real route transitions, with fixture-backed HTTP.
   fixture.state.quantity = 0;
@@ -388,9 +472,9 @@ try {
   const addRequest = fixture.state.requests
     .filter((request) => request.path === '/cart/items' && request.method === 'POST')
     .at(-1);
-  assert.equal(addRequest.body.variant_id, 1);
+  assert.deepEqual(addRequest.body, { product_id: 1, quantity: 1 });
   assert.equal(addRequest.body.quantity, 1);
-  await page.getByLabel('Chọn địa chỉ nhận hàng').selectOption('2');
+  await page.getByLabel('Địa chỉ đã lưu').selectOption('2');
   await quoteButton.click();
   await orderButton.click();
   await confirmation.getByRole('button', { name: 'Xác nhận đặt hàng COD', exact: true }).click();
@@ -412,7 +496,7 @@ try {
   fixture.state.loseOrderResponse = true;
   const ordersBeforeLostResponse = fixture.state.orders;
   await go('/checkout');
-  await page.getByLabel('Chọn địa chỉ nhận hàng').selectOption('2');
+  await page.getByLabel('Địa chỉ đã lưu').selectOption('2');
   await quoteButton.click();
   await orderButton.click();
   await confirmation.getByRole('button', { name: 'Xác nhận đặt hàng COD', exact: true }).click();
@@ -436,7 +520,12 @@ try {
   const attempts = fixture.state.requests
     .filter((request) => request.path === '/orders' && request.method === 'POST')
     .slice(-2);
-  assert.equal(attempts[0].body.quote_id, attempts[1].body.quote_id);
+  assert.deepEqual(attempts[0].body, attempts[1].body, 'replay sends the same structured request');
+  assert.equal(
+    attempts[0].headers['idempotency-key'],
+    attempts[1].headers['idempotency-key'],
+    'replay reuses the original Idempotency-Key',
+  );
   assert.equal(await cartTrigger.getAttribute('aria-label'), 'Giỏ hàng (0 sản phẩm)');
   // Startup /me read failures retain credentials but never expose protected content before verification.
   for (const path of ['/checkout', '/account', '/orders']) {
@@ -512,7 +601,7 @@ try {
   await staleSession.close();
   assert.deepEqual(errors, []);
   console.log(
-    'Storefront browser: PASS — cart keyboard/quantity/delete/failure recovery, saved/new addresses, validation/voucher/expiry, all order/payment statuses, empty/retry/network recovery, gallery/fallback, login and fail-closed session retry, continuous purchase/lost response journey, 10 pages × 4 viewports, touch/contrast/reduced motion, no unexpected console errors.',
+    'Storefront browser: PASS — cart keyboard/quantity/delete/failure recovery, saved/new addresses, validation/voucher/expiry, order detail hides statuses and retains SKU, order-list status labels, empty/retry/network recovery, gallery/fallback, login and fail-closed session retry, continuous purchase/lost response journey, 10 pages × 4 viewports, touch/contrast/reduced motion, no unexpected console errors.',
   );
 } finally {
   await browser.close();

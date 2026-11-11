@@ -1,26 +1,32 @@
-import { StorefrontIcon } from '../../../components/StorefrontIcon';
 import React from 'react';
+import { StorefrontIcon } from '../../../components/StorefrontIcon';
 import { StorefrontImage } from '../../../shared/ui/storefront/StorefrontImage';
 import { QueryFeedback } from '../../../shared/ui/storefront/QueryFeedback';
-import type { CatalogProductView, ProductDetailDto, ProductVariantDto } from '../types';
+import type {
+  CatalogProductView,
+  ProductDetailDto,
+} from '../types';
 import { ProductSummaryCard } from './ProductSummaryCard';
 
+const productName = (product: ProductDetailDto): string => product.name ?? product.sku;
+
 export const ProductGallerySection: React.FC<{
-  product: ProductDetailDto;
+  productName: string;
   gallery: readonly string[];
   activeImageIndex: number;
   onSelectImage: (index: number) => void;
   onMoveImage: (offset: -1 | 1) => void;
   onZoom?: () => void;
-}> = ({ product, gallery, activeImageIndex, onSelectImage, onMoveImage, onZoom }) => (
-  <div className="min-w-0 flex flex-col-reverse gap-4 md:flex-row md:items-start">
+}> = ({ productName, gallery, activeImageIndex, onSelectImage, onMoveImage, onZoom }) => (
+  <div className="min-w-0 space-y-3">
+    <div className="flex min-w-0 flex-col-reverse gap-4 md:flex-row md:items-start">
     {gallery.length > 1 && (
       <div className="flex max-w-full gap-3 overflow-x-auto p-1 md:max-h-[640px] md:w-28 md:shrink-0 md:flex-col md:overflow-y-auto">
         {gallery.map((image, index) => (
           <button
             key={image + '-' + index}
             type="button"
-            aria-label={`Xem ảnh ${index + 1}`}
+            aria-label={'Xem ảnh ' + (index + 1)}
             aria-pressed={activeImageIndex === index}
             onClick={() => onSelectImage(index)}
             className={
@@ -32,21 +38,21 @@ export const ProductGallerySection: React.FC<{
           >
             <StorefrontImage
               src={image}
-              alt={product.images[index]?.alt_text ?? product.name + ' ' + (index + 1)}
+              alt={productName + ' ' + (index + 1)}
               className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
             />
           </button>
         ))}
       </div>
     )}
-
     <div className="group relative aspect-[4/5] min-w-0 flex-1 overflow-hidden bg-[#F3F4EF] shadow-sm">
       {gallery.length > 0 ? (
         <StorefrontImage
           loading="eager"
+          key={gallery[activeImageIndex] ?? gallery[0]}
           src={gallery[activeImageIndex] ?? gallery[0]}
-          alt={product.images[activeImageIndex]?.alt_text ?? product.name}
-          className="h-full w-full object-contain"
+          alt={productName}
+          className="h-full w-full object-contain transition-opacity duration-300"
         />
       ) : (
         <div className="flex h-full items-center justify-center text-sm text-[#606863]">
@@ -70,7 +76,7 @@ export const ProductGallerySection: React.FC<{
             onClick={() => onMoveImage(-1)}
             className="absolute left-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-[#0B2419] shadow-md backdrop-blur transition hover:bg-white"
           >
-            <StorefrontIcon name="chevron_left" className="h-5 w-5 " />
+            <StorefrontIcon name="chevron_left" className="h-5 w-5" />
           </button>
           <button
             type="button"
@@ -78,288 +84,142 @@ export const ProductGallerySection: React.FC<{
             onClick={() => onMoveImage(1)}
             className="absolute right-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-[#0B2419] shadow-md backdrop-blur transition hover:bg-white"
           >
-            <StorefrontIcon name="chevron_right" className="h-5 w-5 " />
+            <StorefrontIcon name="chevron_right" className="h-5 w-5" />
           </button>
         </>
       )}
-      <div className="absolute left-4 top-4 bg-[#071A12]/88 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white backdrop-blur">
-        FIDO Editorial
-      </div>
+    </div>
     </div>
   </div>
 );
 
 export const ProductSpecsSection: React.FC<{
   items: readonly { label: string; value: string }[];
-  materialCare: string | null;
-}> = ({ items, materialCare }) => (
-  <>
-    {items.length > 0 && (
-      <div className="grid grid-cols-2 gap-px overflow-hidden border border-[#E8E9E3] bg-[#E8E9E3] sm:grid-cols-3 lg:grid-cols-5">
-        {items.map((item) => (
-          <div key={item.label} className="bg-[#FFFDF5] p-4">
-            <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#687069]">
-              {item.label}
-            </p>
-            <p className="mt-1 text-sm font-semibold text-[#0B2419]">{item.value}</p>
-          </div>
-        ))}
-      </div>
-    )}
-
-    {materialCare && (
-      <div className="border border-[#E8E9E3] bg-[#071A12] p-6 text-white sm:p-7">
-        <div className="flex items-start gap-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#E8C75B] text-[#071A12]">
-            <StorefrontIcon name="checkroom" className="h-5 w-5 " />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#E8C75B]">
-              Chất liệu & bảo quản
-            </p>
-            <p className="mt-2 text-sm leading-7 text-white/75">{materialCare}</p>
-          </div>
+}> = ({ items }) =>
+  items.length > 0 ? (
+    <div className="grid grid-cols-2 gap-px overflow-hidden border border-[#E8E9E3] bg-[#E8E9E3] sm:grid-cols-3 lg:grid-cols-4">
+      {items.map((item) => (
+        <div key={item.label} className="bg-[#FFFDF5] p-4">
+          <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#687069]">
+            {item.label}
+          </p>
+          <p className="mt-1 break-words text-sm font-semibold text-[#0B2419]">{item.value}</p>
         </div>
-      </div>
-    )}
-  </>
-);
+      ))}
+    </div>
+  ) : null;
 
 export const ProductPurchasePanel: React.FC<{
   product: ProductDetailDto;
-  selectedVariant: ProductVariantDto | null;
-  onSaleVariants: readonly ProductVariantDto[];
-  sizeOptions: readonly ProductVariantDto['size'][];
-  colorOptions: readonly ProductVariantDto['color'][];
-  selectedSizeValueId: number | null;
-  selectedColorId: number | null;
   quantity: number;
-  variantCanBePurchased: boolean;
-  displayedPrice: number;
-  sizeAvailability: (sizeValueId: number) => boolean;
-  colorAvailability: (colorId: number) => boolean;
-  colorCompatibility: (colorId: number) => boolean;
-  colorUnavailableReason: (colorId: number) => string;
-  colorSelectionNotice?: string | null;
-  onSelectSize: (sizeValueId: number) => void;
-  onSelectColor: (colorId: number) => void;
   onQuantityChange: (quantity: number) => void;
   onAddToCart: () => void;
-}> = ({
-  product,
-  selectedVariant,
-  onSaleVariants,
-  sizeOptions,
-  colorOptions,
-  selectedSizeValueId,
-  selectedColorId,
-  quantity,
-  variantCanBePurchased,
-  displayedPrice,
-  sizeAvailability,
-  colorAvailability,
-  colorCompatibility,
-  colorUnavailableReason,
-  colorSelectionNotice,
-  onSelectSize,
-  onSelectColor,
-  onQuantityChange,
-  onAddToCart,
-}) => (
-  <aside className="min-w-0 space-y-6 lg:sticky lg:top-36 lg:col-span-5 lg:self-start xl:col-span-4">
-    <div className="border-b border-[#E8E9E3] pb-5">
-      <div className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#687069]">
-        <span>{product.brand?.name ?? product.category.name}</span>
-        {selectedVariant?.sku && (
-          <span className="min-w-0 break-all text-right font-mono">{selectedVariant.sku}</span>
-        )}
-      </div>
-      <h1 className="mt-3 font-serif text-3xl leading-tight sm:text-4xl">{product.name}</h1>
-      {product.description && (
-        <p className="mt-4 text-sm leading-7 text-[#424844]">{product.description}</p>
-      )}
-    </div>
+  children?: React.ReactNode;
+  selectionReady?: boolean;
+  availableQuantity: number;
+  purchasable: boolean;
+}> = ({ product, quantity, onQuantityChange, onAddToCart, children,
+  selectionReady = true, availableQuantity, purchasable }) => {
+  const isActive = product.status === 'ACTIVE';
+  const maxQuantity = Math.min(99, Math.max(0, availableQuantity));
+  const canPurchase = isActive && purchasable && selectionReady
+    && quantity > 0 && quantity <= maxQuantity;
+  const displayName = productName(product);
 
-    <div className="flex flex-wrap items-center justify-between gap-3 border border-[#E8E9E3] bg-[#FFFDF5] p-4">
-      <div className="min-w-0">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">
-          {selectedVariant ? 'Giá hiện tại' : 'Giá gốc tham khảo'}
+  return (
+    <aside className="flex min-w-0 flex-col gap-6 lg:col-span-5 xl:col-span-4">
+      <div className="space-y-4 border-b border-[#E8E9E3] pb-6">
+        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#1B5038]">
+          FIDO / CATALOG
         </p>
-        <span className="mt-1 block break-words font-serif text-2xl font-bold">
-          {displayedPrice.toLocaleString('vi-VN')}₫
-        </span>
-      </div>
-      {selectedVariant && (
-        <div
-          className={
-            'px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ' +
-            (selectedVariant.available_quantity > 0
-              ? 'bg-[#E8C75B] text-[#071A12]'
-              : 'bg-[#E8E9E3] text-[#687069]')
-          }
-        >
-          {selectedVariant.sale_status === 'STOPPED'
-            ? 'Lựa chọn ngừng bán'
-            : selectedVariant.available_quantity > 0
-              ? 'Còn ' + selectedVariant.available_quantity
-              : 'Hết hàng'}
+        <h1 className="font-serif text-3xl leading-tight sm:text-4xl">{displayName}</h1>
+        <p className="break-words font-mono text-xs text-[#687069]">SKU: {product.sku}</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="font-serif text-2xl font-bold">
+            {product.selling_price.toLocaleString('vi-VN')}₫
+          </p>
+          <span
+            className={
+              'border px-3 py-1 text-[10px] font-bold uppercase tracking-wider ' +
+              (isActive
+                ? 'border-[#C8DDCC] bg-[#EEF6EE] text-[#245A32]'
+                : 'border-[#E2E5DE] bg-[#F3F4EF] text-[#687069]')
+            }
+          >
+            {product.status}
+          </span>
         </div>
+      </div>
+
+      {children}
+
+      <p role="status" className={
+        'text-sm font-medium ' +
+        (purchasable && isActive ? 'text-[#245A32]' : 'text-amber-800')
+      }>
+        {!isActive ? 'Sản phẩm không hoạt động'
+          : purchasable ? 'Còn ' + availableQuantity + ' sản phẩm'
+            : 'Hết hàng'}
+      </p>
+
+      {!isActive && (
+        <p className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Sản phẩm hiện chưa khả dụng để mua.
+        </p>
       )}
-    </div>
+      {isActive && !selectionReady && (
+        <p role="status" className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Chọn SKU phù hợp với màu sắc và kích thước trước khi thêm vào giỏ hàng.
+        </p>
+      )}
 
-    {!selectedVariant && (
-      <p className="text-sm text-[#687069]">
-        Vui lòng chọn {selectedSizeValueId === null ? 'kích cỡ và màu sắc' : 'màu sắc'} để xác định
-        giá chính xác.
-      </p>
-    )}
-
-    {sizeOptions.length > 0 && (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em]">Kích cỡ</p>
-          <span className="text-[10px] text-[#687069]">{product.size_system.name}</span>
-        </div>
-        <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-4">
-          {sizeOptions.map((size) => {
-            const available = sizeAvailability(size.size_value_id);
-            return (
-              <button
-                key={size.size_value_id}
-                type="button"
-                aria-pressed={selectedSizeValueId === size.size_value_id}
-                title={available ? size.display_name : `${size.display_name}: hết hàng`}
-                onClick={() => onSelectSize(size.size_value_id)}
-                className={
-                  'relative border px-2 py-2.5 text-sm font-semibold transition ' +
-                  (selectedSizeValueId === size.size_value_id
-                    ? 'border-[#0B2419] bg-[#0B2419] text-white'
-                    : 'border-[#D9DDD6] bg-white hover:border-[#0B2419]' +
-                      (available ? '' : ' text-[#606863]'))
-                }
-              >
-                {size.display_name}
-                {!available && (
-                  <span className="absolute inset-x-1 top-1/2 h-px -rotate-12 bg-current opacity-60" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    )}
-
-    {colorOptions.length > 0 && (
-      <div className="space-y-3">
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em]">Màu sắc</p>
-        <div className="flex flex-wrap gap-2">
-          {colorOptions.map((color) => {
-            const available = colorAvailability(color.color_id);
-            const compatible = colorCompatibility(color.color_id);
-            return (
-              <button
-                key={color.color_id}
-                type="button"
-                disabled={!compatible}
-                aria-pressed={selectedColorId === color.color_id}
-                title={
-                  !compatible || !available ? colorUnavailableReason(color.color_id) : color.name
-                }
-                aria-describedby={!compatible ? `unavailable-color-${color.color_id}` : undefined}
-                onClick={() => onSelectColor(color.color_id)}
-                className={
-                  'inline-flex items-center gap-2 border px-3 py-2.5 text-sm transition disabled:cursor-not-allowed ' +
-                  (selectedColorId === color.color_id
-                    ? 'border-[#0B2419] bg-[#0B2419] text-white'
-                    : 'border-[#D9DDD6] bg-white hover:border-[#0B2419]' +
-                      (available ? '' : ' text-[#606863]'))
-                }
-              >
-                <span
-                  className={
-                    'h-2.5 w-2.5 rounded-full border ' +
-                    (selectedColorId === color.color_id
-                      ? 'border-white bg-[#E8C75B]'
-                      : 'border-[#687069] bg-[#F3F4EF]')
-                  }
-                />
-                {color.name}
-              </button>
-            );
-          })}
-        </div>
-        {colorOptions
-          .filter((color) => !colorCompatibility(color.color_id))
-          .map((color) => (
-            <p
-              key={color.color_id}
-              id={`unavailable-color-${color.color_id}`}
-              className="text-xs leading-5 text-[#687069]"
+      {isActive && purchasable && quantity > maxQuantity && (
+        <p role="status" className="text-sm text-amber-800">
+          Số lượng đặt vượt quá tồn kho hiện tại.
+        </p>
+      )}
+      <div className="border-t border-[#E8E9E3] pt-5">
+        <div className="flex flex-col items-stretch gap-3 sm:flex-row">
+          <div className="flex h-12 shrink-0 items-center justify-center border border-[#D9DDD6] bg-white">
+            <button
+              type="button"
+              aria-label="Giảm số lượng"
+              disabled={quantity <= 1}
+              onClick={() => onQuantityChange(Math.max(1, quantity - 1))}
+              className="h-full w-10 transition hover:bg-[#F3F4EF] disabled:opacity-40"
             >
-              {color.name}: {colorUnavailableReason(color.color_id)}.
-            </p>
-          ))}
-      </div>
-    )}
-
-    <div role="status" aria-live="polite" className="text-sm text-[#687069]">
-      {colorSelectionNotice && <p>{colorSelectionNotice}</p>}
-      {selectedColorId === null && <p>Vui lòng chọn màu sắc</p>}
-      {selectedSizeValueId === null && <p>Vui lòng chọn kích cỡ</p>}
-    </div>
-
-    {product.sale_status === 'STOPPED' && (
-      <div className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        Sản phẩm đã ngừng bán. Các lựa chọn bên dưới chỉ dùng để tham khảo.
-      </div>
-    )}
-
-    {product.sale_status === 'ON_SALE' && onSaleVariants.length === 0 && (
-      <div className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        Sản phẩm chưa có lựa chọn đang bán.
-      </div>
-    )}
-
-    <div className="border-t border-[#E8E9E3] pt-5">
-      <div className="flex flex-col items-stretch gap-3 sm:flex-row">
-        <div className="flex h-12 shrink-0 items-center justify-center border border-[#D9DDD6] bg-white">
+              −
+            </button>
+            <span className="w-10 text-center font-semibold">{quantity}</span>
+            <button
+              type="button"
+              aria-label="Tăng số lượng"
+              disabled={quantity >= maxQuantity}
+              onClick={() => onQuantityChange(Math.min(maxQuantity, quantity + 1))}
+              className="h-full w-10 transition hover:bg-[#F3F4EF] disabled:opacity-40"
+            >
+              +
+            </button>
+          </div>
           <button
             type="button"
-            aria-label="Giảm số lượng"
-            disabled={quantity <= 1}
-            onClick={() => onQuantityChange(Math.max(1, quantity - 1))}
-            className="h-full w-10 transition hover:bg-[#F3F4EF]"
+            disabled={!canPurchase}
+            onClick={onAddToCart}
+            className="h-12 flex-1 bg-[#0B2419] px-5 text-xs font-bold uppercase tracking-[0.16em] text-white transition hover:bg-[#1B5038] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            −
-          </button>
-          <span className="w-10 text-center font-semibold">{quantity}</span>
-          <button
-            type="button"
-            aria-label="Tăng số lượng"
-            disabled={!selectedVariant || quantity >= selectedVariant.available_quantity}
-            onClick={() => onQuantityChange(quantity + 1)}
-            className="h-full w-10 transition hover:bg-[#F3F4EF] disabled:opacity-35"
-          >
-            +
+            {!isActive ? 'Không khả dụng'
+              : !purchasable ? 'Hết hàng'
+                : !selectionReady ? 'Chọn SKU phù hợp'
+                  : quantity > maxQuantity ? 'Vượt số lượng tồn' : 'Thêm vào giỏ hàng'}
           </button>
         </div>
-        <button
-          type="button"
-          disabled={!variantCanBePurchased}
-          onClick={onAddToCart}
-          className="h-12 flex-1 bg-[#0B2419] px-5 text-xs font-bold uppercase tracking-[0.16em] text-white transition hover:bg-[#1B5038] disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {variantCanBePurchased ? 'Thêm vào giỏ hàng' : 'Không khả dụng'}
-        </button>
+        <p className="mt-3 text-[10px] leading-5 text-[#687069]">
+          Giá và trạng thái thuộc Product được chọn; tồn kho là dữ liệu tại kho vận hành.
+        </p>
       </div>
-      <p className="mt-3 text-[10px] leading-5 text-[#687069]">
-        {selectedVariant
-          ? 'Giá và số lượng khả dụng theo kích cỡ, màu sắc đã chọn.'
-          : 'Giá tham khảo có thể khác giá theo kích cỡ và màu bạn chọn.'}
-      </p>
-    </div>
-  </aside>
-);
+    </aside>
+  );
+};
 
 export const ProductRecommendationsSection: React.FC<{
   recommendations: readonly CatalogProductView[];

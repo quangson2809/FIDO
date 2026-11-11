@@ -31,11 +31,6 @@ try {
   );
   await dialog.getByLabel('Danh mục', { exact: true }).selectOption('1');
   await dialog.getByLabel('Thương hiệu').selectOption('1');
-  await dialog.getByLabel('Size', { exact: true }).selectOption('1');
-  await dialog.getByLabel('Màu sắc').selectOption('1');
-  await dialog.getByLabel('Giới tính').selectOption('UNISEX');
-  await dialog.getByLabel('Mùa', { exact: true }).selectOption('ALL');
-  await dialog.getByLabel('Phong cách').selectOption('MINIMAL');
   await dialog.getByLabel('Giá từ').fill('100');
   await dialog.getByLabel('Giá đến').fill('300000');
   for (let i = 0; i < 16; i++) {
@@ -54,23 +49,24 @@ try {
   });
   await dialog.getByRole('button', { name: 'Áp dụng bộ lọc' }).click();
   await page.waitForURL(
-    '**/products?category_id=1&brand_id=1&size_value_id=1&color_id=1&gender=UNISEX&season=ALL&style=MINIMAL&min_price=100&max_price=300000',
+    '**/products?category_id=1&brand_id=1&min_price=100&max_price=300000',
   );
   await page.getByText('25 sản phẩm', { exact: true }).waitFor();
   // Route update and the mobile badge render asynchronously; assert the same contract after it settles.
-  await page.getByRole('button', { name: /Bộ lọc [(]9[)]/ }).waitFor();
-  assert.match(await open.innerText(), /9/);
+  await page.getByRole('button', { name: /Bộ lọc [(]4[)]/ }).waitFor();
+  assert.match(await open.innerText(), /4/);
   await page.reload();
   await page.getByText('25 sản phẩm', { exact: true }).waitFor();
   await open.click();
-  assert.equal(await dialog.getByLabel('Màu sắc').inputValue(), '1');
+  assert.equal(await dialog.getByLabel('Danh mục', { exact: true }).inputValue(), '1');
+  assert.equal(await dialog.getByLabel('Thương hiệu', { exact: true }).inputValue(), '1');
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: /Xóa Màu/ }).click();
-  await page.waitForURL((url) => !url.searchParams.has('color_id'));
+  await page.getByRole('button', { name: /Xóa Giá đến/ }).click();
+  await page.waitForURL((url) => !url.searchParams.has('max_price'));
   await page.goBack();
-  await page.waitForURL((url) => url.searchParams.get('color_id') === '1');
+  await page.waitForURL((url) => url.searchParams.get('max_price') === '300000');
   await page.goForward();
-  await page.waitForURL((url) => !url.searchParams.has('color_id'));
+  await page.waitForURL((url) => !url.searchParams.has('max_price'));
   await page.getByRole('button', { name: 'Xóa tất cả', exact: true }).click();
   await page.waitForURL('**/products');
   await page.getByRole('button', { name: 'Trang sau' }).click();
@@ -120,7 +116,7 @@ try {
   }
   assert.deepEqual(errors, []);
   console.log(
-    'Catalog browser: PASS — all mobile filters/apply/reset/draft, focus/Escape, URL/refresh/history/pagination, malformed parameters, retry, 375/768/1024/1440.',
+    'Catalog browser: PASS — supported category/brand/price filters, apply/reset/draft, focus/Escape, URL/refresh/history/pagination, unsupported URL parameter cleanup, retry, 375/768/1024/1440.',
   );
 } finally {
   await browser.close();

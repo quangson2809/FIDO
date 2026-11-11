@@ -2,8 +2,11 @@ package com.fido.modules.inventory.repository;
 
 import com.fido.modules.inventory.entity.Inventory;
 
+import jakarta.persistence.LockModeType;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
@@ -14,92 +17,73 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-public interface InventoryRepository extends Repository<Inventory, Long> {
+public interface InventoryRepository extends Repository<Inventory, Inventory.InventoryId> {
+    Optional<Inventory> findByWarehouseIdAndProductId(Long warehouseId, Long productId);
 
-    Optional<Inventory> findById(Long id);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select inventory from Inventory inventory
+            where inventory.warehouseId = :warehouseId
+              and inventory.productId = :productId
+            """)
+    Optional<Inventory> findByWarehouseIdAndProductIdForUpdate(
+            @Param("warehouseId") Long warehouseId,
+            @Param("productId") Long productId);
 
-    List<Inventory> findAllByVariantIdIn(Collection<Long> variantIds);
-
+    List<Inventory> findAllByProductIdIn(Collection<Long> productIds);
+    List<Inventory> findAllByWarehouseIdAndProductIdIn(Long warehouseId, Collection<Long> productIds);
     Inventory save(Inventory entity);
 
-    @Query(
-            value =
-                    """
-                    SELECT
-                        variant.variant_id AS variantId,
-                        variant.sku AS sku,
-                        product.product_id AS productId,
-                        product.name AS productName,
-                        size_value.display_name AS size,
-                        color.name AS color,
-                        variant.sale_status AS saleStatus,
-                        inventory.available_quantity AS availableQuantity,
-                        inventory.updated_at AS updatedAt
-                    FROM inventories inventory
-                    JOIN product_variants variant
-                        ON variant.variant_id = inventory.variant_id
-                    JOIN products product
-                        ON product.product_id = variant.product_id
-                    JOIN size_values size_value
-                        ON size_value.size_value_id = variant.size_value_id
-                    JOIN colors color
-                        ON color.color_id = variant.color_id
-                    WHERE (:variantId IS NULL OR variant.variant_id = :variantId)
-                      AND (:sku IS NULL OR variant.sku = :sku)
-                      AND (:productId IS NULL OR product.product_id = :productId)
-                      AND (:sizeValueId IS NULL OR variant.size_value_id = :sizeValueId)
-                      AND (:colorId IS NULL OR variant.color_id = :colorId)
-                    ORDER BY variant.variant_id
-                    """,
-            countQuery =
-                    """
-                    SELECT COUNT(*)
-                    FROM inventories inventory
-                    JOIN product_variants variant
-                        ON variant.variant_id = inventory.variant_id
-                    JOIN products product
-                        ON product.product_id = variant.product_id
-                    WHERE (:variantId IS NULL OR variant.variant_id = :variantId)
-                      AND (:sku IS NULL OR variant.sku = :sku)
-                      AND (:productId IS NULL OR product.product_id = :productId)
-                      AND (:sizeValueId IS NULL OR variant.size_value_id = :sizeValueId)
-                      AND (:colorId IS NULL OR variant.color_id = :colorId)
-                    """,
+    @Query(value = """
+            SELECT warehouse.id AS warehouseId,
+                   product.id AS productId,
+                   product.sku AS sku,
+                   product.name AS productName,
+                   COALESCE(inventory.quantity_on_hand, 0) AS availableQuantity,
+                   COALESCE(inventory.version, 0) AS version,
+                   inventory.updated_at AS updatedAt
+            FROM products product
+            JOIN warehouses warehouse ON (:warehouseId IS NULL OR warehouse.id = :warehouseId)
+            LEFT JOIN inventories inventory
+              ON inventory.warehouse_id = warehouse.id
+             AND inventory.product_id = product.id
+            WHERE (:productId IS NULL OR product.id = :productId)
+              AND (:sku IS NULL OR product.sku = :sku)
+            ORDER BY product.id, warehouse.id
+            """,
+            countQuery = """
+            SELECT COUNT(*)
+            FROM products product
+            JOIN warehouses warehouse ON (:warehouseId IS NULL OR warehouse.id = :warehouseId)
+            WHERE (:productId IS NULL OR product.id = :productId)
+              AND (:sku IS NULL OR product.sku = :sku)
+            """,
             nativeQuery = true)
     Page<InventoryRowView> search(
-            @Param("variantId") Long variantId,
-            @Param("sku") String sku,
             @Param("productId") Long productId,
-            @Param("sizeValueId") Long sizeValueId,
-            @Param("colorId") Long colorId,
+            @Param("sku") String sku,
+            @Param("warehouseId") Long warehouseId,
             Pageable pageable);
 
     @Modifying(flushAutomatically = true)
-    @Query(
-            """
-            update Inventory inventory
-            set inventory.availableQuantity =
-                    inventory.availableQuantity + :quantity,
-                inventory.updatedAt = :updatedAt
-            where inventory.variantId = :variantId
-            """)
-    int increment(
-            @Param("variantId") Long variantId,
-            @Param("quantity") int quantity,
-            @Param("updatedAt") LocalDateTime updatedAt);
-
-    @Modifying(flushAutomatically = true)
-    @Query(
-            """
-            update Inventory inventory
-            set inventory.availableQuantity =
-                    inventory.availableQuantity + :delta,
-                inventory.updatedAt = :updatedAt
-            where inventory.variantId = :variantId
-              and inventory.availableQuantity + :delta >= 0
-            """)
-    int adjustIfNonNegative(
-            @Param("variantId") Long variantId,
-            @Param("delta") int delta,
-            @Param("updatedAt") LocalDateTime updatedAt);
+    @Query(value = """
+            UPDATE inventories
+            SET quantity_on_hand = quantity_on_hand + :quantityDelta,
+                updated_at = :updatedAt,
+                version = version + 1
+            WHERE warehouse_id = :warehouseId
+              AND product_id = :productId
+              AND quantity_on_hand >= 0
+              AND version >= 0
+              AND version < :maxVersion
+              AND CAST(quantity_on_hand AS SIGNED) + :quantityDelta >= 0
+              AND CAST(quantity_on_hand AS SIGNED) + :quantityDelta <= :maxQuantity
+            """, nativeQuery = true)
+    int applyBalanceDeltaGuarded(
+            @Param("warehouseId") Long warehouseId,
+            @Param("productId") Long productId,
+            @Param("quantityDelta") int quantityDelta,
+            @Param("updatedAt") LocalDateTime updatedAt,
+            @Param("maxQuantity") int maxQuantity,
+            @Param("maxVersion") int maxVersion);
 }

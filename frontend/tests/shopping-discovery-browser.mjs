@@ -6,8 +6,20 @@ import { meta, storefrontFixture } from './helpers/storefrontFixture.mjs';
 
 const categories = [
   ...meta.categories,
-  { category_id: 3, parent_category_id: 1, name: 'Áo công sở' },
-  { category_id: 4, parent_category_id: 3, name: 'Áo sơ mi' },
+  {
+    category_id: 3,
+    parent_category_id: 1,
+    name: 'Áo công sở',
+    slug: 'ao-cong-so',
+    status: 'ACTIVE',
+  },
+  {
+    category_id: 4,
+    parent_category_id: 3,
+    name: 'Áo sơ mi',
+    slug: 'ao-so-mi',
+    status: 'ACTIVE',
+  },
 ];
 const server = await createServer({ server: { port: 5198, strictPort: true } });
 await server.listen();

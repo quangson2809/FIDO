@@ -1,3 +1,5 @@
+import { adminAccessService } from '../src/features/adminAccess/api/service';
+import { adminOrderService } from '../src/features/orders/api/adminService';
 import { adminCatalogMetaService } from '../src/features/catalog/api/adminCatalogMetaService';
 import assert from 'node:assert/strict';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
@@ -15,9 +17,11 @@ import { reportService } from '../src/features/report/api/service';
 import { apiClient, hasApiAccessToken } from '../src/services/http/apiClient';
 
 const account = {
-  account_id: 900001,
+  id: 900001,
+  full_name: 'Quản trị hệ thống',
   phone: '0909000001',
   email: 'superadmin@fido.local',
+  status: 'ACTIVE',
   created_at: '2026-09-01T00:00:00',
   updated_at: '2026-09-01T00:00:00',
 };
@@ -36,40 +40,136 @@ const requireBearer = (request: IncomingMessage): void => {
   bearerRequestCount += 1;
 };
 
-let capturedSizeBody: unknown;
+let capturedRegistrationBody: unknown;
+let capturedLoginBody: unknown;
+let capturedAttributeCreateBody: unknown;
+let capturedAttributePatchBody: unknown;
+let capturedOptionCreateBody: unknown;
+let capturedOptionPatchBody: unknown;
 let capturedVoucherBody: unknown;
 let capturedQuoteBody: unknown;
 let capturedOrderBody: unknown;
+let capturedIdempotencyKey: string | undefined;
 const voucherPolicy: VoucherInput = {
-  code: 'SAVE10K',
-  discount_type: 'FIXED_AMOUNT',
-  discount_value: 10000,
-  maximum_discount: null,
-  minimum_amount: 0,
-  starts_at: '2026-10-09T00:00:00Z',
-  ends_at: '2026-11-09T00:00:00Z',
-  scope: 'ALL',
-  product_ids: [],
-  category_ids: [],
-  global_limit: null,
-  customer_limit: 1,
-  enabled: true,
+  code: 'SAVE10K', discount_type: 'FIXED', discount_value: 10000,
+  maximum_discount: null, minimum_order_value: 0,
+  starts_at: null, ends_at: null, usage_limit: null,
 };
-const voucherDetail = { ...voucherPolicy, voucher_id: 27, active_usage: 0, ever_used: false };
+const voucherDetail = { ...voucherPolicy, id: 27, usage_count: 0, status: 'DRAFT' as const };
+const adminPermission = { id: 17, code: 'CONTENT_READ', name: 'Read content' };
+const adminRole = { id: 8, code: 'EDITOR', name: 'Editor', description: null, permissions: [adminPermission] };
+const staffDetail = { account, roles: [adminRole], permissions: [adminPermission] };
+const contentSummary = { id: 31, slug: 'draft-policy', title: 'Draft', status: 'DRAFT', updated_at: account.updated_at };
+const contentDetail = { ...contentSummary, content: 'Saved draft text', updated_by_account_id: account.id };
+const adminWrites: { path: string; method: string; body: unknown }[] = [];
 const server = createServer((request, response) => {
   const url = new URL(request.url ?? '/', 'http://localhost');
 
-  if (url.pathname === '/api/v1/admin/size-systems/12' && request.method === 'PATCH') {
+  if (url.pathname === '/api/v1/admin/access-control') {
+    requireBearer(request); writeJson(response, 200, { data: { roles: [adminRole], permissions: [adminPermission] } }); return;
+  }
+  if (url.pathname === '/api/v1/admin/permissions' && request.method === 'GET') {
+    requireBearer(request); writeJson(response, 200, { data: [adminPermission] }); return;
+  }
+  if (url.pathname === '/api/v1/admin/staff-accounts' && request.method === 'GET') {
+    requireBearer(request); writeJson(response, 200, { data: [staffDetail], meta: { page: 1, page_size: 20, total: 1, total_pages: 1 } }); return;
+  }
+  if (url.pathname === '/api/v1/admin/staff-accounts/900001' && request.method === 'GET') {
+    requireBearer(request); writeJson(response, 200, { data: staffDetail }); return;
+  }
+  if (url.pathname === '/api/v1/admin/content-pages' && request.method === 'GET') {
+    requireBearer(request); writeJson(response, 200, { data: [contentSummary] }); return;
+  }
+  if (url.pathname === '/api/v1/admin/content-pages/31' && request.method === 'GET') {
+    requireBearer(request); writeJson(response, 200, { data: contentDetail }); return;
+  }
+  if (url.pathname === '/api/v1/admin/audit-logs') {
     requireBearer(request);
-    let body = '';
+    assert.equal(url.searchParams.get('entity_type'), 'CONTENT_PAGE');
+    assert.equal(url.searchParams.has('target_type'), false);
+    writeJson(response, 200, { data: [{ id: 4, entity_type: 'CONTENT_PAGE', entity_id: '31', before_data: null, after_data: { title: 'Draft' } }] }); return;
+  }
+  const adminMutationResponses: Record<string, unknown> = {
+    '/api/v1/admin/staff-accounts': staffDetail,
+    '/api/v1/admin/staff-accounts/900001': staffDetail,
+    '/api/v1/admin/roles': adminRole,
+    '/api/v1/admin/roles/8': adminRole,
+    '/api/v1/admin/permissions': adminPermission,
+    '/api/v1/admin/permissions/17': adminPermission,
+    '/api/v1/admin/content-pages/31': contentDetail,
+    '/api/v1/admin/orders/42/payment-actions': { order_id: 42, order_status: 'COMPLETED', payment: { payment_status: 'PAID' }, allowed_actions: [] },
+  };
+  if (url.pathname in adminMutationResponses && (request.method === 'POST' || request.method === 'PATCH')) {
+    requireBearer(request);
+    let raw = '';
+    request.on('data', (chunk: Buffer) => { raw += chunk.toString(); });
+    request.on('end', () => {
+      adminWrites.push({ path: url.pathname, method: request.method!, body: JSON.parse(raw) });
+      writeJson(response, 200, { data: adminMutationResponses[url.pathname] });
+    }); return;
+  }
+
+  if (url.pathname === '/api/v1/admin/catalog/meta' && request.method === 'GET') {
+    requireBearer(request);
+    writeJson(response, 200, {
+      data: {
+        attributes: [],
+      },
+    });
+    return;
+  }
+
+  if (
+    url.pathname.startsWith('/api/v1/admin/catalog/attributes') &&
+    (request.method === 'POST' || request.method === 'PATCH')
+  ) {
+    requireBearer(request);
+    let raw = '';
     request.on('data', (chunk: Buffer) => {
-      body += chunk.toString();
+      raw += chunk.toString();
     });
     request.on('end', () => {
-      capturedSizeBody = JSON.parse(body);
-      writeJson(response, 200, {
-        data: { size_system_id: 12, code: 'ALPHA', name: 'Alpha', size_values: [] },
-      });
+      const body = JSON.parse(raw) as Record<string, unknown>;
+      const attribute = {
+        id: 1,
+        code: 'MATERIAL',
+        name: 'Material',
+        is_required: false,
+        is_variant_defining: false,
+        sort_order: 0,
+        options: [],
+      };
+      const option = {
+        id: 1,
+        attribute_id: 1,
+        value: 'COTTON',
+        label: 'Cotton',
+        sort_order: 0,
+      };
+      if (url.pathname === '/api/v1/admin/catalog/attributes' && request.method === 'POST') {
+        capturedAttributeCreateBody = body;
+        writeJson(response, 201, { data: { ...attribute, ...body } });
+      } else if (
+        url.pathname === '/api/v1/admin/catalog/attributes/1' &&
+        request.method === 'PATCH'
+      ) {
+        capturedAttributePatchBody = body;
+        writeJson(response, 200, { data: { ...attribute, ...body } });
+      } else if (
+        url.pathname === '/api/v1/admin/catalog/attributes/1/options' &&
+        request.method === 'POST'
+      ) {
+        capturedOptionCreateBody = body;
+        writeJson(response, 201, { data: { ...option, ...body } });
+      } else if (
+        url.pathname === '/api/v1/admin/catalog/attributes/1/options/1' &&
+        request.method === 'PATCH'
+      ) {
+        capturedOptionPatchBody = body;
+        writeJson(response, 200, { data: { ...option, ...body } });
+      } else {
+        writeJson(response, 404, { message: 'Not found' });
+      }
     });
     return;
   }
@@ -85,7 +185,7 @@ const server = createServer((request, response) => {
   }
   if (
     (url.pathname === '/api/v1/admin/vouchers' && request.method === 'POST') ||
-    (url.pathname === '/api/v1/admin/vouchers/27' && request.method === 'PUT')
+    (url.pathname === '/api/v1/admin/vouchers/27' && request.method === 'PATCH')
   ) {
     requireBearer(request);
     let raw = '';
@@ -108,12 +208,11 @@ const server = createServer((request, response) => {
       capturedQuoteBody = JSON.parse(raw);
       writeJson(response, 200, {
         data: {
-          quote_id: 'voucher-smoke-quote',
           items: [],
           subtotal: 100000,
-          discount: 10000,
+          discount_amount: 10000,
           shipping_fee: 30000,
-          total: 120000,
+          total_amount: 120000,
           voucher: { voucher_id: 27, code: 'SAVE10K' },
         },
       });
@@ -128,40 +227,78 @@ const server = createServer((request, response) => {
     });
     request.on('end', () => {
       capturedOrderBody = JSON.parse(raw);
+      const idempotencyHeader = request.headers['idempotency-key'];
+      capturedIdempotencyKey = Array.isArray(idempotencyHeader)
+        ? idempotencyHeader[0]
+        : idempotencyHeader;
       writeJson(response, 201, {
         data: {
           order_id: 43,
           order_code: 'FIDO-43',
           order_status: 'PENDING',
+          payment: {
+            payment_status: 'UNPAID',
+            amount_due: 120000,
+            amount_received: 0,
+            amount_refunded: 0,
+          },
           subtotal: 100000,
           discount: 10000,
           shipping_fee: 30000,
           total: 120000,
+          recipient: { phone: '0909000001', email: null, address: '1 Đinh Tiên Hoàng' },
+          created_at: '2026-10-29T00:00:00Z',
         },
       });
     });
     return;
   }
   if (request.method === 'POST' && url.pathname === '/api/v1/auth/register') {
-    writeJson(response, 201, { data: account });
+    let raw = '';
+    request.on('data', (chunk: Buffer) => {
+      raw += chunk.toString();
+    });
+    request.on('end', () => {
+      capturedRegistrationBody = JSON.parse(raw);
+      writeJson(response, 201, {
+        data: {
+          access_token: 'register-token',
+          token_type: 'Bearer',
+          expires_in: 900,
+          account,
+        },
+      });
+    });
     return;
   }
 
   if (request.method === 'POST' && url.pathname === '/api/v1/auth/login') {
-    writeJson(response, 200, {
-      data: malformedLoginResponse
-        ? {
-            access_token: 42,
-            token_type: 'Bearer',
-            expires_in: 900,
-            account,
-          }
-        : {
-            access_token: 'smoke-token',
-            token_type: 'Bearer',
-            expires_in: 900,
-            account,
-          },
+    assert.equal(
+      request.headers.authorization,
+      undefined,
+      'Public login must not inherit a stale bearer token from the previous session',
+    );
+    let raw = '';
+    request.on('data', (chunk: Buffer) => {
+      raw += chunk.toString();
+    });
+    request.on('end', () => {
+      capturedLoginBody = JSON.parse(raw);
+      writeJson(response, 200, {
+        data: malformedLoginResponse
+          ? {
+              access_token: 42,
+              token_type: 'Bearer',
+              expires_in: 900,
+              account,
+            }
+          : {
+              access_token: 'smoke-token',
+              token_type: 'Bearer',
+              expires_in: 900,
+              account,
+            },
+      });
     });
     return;
   }
@@ -174,14 +311,15 @@ const server = createServer((request, response) => {
         addresses: [],
         roles: [
           {
-            role_id: 1,
+            id: 1,
             code: 'SUPERADMIN',
             name: 'Superadmin',
             description: null,
+            status: 'ACTIVE',
           },
         ],
         permissions: malformedMeResponse
-          ? [{ permission_id: 1, code: 42, name: 'Broken permission' }]
+          ? [{ id: 1, code: 42, name: 'Broken permission', description: null }]
           : [],
       },
     });
@@ -195,20 +333,21 @@ const server = createServer((request, response) => {
       data: [
         {
           product_id: 960001,
+          parent_product_id: null,
+          sku: 'SMOKE-001',
           name: 'Smoke Product',
+          slug: 'smoke-product',
           thumbnail: 'https://example.com/product.jpg',
           category: {
             category_id: 1,
             parent_category_id: null,
             name: 'Áo',
+            slug: 'ao',
+            status: 'ACTIVE',
           },
           brand: null,
-          base_price: 199000,
-          sale_status: 'ON_SALE',
-          material_care: 'Giặt mặt trái.',
-          sizes: [
-            { size_value_id: 12, size_system_id: 3, code: '30', display_name: '30', sort_order: 2 },
-          ],
+          selling_price: 199000,
+          status: 'ACTIVE',
         },
       ],
       meta: {
@@ -226,11 +365,7 @@ const server = createServer((request, response) => {
       data: {
         categories: [],
         brands: [],
-        size_systems: [],
-        colors: [],
-        genders: [],
-        seasons: [],
-        styles: [],
+        attributes: [],
       },
     });
     return;
@@ -241,7 +376,7 @@ const server = createServer((request, response) => {
     writeJson(response, 200, {
       data: {
         cart_id: 1,
-        account_id: account.account_id,
+        account_id: account.id,
         items: [],
         subtotal: 0,
         created_at: '2026-10-07T00:00:00',
@@ -298,7 +433,7 @@ const server = createServer((request, response) => {
   if (request.method === 'GET' && url.pathname === '/api/v1/content-pages/shipping-policy') {
     writeJson(response, 200, {
       data: {
-        page_code: 'shipping-policy',
+        slug: 'shipping-policy',
         title: 'Chính sách giao hàng',
         content: 'Smoke policy',
         updated_at: '2026-09-01T00:00:00',
@@ -413,67 +548,114 @@ await new Promise<void>((resolve, reject) => {
 });
 
 try {
-  const registered = await authService.register('0909000001', 'superadmin@fido.local', 'Fido@123');
-  assert.equal(registered.account_id, account.account_id);
+  const registered = await authService.register(
+    '0909000001',
+    'Quản trị hệ thống',
+    'superadmin@fido.local',
+    'Fido@123',
+  );
+  assert.equal(registered.account.account_id, account.id);
+  assert.deepEqual(capturedRegistrationBody, {
+    phone: '0909000001',
+    full_name: 'Quản trị hệ thống',
+    email: 'superadmin@fido.local',
+    password: 'Fido@123',
+  });
+  assert.equal(hasApiAccessToken(), true);
 
   const login = await authService.login('0909000001', 'Fido@123');
   assert.equal(login.access_token, 'smoke-token');
+  assert.deepEqual(capturedLoginBody, {
+    phone: '0909000001',
+    password: 'Fido@123',
+  });
 
-  const sizes = [
-    { size_value_id: 21, code: 'M', display_name: 'Medium', sort_order: 2 },
-    { size_value_id: 22, code: 'L', display_name: 'Large', sort_order: 1 },
-    { code: 'XL', display_name: 'Extra large', sort_order: 3 },
-  ];
-  await adminCatalogMetaService.updateSizeSystem(12, { size_values: sizes });
-  assert.deepEqual(capturedSizeBody, { size_values: sizes }, 'Preserve IDs and all retained sizes');
-  await adminCatalogMetaService.updateSizeSystem(12, { size_values: sizes.slice(1) });
-  assert.deepEqual(
-    capturedSizeBody,
-    { size_values: sizes.slice(1) },
-    'Only omit explicitly removed sizes',
-  );
+  const optionOnlyMeta = await adminCatalogMetaService.getMeta();
+  assert.equal('attribute_types' in optionOnlyMeta, false);
+  const attributeInput = {
+    code: 'MATERIAL',
+    name: 'Material',
+    is_required: false,
+    is_variant_defining: false,
+    sort_order: 0,
+  };
+  const createdAttribute = await adminCatalogMetaService.createAttribute(attributeInput);
+  assert.equal(createdAttribute.id, 1);
+  assert.deepEqual(capturedAttributeCreateBody, attributeInput);
+  const attributePatch = {
+    name: 'Chất liệu',
+    is_required: true,
+    is_variant_defining: false,
+    sort_order: 1,
+  };
+  await adminCatalogMetaService.updateAttribute(1, attributePatch);
+  assert.deepEqual(capturedAttributePatchBody, attributePatch);
+  const optionInput = { value: 'COTTON', label: 'Cotton', sort_order: 0 };
+  await adminCatalogMetaService.createAttributeOption(1, optionInput);
+  assert.deepEqual(capturedOptionCreateBody, optionInput);
+  const optionPatch = { label: 'Cotton tự nhiên', sort_order: 1 };
+  await adminCatalogMetaService.updateAttributeOption(1, 1, optionPatch);
+  assert.deepEqual(capturedOptionPatchBody, optionPatch);
   const listed = await voucherService.list('SAVE', 1);
   assert.equal(listed.data[0]?.code, 'SAVE10K');
   const createdVoucher = await voucherService.create(voucherPolicy);
-  assert.equal(createdVoucher.voucher_id, 27);
+  assert.equal(createdVoucher.id, 27);
   assert.deepEqual(
     capturedVoucherBody,
     voucherPolicy,
     'Create must preserve the typed voucher policy',
   );
-  // Real editor receives VoucherDetail, not VoucherInput. Its response metadata
-  // must never be serialized into the strict VoucherRequest endpoint.
-  await voucherService.update(27, voucherSubmission({ ...voucherDetail, enabled: false }, false));
-  assert.deepEqual(
-    capturedVoucherBody,
-    { ...voucherPolicy, enabled: false },
-    'Updating from a server detail must send only the approved VoucherRequest fields',
-  );
-  await voucherService.update(27, { ...voucherDetail, enabled: false });
-  assert.deepEqual(
-    capturedVoucherBody,
-    { ...voucherPolicy, enabled: false },
-    'HTTP service boundary also strips response metadata for other callers',
-  );
+  await voucherService.update(27, { ...voucherSubmission(voucherDetail), status: 'ACTIVE' });
+  assert.deepEqual(capturedVoucherBody, { ...voucherPolicy, status: 'ACTIVE' });
+  await voucherService.update(27, { ...voucherDetail, status: 'INACTIVE' });
+  assert.deepEqual(capturedVoucherBody, { ...voucherPolicy, status: 'INACTIVE' },
+    'PATCH sends only canonical fields, never id or usage_count');
+
+  const access = await adminAccessService.getAccessControl();
+  assert.equal(access.roles[0].role_id, 8);
+  assert.equal(access.roles[0].permissions[0].permission_id, 17);
+  assert.equal(access.permissions[0].permission_id, 17);
+  assert.equal((await adminAccessService.getPermissions())[0].permission_id, 17);
+  assert.equal((await adminAccessService.getStaff()).data[0].roles[0].role_id, 8);
+  assert.equal((await adminAccessService.getStaffDetail(account.id)).permissions[0].permission_id, 17);
+  const staffInput = { full_name: account.full_name, phone: account.phone, email: null, password: 'Test-password-123', role_ids: [8] };
+  assert.equal((await adminAccessService.createStaff(staffInput)).roles[0].role_id, 8);
+  assert.deepEqual(adminWrites.at(-1)?.body, staffInput);
+  assert.equal((await adminAccessService.updateStaff(account.id, { role_ids: [8] })).roles[0].role_id, 8);
+  assert.equal((await adminAccessService.createRole({ code: 'EDITOR', name: 'Editor', permission_ids: [17] })).role_id, 8);
+  assert.equal((await adminAccessService.updateRole(8, { permission_ids: [17] })).permissions[0].permission_id, 17);
+  assert.equal((await adminAccessService.createPermission({ code: 'CONTENT_READ', name: 'Read content' })).permission_id, 17);
+  assert.equal((await adminAccessService.updatePermission(17, { name: 'Read content' })).permission_id, 17);
+  assert.deepEqual(adminWrites.at(-1), { path: '/api/v1/admin/permissions/17', method: 'PATCH', body: { name: 'Read content' } });
+  assert.equal((await contentService.getAdminPages())[0].page_id, 31);
+  assert.equal((await contentService.getAdminPage(31)).content, 'Saved draft text');
+  await contentService.updatePage(31, { title: 'Updated' });
+  assert.deepEqual(adminWrites.at(-1)?.body, { title: 'Updated' });
+  assert.equal((await adminAccessService.getAuditLogs({ entity_type: 'CONTENT_PAGE' })).data[0].entity_id, '31');
+  const paid = await adminOrderService.paymentAction(42, 'COMPLETE_DELIVERY_AND_COLLECT_COD');
+  assert.equal(paid.order_status, 'COMPLETED');
+  assert.equal(paid.payment.payment_status, 'PAID');
+  assert.deepEqual(adminWrites.at(-1)?.body, { action: 'COMPLETE_DELIVERY_AND_COLLECT_COD' });
 
   const checkoutRequest = {
+    recipient_name: 'Quản trị hệ thống',
     recipient_phone: '0909000001',
-    recipient_email: null,
-    recipient_address: 'Hà Nội',
+    province: 'Hà Nội',
+    district: 'Hoàn Kiếm',
+    ward: 'Hàng Trống',
+    address_line: '1 Đinh Tiên Hoàng',
     voucher_code: 'SAVE10K',
   };
   const quotedVoucher = await checkoutService.quote(checkoutRequest);
   assert.deepEqual(capturedQuoteBody, checkoutRequest);
-  assert.equal(quotedVoucher.discount, 10000);
-  assert.equal(quotedVoucher.total, 120000);
+  assert.equal(quotedVoucher.discount_amount, 10000);
+  assert.equal(quotedVoucher.total_amount, 120000);
   assert.equal(quotedVoucher.voucher?.code, 'SAVE10K');
-  if (!quotedVoucher.quote_id) throw new Error('Missing voucher quotation ID');
-  const placedOrder = await checkoutService.createOrder({
-    ...checkoutRequest,
-    quote_id: quotedVoucher.quote_id,
-  });
+  const idempotencyKey = 'voucher-smoke-order-43';
+  const placedOrder = await checkoutService.createOrder(checkoutRequest, idempotencyKey);
   assert.equal(placedOrder.order_id, 43);
-  assert.deepEqual(capturedOrderBody, { ...checkoutRequest, quote_id: 'voucher-smoke-quote' });
+  assert.deepEqual(capturedOrderBody, checkoutRequest);
+  assert.equal(capturedIdempotencyKey, idempotencyKey);
 
   const me = await profileService.getMe();
   assert.equal(me.roles[0]?.code, 'SUPERADMIN');
@@ -481,18 +663,17 @@ try {
   const catalog = await catalogService.listProducts({ page: 1, page_size: 8 });
   assert.equal(catalog.items[0]?.product_id, 960001);
   assert.equal(catalog.items[0]?.imageUrl, 'https://example.com/product.jpg');
-  assert.equal(catalog.items[0]?.base_price, 199000);
-  assert.equal(catalog.items[0]?.materialCare, 'Giặt mặt trái.');
-  assert.deepEqual(catalog.items[0]?.sizes, [
-    { size_value_id: 12, size_system_id: 3, code: '30', display_name: '30', sort_order: 2 },
-  ]);
+  assert.equal(catalog.items[0]?.sku, 'SMOKE-001');
+  assert.equal(catalog.items[0]?.selling_price, 199000);
+  assert.equal(catalog.items[0]?.status, 'ACTIVE');
+  assert.equal(catalog.items[0]?.category, 'Áo');
   assert.equal(catalog.meta.page, 1);
 
   const meta = await catalogService.getMeta();
   assert.deepEqual(meta.categories, []);
 
   const cart = await cartService.getCart();
-  assert.equal(cart.account_id, account.account_id);
+  assert.equal(cart.account_id, account.id);
 
   const orders = await orderService.getOrders({ page: 1, page_size: 10 });
   assert.equal(orders.meta.page, 1);

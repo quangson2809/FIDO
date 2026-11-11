@@ -50,15 +50,17 @@ async function fixture(
     if (path === '/api/v1/me')
       return send({
         account: {
-          account_id: 1,
+          id: 1,
+          full_name: 'Test Account',
           phone: '0900000000',
           email: null,
+          status: 'ACTIVE',
           created_at: '2026-01-01T00:00:00Z',
           updated_at: '2026-01-01T00:00:00Z',
         },
-        roles: [{ role_id: 1, code: role, name: role, description: null }],
+        roles: [{ id: 1, code: role, name: role, description: null, status: 'ACTIVE' }],
         permissions: permissions.map((code, i) => ({
-          permission_id: i + 1,
+          id: i + 1,
           code,
           name: code,
         })),

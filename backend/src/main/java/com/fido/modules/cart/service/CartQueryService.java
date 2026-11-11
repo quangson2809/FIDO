@@ -6,124 +6,172 @@ import com.fido.modules.cart.entity.Cart;
 import com.fido.modules.cart.entity.CartItem;
 import com.fido.modules.cart.repository.CartItemRepository;
 import com.fido.modules.cart.repository.CartRepository;
-import com.fido.modules.product.service.CatalogVariantReadService;
+import com.fido.modules.pricing.PricingCalculator;
+import com.fido.modules.pricing.PricingService;
+import com.fido.modules.product.service.CatalogProductReadService;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
 public class CartQueryService {
+    private static final String OPEN = "OPEN";
+
     private final CartRepository carts;
     private final CartItemRepository items;
-    private final CatalogVariantReadService catalog;
+    private final CatalogProductReadService catalog;
+    private final PricingService pricing;
 
     public CartQueryService(
-            CartRepository carts, CartItemRepository items, CatalogVariantReadService catalog) {
+            CartRepository carts,
+            CartItemRepository items,
+            CatalogProductReadService catalog) {
+        this(carts, items, catalog, new PricingService());
+    }
+
+    @Autowired
+    public CartQueryService(
+            CartRepository carts,
+            CartItemRepository items,
+            CatalogProductReadService catalog,
+            PricingService pricing) {
         this.carts = carts;
         this.items = items;
         this.catalog = catalog;
+        this.pricing = pricing;
     }
 
     public CartDto current(Long accountId) {
-        return carts.findFirstByAccountIdOrderByUpdatedAtDescCartIdDesc(accountId)
-                .map(this::toDto)
-                .orElseGet(
-                        () -> new CartDto(null, accountId, List.of(), BigDecimal.ZERO, null, null));
+        Cart cart = currentOpen(accountId);
+        return cart == null ? emptyCart(accountId) : toDto(cart);
     }
 
     public CheckoutCartView checkoutView(Long accountId) {
-        return carts.findFirstByAccountIdOrderByUpdatedAtDescCartIdDesc(accountId)
-                .map(this::toCheckoutView)
-                .orElseGet(() -> new CheckoutCartView(null, List.of(), BigDecimal.ZERO));
+        Cart cart = currentOpen(accountId);
+        return cart == null
+                ? new CheckoutCartView(null, List.of(), 0L)
+                : toCheckoutView(cart);
+    }
+
+    CartDto emptyCart(Long accountId) {
+        return new CartDto(null, accountId, List.of(), 0L, null, null);
     }
 
     CartDto toDto(Cart cart) {
         ResolvedCart resolved = resolveCart(cart);
-        var itemDtos = resolved.items().stream().map(this::toCartItemDto).toList();
         return new CartDto(
                 cart.getCartId(),
                 cart.getAccountId(),
-                itemDtos,
+                resolved.items().stream().map(this::toCartItemDto).toList(),
                 resolved.subtotal(),
                 cart.getCreatedAt(),
                 cart.getUpdatedAt());
     }
 
+    private Cart currentOpen(Long accountId) {
+        return selectSoleOpen(
+                carts.findAllByAccountIdAndStatusOrderByCartIdAsc(accountId, OPEN));
+    }
+
+    static Cart selectSoleOpen(List<Cart> openCarts) {
+        if (openCarts.size() > 1) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "CART_SELECTION_AMBIGUOUS");
+        }
+        return openCarts.isEmpty() ? null : openCarts.get(0);
+    }
+
     private CheckoutCartView toCheckoutView(Cart cart) {
         ResolvedCart resolved = resolveCart(cart);
-        var checkoutItems = resolved.items().stream().map(this::toCheckoutItem).toList();
-        return new CheckoutCartView(cart.getCartId(), checkoutItems, resolved.subtotal());
+        return new CheckoutCartView(
+                cart.getCartId(),
+                resolved.items().stream().map(this::toCheckoutItem).toList(),
+                resolved.subtotal());
     }
 
     private ResolvedCart resolveCart(Cart cart) {
         List<CartItem> cartItems = items.findAllByCartIdOrderByCartItemIdAsc(cart.getCartId());
-        Map<Long, CatalogVariantReadService.VariantView> variantsById =
-                catalog.getAll(cartItems.stream().map(CartItem::getVariantId).toList());
-        var resolvedItems =
-                cartItems.stream()
-                        .map(item -> resolve(item, variantsById.get(item.getVariantId())))
-                        .toList();
-        BigDecimal subtotal =
-                resolvedItems.stream()
-                        .map(ResolvedCartItem::lineTotal)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return new ResolvedCart(resolvedItems, subtotal);
+        Map<Long, CatalogProductReadService.ProductView> productsById =
+                catalog.getAll(cartItems.stream().map(CartItem::getProductId).toList());
+        List<ResolvedCartItem> rawItems = cartItems.stream()
+                .map(item -> resolve(item, productsById.get(item.getProductId())))
+                .toList();
+        var calculation = pricing.calculate(
+                rawItems.stream()
+                        .map(item -> new PricingCalculator.LineInput(
+                                item.item().getProductId(),
+                                item.product().unitPrice(),
+                                item.item().getQuantity()))
+                        .toList(),
+                0L,
+                0L);
+        Map<Long, Long> grossByProduct = calculation.lines().stream()
+                .collect(Collectors.toMap(
+                        PricingCalculator.PricedLine::productId,
+                        PricingCalculator.PricedLine::grossAmount));
+        List<ResolvedCartItem> pricedItems = rawItems.stream()
+                .map(item -> new ResolvedCartItem(
+                        item.item(),
+                        item.product(),
+                        grossByProduct.get(item.item().getProductId())))
+                .toList();
+        return new ResolvedCart(pricedItems, calculation.subtotal());
     }
 
-    private ResolvedCartItem resolve(CartItem item, CatalogVariantReadService.VariantView variant) {
-        if (variant == null) {
-            throw new IllegalStateException("Cart item references missing catalog variant");
+    private ResolvedCartItem resolve(
+            CartItem item, CatalogProductReadService.ProductView product) {
+        if (product == null) {
+            throw new IllegalStateException("Cart item references missing product");
         }
-        BigDecimal lineTotal = variant.unitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
-        return new ResolvedCartItem(item, variant, lineTotal);
+        return new ResolvedCartItem(item, product, 0L);
     }
 
     private CartItemDto toCartItemDto(ResolvedCartItem resolved) {
         CartItem item = resolved.item();
-        var variant = resolved.variant();
-        String thumbnail = variant.imageUrl();
+        var product = resolved.product();
         return new CartItemDto(
                 item.getCartItemId(),
-                item.getVariantId(),
+                item.getProductId(),
                 item.getQuantity(),
-                variant.productName(),
-                thumbnail,
-                thumbnail,
-                variant.size(),
-                variant.color(),
-                variant.unitPrice(),
+                product.productName(),
+                product.imageUrl(),
+                product.imageUrl(),
+                product.sku(),
+                product.unitPrice(),
                 resolved.lineTotal(),
-                variant.availableQuantity());
+                product.availableQuantity());
     }
 
     private CheckoutCartView.Item toCheckoutItem(ResolvedCartItem resolved) {
         CartItem item = resolved.item();
-        var variant = resolved.variant();
+        var product = resolved.product();
         return new CheckoutCartView.Item(
-                item.getVariantId(),
+                item.getProductId(),
                 item.getQuantity(),
-                variant.productName(),
-                variant.imageUrl(),
-                variant.sku(),
-                variant.size(),
-                variant.color(),
-                variant.unitPrice(),
+                product.productName(),
+                product.imageUrl(),
+                product.sku(),
+                product.unitPrice(),
                 resolved.lineTotal(),
-                variant.availableQuantity(),
-                variant.purchasable());
+                product.availableQuantity(),
+                product.purchasable());
     }
 
-    private record ResolvedCart(List<ResolvedCartItem> items, BigDecimal subtotal) {
+    private record ResolvedCart(List<ResolvedCartItem> items, Long subtotal) {
         private ResolvedCart {
             items = List.copyOf(items);
         }
     }
 
     private record ResolvedCartItem(
-            CartItem item, CatalogVariantReadService.VariantView variant, BigDecimal lineTotal) {}
+            CartItem item, CatalogProductReadService.ProductView product, Long lineTotal) {}
 }

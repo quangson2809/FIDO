@@ -15,13 +15,13 @@ class SuperadminBootstrapHttpTests extends AccountHttpSupport {
 
         long accountId =
                 db.queryForObject(
-                        "SELECT account_id FROM accounts WHERE phone=?", Long.class, phone);
+                        "SELECT id FROM accounts WHERE phone=?", Long.class, phone);
 
         created.add(accountId);
 
         String hash =
                 db.queryForObject(
-                        "SELECT password_hash FROM accounts WHERE account_id=?",
+                        "SELECT password_hash FROM accounts WHERE id=?",
                         String.class,
                         accountId);
 
@@ -30,7 +30,7 @@ class SuperadminBootstrapHttpTests extends AccountHttpSupport {
         assertEquals(
                 hash,
                 db.queryForObject(
-                        "SELECT password_hash FROM accounts WHERE account_id=?",
+                        "SELECT password_hash FROM accounts WHERE id=?",
                         String.class,
                         accountId));
 
@@ -46,5 +46,24 @@ class SuperadminBootstrapHttpTests extends AccountHttpSupport {
 
         assertThrows(
                 IllegalStateException.class, () -> bootstrap.initialize(customerPhone, PASSWORD));
+    }
+
+    @Test
+    void bootstrapRejectsPhoneOwnedBySoftDeletedAccount() throws Exception {
+        String phone = phone();
+        long deletedAccountId = register(phone);
+        db.update(
+                "UPDATE accounts SET deleted_at=CURRENT_TIMESTAMP WHERE id=?",
+                deletedAccountId);
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> bootstrap.initialize(phone, PASSWORD));
+        assertEquals(
+                1,
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM accounts WHERE phone=?",
+                        Integer.class,
+                        phone));
     }
 }

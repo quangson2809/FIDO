@@ -19,6 +19,9 @@ public class RolePatchRequest {
     @Size(max = 500)
     private String description;
 
+    @Pattern(regexp = "ACTIVE|INACTIVE")
+    private String status;
+
     private List<@NotNull Long> permissionIds;
     private boolean descriptionPresent;
 
@@ -26,7 +29,7 @@ public class RolePatchRequest {
         return name;
     }
 
-    @JsonSetter(nulls = Nulls.FAIL)
+    @JsonSetter(value = "name", nulls = Nulls.FAIL)
     public void setName(String value) {
         name = value;
     }
@@ -39,6 +42,15 @@ public class RolePatchRequest {
     public void setDescription(String value) {
         description = value;
         descriptionPresent = true;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    @JsonSetter(value = "status", nulls = Nulls.FAIL)
+    public void setStatus(String value) {
+        status = value;
     }
 
     public List<Long> getPermissionIds() {

@@ -38,10 +38,10 @@ public class SupplierController {
     @GetMapping
     public ApiListResponse<SupplierDto> list(
             @RequestParam(required = false) String q,
-            @RequestParam(name = "usage_status", required = false) String usageStatus,
+            @RequestParam(name = "status", required = false) String status,
             @RequestParam(required = false) Integer page,
             @RequestParam(name = "page_size", required = false) Integer pageSize) {
-        return query.list(q, usageStatus, page, pageSize);
+        return query.list(q, status, page, pageSize);
     }
 
     @GetMapping("/{supplierId}")

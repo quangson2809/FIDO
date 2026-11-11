@@ -1,24 +1,23 @@
+import { buildProductCreate, emptyProductCreateForm, validateProductImageFiles, productCreateServerError } from '../src/features/catalog/model/productCreateForm';
+import { attributeDraftFromValues, buildProductAttributeValueIds, preserveUnmanagedProductAttributeValueIds, sameProductAttributeValueIds } from '../src/features/catalog/model/productAttributeForm';
 import assert from 'node:assert/strict';
-import {
-  productSummaryMetadata,
-  productSummarySizes,
-} from '../src/features/catalog/model/productSummary';
-import { summaryMaterialCare, summarySizes } from '../src/features/catalog/api/summaryFields';
+import { productSummaryMetadata } from '../src/features/catalog/model/productSummary';
 import { LatestMutationQueue } from '../src/features/cart/model/LatestMutationQueue';
 import {
+  buildFamilyGallery,
   buildMovedImageOrder,
   sortProductImages,
 } from '../src/features/catalog/model/productImageOrder';
+import type { ProductFamilyDto, ProductImageDto } from '../src/features/catalog/types';
 import { selectHomepageParentCategories } from '../src/features/catalog/model/categoryTree';
 import {
   canAccessAdminModule,
   canWriteAdminModule,
 } from '../src/features/auth/session/adminAccessPolicy';
-import { canPurchaseProductVariant } from '../src/features/catalog/model/purchaseAvailability';
+import { canPurchaseProduct } from '../src/features/catalog/model/purchaseAvailability';
 import { buildCheckoutQuoteKey } from '../src/features/orders/model/checkoutQuoteKey';
 import {
-  changeVoucherScope,
-  changeVoucherDiscountType,
+  voucherStatusOptions,
   voucherRequestFields,
   voucherSubmission,
 } from '../src/features/promotion/model/voucherFormModel';
@@ -52,78 +51,35 @@ assert.deepEqual(
   'only explicit top-level categories with descendants own home showcases',
 );
 
-const numericSizes = [29, 30, 31].map((value, index) => ({
-  size_value_id: index + 1,
-  size_system_id: 1,
-  code: String(value),
-  display_name: String(value),
-  sort_order: index,
-}));
-assert.equal(productSummarySizes(numericSizes), 'Size 29 – 31');
-assert.equal(productSummarySizes([numericSizes[0], numericSizes[2]]), 'Size 29 · 31');
-assert.equal(productSummarySizes([numericSizes[0]]), 'Size 29');
-assert.equal(
-  productSummarySizes([
-    { ...numericSizes[0], code: 'Waist 29', display_name: 'Waist 29' },
-    numericSizes[1],
-  ]),
-  'Size Waist 29 · 30',
-);
-assert.equal(
-  productSummarySizes([
-    { ...numericSizes[0], code: 'M', display_name: 'Medium' },
-    { ...numericSizes[1], code: 'L', display_name: 'Large' },
-  ]),
-  'Size M · L',
-);
-assert.equal(
-  productSummarySizes([{ ...numericSizes[0], code: '', display_name: 'Medium' }]),
-  'Size Medium',
-);
-assert.equal(productSummarySizes([]), 'Chưa có size đang bán');
-assert.equal(productSummarySizes(null), 'Size: xem chi tiết');
 const summary = {
   id: '1',
   product_id: 1,
+  sku: 'FIDO-PANTS-1',
   name: 'Managed product',
+  slug: 'managed-product',
   imageUrl: '',
-  base_price: 200000,
-  sale_status: 'ON_SALE' as const,
-  materialCare: 'Giặt mặt trái.',
+  selling_price: 200000,
+  status: 'ACTIVE' as const,
   brand: 'FIDO',
   category: 'Quần',
-  sizes: numericSizes,
 };
 assert.deepEqual(productSummaryMetadata(summary), {
-  text: 'Giặt mặt trái.',
-  label: 'Chất liệu & chăm sóc: Giặt mặt trái.',
-});
-assert.deepEqual(productSummaryMetadata({ ...summary, materialCare: null }), {
   text: 'Thương hiệu: FIDO',
   label: 'Thương hiệu: FIDO',
 });
-assert.deepEqual(productSummaryMetadata({ ...summary, materialCare: ' ', brand: '' }), {
+assert.deepEqual(productSummaryMetadata({ ...summary, brand: '' }), {
   text: 'Danh mục: Quần',
   label: 'Danh mục: Quần',
 });
-assert.equal(
-  productSummaryMetadata({ ...summary, materialCare: null, brand: '', category: '' }),
-  null,
-);
-assert.equal(summaryMaterialCare(undefined), null);
-assert.throws(() => summaryMaterialCare(12));
-assert.equal(summarySizes(undefined), null);
-assert.deepEqual(summarySizes(numericSizes), numericSizes);
-assert.deepEqual(summarySizes([]), []);
-assert.throws(() => summarySizes(null));
-assert.throws(() => summarySizes([{ ...numericSizes[0], sort_order: '0' }]));
-assert.throws(() => summarySizes([{ ...numericSizes[0], size_value_id: -1 }]));
+assert.equal(productSummaryMetadata({ ...summary, brand: '', category: '' }), null);
 
 const profileWithRole = (code: string, permissionCodes: readonly string[] = []): MeDto => ({
   account: {
-    account_id: 1,
+    id: 1,
+    full_name: 'Test Account',
     phone: '0900000000',
     email: null,
+    status: 'ACTIVE',
     created_at: '2026-10-07T00:00:00Z',
     updated_at: '2026-10-07T00:00:00Z',
   },
@@ -154,89 +110,18 @@ const voucherStaff = profileWithRole('ADMIN', ['VOUCHER_WRITE']);
 assert.equal(canAccessAdminModule('vouchers', voucherStaff, ['VOUCHER_WRITE']), true);
 assert.equal(canAccessAdminModule('products', voucherStaff, ['VOUCHER_WRITE']), false);
 const voucherFixture: VoucherInput = {
-  code: ' WELCOME10 ',
-  discount_type: 'FIXED_AMOUNT',
-  discount_value: 10000,
-  maximum_discount: 10,
-  minimum_amount: 400000,
-  scope: 'CATEGORY',
-  category_ids: [5, 8],
-  product_ids: [],
-  starts_at: '2026-10-09T00:00:00Z',
-  ends_at: '2026-10-12T00:00:00Z',
-  global_limit: 10,
-  customer_limit: 1,
-  enabled: true,
+  code: ' WELCOME10 ', discount_type: 'PERCENT', discount_value: 1250,
+  maximum_discount: null, minimum_order_value: 400000,
+  starts_at: null, ends_at: null, usage_limit: 10,
 };
-assert.deepEqual(
-  voucherSubmission(voucherFixture, false).category_ids,
-  [5, 8],
-  'do not replace real category IDs with labels',
-);
-assert.equal(
-  voucherSubmission(voucherFixture, false).maximum_discount,
-  null,
-  'fixed amount has no cap',
-);
-assert.equal(
-  voucherSubmission(voucherFixture, true).maximum_discount,
-  10,
-  'preserve immutable historical cap for used voucher',
-);
-const voucherServerDetail = {
-  ...voucherFixture,
-  voucher_id: 990001,
-  active_usage: 0,
-  ever_used: true,
-};
-const expectedVoucherFields = {
-  ...voucherFixture,
-  code: 'WELCOME10',
-  maximum_discount: null,
-};
-assert.deepEqual(
-  voucherRequestFields(voucherServerDetail),
-  voucherFixture,
-  'response-only metadata must not enter editing state',
-);
-assert.deepEqual(
-  voucherSubmission(voucherServerDetail, false),
-  expectedVoucherFields,
-  'submission must contain only request fields, even if input is a server detail',
-);
-assert.deepEqual(
-  voucherSubmission(voucherServerDetail, true),
-  {
-    ...voucherFixture,
-    code: 'WELCOME10',
-  },
-  'used voucher retains immutable policy without leaking response metadata',
-);
-assert.equal(
-  Object.keys(voucherSubmission(voucherServerDetail, true)).length,
-  Object.keys(voucherFixture).length,
-  'no additional property can leak from VoucherDetail to VoucherRequest',
-);
-const productScope = changeVoucherScope(voucherFixture, 'PRODUCT');
-assert.deepEqual(productScope.category_ids, []);
-assert.deepEqual(productScope.product_ids, []);
-assert.equal(productScope.scope, 'PRODUCT');
-assert.deepEqual(
-  voucherSubmission({ ...productScope, product_ids: [21, 22] }, false).product_ids,
-  [21, 22],
-);
-assert.deepEqual(
-  voucherSubmission({ ...productScope, product_ids: [21, 22] }, false).category_ids,
-  [],
-);
-const allScope = changeVoucherScope({ ...productScope, product_ids: [21] }, 'ALL');
-assert.deepEqual(voucherSubmission(allScope, false).product_ids, []);
-assert.deepEqual(voucherSubmission(allScope, false).category_ids, []);
-assert.equal(
-  changeVoucherDiscountType({ ...voucherFixture, discount_type: 'PERCENTAGE' }, 'FIXED_AMOUNT')
-    .maximum_discount,
-  null,
-);
+const voucherServerDetail = { ...voucherFixture, id: 990001, usage_count: 2, status: 'ACTIVE' };
+assert.deepEqual(voucherRequestFields(voucherServerDetail), voucherFixture);
+assert.deepEqual(voucherSubmission(voucherServerDetail), { ...voucherFixture, code: 'WELCOME10' });
+assert.equal(voucherSubmission(voucherServerDetail).discount_value, 1250, 'percent is stored as basis points');
+assert.equal(voucherSubmission({ ...voucherFixture, discount_type: 'FIXED', maximum_discount: 1000 }).maximum_discount, 1000,
+  'do not erase a valid server cap');
+assert.deepEqual(voucherStatusOptions.EXPIRED, ['EXPIRED'], 'expired vouchers cannot be reactivated');
+assert.deepEqual(voucherStatusOptions.DRAFT, ['DRAFT', 'ACTIVE', 'INACTIVE']);
 
 const catalogStaff = profileWithRole('ADMIN', ['CATALOG_READ', 'CATALOG_WRITE']);
 assert.equal(
@@ -280,27 +165,19 @@ assert.equal(
 );
 assert.equal(canWriteAdminModule('content', profileWithRole('SUPERADMIN'), []), true);
 
-assert.equal(
-  canPurchaseProductVariant('ON_SALE', { sale_status: 'ON_SALE', available_quantity: 2 }),
-  true,
-);
-assert.equal(
-  canPurchaseProductVariant('STOPPED', { sale_status: 'ON_SALE', available_quantity: 2 }),
-  false,
-);
-assert.equal(
-  canPurchaseProductVariant('ON_SALE', { sale_status: 'STOPPED', available_quantity: 2 }),
-  false,
-);
-assert.equal(
-  canPurchaseProductVariant('ON_SALE', { sale_status: 'ON_SALE', available_quantity: 0 }),
-  false,
-);
+assert.equal(canPurchaseProduct('ACTIVE'), true);
+assert.equal(canPurchaseProduct('DRAFT'), false);
+assert.equal(canPurchaseProduct('INACTIVE'), false);
+assert.equal(canPurchaseProduct('ARCHIVED'), false);
+assert.equal(canPurchaseProduct(undefined), false);
 
 const checkoutRequest = {
+  recipient_name: 'Test Customer',
   recipient_phone: '0900000000',
-  recipient_email: null,
-  recipient_address: 'Hà Nội',
+  province: 'Hà Nội',
+  district: 'Hoàn Kiếm',
+  ward: 'Hàng Trống',
+  address_line: '1 Đinh Tiên Hoàng',
   voucher_code: null,
 };
 assert.notEqual(
@@ -333,12 +210,12 @@ assert.equal(adminCustomerDetailPath(7), '/admin/customers/7');
 assert.equal(toAdminChildPath('/admin/catalog/categories'), 'catalog/categories');
 
 const imageFixtures = [
-  { image_id: 3, image_url: '3.jpg', alt_text: null, sort_order: 2 },
-  { image_id: 1, image_url: '1.jpg', alt_text: null, sort_order: 0 },
-  { image_id: 2, image_url: '2.jpg', alt_text: null, sort_order: 1 },
+  { id: 3, image_url: '3.jpg', is_primary: false, sort_order: 2 },
+  { id: 1, image_url: '1.jpg', is_primary: true, sort_order: 0 },
+  { id: 2, image_url: '2.jpg', is_primary: false, sort_order: 1 },
 ];
 assert.deepEqual(
-  sortProductImages(imageFixtures).map((image) => image.image_id),
+  sortProductImages(imageFixtures).map((image) => image.id),
   [1, 2, 3],
 );
 assert.deepEqual(buildMovedImageOrder(imageFixtures, 2, -1), [
@@ -348,6 +225,28 @@ assert.deepEqual(buildMovedImageOrder(imageFixtures, 2, -1), [
 ]);
 assert.equal(buildMovedImageOrder(imageFixtures, 1, -1), null);
 assert.equal(buildMovedImageOrder(imageFixtures, 3, 1), null);
+
+const galleryMember = (id: number, images: ProductImageDto[]): ProductFamilyDto['members'][number] => ({
+  product_id: id, parent_product_id: id === 10 ? null : 10, sku: 'SKU-' + id, name: null,
+  selling_price: 100000, status: 'ACTIVE', images, attribute_values: [],
+  available_quantity: 0, purchasable: false,
+});
+const galleryImage = (id: number, sort: number, url: string): ProductImageDto => ({
+  id, sort_order: sort, image_url: url, is_primary: sort === 0,
+});
+const galleryFamily: ProductFamilyDto = { root_product_id: 10, members: [
+  galleryMember(30, [galleryImage(30, 0, 'child-30.jpg')]),
+  galleryMember(2, [galleryImage(22, 1, 'child-2.jpg'), galleryImage(21, 0, 'shared.jpg')]),
+  galleryMember(10, [galleryImage(12, 1, 'shared.jpg'), galleryImage(11, 1, 'root.jpg')]),
+] };
+const galleryBefore = structuredClone(galleryFamily);
+assert.deepEqual(buildFamilyGallery(galleryFamily), ['root.jpg', 'shared.jpg', 'child-2.jpg', 'child-30.jpg'],
+  'root first, children by ID, images by sort_order then ID, URLs unique, sold-out images included');
+assert.deepEqual(galleryFamily, galleryBefore, 'display gallery never mutates Product-owned images');
+assert.deepEqual(buildFamilyGallery({ ...galleryFamily, members: galleryFamily.members.filter(m => m.product_id !== 10) }),
+  ['shared.jpg', 'child-2.jpg', 'child-30.jpg'], 'gallery uses only the public members returned by the API');
+assert.deepEqual(buildFamilyGallery({ root_product_id: 10, members: [galleryMember(10, [])] }), []);
+assert.deepEqual(buildFamilyGallery({ root_product_id: 10, members: [] }), []);
 
 const tokenEvents: Array<string | null> = [];
 const unsubscribe = subscribeToApiAccessToken((token) => tokenEvents.push(token));
@@ -443,24 +342,25 @@ const { sameCheckoutQuote } = await import('../src/features/orders/model/sameChe
 const confirmedQuote = {
   items: [
     {
-      variant_id: 1,
+      product_id: 1,
       quantity: 2,
       product_name: 'Áo',
-      size: 'M',
-      color: 'Đen',
+      thumbnail: null,
+      sku: 'FIDO-001',
       unit_price: 100000,
+      discount_amount: 0,
       line_total: 200000,
       available_quantity: 10,
     },
   ],
   subtotal: 200000,
-  discount: 0,
+  discount_amount: 0,
   shipping_fee: 30000,
-  total: 230000,
+  total_amount: 230000,
   voucher: null,
 };
 assert.equal(sameCheckoutQuote(confirmedQuote, structuredClone(confirmedQuote)), true);
-assert.equal(sameCheckoutQuote(confirmedQuote, { ...confirmedQuote, total: 240000 }), false);
+assert.equal(sameCheckoutQuote(confirmedQuote, { ...confirmedQuote, total_amount: 240000 }), false);
 assert.equal(
   sameCheckoutQuote(confirmedQuote, {
     ...confirmedQuote,
@@ -471,7 +371,7 @@ assert.equal(
 assert.equal(
   sameCheckoutQuote(confirmedQuote, {
     ...confirmedQuote,
-    items: [{ ...confirmedQuote.items[0], variant_id: 2 }],
+    items: [{ ...confirmedQuote.items[0], product_id: 2 }],
   }),
   false,
 );
@@ -580,7 +480,7 @@ import {
   catalogQueryParams,
   catalogUrlParams,
 } from '../src/features/catalog/model/catalogQuery';
-import { recipientErrors, quoteHasExpired } from '../src/features/orders/model/recipientValidation';
+import { recipientErrors } from '../src/features/orders/model/recipientValidation';
 import { getStorefrontErrorMessage } from '../src/services/http/storefrontError';
 import { ApiClientError } from '../src/services/http/apiError';
 assert.deepEqual(
@@ -601,11 +501,11 @@ assert.equal(
   'do not invent a smaller pagination limit',
 );
 const sharedCatalogQuery = readCatalogQuery(
-  new URLSearchParams('q=shirt&category_id=2&color_id=3&min_price=0&page=2'),
+  new URLSearchParams('q=shirt&category_id=2&min_price=0&page=2'),
 );
 assert.equal(
   catalogQueryParams(sharedCatalogQuery).toString(),
-  'q=shirt&category_id=2&color_id=3&min_price=0&page=2',
+  'q=shirt&category_id=2&min_price=0&page=2',
 );
 const scopedCatalogQuery = readCatalogQuery(
   new URLSearchParams('q=shirt&category_id=999&brand_id=2&page=3'),
@@ -627,28 +527,29 @@ assert.equal(
   'q=shirt&brand_id=2&page=3',
   'category URL preserves filters and pagination without duplicate scope',
 );
-assert.deepEqual(
-  recipientErrors({
-    recipient_phone: '+84 90-000-0000',
-    recipient_email: 'user@example.test',
-    recipient_address: 'Hà Nội',
-  }),
-  { phone: null, email: null, address: null },
-);
-assert.ok(
-  recipientErrors({ recipient_phone: 'bad', recipient_email: 'bad', recipient_address: ' ' }).phone,
-);
-assert.ok(
-  recipientErrors({ recipient_phone: '0900000000', recipient_email: null, recipient_address: ' ' })
-    .address,
-);
-assert.equal(
-  quoteHasExpired(undefined, 0),
-  false,
-  'absence of expiry retains the existing quote contract',
-);
-assert.equal(quoteHasExpired('invalid', 0), true, 'malformed expiry must not authorize submission');
-assert.equal(quoteHasExpired('2026-10-10T01:00:00Z', Date.parse('2026-10-10T01:00:00Z')), true);
+const validRecipient = {
+  recipient_name: 'Test Customer',
+  recipient_phone: '+84 90-000-0000',
+  province: 'Hà Nội',
+  district: 'Hoàn Kiếm',
+  ward: 'Hàng Trống',
+  address_line: '1 Đinh Tiên Hoàng',
+  voucher_code: null,
+};
+assert.deepEqual(recipientErrors(validRecipient), {
+  name: null,
+  phone: null,
+  province: null,
+  district: null,
+  ward: null,
+  addressLine: null,
+});
+assert.ok(recipientErrors({ ...validRecipient, recipient_name: ' ' }).name);
+assert.ok(recipientErrors({ ...validRecipient, recipient_phone: 'bad' }).phone);
+assert.ok(recipientErrors({ ...validRecipient, province: ' ' }).province);
+assert.ok(recipientErrors({ ...validRecipient, district: ' ' }).district);
+assert.ok(recipientErrors({ ...validRecipient, ward: ' ' }).ward);
+assert.ok(recipientErrors({ ...validRecipient, address_line: ' ' }).addressLine);
 assert.equal(
   getStorefrontErrorMessage(new ApiClientError('SQL private stack', 500), 'Thử lại.'),
   'Thử lại.',
@@ -661,4 +562,56 @@ assert.match(
   getStorefrontErrorMessage(new ApiClientError('Forbidden', 403), 'Thử lại.'),
   /không có quyền/,
 );
-console.log('Storefront URL, recipient, expiry and safe error models: PASS');
+console.log('Storefront URL, structured recipient and safe error models: PASS');
+
+// Product option drafts preserve persisted IDs even when metadata is partial.
+const optionAttribute = { id: 99, code: 'MATERIAL', name: 'Material', is_required: true,
+  is_variant_defining: false, sort_order: 0,
+  options: [{ id: 991, attribute_id: 99, value: 'COTTON', label: 'Cotton', sort_order: 0 }] };
+const savedOption = { attribute_id: 99, attribute_code: 'MATERIAL', attribute_name: 'Material',
+  attribute_value_id: 992, value: 'WOOL', label: 'Wool' };
+const savedDraft = attributeDraftFromValues([], [savedOption]);
+assert.equal(savedDraft['99'], '992');
+const retained = buildProductAttributeValueIds([optionAttribute], savedDraft, 'ACTIVE', [savedOption]);
+assert.deepEqual(retained, { attributeValueIds: [992], errors: [] });
+assert.deepEqual(preserveUnmanagedProductAttributeValueIds([savedOption], [], []), [992]);
+assert.ok(sameProductAttributeValueIds(retained.attributeValueIds, [992]));
+assert.deepEqual(buildProductAttributeValueIds([optionAttribute], { '99': '991' }, 'ACTIVE').attributeValueIds, [991]);
+assert.equal(buildProductAttributeValueIds([optionAttribute], {}, 'ACTIVE').errors.length, 1);
+assert.equal(buildProductAttributeValueIds([optionAttribute], {}, 'DRAFT').errors.length, 0);
+assert.equal(buildProductAttributeValueIds([optionAttribute], { '99': '992' }, 'DRAFT').errors.length, 1);
+console.log('Product option draft preservation: PASS');
+
+assert.equal(buildProductAttributeValueIds([], savedDraft, 'DRAFT').errors.length, 1,
+  'Create must not silently drop a selection when its Attribute disappears from metadata');
+assert.equal(buildProductAttributeValueIds([], savedDraft, 'DRAFT', [savedOption]).errors.length, 0);
+
+// Create feedback uses the same option-only and integer VND contract as the server.
+const createBase = { ...emptyProductCreateForm, sku: ' NEW-SKU ', sellingPrice: '0' };
+const minimalCreate = buildProductCreate(createBase, {}, null, null);
+assert.ok(minimalCreate.payload, 'minimal DRAFT does not require metadata');
+assert.equal(minimalCreate.payload.selling_price, 0);
+assert.equal(minimalCreate.payload.sku, 'NEW-SKU');
+assert.equal(minimalCreate.payload.category_id, null);
+assert.equal(buildProductCreate({ ...createBase, sellingPrice: '' }, {}, null, null).payload, null);
+assert.ok(buildProductCreate({ ...createBase, sellingPrice: '1.50' }, {}, null, null).errors.sellingPrice);
+assert.ok(buildProductCreate({ ...createBase, costPrice: '-1' }, {}, null, null).errors.costPrice);
+assert.ok(buildProductCreate({ ...createBase, status: 'ACTIVE' }, {}, null, null).errors.attributes);
+const createMeta = { attributes: [optionAttribute] };
+assert.ok(buildProductCreate({ ...createBase, status: 'ACTIVE' }, {}, null, createMeta).errors['attribute:99']);
+assert.deepEqual(buildProductCreate({ ...createBase, status: 'ACTIVE' }, { '99': '991' }, null, createMeta).payload?.attribute_value_ids, [991]);
+assert.equal(buildProductCreate(createBase, { '99': '991' }, null, { attributes: [] }).payload, null,
+  'metadata refresh cannot silently discard a selected Option');
+assert.ok(buildProductCreate({ ...createBase, categoryId: '1' }, {}, {
+  categories: [{ category_id: 1, parent_category_id: null, name: 'Old', slug: 'old', status: 'INACTIVE' }], brands: [], attributes: [],
+}, createMeta).errors.categoryId);
+assert.deepEqual(productCreateServerError('PRODUCT_SKU_ALREADY_EXISTS')?.[0], 'sku');
+assert.equal(productCreateServerError('CONFLICT'), null, 'a generic conflict is never assumed to be a duplicate SKU');
+const uploadLimits = { max_files: 2, max_file_bytes: 10, max_request_bytes: 30, content_types: ['image/png'] };
+const smallImage = new File([new Uint8Array(8)], 'small.png', { type: 'image/png' });
+assert.equal(validateProductImageFiles([smallImage], uploadLimits), null);
+assert.ok(validateProductImageFiles([smallImage], undefined));
+assert.ok(validateProductImageFiles([smallImage, smallImage, smallImage], uploadLimits));
+assert.ok(validateProductImageFiles([new File([new Uint8Array(11)], 'big.png', { type: 'image/png' })], uploadLimits));
+assert.ok(validateProductImageFiles([new File(['text'], 'fake.txt', { type: 'text/plain' })], uploadLimits));
+console.log('Product Create contract and upload validation: PASS');

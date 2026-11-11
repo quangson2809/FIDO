@@ -17,11 +17,12 @@ interface AuthScreenProps {
 export const AuthScreen: React.FC<AuthScreenProps> = ({ adminOnly = false }) => {
   const { refreshCart } = useCart();
   const { showToast } = useToast();
-  const { login, logout } = useAuthSession();
+  const { login, logout, refreshProfile } = useAuthSession();
   const navigate = useNavigate();
   const location = useLocation();
   const [mode, setMode] = useState<AuthMode>('login');
   const [phone, setPhone] = useState('');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -30,8 +31,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ adminOnly = false }) => 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const identifier = phone.trim();
-    if (!identifier || !password) {
-      showToast('Vui lòng nhập số điện thoại và mật khẩu.');
+    const registrationName = fullName.trim();
+    if (!identifier || !password || (!adminOnly && mode === 'register' && !registrationName)) {
+      showToast(
+        !identifier
+          ? 'Vui lòng nhập số điện thoại.'
+          : !password
+            ? 'Vui lòng nhập mật khẩu.'
+            : 'Vui lòng nhập họ và tên.',
+      );
       return;
     }
 
@@ -40,10 +48,23 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ adminOnly = false }) => 
     setSubmitting(true);
     try {
       if (!adminOnly && mode === 'register') {
-        await authService.register(identifier, email.trim() || null, password);
-        setMode('login');
-        setPassword('');
-        showToast('Đăng ký thành công. Vui lòng đăng nhập.');
+        await authService.register(
+          identifier,
+          registrationName,
+          email.trim() || null,
+          password,
+        );
+        const registeredProfile = await refreshProfile();
+        if (!registeredProfile) {
+          throw new Error('Không thể xác minh phiên đăng ký.');
+        }
+        try {
+          await refreshCart();
+        } catch {
+          // Cart has its own recoverable UI path.
+        }
+        showToast('Đăng ký thành công.');
+        navigate('/account', { replace: true });
         return;
       }
 
@@ -145,6 +166,20 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ adminOnly = false }) => 
               className="w-full border border-[#0B2419]/20 bg-[#FAF9F5] px-3.5 py-2.5 text-sm"
             />
           </label>
+          {!adminOnly && mode === 'register' && (
+            <label className="block space-y-1">
+              <span className="text-xs font-medium">Họ và tên *</span>
+              <input
+                type="text"
+                required
+                maxLength={150}
+                value={fullName}
+                onChange={(event) => setFullName(event.target.value)}
+                autoComplete="name"
+                className="w-full border border-[#0B2419]/20 bg-[#FAF9F5] px-3.5 py-2.5 text-sm"
+              />
+            </label>
+          )}
           {!adminOnly && mode === 'register' && (
             <label className="block space-y-1">
               <span className="text-xs font-medium">Email</span>

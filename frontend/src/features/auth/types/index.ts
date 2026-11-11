@@ -1,15 +1,26 @@
 export interface AccountDto {
   account_id: number;
+  full_name: string | null;
   phone: string;
   email: string | null;
+  status: 'ACTIVE' | 'PENDING_APPROVAL' | 'LOCKED' | 'SUSPENDED';
   created_at: string;
   updated_at: string;
 }
 
 export interface AddressDto {
+  /** Frontend compatibility key mapped from the backend AddressDto.id. */
   address_id: number;
+  /** Display label assembled from structured backend address fields when needed. */
   address_text: string;
-  created_at: string;
+  created_at: string | null;
+  recipient_name: string | null;
+  recipient_phone: string | null;
+  province: string | null;
+  district: string | null;
+  ward: string | null;
+  address_line: string | null;
+  is_default: boolean;
 }
 
 export interface RoleDto {
@@ -40,17 +51,28 @@ export interface LoginResponseDto {
 }
 
 export interface ProfilePatchInput {
-  phone?: string;
+  full_name?: string;
   email?: string;
 }
 
 export interface AddressInput {
-  address_text: string;
+  recipient_name: string;
+  recipient_phone: string;
+  province: string;
+  district: string;
+  ward: string;
+  address_line: string;
+  is_default?: boolean;
 }
 
 export interface AuthService {
   login(identifier: string, password: string): Promise<LoginResponseDto>;
-  register(phone: string, email: string | null, password: string): Promise<AccountDto>;
+  register(
+    phone: string,
+    fullName: string,
+    email: string | null,
+    password: string,
+  ): Promise<LoginResponseDto>;
   logout(): void;
 }
 

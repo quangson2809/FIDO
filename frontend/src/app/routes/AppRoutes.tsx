@@ -73,11 +73,8 @@ const AdminCategoriesRoute = lazy(() =>
 const AdminBrandsRoute = lazy(() =>
   import('./AdminRouteElements').then((module) => ({ default: module.AdminBrandsRoute })),
 );
-const AdminSizesRoute = lazy(() =>
-  import('./AdminRouteElements').then((module) => ({ default: module.AdminSizesRoute })),
-);
-const AdminColorsRoute = lazy(() =>
-  import('./AdminRouteElements').then((module) => ({ default: module.AdminColorsRoute })),
+const AdminAttributesRoute = lazy(() =>
+  import('./AdminRouteElements').then((module) => ({ default: module.AdminAttributesRoute })),
 );
 const AdminOrdersRoute = lazy(() =>
   import('./AdminRouteElements').then((module) => ({ default: module.AdminOrdersRoute })),
@@ -290,8 +287,18 @@ export const AppRoutes: React.FC = () => (
         />
         <Route path={toAdminChildPath(ADMIN_PATHS.categories)} element={<AdminCategoriesRoute />} />
         <Route path={toAdminChildPath(ADMIN_PATHS.brands)} element={<AdminBrandsRoute />} />
-        <Route path={toAdminChildPath(ADMIN_PATHS.sizes)} element={<AdminSizesRoute />} />
-        <Route path={toAdminChildPath(ADMIN_PATHS.colors)} element={<AdminColorsRoute />} />
+        <Route
+          path={toAdminChildPath(ADMIN_PATHS.attributes)}
+          element={<AdminAttributesRoute />}
+        />
+        <Route
+          path={toAdminChildPath(ADMIN_PATHS.sizes)}
+          element={<Navigate to={ADMIN_PATHS.attributes} replace />}
+        />
+        <Route
+          path={toAdminChildPath(ADMIN_PATHS.colors)}
+          element={<Navigate to={ADMIN_PATHS.attributes} replace />}
+        />
         <Route path={toAdminChildPath(ADMIN_PATHS.orders)} element={<AdminOrdersRoute />} />
         <Route
           path={toAdminChildPath(ADMIN_DETAIL_PATHS.order)}

@@ -4,9 +4,11 @@ import com.fido.modules.order.dto.response.OrderSummaryDto;
 import com.fido.modules.order.entity.Order;
 import com.fido.modules.order.entity.OrderItem;
 import com.fido.modules.order.entity.Payment;
+import com.fido.modules.order.entity.ShippingInfo;
 import com.fido.modules.order.mapper.OrderMapper;
 import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.PaymentRepository;
+import com.fido.modules.order.repository.ShippingInfoRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,10 +24,15 @@ public class OrderSummaryReadService {
 
     private final OrderItemRepository items;
     private final PaymentRepository payments;
+    private final ShippingInfoRepository shippingInfos;
 
-    public OrderSummaryReadService(OrderItemRepository items, PaymentRepository payments) {
+    public OrderSummaryReadService(
+            OrderItemRepository items,
+            PaymentRepository payments,
+            ShippingInfoRepository shippingInfos) {
         this.items = items;
         this.payments = payments;
+        this.shippingInfos = shippingInfos;
     }
 
     public List<OrderSummaryDto> summaries(List<Order> orders) {
@@ -40,6 +47,9 @@ public class OrderSummaryReadService {
         Map<Long, OrderItem> firstItemsByOrderId =
                 items.findFirstItemsByOrderIdIn(orderIds).stream()
                         .collect(Collectors.toMap(OrderItem::getOrderId, Function.identity()));
+        Map<Long, ShippingInfo> shippingByOrderId =
+                shippingInfos.findAllByOrderIdIn(orderIds).stream()
+                        .collect(Collectors.toMap(ShippingInfo::getOrderId, Function.identity()));
 
         return orders.stream()
                 .map(
@@ -47,7 +57,8 @@ public class OrderSummaryReadService {
                                 OrderMapper.summary(
                                         order,
                                         payment(paymentsByOrderId, order.getOrderId()),
-                                        previewImage(firstItemsByOrderId.get(order.getOrderId()))))
+                                        previewImage(firstItemsByOrderId.get(order.getOrderId())),
+                                        shippingByOrderId.get(order.getOrderId())))
                 .toList();
     }
 

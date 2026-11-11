@@ -235,6 +235,7 @@ The frontend CI workflow runs the same smoke, lint, typecheck and production-bui
 
 ## Notes
 
+- **Documentation control center:** see [docs/README.md](docs/README.md) for the current source-of-truth order, ERD v2 refactor status, P0 CI evidence and links to the active plan.
 - Frontend DTOs remain handwritten. Runtime validation is applied selectively at high-impact trust boundaries; `POST /auth/login` and `GET /me` are validated before token/session/RBAC state is accepted. No OpenAPI client generation is introduced.
 - Product image upload/reorder/delete use the dedicated backend image APIs; frontend code does not call the external image provider directly.
 - Frontend permission checks are for navigation/UX only. Authorization must continue to be enforced by backend Spring Security.

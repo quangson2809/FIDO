@@ -15,19 +15,6 @@ import java.util.UUID;
 class CleanMigrationTests {
 
     @Test
-    void cleanThenMigrateRebuildsAnIsolatedTestDatabase() {
-        // Deliberately never uses TEST_DB_URL: clean must not target a shared/external database.
-        var dataSource =
-                new DriverManagerDataSource(
-                        "jdbc:h2:mem:phase14-clean-"
-                                + UUID.randomUUID()
-                                + ";MODE=MySQL;DB_CLOSE_DELAY=-1",
-                        "sa",
-                        "");
-        verifyCleanAndRebuild(dataSource);
-    }
-
-    @Test
     @EnabledIfEnvironmentVariable(
             named = "TEST_DB_DRIVER",
             matches = "com\\.mysql\\.cj\\.jdbc\\.Driver")
@@ -41,15 +28,13 @@ class CleanMigrationTests {
         String username = System.getenv("TEST_DB_USERNAME");
         String password = System.getenv("TEST_DB_PASSWORD");
         var admin = new JdbcTemplate(new DriverManagerDataSource(testUrl, username, password));
-        String database = "phase14_clean_" + UUID.randomUUID().toString().replace("-", "");
+        String database = "single_baseline_clean_" + UUID.randomUUID().toString().replace("-", "");
         String isolatedUrl =
                 "jdbc:mysql://"
                         + server.getRawAuthority()
                         + "/"
                         + database
                         + (server.getRawQuery() == null ? "" : "?" + server.getRawQuery());
-
-        // CREATE must succeed before entering the cleanup block; never reuse a pre-existing schema.
         admin.execute("CREATE DATABASE " + database);
         try {
             verifyCleanAndRebuild(new DriverManagerDataSource(isolatedUrl, username, password));
@@ -66,12 +51,12 @@ class CleanMigrationTests {
                         .cleanDisabled(false)
                         .load();
         try {
-            assertEquals(6, flyway.migrate().migrationsExecuted);
+            assertEquals(1, flyway.migrate().migrationsExecuted);
             var jdbc = new JdbcTemplate(dataSource);
-            jdbc.update("INSERT INTO categories(name) VALUES ('phase14-before-clean')");
+            jdbc.update("INSERT INTO categories(name,slug,status) VALUES ('baseline-before-clean','baseline-before-clean','ACTIVE')");
 
             flyway.clean();
-            assertEquals(6, flyway.migrate().migrationsExecuted);
+            assertEquals(1, flyway.migrate().migrationsExecuted);
             flyway.validate();
             assertEquals(
                     1,
@@ -79,18 +64,23 @@ class CleanMigrationTests {
                             "SELECT COUNT(*) FROM permissions WHERE code='REPORT_READ'",
                             Integer.class));
             assertEquals(
-                    0,
+                    1,
                     jdbc.queryForObject(
-                            "SELECT COUNT(*) FROM role_permissions rp JOIN permissions p ON"
-                                + " p.permission_id=rp.permission_id WHERE p.code='REPORT_READ'",
+                            """
+                            SELECT COUNT(*)
+                            FROM role_permissions rp
+                            JOIN permissions p ON p.id=rp.permission_id
+                            JOIN roles r ON r.id=rp.role_id
+                            WHERE p.code='REPORT_READ' AND r.code='SUPERADMIN'
+                            """,
                             Integer.class));
-            assertEquals("6", flyway.info().current().getVersion().getVersion());
+            assertEquals("1", flyway.info().current().getVersion().getVersion());
             assertEquals(0, flyway.info().pending().length);
             assertEquals(0, flyway.migrate().migrationsExecuted);
             assertEquals(
                     0,
                     jdbc.queryForObject(
-                            "SELECT COUNT(*) FROM categories WHERE name='phase14-before-clean'",
+                            "SELECT COUNT(*) FROM categories WHERE slug='baseline-before-clean'",
                             Integer.class));
             assertEquals(
                     0,

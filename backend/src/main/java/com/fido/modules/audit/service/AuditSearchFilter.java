@@ -5,8 +5,8 @@ import java.time.LocalDateTime;
 public record AuditSearchFilter(
         Long actorAccountId,
         String action,
-        String targetType,
-        String targetId,
+        String entityType,
+        String entityId,
         LocalDateTime from,
         LocalDateTime to,
         Integer page,

@@ -21,37 +21,34 @@ class CheckoutQuoteHttpTests extends CartHttpSupport {
                                 "POST",
                                 "/api/v1/cart/items",
                                 owner.token(),
-                                Map.of("variant_id", active.variantId(), "quantity", 2))
+                                Map.of("product_id", active.productId(), "quantity", 2))
                         .status());
 
         db.update(
                 """
-                UPDATE product_variants
-                SET override_price=80000,
-                    updated_at=CURRENT_TIMESTAMP
-                WHERE variant_id=?
+                UPDATE products SET selling_price=80000, updated_at=CURRENT_TIMESTAMP WHERE id=?
                 """,
-                active.variantId());
+                active.productId());
 
         long inventoryBefore =
                 db.queryForObject(
                         """
-                        SELECT available_quantity
+                        SELECT quantity_on_hand
                         FROM inventories
-                        WHERE variant_id=?
+                        WHERE product_id=?
                         """,
                         Long.class,
-                        active.variantId());
+                        active.productId());
 
         int ledgerBefore =
                 db.queryForObject(
                         """
                         SELECT COUNT(*)
                         FROM inventory_transactions
-                        WHERE variant_id=?
+                        WHERE product_id=?
                         """,
                         Integer.class,
-                        active.variantId());
+                        active.productId());
 
         int orderCountBefore = db.queryForObject("SELECT COUNT(*) FROM orders", Integer.class);
 
@@ -62,14 +59,13 @@ class CheckoutQuoteHttpTests extends CartHttpSupport {
                         owner.token(),
                         Map.of(
                                 "recipient_phone", "0900000000",
-                                "recipient_email", "buyer@example.test",
-                                "recipient_address", "Cau Giay, Hanoi"));
+                                "recipient_name", "Test Recipient", "province", "Hanoi", "district", "Cau Giay", "ward", "Dich Vong", "address_line", "Cau Giay, Hanoi"));
 
         assertEquals(200, quote.status(), quote.body());
         assertEquals(160000, quote.data().get("data").get("subtotal").asInt());
-        assertEquals(0, quote.data().get("data").get("discount").asInt());
+        assertEquals(0, quote.data().get("data").get("discount_amount").asInt());
         assertEquals(30000, quote.data().get("data").get("shipping_fee").asInt());
-        assertEquals(190000, quote.data().get("data").get("total").asInt());
+        assertEquals(190000, quote.data().get("data").get("total_amount").asInt());
         assertTrue(quote.data().get("data").get("voucher").isNull());
 
         assertEquals(
@@ -78,22 +74,22 @@ class CheckoutQuoteHttpTests extends CartHttpSupport {
                 inventoryBefore,
                 db.queryForObject(
                         """
-                        SELECT available_quantity
+                        SELECT quantity_on_hand
                         FROM inventories
-                        WHERE variant_id=?
+                        WHERE product_id=?
                         """,
                         Long.class,
-                        active.variantId()));
+                        active.productId()));
         assertEquals(
                 ledgerBefore,
                 db.queryForObject(
                         """
                         SELECT COUNT(*)
                         FROM inventory_transactions
-                        WHERE variant_id=?
+                        WHERE product_id=?
                         """,
                         Integer.class,
-                        active.variantId()));
+                        active.productId()));
 
         assertEquals(
                 409,
@@ -103,18 +99,18 @@ class CheckoutQuoteHttpTests extends CartHttpSupport {
                                 owner.token(),
                                 Map.of(
                                         "recipient_phone", "0900000000",
-                                        "recipient_address", "Hanoi",
+                                        "recipient_name", "Test Recipient", "province", "Hanoi", "district", "Cau Giay", "ward", "Dich Vong", "address_line", "Hanoi",
                                         "voucher_code", "TBD-VOUCHER"))
                         .status());
 
         db.update(
                 """
                 UPDATE inventories
-                SET available_quantity=1,
+                SET quantity_on_hand=1,
                     updated_at=CURRENT_TIMESTAMP
-                WHERE variant_id=?
+                WHERE product_id=?
                 """,
-                active.variantId());
+                active.productId());
 
         assertEquals(
                 409,
@@ -124,26 +120,23 @@ class CheckoutQuoteHttpTests extends CartHttpSupport {
                                 owner.token(),
                                 Map.of(
                                         "recipient_phone", "0900000000",
-                                        "recipient_address", "Hanoi"))
+                                        "recipient_name", "Test Recipient", "province", "Hanoi", "district", "Cau Giay", "ward", "Dich Vong", "address_line", "Hanoi"))
                         .status());
 
         db.update(
                 """
                 UPDATE inventories
-                SET available_quantity=5,
+                SET quantity_on_hand=5,
                     updated_at=CURRENT_TIMESTAMP
-                WHERE variant_id=?
+                WHERE product_id=?
                 """,
-                active.variantId());
+                active.productId());
 
         db.update(
                 """
-                UPDATE product_variants
-                SET sale_status='STOPPED',
-                    updated_at=CURRENT_TIMESTAMP
-                WHERE variant_id=?
+                UPDATE products SET status='INACTIVE', updated_at=CURRENT_TIMESTAMP WHERE id=?
                 """,
-                active.variantId());
+                active.productId());
 
         assertEquals(
                 409,
@@ -153,7 +146,7 @@ class CheckoutQuoteHttpTests extends CartHttpSupport {
                                 owner.token(),
                                 Map.of(
                                         "recipient_phone", "0900000000",
-                                        "recipient_address", "Hanoi"))
+                                        "recipient_name", "Test Recipient", "province", "Hanoi", "district", "Cau Giay", "ward", "Dich Vong", "address_line", "Hanoi"))
                         .status());
     }
 
@@ -178,7 +171,7 @@ class CheckoutQuoteHttpTests extends CartHttpSupport {
                                 owner.token(),
                                 Map.of(
                                         "recipient_phone", "0900000000",
-                                        "recipient_address", "Hanoi"))
+                                        "recipient_name", "Test Recipient", "province", "Hanoi", "district", "Cau Giay", "ward", "Dich Vong", "address_line", "Hanoi"))
                         .status());
 
         assertEquals(
