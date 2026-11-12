@@ -4,15 +4,19 @@ import com.fido.modules.audit.service.AuditAction;
 import com.fido.modules.audit.service.AuditEntityType;
 import com.fido.modules.audit.service.AuditWriteEvent;
 import com.fido.modules.audit.service.AuditWriteService;
+import com.fido.modules.product.dto.request.ProductImageInput;
 import com.fido.modules.product.dto.request.ProductImageReorderRequest;
 import com.fido.modules.product.dto.response.AdminProductDetailDto;
-import com.fido.modules.product.entity.ProductImage;
 import com.fido.modules.product.entity.Product;
+import com.fido.modules.product.entity.ProductImage;
 import com.fido.modules.product.repository.ProductImageRepository;
+
+import jakarta.persistence.EntityManager;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -35,16 +39,19 @@ public class ProductImageAdminService {
     private final CatalogReferenceService references;
     private final AdminCatalogQueryService query;
     private final AuditWriteService audit;
+    private final EntityManager em;
 
     public ProductImageAdminService(
             ProductImageRepository images,
             CatalogReferenceService references,
             AdminCatalogQueryService query,
-            AuditWriteService audit) {
+            AuditWriteService audit,
+            EntityManager em) {
         this.images = images;
         this.references = references;
         this.query = query;
         this.audit = audit;
+        this.em = em;
     }
 
     @PreAuthorize(WRITE)
@@ -111,13 +118,72 @@ public class ProductImageAdminService {
         Map<Long, Integer> requestedOrders = validateRequestedOrders(current, request.images());
         List<ProductImage> finalOrder = resolveFinalOrder(current, requestedOrders);
 
-        boolean changed = java.util.stream.IntStream.range(0, finalOrder.size())
-                .anyMatch(index -> !Objects.equals(finalOrder.get(index).getSortOrder(), index));
+        boolean changed =
+                java.util.stream.IntStream.range(0, finalOrder.size())
+                        .anyMatch(
+                                index ->
+                                        !Objects.equals(
+                                                finalOrder.get(index).getSortOrder(), index));
         if (changed) product.touch();
         normalizeSortOrder(finalOrder);
         recordProductUpdate(actor, productId);
 
         return query.detailInternal(productId);
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    void replaceImages(Product product, List<ProductImageInput> requested) {
+        Long productId = product.getProductId();
+        var sortOrders = new HashSet<Integer>();
+        for (ProductImageInput item : requested) {
+            if (!ProductImageUrlPolicy.isValid(item.image_url())) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Image URL must be a valid HTTPS URI");
+            }
+            Integer sortOrder = item.sort_order();
+            if (sortOrder == null || sortOrder < 0 || !sortOrders.add(sortOrder)) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT, "Image sort order must be unique and non-negative");
+            }
+        }
+        for (int expected = 0; expected < requested.size(); expected++) {
+            if (!sortOrders.contains(expected)) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT, "Image sort order must be contiguous");
+            }
+        }
+        List<ProductImage> current =
+                images.findAllByProductIdOrderBySortOrderAscImageIdAsc(productId);
+        List<ProductImageInput> ordered =
+                requested.stream()
+                        .sorted(java.util.Comparator.comparing(ProductImageInput::sort_order))
+                        .toList();
+        boolean unchanged =
+                current.size() == ordered.size()
+                        && java.util.stream.IntStream.range(0, current.size())
+                                .allMatch(
+                                        index ->
+                                                Objects.equals(
+                                                                current.get(index).getSortOrder(),
+                                                                ordered.get(index).sort_order())
+                                                        && Objects.equals(
+                                                                current.get(index).getImageUrl(),
+                                                                ordered.get(index).image_url())
+                                                        && Objects.equals(
+                                                                current.get(index).getIsPrimary(),
+                                                                index == 0));
+        if (unchanged) return;
+        product.touch();
+        images.deleteAllByProductId(productId);
+        em.flush();
+        for (ProductImageInput item : requested) {
+            ProductImage image = new ProductImage();
+            image.setProductId(productId);
+            image.setImageUrl(item.image_url());
+            image.setSortOrder(item.sort_order());
+            image.setIsPrimary(item.sort_order() == 0);
+            images.save(image);
+        }
     }
 
     private void assertGalleryInvariant(List<ProductImage> orderedImages) {
@@ -238,7 +304,8 @@ public class ProductImageAdminService {
 
     private void recordProductUpdate(Long actor, Long productId) {
         audit.record(
-                AuditWriteEvent.of(AuditAction.PRODUCT_UPDATE, AuditEntityType.PRODUCT, productId.toString()));
+                AuditWriteEvent.of(
+                        AuditAction.PRODUCT_UPDATE, AuditEntityType.PRODUCT, productId.toString()));
     }
 
     private static ResponseStatusException notFound() {

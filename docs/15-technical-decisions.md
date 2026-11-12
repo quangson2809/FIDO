@@ -93,3 +93,12 @@
 ## 9. Delivery status
 
 Owner-approved behavior and target schema are recorded; application/DTO/frontend alignment and runtime acceptance remain open until verified on the exact candidate SHA. DDL validation does not prove transaction/concurrency, authorization or user-flow behavior. Clean Schema Reset may be run only against a verified disposable development/test database; no reset is authorized against persistent/shared data.
+
+
+## 2026-11-12 — Internal backend responsibility refactor
+
+- OrderAction is the single source of the six wire actions, target status, permission and audit metadata. Request String validation and OpenAPI vocabulary derive from it; policy remains shared by visibility and execution.
+- OrderActionService retains authorization, locking/loading, transaction, audit and response projection. Its complete, duplicate-rejecting registry selects package-private action handlers; dispatch/retry share execution with distinct policy/audit.
+- ProductImageAdminService owns gallery replace/append/reorder/remove. Product patch delegates replace with its locked Product in a mandatory transaction; replacement identity/no-op, original validation/errors and EntityManager flush sequence remain unchanged.
+- InventoryCommandService keeps its API, StockLine and mandatory propagation. Package-private receipt/opening/adjustment/order workflows own source validation. Internal posting combines guarded balance/version update and ledger append, translating only ledger errors as before. No return-restock wiring, schema or dependency change.
+- This candidate was reconstructed in the Windows workspace after the original cloud workspace became unavailable. Verification is rerun on this candidate; earlier cloud results do not prove its status. See refactor-demo1-report.md.

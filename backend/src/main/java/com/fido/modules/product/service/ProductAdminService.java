@@ -5,14 +5,11 @@ import com.fido.modules.audit.service.AuditEntityType;
 import com.fido.modules.audit.service.AuditWriteEvent;
 import com.fido.modules.audit.service.AuditWriteService;
 import com.fido.modules.product.dto.request.ProductCreateRequest;
-import com.fido.modules.product.dto.request.ProductImageInput;
 import com.fido.modules.product.dto.request.ProductPatchRequest;
 import com.fido.modules.product.dto.response.AdminProductDetailDto;
 import com.fido.modules.product.entity.Product;
 import com.fido.modules.product.entity.ProductAttributeValue;
-import com.fido.modules.product.entity.ProductImage;
 import com.fido.modules.product.repository.ProductAttributeValueRepository;
-import com.fido.modules.product.repository.ProductImageRepository;
 import com.fido.modules.product.repository.ProductRepository;
 
 import jakarta.persistence.EntityManager;
@@ -38,7 +35,7 @@ public class ProductAdminService {
             "hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_CATALOG_WRITE')";
 
     private final ProductRepository products;
-    private final ProductImageRepository images;
+    private final ProductImageAdminService gallery;
     private final ProductAttributeValueRepository productAttributeValues;
     private final ProductAttributeValueValidator attributeValueValidator;
     private final CatalogReferenceService references;
@@ -48,7 +45,7 @@ public class ProductAdminService {
 
     public ProductAdminService(
             ProductRepository products,
-            ProductImageRepository images,
+            ProductImageAdminService gallery,
             ProductAttributeValueRepository productAttributeValues,
             ProductAttributeValueValidator attributeValueValidator,
             CatalogReferenceService references,
@@ -56,7 +53,7 @@ public class ProductAdminService {
             AuditWriteService audit,
             EntityManager em) {
         this.products = products;
-        this.images = images;
+        this.gallery = gallery;
         this.productAttributeValues = productAttributeValues;
         this.attributeValueValidator = attributeValueValidator;
         this.references = references;
@@ -91,9 +88,8 @@ public class ProductAdminService {
         products.save(product);
         flushOrConflict();
 
-        List<Long> requestedValueIds = request.attribute_value_ids() == null
-                ? List.of()
-                : request.attribute_value_ids();
+        List<Long> requestedValueIds =
+                request.attribute_value_ids() == null ? List.of() : request.attribute_value_ids();
         List<ProductAttributeValue> validatedValues =
                 attributeValueValidator.validateCompleteSet(
                         product.getProductId(), status, requestedValueIds);
@@ -101,10 +97,11 @@ public class ProductAdminService {
         replaceAttributeValues(product.getProductId(), validatedValues);
         flushOrConflict();
 
-        audit.record(AuditWriteEvent.of(
-                AuditAction.PRODUCT_CREATE,
-                AuditEntityType.PRODUCT,
-                product.getProductId().toString()));
+        audit.record(
+                AuditWriteEvent.of(
+                        AuditAction.PRODUCT_CREATE,
+                        AuditEntityType.PRODUCT,
+                        product.getProductId().toString()));
         return query.detailInternal(product.getProductId());
     }
 
@@ -118,13 +115,15 @@ public class ProductAdminService {
             product.setParentProductId(request.getParentProductId());
         }
         if (request.isCategoryIdPresent()) {
-            if (request.getCategoryId() != null && !Objects.equals(request.getCategoryId(), product.getCategoryId())) {
+            if (request.getCategoryId() != null
+                    && !Objects.equals(request.getCategoryId(), product.getCategoryId())) {
                 references.requireActiveCategory(request.getCategoryId());
             }
             product.setCategoryId(request.getCategoryId());
         }
         if (request.isBrandIdPresent()) {
-            if (request.getBrandId() != null && !Objects.equals(request.getBrandId(), product.getBrandId())) {
+            if (request.getBrandId() != null
+                    && !Objects.equals(request.getBrandId(), product.getBrandId())) {
                 references.requireActiveBrand(request.getBrandId());
             }
             product.setBrandId(request.getBrandId());
@@ -146,29 +145,33 @@ public class ProductAdminService {
             product.setStatus(request.getStatus());
         }
 
-        List<Long> currentValueIds = productAttributeValues.findAllByProductIdOrderByAttributeIdAsc(productId)
-                .stream().map(ProductAttributeValue::getOptionId).toList();
-        List<Long> resultingValueIds = request.isAttributeValueIdsPresent()
-                ? request.getAttributeValueIds() : currentValueIds;
+        List<Long> currentValueIds =
+                productAttributeValues.findAllByProductIdOrderByAttributeIdAsc(productId).stream()
+                        .map(ProductAttributeValue::getOptionId)
+                        .toList();
+        List<Long> resultingValueIds =
+                request.isAttributeValueIdsPresent()
+                        ? request.getAttributeValueIds()
+                        : currentValueIds;
 
         List<ProductAttributeValue> validatedValues =
                 attributeValueValidator.validateCompleteSet(
                         productId, product.getStatus(), resultingValueIds);
 
-        boolean attributesChanged = request.isAttributeValueIdsPresent()
-                && !new HashSet<>(currentValueIds).equals(new HashSet<>(resultingValueIds));
+        boolean attributesChanged =
+                request.isAttributeValueIdsPresent()
+                        && !new HashSet<>(currentValueIds).equals(new HashSet<>(resultingValueIds));
         if (attributesChanged) product.touch();
-        replaceImagesIfPresent(product, request);
+        if (request.isImagesPresent()) gallery.replaceImages(product, request.getImages());
         if (attributesChanged) {
             replaceAttributeValues(productId, validatedValues);
         }
 
         flushOrConflict();
 
-        audit.record(AuditWriteEvent.of(
-                AuditAction.PRODUCT_UPDATE,
-                AuditEntityType.PRODUCT,
-                productId.toString()));
+        audit.record(
+                AuditWriteEvent.of(
+                        AuditAction.PRODUCT_UPDATE, AuditEntityType.PRODUCT, productId.toString()));
         return query.detailInternal(productId);
     }
 
@@ -181,7 +184,9 @@ public class ProductAdminService {
         product.setDeletedAt(LocalDateTime.now(ZoneOffset.UTC));
         products.save(product);
         em.flush();
-        audit.record(AuditWriteEvent.of(AuditAction.PRODUCT_DELETE, AuditEntityType.PRODUCT, productId.toString()));
+        audit.record(
+                AuditWriteEvent.of(
+                        AuditAction.PRODUCT_DELETE, AuditEntityType.PRODUCT, productId.toString()));
     }
 
     private void replaceAttributeValues(
@@ -215,52 +220,14 @@ public class ProductAdminService {
         }
     }
 
-    private void replaceImagesIfPresent(Product product, ProductPatchRequest request) {
-        if (!request.isImagesPresent()) return;
-        Long productId = product.getProductId();
-        List<ProductImageInput> requested = request.getImages();
-        var sortOrders = new HashSet<Integer>();
-        for (ProductImageInput item : requested) {
-            if (!ProductImageUrlPolicy.isValid(item.image_url())) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST, "Image URL must be a valid HTTPS URI");
-            }
-            Integer sortOrder = item.sort_order();
-            if (sortOrder == null || sortOrder < 0 || !sortOrders.add(sortOrder)) {
-                conflict("Image sort order must be unique and non-negative");
-            }
-        }
-        for (int expected = 0; expected < requested.size(); expected++) {
-            if (!sortOrders.contains(expected)) {
-                conflict("Image sort order must be contiguous");
-            }
-        }
-        List<ProductImage> current = images.findAllByProductIdOrderBySortOrderAscImageIdAsc(productId);
-        List<ProductImageInput> ordered = requested.stream()
-                .sorted(java.util.Comparator.comparing(ProductImageInput::sort_order)).toList();
-        boolean unchanged = current.size() == ordered.size() && java.util.stream.IntStream.range(0, current.size())
-                .allMatch(index -> Objects.equals(current.get(index).getSortOrder(), ordered.get(index).sort_order())
-                        && Objects.equals(current.get(index).getImageUrl(), ordered.get(index).image_url())
-                        && Objects.equals(current.get(index).getIsPrimary(), index == 0));
-        if (unchanged) return;
-        product.touch();
-        images.deleteAllByProductId(productId);
-        em.flush();
-        for (ProductImageInput item : requested) {
-            ProductImage image = new ProductImage();
-            image.setProductId(productId);
-            image.setImageUrl(item.image_url());
-            image.setSortOrder(item.sort_order());
-            image.setIsPrimary(item.sort_order() == 0);
-            images.save(image);
-        }
-    }
-
     private void flushOrConflict() {
         try {
             em.flush();
         } catch (DataIntegrityViolationException exception) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Product violates a unique or foreign-key constraint", exception);
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Product violates a unique or foreign-key constraint",
+                    exception);
         }
     }
 

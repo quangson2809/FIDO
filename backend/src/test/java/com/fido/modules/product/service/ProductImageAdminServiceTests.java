@@ -15,6 +15,8 @@ import com.fido.modules.product.entity.Product;
 import com.fido.modules.product.entity.ProductImage;
 import com.fido.modules.product.repository.ProductImageRepository;
 
+import jakarta.persistence.EntityManager;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,12 +35,13 @@ class ProductImageAdminServiceTests {
     @Mock private CatalogReferenceService references;
     @Mock private AdminCatalogQueryService query;
     @Mock private AuditWriteService audit;
+    @Mock private EntityManager em;
 
     private ProductImageAdminService service;
 
     @BeforeEach
     void setUp() {
-        service = new ProductImageAdminService(images, references, query, audit);
+        service = new ProductImageAdminService(images, references, query, audit, em);
         when(references.productForUpdate(55L)).thenReturn(mock(Product.class));
     }
 
@@ -65,7 +68,9 @@ class ProductImageAdminServiceTests {
                 saved.getAllValues().stream().map(ProductImage::getImageUrl).toList());
         assertEquals(0, cover.getSortOrder());
         assertEquals(true, cover.getIsPrimary());
-        assertEquals(List.of(false, false), saved.getAllValues().stream().map(ProductImage::getIsPrimary).toList());
+        assertEquals(
+                List.of(false, false),
+                saved.getAllValues().stream().map(ProductImage::getIsPrimary).toList());
         verify(audit).record(any());
     }
 
@@ -143,7 +148,9 @@ class ProductImageAdminServiceTests {
         when(images.findAllByProductIdForUpdate(55L)).thenReturn(List.of());
 
         service.appendUploadedImages(
-                7L, 55L, List.of(new ImageStorageGateway.UploadedImage("https://cdn.test/first.jpg")));
+                7L,
+                55L,
+                List.of(new ImageStorageGateway.UploadedImage("https://cdn.test/first.jpg")));
 
         ArgumentCaptor<ProductImage> saved = ArgumentCaptor.forClass(ProductImage.class);
         verify(images).save(saved.capture());
@@ -160,9 +167,13 @@ class ProductImageAdminServiceTests {
         ResponseStatusException error =
                 assertThrows(
                         ResponseStatusException.class,
-                        () -> service.appendUploadedImages(
-                                7L, 55L,
-                                List.of(new ImageStorageGateway.UploadedImage("https://cdn.test/new.jpg"))));
+                        () ->
+                                service.appendUploadedImages(
+                                        7L,
+                                        55L,
+                                        List.of(
+                                                new ImageStorageGateway.UploadedImage(
+                                                        "https://cdn.test/new.jpg"))));
 
         assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
         verify(images, never()).save(any());
