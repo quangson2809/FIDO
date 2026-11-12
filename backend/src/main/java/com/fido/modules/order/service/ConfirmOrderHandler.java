@@ -14,16 +14,18 @@ import java.util.List;
 class ConfirmOrderHandler implements OrderActionHandler {
     private final OrderRepository orders;
     private final InventoryCommandService inventory;
-    private final OrderStockLines stockLines;
+    private final OrderStockLineLoader stockLines;
 
     ConfirmOrderHandler(
-            OrderRepository orders, InventoryCommandService inventory, OrderStockLines stockLines) {
+            OrderRepository orders,
+            InventoryCommandService inventory,
+            OrderStockLineLoader stockLines) {
         this.orders = orders;
         this.inventory = inventory;
         this.stockLines = stockLines;
     }
 
-    public List<OrderAction> actions() {
+    public List<OrderAction> supportedActions() {
         return List.of(OrderAction.CONFIRM);
     }
 
@@ -31,7 +33,10 @@ class ConfirmOrderHandler implements OrderActionHandler {
     public void execute(
             Long actor, Order order, ShippingInfo shipping, OrderActionRequest request) {
         inventory.deductConfirmedOrder(
-                actor, order.getOrderId(), stockLines.load(order.getOrderId()), "ORDER_CONFIRM");
+                actor,
+                order.getOrderId(),
+                stockLines.loadForUpdate(order.getOrderId()),
+                "ORDER_CONFIRM");
 
         order.setOrderStatus(OrderPolicy.CONFIRMED);
         orders.save(order);

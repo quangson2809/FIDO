@@ -1,6 +1,6 @@
 package com.fido.modules.inventory.service;
 
-import static com.fido.modules.inventory.service.InventoryPostingService.ordered;
+import static com.fido.modules.inventory.service.InventoryPostingService.sortByProductAndSourceId;
 
 import com.fido.modules.inventory.entity.GoodsReceiptItem;
 import com.fido.modules.inventory.entity.InventoryTransaction;
@@ -49,7 +49,7 @@ class InventoryReceiptWorkflow {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "GOODS_RECEIPT_INVALID_SOURCE");
         }
 
-        List<StockLine> orderedLines = ordered(lines);
+        List<StockLine> orderedLines = sortByProductAndSourceId(lines);
         Set<Long> receiptItemIds = new HashSet<>();
         Set<Long> productIds = new HashSet<>();
         int alreadyPosted = 0;

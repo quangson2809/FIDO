@@ -11,19 +11,21 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 @Component
-class PrepareOrderHandler implements OrderActionHandler {
+class StartPreparingOrderHandler implements OrderActionHandler {
     private final OrderRepository orders;
     private final InventoryCommandService inventory;
-    private final OrderStockLines stockLines;
+    private final OrderStockLineLoader stockLines;
 
-    PrepareOrderHandler(
-            OrderRepository orders, InventoryCommandService inventory, OrderStockLines stockLines) {
+    StartPreparingOrderHandler(
+            OrderRepository orders,
+            InventoryCommandService inventory,
+            OrderStockLineLoader stockLines) {
         this.orders = orders;
         this.inventory = inventory;
         this.stockLines = stockLines;
     }
 
-    public List<OrderAction> actions() {
+    public List<OrderAction> supportedActions() {
         return List.of(OrderAction.START_PREPARING);
     }
 
@@ -31,7 +33,7 @@ class PrepareOrderHandler implements OrderActionHandler {
     public void execute(
             Long actor, Order order, ShippingInfo shipping, OrderActionRequest request) {
         inventory.requireConfirmedOrderMovements(
-                order.getOrderId(), stockLines.load(order.getOrderId()));
+                order.getOrderId(), stockLines.loadForUpdate(order.getOrderId()));
 
         order.setOrderStatus(OrderPolicy.PREPARING);
         orders.save(order);

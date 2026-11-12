@@ -39,3 +39,10 @@ Hai lượt review độc lập theo tiêu chuẩn repo và theo kế hoạch đ
 Đây là refactor backend theo kế hoạch, không phải nghiệm thu toàn bộ sản phẩm. Không chạy frontend/browser UX hay gọi thật nhà cung cấp ảnh. Không tuyên bố tăng hiệu năng vì chưa benchmark. Không sửa các tồn đọng ngoài phạm vi chỉ để làm test xanh.
 
 Fingerprint SHA-256 của source backend đã kiểm thử (chuẩn hóa LF, gồm backend/src và ba file build/settings/properties): `391f70ccc88b9b9c0bcaf8c71569667eb7023c985956c5c6d0bc5e46e709dc59`. Hai lượt review source đều PASS; `git diff --check` PASS.
+
+## Naming follow-up — 2026-11-12
+
+- Renamed the Order stock-line loader and its locking read, preparing/delivery-failed handlers, action execution/registration methods and ambiguous local variables; updated callers together.
+- Renamed gallery persistence and inventory ordering/reason helpers. Documented the shared transaction and pre-held Product write lock required by gallery replacement. HTTP/JSON, permissions, business conditions, lock order and flush sequence are unchanged.
+- Verification for this follow-up: production and test sources compiled; 40 selected existing tests passed with no failures, errors or skips on isolated MySQL 8.4.13. Coverage: Order action matrix/HTTP and audit rollback, gallery unit/reorder/remove HTTP, receipt replay/opening and ledger rollback. The complete suite was not rerun locally for naming-only changes.
+- Independent specification and standards reviews passed; no stale Java references to renamed symbols remain. The earlier 278-test result and fingerprint above belong to the preceding refactor candidate.

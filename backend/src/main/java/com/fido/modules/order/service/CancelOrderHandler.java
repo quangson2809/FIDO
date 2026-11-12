@@ -18,14 +18,14 @@ class CancelOrderHandler implements OrderActionHandler {
     private final OrderRepository orders;
     private final ShippingInfoRepository shippingInfos;
     private final InventoryCommandService inventory;
-    private final OrderStockLines stockLines;
+    private final OrderStockLineLoader stockLines;
     private final VoucherRedemptionService voucherRedemption;
 
     CancelOrderHandler(
             OrderRepository orders,
             ShippingInfoRepository shippingInfos,
             InventoryCommandService inventory,
-            OrderStockLines stockLines,
+            OrderStockLineLoader stockLines,
             VoucherRedemptionService voucherRedemption) {
         this.orders = orders;
         this.shippingInfos = shippingInfos;
@@ -34,17 +34,17 @@ class CancelOrderHandler implements OrderActionHandler {
         this.voucherRedemption = voucherRedemption;
     }
 
-    public List<OrderAction> actions() {
+    public List<OrderAction> supportedActions() {
         return List.of(OrderAction.CANCEL);
     }
 
     @Override
     public void execute(
             Long actor, Order order, ShippingInfo shipping, OrderActionRequest request) {
-        String fromOrder = order.getOrderStatus();
-        List<StockLine> lines = stockLines.load(order.getOrderId());
+        String fromOrderStatus = order.getOrderStatus();
+        List<StockLine> lines = stockLines.loadForUpdate(order.getOrderId());
 
-        if (!OrderPolicy.PENDING.equals(fromOrder)) {
+        if (!OrderPolicy.PENDING.equals(fromOrderStatus)) {
             inventory.restoreCancelledOrder(actor, order.getOrderId(), lines, "ORDER_CANCELLED");
         }
 

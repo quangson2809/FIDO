@@ -11,16 +11,16 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 @Component
-class FailDeliveryOrderHandler implements OrderActionHandler {
+class MarkDeliveryFailedOrderHandler implements OrderActionHandler {
     private final OrderRepository orders;
     private final ShippingInfoRepository shippingInfos;
 
-    FailDeliveryOrderHandler(OrderRepository orders, ShippingInfoRepository shippingInfos) {
+    MarkDeliveryFailedOrderHandler(OrderRepository orders, ShippingInfoRepository shippingInfos) {
         this.orders = orders;
         this.shippingInfos = shippingInfos;
     }
 
-    public List<OrderAction> actions() {
+    public List<OrderAction> supportedActions() {
         return List.of(OrderAction.MARK_DELIVERY_FAILED);
     }
 

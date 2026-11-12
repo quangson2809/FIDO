@@ -1,7 +1,7 @@
 package com.fido.modules.inventory.service;
 
-import static com.fido.modules.inventory.service.InventoryPostingService.normalize;
-import static com.fido.modules.inventory.service.InventoryPostingService.ordered;
+import static com.fido.modules.inventory.service.InventoryPostingService.normalizeReason;
+import static com.fido.modules.inventory.service.InventoryPostingService.sortByProductAndSourceId;
 
 import com.fido.modules.audit.service.AuditAction;
 import com.fido.modules.audit.service.AuditEntityType;
@@ -77,7 +77,7 @@ class InventoryOrderWorkflow {
 
         Long warehouseId = operationalWarehouse.requireOperationalWarehouseId();
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-        for (StockLine line : ordered(expected.values().stream().toList())) {
+        for (StockLine line : sortByProductAndSourceId(expected.values().stream().toList())) {
             int delta = -line.quantity();
             posting.post(
                     new InventoryMovement(
@@ -229,7 +229,7 @@ class InventoryOrderWorkflow {
                                     "product_id", reversal.getProductId(),
                                     "warehouse_id", reversal.getWarehouseId(),
                                     "quantity_delta", reversal.getQuantityDelta(),
-                                    "reason_code", normalize(reason))));
+                                    "reason_code", normalizeReason(reason))));
         }
     }
 
@@ -287,7 +287,7 @@ class InventoryOrderWorkflow {
 
         // Compatibility callers without OrderItem references use the server-resolved warehouse.
         Long warehouseId = operationalWarehouse.requireOperationalWarehouseId();
-        for (StockLine line : ordered(lines)) {
+        for (StockLine line : sortByProductAndSourceId(lines)) {
             posting.post(
                     new InventoryMovement(
                             actor,

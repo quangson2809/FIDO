@@ -77,7 +77,7 @@ public class AdminOrderController {
             Authentication authentication,
             @PathVariable Long orderId,
             @Valid @RequestBody OrderActionRequest request) {
-        return ApiResponse.of(actions.action(actor(jwt), orderId, request, authentication));
+        return ApiResponse.of(actions.executeAction(actor(jwt), orderId, request, authentication));
     }
 
     @PostMapping("/{orderId}/payment-actions")

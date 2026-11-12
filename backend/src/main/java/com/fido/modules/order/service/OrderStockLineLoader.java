@@ -11,14 +11,14 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 
 @Component
-class OrderStockLines {
+class OrderStockLineLoader {
     private final OrderItemRepository items;
 
-    OrderStockLines(OrderItemRepository items) {
+    OrderStockLineLoader(OrderItemRepository items) {
         this.items = items;
     }
 
-    List<StockLine> load(Long orderId) {
+    List<StockLine> loadForUpdate(Long orderId) {
         List<OrderItem> orderItems = items.findAllByOrderIdForUpdate(orderId);
         if (orderItems.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "ORDER_ITEMS_MISSING");

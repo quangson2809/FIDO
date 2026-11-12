@@ -7,7 +7,7 @@ import com.fido.modules.order.entity.ShippingInfo;
 import java.util.List;
 
 interface OrderActionHandler {
-    List<OrderAction> actions();
+    List<OrderAction> supportedActions();
 
     void execute(Long actor, Order order, ShippingInfo shipping, OrderActionRequest request);
 }

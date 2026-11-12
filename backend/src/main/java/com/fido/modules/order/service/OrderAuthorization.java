@@ -9,9 +9,9 @@ import java.util.List;
 public class OrderAuthorization {
     public boolean canExecute(Authentication authentication, String action) {
         if (hasAuthority(authentication, "ROLE_SUPERADMIN")) return true;
-        OrderAction command = OrderAction.fromWire(action);
-        return command != null
-                && hasAuthority(authentication, "PERMISSION_" + command.permission());
+        OrderAction orderAction = OrderAction.fromWire(action);
+        return orderAction != null
+                && hasAuthority(authentication, "PERMISSION_" + orderAction.permission());
     }
 
     public List<String> filterAllowed(Authentication authentication, List<String> actions) {

@@ -18,20 +18,20 @@ class ShipOrderHandler implements OrderActionHandler {
     private final OrderRepository orders;
     private final ShippingInfoRepository shippingInfos;
     private final InventoryCommandService inventory;
-    private final OrderStockLines stockLines;
+    private final OrderStockLineLoader stockLines;
 
     ShipOrderHandler(
             OrderRepository orders,
             ShippingInfoRepository shippingInfos,
             InventoryCommandService inventory,
-            OrderStockLines stockLines) {
+            OrderStockLineLoader stockLines) {
         this.orders = orders;
         this.shippingInfos = shippingInfos;
         this.inventory = inventory;
         this.stockLines = stockLines;
     }
 
-    public List<OrderAction> actions() {
+    public List<OrderAction> supportedActions() {
         return List.of(OrderAction.DISPATCH, OrderAction.RETRY_DELIVERY);
     }
 
@@ -39,7 +39,7 @@ class ShipOrderHandler implements OrderActionHandler {
     public void execute(
             Long actor, Order order, ShippingInfo shipping, OrderActionRequest request) {
         inventory.requireConfirmedOrderMovements(
-                order.getOrderId(), stockLines.load(order.getOrderId()));
+                order.getOrderId(), stockLines.loadForUpdate(order.getOrderId()));
 
         order.setOrderStatus(OrderPolicy.SHIPPING);
         shipping.setShippingStatus("SHIPPED");

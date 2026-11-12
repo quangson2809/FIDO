@@ -53,7 +53,7 @@ public class OrderActionService {
         this.audit = audit;
         var registry = new EnumMap<OrderAction, OrderActionHandler>(OrderAction.class);
         for (var handler : handlers)
-            for (var action : handler.actions()) {
+            for (var action : handler.supportedActions()) {
                 if (registry.putIfAbsent(action, handler) != null)
                     throw new IllegalStateException("Duplicate Order action handler: " + action);
             }
@@ -63,7 +63,7 @@ public class OrderActionService {
     }
 
     @PreAuthorize("@orderAuthorization.canExecute(authentication, #request.action())")
-    public OrderAdminDetailDto action(
+    public OrderAdminDetailDto executeAction(
             Long actor, Long orderId, OrderActionRequest request, Authentication authentication) {
         Order order =
                 orders.findByIdForUpdate(orderId)
@@ -81,35 +81,35 @@ public class OrderActionService {
                                 () -> new IllegalStateException("ORDER_SHIPPING_INFO_MISSING"));
 
         policy.requireExecutable(order, payment, shipping, request.action());
-        OrderAction command = OrderAction.require(request.action());
-        String fromOrder = order.getOrderStatus();
-        String fromShipping = shipping.getShippingStatus();
-        handlers.get(command).execute(actor, order, shipping, request);
+        OrderAction orderAction = OrderAction.require(request.action());
+        String fromOrderStatus = order.getOrderStatus();
+        String fromShippingStatus = shipping.getShippingStatus();
+        handlers.get(orderAction).execute(actor, order, shipping, request);
         auditTransition(
-                command.auditAction(),
+                orderAction.auditAction(),
                 order,
-                fromOrder,
-                fromShipping,
+                fromOrderStatus,
+                fromShippingStatus,
                 order.getOrderStatus(),
                 shipping.getShippingStatus(),
-                command == OrderAction.CANCEL ? payment.getPaymentStatus() : null);
+                orderAction == OrderAction.CANCEL ? payment.getPaymentStatus() : null);
         return query.adminDetailInternal(order, authentication);
     }
 
     private void auditTransition(
             AuditAction action,
             Order order,
-            String fromOrder,
-            String fromShipping,
-            String toOrder,
-            String toShipping,
+            String fromOrderStatus,
+            String fromShippingStatus,
+            String toOrderStatus,
+            String toShippingStatus,
             String paymentStatus) {
         Map<String, Object> before = new LinkedHashMap<>();
-        before.put("status", fromOrder);
-        before.put("shipping_status", fromShipping);
+        before.put("status", fromOrderStatus);
+        before.put("shipping_status", fromShippingStatus);
         Map<String, Object> after = new LinkedHashMap<>();
-        after.put("status", toOrder);
-        after.put("shipping_status", toShipping);
+        after.put("status", toOrderStatus);
+        after.put("shipping_status", toShippingStatus);
         if (paymentStatus != null) {
             before.put("payment_status", paymentStatus);
             after.put("payment_status", paymentStatus);

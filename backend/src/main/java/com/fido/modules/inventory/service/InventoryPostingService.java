@@ -37,16 +37,20 @@ class InventoryPostingService {
         this.productAccess = productAccess;
     }
 
-    InventoryTransaction post(InventoryMovement movement, LocalDateTime now, String key) {
-        return post(movement, now, key, null);
+    InventoryTransaction post(
+            InventoryMovement movement, LocalDateTime now, String idempotencyKey) {
+        return post(movement, now, idempotencyKey, null);
     }
 
     InventoryTransaction post(
-            InventoryMovement movement, LocalDateTime now, String key, String ledgerConflictCode) {
+            InventoryMovement movement,
+            LocalDateTime now,
+            String idempotencyKey,
+            String ledgerConflictCode) {
         applyBalanceDelta(
                 movement.warehouseId(), movement.productId(), movement.quantityDelta(), now);
         try {
-            return record(movement, key);
+            return record(movement, idempotencyKey);
         } catch (org.springframework.dao.DataIntegrityViolationException failure) {
             if (ledgerConflictCode == null) throw failure;
             throw new ResponseStatusException(HttpStatus.CONFLICT, ledgerConflictCode);
@@ -103,11 +107,11 @@ class InventoryPostingService {
         transaction.setIdempotencyKey(idempotencyKey);
         transaction.setReversesTransactionId(movement.reversesTransactionId());
         transaction.setActorAccountId(movement.actor());
-        transaction.setReason(normalize(movement.reason()));
+        transaction.setReason(normalizeReason(movement.reason()));
         return transactions.save(transaction);
     }
 
-    static List<StockLine> ordered(List<StockLine> lines) {
+    static List<StockLine> sortByProductAndSourceId(List<StockLine> lines) {
         return lines.stream()
                 .sorted(
                         Comparator.comparing(StockLine::productId)
@@ -121,7 +125,7 @@ class InventoryPostingService {
                 .toList();
     }
 
-    static String normalize(String reason) {
+    static String normalizeReason(String reason) {
         if (reason == null || reason.isBlank()) return null;
         String trimmed = reason.trim();
         return trimmed.length() <= 80 ? trimmed : trimmed.substring(0, 80);

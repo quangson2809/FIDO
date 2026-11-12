@@ -104,7 +104,7 @@ public class ProductImageAdminService {
                         .toList();
 
         product.touch();
-        normalizeSortOrder(remaining);
+        persistGalleryOrderAndPrimary(remaining);
         recordProductUpdate(actor, productId);
     }
 
@@ -125,12 +125,19 @@ public class ProductImageAdminService {
                                         !Objects.equals(
                                                 finalOrder.get(index).getSortOrder(), index));
         if (changed) product.touch();
-        normalizeSortOrder(finalOrder);
+        persistGalleryOrderAndPrimary(finalOrder);
         recordProductUpdate(actor, productId);
 
         return query.detailInternal(productId);
     }
 
+    /**
+     * Replaces the complete gallery inside the caller's transaction.
+     *
+     * <p>The caller must hold the Product write lock before calling this method, so Product changes
+     * and gallery replacement commit or roll back together. MANDATORY enforces the transaction; it
+     * does not acquire the Product lock.
+     */
     @Transactional(propagation = Propagation.MANDATORY)
     void replaceImages(Product product, List<ProductImageInput> requested) {
         Long productId = product.getProductId();
@@ -248,7 +255,7 @@ public class ProductImageAdminService {
                 .toList();
     }
 
-    private void normalizeSortOrder(List<ProductImage> orderedImages) {
+    private void persistGalleryOrderAndPrimary(List<ProductImage> orderedImages) {
         boolean alreadyNormalized = true;
         for (int index = 0; index < orderedImages.size(); index++) {
             if (!Objects.equals(orderedImages.get(index).getSortOrder(), index)) {

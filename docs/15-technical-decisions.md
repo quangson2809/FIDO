@@ -102,3 +102,11 @@ Owner-approved behavior and target schema are recorded; application/DTO/frontend
 - ProductImageAdminService owns gallery replace/append/reorder/remove. Product patch delegates replace with its locked Product in a mandatory transaction; replacement identity/no-op, original validation/errors and EntityManager flush sequence remain unchanged.
 - InventoryCommandService keeps its API, StockLine and mandatory propagation. Package-private receipt/opening/adjustment/order workflows own source validation. Internal posting combines guarded balance/version update and ledger append, translating only ledger errors as before. No return-restock wiring, schema or dependency change.
 - This candidate was reconstructed in the Windows workspace after the original cloud workspace became unavailable. Verification is rerun on this candidate; earlier cloud results do not prove its status. See refactor-demo1-report.md.
+
+## 2026-11-12 — Backend naming clarification
+
+- OrderStockLineLoader.loadForUpdate explicitly names its OrderItem write-locking read. StartPreparingOrderHandler and MarkDeliveryFailedOrderHandler match the existing action semantics; wire action names remain unchanged.
+- OrderActionService.executeAction and OrderActionHandler.supportedActions clarify execution versus handler registration. Enum variables and audit status variables use explicit action/status names.
+- ProductImageAdminService.persistGalleryOrderAndPrimary names both primary selection and database persistence. replaceImages documents that the caller must already hold the Product write lock in the shared transaction.
+- Inventory posting uses idempotencyKey, sortByProductAndSourceId and normalizeReason to make duplicate prevention, processing order and reason normalization clear at call sites.
+- This is a naming/documentation change only. Existing permission expressions, transaction boundaries, lock order, flush sequence, stock/ledger semantics and HTTP/JSON contracts are preserved.

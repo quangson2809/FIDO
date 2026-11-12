@@ -41,13 +41,13 @@ public class OrderActionPolicy {
     /** Called only after locking and re-reading the Order and its related state. */
     public void requireExecutable(
             Order order, Payment payment, ShippingInfo shipping, String action) {
-        OrderAction command = OrderAction.require(action);
-        if (command.targetStatus().equals(order.getOrderStatus())) {
+        OrderAction orderAction = OrderAction.require(action);
+        if (orderAction.targetStatus().equals(order.getOrderStatus())) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "ORDER_TRANSITION_ALREADY_APPLIED");
         }
         OrderStockState stock = movements.orderStockState(order.getOrderId());
-        if (!canApply(order, payment, shipping, stock, command)) {
+        if (!canApply(order, payment, shipping, stock, orderAction)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "ORDER_TRANSITION_NOT_ALLOWED");
         }
     }
