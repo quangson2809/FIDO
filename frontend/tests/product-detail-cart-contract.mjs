@@ -143,7 +143,9 @@ const addSingleAxisFamily = (rootId, values) => {
   for (const row of rows) detailed.set(row.product_id, { ...row, family });
 };
 addSingleAxisFamily(8, [colorValue(211, 'RED', 'Đỏ'), colorValue(212, 'YELLOW', 'Vàng')]);
-addSingleAxisFamily(10, [sizeValue(311, '39'), sizeValue(312, '41')]);
+addSingleAxisFamily(10, [sizeValue(311, '39'), sizeValue(312, '41')].map(option => ({
+  ...option, attribute_code: 'SIZE_SHOES', attribute_name: 'Size giày',
+})));
 const expectedGallery = [product.images[0].image_url, artwork['black-m'], artwork['black-l'],
   artwork['white-l'], artwork['white-l-alt']];
 const thumbnailButtons = () => page.getByRole('button', { name: /^Xem ảnh \d+$/ });
@@ -371,6 +373,9 @@ try {
   await page.getByRole('dialog', { name: 'Giỏ hàng của bạn' }).getByRole('button', { name: 'Đóng giỏ hàng' }).click();
   await page.goto('http://localhost:5184/products/10');
   await page.getByText('SKU: DYNAMIC-10', { exact: true }).waitFor();
+  assert.equal(await page.getByRole('group', { name: 'Size giày', exact: true }).count(), 1);
+  assert.equal(await page.getByText('Size giày', { exact: true }).count(), 1,
+    'shoe size belongs to the selector only, not the general specifications');
   assert.equal(await page.getByRole('group', { name: 'Màu sắc', exact: true }).count(), 0);
   assert.equal(await page.getByRole('button', { name: 'S', exact: true }).count(), 0);
   await page.getByRole('button', { name: '41', exact: true }).click();

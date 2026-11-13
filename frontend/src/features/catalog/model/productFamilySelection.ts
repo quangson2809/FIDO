@@ -1,7 +1,7 @@
 import type { ProductAttributeValueDto, ProductFamilyDto, ProductFamilyMemberDto } from '../types';
 
 export const isColorOrSize = (value: Pick<ProductAttributeValueDto, 'attribute_code'>): boolean =>
-  value.attribute_code === 'COLOR' || value.attribute_code === 'SIZE';
+  value.attribute_code === 'COLOR' || value.attribute_code.startsWith('SIZE');
 
 export type FamilySelection = Readonly<Record<number, number>>;
 export interface FamilyAttribute {

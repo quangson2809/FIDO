@@ -7,7 +7,7 @@ Branch: feature/catalog-dynamic-sku-selection. Reference demo1: 5c22e6c7b2ce6e03
 ## 1. Confirmed behavior
 
 - Customer selects only color and/or size, depending on the actual family. Material/capacity/finish and other Attributes are descriptive.
-- COLOR/SIZE codes identify the existing domain roles. Size values are read from assigned Options of this family: letter sizes, trouser numbers and shoe numbers are data, not category-specific code or a shared global size menu.
+- COLOR is the exact color role; Attribute codes starting with uppercase SIZE identify size roles (SIZE, SIZE_SHOES, SIZE_GIAY, etc). Size values are read from assigned Options of this family: letter sizes, trouser numbers and shoe numbers are data, not category-specific code or a shared global size menu.
 - Parent is both the display representative and one ordinary sellable combination. Its color/size tuple follows exactly the same rule as children.
 - Customer never chooses an SKU. SKU/Product ID is the internal result of resolving a complete, unique combination.
 - No manual SKU buttons, separate root choice, empty-parent exception or direct child URL bypass remains. Missing/ambiguous combinations cannot be purchased. A sold-out duplicate cannot make a tuple look unique.
@@ -98,3 +98,9 @@ No schema, table, dependency, applied migration or live-data change. Only develo
 Excluded: arbitrary purchase axes, manual SKU fallback, unsellable display-only parent, frontend post-pagination deduplication, global size lists and category hard-coding.
 
 The feature branch contains the implementation and tests. Completion depends on CI evidence for this revision; no merge into demo1, deployment or PR creation is implied.
+
+## 2026-11-14 follow-up: size Attribute prefix
+
+The owner now explicitly allows any code starting with SIZE to participate in combination selection. FE and BE use the same case-sensitive prefix, while COLOR stays exact. The shared frontend predicate also removes these values from the general specifications block, so a SIZE_SHOES value appears as a size selector rather than beside status/descriptive fields.
+
+Added regressions: exact SIZE and multiple prefixes, non-prefix controls, incomplete/duplicate tuples, API parent/child detail and family filtering, and browser selection of SIZE_SHOES with exact child Cart ID and no duplicate specifications label. Public HTTP conflicts remain CONFLICT; internal validation reasons are not added to the error contract. Runtime results for this follow-up must be read from the associated CI runs; older green runs do not prove this revision.

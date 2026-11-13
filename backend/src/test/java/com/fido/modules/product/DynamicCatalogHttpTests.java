@@ -3,6 +3,8 @@ package com.fido.modules.product;
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import java.util.*;
 import java.util.concurrent.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -236,6 +238,33 @@ class DynamicCatalogHttpTests extends CatalogHttpSupport {
                 f.productId(), "https://cdn.example.test/concurrent.jpg"),
                 w, () -> admin.updateProduct(w.id(), f.productId(), request));
         assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM product_images WHERE product_id=?", Integer.class, f.productId()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"SIZE_SHOES", "SIZE_GIAY", "SIZE_TROUSERS"})
+    void sizePrefixParticipatesInFamilyValidationAndDetail(String prefix) throws Exception {
+        Employee w = writer(); var f = createCatalog(w); createOperationalWarehouse();
+        long size = attribute(w, prefix);
+        long first = option(w, size, "39"), second = option(w, size, "40");
+        var parent = call("PATCH", "/api/v1/admin/products/" + f.productId(), w.token(),
+                Map.of("attribute_value_ids", List.of(first)));
+        assertEquals(200, parent.status(), parent.body());
+        long child = created(create(w, f.productId(), f.categoryId(), "ACTIVE", List.of(second)));
+        var duplicate = create(w, f.productId(), f.categoryId(), "ACTIVE", List.of(second));
+        assertEquals(409, duplicate.status(), duplicate.body());
+        assertEquals("CONFLICT", duplicate.data().get("code").asText());
+        var missing = create(w, f.productId(), f.categoryId(), "ACTIVE", List.of());
+        assertEquals(409, missing.status(), missing.body());
+        assertEquals("CONFLICT", missing.data().get("code").asText());
+        assertEquals(1, db.queryForObject("SELECT COUNT(*) FROM products WHERE parent_product_id=?", Integer.class, f.productId()),
+                "rejected duplicate/incomplete combinations must not persist another child");
+        var detail = call("GET", "/api/v1/catalog/products/" + child, null, null);
+        assertEquals(200, detail.status(), detail.body());
+        var data = detail.data().get("data");
+        assertTrue(data.get("attribute_values").get(0).get("attribute_code").asText().startsWith(prefix));
+        assertEquals(2, data.get("family").get("members").size());
+        assertEquals(first, data.get("family").get("members").get(0).get("attribute_values").get(0).get("attribute_value_id").asLong());
+        assertEquals(1, total("/api/v1/catalog/products?category_id=" + f.categoryId() + filter(size, "40")));
     }
 
 }

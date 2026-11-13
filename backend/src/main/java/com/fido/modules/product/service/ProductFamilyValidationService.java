@@ -69,7 +69,7 @@ public class ProductFamilyValidationService {
         if (members.size() < 2) return;
         Set<Long> selectionAttributes = new HashSet<>();
         attributes.findAllByOrderBySortOrderAscAttributeIdAsc().stream()
-                .filter(a -> "COLOR".equals(a.getCode()) || "SIZE".equals(a.getCode()))
+                .filter(a -> "COLOR".equals(a.getCode()) || a.getCode().startsWith("SIZE"))
                 .forEach(a -> selectionAttributes.add(a.getAttributeId()));
         Map<Long, Map<Long, Long>> signatures = new LinkedHashMap<>();
         members.forEach(m -> signatures.put(m.getProductId(), new TreeMap<>()));
