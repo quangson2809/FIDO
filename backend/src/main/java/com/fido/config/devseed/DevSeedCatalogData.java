@@ -57,8 +57,8 @@ public class DevSeedCatalogData {
                 INSERT INTO attributes(
                     id,code,name,is_required,is_variant_defining,sort_order
                 ) VALUES
-                (940001,'SIZE','Kích thước',FALSE,FALSE,1),
-                (940002,'COLOR','Màu sắc',FALSE,FALSE,2)
+                (940001,'SIZE','Kích thước',FALSE,TRUE,1),
+                (940002,'COLOR','Màu sắc',FALSE,TRUE,2)
                 """);
     }
 

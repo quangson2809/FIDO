@@ -1,85 +1,81 @@
-import type {
-  ProductAttributeValueDto,
-  ProductFamilyDto,
-  ProductFamilyMemberDto,
-} from '../types';
+import type { ProductAttributeValueDto, ProductFamilyDto, ProductFamilyMemberDto } from '../types';
 
-export type FamilyOptionCode = 'COLOR' | 'SIZE';
-
-export interface ProductSelectionMetadata {
-  root_product_id: number;
-  color_options: { option_id: number; value: string; label: string }[];
-  size_options: { option_id: number; value: string; label: string }[];
-  product_choices: {
-    product_id: number;
-    sku: string;
-    color_option_id: number | null;
-    size_option_id: number | null;
-    selling_price: number;
-    available_quantity: number;
-    purchasable: boolean;
-  }[];
+export type FamilySelection = Readonly<Record<number, number>>;
+export interface FamilyAttribute {
+  attribute_id: number;
+  name: string;
+  sort_order: number;
+  options: ProductAttributeValueDto[];
 }
-
-export const memberOption = (
-  member: ProductFamilyMemberDto,
-  code: FamilyOptionCode,
-): ProductAttributeValueDto | undefined =>
-  member.attribute_values.find((value) => value.attribute_code === code);
 
 export const memberIsPurchasable = (member: ProductFamilyMemberDto): boolean =>
   member.status === 'ACTIVE' && member.purchasable && member.available_quantity > 0;
 
-export const familyOptions = (
-  members: readonly ProductFamilyMemberDto[],
-  code: FamilyOptionCode,
-): ProductAttributeValueDto[] => {
-  const unique = new Map<number, ProductAttributeValueDto>();
+export const memberSelection = (member: Pick<ProductFamilyMemberDto, 'attribute_values'>): FamilySelection =>
+  Object.fromEntries(member.attribute_values.filter(value => value.is_variant_defining)
+    .map(value => [value.attribute_id, value.attribute_value_id]));
+
+export const familyAttributes = (members: readonly ProductFamilyMemberDto[]): FamilyAttribute[] => {
+  const axes = new Map<number, FamilyAttribute>();
   for (const member of members) {
     if (member.status !== 'ACTIVE') continue;
-    const option = memberOption(member, code);
-    if (option && !unique.has(option.attribute_value_id))
-      unique.set(option.attribute_value_id, option);
+    for (const value of member.attribute_values) {
+      if (!value.is_variant_defining) continue;
+      let axis = axes.get(value.attribute_id);
+      if (!axis) {
+        axis = { attribute_id: value.attribute_id, name: value.attribute_name,
+          sort_order: value.sort_order, options: [] };
+        axes.set(value.attribute_id, axis);
+      }
+      if (!axis.options.some(option => option.attribute_value_id === value.attribute_value_id))
+        axis.options.push(value);
+    }
   }
-  return [...unique.values()].sort((a, b) => a.label.localeCompare(b.label, 'vi'));
+  return [...axes.values()].sort((a, b) => a.sort_order - b.sort_order || a.attribute_id - b.attribute_id);
 };
 
 export const matchingFamilyMembers = (
-  members: readonly ProductFamilyMemberDto[],
-  colorId: number | null,
-  sizeId: number | null,
-): ProductFamilyMemberDto[] =>
-  members.filter((member) =>
-    member.status === 'ACTIVE'
-      && (colorId === null || memberOption(member, 'COLOR')?.attribute_value_id === colorId)
-      && (sizeId === null || memberOption(member, 'SIZE')?.attribute_value_id === sizeId));
+  members: readonly ProductFamilyMemberDto[], selection: FamilySelection,
+): ProductFamilyMemberDto[] => members.filter(member => member.status === 'ACTIVE'
+  && Object.entries(selection).every(([attributeId, optionId]) =>
+    memberSelection(member)[Number(attributeId)] === optionId));
 
-export const matchingPurchasableMembers = (
-  members: readonly ProductFamilyMemberDto[],
-  colorId: number | null,
-  sizeId: number | null,
-): ProductFamilyMemberDto[] =>
-  matchingFamilyMembers(members, colorId, sizeId).filter(memberIsPurchasable);
+export const selectionIsComplete = (axes: readonly FamilyAttribute[], selection: FamilySelection): boolean =>
+  axes.every(axis => selection[axis.attribute_id] !== undefined);
 
-export const deriveProductSelectionMetadata = (family: ProductFamilyDto): ProductSelectionMetadata => {
-  const choices = (code: FamilyOptionCode) =>
-    familyOptions(family.members, code).map((option) => ({
-      option_id: option.attribute_value_id,
-      value: option.value,
-      label: option.label,
-    }));
-  return {
-    root_product_id: family.root_product_id,
-    color_options: choices('COLOR'),
-    size_options: choices('SIZE'),
-    product_choices: family.members.map((member) => ({
-      product_id: member.product_id,
-      sku: member.sku,
-      color_option_id: memberOption(member, 'COLOR')?.attribute_value_id ?? null,
-      size_option_id: memberOption(member, 'SIZE')?.attribute_value_id ?? null,
-      selling_price: member.selling_price,
-      available_quantity: member.available_quantity,
-      purchasable: memberIsPurchasable(member),
-    })),
-  };
+export const resolveSelectedMember = (
+  family: ProductFamilyDto, selection: FamilySelection,
+): ProductFamilyMemberDto | undefined => {
+  const axes = familyAttributes(family.members);
+  if (!selectionIsComplete(axes, selection)) return undefined;
+  const matches = matchingFamilyMembers(family.members, selection);
+  // Stock must not hide a duplicate combination and make it appear unique.
+  return matches.length === 1 ? matches[0] : undefined;
+};
+
+/** Earlier metadata-ordered axes constrain later ones; changing an axis clears incompatible successors. */
+export const changeFamilySelection = (
+  members: readonly ProductFamilyMemberDto[], selection: FamilySelection,
+  attributeId: number, optionId: number,
+): FamilySelection => {
+  const next: Record<number, number> = {};
+  for (const axis of familyAttributes(members)) {
+    const selected = axis.attribute_id === attributeId ? optionId : selection[axis.attribute_id];
+    if (selected === undefined) continue;
+    const candidate = { ...next, [axis.attribute_id]: selected };
+    if (matchingFamilyMembers(members, candidate).length > 0) next[axis.attribute_id] = selected;
+  }
+  return next;
+};
+
+export const optionIsAvailable = (
+  members: readonly ProductFamilyMemberDto[], axes: readonly FamilyAttribute[],
+  selection: FamilySelection, attributeId: number, optionId: number,
+): boolean => {
+  const prefix: Record<number, number> = {};
+  for (const axis of axes) {
+    if (axis.attribute_id === attributeId) break;
+    if (selection[axis.attribute_id] !== undefined) prefix[axis.attribute_id] = selection[axis.attribute_id];
+  }
+  return matchingFamilyMembers(members, { ...prefix, [attributeId]: optionId }).some(memberIsPurchasable);
 };

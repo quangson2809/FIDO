@@ -31,3 +31,5 @@ frontend/*.tsbuildinfo
 coverage/
 
 frontend/.browser-evidence/
+
+frontend/.selection-dist/

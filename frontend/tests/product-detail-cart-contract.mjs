@@ -26,7 +26,7 @@ const brand = { brand_id: 1, name: 'FIDO', slug: 'fido', status: 'ACTIVE' };
 const attribute = {
   attribute_id: 1,
   attribute_code: 'MATERIAL',
-  attribute_name: 'Chất liệu',
+  attribute_name: 'Chất liệu', is_variant_defining: false, sort_order: 3,
   attribute_value_id: 101,
   value: 'COTTON',
   label: 'Cotton',
@@ -61,11 +61,11 @@ const emptyCart = {
   updated_at: null,
 };
 const colorValue = (id, value, label) => ({
-  attribute_id: 2, attribute_code: 'COLOR', attribute_name: 'Màu sắc',
+  attribute_id: 2, attribute_code: 'COLOR', attribute_name: 'Màu sắc', is_variant_defining: true, sort_order: 0,
   attribute_value_id: id, value, label,
 });
 const sizeValue = (id, value) => ({
-  attribute_id: 3, attribute_code: 'SIZE', attribute_name: 'Kích thước',
+  attribute_id: 3, attribute_code: 'SIZE', attribute_name: 'Kích thước', is_variant_defining: true, sort_order: 1,
   attribute_value_id: id, value, label: value,
 });
 const artwork = {
@@ -129,6 +129,31 @@ for (const item of [standalone, withoutImages]) {
     }] },
   });
 }
+// Metadata-driven fixtures: a single axis and three unrelated axes, without category rules.
+const dynamicValue = (id, code, label, option, value, order) => ({
+  attribute_id: id, attribute_code: code, attribute_name: label,
+  attribute_value_id: option, value, label: value, is_variant_defining: true, sort_order: order,
+});
+const addDynamicFamily = (rootId, rootValues, childValues) => {
+  const rows = [rootValues, childValues].map((attribute_values, index) => ({
+    ...product, product_id: rootId + index, parent_product_id: index ? rootId : null,
+    sku: 'DYNAMIC-' + (rootId + index), name: 'Dynamic ' + (rootId + index), attribute_values,
+  }));
+  const family = { root_product_id: rootId, members: rows.map(row => ({
+    ...row, available_quantity: 3, purchasable: true,
+  })) };
+  for (const row of rows) detailed.set(row.product_id, { ...row, family });
+};
+addDynamicFamily(8,
+  [dynamicValue(8, 'FINISH', 'Bề mặt', 81, 'Matte', 1)],
+  [dynamicValue(8, 'FINISH', 'Bề mặt', 82, 'Gloss', 1)]);
+addDynamicFamily(10,
+  [dynamicValue(10, 'TONE', 'Tông màu', 101, 'Đỏ', 1),
+   dynamicValue(11, 'CAPACITY', 'Dung lượng', 111, '128GB', 2),
+   dynamicValue(12, 'LENGTH', 'Chiều dài', 121, 'Dài', 3)],
+  [dynamicValue(10, 'TONE', 'Tông màu', 102, 'Vàng', 1),
+   dynamicValue(11, 'CAPACITY', 'Dung lượng', 112, '256GB', 2),
+   dynamicValue(12, 'LENGTH', 'Chiều dài', 122, 'Ngắn', 3)]);
 const expectedGallery = [product.images[0].image_url, artwork['black-m'], artwork['black-l'],
   artwork['white-l'], artwork['white-l-alt']];
 const thumbnailButtons = () => page.getByRole('button', { name: /^Xem ảnh \d+$/ });
@@ -283,7 +308,7 @@ try {
   assert.equal(await page.getByRole('button', { name: 'M · Hết hàng' }).isDisabled(),
     true, 'unavailable COLOR/SIZE combination must be disabled');
   await page.getByRole('button', { name: 'L', exact: true }).click();
-  await page.getByText('Có nhiều SKU cùng màu và kích thước.', { exact: false }).waitFor();
+  await page.getByText('Có nhiều SKU phù hợp.', { exact: false }).waitFor();
   assert.equal(await page.getByRole('button', { name: 'Chọn SKU phù hợp' }).isDisabled(), true,
     'ambiguous color and size cannot silently add the previous Product');
   await page.getByRole('button', { name: /FIDO-TEE-WHITE-L-ALT/ }).click();
@@ -352,6 +377,29 @@ try {
     { product_id: 2, quantity: 1 },
     { product_id: 5, quantity: 1 },
   ], 'inactive product is not added');
+  await page.goto('http://localhost:5184/products/8');
+  await page.getByText('SKU: DYNAMIC-8', { exact: true }).waitFor();
+  assert.equal(await page.getByRole('group', { name: 'Bề mặt', exact: true }).count(), 1);
+  assert.equal(await page.getByRole('group', { name: 'Kích thước', exact: true }).count(), 0);
+  await page.getByRole('button', { name: 'Gloss', exact: true }).click();
+  await page.waitForURL('**/products/9');
+  await page.getByText('SKU: DYNAMIC-9', { exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Thêm vào giỏ hàng', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Giỏ hàng của bạn' }).waitFor();
+  assert.deepEqual(cartRequests.at(-1), { product_id: 9, quantity: 1 });
+  await page.getByRole('dialog', { name: 'Giỏ hàng của bạn' }).getByRole('button', { name: 'Đóng giỏ hàng' }).click();
+  await page.goto('http://localhost:5184/products/10');
+  await page.getByText('SKU: DYNAMIC-10', { exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Vàng', exact: true }).click();
+  assert.equal(await page.getByRole('button', { name: 'Chọn SKU phù hợp', exact: true }).isDisabled(), true);
+  await page.getByRole('button', { name: '256GB', exact: true }).click();
+  assert.equal(await page.getByRole('button', { name: 'Chọn SKU phù hợp', exact: true }).isDisabled(), true);
+  await page.getByRole('button', { name: 'Ngắn', exact: true }).click();
+  await page.waitForURL('**/products/11');
+  await page.getByText('SKU: DYNAMIC-11', { exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Thêm vào giỏ hàng', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Giỏ hàng của bạn' }).waitFor();
+  assert.deepEqual(cartRequests.at(-1), { product_id: 11, quantity: 1 });
   assert.deepEqual(errors, [], 'no browser runtime errors');
   console.log(
     'Product family browser: shared deduplicated gallery, stable photo across SKU changes, independent-family reset, zoom/keyboard/responsive/empty gallery, COLOR/SIZE and exact Cart product_id guard: PASS.',

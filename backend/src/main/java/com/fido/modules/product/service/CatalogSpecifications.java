@@ -26,6 +26,7 @@ public final class CatalogSpecifications {
         return (root, query, cb) -> {
             var predicates = new ArrayList<Predicate>();
             predicates.add(cb.equal(root.get("status"), "ACTIVE"));
+            predicates.add(cb.isNull(root.get("parentProductId")));
             predicates.add(cb.isNull(root.get("deletedAt")));
 
             if (filter.query() != null && !filter.query().isBlank()) {
@@ -46,15 +47,28 @@ public final class CatalogSpecifications {
             if (filter.maxPrice() != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.<Long>get("sellingPrice"), filter.maxPrice()));
             }
-            for (var selected : optionIdsByAttribute.entrySet()) {
-                var matching = query.subquery(Long.class);
-                var value = matching.from(ProductAttributeValue.class);
-                matching.select(value.get("productId"));
-                matching.where(
-                        cb.equal(value.get("productId"), root.get("productId")),
-                        cb.equal(value.get("attributeId"), selected.getKey()),
-                        cb.equal(value.get("optionId"), selected.getValue()));
-                predicates.add(cb.exists(matching));
+            if (!optionIdsByAttribute.isEmpty()) {
+                var familyMatch = query.subquery(Long.class);
+                var sku = familyMatch.from(Product.class);
+                var skuPredicates = new ArrayList<Predicate>();
+                skuPredicates.add(cb.or(
+                        cb.equal(sku.get("productId"), root.get("productId")),
+                        cb.equal(sku.get("parentProductId"), root.get("productId"))));
+                skuPredicates.add(cb.equal(sku.get("status"), "ACTIVE"));
+                skuPredicates.add(cb.isNull(sku.get("deletedAt")));
+                for (var selected : optionIdsByAttribute.entrySet()) {
+                    var optionMatch = familyMatch.subquery(Long.class);
+                    var value = optionMatch.from(ProductAttributeValue.class);
+                    optionMatch.select(value.get("productId"));
+                    optionMatch.where(
+                            cb.equal(value.get("productId"), sku.get("productId")),
+                            cb.equal(value.get("attributeId"), selected.getKey()),
+                            cb.equal(value.get("optionId"), selected.getValue()));
+                    skuPredicates.add(cb.exists(optionMatch));
+                }
+                familyMatch.select(sku.get("productId"));
+                familyMatch.where(cb.and(skuPredicates.toArray(Predicate[]::new)));
+                predicates.add(cb.exists(familyMatch));
             }
             return cb.and(predicates.toArray(Predicate[]::new));
         };

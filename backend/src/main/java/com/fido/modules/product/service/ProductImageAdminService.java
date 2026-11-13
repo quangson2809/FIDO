@@ -160,7 +160,7 @@ public class ProductImageAdminService {
             }
         }
         List<ProductImage> current =
-                images.findAllByProductIdOrderBySortOrderAscImageIdAsc(productId);
+                images.findAllByProductIdForUpdate(productId);
         List<ProductImageInput> ordered =
                 requested.stream()
                         .sorted(java.util.Comparator.comparing(ProductImageInput::sort_order))
@@ -181,7 +181,7 @@ public class ProductImageAdminService {
                                                                 index == 0));
         if (unchanged) return;
         product.touch();
-        images.deleteAllByProductId(productId);
+        current.forEach(images::delete);
         em.flush();
         for (ProductImageInput item : requested) {
             ProductImage image = new ProductImage();

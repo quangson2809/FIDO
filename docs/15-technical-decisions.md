@@ -110,3 +110,12 @@ Owner-approved behavior and target schema are recorded; application/DTO/frontend
 - ProductImageAdminService.persistGalleryOrderAndPrimary names both primary selection and database persistence. replaceImages documents that the caller must already hold the Product write lock in the shared transaction.
 - Inventory posting uses idempotencyKey, sortByProductAndSourceId and normalizeReason to make duplicate prevention, processing order and reason normalization clear at call sites.
 - This is a naming/documentation change only. Existing permission expressions, transaction boundaries, lock order, flush sequence, stock/ledger semantics and HTTP/JSON contracts are preserved.
+
+## 2026-11-13 — Parent catalog summary and dynamic SKU selection
+
+- Owner request makes public list/search pagination parent-only. Search/name, category, brand and price retain parent-field semantics. Attribute equality filters use one correlated family-SKU EXISTS with all selected values on that same ACTIVE, non-deleted SKU. Admin list is unchanged.
+- Product attribute-value responses add is_variant_defining and Attribute sort_order. Existing family detail carries SKU identity, price, images and stock; no schema or new endpoint is required.
+- Frontend selector axes come only from variant-defining values present in the public family. Selection is Attribute ID → Option ID, with earlier metadata-ordered axes constraining later axes. A SKU is auto-resolved only after all axes are selected and exactly one ACTIVE SKU matches, regardless of whether a duplicate is out of stock.
+- An empty-selector root remains an explicit sellable Product, not a wildcard. Legacy families with no defining values require explicit SKU choice. Their existing records are not silently normalized; active families with defining values require complete consistent axes and unique combinations. Draft/non-public Products may be staged but activation is validated.
+- Product writes take shared Attribute metadata locks, then affected family roots in ID order, then the member. Metadata changes take exclusive Attribute locks and revalidate active families. All post-wait decisions use current locking reads, including current Option values, child-existence and gallery replacement; removals use those locked entities, avoiding derived-delete snapshot reads.
+- Development seed marks its existing SIZE/COLOR definitions variant-defining. Applied migrations and existing business data are untouched. No SKU generation, category-specific rules, dependency changes, commit or push are included.

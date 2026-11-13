@@ -13,6 +13,10 @@ public interface ProductAttributeValueRepository
     List<ProductAttributeValue> findAllByProductIdOrderByAttributeIdAsc(Long productId);
     List<ProductAttributeValue> findAllByProductIdInOrderByProductIdAscAttributeIdAsc(
             Collection<Long> productIds);
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_READ)
+    @Query("select v from ProductAttributeValue v where v.productId in :ids order by v.productId, v.attributeId")
+    List<ProductAttributeValue> findForFamilyValidation(@Param("ids") Collection<Long> ids);
+
     ProductAttributeValue save(ProductAttributeValue entity);
     void deleteAllByProductId(Long productId);
 

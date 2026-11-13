@@ -60,6 +60,7 @@ public class ProductAttributeValueReadService {
             }
             grouped.get(row.getProductId()).add(new ProductAttributeValueDto(
                     attribute.getAttributeId(), attribute.getCode(), attribute.getName(),
+                    attribute.isVariantDefining(), attribute.getSortOrder(),
                     option.getAttributeOptionId(), option.getValue(), option.getLabel()));
         }
         grouped.values().forEach(productValues -> productValues.sort(Comparator

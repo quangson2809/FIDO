@@ -40,6 +40,8 @@ export interface ProductAttributeValueDto {
   attribute_id: number;
   attribute_code: string;
   attribute_name: string;
+  is_variant_defining: boolean;
+  sort_order: number;
   attribute_value_id: number;
   value: string;
   label: string;

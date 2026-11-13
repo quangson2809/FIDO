@@ -43,7 +43,7 @@ Account contract rules:
 
 | Method | Route | Access | Contract |
 |---|---|---|---|
-| GET | `/catalog/products` | Public | Product search/list; supported filters must be explicitly defined against Product fields and approved attribute behavior. |
+| GET | `/catalog/products` | Public | Parent-only Product search/list: ACTIVE non-deleted rows with no parent; pagination counts matching parents. q/category/brand/price use parent fields. Attribute Option filters must all match one ACTIVE non-deleted Product in the family (parent or child), using EXISTS without expanding summary members. |
 | GET | `/catalog/products/{productId}` | Public | Row-owned Product detail with Option values, gallery and ACTIVE-only `family`; every member includes `available_quantity` (operational warehouse stock, missing balance = 0) and `purchasable` (ACTIVE and quantity > 0). Public family excludes non-public parents/siblings; no variant generation or DB schema change. |
 | GET | `/catalog/meta` | Public | Product-facing metadata definitions/options, with deterministic ordering. |
 | GET | `/cart` | JWT | Read the sole account-owned `OPEN` Cart. If none exists, return `CartDto(id=null, items=[], subtotal=0)` without writing. Multiple OPEN rows return `409 CART_SELECTION_AMBIGUOUS`; do not merge/select arbitrarily. |
