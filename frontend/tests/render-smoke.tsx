@@ -207,12 +207,7 @@ const product: ProductDetailDto = {
   ],
 };
 
-const {
-  familyOptions,
-  matchingFamilyMembers,
-  matchingPurchasableMembers,
-  deriveProductSelectionMetadata,
-} = await import(
+const { familyAttributes, matchingFamilyMembers, memberIsPurchasable } = await import(
   '../src/features/catalog/model/productFamilySelection'
 );
 const familyMembers = [
@@ -227,21 +222,18 @@ const familyMembers = [
       { attribute_id: 10, attribute_code: 'SIZE',
         attribute_name: 'Kích thước', attribute_value_id: 62, value: 'L', label: 'L' }] },
 ];
-assert.deepEqual(matchingFamilyMembers(familyMembers, 51, 61).map(v => v.product_id), [2]);
-assert.deepEqual(matchingFamilyMembers(familyMembers, 51, 62), []);
-assert.equal(familyOptions(familyMembers, 'COLOR').length, 2);
+assert.deepEqual(matchingFamilyMembers(familyMembers, { 9: 51, 10: 61 }).map(v => v.product_id), [2]);
+assert.deepEqual(matchingFamilyMembers(familyMembers, { 9: 51, 10: 62 }), []);
+assert.equal(familyAttributes(familyMembers).find(axis => axis.attribute_id === 9)?.options.length, 2);
 const stockMembers = [
   { ...familyMembers[0], available_quantity: 0, purchasable: false },
   { ...familyMembers[1], available_quantity: 4, purchasable: true },
 ];
-assert.deepEqual(matchingPurchasableMembers(stockMembers, 51, 61), []);
-assert.deepEqual(matchingPurchasableMembers(stockMembers, 52, 62).map(m => m.product_id), [3]);
-const derivedMeta = deriveProductSelectionMetadata({
-  root_product_id: 1, members: stockMembers,
-});
-assert.equal(derivedMeta.product_choices[0].purchasable, false);
-assert.equal(derivedMeta.product_choices[1].available_quantity, 4);
-assert.equal(derivedMeta.color_options.length, 2);
+assert.deepEqual(matchingFamilyMembers(stockMembers, { 9: 51, 10: 61 }).filter(memberIsPurchasable), []);
+assert.deepEqual(matchingFamilyMembers(stockMembers, { 9: 52, 10: 62 }).filter(memberIsPurchasable).map(m => m.product_id), [3]);
+assert.equal(memberIsPurchasable(stockMembers[0]), false);
+assert.equal(stockMembers[1].available_quantity, 4);
+assert.equal(familyAttributes(stockMembers).find(axis => axis.attribute_id === 9)?.options.length, 2);
 
 const purchasePanelHtml = renderToStaticMarkup(
   <ProductPurchasePanel product={product} quantity={1} onQuantityChange={noOp}

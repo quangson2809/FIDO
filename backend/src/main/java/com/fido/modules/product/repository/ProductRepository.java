@@ -27,9 +27,6 @@ public interface ProductRepository
     @Query("select p from Product p where (p.productId = :rootId or p.parentProductId = :rootId) and p.deletedAt is null and p.status = 'ACTIVE' order by p.productId")
     List<Product> findActiveFamilyForValidation(@Param("rootId") Long rootId);
 
-    @Query("select distinct coalesce(p.parentProductId, p.productId) from Product p where p.deletedAt is null and p.status = 'ACTIVE'")
-    List<Long> findActiveFamilyRootIds();
-
     Product save(Product entity);
 
     List<Product> findAllByProductIdIn(Collection<Long> productIds);

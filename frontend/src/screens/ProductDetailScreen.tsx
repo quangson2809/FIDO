@@ -12,13 +12,11 @@ import type { ProductDetailDto } from '../features/catalog/types';
 import { ProductFamilySelector } from '../features/catalog/components/ProductFamilySelector';
 import { ProductLongDescription } from '../features/catalog/components/ProductLongDescription';
 import {
-  familyAttributes,
+  isColorOrSize,
   changeFamilySelection,
-  matchingFamilyMembers,
   memberIsPurchasable,
   memberSelection,
   resolveSelectedMember,
-  selectionIsComplete,
   type FamilySelection,
 } from '../features/catalog/model/productFamilySelection';
 import { buildFamilyGallery } from '../features/catalog/model/productImageOrder';
@@ -41,7 +39,6 @@ export const ProductDetailScreen: React.FC = () => {
   const metadata = useCatalogMetadata();
   const [product, setProduct] = useState<ProductDetailDto | null>(null);
   const [selection, setSelection] = useState<FamilySelection>({});
-  const [explicitProductId, setExplicitProductId] = useState<number | null>(null);
   const recommendationQuery = useRemoteQuery(
     useCallback(() => catalogService.listProducts({ page: 1, page_size: 5 }), []),
   );
@@ -76,7 +73,6 @@ export const ProductDetailScreen: React.FC = () => {
         if (!active) return;
         setProduct(detail);
         setSelection(memberSelection(detail));
-        setExplicitProductId(detail.product_id);
         setSelectedImage((current) => current?.rootProductId === detail.family.root_product_id
           ? current : null);
         setQuantity(1);
@@ -108,7 +104,6 @@ export const ProductDetailScreen: React.FC = () => {
   const openFamilyProduct = (nextProductId: number) => {
     const member = product?.family.members.find(item => item.product_id === nextProductId);
     if (member) setSelection(memberSelection(member));
-    setExplicitProductId(nextProductId);
     if (String(nextProductId) !== productId) {
       setZoomOpen(false);
       navigate(productDetailPath(nextProductId));
@@ -119,7 +114,6 @@ export const ProductDetailScreen: React.FC = () => {
     if (!product) return;
     const next = changeFamilySelection(product.family.members, selection, attributeId, optionId);
     setSelection(next);
-    setExplicitProductId(null);
     const resolved = resolveSelectedMember(product.family, next);
     if (resolved && memberIsPurchasable(resolved)) openFamilyProduct(resolved.product_id);
   };
@@ -141,18 +135,9 @@ export const ProductDetailScreen: React.FC = () => {
     const url = gallery[index];
     if (product && url) setSelectedImage({ rootProductId: product.family.root_product_id, url });
   };
-  const axes = product ? familyAttributes(product.family.members) : [];
-  const complete = selectionIsComplete(axes, selection);
-  const matches = product ? matchingFamilyMembers(product.family.members, selection) : [];
-  const explicitRoot = routedMember !== undefined
-    && explicitProductId === routedMember.product_id
-    && routedMember.product_id === product?.family.root_product_id
-    && Object.keys(memberSelection(routedMember)).length === 0
-    && Object.keys(selection).length === 0;
-  const selectionReady = detailReady && routedMember !== undefined && (
-    explicitRoot || (complete && matches.some(member => member.product_id === routedMember.product_id)
-      && (matches.length === 1 || explicitProductId === routedMember.product_id))
-  );
+  const resolvedMember = product ? resolveSelectedMember(product.family, selection) : undefined;
+  const selectionReady = detailReady && routedMember !== undefined
+    && resolvedMember?.product_id === routedMember.product_id;
   const availableQuantity = routedMember?.available_quantity ?? 0;
   const purchasable = routedMember ? memberIsPurchasable(routedMember) : false;
 
@@ -239,7 +224,7 @@ export const ProductDetailScreen: React.FC = () => {
     brandName ? { label: 'Thương hiệu', value: brandName } : null,
     { label: 'Trạng thái', value: product.status },
     ...product.attribute_values
-      .filter((value) => !value.is_variant_defining)
+      .filter((value) => !isColorOrSize(value))
       .map((value) => ({
         label: metadata.data?.attributes.find((attribute) => attribute.id === value.attribute_id)
           ?.name ?? value.attribute_name,
@@ -306,10 +291,8 @@ export const ProductDetailScreen: React.FC = () => {
           )}
           <ProductFamilySelector
             family={product.family}
-            currentProductId={displayProduct.product_id}
             selection={selection}
             onSelectOption={selectFamilyOption}
-            onSelectProduct={openFamilyProduct}
           />
         </ProductPurchasePanel>
       </section>

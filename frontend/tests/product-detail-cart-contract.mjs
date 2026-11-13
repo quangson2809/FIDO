@@ -85,8 +85,8 @@ const child = (id, sku, name, price, color, size, image) => ({
   }],
   attribute_values: [attribute, color, size],
 });
-const blackM = child(2, 'FIDO-TEE-BLACK-M', 'Áo FIDO Đen M', 219000,
-  colorValue(201, 'BLACK', 'Đen'), sizeValue(301, 'M'), 'black-m');
+const blackM = child(2, 'FIDO-TEE-BLACK-S', 'Áo FIDO Đen S', 219000,
+  colorValue(201, 'BLACK', 'Đen'), sizeValue(301, 'S'), 'black-m');
 blackM.images.push({
   id: 2002, image_url: '/images/about/details.svg',
   is_primary: false, sort_order: 1,
@@ -99,6 +99,7 @@ const whiteL = child(4, 'FIDO-TEE-WHITE-L', 'Áo FIDO Trắng L', 229000,
 const whiteLAlt = child(5, 'FIDO-TEE-WHITE-L-ALT', 'Áo FIDO Trắng L kiểu khác', 249000,
   colorValue(202, 'WHITE', 'Trắng'), sizeValue(302, 'L'), 'white-l-alt');
 whiteL.images.push({ id: 2004, image_url: artwork['black-m'], is_primary: false, sort_order: 1 });
+product.attribute_values = [attribute, colorValue(201, 'BLACK', 'Đen'), sizeValue(303, 'M')];
 const familyProducts = [product, blackM, blackL, whiteL, whiteLAlt];
 const availableByProduct = new Map([[1, 8], [2, 2], [3, 0], [4, 3], [5, 4]]);
 const family = {
@@ -113,13 +114,13 @@ const family = {
 };
 const detailed = new Map(familyProducts.map((p) => [p.product_id, { ...p, family }]));
 const standalone = {
-  ...product, product_id: 6, sku: 'FIDO-SINGLE', name: 'Sản phẩm độc lập',
+  ...product, product_id: 6, sku: 'FIDO-SINGLE', name: 'Sản phẩm độc lập', attribute_values: [attribute],
   images: [
     { id: 6002, image_url: artwork['black-m'], is_primary: false, sort_order: 1 },
     { id: 6001, image_url: artwork['black-l'], is_primary: true, sort_order: 0 },
   ],
 };
-const withoutImages = { ...product, product_id: 7, sku: 'FIDO-EMPTY', name: 'Sản phẩm chưa có ảnh', images: [] };
+const withoutImages = { ...product, product_id: 7, sku: 'FIDO-EMPTY', name: 'Sản phẩm chưa có ảnh', attribute_values: [attribute], images: [] };
 for (const item of [standalone, withoutImages]) {
   const { product_id, parent_product_id, sku, name, selling_price, status, images, attribute_values } = item;
   detailed.set(item.product_id, {
@@ -129,31 +130,20 @@ for (const item of [standalone, withoutImages]) {
     }] },
   });
 }
-// Metadata-driven fixtures: a single axis and three unrelated axes, without category rules.
-const dynamicValue = (id, code, label, option, value, order) => ({
-  attribute_id: id, attribute_code: code, attribute_name: label,
-  attribute_value_id: option, value, label: value, is_variant_defining: true, sort_order: order,
-});
-const addDynamicFamily = (rootId, rootValues, childValues) => {
-  const rows = [rootValues, childValues].map((attribute_values, index) => ({
+// A color-only product and a size-only shoe use their own existing options.
+const addSingleAxisFamily = (rootId, values) => {
+  const rows = values.map((attributeValue, index) => ({
     ...product, product_id: rootId + index, parent_product_id: index ? rootId : null,
-    sku: 'DYNAMIC-' + (rootId + index), name: 'Dynamic ' + (rootId + index), attribute_values,
+    sku: 'DYNAMIC-' + (rootId + index), name: 'Dynamic ' + (rootId + index),
+    attribute_values: [attributeValue, attribute],
   }));
   const family = { root_product_id: rootId, members: rows.map(row => ({
     ...row, available_quantity: 3, purchasable: true,
   })) };
   for (const row of rows) detailed.set(row.product_id, { ...row, family });
 };
-addDynamicFamily(8,
-  [dynamicValue(8, 'FINISH', 'Bề mặt', 81, 'Matte', 1)],
-  [dynamicValue(8, 'FINISH', 'Bề mặt', 82, 'Gloss', 1)]);
-addDynamicFamily(10,
-  [dynamicValue(10, 'TONE', 'Tông màu', 101, 'Đỏ', 1),
-   dynamicValue(11, 'CAPACITY', 'Dung lượng', 111, '128GB', 2),
-   dynamicValue(12, 'LENGTH', 'Chiều dài', 121, 'Dài', 3)],
-  [dynamicValue(10, 'TONE', 'Tông màu', 102, 'Vàng', 1),
-   dynamicValue(11, 'CAPACITY', 'Dung lượng', 112, '256GB', 2),
-   dynamicValue(12, 'LENGTH', 'Chiều dài', 122, 'Ngắn', 3)]);
+addSingleAxisFamily(8, [colorValue(211, 'RED', 'Đỏ'), colorValue(212, 'YELLOW', 'Vàng')]);
+addSingleAxisFamily(10, [sizeValue(311, '39'), sizeValue(312, '41')]);
 const expectedGallery = [product.images[0].image_url, artwork['black-m'], artwork['black-l'],
   artwork['white-l'], artwork['white-l-alt']];
 const thumbnailButtons = () => page.getByRole('button', { name: /^Xem ảnh \d+$/ });
@@ -272,13 +262,10 @@ try {
 
   await cartDialog.getByRole('button', { name: 'Đóng giỏ hàng' }).click();
 
-  // Parent has no COLOR/SIZE. Its children supply only real sellable combinations.
-  await page.getByRole('button', { name: 'Đen', exact: true }).click();
-  assert.equal(await page.getByRole('button', { name: 'Chọn SKU phù hợp' }).isDisabled(), true,
-    'unresolved color selection must not add the root Product');
-  await page.getByRole('button', { name: 'M', exact: true }).click();
+  // Parent is Black/M; selecting another existing size resolves the child.
+  await page.getByRole('button', { name: 'S', exact: true }).click();
   await page.waitForURL('**/products/2');
-  await page.getByText('SKU: FIDO-TEE-BLACK-M', { exact: true }).waitFor();
+  await page.getByText('SKU: FIDO-TEE-BLACK-S', { exact: true }).waitFor();
   await page.getByText('219.000₫', { exact: true }).waitFor();
   await assertFamilyGallery();
   assert.equal(await heroImage().getAttribute('src'), artwork['white-l'], 'switching SKU preserves the current image');
@@ -305,23 +292,18 @@ try {
 
   // White/M does not exist. Switching color clears the incompatible size.
   await page.getByRole('button', { name: 'Trắng', exact: true }).click();
-  assert.equal(await page.getByRole('button', { name: 'M · Hết hàng' }).isDisabled(),
+  assert.equal(await page.getByRole('button', { name: 'S · Hết hàng' }).isDisabled(),
     true, 'unavailable COLOR/SIZE combination must be disabled');
   await page.getByRole('button', { name: 'L', exact: true }).click();
-  await page.getByText('Có nhiều SKU phù hợp.', { exact: false }).waitFor();
-  assert.equal(await page.getByRole('button', { name: 'Chọn SKU phù hợp' }).isDisabled(), true,
-    'ambiguous color and size cannot silently add the previous Product');
-  await page.getByRole('button', { name: /FIDO-TEE-WHITE-L-ALT/ }).click();
-  await page.waitForURL('**/products/5');
+  await page.getByRole('alert').filter({ hasText: 'Tổ hợp này chưa xác định được sản phẩm duy nhất' }).waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Chọn tùy chọn' }).isDisabled(), true);
+  assert.equal(await page.getByRole('button', { name: /FIDO-TEE-WHITE-L-ALT/ }).count(), 0,
+    'there is no manual SKU chooser for ambiguous combinations');
+  assert.equal(await page.getByRole('button', { name: /Sản phẩm gốc/ }).count(), 0);
+  await page.goto('http://localhost:5184/products/5');
   await page.getByText('SKU: FIDO-TEE-WHITE-L-ALT', { exact: true }).waitFor();
-  await page.getByText('249.000₫', { exact: true }).waitFor();
-  await assertFamilyGallery();
-  assert.equal(await heroImage().getAttribute('src'), artwork['black-l'], 'explicit SKU selection also preserves gallery selection');
-  await page.getByRole('button', { name: 'Thêm vào giỏ hàng', exact: true }).click();
-  assert.deepEqual(cartRequests.at(-1), { product_id: 5, quantity: 1 },
-    'Ambiguous COLOR/SIZE requires explicit SKU selection');
-  await page.getByRole('dialog', { name: 'Giỏ hàng của bạn' })
-    .getByRole('button', { name: 'Đóng giỏ hàng' }).click();
+  assert.equal(await page.getByRole('button', { name: 'Chọn tùy chọn' }).isDisabled(), true,
+    'a direct child URL cannot bypass tuple ambiguity');
 
   await page.goto('http://localhost:5184/products/3');
   await page.getByText('SKU: FIDO-TEE-BLACK-L', { exact: true }).waitFor();
@@ -375,13 +357,12 @@ try {
   assert.deepEqual(cartRequests, [
     { product_id: 1, quantity: 2 },
     { product_id: 2, quantity: 1 },
-    { product_id: 5, quantity: 1 },
   ], 'inactive product is not added');
   await page.goto('http://localhost:5184/products/8');
   await page.getByText('SKU: DYNAMIC-8', { exact: true }).waitFor();
-  assert.equal(await page.getByRole('group', { name: 'Bề mặt', exact: true }).count(), 1);
+  assert.equal(await page.getByRole('group', { name: 'Màu sắc', exact: true }).count(), 1);
   assert.equal(await page.getByRole('group', { name: 'Kích thước', exact: true }).count(), 0);
-  await page.getByRole('button', { name: 'Gloss', exact: true }).click();
+  await page.getByRole('button', { name: 'Vàng', exact: true }).click();
   await page.waitForURL('**/products/9');
   await page.getByText('SKU: DYNAMIC-9', { exact: true }).waitFor();
   await page.getByRole('button', { name: 'Thêm vào giỏ hàng', exact: true }).click();
@@ -390,11 +371,9 @@ try {
   await page.getByRole('dialog', { name: 'Giỏ hàng của bạn' }).getByRole('button', { name: 'Đóng giỏ hàng' }).click();
   await page.goto('http://localhost:5184/products/10');
   await page.getByText('SKU: DYNAMIC-10', { exact: true }).waitFor();
-  await page.getByRole('button', { name: 'Vàng', exact: true }).click();
-  assert.equal(await page.getByRole('button', { name: 'Chọn SKU phù hợp', exact: true }).isDisabled(), true);
-  await page.getByRole('button', { name: '256GB', exact: true }).click();
-  assert.equal(await page.getByRole('button', { name: 'Chọn SKU phù hợp', exact: true }).isDisabled(), true);
-  await page.getByRole('button', { name: 'Ngắn', exact: true }).click();
+  assert.equal(await page.getByRole('group', { name: 'Màu sắc', exact: true }).count(), 0);
+  assert.equal(await page.getByRole('button', { name: 'S', exact: true }).count(), 0);
+  await page.getByRole('button', { name: '41', exact: true }).click();
   await page.waitForURL('**/products/11');
   await page.getByText('SKU: DYNAMIC-11', { exact: true }).waitFor();
   await page.getByRole('button', { name: 'Thêm vào giỏ hàng', exact: true }).click();

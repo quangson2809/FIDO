@@ -4,12 +4,31 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 import java.util.UUID;
 
 class ProductCoreHttpTests extends CatalogHttpSupport {
+    private Long colorAttribute;
+    private final java.util.List<Long> colorOptions = new java.util.ArrayList<>();
+
+    @AfterEach void cleanColorValues() {
+        for (Long id : products) db.update("DELETE FROM product_attribute_values WHERE product_id=?", id);
+        for (Long id : colorOptions) db.update("DELETE FROM attribute_options WHERE id=?", id);
+        if (colorAttribute != null) db.update("DELETE FROM attributes WHERE id=?", colorAttribute);
+    }
+
+    private long colorOption(String value) {
+        if (colorAttribute == null) {
+            db.update("INSERT INTO attributes(code,name,is_required,is_variant_defining,sort_order) VALUES ('COLOR','Color',FALSE,TRUE,0)");
+            colorAttribute = db.queryForObject("SELECT id FROM attributes WHERE code='COLOR'", Long.class);
+        }
+        db.update("INSERT INTO attribute_options(attribute_id,`value`,label,sort_order) VALUES (?,?,?,0)", colorAttribute, value, value);
+        long id = db.queryForObject("SELECT id FROM attribute_options WHERE attribute_id=? AND `value`=?", Long.class, colorAttribute, value);
+        colorOptions.add(id); return id;
+    }
 
     @Test
     void productsOwnTheirSkuAndIntegerVndPriceAndHierarchyStopsAtOneLevel() throws Exception {
@@ -266,7 +285,12 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
         body.put("selling_price", price);
         body.put("status", "ACTIVE");
         if (name != null) body.put("name", name);
-        if (parentId != null) body.put("parent_product_id", parentId);
+        if (parentId != null) {
+            body.put("parent_product_id", parentId);
+            long parentColor = colorOption("PARENT-" + parentId);
+            db.update("INSERT INTO product_attribute_values(product_id,attribute_id,option_id) VALUES (?,?,?)", parentId, colorAttribute, parentColor);
+            body.put("attribute_value_ids", List.of(colorOption("CHILD-" + sku)));
+        }
         return call("POST", "/api/v1/admin/products", writer.token(), body);
     }
 }

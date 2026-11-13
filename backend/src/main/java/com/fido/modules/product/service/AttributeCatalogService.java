@@ -31,7 +31,6 @@ public class AttributeCatalogService {
     private static final String WRITE =
             "hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_CATALOG_WRITE')";
     private final AttributeRepository attributes;
-    private final ProductFamilyValidationService families;
     private final AttributeOptionRepository options;
     private final ProductAttributeValueRepository productValues;
     private final AuditWriteService audit;
@@ -39,13 +38,11 @@ public class AttributeCatalogService {
 
     public AttributeCatalogService(
             AttributeRepository attributes,
-            ProductFamilyValidationService families,
             AttributeOptionRepository options,
             ProductAttributeValueRepository productValues,
             AuditWriteService audit,
             EntityManager entityManager) {
         this.attributes = attributes;
-        this.families = families;
         this.options = options;
         this.productValues = productValues;
         this.audit = audit;
@@ -98,7 +95,6 @@ public class AttributeCatalogService {
 
         attributes.save(attribute);
         flushOrConflict("Attribute update conflicts with existing data");
-        if (request.isVariantDefiningPresent()) families.validateAllActiveFamilies();
         audit.record(AuditWriteEvent.of(AuditAction.ATTRIBUTE_UPDATE,
                 AuditEntityType.ATTRIBUTE, attributeId.toString()));
         return AttributeMapper.attribute(attribute, findOptions(attributeId));

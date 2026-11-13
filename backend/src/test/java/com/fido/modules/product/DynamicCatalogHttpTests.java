@@ -34,7 +34,8 @@ class DynamicCatalogHttpTests extends CatalogHttpSupport {
         return employee(role);
     }
     private long attribute(Employee writer, String name) throws Exception {
-        String code = name + "_" + UUID.randomUUID().toString().replace("-", "");
+        String code = ("COLOR".equals(name) || "SIZE".equals(name)) ? name
+                : name + "_" + UUID.randomUUID().toString().replace("-", "");
         var r = call("POST", "/api/v1/admin/catalog/attributes", writer.token(),
                 Map.of("code", code, "name", name, "is_required", false, "is_variant_defining", true));
         assertEquals(201, r.status(), r.body());
@@ -107,7 +108,7 @@ class DynamicCatalogHttpTests extends CatalogHttpSupport {
 
     @Test void duplicateIncompleteActivationAndReparentingRollBack() throws Exception {
         Employee w = writer(); var f = createCatalog(w);
-        long color = attribute(w, "TONE"), size = attribute(w, "CAPACITY");
+        long color = attribute(w, "COLOR"), size = attribute(w, "SIZE");
         long black = option(w, color, "BLACK"), white = option(w, color, "WHITE");
         long small = option(w, size, "28"), large = option(w, size, "32");
         assertEquals(200, call("PATCH", "/api/v1/admin/products/" + f.productId(), w.token(),
@@ -126,26 +127,35 @@ class DynamicCatalogHttpTests extends CatalogHttpSupport {
         assertNull(db.queryForObject("SELECT parent_product_id FROM products WHERE id=?", Long.class, separate));
     }
 
-    @Test void metadataChangeCannotCollapseDistinctCombinations() throws Exception {
+    @Test void colorSizeTuplesRemainUniqueRegardlessOfDescriptiveFlags() throws Exception {
         Employee w = writer(); var f = createCatalog(w);
-        long color = attribute(w, "TONE"), size = attribute(w, "LENGTH");
+        long color = attribute(w, "COLOR"), size = attribute(w, "SIZE");
         long black = option(w, color, "BLACK"), m = option(w, size, "39"), l = option(w, size, "41");
         assertEquals(200, call("PATCH", "/api/v1/admin/products/" + f.productId(), w.token(), Map.of("attribute_value_ids", List.of(black, m))).status());
         created(create(w, f.productId(), f.categoryId(), "ACTIVE", List.of(black, l)));
         var changed = call("PATCH", "/api/v1/admin/catalog/attributes/" + size, w.token(), Map.of("is_variant_defining", false));
-        assertEquals(409, changed.status(), changed.body());
-        assertEquals(true, db.queryForObject("SELECT is_variant_defining FROM attributes WHERE id=?", Boolean.class, size));
+        assertEquals(200, changed.status(), changed.body());
+        assertEquals(409, create(w, f.productId(), f.categoryId(), "ACTIVE", List.of(black, l)).status());
+        assertEquals(false, db.queryForObject("SELECT is_variant_defining FROM attributes WHERE id=?", Boolean.class, size));
     }
 
-    @Test void rootWithoutSelectorsRemainsExplicitSellableFamilyMember() throws Exception {
-        Employee w = writer(); var f = createCatalog(w); long attr = attribute(w, "FINISH");
-        long matte = option(w, attr, "MATTE");
-        long child = created(create(w, f.productId(), f.categoryId(), "ACTIVE", List.of(matte)));
+    @Test void parentMustCarryItsOwnColorOrSizeCombination() throws Exception {
+        Employee w = writer(); var f = createCatalog(w); long attr = attribute(w, "COLOR");
+        long black = option(w, attr, "BLACK");
+        var rejected = create(w, f.productId(), f.categoryId(), "ACTIVE", List.of(black));
+        assertEquals(409, rejected.status(), rejected.body());
+        assertEquals(409, create(w, f.productId(), f.categoryId(), "ACTIVE", List.of()).status());
+        assertEquals(200, call("PATCH", "/api/v1/admin/products/" + f.productId(), w.token(),
+                Map.of("attribute_value_ids", List.of(black))).status());
+        long white = option(w, attr, "WHITE");
+        long child = created(create(w, f.productId(), f.categoryId(), "ACTIVE", List.of(white)));
         var detail = call("GET", "/api/v1/catalog/products/" + child, null, null);
         var members = detail.data().get("data").get("family").get("members");
-        assertEquals(2, members.size()); assertEquals(f.productId(), members.get(0).get("product_id").asLong());
-        assertEquals(0, members.get(0).get("attribute_values").size());
+        assertEquals(2, members.size());
+        assertEquals(f.productId(), members.get(0).get("product_id").asLong());
+        assertEquals(black, members.get(0).get("attribute_values").get(0).get("attribute_value_id").asLong());
     }
+
     private <T> T afterConcurrentCommit(long rootId, Runnable committedChange, Employee writer,
             Callable<T> mutation) throws Exception {
         var pool = Executors.newFixedThreadPool(2);
@@ -204,7 +214,7 @@ class DynamicCatalogHttpTests extends CatalogHttpSupport {
         try {
             var rejected = assertThrows(ExecutionException.class, () -> afterConcurrentCommit(f.productId(),
                     () -> db.update("INSERT INTO products(parent_product_id,category_id,sku,selling_price,status) VALUES (?,?,?,?,?)",
-                            f.productId(), f.categoryId(), sku, 100000, "ACTIVE"),
+                            f.productId(), f.categoryId(), sku, 100000, "DRAFT"),
                     w, () -> admin.updateProduct(w.id(), f.productId(), request)));
             assertInstanceOf(org.springframework.web.server.ResponseStatusException.class, rejected.getCause());
             assertEquals(409, ((org.springframework.web.server.ResponseStatusException) rejected.getCause()).getStatusCode().value());

@@ -1,5 +1,8 @@
 import type { ProductAttributeValueDto, ProductFamilyDto, ProductFamilyMemberDto } from '../types';
 
+export const isColorOrSize = (value: Pick<ProductAttributeValueDto, 'attribute_code'>): boolean =>
+  value.attribute_code === 'COLOR' || value.attribute_code === 'SIZE';
+
 export type FamilySelection = Readonly<Record<number, number>>;
 export interface FamilyAttribute {
   attribute_id: number;
@@ -12,7 +15,7 @@ export const memberIsPurchasable = (member: ProductFamilyMemberDto): boolean =>
   member.status === 'ACTIVE' && member.purchasable && member.available_quantity > 0;
 
 export const memberSelection = (member: Pick<ProductFamilyMemberDto, 'attribute_values'>): FamilySelection =>
-  Object.fromEntries(member.attribute_values.filter(value => value.is_variant_defining)
+  Object.fromEntries(member.attribute_values.filter(isColorOrSize)
     .map(value => [value.attribute_id, value.attribute_value_id]));
 
 export const familyAttributes = (members: readonly ProductFamilyMemberDto[]): FamilyAttribute[] => {
@@ -20,11 +23,11 @@ export const familyAttributes = (members: readonly ProductFamilyMemberDto[]): Fa
   for (const member of members) {
     if (member.status !== 'ACTIVE') continue;
     for (const value of member.attribute_values) {
-      if (!value.is_variant_defining) continue;
+      if (!isColorOrSize(value)) continue;
       let axis = axes.get(value.attribute_id);
       if (!axis) {
         axis = { attribute_id: value.attribute_id, name: value.attribute_name,
-          sort_order: value.sort_order, options: [] };
+          sort_order: value.sort_order ?? 0, options: [] };
         axes.set(value.attribute_id, axis);
       }
       if (!axis.options.some(option => option.attribute_value_id === value.attribute_value_id))
@@ -48,6 +51,8 @@ export const resolveSelectedMember = (
 ): ProductFamilyMemberDto | undefined => {
   const axes = familyAttributes(family.members);
   if (!selectionIsComplete(axes, selection)) return undefined;
+  if (axes.length === 0 && family.members.filter(member => member.status === 'ACTIVE').length > 1)
+    return undefined;
   const matches = matchingFamilyMembers(family.members, selection);
   // Stock must not hide a duplicate combination and make it appear unique.
   return matches.length === 1 ? matches[0] : undefined;

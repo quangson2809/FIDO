@@ -67,32 +67,26 @@ public class ProductFamilyValidationService {
         em.flush();
         List<Product> members = products.findActiveFamilyForValidation(rootId);
         if (members.size() < 2) return;
-        Set<Long> defining = new HashSet<>();
+        Set<Long> selectionAttributes = new HashSet<>();
         attributes.findAllByOrderBySortOrderAscAttributeIdAsc().stream()
-                .filter(a -> a.isVariantDefining()).forEach(a -> defining.add(a.getAttributeId()));
+                .filter(a -> "COLOR".equals(a.getCode()) || "SIZE".equals(a.getCode()))
+                .forEach(a -> selectionAttributes.add(a.getAttributeId()));
         Map<Long, Map<Long, Long>> signatures = new LinkedHashMap<>();
         members.forEach(m -> signatures.put(m.getProductId(), new TreeMap<>()));
         for (var value : values.findForFamilyValidation(members.stream().map(Product::getProductId).toList())) {
-            if (defining.contains(value.getAttributeId())) {
+            if (selectionAttributes.contains(value.getAttributeId())) {
                 signatures.get(value.getProductId()).put(value.getAttributeId(), value.getOptionId());
             }
         }
         Set<Long> axes = new HashSet<>();
         signatures.values().forEach(s -> axes.addAll(s.keySet()));
-        // Legacy families without defining metadata require explicit SKU selection in the UI.
-        if (axes.isEmpty()) return;
+        if (axes.isEmpty()) throw conflict("PRODUCT_FAMILY_SELECTION_ATTRIBUTES_MISSING");
         Set<Map<Long, Long>> seen = new HashSet<>();
         for (var member : signatures.entrySet()) {
             Map<Long, Long> signature = member.getValue();
-            // The independently sellable root is an explicit choice, never a wildcard.
-            if (member.getKey().equals(rootId) && signature.isEmpty()) continue;
             if (!signature.keySet().equals(axes)) throw conflict("PRODUCT_FAMILY_ATTRIBUTES_INCONSISTENT");
             if (!seen.add(signature)) throw conflict("PRODUCT_FAMILY_COMBINATION_DUPLICATE");
         }
-    }
-
-    public void validateAllActiveFamilies() {
-        for (Long rootId : products.findActiveFamilyRootIds()) validateFamily(rootId);
     }
 
     private static ResponseStatusException conflict(String code) {

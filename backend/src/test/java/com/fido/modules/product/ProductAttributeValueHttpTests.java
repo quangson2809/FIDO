@@ -41,6 +41,7 @@ class ProductAttributeValueHttpTests extends CatalogHttpSupport {
     void persistsOptionOnlyValuesAndReturnsCompleteParentChildDetails() throws Exception {
         Employee writer = catalogWriter();
         long colorId = createAttribute(writer, "COLOR", "Color", false);
+        db.update("UPDATE attributes SET code='COLOR' WHERE id=?", colorId);
         long materialId = createAttribute(writer, "MATERIAL", "Material", false);
         long blackOptionId = createOption(writer, colorId, "BLACK", "Black");
         long cottonOptionId = createOption(writer, materialId, "COTTON", "Cotton");
@@ -75,7 +76,7 @@ class ProductAttributeValueHttpTests extends CatalogHttpSupport {
 
         String suffix = UUID.randomUUID().toString().replace("-", "");
         long parentId = createProduct(writer, "PARENT-" + suffix, "Tee", 120000, null, "ACTIVE",
-                List.of(blackOptionId, cottonOptionId));
+                List.of(whiteOptionId, cottonOptionId));
         long childId = createProduct(writer, "CHILD-" + suffix, "Tee child", 135000, parentId, "ACTIVE",
                 List.of(blackOptionId, cottonOptionId));
 

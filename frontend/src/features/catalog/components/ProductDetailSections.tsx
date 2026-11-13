@@ -169,7 +169,7 @@ export const ProductPurchasePanel: React.FC<{
       )}
       {isActive && !selectionReady && (
         <p role="status" className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Chọn SKU phù hợp với màu sắc và kích thước trước khi thêm vào giỏ hàng.
+          Chọn đủ tùy chọn của sản phẩm trước khi thêm vào giỏ hàng.
         </p>
       )}
 
@@ -209,7 +209,7 @@ export const ProductPurchasePanel: React.FC<{
           >
             {!isActive ? 'Không khả dụng'
               : !purchasable ? 'Hết hàng'
-                : !selectionReady ? 'Chọn SKU phù hợp'
+                : !selectionReady ? 'Chọn tùy chọn'
                   : quantity > maxQuantity ? 'Vượt số lượng tồn' : 'Thêm vào giỏ hàng'}
           </button>
         </div>

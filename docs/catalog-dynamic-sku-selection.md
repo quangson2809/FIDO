@@ -1,49 +1,52 @@
-# Product catalog and dynamic SKU selection — implementation status
+# Catalog parent summaries and color/size selection
 
-Date: 2026-11-13 (Asia/Ho_Chi_Minh). Branch: `feature/catalog-dynamic-sku-selection`, based on `demo1` at `5c22e6c7b2ce6e03f41c60a658b45ab17b9135cc`. The latest user instruction authorizes a new branch and overrides the prompt's earlier prohibition on branch creation. The subsequent owner instruction authorizes committing and pushing this feature branch. No PR, merge or change to demo1 is included.
+Status: corrected implementation; runtime verification of this revision is pending CI. Owner clarification on 2026-11-13 overrides the earlier generic-attribute and manual-SKU selection behavior.
 
-## 1. Discovery before implementation
+Branch: feature/catalog-dynamic-sku-selection. Reference demo1: 5c22e6c7b2ce6e03f41c60a658b45ab17b9135cc. The owner has authorized commit/push on this feature branch; demo1 is not modified or merged.
 
-| File/module | Existing implementation | Gap | Change? | Reason |
-|---|---|---|---|---|
-| CatalogSpecifications | Public pagination selects all ACTIVE Products | Child rows appear separately; direct Option filters miss child-only matches | Yes | Root-only predicate plus one correlated family-SKU EXISTS containing all selected Options |
-| PublicCatalogQueryService | Database paging, batched thumbnails, row-owned summary | Query predicates need changing; summary projection is already suitable | Keep orchestration | No child expansion or FE post-pagination filtering |
-| PublicCatalogController/CatalogProductFilter | Existing bracketed attribute_filters[CODE]=VALUE contract | No new route or parameter needed | Keep | Filter parser and invalid-value handling reused |
-| ProductFamily detail | ACTIVE undeleted root/children with independent price/gallery/stock | Already supplies SKU identity and availability | Keep | Direct child detail still loads its whole public family |
-| ProductAttributeValueDto/ReadService | Attribute/Option identity and label | Defining flag and Attribute order absent | Yes | Add is_variant_defining and sort_order |
-| CatalogMetaService | Already returns Attribute flags/options/order | No gap | Keep | Existing metadata contract is sufficient |
-| ProductAttributeValueValidator | Validates Option identity/ownership and one Option per Attribute | No family-level combination consistency/uniqueness | Add family validator | Protect create/update/activation/reparent/metadata changes |
-| ProductFamilySelector/model/detail screen | COLOR/SIZE-specific state and matching | Cannot select arbitrary Attribute sets | Yes | Generic Attribute-ID to Option-ID selection with centralized resolution |
-| CatalogBrowse/hooks/service | Uses API pagination totals without removing children | No FE filtering needed | Keep | Root paging is the backend responsibility |
-| Admin list | Manages root and child Product rows | No requested change | Keep | Public summary semantics must not alter admin visibility |
-| DevSeedCatalogData | Existing COLOR/SIZE definitions have defining=false | Seed cannot exercise dynamic axes | Yes, seed only | New development seeds use the existing metadata flag |
-| Schema/migrations | Existing parent ID, Attribute flags and Option assignments | Sufficient model | No | No table/column/index/migration change required |
+## 1. Confirmed behavior
 
-Search/name, category, brand and price continue to use root fields. Searching child-only names or matching child-only prices has not been introduced. Attribute filters may match the sellable root or an ACTIVE undeleted child, but all selected Options must belong to the same SKU.
+- Customer selects only color and/or size, depending on the actual family. Material/capacity/finish and other Attributes are descriptive.
+- COLOR/SIZE codes identify the existing domain roles. Size values are read from assigned Options of this family: letter sizes, trouser numbers and shoe numbers are data, not category-specific code or a shared global size menu.
+- Parent is both the display representative and one ordinary sellable combination. Its color/size tuple follows exactly the same rule as children.
+- Customer never chooses an SKU. SKU/Product ID is the internal result of resolving a complete, unique combination.
+- No manual SKU buttons, separate root choice, empty-parent exception or direct child URL bypass remains. Missing/ambiguous combinations cannot be purchased. A sold-out duplicate cannot make a tuple look unique.
+- Standalone Products without variants remain purchasable. Active multi-member families require at least one COLOR/SIZE axis, a complete consistent axis set for every member including the parent, and unique tuples. Draft/non-public rows can be prepared before activation.
 
-## 2. Implemented behavior and validation
+## 2. Source discovery and change map
 
-- Public list returns one ACTIVE undeleted root per row. Count/total_pages are calculated by the database from those roots. Summary does not return family.members.
-- Detail reuses the existing family response. Attribute-value records add `is_variant_defining` and Attribute `sort_order`; no endpoint is added.
-- FE axes and Options come from actual public family values with defining=true, ordered by metadata. Letter and numeric size values and arbitrary non-size Attributes use the same algorithm.
-- Earlier metadata-ordered axes constrain later axes; changing an earlier value clears incompatible successors. Missing selection never auto-selects a size or a SKU. A complete combination auto-resolves only if exactly one ACTIVE member matches. Stock cannot conceal a duplicate combination. Purchases additionally require positive stock and the detail response for the routed Product ID.
-- A root without defining values is an explicit Product choice, never a wildcard. Families with no defining values use explicit SKU buttons rather than inferred combinations. This preserves existing sellable records while metadata is reviewed; no production normalization is performed.
-- With defining axes present, ACTIVE members must have the same complete axis set and unique Option tuples. The empty root is the explicit exception above. Draft/non-public rows can be prepared independently; activation and reparenting revalidate the affected family. Metadata changes revalidate ACTIVE families. Existing one-Option-per-Attribute/ownership checks remain.
-- Product writes share-lock Attribute metadata, lock affected roots in ascending ID order, then lock the member. Metadata edits use exclusive metadata locks. Option/children/gallery decisions after a lock wait use current locking reads. Attribute/gallery removals operate on the already locked entities so Spring Data derived deletes cannot read an old MySQL snapshot.
-- No automatic SKU generation, category-specific size rules, new framework, unrelated Admin API change, cart/checkout rewrite or new design-pattern layer is included.
+| File/module | Existing state | Result |
+|---|---|---|
+| CatalogSpecifications | Public list paged all Products; Option checks matched the returned row | Parent-only DB paging; all selected Options must match one ACTIVE undeleted member using EXISTS |
+| PublicCatalogQueryService | Batched summary reads and existing family detail | Reused; no summary child expansion |
+| Controller/filter | Existing attribute_filters[CODE]=VALUE parser | Reused; no route or request parameter added |
+| Detail DTO/read service | Row/family identity, stock and Option data available | Added is_variant_defining and Attribute sort_order; purchase roles remain COLOR/SIZE only |
+| CatalogMetaService | Existing metadata/options/order | Reused |
+| ProductFamilyValidationService | Earlier implementation allowed an empty parent and generic defining axes | Parent and children now share complete, unique COLOR/SIZE tuples; no empty-axis multi-member family |
+| ProductAdminService / repositories / gallery | Post-wait reads could retain MySQL snapshot state | Current locking reads and deletion of locked entities protect values, hierarchy and gallery replacement |
+| Selector/model/detail screen | Earlier implementation exposed manual SKU/root choices | Only actual color/size controls; complete unique Product ID resolution, including direct child routes |
+| CatalogBrowse/hooks/service | Uses backend page data/meta | Reused; no child filtering after pagination |
+| Admin list | Root/child administration | Unchanged |
+| Seed | COLOR/SIZE defining flags false | Development seed flags true; no applied migration/business-data edits |
 
-## 3. API examples
+Search, category, brand and price continue to use parent fields. Searching child-only names or child-only prices is not introduced. Attribute equality filters may still use other descriptive Attributes; every requested Option must match the same family member.
 
-The IDs/codes below are illustrative, not captured database responses. Family: root100=BLACK/M, child101=BLACK/L, child102=WHITE/M. Root identification/price remain the summary values.
+## 3. API contract and examples
 
-| Request | Expected rows |
+- GET /api/v1/catalog/products: query semantics change to parent-only; response shape stays the same.
+- GET /api/v1/catalog/products/{productId}: parent and direct child detail remain available, with existing family.members. Attribute records add is_variant_defining and sort_order.
+- Metadata routes already supply the required definitions. Admin list and write request payload shapes are unchanged. Invalid active family combinations are rejected with409.
+
+Illustrative family: root100 BLACK/M, child101 BLACK/L, child102 WHITE/M. IDs below are examples, not captured production output.
+
+| Request | Expected result |
 |---|---|
-| GET /api/v1/catalog/products?page=1&page_size=20 | Root100 once; never101/102 as separate rows |
-| GET /api/v1/catalog/products?q=Tee | Matching roots only; q matches root names |
-| GET /api/v1/catalog/products?attribute_filters[COLOR]=WHITE&attribute_filters[SIZE]=M | Root100 |
-| GET /api/v1/catalog/products?attribute_filters[COLOR]=WHITE&attribute_filters[SIZE]=L | No match |
-| GET /api/v1/catalog/products/100 | Root100 row detail and ACTIVE public family100/101/102 |
-| GET /api/v1/catalog/products/102 | Child102 row detail and the same public family; selected Options come from102 |
+| /api/v1/catalog/products?page=1&page_size=20 | Root100 once; no separate101/102 summaries |
+| /api/v1/catalog/products?q=Tee | Matching root names only |
+| /api/v1/catalog/products?attribute_filters[COLOR]=WHITE&attribute_filters[SIZE]=M | Root100 |
+| /api/v1/catalog/products?attribute_filters[COLOR]=WHITE&attribute_filters[SIZE]=L | No result |
+| /api/v1/catalog/products/100 | Parent detail with own BLACK/M values and public family |
+| /api/v1/catalog/products/102 | Child detail with own WHITE/M values and same public family |
 
 Summary response example:
 
@@ -51,82 +54,47 @@ Summary response example:
 {"data":[{"product_id":100,"parent_product_id":null,"sku":"TEE-BLACK-M","name":"Tee","slug":"tee","thumbnail":null,"category":null,"brand":null,"selling_price":100000,"status":"ACTIVE"}],"meta":{"page":1,"page_size":20,"total":1,"total_pages":1}}
 ```
 
-Root/child detail retain all existing fields. The following is an excerpt showing the additive Attribute record and family identity (other existing detail/member fields omitted):
+Attribute record excerpt from either parent/child detail:
 
 ```json
-{"data":{"product_id":102,"parent_product_id":100,"attribute_values":[{"attribute_id":1,"attribute_code":"COLOR","attribute_name":"Màu sắc","is_variant_defining":true,"sort_order":1,"attribute_value_id":12,"value":"WHITE","label":"Trắng"}],"family":{"root_product_id":100,"members":[{"product_id":100},{"product_id":101},{"product_id":102}]}}}
+{"attribute_id":2,"attribute_code":"SIZE","attribute_name":"Kích thước","is_variant_defining":true,"sort_order":2,"attribute_value_id":21,"value":"M","label":"M"}
 ```
 
-Endpoint status: public list query behavior changes; public/admin detail records share the additive Attribute-value metadata; existing metadata endpoint, detail routes and Admin list remain available. Product/Attribute write payload shapes are unchanged; invalid defining combinations now receive409. No public child detail route is removed.
+## 4. Verification and acceptance tracking
 
-## 4. Verification actually obtained
+Previous candidate0b1075bc: remote frontend lint/typecheck/build passed; API and architecture smoke passed; render smoke failed because tests still called the replaced function signature. That test is corrected in this revision without weakening matching assertions. These earlier results do not prove the corrected revision.
 
-- `npm ci --no-audit --no-fund`: succeeded; no dependency/version request was added.
-- `npm run build`: PASS for production TypeScript and Vite after the production FE changes.
-- `npm run test:selection`: PASS. New pure model coverage includes nine letter/numeric size combinations, one/three arbitrary axes, sellable root/child, missing selection, incompatible choices, sold-out state, ambiguity including an out-of-stock duplicate, empty root, standalone and immutability.
-- `git diff --check`: PASS on the local candidate.
-- Independent source reviews found early-MySQL-snapshot risks; the Option, child-existence and gallery paths were corrected and re-reviewed without further actionable findings in those paths. Source review does not prove runtime.
-- Backend compile/tests: BLOCKED, not PASS. Automatic approval review rejected an unexpected connection to `dc.services.visualstudio.com`. The offline attempt with optional telemetry opt-outs was also rejected. No further Java/Gradle retry was made.
-- Frontend lint: BLOCKED/result not verified because the same telemetry destination triggered automatic rejection while collecting the run. Do not infer lint success from the selection test passing.
-- Browser: regression source was extended for dynamic one/three-axis selection, exact Cart Product ID, empty root, ambiguity, stock, child URLs, gallery/keyboard and responsive behavior. The run has no accepted result, and the later extended scenarios have not been executed. Mark BLOCKED/NOT_VERIFIED.
-- Backend `DynamicCatalogHttpTests`: seven new HTTP/service/concurrency tests written, NOT_RUN. They cover roots/counts/search/price/Option filtering, hidden/deleted children, detail metadata, admin child visibility, duplicate/incomplete/status/reparent rejection and rollback, metadata collapse, empty root, and three coordinated MySQL snapshot scenarios. Existing catalog/cart/quote regression suites have not been rerun on this candidate.
+Current revision: diff/source review and the repository CI results are the required evidence. Local Java/Gradle and further local test reruns remain avoided after unsolicited Windows telemetry to dc.services.visualstudio.com was rejected, including an offline attempt. Existing Ubuntu CI is used for backend/MySQL and frontend verification. Do not mark a check PASS until its run actually completes.
 
-## 5. Acceptance matrix
-
-“Source” is a static implementation check, not an executed API/browser test. No AC with unverified API/browser behavior is declared fully accepted.
-
-| ID | Test origin / evidence | Execution and result |
+| AC | Scenario / evidence | Required check |
 |---|---|---|
-| AC-01 roots only | New DynamicCatalogHttpTests summary scenario | NOT_RUN; source reviewed |
-| AC-02 search family | New summary scenario; existing catalog tests retained | NOT_RUN; source reviewed |
-| AC-03 child-only Option | New summary scenario | NOT_RUN; source reviewed |
-| AC-04 same-SKU conjunction | New WHITE/M positive, WHITE/L negative scenario | NOT_RUN; source reviewed |
-| AC-05 totals/pages | New two-root page_size1 scenario | NOT_RUN |
-| AC-06 root sellable | New selection model check PASS; existing root Cart browser check retained | Unit PASS; browser not verified |
-| AC-07 child chosen | New model checks PASS; existing exact child Cart assertion retained | Unit PASS; browser not verified |
-| AC-08 letter sizes | New selection test S/M/L | PASS |
-| AC-09 trouser numeric sizes | New selection test28/30/32 | PASS |
-| AC-10 shoe numeric sizes | New selection test39/40/42 | PASS |
-| AC-11 one axis | New one-axis model and generic one-axis browser fixture | Unit PASS; browser not verified |
-| AC-12 arbitrary axes | New three-axis model and browser fixture | Unit PASS; browser not verified |
-| AC-13 absent combination | New model negative matching/reset checks; browser partial selection retained | Unit PASS; browser not verified |
-| AC-14 sold out | New model availability check; existing browser stock guard retained | Unit PASS; browser not verified |
-| AC-15 ambiguity | New model duplicate including sold-out duplicate; new backend duplicate rejection | Unit PASS; API NOT_RUN |
-| AC-16 direct child | New API detail scenario; existing browser direct child URL retained | NOT_RUN / NOT_VERIFIED |
-| AC-17 standalone | New model check; existing browser standalone fixture retained | Unit PASS; browser not verified |
-| AC-18 search/filter/paging regression | New summary scenario + existing catalog suites | NOT_RUN |
-| AC-19 Admin children | New summary test asserts Admin child visibility | NOT_RUN |
-| AC-20 Cart/Checkout | Existing exact Product ID browser extended; existing Cart/quote API tests retained | NOT_VERIFIED / NOT_RUN |
+|01|Parent-only summary|DynamicCatalogHttpTests summary query|
+|02|Search does not expose children|Summary HTTP scenario|
+|03|Child-only Option returns root|Summary HTTP WHITE/M case|
+|04|Options on different members cannot combine|Summary HTTP WHITE/L negative case|
+|05|Counts/pages count roots|Two roots, page_size1 HTTP case|
+|06|Parent tuple remains purchasable|Selection model root assertion + browser root Cart ID|
+|07|Child tuple resolves correct ID|Selection model + browser child Cart ID|
+|08|Letter sizes|Selection model S/M/L|
+|09|Trouser sizes|Selection model28/30/32|
+|10|Shoe sizes|Selection model39/40/42 + size-only browser|
+|11|One axis only|Color-only and size-only model/browser cases|
+|12|Non-color/size Attributes|Updated acceptance: MATERIAL/capacity must NOT become purchase axes, per owner clarification|
+|13|Missing combination|Model/reset and browser incomplete-selection guards|
+|14|Sold out|Model and direct child browser quantity/availability checks|
+|15|Duplicate tuple|Backend rejection and frontend blocking; no manual SKU fallback|
+|16|Direct child URL|Detail API + browser; duplicate tuple remains blocked|
+|17|Standalone|Model and browser retained|
+|18|Search/filter/paging regression|Existing catalog tests plus new query scenario|
+|19|Admin children|Existing root-picker tests and new Admin child visibility assertion|
+|20|Cart/Checkout|Browser exact Product ID plus existing Cart/quote regression|
 
-## 6. Database, Git and remaining gate
+New backend coverage includes duplicate/missing tuples, activation/reparent rollback, color/size matching regardless descriptive flags, missing-parent rejection, and coordinated snapshot tests for option replacement, hierarchy and gallery clear. Existing hierarchy/detail test fixtures now use valid distinct parent/child color combinations; test outcomes are not hidden by changing the expected business rules.
 
-Schema: unchanged. Applied migrations: unchanged. Development seed: only existing SIZE/COLOR flags changed to true. No live/shared database was read, reset, normalized or changed during this task; test SQL above is source only. Existing business data with missing/wrong defining metadata or invalid combinations needs an operator-reviewed cleanup, not an automatic migration.
+## 5. Database, scope and delivery
 
-The owner has now authorized a single commit and push on the new feature branch. demo1 and the prior feature branch are not edited. No PR, merge, CI success or deployment is claimed. The implementation is PARTIAL / not runtime-accepted until backend, lint, browser and relevant Cart/quote tests can run with an authorized telemetry-free runtime or explicit permission resolving the automatic rejection.
+No schema, table, dependency, applied migration or live-data change. Only development-seed metadata is changed. Incorrect existing parent/child assignments require explicit data repair, not automatic SKU generation or guessed size-category rules.
 
-## 7. Changed files
+Excluded: arbitrary purchase axes, manual SKU fallback, unsellable display-only parent, frontend post-pagination deduplication, global size lists and category hard-coding.
 
-- `.gitignore`
-- `backend/src/main/java/com/fido/config/devseed/DevSeedCatalogData.java`
-- `backend/src/main/java/com/fido/modules/product/dto/response/ProductAttributeValueDto.java`
-- `backend/src/main/java/com/fido/modules/product/repository/AttributeRepository.java`
-- `backend/src/main/java/com/fido/modules/product/repository/ProductAttributeValueRepository.java`
-- `backend/src/main/java/com/fido/modules/product/repository/ProductRepository.java`
-- `backend/src/main/java/com/fido/modules/product/service/AttributeCatalogService.java`
-- `backend/src/main/java/com/fido/modules/product/service/CatalogSpecifications.java`
-- `backend/src/main/java/com/fido/modules/product/service/ProductAdminService.java`
-- `backend/src/main/java/com/fido/modules/product/service/ProductAttributeValueReadService.java`
-- `backend/src/main/java/com/fido/modules/product/service/ProductFamilyValidationService.java`
-- `backend/src/main/java/com/fido/modules/product/service/ProductImageAdminService.java`
-- `backend/src/test/java/com/fido/modules/product/DynamicCatalogHttpTests.java`
-- `docs/04-api-contract.md`
-- `docs/05-dto-contract.md`
-- `docs/15-technical-decisions.md`
-- `docs/catalog-dynamic-sku-selection.md`
-- `frontend/package.json`
-- `frontend/src/features/catalog/components/ProductFamilySelector.tsx`
-- `frontend/src/features/catalog/model/productFamilySelection.ts`
-- `frontend/src/features/catalog/types/index.ts`
-- `frontend/src/screens/ProductDetailScreen.tsx`
-- `frontend/tests/product-detail-cart-contract.mjs`
-- `frontend/tests/product-family-selection.ts`
+The feature branch contains the implementation and tests. Completion depends on CI evidence for this revision; no merge into demo1, deployment or PR creation is implied.
