@@ -68,6 +68,7 @@ class DynamicCatalogHttpTests extends CatalogHttpSupport {
 
     @Test void summaryCountsRootsAndMatchesAllOptionsOnOnePublicSku() throws Exception {
         Employee w = writer(); var f = createCatalog(w);
+        createOperationalWarehouse();
         long color = attribute(w, "COLOR"), size = attribute(w, "SIZE");
         long black = option(w, color, "BLACK"), white = option(w, color, "WHITE"), red = option(w, color, "RED");
         long m = option(w, size, "M"), l = option(w, size, "L");
@@ -97,6 +98,7 @@ class DynamicCatalogHttpTests extends CatalogHttpSupport {
         assertTrue(admin.data().get("data").size() >= 2);
         for (long id : List.of(f.productId(), blackL, whiteM)) {
             var detail = call("GET", "/api/v1/catalog/products/" + id, null, null);
+            assertEquals(200, detail.status(), detail.body());
             assertEquals(id, detail.data().get("data").get("product_id").asLong());
             assertEquals(3, detail.data().get("data").get("family").get("members").size());
             for (var value : detail.data().get("data").get("attribute_values")) {
@@ -141,6 +143,7 @@ class DynamicCatalogHttpTests extends CatalogHttpSupport {
 
     @Test void parentMustCarryItsOwnColorOrSizeCombination() throws Exception {
         Employee w = writer(); var f = createCatalog(w); long attr = attribute(w, "COLOR");
+        createOperationalWarehouse();
         long black = option(w, attr, "BLACK");
         var rejected = create(w, f.productId(), f.categoryId(), "ACTIVE", List.of(black));
         assertEquals(409, rejected.status(), rejected.body());
@@ -150,6 +153,7 @@ class DynamicCatalogHttpTests extends CatalogHttpSupport {
         long white = option(w, attr, "WHITE");
         long child = created(create(w, f.productId(), f.categoryId(), "ACTIVE", List.of(white)));
         var detail = call("GET", "/api/v1/catalog/products/" + child, null, null);
+        assertEquals(200, detail.status(), detail.body());
         var members = detail.data().get("data").get("family").get("members");
         assertEquals(2, members.size());
         assertEquals(f.productId(), members.get(0).get("product_id").asLong());
