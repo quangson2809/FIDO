@@ -8,6 +8,7 @@ on:
       - work/p3-16-consolidated
       - demo1
       - feature/catalog-dynamic-sku-selection
+      - refactor/backend-pattern-safe-v2
       - feature/backend-phase-0-discovery
       - feature/phase-2-3-image-persistence
       - fix/backend-confirmed-findings-20261007
@@ -137,6 +138,29 @@ jobs:
       - name: Compile backend and test sources
         working-directory: backend
         run: ./gradlew --no-daemon clean compileJava compileTestJava
+      # Review-branch regression suite. Keep the standard full backend suite below unchanged.
+      - name: Focused Order and Catalog regression tests
+        if: github.ref == 'refs/heads/refactor/backend-pattern-safe-v2'
+        working-directory: backend
+        env:
+          TEST_DB_URL: jdbc:mysql://127.0.0.1:3306/fido_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+          TEST_DB_DRIVER: com.mysql.cj.jdbc.Driver
+          TEST_DB_USERNAME: root
+          TEST_DB_PASSWORD: ci-only-password
+        run: |
+          ./gradlew --no-daemon test --rerun-tasks \
+            --tests com.fido.modules.order.service.OrderActionPolicyInvariantTests \
+            --tests com.fido.modules.order.service.OrderActionMatrixTests \
+            --tests com.fido.modules.order.service.OrderActionSchemaTests \
+            --tests com.fido.modules.order.OrderActionContractHttpTests \
+            --tests com.fido.modules.order.OrderActionTransactionHttpTests \
+            --tests com.fido.modules.order.OrderStockHttpTests \
+            --tests com.fido.modules.order.OrderLifecycleHttpTests \
+            --tests com.fido.modules.product.service.PublicCatalogQueryServiceTests \
+            --tests com.fido.modules.product.DynamicCatalogHttpTests \
+            --tests com.fido.modules.product.ProductCoreHttpTests \
+            --tests com.fido.modules.product.InventoryProductIdIntegrationTests \
+            --tests com.fido.modules.product.ProductCreateWorkflowHttpTests
       - name: Test migration and mapping with MySQL
         id: mysql-tests
         working-directory: backend

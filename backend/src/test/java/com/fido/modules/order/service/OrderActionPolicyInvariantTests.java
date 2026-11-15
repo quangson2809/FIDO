@@ -90,6 +90,20 @@ class OrderActionPolicyInvariantTests {
         assertDenied("CANCEL");
     }
 
+
+    @Test
+    void cancelledOrderCannotBeCancelledAgain() {
+        // Keep the removed legacy test's terminal-state guard in this focused suite.
+        order.setOrderStatus(OrderPolicy.CANCELLED);
+        shipping.setShippingStatus("CANCELLED");
+
+        ResponseStatusException error = assertThrows(
+                ResponseStatusException.class,
+                () -> policy.requireExecutable(order, payment, shipping, "CANCEL"));
+        assertEquals(409, error.getStatusCode().value());
+        assertEquals("ORDER_TRANSITION_ALREADY_APPLIED", error.getReason());
+    }
+
     private void assertDenied(String action) {
         assertEquals(List.of(), policy.allowedActions(order, payment));
         ResponseStatusException error = assertThrows(
