@@ -5,14 +5,15 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.fido.modules.product.entity.Product;
 import com.fido.modules.inventory.service.InventoryAvailabilityService;
+import com.fido.modules.product.entity.Product;
 import com.fido.modules.product.repository.AttributeOptionRepository;
 import com.fido.modules.product.repository.AttributeRepository;
 import com.fido.modules.product.repository.BrandRepository;
 import com.fido.modules.product.repository.CategoryRepository;
 import com.fido.modules.product.repository.ProductImageRepository;
 import com.fido.modules.product.repository.ProductRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,9 +22,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Contract tests stay at PublicCatalogQueryService's public API even though
+ * family assembly now lives in a focused collaborator.
+ */
 @ExtendWith(MockitoExtension.class)
 class PublicCatalogQueryServiceTests {
     @Mock private ProductRepository products;
@@ -42,9 +48,13 @@ class PublicCatalogQueryServiceTests {
 
     @BeforeEach
     void setUp() {
+        // Build the real family reader: the existing detail contract must not
+        // accidentally turn into a mock-only test that misses regressions.
+        var familyReader = new PublicCatalogFamilyReadService(
+                products, inventory, images, attributeValueRead, references);
         service = new PublicCatalogQueryService(
-                products, inventory, images, imageRead, attributeValueRead,
-                categories, brands, references, metaService, attributes, options);
+                products, imageRead, categories, brands, references, metaService,
+                attributes, options, familyReader);
     }
 
     @Test
@@ -128,6 +138,32 @@ class PublicCatalogQueryServiceTests {
         assertEquals("CORE-42", response.data().get(1).sku());
         assertEquals("https://cdn.test/42.png", response.data().get(1).thumbnail());
         verify(imageRead).representativeByProductIds(List.of(41L, 42L));
+    }
+
+    @Test
+    void activeParentAndChildHaveIndependentStockAndRemainSelectableSkus() {
+        // The parent is a real purchasable SKU, not just a family heading.
+        Product parent = product(50L, "PARENT-50", 300000L);
+        Product child = product(51L, "CHILD-51", 320000L);
+        child.setParentProductId(50L);
+
+        when(references.publicProduct(50L)).thenReturn(parent);
+        when(products.findAllByParentProductIdOrderByProductIdAsc(50L))
+                .thenReturn(List.of(child));
+        when(images.findAllByProductIdInOrderByProductIdAscSortOrderAscImageIdAsc(List.of(50L, 51L)))
+                .thenReturn(List.of());
+        when(attributeValueRead.forProducts(List.of(50L, 51L))).thenReturn(Map.of());
+        when(inventory.availableQuantities(List.of(50L, 51L)))
+                .thenReturn(Map.of(50L, 0, 51L, 8));
+
+        var family = service.publicDetail(50L).family();
+        assertEquals(List.of(50L, 51L), family.members().stream()
+                .map(member -> member.product_id()).toList());
+        assertEquals(false, family.members().get(0).purchasable());
+        assertEquals(true, family.members().get(1).purchasable());
+        assertEquals(0, family.members().get(0).available_quantity());
+        assertEquals(8, family.members().get(1).available_quantity());
+        verify(inventory).availableQuantities(List.of(50L, 51L));
     }
 
     private Product product(Long id, String sku, Long sellingPrice) {
