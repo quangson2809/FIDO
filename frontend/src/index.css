@@ -728,13 +728,6 @@ a:hover > .material-symbols-outlined {
   max-height: 94dvh;
   overflow-y: auto;
 }
-.product-summary-price-label {
-  display: block;
-  color: var(--color-muted-grey);
-  font-size: 10px;
-  font-weight: 400;
-  line-height: 16px;
-}
 .product-summary-sku {
   flex: 1;
   display: -webkit-box;

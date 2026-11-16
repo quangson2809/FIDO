@@ -219,10 +219,8 @@ export const ProductDetailScreen: React.FC = () => {
     (metadata.data?.brands.find((item) => item.brand_id === product.brand?.brand_id)?.name ??
       product.brand.name);
   const specItems = [
-    product.sku ? { label: 'SKU', value: product.sku } : null,
     categoryName ? { label: 'Danh mục', value: categoryName } : null,
     brandName ? { label: 'Thương hiệu', value: brandName } : null,
-    { label: 'Trạng thái', value: product.status },
     ...product.attribute_values
       .filter((value) => !isColorOrSize(value))
       .map((value) => ({
@@ -286,7 +284,7 @@ export const ProductDetailScreen: React.FC = () => {
         >
           {loading && !detailReady && (
             <p role="status" className="text-xs text-[#687069]">
-              Đang cập nhật thông tin Product được chọn...
+              Đang cập nhật sản phẩm đã chọn...
             </p>
           )}
           <ProductFamilySelector

@@ -137,11 +137,6 @@ export const AdminSettingsView: React.FC<{
           </button>
         </div>
       )}
-      {!canWrite && (
-        <div className="border border-[#E8E9E3] bg-[#F8FAF4] p-3 text-sm text-[#606863]">
-          Chế độ chỉ đọc. Cần CONTENT_WRITE để cập nhật nội dung.
-        </div>
-      )}
       {loading ? (
         <div className="p-8 text-center text-sm text-[#687069]">Đang tải...</div>
       ) : pages.length === 0 ? (

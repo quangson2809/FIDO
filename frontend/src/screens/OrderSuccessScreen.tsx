@@ -140,10 +140,6 @@ export const OrderSuccessScreen: React.FC = () => {
           khoản của bạn. Trạng thái hiện tại:{' '}
           <strong>{customerOrderLabels[order.order_status]}</strong>.
         </p>
-        <div className="relative mx-auto mt-7 w-fit border border-[#E8E9E3] bg-[#FAF9F5] px-5 py-3 text-sm">
-          <span className="text-[#687069]">Mã đơn: </span>
-          <strong className="font-mono">#{order.order_id}</strong>
-        </div>
         <p className="relative mt-4 text-sm">
           COD · {customerPaymentLabels[order.payment.payment_status]} · Tổng tiền{' '}
           {order.total.toLocaleString('vi-VN')}₫

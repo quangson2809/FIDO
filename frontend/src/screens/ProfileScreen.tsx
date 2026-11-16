@@ -257,10 +257,6 @@ export const ProfileScreen: React.FC = () => {
     );
   }
 
-  const roleNames = profile.roles
-    .map((role) => (role.code === 'CUSTOMER' ? 'Khách hàng' : role.name))
-    .join(' · ');
-
   return (
     <div className="min-h-screen bg-[#FAF9F5] text-[#0B2419]">
       <section className="relative overflow-hidden bg-[#071A12] text-white">
@@ -277,7 +273,7 @@ export const ProfileScreen: React.FC = () => {
                   FIDO Account
                 </p>
                 <h1 className="mt-1 font-serif text-3xl">Hồ sơ của tôi</h1>
-                <p className="mt-1 text-xs text-white/55">{roleNames || 'Tài khoản'}</p>
+                <p className="mt-1 text-xs text-white/55">{profile.account.full_name}</p>
               </div>
             </div>
             <button

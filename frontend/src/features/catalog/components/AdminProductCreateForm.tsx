@@ -402,7 +402,7 @@ export function AdminProductCreateForm({
           )}
           {metaError && (
             <p className="text-sm text-amber-800">
-              Không thể xác nhận metadata mới. Lựa chọn đã nhập vẫn được giữ. Nháp không có thuộc
+              Chưa tải lại được thuộc tính và danh mục. Lựa chọn đã nhập vẫn được giữ. Nháp không có thuộc
               tính, danh mục hoặc thương hiệu vẫn có thể lưu.
             </p>
           )}

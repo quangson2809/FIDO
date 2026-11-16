@@ -23,8 +23,7 @@ export const Footer: React.FC = () => {
               Fit • Innovate • Devote • Open
             </p>
             <p className="mt-4 max-w-xs text-xs leading-6 text-white/55">
-              Không gian thời trang FIDO với ngôn ngữ thị giác tối giản, tập trung vào sản phẩm và
-              trải nghiệm mua sắm rõ ràng.
+              Khám phá trang phục FIDO với phom dáng, màu sắc và chất liệu phù hợp phong cách của bạn.
             </p>
           </div>
 

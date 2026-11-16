@@ -202,6 +202,7 @@ try {
   assert.equal(orders, 0);
   assert.match(await dialog.innerText(), /0900000000/);
   assert.match(await dialog.innerText(), /230\.000/);
+  assert.doesNotMatch(await dialog.innerText(), /Backend|mã chống trùng|giao dịch tạo đơn/);
   await page.keyboard.press('Escape');
   assert.equal(await dialog.count(), 0);
   assert.equal(orders, 0);
@@ -222,7 +223,7 @@ try {
   await page.waitForURL('**/checkout/success/1');
   assert.equal(orders, 1);
   assert.equal(quantity, 0);
-  await page.getByText(/tổng COD cuối cùng do Backend xác nhận là 270\.000/).waitFor();
+  await page.getByText(/Tổng thanh toán khi nhận hàng: 270\.000/).waitFor();
 
   // A rejected creation must retain the cart and require a new quote.
   quantity = 2;

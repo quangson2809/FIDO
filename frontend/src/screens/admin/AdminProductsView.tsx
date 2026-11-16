@@ -86,7 +86,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
       })
       .catch((requestError: unknown) => {
         if (active) {
-          setMetaError(getApiErrorMessage(requestError, 'Không thể tải metadata catalog.'));
+          setMetaError(getApiErrorMessage(requestError, 'Không thể tải danh mục, thương hiệu và thuộc tính.'));
         }
       })
       .finally(() => {
@@ -146,7 +146,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
             disabled={metaLoading}
             onClick={() => setMetaRevision((value) => value + 1)}
           >
-            Tải lại metadata
+            Tải lại danh mục và thuộc tính
           </button>
         </div>
       )}

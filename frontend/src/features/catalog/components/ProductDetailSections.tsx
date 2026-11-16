@@ -138,16 +138,6 @@ export const ProductPurchasePanel: React.FC<{
           <p className="font-serif text-2xl font-bold">
             {product.selling_price.toLocaleString('vi-VN')}₫
           </p>
-          <span
-            className={
-              'border px-3 py-1 text-[10px] font-bold uppercase tracking-wider ' +
-              (isActive
-                ? 'border-[#C8DDCC] bg-[#EEF6EE] text-[#245A32]'
-                : 'border-[#E2E5DE] bg-[#F3F4EF] text-[#687069]')
-            }
-          >
-            {product.status}
-          </span>
         </div>
       </div>
 
@@ -157,16 +147,11 @@ export const ProductPurchasePanel: React.FC<{
         'text-sm font-medium ' +
         (purchasable && isActive ? 'text-[#245A32]' : 'text-amber-800')
       }>
-        {!isActive ? 'Sản phẩm không hoạt động'
+        {!isActive ? 'Sản phẩm hiện chưa khả dụng để mua.'
           : purchasable ? 'Còn ' + availableQuantity + ' sản phẩm'
             : 'Hết hàng'}
       </p>
 
-      {!isActive && (
-        <p className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Sản phẩm hiện chưa khả dụng để mua.
-        </p>
-      )}
       {isActive && !selectionReady && (
         <p role="status" className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Chọn đủ tùy chọn của sản phẩm trước khi thêm vào giỏ hàng.
@@ -213,9 +198,6 @@ export const ProductPurchasePanel: React.FC<{
                   : quantity > maxQuantity ? 'Vượt số lượng tồn' : 'Thêm vào giỏ hàng'}
           </button>
         </div>
-        <p className="mt-3 text-[10px] leading-5 text-[#687069]">
-          Giá và trạng thái thuộc Product được chọn; tồn kho là dữ liệu tại kho vận hành.
-        </p>
       </div>
     </aside>
   );

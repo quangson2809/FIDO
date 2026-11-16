@@ -49,6 +49,7 @@ const summaryHtml = renderToStaticMarkup(
 );
 assert.match(summaryHtml, /Sản phẩm thật từ catalog/);
 assert.match(summaryHtml, /890\.000 đ/);
+assert.doesNotMatch(summaryHtml, /\bACTIVE\b|\bDRAFT\b|\bINACTIVE\b/);
 assert.match(summaryHtml, /aria-haspopup="dialog"/);
 assert.doesNotMatch(summaryHtml, /HÀNG MỚI|WOOL BLEND|Yêu thích|Giá cơ bản<\/|>Xem chi tiết</);
 const asyncNoOp = async () => undefined;
@@ -308,6 +309,7 @@ const inactiveProductPanelHtml = renderToStaticMarkup(
 );
 assert.match(inactiveProductPanelHtml, /Sản phẩm hiện chưa khả dụng để mua/);
 assert.match(inactiveProductPanelHtml, /Không khả dụng/);
+assert.doesNotMatch(inactiveProductPanelHtml, /\bINACTIVE\b|kho vận hành/);
 assert.doesNotMatch(inactiveProductPanelHtml, />Thêm vào giỏ hàng</);
 
 for (const [name, expected] of [
@@ -461,6 +463,6 @@ assert.ok(orderedAttributeMarkup.indexOf('First ·') < orderedAttributeMarkup.in
 assert.ok(orderedAttributeMarkup.indexOf('Second</span>') < orderedAttributeMarkup.indexOf('Last</span>'));
 assert.ok(orderedAttributeMarkup.indexOf('First option') < orderedAttributeMarkup.indexOf('Second option'));
 assert.ok(orderedAttributeMarkup.indexOf('Second option') < orderedAttributeMarkup.indexOf('Third option'));
-assert.ok(orderedAttributeMarkup.includes('Option #29'));
+assert.ok(orderedAttributeMarkup.includes('Giá trị đã lưu #29'));
 assert.match(orderedAttributeMarkup, /<option(?=[^>]*value="29")(?=[^>]*selected="")[^>]*>/);
 console.log('Product Attribute/Option ordering and unavailable saved option rendering: PASS');

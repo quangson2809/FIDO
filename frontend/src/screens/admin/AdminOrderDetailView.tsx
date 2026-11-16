@@ -285,7 +285,7 @@ export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
           <section className="rounded-lg border border-[#E2E5DE] bg-white p-5">
             <h2 className="font-serif text-xl font-bold">Xử lý đơn hàng</h2>
             <label className="mt-4 block space-y-1">
-              <span className="text-xs font-semibold">Lý do / ghi chú action</span>
+              <span className="text-xs font-semibold">Lý do / ghi chú thao tác</span>
               <textarea
                 disabled={busy}
                 rows={2}

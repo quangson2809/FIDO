@@ -164,7 +164,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
           metadataIssues.push(
             getApiErrorMessage(
               catalogResult.reason,
-              'Không thể tải metadata Category/Brand.',
+              'Không thể tải danh mục và thương hiệu.',
             ),
           );
         }
@@ -176,7 +176,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
           metadataIssues.push(
             getApiErrorMessage(
               adminResult.reason,
-              'Không thể tải metadata Attribute.',
+              'Không thể tải thuộc tính sản phẩm.',
             ),
           );
         }
@@ -197,7 +197,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
   const saveProduct = async () => {
     if (!canWrite || !product || busy) return;
     if (!catalogMeta || !adminMeta) {
-      setError('Không thể sửa Product khi metadata Category/Brand/Attribute chưa tải đầy đủ.');
+      setError('Cần tải đầy đủ danh mục, thương hiệu và thuộc tính trước khi chỉnh sửa.');
       return;
     }
 
@@ -424,7 +424,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
         </div>
       </header>
       {error && <div role="alert" className="border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>}
-      {metaError && <div role="alert" className="border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{metaError} Việc sửa Product cần metadata đầy đủ; phần chi tiết vẫn có thể xem.</div>}
+      {metaError && <div role="alert" className="border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{metaError} Bạn vẫn có thể xem chi tiết; hãy tải lại dữ liệu trước khi chỉnh sửa.</div>}
 
       {editing && canWrite ? (
         <section className="rounded-lg border border-[#E2E5DE] bg-white p-5">
@@ -446,7 +446,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
               <label className="block space-y-1">
                 <span className="text-xs font-semibold">Product cha ID</span>
                 <input type="number" min="1" step="1" value={parentProductId} onChange={(event) => setParentProductId(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" />
-                <span className="block text-xs text-[#606863]">Để trống nếu Product độc lập. Product con không phải Variant legacy.</span>
+                <span className="block text-xs text-[#606863]">Để trống nếu là sản phẩm độc lập.</span>
               </label>
               <label className="block space-y-1">
                 <span className="text-xs font-semibold">Danh mục</span>
@@ -486,7 +486,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
               <textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2 text-sm" />
             </label>
             <div className="space-y-3 border-t border-[#E2E5DE] pt-4">
-              <h3 className="font-semibold">Option-backed Attribute values</h3>
+              <h3 className="font-semibold">Thuộc tính sản phẩm</h3>
               <ProductAttributeFields
                 attributes={adminMeta?.attributes ?? []}
                 draft={attributeDraft}
@@ -494,7 +494,6 @@ export const AdminProductDetailView: React.FC<Props> = ({
                 disabled={busy}
                 onChange={(attributeId, value) => setAttributeDraft((current) => ({ ...current, [String(attributeId)]: value }))}
               />
-              <p className="text-xs text-[#606863]">Khi thay đổi Attribute, API nhận tập thay thế đầy đủ; nếu không thay đổi thì trường này được bỏ khỏi PATCH.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <button type="button" disabled={busy} onClick={() => void saveProduct()} className="admin-primary disabled:opacity-40">{busy ? 'Đang lưu...' : 'Lưu'}</button>
