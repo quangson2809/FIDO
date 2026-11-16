@@ -22,8 +22,18 @@ class CartAccessHttpTests extends CartHttpSupport {
                                 "/api/v1/checkout/quote",
                                 null,
                                 Map.of(
-                                        "recipient_phone", "0900000000",
-                                        "recipient_name", "Test Recipient", "province", "Hanoi", "district", "Cau Giay", "ward", "Dich Vong", "address_line", "Hanoi"))
+                                        "recipient_phone",
+                                        "0900000000",
+                                        "recipient_name",
+                                        "Test Recipient",
+                                        "province",
+                                        "Hanoi",
+                                        "district",
+                                        "Cau Giay",
+                                        "ward",
+                                        "Dich Vong",
+                                        "address_line",
+                                        "Hanoi"))
                         .status());
 
         var initial = call("GET", "/api/v1/cart", owner.token(), null);

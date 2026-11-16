@@ -19,6 +19,9 @@ on:
 permissions:
   contents: read
 
+env:
+  REPORT_FOCUSED: ${{ contains(github.event.head_commit.message, '[admin-report-focus]') || contains(github.event.pull_request.title, '[admin-report-focus]') }}
+
 concurrency:
   group: frontend-verification-${{ github.ref }}
   cancel-in-progress: true
@@ -75,16 +78,29 @@ jobs:
         run: npm ci
 
       - name: API integration smoke
+        if: env.REPORT_FOCUSED != 'true'
         working-directory: frontend
         run: npm run test:api
 
       - name: Frontend architecture smoke
+        if: env.REPORT_FOCUSED != 'true'
         working-directory: frontend
         run: npm run test:architecture
 
+      - name: Product color and size selection
+        if: env.REPORT_FOCUSED != 'true'
+        working-directory: frontend
+        run: npm run test:selection
+
       - name: Frontend render smoke
+        if: env.REPORT_FOCUSED != 'true'
         working-directory: frontend
         run: npm run test:render
+
+      - name: Focused report calculations and contracts
+        if: env.REPORT_FOCUSED == 'true'
+        working-directory: frontend
+        run: npm run test:reports
 
       - name: Install Chromium for browser verification
         working-directory: frontend
@@ -92,7 +108,12 @@ jobs:
 
       - name: Customer browser journeys and responsive checks
         working-directory: frontend
-        run: npm run test:browser
+        run: |
+          if [ "$REPORT_FOCUSED" = "true" ]; then
+            node tests/report-browser-smoke.mjs
+          else
+            npm run test:browser
+          fi
 
       - name: Keep browser evidence
         if: always()

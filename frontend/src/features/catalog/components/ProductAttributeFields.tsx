@@ -23,7 +23,7 @@ export const ProductAttributeFields: React.FC<Props> = ({
   if (attributes.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-[#D9DDD6] p-4 text-sm text-[#606863]">
-        Chưa có Attribute trong metadata catalog. Không có trường thuộc tính để nhập.
+        Chưa có thuộc tính. Tạo thuộc tính trong mục Quản lý thuộc tính để sử dụng.
       </p>
     );
   }
@@ -43,7 +43,7 @@ export const ProductAttributeFields: React.FC<Props> = ({
             <label key={attribute.id} className="block min-w-0 space-y-1 text-sm">
               <span className="block text-xs font-semibold">
                 {attribute.name}
-                {attribute.is_required ? ' · bắt buộc khi ACTIVE' : ''}
+                {attribute.is_required ? ' · bắt buộc khi mở bán' : ''}
               </span>
               <select
                 id={controlId}
@@ -58,7 +58,7 @@ export const ProductAttributeFields: React.FC<Props> = ({
               >
                 <option value="">Chưa thiết lập</option>
                 {value && !attribute.options.some((option) => String(option.id) === value) && (
-                  <option value={value}>Đã lưu · Option #{value} (metadata chưa có)</option>
+                  <option value={value}>Giá trị đã lưu #{value} · chưa tải được thông tin</option>
                 )}
                 {[...attribute.options]
                   .sort((a, b) => a.sort_order - b.sort_order || a.id - b.id)
@@ -71,11 +71,6 @@ export const ProductAttributeFields: React.FC<Props> = ({
               {error && (
                 <span id={controlId + '-error'} className="block text-xs text-red-700">
                   {error}
-                </span>
-              )}
-              {attribute.is_variant_defining && (
-                <span className="block text-xs text-[#606863]">
-                  Thuộc tính mô tả/phân loại; không tự tạo sản phẩm con hoặc biến thể.
                 </span>
               )}
             </label>

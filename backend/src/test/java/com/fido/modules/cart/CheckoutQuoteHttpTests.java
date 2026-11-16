@@ -58,8 +58,18 @@ class CheckoutQuoteHttpTests extends CartHttpSupport {
                         "/api/v1/checkout/quote",
                         owner.token(),
                         Map.of(
-                                "recipient_phone", "0900000000",
-                                "recipient_name", "Test Recipient", "province", "Hanoi", "district", "Cau Giay", "ward", "Dich Vong", "address_line", "Cau Giay, Hanoi"));
+                                "recipient_phone",
+                                "0900000000",
+                                "recipient_name",
+                                "Test Recipient",
+                                "province",
+                                "Hanoi",
+                                "district",
+                                "Cau Giay",
+                                "ward",
+                                "Dich Vong",
+                                "address_line",
+                                "Cau Giay, Hanoi"));
 
         assertEquals(200, quote.status(), quote.body());
         assertEquals(160000, quote.data().get("data").get("subtotal").asInt());
@@ -98,9 +108,20 @@ class CheckoutQuoteHttpTests extends CartHttpSupport {
                                 "/api/v1/checkout/quote",
                                 owner.token(),
                                 Map.of(
-                                        "recipient_phone", "0900000000",
-                                        "recipient_name", "Test Recipient", "province", "Hanoi", "district", "Cau Giay", "ward", "Dich Vong", "address_line", "Hanoi",
-                                        "voucher_code", "TBD-VOUCHER"))
+                                        "recipient_phone",
+                                        "0900000000",
+                                        "recipient_name",
+                                        "Test Recipient",
+                                        "province",
+                                        "Hanoi",
+                                        "district",
+                                        "Cau Giay",
+                                        "ward",
+                                        "Dich Vong",
+                                        "address_line",
+                                        "Hanoi",
+                                        "voucher_code",
+                                        "TBD-VOUCHER"))
                         .status());
 
         db.update(
@@ -119,8 +140,18 @@ class CheckoutQuoteHttpTests extends CartHttpSupport {
                                 "/api/v1/checkout/quote",
                                 owner.token(),
                                 Map.of(
-                                        "recipient_phone", "0900000000",
-                                        "recipient_name", "Test Recipient", "province", "Hanoi", "district", "Cau Giay", "ward", "Dich Vong", "address_line", "Hanoi"))
+                                        "recipient_phone",
+                                        "0900000000",
+                                        "recipient_name",
+                                        "Test Recipient",
+                                        "province",
+                                        "Hanoi",
+                                        "district",
+                                        "Cau Giay",
+                                        "ward",
+                                        "Dich Vong",
+                                        "address_line",
+                                        "Hanoi"))
                         .status());
 
         db.update(
@@ -145,8 +176,18 @@ class CheckoutQuoteHttpTests extends CartHttpSupport {
                                 "/api/v1/checkout/quote",
                                 owner.token(),
                                 Map.of(
-                                        "recipient_phone", "0900000000",
-                                        "recipient_name", "Test Recipient", "province", "Hanoi", "district", "Cau Giay", "ward", "Dich Vong", "address_line", "Hanoi"))
+                                        "recipient_phone",
+                                        "0900000000",
+                                        "recipient_name",
+                                        "Test Recipient",
+                                        "province",
+                                        "Hanoi",
+                                        "district",
+                                        "Cau Giay",
+                                        "ward",
+                                        "Dich Vong",
+                                        "address_line",
+                                        "Hanoi"))
                         .status());
     }
 
@@ -170,8 +211,18 @@ class CheckoutQuoteHttpTests extends CartHttpSupport {
                                 "/api/v1/checkout/quote",
                                 owner.token(),
                                 Map.of(
-                                        "recipient_phone", "0900000000",
-                                        "recipient_name", "Test Recipient", "province", "Hanoi", "district", "Cau Giay", "ward", "Dich Vong", "address_line", "Hanoi"))
+                                        "recipient_phone",
+                                        "0900000000",
+                                        "recipient_name",
+                                        "Test Recipient",
+                                        "province",
+                                        "Hanoi",
+                                        "district",
+                                        "Cau Giay",
+                                        "ward",
+                                        "Dich Vong",
+                                        "address_line",
+                                        "Hanoi"))
                         .status());
 
         assertEquals(

@@ -1,6 +1,7 @@
 package com.fido.modules.inventory.repository;
 
 import com.fido.modules.inventory.entity.Inventory;
+import com.fido.modules.inventory.repository.projection.InventoryRowView;
 
 import jakarta.persistence.LockModeType;
 
@@ -21,20 +22,25 @@ public interface InventoryRepository extends Repository<Inventory, Inventory.Inv
     Optional<Inventory> findByWarehouseIdAndProductId(Long warehouseId, Long productId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
+    @Query(
+            """
             select inventory from Inventory inventory
             where inventory.warehouseId = :warehouseId
               and inventory.productId = :productId
             """)
     Optional<Inventory> findByWarehouseIdAndProductIdForUpdate(
-            @Param("warehouseId") Long warehouseId,
-            @Param("productId") Long productId);
+            @Param("warehouseId") Long warehouseId, @Param("productId") Long productId);
 
     List<Inventory> findAllByProductIdIn(Collection<Long> productIds);
-    List<Inventory> findAllByWarehouseIdAndProductIdIn(Long warehouseId, Collection<Long> productIds);
+
+    List<Inventory> findAllByWarehouseIdAndProductIdIn(
+            Long warehouseId, Collection<Long> productIds);
+
     Inventory save(Inventory entity);
 
-    @Query(value = """
+    @Query(
+            value =
+                    """
             SELECT warehouse.id AS warehouseId,
                    product.id AS productId,
                    product.sku AS sku,
@@ -51,7 +57,8 @@ public interface InventoryRepository extends Repository<Inventory, Inventory.Inv
               AND (:sku IS NULL OR product.sku = :sku)
             ORDER BY product.id, warehouse.id
             """,
-            countQuery = """
+            countQuery =
+                    """
             SELECT COUNT(*)
             FROM products product
             JOIN warehouses warehouse ON (:warehouseId IS NULL OR warehouse.id = :warehouseId)
@@ -65,8 +72,16 @@ public interface InventoryRepository extends Repository<Inventory, Inventory.Inv
             @Param("warehouseId") Long warehouseId,
             Pageable pageable);
 
+    /**
+     * quantityDelta do workflow kiểm tra từ chứng từ; maxQuantity/maxVersion là giới hạn INT phía máy
+     * chủ.
+     * UPDATE vừa đổi số dư vừa tăng version và chặn âm/tràn; bên gọi phải kiểm tra số dòng kết quả
+     * bằng 1.
+     */
     @Modifying(flushAutomatically = true)
-    @Query(value = """
+    @Query(
+            value =
+                    """
             UPDATE inventories
             SET quantity_on_hand = quantity_on_hand + :quantityDelta,
                 updated_at = :updatedAt,
@@ -78,7 +93,8 @@ public interface InventoryRepository extends Repository<Inventory, Inventory.Inv
               AND version < :maxVersion
               AND CAST(quantity_on_hand AS SIGNED) + :quantityDelta >= 0
               AND CAST(quantity_on_hand AS SIGNED) + :quantityDelta <= :maxQuantity
-            """, nativeQuery = true)
+            """,
+            nativeQuery = true)
     int applyBalanceDeltaGuarded(
             @Param("warehouseId") Long warehouseId,
             @Param("productId") Long productId,

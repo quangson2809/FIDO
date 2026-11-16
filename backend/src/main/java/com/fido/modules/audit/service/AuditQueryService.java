@@ -31,34 +31,39 @@ public class AuditQueryService {
     private final AuditWriteService audit;
 
     public AuditQueryService(
-            AuditLogRepository logs,
-            AuditPayloadPolicy payloadPolicy,
-            AuditWriteService audit) {
+            AuditLogRepository logs, AuditPayloadPolicy payloadPolicy, AuditWriteService audit) {
         this.logs = logs;
         this.payloadPolicy = payloadPolicy;
         this.audit = audit;
     }
 
+    /**
+     * filter lấy từ query string của quản trị viên có quyền; đọc log trước rồi ghi một sự kiện truy
+     * cập.
+     * Sự kiện chỉ giữ tiêu chí lọc được phép, không sao chép nội dung kết quả hoặc dữ liệu cá nhân.
+     */
     @PreAuthorize("hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_AUDIT_READ')")
     public ApiListResponse<AuditLogDto> search(AuditSearchFilter filter) {
         validate(filter);
         Pagination pagination = Pagination.of(filter.page(), filter.pageSize());
-        var pageable = PageRequest.of(
-                pagination.page() - 1,
-                pagination.pageSize(),
-                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("auditId")));
+        var pageable =
+                PageRequest.of(
+                        pagination.page() - 1,
+                        pagination.pageSize(),
+                        Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("auditId")));
         var result = logs.findAll(AuditSpecifications.search(filter), pageable);
 
         List<AuditLogDto> data = result.getContent().stream().map(this::toDto).toList();
 
-        // One metadata-only access event, appended after the read so it is not included in its own
-        // result page. The audit writer never audits its own insert.
-        audit.record(AuditWriteEvent.withChanges(
-                AuditAction.AUDIT_LOG_QUERY,
-                AuditEntityType.AUDIT_LOG,
-                "SEARCH",
-                Map.of(),
-                queryMetadata(filter, pagination)));
+        // Ghi một sự kiện truy cập sau khi đọc để nó không xuất hiện trong chính trang kết quả vừa
+        // lấy.
+        audit.record(
+                AuditWriteEvent.withChanges(
+                        AuditAction.AUDIT_LOG_QUERY,
+                        AuditEntityType.AUDIT_LOG,
+                        "SEARCH",
+                        Map.of(),
+                        queryMetadata(filter, pagination)));
 
         return ApiListResponse.of(data, pagination.meta(result.getTotalElements()));
     }
@@ -78,7 +83,8 @@ public class AuditQueryService {
 
     private Map<String, ?> queryMetadata(AuditSearchFilter filter, Pagination pagination) {
         Map<String, Object> metadata = new LinkedHashMap<>();
-        if (filter.actorAccountId() != null) metadata.put("actor_account_id", filter.actorAccountId());
+        if (filter.actorAccountId() != null)
+            metadata.put("actor_account_id", filter.actorAccountId());
         if (filter.action() != null) metadata.put("action", filter.action());
         if (filter.entityType() != null) metadata.put("entity_type", filter.entityType());
         if (filter.entityId() != null) metadata.put("entity_id", filter.entityId());

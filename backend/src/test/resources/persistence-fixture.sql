@@ -1,5 +1,5 @@
--- Minimal deterministic fixture for the revised option-only 30-table ERD v2.
--- This file is test data only; it must never define legacy/compatibility columns.
+-- Dữ liệu test cố định cho schema 30 bảng với thuộc tính chỉ dùng Option.
+-- Chỉ chứa dữ liệu test, không định nghĩa thêm cột tương thích với mô hình cũ.
 
 INSERT INTO accounts(id,full_name,password_hash,phone,email,status,deleted_at,created_at,updated_at)
 VALUES (1,'Fixture account','test-only-hash','0900000001',NULL,'ACTIVE',NULL,CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6));

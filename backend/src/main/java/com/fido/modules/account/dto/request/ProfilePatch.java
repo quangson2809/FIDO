@@ -8,7 +8,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-/** P1.2 permits only full_name/email profile patches; phone changes have no approved workflow. */
+/** Chỉ sửa tên/email; thay số điện thoại chưa có luồng nghiệp vụ được duyệt. */
 public class ProfilePatch {
 
     @Pattern(regexp = ".*\\S.*")

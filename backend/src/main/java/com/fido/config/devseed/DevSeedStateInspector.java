@@ -9,8 +9,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Detects whether the known demo dataset is absent, complete or partially present.
- * Flyway-owned system roles, permissions and attribute types are intentionally excluded.
+ * Đếm các bản ghi demo theo ID cố định để phân biệt bộ dữ liệu chưa có, đầy đủ hoặc dở dang; không
+ * kiểm tra danh mục role/quyền do Flyway tạo.
  */
 @Component
 @Profile({"dev", "test"})
@@ -25,10 +25,7 @@ public class DevSeedStateInspector {
                     probe("brands", "id BETWEEN 930001 AND 930002", 2),
                     probe("attributes", "id BETWEEN 940001 AND 940002", 2),
                     probe("attribute_options", "id BETWEEN 941001 AND 941007", 7),
-                    probe(
-                            "product_attribute_values",
-                            "product_id IN (960001,960002,960006)",
-                            6),
+                    probe("product_attribute_values", "product_id IN (960001,960002,960006)", 6),
                     probe("products", "id BETWEEN 960001 AND 960017", 17),
                     probe("product_images", "id BETWEEN 961001 AND 961017", 17),
                     probe("carts", "id BETWEEN 980001 AND 980002", 2),
@@ -39,10 +36,7 @@ public class DevSeedStateInspector {
                             "id IN (1001001,1001002,1001003,1001004,1001005,"
                                     + "1001006,1001101,1001102,1001103)",
                             9),
-                    probe(
-                            "order_items",
-                            "id BETWEEN 1101001 AND 1101009",
-                            9),
+                    probe("order_items", "id BETWEEN 1101001 AND 1101009", 9),
                     probe(
                             "order_addresses",
                             "order_id IN (1001001,1001002,1001003,1001004,1001005,"
@@ -80,6 +74,8 @@ public class DevSeedStateInspector {
         List<ProbeResult> results = new ArrayList<>(PROBES.size());
         for (SeedProbe probe : PROBES) {
             Integer count =
+                    // Tên bảng/điều kiện chỉ lấy từ PROBES cố định trong code, không ghép từ
+                    // request người dùng.
                     jdbc.queryForObject(
                             "SELECT COUNT(*) FROM " + probe.table() + " WHERE " + probe.predicate(),
                             Integer.class);

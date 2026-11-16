@@ -2,6 +2,7 @@ package com.fido.modules.inventory.service;
 
 import com.fido.modules.inventory.entity.Warehouse;
 import com.fido.modules.inventory.repository.WarehouseRepository;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -9,7 +10,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Objects;
 
-/** Resolves the single v1 operational warehouse from server-owned ACTIVE warehouse state. */
+/** Tìm đúng một kho ACTIVE từ DB; client không tự chọn kho vận hành trong phiên bản hiện tại. */
 @Service
 public class OperationalWarehouseService {
     private static final String ACTIVE = "ACTIVE";
@@ -28,7 +29,7 @@ public class OperationalWarehouseService {
         return active.get(0).getWarehouseId();
     }
 
-    /** A persisted source such as a receipt must not redirect a movement to another warehouse. */
+    /** Kho lưu trên chứng từ phải khớp kho vận hành, tránh chuyển bút toán sang kho khác. */
     public void requireOperationalWarehouse(Long candidateWarehouseId) {
         if (candidateWarehouseId == null
                 || !Objects.equals(candidateWarehouseId, requireOperationalWarehouseId())) {

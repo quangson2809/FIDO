@@ -41,10 +41,14 @@ public class ReportService {
                 counts);
     }
 
+    /**
+     * from/to và granularity lấy từ bộ lọc báo cáo; repository trả doanh thu từng ngày theo snapshot
+     * đơn.
+     * Ghép vào các kỳ đã tạo sẵn để ngày/tuần/tháng không có doanh thu vẫn có điểm bằng 0.
+     */
     public SalesTrendDto salesTrend(LocalDate from, LocalDate to, ReportGranularity granularity) {
         var range = ReportRange.of(from, to);
-        var buckets =
-                periods(range, granularity, new ReportRepository.SalesTotals(0L, 0L));
+        var buckets = periods(range, granularity, new ReportRepository.SalesTotals(0L, 0L));
         for (var daily : reports.dailySales(range.startUtc(), range.endUtc())) {
             var period = granularity.periodStart(daily.date());
             var previous = buckets.get(period);

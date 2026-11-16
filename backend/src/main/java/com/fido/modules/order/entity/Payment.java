@@ -36,7 +36,6 @@ public class Payment {
     @Column(name = "refund_reason", length = 500)
     private String refundReason;
 
-
     @Column(name = "collected_by_account_id", nullable = true)
     private Long collectedByAccountId;
 
@@ -49,7 +48,11 @@ public class Payment {
     @Column(name = "refunded_at", nullable = true, columnDefinition = "TIMESTAMP(6)")
     private LocalDateTime refundedAt;
 
-    @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP(6)", updatable = false)
+    @Column(
+            name = "created_at",
+            nullable = false,
+            columnDefinition = "TIMESTAMP(6)",
+            updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")

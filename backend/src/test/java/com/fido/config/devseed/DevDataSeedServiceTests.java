@@ -22,12 +22,35 @@ import java.util.Set;
 class DevDataSeedServiceTests {
     private static final List<String> TARGET_TABLES =
             List.of(
-                    "accounts", "addresses", "roles", "permissions", "account_roles", "role_permissions",
-                    "categories", "brands", "attributes", "attribute_options",
-                    "products", "product_attribute_values", "product_images", "carts", "cart_items",
-                    "vouchers", "orders", "order_items", "order_addresses", "order_voucher_snapshots",
-                    "payments", "shipping_infos", "suppliers", "warehouses", "goods_receipts",
-                    "goods_receipt_items", "inventories", "inventory_transactions", "audit_logs",
+                    "accounts",
+                    "addresses",
+                    "roles",
+                    "permissions",
+                    "account_roles",
+                    "role_permissions",
+                    "categories",
+                    "brands",
+                    "attributes",
+                    "attribute_options",
+                    "products",
+                    "product_attribute_values",
+                    "product_images",
+                    "carts",
+                    "cart_items",
+                    "vouchers",
+                    "orders",
+                    "order_items",
+                    "order_addresses",
+                    "order_voucher_snapshots",
+                    "payments",
+                    "shipping_infos",
+                    "suppliers",
+                    "warehouses",
+                    "goods_receipts",
+                    "goods_receipt_items",
+                    "inventories",
+                    "inventory_transactions",
+                    "audit_logs",
                     "content_pages");
 
     @Autowired private DevDataSeedService seeder;
@@ -40,11 +63,15 @@ class DevDataSeedServiceTests {
         delete("DELETE FROM inventory_transactions WHERE id BETWEEN 1040001 AND 1040025");
         delete("DELETE FROM goods_receipt_items WHERE id BETWEEN 1030001 AND 1030003");
         delete("DELETE FROM goods_receipts WHERE id BETWEEN 1010001 AND 1010003");
-        delete("DELETE FROM shipping_infos WHERE order_id IN (1001001,1001002,1001003,1001004,1001005,1001006,1001101,1001102,1001103)");
-        delete("DELETE FROM payments WHERE order_id IN (1001001,1001002,1001003,1001004,1001005,1001006,1001101,1001102,1001103)");
-        delete("DELETE FROM order_addresses WHERE order_id IN (1001001,1001002,1001003,1001004,1001005,1001006,1001101,1001102,1001103)");
+        delete(
+                "DELETE FROM shipping_infos WHERE order_id IN (1001001,1001002,1001003,1001004,1001005,1001006,1001101,1001102,1001103)");
+        delete(
+                "DELETE FROM payments WHERE order_id IN (1001001,1001002,1001003,1001004,1001005,1001006,1001101,1001102,1001103)");
+        delete(
+                "DELETE FROM order_addresses WHERE order_id IN (1001001,1001002,1001003,1001004,1001005,1001006,1001101,1001102,1001103)");
         delete("DELETE FROM order_items WHERE id BETWEEN 1101001 AND 1101009");
-        delete("DELETE FROM orders WHERE id IN (1001001,1001002,1001003,1001004,1001005,1001006,1001101,1001102,1001103)");
+        delete(
+                "DELETE FROM orders WHERE id IN (1001001,1001002,1001003,1001004,1001005,1001006,1001101,1001102,1001103)");
         delete("DELETE FROM cart_items WHERE id BETWEEN 981001 AND 981002");
         delete("DELETE FROM carts WHERE id BETWEEN 980001 AND 980002");
         delete("DELETE FROM inventories WHERE warehouse_id=1021001");
@@ -91,17 +118,25 @@ class DevDataSeedServiceTests {
         assertEquals(17, firstCounts.get("inventories"));
         assertEquals(25, firstCounts.get("inventory_transactions"));
 
-        // Each +84 seed number must map to exactly ten national digits (0 + nine digits).
-        List<String> accountPhones = jdbc.queryForList(
-                "SELECT phone FROM accounts WHERE id BETWEEN 900001 AND 900008 ORDER BY id",
-                String.class);
+        // Mỗi số seed dạng +84 phải đổi thành đúng 10 chữ số nội địa: 0 và chín số phía sau.
+        List<String> accountPhones =
+                jdbc.queryForList(
+                        "SELECT phone FROM accounts WHERE id BETWEEN 900001 AND 900008 ORDER BY id",
+                        String.class);
         assertEquals(
                 List.of(
-                        "+84909000001", "+84909000002", "+84909000003", "+84909000004",
-                        "+84909000005", "+84909000006", "+84909000007", "+84909000008"),
+                        "+84909000001",
+                        "+84909000002",
+                        "+84909000003",
+                        "+84909000004",
+                        "+84909000005",
+                        "+84909000006",
+                        "+84909000007",
+                        "+84909000008"),
                 accountPhones);
-        List<String> allSeedPhones = jdbc.queryForList(
-                """
+        List<String> allSeedPhones =
+                jdbc.queryForList(
+                        """
                 SELECT phone FROM accounts WHERE id BETWEEN 900001 AND 900008
                 UNION ALL SELECT recipient_phone FROM addresses WHERE id BETWEEN 910001 AND 910003
                 UNION ALL SELECT recipient_phone FROM order_addresses
@@ -109,12 +144,14 @@ class DevDataSeedServiceTests {
                 UNION ALL SELECT recipient_phone FROM shipping_infos
                     WHERE order_id IN (1001001,1001002,1001003,1001004,1001005,1001006,1001101,1001102,1001103)
                 """,
-                String.class);
+                        String.class);
         assertEquals(29, allSeedPhones.size());
         for (String phone : allSeedPhones) {
-            assertTrue(phone.matches("\\+84[0-9]{9}"),
+            assertTrue(
+                    phone.matches("\\+84[0-9]{9}"),
                     "Seed phone must use +84 followed by exactly nine digits: " + phone);
-            assertTrue(("0" + phone.substring(3)).matches("0[0-9]{9}"),
+            assertTrue(
+                    ("0" + phone.substring(3)).matches("0[0-9]{9}"),
                     "Seed phone must map to a ten-digit national phone: " + phone);
         }
 
@@ -152,7 +189,7 @@ class DevDataSeedServiceTests {
                         """,
                         Integer.class),
                 "child Products must own their SKU and selling price");
-        
+
         for (long leafCategoryId = 920005; leafCategoryId <= 920008; leafCategoryId++) {
             assertEquals(
                     4,
@@ -182,7 +219,7 @@ class DevDataSeedServiceTests {
                         """,
                         Integer.class),
                 "returned demo order must show the whole COD refund against its original delivery");
-        
+
         assertEquals(
                 120,
                 jdbc.queryForObject(
@@ -229,8 +266,7 @@ class DevDataSeedServiceTests {
         assertEquals(
                 1,
                 jdbc.queryForObject(
-                        "SELECT COUNT(*) FROM accounts WHERE id=900003",
-                        Integer.class));
+                        "SELECT COUNT(*) FROM accounts WHERE id=900003", Integer.class));
     }
 
     private Map<String, Integer> tableCounts() {

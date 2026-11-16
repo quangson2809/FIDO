@@ -562,6 +562,32 @@ assert.match(
   getStorefrontErrorMessage(new ApiClientError('Forbidden', 403), 'Thử lại.'),
   /không có quyền/,
 );
+for (const message of [
+  'UNKNOWN_INTERNAL_CODE',
+  'Không hợp lệ: attribute_value_ids',
+  '{"product_id": 1, "version": 3}',
+  'Chi tiết: /api/v1/cart/items',
+  'Chi tiết: https://internal.example.test/orders',
+  'java.lang.IllegalStateException',
+]) {
+  assert.equal(
+    getStorefrontErrorMessage(new ApiClientError(message, 409), 'Vui lòng tải lại.'),
+    'Vui lòng tải lại.',
+    'customer feedback must not display internal codes, payloads or addresses',
+  );
+}
+assert.match(
+  getStorefrontErrorMessage(
+    new ApiClientError('Phone number is already in use.', 409, undefined, undefined, 'PHONE_ALREADY_IN_USE'),
+    'Đăng ký thất bại.',
+  ),
+  /Số điện thoại này đã được đăng ký/,
+);
+assert.equal(
+  getStorefrontErrorMessage(new ApiClientError('Vui lòng giảm số lượng.', 409), 'Thử lại.'),
+  'Vui lòng giảm số lượng.',
+  'preserve actionable, nontechnical validation feedback',
+);
 console.log('Storefront URL, structured recipient and safe error models: PASS');
 
 // Product option drafts preserve persisted IDs even when metadata is partial.

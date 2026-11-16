@@ -217,7 +217,7 @@ export const CheckoutScreen: React.FC = () => {
         synchronizePurchasedCart();
         if (result.total !== submission.quote.total_amount) {
           showToast(
-            `Đơn đã được tạo; tổng COD cuối cùng do Backend xác nhận là ${money(result.total)}.`,
+            `Đơn đã được tạo. Tổng thanh toán khi nhận hàng: ${money(result.total)}.`,
           );
         }
         navigate(`/checkout/success/${result.order_id}`);
@@ -289,7 +289,7 @@ export const CheckoutScreen: React.FC = () => {
             <div>
               <h1 className="font-serif text-3xl sm:text-4xl">Xác nhận thông tin nhận hàng</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-white/65">
-                Backend sẽ kiểm tra lại sản phẩm, tồn kho và tổng COD khi tạo đơn.
+                Kiểm tra địa chỉ và tổng tiền trước khi xác nhận đặt hàng.
               </p>
             </div>
             <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-white/60">
@@ -481,7 +481,7 @@ export const CheckoutScreen: React.FC = () => {
               </div>
             </div>
             <p className="mt-4 text-sm text-muted-grey">
-              Thông tin nhận hàng được lưu vào đơn đặt hàng; checkout không tự tạo địa chỉ trong hồ sơ.
+              Địa chỉ này chỉ dùng cho đơn hàng. Bạn có thể lưu địa chỉ trong Hồ sơ của tôi.
             </p>
           </section>
 
@@ -494,7 +494,7 @@ export const CheckoutScreen: React.FC = () => {
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[#687069]">
                   Ưu đãi & tổng tiền
                 </p>
-                <h2 className="font-serif text-xl">Báo giá từ Backend</h2>
+                <h2 className="font-serif text-xl">Ưu đãi cho đơn hàng</h2>
               </div>
             </div>
             <div className="mb-5 space-y-3">
@@ -508,9 +508,6 @@ export const CheckoutScreen: React.FC = () => {
                   className="field-input"
                 />
               </Field>
-              <p className="text-sm text-[#687069]">
-                Báo giá là bản tính tham khảo. Backend tính lại giá, tồn kho và tổng COD lúc tạo đơn.
-              </p>
               {voucherCode && (
                 <button
                   type="button"
@@ -556,8 +553,8 @@ export const CheckoutScreen: React.FC = () => {
               {uncertainOrder && (
                 <>
                   <p className="mt-3">
-                    Kết quả lần gửi trước chưa rõ. Khi xác minh lại, hệ thống sẽ gửi đúng nội dung
-                    và cùng mã chống trùng để tránh tạo đơn lặp.
+                    Chưa xác nhận được kết quả đặt hàng. Chọn “Xác minh lại đơn đã gửi” để
+                    kiểm tra trước khi đặt đơn khác.
                   </p>
                   <button
                     type="button"
@@ -634,9 +631,6 @@ export const CheckoutScreen: React.FC = () => {
                         {money(item.price)} / sản phẩm
                       </p>
                       <p className="mt-1 text-sm font-semibold">{money(item.lineTotal)}</p>
-                      <p className="mt-1 text-[10px] text-[#687069]">
-                        Tồn khả dụng: {item.availableQuantity}
-                      </p>
                       {item.quantity > item.availableQuantity && (
                         <p className="mt-1 text-xs text-amber-800">
                           Số lượng vượt tồn khả dụng; hãy điều chỉnh trong giỏ hàng.
@@ -695,7 +689,7 @@ export const CheckoutScreen: React.FC = () => {
                         <span className="shrink-0">{money(item.line_total)}</span>
                       </div>
                       <p className="mt-1 text-[10px] text-[#687069]">
-                        SKU {item.sku || '—'} · x{item.quantity} · tồn {item.available_quantity}
+                        SKU {item.sku || '—'} · x{item.quantity}
                       </p>
                     </div>
                   ))}

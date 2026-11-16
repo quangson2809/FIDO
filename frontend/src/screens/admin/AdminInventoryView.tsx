@@ -255,7 +255,7 @@ export const AdminInventoryView: React.FC<{
               <h2 className="font-serif text-xl font-bold">Điều chỉnh {selected.product_name ?? selected.sku}</h2>
               <p className="mt-1 text-xs text-[#606863]">
                 Hiện khả dụng: {selected.available_quantity}. Phiên bản tồn kho: {selected.version}.
-                Nhập số dương để tăng kho, số âm để giảm kho; Backend sẽ từ chối nếu phiên bản đã đổi.
+                Nhập số dương để tăng kho, số âm để giảm kho. Nếu tồn kho đã thay đổi, hãy tải lại trước khi lưu.
               </p>
               <p className="mt-3 font-semibold">
                 Dự kiến: {selected.available_quantity} →{' '}

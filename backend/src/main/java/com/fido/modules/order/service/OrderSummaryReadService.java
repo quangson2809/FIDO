@@ -35,6 +35,10 @@ public class OrderSummaryReadService {
         this.shippingInfos = shippingInfos;
     }
 
+    /**
+     * orders là trang đơn vừa truy vấn; đọc Payment, Shipping và ảnh snapshot theo lô cho các ID này.
+     * Ảnh xem trước lấy từ OrderItem đầu tiên, không đọc ảnh catalog hiện tại.
+     */
     public List<OrderSummaryDto> summaries(List<Order> orders) {
         if (orders.isEmpty()) {
             return List.of();

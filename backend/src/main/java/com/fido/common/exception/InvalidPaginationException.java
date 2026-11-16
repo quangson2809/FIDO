@@ -1,6 +1,6 @@
 package com.fido.common.exception;
 
-/** Invalid client-supplied paging bounds, distinct from programming errors. */
+/** Tách lỗi phân trang do client nhập khỏi lỗi lập trình để trả đúng phản hồi 400. */
 public class InvalidPaginationException extends IllegalArgumentException {
     public InvalidPaginationException() {
         super("Invalid pagination bounds");

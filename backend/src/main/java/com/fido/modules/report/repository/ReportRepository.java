@@ -15,22 +15,21 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Read-only report projections against the target schema.
- *
- * <p>Money is aggregated from persisted integer-VND Order snapshots. The Payment and
- * ShippingInfo joins enforce the approved COD completion/refund facts and date basis;
- * current catalog fields are used only for optional display data.</p>
+ * Tổng hợp từ số tiền chụp tại thời điểm đặt đơn; Payment/Shipping xác nhận thu COD, hoàn tiền và mốc
+ * ngày. Catalog hiện tại chỉ bổ sung thông tin hiển thị.
  */
 @Repository
 public class ReportRepository {
 
-    private static final String SALES_COLUMNS = """
+    private static final String SALES_COLUMNS =
+            """
             COALESCE(SUM(o.total_amount), 0) AS completed_sales,
             COALESCE(SUM(CASE WHEN o.status = 'RETURNED'
                 THEN o.total_amount ELSE 0 END), 0) AS returned_adjustment
             """;
 
-    private static final String SALES_COHORT = """
+    private static final String SALES_COHORT =
+            """
             FROM orders o
             JOIN payments p ON p.order_id = o.id
             JOIN shipping_infos s ON s.order_id = o.id
@@ -60,7 +59,8 @@ public class ReportRepository {
                     + SALES_COHORT
                     + " GROUP BY local_day ORDER BY local_day";
 
-    static final String DAILY_ORDERS_SQL = """
+    static final String DAILY_ORDERS_SQL =
+            """
             SELECT CAST(TIMESTAMPADD(HOUR, 7, o.created_at) AS DATE) AS local_day,
                    o.status, COUNT(*) AS order_count
             FROM orders o
@@ -69,9 +69,10 @@ public class ReportRepository {
             ORDER BY local_day, o.status
             """;
 
-    static final String TOP_PRODUCTS_SQL = """
+    static final String TOP_PRODUCTS_SQL =
+            """
             SELECT totals.product_id,
-                   p.name AS product_name,
+                   COALESCE(p.name, p.sku) AS product_name,
                    image.image_url AS thumbnail,
                    totals.completed_units,
                    totals.returned_units,
@@ -186,8 +187,8 @@ public class ReportRepository {
     }
 
     /**
-     * MySQL returns SUM(BIGINT) as DECIMAL. Convert exactly so an aggregate cannot
-     * silently truncate, round, or overflow the API's signed-BIGINT integer VND contract.
+     * MySQL trả SUM(BIGINT) dưới dạng DECIMAL; chuyển chính xác sang long để không cắt lẻ hoặc tràn số
+     * VND.
      */
     private static long exactAggregate(ResultSet result, String column) throws SQLException {
         BigDecimal value = result.getBigDecimal(column);
@@ -197,7 +198,8 @@ public class ReportRepository {
         try {
             return value.longValueExact();
         } catch (ArithmeticException exception) {
-            throw new SQLException("Report aggregate exceeds the supported integer range", exception);
+            throw new SQLException(
+                    "Report aggregate exceeds the supported integer range", exception);
         }
     }
 }

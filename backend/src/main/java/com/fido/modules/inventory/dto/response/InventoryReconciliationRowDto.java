@@ -1,6 +1,6 @@
 package com.fido.modules.inventory.dto.response;
 
-/** Read-only reconciliation result. A mismatch is reported, never repaired by this DTO/service. */
+/** Chỉ báo sai lệch đối soát; kết quả này không tự sửa số dư hoặc lịch sử kho. */
 public record InventoryReconciliationRowDto(
         Long warehouse_id,
         Long product_id,

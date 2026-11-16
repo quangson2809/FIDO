@@ -3,16 +3,12 @@ package com.fido.config.web;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-/**
- * Request/command-scoped correlation context shared by synchronous service calls on the thread.
- * A scope must be opened and closed at the command boundary; nested scopes restore their parent.
- */
+/** Giữ mã liên kết trong cùng luồng request/lệnh đồng bộ; kết thúc phạm vi phải khôi phục ngữ cảnh cha. */
 public final class CorrelationIdContext {
 
     public static final String HEADER_NAME = "X-Correlation-ID";
 
-    private static final Pattern SAFE_CORRELATION_ID =
-            Pattern.compile("[A-Za-z0-9._:-]{1,120}");
+    private static final Pattern SAFE_CORRELATION_ID = Pattern.compile("[A-Za-z0-9._:-]{1,120}");
     private static final ThreadLocal<String> CURRENT = new ThreadLocal<>();
 
     private CorrelationIdContext() {}
@@ -23,7 +19,7 @@ public final class CorrelationIdContext {
         return new Scope(previous);
     }
 
-    /** Opens a generated command context for trusted non-HTTP/system work. */
+    /** Tạo mã liên kết cho lệnh hệ thống tin cậy chạy ngoài HTTP. */
     public static Scope openGenerated() {
         return open(null);
     }
@@ -32,7 +28,7 @@ public final class CorrelationIdContext {
         return CURRENT.get();
     }
 
-    /** Removes context when a thread is explicitly abandoned or reset by infrastructure. */
+    /** Xóa ngữ cảnh khi hạ tầng chủ động bỏ hoặc tái sử dụng luồng. */
     public static void clear() {
         CURRENT.remove();
     }

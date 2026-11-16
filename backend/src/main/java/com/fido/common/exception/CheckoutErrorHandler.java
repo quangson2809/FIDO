@@ -12,7 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
-/** Exposes only explicitly authored checkout/promotion rejection reasons. */
+/** Chỉ đưa mã từ chối checkout/voucher đã công khai vào phản hồi; không trả lỗi nội bộ. */
 @Order(0)
 @RestControllerAdvice(
         assignableTypes = {

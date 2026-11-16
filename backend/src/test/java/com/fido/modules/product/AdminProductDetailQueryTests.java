@@ -1,6 +1,9 @@
 package com.fido.modules.product;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import jakarta.persistence.EntityManagerFactory;
+
 import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -11,15 +14,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 class AdminProductDetailQueryTests extends CatalogHttpSupport {
     @Autowired EntityManagerFactory entityManagerFactory;
     private final List<Long> attributes = new ArrayList<>();
 
     @AfterEach
     void cleanMetadata() {
-        for (long id : products) db.update("DELETE FROM product_attribute_values WHERE product_id=?", id);
+        for (long id : products)
+            db.update("DELETE FROM product_attribute_values WHERE product_id=?", id);
         for (long id : attributes) {
             db.update("DELETE FROM attribute_options WHERE attribute_id=?", id);
             db.update("DELETE FROM attributes WHERE id=?", id);
@@ -55,7 +57,9 @@ class AdminProductDetailQueryTests extends CatalogHttpSupport {
             Result large = call("GET", "/api/v1/admin/products/" + parent, writer.token(), null);
             assertEquals(200, large.status(), large.body());
             long largeCount = stats.getPrepareStatementCount() - before;
-            assertEquals(smallCount, largeCount,
+            assertEquals(
+                    smallCount,
+                    largeCount,
                     "Query count must not grow with children, distinct references, or Attribute Options");
             var data = large.data().get("data");
             assertTrue(data.get("parent_product").isNull());
@@ -65,7 +69,9 @@ class AdminProductDetailQueryTests extends CatalogHttpSupport {
             for (int index = 0; index < children.size(); index++) {
                 var detail = data.get("children").get(index);
                 assertEquals(children.get(index).longValue(), detail.get("product_id").asLong());
-                assertEquals(children.get(index).longValue(), data.get("child_product_ids").get(index).asLong());
+                assertEquals(
+                        children.get(index).longValue(),
+                        data.get("child_product_ids").get(index).asLong());
                 assertFalse(detail.get("category").isNull());
                 assertFalse(detail.get("brand").isNull());
                 assertEquals(2, detail.get("images").size());
@@ -73,14 +79,17 @@ class AdminProductDetailQueryTests extends CatalogHttpSupport {
                 assertEquals(1, detail.get("images").get(1).get("sort_order").asInt());
                 assertEquals(index == 0 ? 2 : 4, detail.get("attribute_values").size());
             }
-            Result childDetail = call("GET", "/api/v1/admin/products/" + first, writer.token(), null);
+            Result childDetail =
+                    call("GET", "/api/v1/admin/products/" + first, writer.token(), null);
             assertEquals(200, childDetail.status(), childDetail.body());
             var parentDetail = childDetail.data().get("data").get("parent_product");
             assertEquals(parent, parentDetail.get("product_id").asLong());
             assertEquals(2, parentDetail.get("images").size());
             assertEquals(2, parentDetail.get("attribute_values").size());
             assertEquals(0, childDetail.data().get("data").get("children").size());
-            System.out.printf("Admin detail query count: 1 child/4 values=%d; 6 children/24 values=%d%n", smallCount, largeCount);
+            System.out.printf(
+                    "Admin detail query count: 1 child/4 values=%d; 6 children/24 values=%d%n",
+                    smallCount, largeCount);
         } finally {
             stats.setStatisticsEnabled(enabled);
         }
@@ -89,18 +98,24 @@ class AdminProductDetailQueryTests extends CatalogHttpSupport {
     @Test
     void standaloneProductPreservesNullReferencesAndEmptyCollections() throws Exception {
         String token = root();
-        Result created = call("POST", "/api/v1/admin/products", token,
-                Map.of("sku", "SOLO-" + UUID.randomUUID(), "selling_price", 10000));
+        Result created =
+                call(
+                        "POST",
+                        "/api/v1/admin/products",
+                        token,
+                        Map.of("sku", "SOLO-" + UUID.randomUUID(), "selling_price", 10000));
         assertEquals(201, created.status(), created.body());
         long id = created.data().get("data").get("product_id").asLong();
         products.add(id);
         Result detail = call("GET", "/api/v1/admin/products/" + id, token, null);
         assertEquals(200, detail.status(), detail.body());
         var data = detail.data().get("data");
-        for (String field : List.of("category", "brand", "parent_product", "category_id", "brand_id")) {
+        for (String field :
+                List.of("category", "brand", "parent_product", "category_id", "brand_id")) {
             assertTrue(data.get(field).isNull(), field);
         }
-        for (String field : List.of("images", "attribute_values", "children", "child_product_ids")) {
+        for (String field :
+                List.of("images", "attribute_values", "children", "child_product_ids")) {
             assertEquals(0, data.get(field).size(), field);
         }
     }
@@ -112,17 +127,32 @@ class AdminProductDetailQueryTests extends CatalogHttpSupport {
     }
 
     private void enrich(long product, int count) {
-        for (int i = 0; i < 2; i++) db.update(
-                "INSERT INTO product_images(product_id,image_url,is_primary,sort_order) VALUES (?,?,?,?)",
-                product, "https://cdn.test/" + product + "/" + i + ".png", i == 0, i);
+        for (int i = 0; i < 2; i++)
+            db.update(
+                    "INSERT INTO product_images(product_id,image_url,is_primary,sort_order) VALUES (?,?,?,?)",
+                    product,
+                    "https://cdn.test/" + product + "/" + i + ".png",
+                    i == 0,
+                    i);
         for (int i = 0; i < count; i++) {
             String code = "QUERY-" + UUID.randomUUID();
             db.update("INSERT INTO attributes(code,name,sort_order) VALUES (?,?,?)", code, code, i);
-            long attribute = db.queryForObject("SELECT id FROM attributes WHERE code=?", Long.class, code);
+            long attribute =
+                    db.queryForObject("SELECT id FROM attributes WHERE code=?", Long.class, code);
             attributes.add(attribute);
-            db.update("INSERT INTO attribute_options(attribute_id,value,label) VALUES (?,'VALUE','Label')", attribute);
-            long option = db.queryForObject("SELECT id FROM attribute_options WHERE attribute_id=?", Long.class, attribute);
-            db.update("INSERT INTO product_attribute_values(product_id,attribute_id,option_id) VALUES (?,?,?)", product, attribute, option);
+            db.update(
+                    "INSERT INTO attribute_options(attribute_id,value,label) VALUES (?,'VALUE','Label')",
+                    attribute);
+            long option =
+                    db.queryForObject(
+                            "SELECT id FROM attribute_options WHERE attribute_id=?",
+                            Long.class,
+                            attribute);
+            db.update(
+                    "INSERT INTO product_attribute_values(product_id,attribute_id,option_id) VALUES (?,?,?)",
+                    product,
+                    attribute,
+                    option);
         }
     }
 }

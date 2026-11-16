@@ -17,8 +17,8 @@ class AuditQueryApiTest extends OperationsHttpSupport {
         for (int i = 0; i < 2; i++)
             db.update(
                     "INSERT INTO"
-                        + " audit_logs(actor_account_id,action,entity_type,entity_id,before_data,after_data,created_at)"
-                        + " VALUES (?,'TEST','CONTENT_PAGE','abc',NULL,NULL,'2026-09-20 12:00:00')",
+                            + " audit_logs(actor_account_id,action,entity_type,entity_id,before_data,after_data,created_at)"
+                            + " VALUES (?,'TEST','CONTENT_PAGE','abc',NULL,NULL,'2026-09-20 12:00:00')",
                     employee.id());
         String query =
                 path

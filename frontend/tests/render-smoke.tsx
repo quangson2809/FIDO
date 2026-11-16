@@ -49,6 +49,7 @@ const summaryHtml = renderToStaticMarkup(
 );
 assert.match(summaryHtml, /Sản phẩm thật từ catalog/);
 assert.match(summaryHtml, /890\.000 đ/);
+assert.doesNotMatch(summaryHtml, /\bACTIVE\b|\bDRAFT\b|\bINACTIVE\b/);
 assert.match(summaryHtml, /aria-haspopup="dialog"/);
 assert.doesNotMatch(summaryHtml, /HÀNG MỚI|WOOL BLEND|Yêu thích|Giá cơ bản<\/|>Xem chi tiết</);
 const asyncNoOp = async () => undefined;
@@ -135,6 +136,17 @@ const headerHtml = renderWithShell(<Header />);
 assert.match(headerHtml, /FIDO/);
 assert.match(headerHtml, /Giỏ hàng/);
 assert.match(headerHtml, /Tài khoản/);
+assert.doesNotMatch(headerHtml, /Đăng nhập để dùng giỏ hàng/);
+const guestHeaderHtml = renderToStaticMarkup(
+  <MemoryRouter>
+    <AuthSessionContext.Provider value={{ ...authValue, isAuthenticated: false }}>
+      <ToastProvider>
+        <CartContext.Provider value={cartValue}><Header /></CartContext.Provider>
+      </ToastProvider>
+    </AuthSessionContext.Provider>
+  </MemoryRouter>,
+);
+assert.match(guestHeaderHtml, /Đăng nhập để dùng giỏ hàng/);
 
 const adminHtml = renderWithShell(
   <Routes>
@@ -207,12 +219,7 @@ const product: ProductDetailDto = {
   ],
 };
 
-const {
-  familyOptions,
-  matchingFamilyMembers,
-  matchingPurchasableMembers,
-  deriveProductSelectionMetadata,
-} = await import(
+const { familyAttributes, matchingFamilyMembers, memberIsPurchasable } = await import(
   '../src/features/catalog/model/productFamilySelection'
 );
 const familyMembers = [
@@ -227,21 +234,18 @@ const familyMembers = [
       { attribute_id: 10, attribute_code: 'SIZE',
         attribute_name: 'Kích thước', attribute_value_id: 62, value: 'L', label: 'L' }] },
 ];
-assert.deepEqual(matchingFamilyMembers(familyMembers, 51, 61).map(v => v.product_id), [2]);
-assert.deepEqual(matchingFamilyMembers(familyMembers, 51, 62), []);
-assert.equal(familyOptions(familyMembers, 'COLOR').length, 2);
+assert.deepEqual(matchingFamilyMembers(familyMembers, { 9: 51, 10: 61 }).map(v => v.product_id), [2]);
+assert.deepEqual(matchingFamilyMembers(familyMembers, { 9: 51, 10: 62 }), []);
+assert.equal(familyAttributes(familyMembers).find(axis => axis.attribute_id === 9)?.options.length, 2);
 const stockMembers = [
   { ...familyMembers[0], available_quantity: 0, purchasable: false },
   { ...familyMembers[1], available_quantity: 4, purchasable: true },
 ];
-assert.deepEqual(matchingPurchasableMembers(stockMembers, 51, 61), []);
-assert.deepEqual(matchingPurchasableMembers(stockMembers, 52, 62).map(m => m.product_id), [3]);
-const derivedMeta = deriveProductSelectionMetadata({
-  root_product_id: 1, members: stockMembers,
-});
-assert.equal(derivedMeta.product_choices[0].purchasable, false);
-assert.equal(derivedMeta.product_choices[1].available_quantity, 4);
-assert.equal(derivedMeta.color_options.length, 2);
+assert.deepEqual(matchingFamilyMembers(stockMembers, { 9: 51, 10: 61 }).filter(memberIsPurchasable), []);
+assert.deepEqual(matchingFamilyMembers(stockMembers, { 9: 52, 10: 62 }).filter(memberIsPurchasable).map(m => m.product_id), [3]);
+assert.equal(memberIsPurchasable(stockMembers[0]), false);
+assert.equal(stockMembers[1].available_quantity, 4);
+assert.equal(familyAttributes(stockMembers).find(axis => axis.attribute_id === 9)?.options.length, 2);
 
 const purchasePanelHtml = renderToStaticMarkup(
   <ProductPurchasePanel product={product} quantity={1} onQuantityChange={noOp}
@@ -316,6 +320,7 @@ const inactiveProductPanelHtml = renderToStaticMarkup(
 );
 assert.match(inactiveProductPanelHtml, /Sản phẩm hiện chưa khả dụng để mua/);
 assert.match(inactiveProductPanelHtml, /Không khả dụng/);
+assert.doesNotMatch(inactiveProductPanelHtml, /\bINACTIVE\b|kho vận hành/);
 assert.doesNotMatch(inactiveProductPanelHtml, />Thêm vào giỏ hàng</);
 
 for (const [name, expected] of [
@@ -446,14 +451,11 @@ assert.match(
 assert.match(renderWithShell(<Footer />), /href="\/about"/);
 console.log('About render and navigation checks passed');
 
-const footerHtml = renderToStaticMarkup(
-  <MemoryRouter>
-    <Footer />
-  </MemoryRouter>,
-);
+const footerHtml = renderWithShell(<Footer />);
 assert.match(footerHtml, /Chăm sóc khách hàng/);
-if (!import.meta.env.VITE_SUPPORT_EMAIL) assert.match(footerHtml, /Chưa cập nhật email CSKH/);
-if (!import.meta.env.VITE_SUPPORT_HOTLINE) assert.match(footerHtml, /Chưa cập nhật hotline CSKH/);
+assert.doesNotMatch(footerHtml, /Chưa cập nhật|Đăng nhập \/ đăng ký/);
+if (!import.meta.env.VITE_SUPPORT_EMAIL) assert.doesNotMatch(footerHtml, /mailto:/);
+if (!import.meta.env.VITE_SUPPORT_HOTLINE) assert.doesNotMatch(footerHtml, /tel:/);
 
 const orderedAttributeMarkup = renderToStaticMarkup(<ProductAttributeFields
   attributes={[
@@ -469,6 +471,6 @@ assert.ok(orderedAttributeMarkup.indexOf('First ·') < orderedAttributeMarkup.in
 assert.ok(orderedAttributeMarkup.indexOf('Second</span>') < orderedAttributeMarkup.indexOf('Last</span>'));
 assert.ok(orderedAttributeMarkup.indexOf('First option') < orderedAttributeMarkup.indexOf('Second option'));
 assert.ok(orderedAttributeMarkup.indexOf('Second option') < orderedAttributeMarkup.indexOf('Third option'));
-assert.ok(orderedAttributeMarkup.includes('Option #29'));
+assert.ok(orderedAttributeMarkup.includes('Giá trị đã lưu #29'));
 assert.match(orderedAttributeMarkup, /<option(?=[^>]*value="29")(?=[^>]*selected="")[^>]*>/);
 console.log('Product Attribute/Option ordering and unavailable saved option rendering: PASS');

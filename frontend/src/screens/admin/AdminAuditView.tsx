@@ -47,17 +47,17 @@ export const AdminAuditView: React.FC<{ showToast: (msg: string) => void }> = ()
         className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
       >
         <input
-          aria-label="Action, ví dụ ORDER_CONFIRMED"
+          aria-label="Mã hành động"
           value={actionDraft}
           onChange={(event) => setActionDraft(event.target.value)}
-          placeholder="Action, ví dụ ORDER_CONFIRMED"
+          placeholder="Mã hành động, ví dụ ORDER_CONFIRM"
           className="border border-[#D9DDD6] bg-white px-3 py-2 text-sm"
         />
         <input
-          aria-label="Target type"
+          aria-label="Loại đối tượng"
           value={targetTypeDraft}
           onChange={(event) => setTargetTypeDraft(event.target.value)}
-          placeholder="Target type"
+          placeholder="Loại đối tượng, ví dụ ORDER"
           className="border border-[#D9DDD6] bg-white px-3 py-2 text-sm"
         />
         <button
@@ -89,7 +89,7 @@ export const AdminAuditView: React.FC<{ showToast: (msg: string) => void }> = ()
             ) : query.error ? null : logs.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-[#687069]">
-                  Không có audit log phù hợp.
+                  Không có nhật ký phù hợp.
                 </td>
               </tr>
             ) : (
@@ -99,14 +99,40 @@ export const AdminAuditView: React.FC<{ showToast: (msg: string) => void }> = ()
                     {formatVietnamDateTime(log.created_at)}
                   </td>
                   <td className="px-4 py-3 font-mono">
-                    {log.actor_account_id == null ? 'SYSTEM' : `#${log.actor_account_id}`}
+                    {log.actor_account_id == null ? 'Hệ thống' : `#${log.actor_account_id}`}
                   </td>
                   <td className="px-4 py-3 font-mono text-xs font-bold">{log.action}</td>
                   <td className="px-4 py-3">
                     <span className="font-semibold">{log.entity_type}</span>
                     <span className="ml-1 font-mono text-xs text-[#687069]">{' '}{log.entity_id}</span>
                   </td>
-                  <td className="max-w-xl break-words px-4 py-3 text-[#606863]">{JSON.stringify({ before: log.before_data, after: log.after_data })}</td>
+                  <td className="max-w-xl break-words px-4 py-3 text-[#606863]">
+                    {log.before_data == null && log.after_data == null ? (
+                      <span>Không có dữ liệu thay đổi.</span>
+                    ) : (
+                      <details>
+                        <summary className="cursor-pointer font-semibold">Xem thay đổi</summary>
+                        <dl className="mt-3 space-y-3">
+                          <div>
+                            <dt className="font-semibold">Trước thay đổi</dt>
+                            <dd>
+                              <pre className="mt-1 max-h-60 max-w-xs overflow-auto whitespace-pre-wrap break-words rounded bg-[#F5F6F2] p-3 text-xs">
+                                {JSON.stringify(log.before_data, null, 2)}
+                              </pre>
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="font-semibold">Sau thay đổi</dt>
+                            <dd>
+                              <pre className="mt-1 max-h-60 max-w-xs overflow-auto whitespace-pre-wrap break-words rounded bg-[#F5F6F2] p-3 text-xs">
+                                {JSON.stringify(log.after_data, null, 2)}
+                              </pre>
+                            </dd>
+                          </div>
+                        </dl>
+                      </details>
+                    )}
+                  </td>
                 </tr>
               ))
             )}

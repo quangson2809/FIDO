@@ -3,7 +3,7 @@ package com.fido.modules.report.dto.response;
 import java.time.LocalDate;
 import java.util.Map;
 
-/** Monetary values are whole VND integers. */
+/** Các số tiền trả về tính bằng VND nguyên. */
 public record ReportOverviewDto(
         LocalDate from,
         LocalDate to,

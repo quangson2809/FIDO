@@ -5,21 +5,21 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fido.modules.inventory.dto.request.GoodsReceiptActionRequest;
 import com.fido.modules.inventory.service.GoodsReceiptService;
-import com.fido.modules.inventory.service.InventoryCommandService;
+import com.fido.modules.inventory.service.stock.InventoryCommandService;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -47,44 +47,72 @@ class InventoryPhase4TransactionTests {
         String suffix = UUID.randomUUID().toString().replace("-", "");
         String phone = "+84" + suffix.substring(0, 9);
 
-        db.update("INSERT INTO accounts(full_name,password_hash,phone) VALUES (?,?,?)",
-                "Inventory rollback test", "test-only", phone);
+        db.update(
+                "INSERT INTO accounts(full_name,password_hash,phone) VALUES (?,?,?)",
+                "Inventory rollback test",
+                "test-only",
+                phone);
         accountId = db.queryForObject("SELECT id FROM accounts WHERE phone=?", Long.class, phone);
 
-        db.update("INSERT INTO suppliers(code,name,status) VALUES (?,?, 'ACTIVE')",
-                "RB-SUP-" + suffix, "Rollback supplier " + suffix);
-        supplierId = db.queryForObject(
-                "SELECT id FROM suppliers WHERE code=?", Long.class, "RB-SUP-" + suffix);
+        db.update(
+                "INSERT INTO suppliers(code,name,status) VALUES (?,?, 'ACTIVE')",
+                "RB-SUP-" + suffix,
+                "Rollback supplier " + suffix);
+        supplierId =
+                db.queryForObject(
+                        "SELECT id FROM suppliers WHERE code=?", Long.class, "RB-SUP-" + suffix);
 
         String categorySlug = "rollback-" + suffix;
-        db.update("INSERT INTO categories(name,slug) VALUES (?,?)",
-                "Rollback category " + suffix, categorySlug);
-        categoryId = db.queryForObject(
-                "SELECT id FROM categories WHERE slug=?", Long.class, categorySlug);
+        db.update(
+                "INSERT INTO categories(name,slug) VALUES (?,?)",
+                "Rollback category " + suffix,
+                categorySlug);
+        categoryId =
+                db.queryForObject(
+                        "SELECT id FROM categories WHERE slug=?", Long.class, categorySlug);
 
-        db.update("INSERT INTO products(category_id,name,sku,selling_price,status) "
+        db.update(
+                "INSERT INTO products(category_id,name,sku,selling_price,status) "
                         + "VALUES (?,?,?,100000,'ACTIVE')",
-                categoryId, "Rollback product " + suffix, "RB-SKU-" + suffix);
-        productId = db.queryForObject(
-                "SELECT id FROM products WHERE sku=?", Long.class, "RB-SKU-" + suffix);
+                categoryId,
+                "Rollback product " + suffix,
+                "RB-SKU-" + suffix);
+        productId =
+                db.queryForObject(
+                        "SELECT id FROM products WHERE sku=?", Long.class, "RB-SKU-" + suffix);
 
-        db.update("INSERT INTO warehouses(code,name,status) VALUES (?,?, 'ACTIVE')",
-                "RB-WH-" + suffix, "Rollback warehouse " + suffix);
-        warehouseId = db.queryForObject(
-                "SELECT id FROM warehouses WHERE code=?", Long.class, "RB-WH-" + suffix);
+        db.update(
+                "INSERT INTO warehouses(code,name,status) VALUES (?,?, 'ACTIVE')",
+                "RB-WH-" + suffix,
+                "Rollback warehouse " + suffix);
+        warehouseId =
+                db.queryForObject(
+                        "SELECT id FROM warehouses WHERE code=?", Long.class, "RB-WH-" + suffix);
 
-        db.update("INSERT INTO inventories(warehouse_id,product_id,quantity_on_hand,version) "
-                        + "VALUES (?,?,0,0)", warehouseId, productId);
+        db.update(
+                "INSERT INTO inventories(warehouse_id,product_id,quantity_on_hand,version) "
+                        + "VALUES (?,?,0,0)",
+                warehouseId,
+                productId);
 
-        db.update("INSERT INTO goods_receipts(supplier_id,warehouse_id,receipt_number,status,created_by) "
+        db.update(
+                "INSERT INTO goods_receipts(supplier_id,warehouse_id,receipt_number,status,created_by) "
                         + "VALUES (?,?,?,'DRAFT',?)",
-                supplierId, warehouseId, "RB-" + suffix.substring(0, 20), accountId);
-        receiptId = db.queryForObject(
-                "SELECT id FROM goods_receipts WHERE receipt_number=?",
-                Long.class, "RB-" + suffix.substring(0, 20));
+                supplierId,
+                warehouseId,
+                "RB-" + suffix.substring(0, 20),
+                accountId);
+        receiptId =
+                db.queryForObject(
+                        "SELECT id FROM goods_receipts WHERE receipt_number=?",
+                        Long.class,
+                        "RB-" + suffix.substring(0, 20));
 
-        db.update("INSERT INTO goods_receipt_items(goods_receipt_id,product_id,quantity_received,unit_cost) "
-                        + "VALUES (?,?,5,0)", receiptId, productId);
+        db.update(
+                "INSERT INTO goods_receipt_items(goods_receipt_id,product_id,quantity_received,unit_cost) "
+                        + "VALUES (?,?,5,0)",
+                receiptId,
+                productId);
     }
 
     @AfterEach
@@ -92,8 +120,10 @@ class InventoryPhase4TransactionTests {
         if (accountId == null) return;
         db.update("DELETE FROM audit_logs WHERE actor_account_id=?", accountId);
         if (receiptId != null) {
-            db.update("DELETE FROM inventory_transactions WHERE goods_receipt_item_id IN "
-                    + "(SELECT id FROM goods_receipt_items WHERE goods_receipt_id=?)", receiptId);
+            db.update(
+                    "DELETE FROM inventory_transactions WHERE goods_receipt_item_id IN "
+                            + "(SELECT id FROM goods_receipt_items WHERE goods_receipt_id=?)",
+                    receiptId);
             db.update("DELETE FROM goods_receipt_items WHERE goods_receipt_id=?", receiptId);
             db.update("DELETE FROM goods_receipts WHERE id=?", receiptId);
         }
@@ -112,18 +142,28 @@ class InventoryPhase4TransactionTests {
     @WithMockUser(authorities = "ROLE_SUPERADMIN")
     void failedLedgerInsertRollsBackReceiptAndInventoryTogether() {
         fixture();
-        assertThrows(RuntimeException.class,
+        assertThrows(
+                RuntimeException.class,
                 () -> receipts.action(-999L, receiptId, new GoodsReceiptActionRequest("CONFIRM")));
 
-        assertEquals("DRAFT", db.queryForObject(
-                "SELECT status FROM goods_receipts WHERE id=?", String.class, receiptId));
-        assertEquals(0, db.queryForObject(
-                "SELECT quantity_on_hand FROM inventories WHERE warehouse_id=? AND product_id=?",
-                Integer.class, warehouseId, productId));
-        assertEquals(0, db.queryForObject(
-                "SELECT COUNT(*) FROM inventory_transactions WHERE goods_receipt_item_id IN "
-                        + "(SELECT id FROM goods_receipt_items WHERE goods_receipt_id=?)",
-                Integer.class, receiptId));
+        assertEquals(
+                "DRAFT",
+                db.queryForObject(
+                        "SELECT status FROM goods_receipts WHERE id=?", String.class, receiptId));
+        assertEquals(
+                0,
+                db.queryForObject(
+                        "SELECT quantity_on_hand FROM inventories WHERE warehouse_id=? AND product_id=?",
+                        Integer.class,
+                        warehouseId,
+                        productId));
+        assertEquals(
+                0,
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM inventory_transactions WHERE goods_receipt_item_id IN "
+                                + "(SELECT id FROM goods_receipt_items WHERE goods_receipt_id=?)",
+                        Integer.class,
+                        receiptId));
     }
 
     @Test
@@ -132,63 +172,105 @@ class InventoryPhase4TransactionTests {
         SecurityContext previous = SecurityContextHolder.getContext();
         SecurityContext jwtContext = SecurityContextHolder.createEmptyContext();
         Instant issued = Instant.now();
-        Jwt jwt = Jwt.withTokenValue("p36-receipt-replay-test")
-                .header("alg", "none")
-                .subject(accountId.toString())
-                .issuedAt(issued)
-                .expiresAt(issued.plusSeconds(120))
-                .build();
-        jwtContext.setAuthentication(new JwtAuthenticationToken(
-                jwt, List.of(new SimpleGrantedAuthority("ROLE_SUPERADMIN"))));
+        Jwt jwt =
+                Jwt.withTokenValue("p36-receipt-replay-test")
+                        .header("alg", "none")
+                        .subject(accountId.toString())
+                        .issuedAt(issued)
+                        .expiresAt(issued.plusSeconds(120))
+                        .build();
+        jwtContext.setAuthentication(
+                new JwtAuthenticationToken(
+                        jwt, List.of(new SimpleGrantedAuthority("ROLE_SUPERADMIN"))));
         SecurityContextHolder.setContext(jwtContext);
 
         try {
             receipts.action(accountId, receiptId, new GoodsReceiptActionRequest("CONFIRM"));
-            Long receiptItemId = db.queryForObject(
-                    "SELECT id FROM goods_receipt_items WHERE goods_receipt_id=?",
-                    Long.class, receiptId);
+            Long receiptItemId =
+                    db.queryForObject(
+                            "SELECT id FROM goods_receipt_items WHERE goods_receipt_id=?",
+                            Long.class,
+                            receiptId);
             String semanticKey = "goods-receipt-item:" + receiptItemId + ":GOODS_RECEIPT";
 
             TransactionTemplate tx = new TransactionTemplate(transactionManager);
-            tx.executeWithoutResult(status -> inventory.receiveGoods(
-                    accountId,
-                    receiptId,
-                    warehouseId,
-                    List.of(new InventoryCommandService.StockLine(
-                            productId, 5, null, receiptItemId))));
+            tx.executeWithoutResult(
+                    status ->
+                            inventory.receiveGoods(
+                                    accountId,
+                                    receiptId,
+                                    warehouseId,
+                                    List.of(
+                                            new InventoryCommandService.StockLine(
+                                                    productId, 5, null, receiptItemId))));
 
-            assertEquals(5, db.queryForObject(
-                    "SELECT quantity_on_hand FROM inventories WHERE warehouse_id=? AND product_id=?",
-                    Integer.class, warehouseId, productId));
-            assertEquals(1, db.queryForObject(
-                    "SELECT version FROM inventories WHERE warehouse_id=? AND product_id=?",
-                    Integer.class, warehouseId, productId));
-            assertEquals(1, db.queryForObject(
-                    "SELECT COUNT(*) FROM inventory_transactions WHERE goods_receipt_item_id=? "
-                            + "AND transaction_type='GOODS_RECEIPT' AND idempotency_key=?",
-                    Integer.class, receiptItemId, semanticKey));
-            assertEquals(5, db.queryForObject(
-                    "SELECT COALESCE(SUM(quantity_delta),0) FROM inventory_transactions "
-                            + "WHERE warehouse_id=? AND product_id=?",
-                    Integer.class, warehouseId, productId));
-            assertEquals(1, db.queryForObject(
-                    "SELECT COUNT(*) FROM audit_logs WHERE actor_account_id=? "
-                            + "AND action='GOODS_RECEIPT_CONFIRM' AND entity_id=?",
-                    Integer.class, accountId, Long.toString(receiptId)));
-
-            assertThrows(ResponseStatusException.class,
-                    () -> tx.executeWithoutResult(status -> inventory.receiveGoods(
-                            accountId,
-                            receiptId,
+            assertEquals(
+                    5,
+                    db.queryForObject(
+                            "SELECT quantity_on_hand FROM inventories WHERE warehouse_id=? AND product_id=?",
+                            Integer.class,
                             warehouseId,
-                            List.of(new InventoryCommandService.StockLine(
-                                    productId, 4, null, receiptItemId)))));
-            assertEquals(5, db.queryForObject(
-                    "SELECT quantity_on_hand FROM inventories WHERE warehouse_id=? AND product_id=?",
-                    Integer.class, warehouseId, productId));
-            assertEquals(1, db.queryForObject(
-                    "SELECT COUNT(*) FROM inventory_transactions WHERE goods_receipt_item_id=?",
-                    Integer.class, receiptItemId));
+                            productId));
+            assertEquals(
+                    1,
+                    db.queryForObject(
+                            "SELECT version FROM inventories WHERE warehouse_id=? AND product_id=?",
+                            Integer.class,
+                            warehouseId,
+                            productId));
+            assertEquals(
+                    1,
+                    db.queryForObject(
+                            "SELECT COUNT(*) FROM inventory_transactions WHERE goods_receipt_item_id=? "
+                                    + "AND transaction_type='GOODS_RECEIPT' AND idempotency_key=?",
+                            Integer.class,
+                            receiptItemId,
+                            semanticKey));
+            assertEquals(
+                    5,
+                    db.queryForObject(
+                            "SELECT COALESCE(SUM(quantity_delta),0) FROM inventory_transactions "
+                                    + "WHERE warehouse_id=? AND product_id=?",
+                            Integer.class,
+                            warehouseId,
+                            productId));
+            assertEquals(
+                    1,
+                    db.queryForObject(
+                            "SELECT COUNT(*) FROM audit_logs WHERE actor_account_id=? "
+                                    + "AND action='GOODS_RECEIPT_CONFIRM' AND entity_id=?",
+                            Integer.class,
+                            accountId,
+                            Long.toString(receiptId)));
+
+            assertThrows(
+                    ResponseStatusException.class,
+                    () ->
+                            tx.executeWithoutResult(
+                                    status ->
+                                            inventory.receiveGoods(
+                                                    accountId,
+                                                    receiptId,
+                                                    warehouseId,
+                                                    List.of(
+                                                            new InventoryCommandService.StockLine(
+                                                                    productId,
+                                                                    4,
+                                                                    null,
+                                                                    receiptItemId)))));
+            assertEquals(
+                    5,
+                    db.queryForObject(
+                            "SELECT quantity_on_hand FROM inventories WHERE warehouse_id=? AND product_id=?",
+                            Integer.class,
+                            warehouseId,
+                            productId));
+            assertEquals(
+                    1,
+                    db.queryForObject(
+                            "SELECT COUNT(*) FROM inventory_transactions WHERE goods_receipt_item_id=?",
+                            Integer.class,
+                            receiptItemId));
         } finally {
             SecurityContextHolder.setContext(previous);
         }
@@ -200,14 +282,16 @@ class InventoryPhase4TransactionTests {
         SecurityContext previous = SecurityContextHolder.getContext();
         SecurityContext jwtContext = SecurityContextHolder.createEmptyContext();
         Instant issued = Instant.now();
-        Jwt jwt = Jwt.withTokenValue("p36-opening-test")
-                .header("alg", "none")
-                .subject(accountId.toString())
-                .issuedAt(issued)
-                .expiresAt(issued.plusSeconds(120))
-                .build();
-        jwtContext.setAuthentication(new JwtAuthenticationToken(
-                jwt, List.of(new SimpleGrantedAuthority("ROLE_SUPERADMIN"))));
+        Jwt jwt =
+                Jwt.withTokenValue("p36-opening-test")
+                        .header("alg", "none")
+                        .subject(accountId.toString())
+                        .issuedAt(issued)
+                        .expiresAt(issued.plusSeconds(120))
+                        .build();
+        jwtContext.setAuthentication(
+                new JwtAuthenticationToken(
+                        jwt, List.of(new SimpleGrantedAuthority("ROLE_SUPERADMIN"))));
         SecurityContextHolder.setContext(jwtContext);
 
         try {
@@ -215,31 +299,54 @@ class InventoryPhase4TransactionTests {
             var first = tx.execute(status -> inventory.openStock(accountId, productId, 8));
             var replay = tx.execute(status -> inventory.openStock(accountId, productId, 8));
             assertEquals(first.getTxnId(), replay.getTxnId());
-            assertThrows(ResponseStatusException.class,
+            assertThrows(
+                    ResponseStatusException.class,
                     () -> tx.execute(status -> inventory.openStock(accountId, productId, 9)));
 
-            assertEquals(8, db.queryForObject(
-                    "SELECT quantity_on_hand FROM inventories WHERE warehouse_id=? AND product_id=?",
-                    Integer.class, warehouseId, productId));
-            assertEquals(1, db.queryForObject(
-                    "SELECT version FROM inventories WHERE warehouse_id=? AND product_id=?",
-                    Integer.class, warehouseId, productId));
-            assertEquals("opening:" + warehouseId + ":" + productId,
+            assertEquals(
+                    8,
+                    db.queryForObject(
+                            "SELECT quantity_on_hand FROM inventories WHERE warehouse_id=? AND product_id=?",
+                            Integer.class,
+                            warehouseId,
+                            productId));
+            assertEquals(
+                    1,
+                    db.queryForObject(
+                            "SELECT version FROM inventories WHERE warehouse_id=? AND product_id=?",
+                            Integer.class,
+                            warehouseId,
+                            productId));
+            assertEquals(
+                    "opening:" + warehouseId + ":" + productId,
                     db.queryForObject(
                             "SELECT idempotency_key FROM inventory_transactions "
                                     + "WHERE warehouse_id=? AND product_id=? AND transaction_type='OPENING'",
-                            String.class, warehouseId, productId));
-            assertEquals(1, db.queryForObject(
-                    "SELECT COUNT(*) FROM inventory_transactions "
-                            + "WHERE warehouse_id=? AND product_id=? AND transaction_type='OPENING'",
-                    Integer.class, warehouseId, productId));
-            assertEquals(8, db.queryForObject(
-                    "SELECT COALESCE(SUM(quantity_delta),0) FROM inventory_transactions "
-                            + "WHERE warehouse_id=? AND product_id=?",
-                    Integer.class, warehouseId, productId));
-            assertEquals(1, db.queryForObject(
-                    "SELECT COUNT(*) FROM audit_logs WHERE actor_account_id=? AND action='INVENTORY_OPENING'",
-                    Integer.class, accountId));
+                            String.class,
+                            warehouseId,
+                            productId));
+            assertEquals(
+                    1,
+                    db.queryForObject(
+                            "SELECT COUNT(*) FROM inventory_transactions "
+                                    + "WHERE warehouse_id=? AND product_id=? AND transaction_type='OPENING'",
+                            Integer.class,
+                            warehouseId,
+                            productId));
+            assertEquals(
+                    8,
+                    db.queryForObject(
+                            "SELECT COALESCE(SUM(quantity_delta),0) FROM inventory_transactions "
+                                    + "WHERE warehouse_id=? AND product_id=?",
+                            Integer.class,
+                            warehouseId,
+                            productId));
+            assertEquals(
+                    1,
+                    db.queryForObject(
+                            "SELECT COUNT(*) FROM audit_logs WHERE actor_account_id=? AND action='INVENTORY_OPENING'",
+                            Integer.class,
+                            accountId));
         } finally {
             SecurityContextHolder.setContext(previous);
         }

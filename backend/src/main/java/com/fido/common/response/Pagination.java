@@ -5,7 +5,7 @@ import com.fido.common.exception.InvalidPaginationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
-/** One-based API paging, converted explicitly to Spring Data's zero-based paging. */
+/** API nhận số trang từ 1; chuyển sang chỉ số từ 0 khi truy vấn Spring Data. */
 public record Pagination(int page, int pageSize) {
 
     public static final int DEFAULT_PAGE = 1;

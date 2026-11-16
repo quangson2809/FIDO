@@ -77,16 +77,12 @@ class CartConcurrencyTests extends CartHttpSupport {
                         owner.token(),
                         Map.of("product_id", variant.productId(), "quantity", 2));
         long itemId = added.data().get("data").get("items").get(0).get("cart_item_id").asLong();
-        db.update(
-                "UPDATE products SET status='INACTIVE' WHERE id=?",
-                variant.productId());
+        db.update("UPDATE products SET status='INACTIVE' WHERE id=?", variant.productId());
         assertEquals(
                 409,
                 call("PATCH", "/api/v1/cart/items/" + itemId, owner.token(), Map.of("quantity", 3))
                         .status());
-        db.update(
-                "UPDATE products SET status='ACTIVE' WHERE id=?",
-                variant.productId());
+        db.update("UPDATE products SET status='ACTIVE' WHERE id=?", variant.productId());
         db.update(
                 "UPDATE inventories SET quantity_on_hand=0 WHERE product_id=?",
                 variant.productId());
@@ -97,9 +93,7 @@ class CartConcurrencyTests extends CartHttpSupport {
         assertEquals(
                 3,
                 db.queryForObject(
-                        "SELECT quantity FROM cart_items WHERE id=?",
-                        Integer.class,
-                        itemId));
+                        "SELECT quantity FROM cart_items WHERE id=?", Integer.class, itemId));
         assertEquals(
                 200, call("DELETE", "/api/v1/cart/items/" + itemId, owner.token(), null).status());
     }

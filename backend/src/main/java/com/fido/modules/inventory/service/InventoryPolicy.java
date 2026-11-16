@@ -13,7 +13,7 @@ public final class InventoryPolicy {
     public static final String RECEIPT_CONFIRMED = "CONFIRMED";
     public static final String RECEIPT_CANCELLED = "CANCELLED";
 
-    // Canonical transaction_type values accepted by V1__fido_target_schema.sql.
+    // Giá trị transaction_type phải khớp ràng buộc của schema V1.
     public static final String OPENING = "OPENING";
     public static final String RECEIPT_IN = "GOODS_RECEIPT";
     public static final String ADJUSTMENT = "ADJUSTMENT";
@@ -28,16 +28,13 @@ public final class InventoryPolicy {
     private static final Set<String> RECEIPT_STATUSES =
             Set.of(RECEIPT_DRAFT, RECEIPT_CONFIRMED, RECEIPT_CANCELLED);
 
-    /**
-     * Owned reason-code vocabulary for inventory corrections. Free-form operator text is not
-     * persisted in the ledger reason_code column.
-     */
+    /** Mã lý do điều chỉnh thuộc tập cho phép; không lưu văn bản tự do vào reason_code. */
     private static final Set<String> ADJUSTMENT_REASON_CODES =
             Set.of("COUNT_CORRECTION", "DAMAGE", "LOSS", "FOUND", "DATA_CORRECTION");
+
     private static final Set<String> REVERSAL_REASON_CODES =
             Set.of("COUNT_CORRECTION", "DATA_CORRECTION", "REVERSAL");
-    private static final Pattern SOURCE_OPERATION_ID =
-            Pattern.compile("[A-Za-z0-9._:-]{1,80}");
+    private static final Pattern SOURCE_OPERATION_ID = Pattern.compile("[A-Za-z0-9._:-]{1,80}");
 
     private InventoryPolicy() {}
 
@@ -50,7 +47,8 @@ public final class InventoryPolicy {
     }
 
     public static boolean isValidSourceOperationId(String sourceOperationId) {
-        return sourceOperationId != null && SOURCE_OPERATION_ID.matcher(sourceOperationId).matches();
+        return sourceOperationId != null
+                && SOURCE_OPERATION_ID.matcher(sourceOperationId).matches();
     }
 
     public static void requireSupplierStatus(String status) {

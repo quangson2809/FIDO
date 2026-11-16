@@ -4,7 +4,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
-/** Minimal audit/content fixtures that use the approved target field names. */
+/** Tạo dữ liệu demo audit/nội dung theo các trường của schema hiện tại. */
 @Component
 @Profile({"dev", "test"})
 public class DevSeedOperationsData {

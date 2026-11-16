@@ -57,22 +57,29 @@ public class ContentPageCommandService {
             pages.save(page);
             pages.flush();
         } catch (DataIntegrityViolationException ex) {
-            // The unique constraint remains the final arbiter under concurrent creates.
+            // Hai yêu cầu có thể cùng thấy slug còn trống; ràng buộc unique của DB chặn lượt tạo
+            // trùng.
             if (isSlugConflict(ex)) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "CONTENT_SLUG_CONFLICT");
             }
             throw ex;
         }
 
-        audit.record(AuditWriteEvent.withChanges(
-                AuditAction.CONTENT_CREATE,
-                AuditEntityType.CONTENT_PAGE,
-                page.getPageId().toString(),
-                Map.of(),
-                Map.of("slug", page.getSlug(), "status", page.getStatus())));
+        audit.record(
+                AuditWriteEvent.withChanges(
+                        AuditAction.CONTENT_CREATE,
+                        AuditEntityType.CONTENT_PAGE,
+                        page.getPageId().toString(),
+                        Map.of(),
+                        Map.of("slug", page.getSlug(), "status", page.getStatus())));
         return ContentMapper.admin(page);
     }
 
+    /**
+     * actor lấy từ JWT, id từ URL; request chỉ chứa các trường được phép sửa và trạng thái đích.
+     * So sánh giá trị cuối với DB để từ chối cập nhật rỗng và chỉ audit cờ thay đổi, không ghi nội
+     * dung tự do.
+     */
     @PreAuthorize("hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_CONTENT_WRITE')")
     public ContentPageDto update(Long actor, Long id, ContentPagePatchRequest request) {
         requireActor(actor);
@@ -80,12 +87,20 @@ public class ContentPageCommandService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CONTENT_PATCH_EMPTY");
         }
 
-        ContentPage page = pages.findByIdForUpdate(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "CONTENT_PAGE_NOT_FOUND"));
+        ContentPage page =
+                pages.findByIdForUpdate(id)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "CONTENT_PAGE_NOT_FOUND"));
 
         String previousStatus = page.getStatus();
-        String nextTitle = request.getTitle() == null ? page.getTitle() : normalizeTitle(request.getTitle());
-        String nextContent = request.getContent() == null ? page.getContent() : requireContent(request.getContent());
+        String nextTitle =
+                request.getTitle() == null ? page.getTitle() : normalizeTitle(request.getTitle());
+        String nextContent =
+                request.getContent() == null
+                        ? page.getContent()
+                        : requireContent(request.getContent());
         String nextStatus = request.getStatus() == null ? previousStatus : request.getStatus();
 
         requireStatusTransition(previousStatus, nextStatus);
@@ -103,16 +118,21 @@ public class ContentPageCommandService {
         pages.save(page);
         pages.flush();
 
-        audit.record(AuditWriteEvent.withChanges(
-                AuditAction.CONTENT_UPDATE,
-                AuditEntityType.CONTENT_PAGE,
-                page.getPageId().toString(),
-                Map.of("slug", page.getSlug(), "status", previousStatus),
-                Map.of(
-                        "slug", page.getSlug(),
-                        "status", page.getStatus(),
-                        "title_changed", titleChanged,
-                        "content_changed", contentChanged)));
+        audit.record(
+                AuditWriteEvent.withChanges(
+                        AuditAction.CONTENT_UPDATE,
+                        AuditEntityType.CONTENT_PAGE,
+                        page.getPageId().toString(),
+                        Map.of("slug", page.getSlug(), "status", previousStatus),
+                        Map.of(
+                                "slug",
+                                page.getSlug(),
+                                "status",
+                                page.getStatus(),
+                                "title_changed",
+                                titleChanged,
+                                "content_changed",
+                                contentChanged)));
         return ContentMapper.admin(page);
     }
 
@@ -125,7 +145,8 @@ public class ContentPageCommandService {
                 }
             }
             String message = cause.getMessage();
-            if (message != null && message.toLowerCase(Locale.ROOT).contains("uq_content_pages_slug")) {
+            if (message != null
+                    && message.toLowerCase(Locale.ROOT).contains("uq_content_pages_slug")) {
                 return true;
             }
         }
@@ -159,14 +180,16 @@ public class ContentPageCommandService {
         if (current.equals(next)) {
             return;
         }
-        boolean allowed = switch (current) {
-            case "DRAFT" -> "PUBLISHED".equals(next) || "ARCHIVED".equals(next);
-            case "PUBLISHED" -> "DRAFT".equals(next) || "ARCHIVED".equals(next);
-            case "ARCHIVED" -> "DRAFT".equals(next);
-            default -> false;
-        };
+        boolean allowed =
+                switch (current) {
+                    case "DRAFT" -> "PUBLISHED".equals(next) || "ARCHIVED".equals(next);
+                    case "PUBLISHED" -> "DRAFT".equals(next) || "ARCHIVED".equals(next);
+                    case "ARCHIVED" -> "DRAFT".equals(next);
+                    default -> false;
+                };
         if (!allowed) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "CONTENT_STATUS_TRANSITION_NOT_ALLOWED");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "CONTENT_STATUS_TRANSITION_NOT_ALLOWED");
         }
     }
 

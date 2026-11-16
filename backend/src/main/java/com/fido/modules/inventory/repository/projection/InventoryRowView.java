@@ -1,0 +1,19 @@
+package com.fido.modules.inventory.repository.projection;
+
+import java.time.LocalDateTime;
+
+public interface InventoryRowView {
+    Long getWarehouseId();
+
+    Long getProductId();
+
+    String getSku();
+
+    String getProductName();
+
+    Integer getAvailableQuantity();
+
+    Integer getVersion();
+
+    LocalDateTime getUpdatedAt();
+}

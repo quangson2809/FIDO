@@ -16,10 +16,10 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import java.time.Instant;
-import java.util.List;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @SpringBootTest
@@ -32,35 +32,42 @@ class RbacTransactionTests {
 
     @Test
     void failedAuditRollsBackPermissionAndSuperadminGrant() {
-        Jwt jwt = Jwt.withTokenValue("test-token").header("alg", "HS256")
-                .subject("999999999").issuedAt(Instant.now()).expiresAt(Instant.now().plusSeconds(60)).build();
-        SecurityContextHolder.getContext().setAuthentication(
-                new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority("ROLE_SUPERADMIN"))));
+        Jwt jwt =
+                Jwt.withTokenValue("test-token")
+                        .header("alg", "HS256")
+                        .subject("999999999")
+                        .issuedAt(Instant.now())
+                        .expiresAt(Instant.now().plusSeconds(60))
+                        .build();
+        SecurityContextHolder.getContext()
+                .setAuthentication(
+                        new JwtAuthenticationToken(
+                                jwt, List.of(new SimpleGrantedAuthority("ROLE_SUPERADMIN"))));
         try {
-        String code = "test.rollback." + UUID.randomUUID();
+            String code = "test.rollback." + UUID.randomUUID();
 
-        assertThrows(
-                DataIntegrityViolationException.class,
-                () ->
-                        service.createPermission(
-                                -999L, new PermissionCreateRequest(code, "Rollback test")));
+            assertThrows(
+                    DataIntegrityViolationException.class,
+                    () ->
+                            service.createPermission(
+                                    -999L, new PermissionCreateRequest(code, "Rollback test")));
 
-        assertEquals(
-                0,
-                jdbc.queryForObject(
-                        "SELECT COUNT(*) FROM permissions WHERE code=?", Integer.class, code));
+            assertEquals(
+                    0,
+                    jdbc.queryForObject(
+                            "SELECT COUNT(*) FROM permissions WHERE code=?", Integer.class, code));
 
-        assertEquals(
-                0,
-                jdbc.queryForObject(
-                        """
+            assertEquals(
+                    0,
+                    jdbc.queryForObject(
+                            """
                         SELECT COUNT(*)
                         FROM role_permissions rp
                         JOIN permissions p ON p.id=rp.permission_id
                         WHERE p.code=?
                         """,
-                        Integer.class,
-                        code));
+                            Integer.class,
+                            code));
         } finally {
             SecurityContextHolder.clearContext();
         }

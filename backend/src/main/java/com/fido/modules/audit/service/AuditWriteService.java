@@ -9,13 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Objects;
 
-/**
- * Synchronous write contract for domain application services.
- *
- * <p>MANDATORY prevents a caller from accidentally committing an audit row independently of the
- * protected mutation. Exceptions are intentionally not swallowed so the caller's transaction
- * rolls back when the audit insert cannot be committed.
- */
+/** Ghi audit đồng bộ trong giao dịch có sẵn; lỗi ghi phải lan ra để thay đổi nghiệp vụ cũng rollback. */
 @Service
 public class AuditWriteService {
 
@@ -32,15 +26,17 @@ public class AuditWriteService {
         this.payloadPolicy = payloadPolicy;
     }
 
+    /**
+     * event do service nghiệp vụ tạo, chứa loại hành động/đối tượng và dữ liệu trước/sau đã chọn.
+     * Người thực hiện lấy lại từ đăng nhập hiện tại; dùng giao dịch của lệnh gọi, không commit audit
+     * riêng.
+     */
     @Transactional(propagation = Propagation.MANDATORY)
     public void record(AuditWriteEvent event) {
         write(event, actorResolver.requireAuthenticatedAccountId());
     }
 
-    /**
-     * For trusted autonomous/system commands only. Human-request paths must call record(event).
-     * The explicit method name keeps nullable actor attribution out of normal domain calls.
-     */
+    /** Chỉ dành cho lệnh hệ thống tin cậy không có người đăng nhập; request người dùng gọi record(event). */
     @Transactional(propagation = Propagation.MANDATORY)
     public void recordSystemEvent(AuditWriteEvent event) {
         actorResolver.requireSystemContext();

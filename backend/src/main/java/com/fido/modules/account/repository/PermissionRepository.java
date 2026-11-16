@@ -20,7 +20,7 @@ public interface PermissionRepository extends Repository<Permission, Long> {
 
     @Query(
             "select p from Permission p join RolePermission rp on rp.permissionId=p.permissionId"
-                + " where rp.roleId=:roleId")
+                    + " where rp.roleId=:roleId")
     List<Permission> findByRole(@Param("roleId") Long roleId);
 
     @Query(

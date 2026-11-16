@@ -11,6 +11,7 @@ import com.fido.modules.product.entity.Product;
 import com.fido.modules.product.entity.ProductAttributeValue;
 import com.fido.modules.product.repository.ProductAttributeValueRepository;
 import com.fido.modules.product.repository.ProductRepository;
+import com.fido.modules.product.service.query.CatalogReferenceService;
 
 import jakarta.persistence.EntityManager;
 
@@ -35,6 +36,7 @@ public class ProductAdminService {
             "hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_CATALOG_WRITE')";
 
     private final ProductRepository products;
+    private final ProductFamilyValidationService families;
     private final ProductImageAdminService gallery;
     private final ProductAttributeValueRepository productAttributeValues;
     private final ProductAttributeValueValidator attributeValueValidator;
@@ -45,6 +47,7 @@ public class ProductAdminService {
 
     public ProductAdminService(
             ProductRepository products,
+            ProductFamilyValidationService families,
             ProductImageAdminService gallery,
             ProductAttributeValueRepository productAttributeValues,
             ProductAttributeValueValidator attributeValueValidator,
@@ -53,6 +56,7 @@ public class ProductAdminService {
             AuditWriteService audit,
             EntityManager em) {
         this.products = products;
+        this.families = families;
         this.gallery = gallery;
         this.productAttributeValues = productAttributeValues;
         this.attributeValueValidator = attributeValueValidator;
@@ -62,8 +66,13 @@ public class ProductAdminService {
         this.em = em;
     }
 
+    /**
+     * actor lấy từ JWT; request là một Product độc lập với SKU/giá riêng và danh sách ID Option.
+     * parent_product_id chỉ liên kết Product đã có, metadata không tự sinh tổ hợp hoặc Product con.
+     */
     @PreAuthorize(WRITE)
     public AdminProductDetailDto createProduct(Long actor, ProductCreateRequest request) {
+        families.beginProductWrite();
         if (request.category_id() != null) references.requireActiveCategory(request.category_id());
         if (request.brand_id() != null) references.requireActiveBrand(request.brand_id());
         validateParent(null, request.parent_product_id());
@@ -95,6 +104,10 @@ public class ProductAdminService {
                         product.getProductId(), status, requestedValueIds);
 
         replaceAttributeValues(product.getProductId(), validatedValues);
+        families.validateFamily(
+                product.getParentProductId() == null
+                        ? product.getProductId()
+                        : product.getParentProductId());
         flushOrConflict();
 
         audit.record(
@@ -105,10 +118,21 @@ public class ProductAdminService {
         return query.detailInternal(product.getProductId());
     }
 
+    /**
+     * actor từ JWT, productId từ URL; các cờ is...Present cho biết trường nào thật sự được gửi khi
+     * PATCH.
+     * Trường vắng được giữ nguyên; null được gửi rõ ràng xử lý theo hợp đồng từng trường.
+     */
     @PreAuthorize(WRITE)
     public AdminProductDetailDto updateProduct(
             Long actor, Long productId, ProductPatchRequest request) {
-        Product product = references.productForUpdate(productId);
+        families.beginProductWrite();
+        Product product =
+                families.lockProductForUpdate(
+                        productId,
+                        request.isParentProductIdPresent() ? request.getParentProductId() : null);
+        Long oldRootId =
+                product.getParentProductId() == null ? productId : product.getParentProductId();
 
         if (request.isParentProductIdPresent()) {
             validateParent(productId, request.getParentProductId());
@@ -146,9 +170,11 @@ public class ProductAdminService {
         }
 
         List<Long> currentValueIds =
-                productAttributeValues.findAllByProductIdOrderByAttributeIdAsc(productId).stream()
+                productAttributeValues.findForFamilyValidation(List.of(productId)).stream()
                         .map(ProductAttributeValue::getOptionId)
                         .toList();
+        // Kiểm tra bộ thuộc tính sau PATCH: dùng danh sách mới nếu được gửi, nếu không giữ các
+        // Option đang lưu.
         List<Long> resultingValueIds =
                 request.isAttributeValueIdsPresent()
                         ? request.getAttributeValueIds()
@@ -167,6 +193,12 @@ public class ProductAdminService {
             replaceAttributeValues(productId, validatedValues);
         }
 
+        // Đổi cha có thể làm cả family cũ và mới thiếu/trùng tổ hợp; phải kiểm tra cả hai trước khi
+        // commit.
+        families.validateFamily(oldRootId);
+        Long newRootId =
+                product.getParentProductId() == null ? productId : product.getParentProductId();
+        if (!oldRootId.equals(newRootId)) families.validateFamily(newRootId);
         flushOrConflict();
 
         audit.record(
@@ -177,8 +209,10 @@ public class ProductAdminService {
 
     @PreAuthorize(WRITE)
     public void deleteProduct(Long actor, Long productId) {
-        Product product = references.productForUpdate(productId);
-        if (products.existsByParentProductIdAndDeletedAtIsNull(productId)) {
+        families.beginProductWrite();
+        Product product = families.lockProductForUpdate(productId, null);
+        if (products.findChildrenForValidation(productId).stream()
+                .anyMatch(child -> !child.isDeleted())) {
             conflict("A parent product with children cannot be deleted");
         }
         product.setDeletedAt(LocalDateTime.now(ZoneOffset.UTC));
@@ -191,7 +225,7 @@ public class ProductAdminService {
 
     private void replaceAttributeValues(
             Long productId, List<ProductAttributeValue> validatedValues) {
-        productAttributeValues.deleteAllByProductId(productId);
+        productAttributeValues.findForFamilyValidation(List.of(productId)).forEach(em::remove);
         em.flush();
         for (ProductAttributeValue value : validatedValues) {
             productAttributeValues.save(value);
@@ -215,7 +249,7 @@ public class ProductAdminService {
         if (parent.getParentProductId() != null) {
             conflict("PRODUCT_PARENT_INVALID");
         }
-        if (productId != null && products.existsByParentProductId(productId)) {
+        if (productId != null && !products.findChildrenForValidation(productId).isEmpty()) {
             conflict("PRODUCT_PARENT_INVALID");
         }
     }

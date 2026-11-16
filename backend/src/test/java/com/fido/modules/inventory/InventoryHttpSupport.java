@@ -44,30 +44,48 @@ abstract class InventoryHttpSupport {
     Long operationalWarehouseId;
 
     record Result(int status, JsonNode data, String body) {}
+
     record Employee(long id, String token) {}
+
     record CatalogFixture(long categoryId, long productId, long warehouseId, String sku) {}
 
     Result call(String method, String path, String token, Object body) throws Exception {
-        var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
-                .header("Accept", "application/json")
-                .header("Content-Type", "application/json");
+        var request =
+                HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
+                        .header("Accept", "application/json")
+                        .header("Content-Type", "application/json");
         if (token != null) request.header("Authorization", "Bearer " + token);
-        request.method(method, body == null
-                ? HttpRequest.BodyPublishers.noBody()
-                : HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)));
+        request.method(
+                method,
+                body == null
+                        ? HttpRequest.BodyPublishers.noBody()
+                        : HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)));
         var response = client.send(request.build(), HttpResponse.BodyHandlers.ofString());
-        return new Result(response.statusCode(),
-                response.body().isBlank() ? null : json.readTree(response.body()), response.body());
+        return new Result(
+                response.statusCode(),
+                response.body().isBlank() ? null : json.readTree(response.body()),
+                response.body());
     }
 
     String phone() {
-        return "+84" + java.util.concurrent.ThreadLocalRandom.current()
-                .nextLong(100_000_000L, 1_000_000_000L);
+        return "+84"
+                + java.util.concurrent.ThreadLocalRandom.current()
+                        .nextLong(100_000_000L, 1_000_000_000L);
     }
 
     long register(String phone) throws Exception {
-        var response = call("POST", "/api/v1/auth/register", null,
-                Map.of("phone", phone, "full_name", "Inventory Test Account", "password", PASSWORD));
+        var response =
+                call(
+                        "POST",
+                        "/api/v1/auth/register",
+                        null,
+                        Map.of(
+                                "phone",
+                                phone,
+                                "full_name",
+                                "Inventory Test Account",
+                                "password",
+                                PASSWORD));
         assertEquals(201, response.status(), response.body());
         long accountId = response.data().get("data").get("account").get("id").asLong();
         accounts.add(accountId);
@@ -75,23 +93,33 @@ abstract class InventoryHttpSupport {
     }
 
     String login(String phone) throws Exception {
-        var response = call("POST", "/api/v1/auth/login", null,
-                Map.of("phone", phone, "password", PASSWORD));
+        var response =
+                call(
+                        "POST",
+                        "/api/v1/auth/login",
+                        null,
+                        Map.of("phone", phone, "password", PASSWORD));
         assertEquals(200, response.status(), response.body());
         return response.data().get("data").get("access_token").asText();
     }
 
     void grantRole(long accountId, String roleCode) {
-        db.update("INSERT INTO account_roles SELECT ?, id FROM roles WHERE code = ?", accountId, roleCode);
+        db.update(
+                "INSERT INTO account_roles SELECT ?, id FROM roles WHERE code = ?",
+                accountId,
+                roleCode);
     }
 
     long ensurePermission(String code) {
-        var existing = db.query("SELECT id FROM permissions WHERE code=?",
-                (resultSet, rowNumber) -> resultSet.getLong(1), code);
+        var existing =
+                db.query(
+                        "SELECT id FROM permissions WHERE code=?",
+                        (resultSet, rowNumber) -> resultSet.getLong(1),
+                        code);
         if (!existing.isEmpty()) return existing.get(0);
         db.update("INSERT INTO permissions(code,name) VALUES (?,?)", code, code);
-        long permissionId = db.queryForObject(
-                "SELECT id FROM permissions WHERE code=?", Long.class, code);
+        long permissionId =
+                db.queryForObject("SELECT id FROM permissions WHERE code=?", Long.class, code);
         createdPermissions.add(permissionId);
         return permissionId;
     }
@@ -101,7 +129,10 @@ abstract class InventoryHttpSupport {
         db.update("INSERT INTO roles(code,name) VALUES (?,?)", code, "Inventory test");
         long roleId = db.queryForObject("SELECT id FROM roles WHERE code=?", Long.class, code);
         customRoles.add(roleId);
-        db.update("INSERT INTO role_permissions(role_id,permission_id) VALUES (?,?)", roleId, permissionId);
+        db.update(
+                "INSERT INTO role_permissions(role_id,permission_id) VALUES (?,?)",
+                roleId,
+                permissionId);
         return roleId;
     }
 
@@ -128,16 +159,21 @@ abstract class InventoryHttpSupport {
         String sku = "INV-SKU-" + suffix;
 
         db.update("INSERT INTO categories(name,slug) VALUES (?,?)", categoryName, categorySlug);
-        long categoryId = db.queryForObject(
-                "SELECT id FROM categories WHERE slug=?", Long.class, categorySlug);
+        long categoryId =
+                db.queryForObject(
+                        "SELECT id FROM categories WHERE slug=?", Long.class, categorySlug);
         db.update(
                 "INSERT INTO products(category_id,name,slug,sku,selling_price,status) VALUES (?,?,?,?,100000,'ACTIVE')",
-                categoryId, productName, "inventory-product-" + suffix, sku);
+                categoryId,
+                productName,
+                "inventory-product-" + suffix,
+                sku);
         long productId = db.queryForObject("SELECT id FROM products WHERE sku=?", Long.class, sku);
         long warehouseId = operationalWarehouseId();
         db.update(
                 "INSERT INTO inventories(warehouse_id,product_id,quantity_on_hand,version) VALUES (?,?,0,0)",
-                warehouseId, productId);
+                warehouseId,
+                productId);
 
         CatalogFixture fixture = new CatalogFixture(categoryId, productId, warehouseId, sku);
         catalog.add(fixture);
@@ -147,16 +183,22 @@ abstract class InventoryHttpSupport {
     private long operationalWarehouseId() {
         if (operationalWarehouseId != null) return operationalWarehouseId;
         String code = "INV-WH-" + UUID.randomUUID().toString().replace("-", "");
-        db.update("INSERT INTO warehouses(code,name,status) VALUES (?,?,'ACTIVE')",
-                code, "Inventory test warehouse");
-        operationalWarehouseId = db.queryForObject(
-                "SELECT id FROM warehouses WHERE code=?", Long.class, code);
+        db.update(
+                "INSERT INTO warehouses(code,name,status) VALUES (?,?,'ACTIVE')",
+                code,
+                "Inventory test warehouse");
+        operationalWarehouseId =
+                db.queryForObject("SELECT id FROM warehouses WHERE code=?", Long.class, code);
         return operationalWarehouseId;
     }
 
     long createSupplier(String token, String status) throws Exception {
-        var response = call("POST", "/api/v1/admin/suppliers", token,
-                Map.of("name", "Supplier " + UUID.randomUUID(), "status", status));
+        var response =
+                call(
+                        "POST",
+                        "/api/v1/admin/suppliers",
+                        token,
+                        Map.of("name", "Supplier " + UUID.randomUUID(), "status", status));
         assertEquals(201, response.status(), response.body());
         long supplierId = response.data().get("data").get("supplier_id").asLong();
         suppliers.add(supplierId);
@@ -165,13 +207,23 @@ abstract class InventoryHttpSupport {
 
     long createReceipt(String token, long supplierId, CatalogFixture fixture, int quantity)
             throws Exception {
-        var response = call("POST", "/api/v1/admin/goods-receipts", token,
-                Map.of(
-                        "supplier_id", supplierId,
-                        "items", List.of(Map.of(
-                                "product_id", fixture.productId(),
-                                "quantity_received", quantity,
-                                "unit_cost", 0))));
+        var response =
+                call(
+                        "POST",
+                        "/api/v1/admin/goods-receipts",
+                        token,
+                        Map.of(
+                                "supplier_id",
+                                supplierId,
+                                "items",
+                                List.of(
+                                        Map.of(
+                                                "product_id",
+                                                fixture.productId(),
+                                                "quantity_received",
+                                                quantity,
+                                                "unit_cost",
+                                                0))));
         assertEquals(201, response.status(), response.body());
         long receiptId = response.data().get("data").get("receipt_id").asLong();
         receipts.add(receiptId);
@@ -180,12 +232,19 @@ abstract class InventoryHttpSupport {
 
     long createSiblingProduct(CatalogFixture fixture) {
         String suffix = UUID.randomUUID().toString().replace("-", "");
-        db.update("INSERT INTO products(category_id,name,slug,sku,selling_price,status) VALUES (?,?,?,?,100000,'ACTIVE')",
-                fixture.categoryId(), "Inventory sibling " + suffix, "inventory-sibling-" + suffix, "INV-SIB-" + suffix);
-        long productId = db.queryForObject(
-                "SELECT id FROM products WHERE sku=?", Long.class, "INV-SIB-" + suffix);
-        db.update("INSERT INTO inventories(warehouse_id,product_id,quantity_on_hand,version) VALUES (?,?,0,0)",
-                fixture.warehouseId(), productId);
+        db.update(
+                "INSERT INTO products(category_id,name,slug,sku,selling_price,status) VALUES (?,?,?,?,100000,'ACTIVE')",
+                fixture.categoryId(),
+                "Inventory sibling " + suffix,
+                "inventory-sibling-" + suffix,
+                "INV-SIB-" + suffix);
+        long productId =
+                db.queryForObject(
+                        "SELECT id FROM products WHERE sku=?", Long.class, "INV-SIB-" + suffix);
+        db.update(
+                "INSERT INTO inventories(warehouse_id,product_id,quantity_on_hand,version) VALUES (?,?,0,0)",
+                fixture.warehouseId(),
+                productId);
         additionalProducts.add(productId);
         return productId;
     }
@@ -193,7 +252,8 @@ abstract class InventoryHttpSupport {
     int stock(long productId) {
         return db.queryForObject(
                 "SELECT COALESCE(SUM(quantity_on_hand),0) FROM inventories WHERE product_id=?",
-                Integer.class, productId);
+                Integer.class,
+                productId);
     }
 
     @AfterEach
@@ -224,12 +284,14 @@ abstract class InventoryHttpSupport {
             db.update("DELETE FROM products WHERE id=?", fixture.productId());
             db.update("DELETE FROM categories WHERE id=?", fixture.categoryId());
         }
-        for (Long accountId : accounts) db.update("DELETE FROM account_roles WHERE account_id=?", accountId);
+        for (Long accountId : accounts)
+            db.update("DELETE FROM account_roles WHERE account_id=?", accountId);
         for (Long roleId : customRoles) {
             db.update("DELETE FROM role_permissions WHERE role_id=?", roleId);
             db.update("DELETE FROM roles WHERE id=?", roleId);
         }
-        for (Long permissionId : createdPermissions) db.update("DELETE FROM permissions WHERE id=?", permissionId);
+        for (Long permissionId : createdPermissions)
+            db.update("DELETE FROM permissions WHERE id=?", permissionId);
         for (Long accountId : accounts) db.update("DELETE FROM accounts WHERE id=?", accountId);
         if (operationalWarehouseId != null) {
             db.update("DELETE FROM warehouses WHERE id=?", operationalWarehouseId);

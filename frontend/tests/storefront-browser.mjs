@@ -408,6 +408,17 @@ try {
       }
       if (name === 'policies')
         await page.getByRole('heading', { name: 'Chính sách trả hàng', exact: true }).waitFor();
+      const customerText = await page.locator('#storefront-main').innerText();
+      assert.doesNotMatch(await page.locator('footer').innerText(), /Chưa cập nhật.*CSKH/);
+      assert.doesNotMatch(
+        customerText,
+        /\bBackend\b|\bmetadata\b|attribute_value_id|\bPATCH\b|Variant legacy|mã chống trùng|kho vận hành|\bACTIVE\b|\bINACTIVE\b|\bDRAFT\b/,
+        `${name} hides implementation details at ${width}px`,
+      );
+      if (name === 'success') {
+        assert.match(customerText, /FIDO-001/);
+        assert.doesNotMatch(customerText, /Mã đơn:\s*#1\b/);
+      }
       await page.screenshot({
         animations: 'disabled',
         path: `.browser-evidence/after-${name}-${width}.png`,

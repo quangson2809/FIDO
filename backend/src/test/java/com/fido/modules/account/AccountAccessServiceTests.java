@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fido.modules.account.service.AccountAccessService;
+import com.fido.modules.account.service.identity.AccountAccessService;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -87,7 +87,7 @@ class AccountAccessServiceTests {
     void recognizesSuperadminRoleWithoutInventingPermissionGrants() {
         fixture();
 
-        // Isolate this service test from the global SUPERADMIN seed catalogue.
+        // Tách dữ liệu test service khỏi danh mục SUPERADMIN được seed chung.
         jdbc.update(
                 """
                 DELETE FROM role_permissions

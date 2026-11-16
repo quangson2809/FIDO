@@ -8,7 +8,7 @@ import com.fido.modules.cart.repository.CartItemRepository;
 import com.fido.modules.cart.repository.CartRepository;
 import com.fido.modules.pricing.PricingCalculator;
 import com.fido.modules.pricing.PricingService;
-import com.fido.modules.product.service.CatalogProductReadService;
+import com.fido.modules.product.service.query.CatalogProductReadService;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -32,9 +31,7 @@ public class CartQueryService {
     private final PricingService pricing;
 
     public CartQueryService(
-            CartRepository carts,
-            CartItemRepository items,
-            CatalogProductReadService catalog) {
+            CartRepository carts, CartItemRepository items, CatalogProductReadService catalog) {
         this(carts, items, catalog, new PricingService());
     }
 
@@ -57,9 +54,7 @@ public class CartQueryService {
 
     public CheckoutCartView checkoutView(Long accountId) {
         Cart cart = currentOpen(accountId);
-        return cart == null
-                ? new CheckoutCartView(null, List.of(), 0L)
-                : toCheckoutView(cart);
+        return cart == null ? new CheckoutCartView(null, List.of(), 0L) : toCheckoutView(cart);
     }
 
     CartDto emptyCart(Long accountId) {
@@ -78,14 +73,16 @@ public class CartQueryService {
     }
 
     private Cart currentOpen(Long accountId) {
-        return selectSoleOpen(
-                carts.findAllByAccountIdAndStatusOrderByCartIdAsc(accountId, OPEN));
+        return selectSoleOpen(carts.findAllByAccountIdAndStatusOrderByCartIdAsc(accountId, OPEN));
     }
 
+    /**
+     * openCarts là mọi giỏ OPEN của cùng tài khoản do repository trả về; nhiều hơn một là lỗi dữ liệu.
+     * Không chọn theo thời gian vì có thể sửa/checkout nhầm giỏ của người dùng.
+     */
     static Cart selectSoleOpen(List<Cart> openCarts) {
         if (openCarts.size() > 1) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "CART_SELECTION_AMBIGUOUS");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "CART_SELECTION_AMBIGUOUS");
         }
         return openCarts.isEmpty() ? null : openCarts.get(0);
     }
@@ -98,37 +95,49 @@ public class CartQueryService {
                 resolved.subtotal());
     }
 
+    /**
+     * cart lấy từ DB của tài khoản; đọc lại thông tin bán hàng theo Product ID rồi tính tiền VND.
+     * Không tin giá cũ từ UI và không giữ hàng ở bước đọc giỏ.
+     */
     private ResolvedCart resolveCart(Cart cart) {
         List<CartItem> cartItems = items.findAllByCartIdOrderByCartItemIdAsc(cart.getCartId());
         Map<Long, CatalogProductReadService.ProductView> productsById =
                 catalog.getAll(cartItems.stream().map(CartItem::getProductId).toList());
-        List<ResolvedCartItem> rawItems = cartItems.stream()
-                .map(item -> resolve(item, productsById.get(item.getProductId())))
-                .toList();
-        var calculation = pricing.calculate(
+        List<ResolvedCartItem> rawItems =
+                cartItems.stream()
+                        .map(item -> resolve(item, productsById.get(item.getProductId())))
+                        .toList();
+        var calculation =
+                pricing.calculate(
+                        rawItems.stream()
+                                .map(
+                                        item ->
+                                                new PricingCalculator.LineInput(
+                                                        item.item().getProductId(),
+                                                        item.product().unitPrice(),
+                                                        item.item().getQuantity()))
+                                .toList(),
+                        0L,
+                        0L);
+        Map<Long, Long> grossByProduct =
+                calculation.lines().stream()
+                        .collect(
+                                Collectors.toMap(
+                                        PricingCalculator.PricedLine::productId,
+                                        PricingCalculator.PricedLine::grossAmount));
+        List<ResolvedCartItem> pricedItems =
                 rawItems.stream()
-                        .map(item -> new PricingCalculator.LineInput(
-                                item.item().getProductId(),
-                                item.product().unitPrice(),
-                                item.item().getQuantity()))
-                        .toList(),
-                0L,
-                0L);
-        Map<Long, Long> grossByProduct = calculation.lines().stream()
-                .collect(Collectors.toMap(
-                        PricingCalculator.PricedLine::productId,
-                        PricingCalculator.PricedLine::grossAmount));
-        List<ResolvedCartItem> pricedItems = rawItems.stream()
-                .map(item -> new ResolvedCartItem(
-                        item.item(),
-                        item.product(),
-                        grossByProduct.get(item.item().getProductId())))
-                .toList();
+                        .map(
+                                item ->
+                                        new ResolvedCartItem(
+                                                item.item(),
+                                                item.product(),
+                                                grossByProduct.get(item.item().getProductId())))
+                        .toList();
         return new ResolvedCart(pricedItems, calculation.subtotal());
     }
 
-    private ResolvedCartItem resolve(
-            CartItem item, CatalogProductReadService.ProductView product) {
+    private ResolvedCartItem resolve(CartItem item, CatalogProductReadService.ProductView product) {
         if (product == null) {
             throw new IllegalStateException("Cart item references missing product");
         }

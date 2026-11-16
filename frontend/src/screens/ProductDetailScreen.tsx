@@ -12,12 +12,12 @@ import type { ProductDetailDto } from '../features/catalog/types';
 import { ProductFamilySelector } from '../features/catalog/components/ProductFamilySelector';
 import { ProductLongDescription } from '../features/catalog/components/ProductLongDescription';
 import {
-  familyOptions,
-  matchingFamilyMembers,
-  matchingPurchasableMembers,
+  isColorOrSize,
+  changeFamilySelection,
   memberIsPurchasable,
-  memberOption,
-  type FamilyOptionCode,
+  memberSelection,
+  resolveSelectedMember,
+  type FamilySelection,
 } from '../features/catalog/model/productFamilySelection';
 import { buildFamilyGallery } from '../features/catalog/model/productImageOrder';
 import { useAuthSession } from '../features/auth/session/useAuthSession';
@@ -38,8 +38,7 @@ export const ProductDetailScreen: React.FC = () => {
   const { productId = '' } = useParams<{ productId: string }>();
   const metadata = useCatalogMetadata();
   const [product, setProduct] = useState<ProductDetailDto | null>(null);
-  const [colorId, setColorId] = useState<number | null>(null);
-  const [sizeId, setSizeId] = useState<number | null>(null);
+  const [selection, setSelection] = useState<FamilySelection>({});
   const recommendationQuery = useRemoteQuery(
     useCallback(() => catalogService.listProducts({ page: 1, page_size: 5 }), []),
   );
@@ -73,10 +72,7 @@ export const ProductDetailScreen: React.FC = () => {
         const detail = await catalogService.getProductDetail(productId);
         if (!active) return;
         setProduct(detail);
-        setColorId(detail.attribute_values.find((value) => value.attribute_code === 'COLOR')
-          ?.attribute_value_id ?? null);
-        setSizeId(detail.attribute_values.find((value) => value.attribute_code === 'SIZE')
-          ?.attribute_value_id ?? null);
+        setSelection(memberSelection(detail));
         setSelectedImage((current) => current?.rootProductId === detail.family.root_product_id
           ? current : null);
         setQuantity(1);
@@ -106,33 +102,20 @@ export const ProductDetailScreen: React.FC = () => {
   }, [productId, retry]);
 
   const openFamilyProduct = (nextProductId: number) => {
+    const member = product?.family.members.find(item => item.product_id === nextProductId);
+    if (member) setSelection(memberSelection(member));
     if (String(nextProductId) !== productId) {
       setZoomOpen(false);
       navigate(productDetailPath(nextProductId));
     }
   };
 
-  const selectFamilyOption = (code: FamilyOptionCode, optionId: number) => {
+  const selectFamilyOption = (attributeId: number, optionId: number) => {
     if (!product) return;
-    let nextColor = code === 'COLOR' ? optionId : colorId;
-    let nextSize = code === 'SIZE' ? optionId : sizeId;
-    const matches = matchingFamilyMembers(product.family.members, nextColor, nextSize);
-    if (matches.length === 0) {
-      // Color/size choices are independent; reset the incompatible opposite axis.
-      if (code === 'COLOR') nextSize = null;
-      else nextColor = null;
-      // The opposite selected Option does not exist in this family combination.
-    }
-    setColorId(nextColor);
-    setSizeId(nextSize);
-    const buyable = matchingPurchasableMembers(product.family.members, nextColor, nextSize);
-    const hasColor = familyOptions(product.family.members, 'COLOR').length > 0;
-    const hasSize = familyOptions(product.family.members, 'SIZE').length > 0;
-    // Do not silently choose a size when the customer only selected a color.
-    if (buyable.length === 1 && (!hasColor || nextColor !== null)
-        && (!hasSize || nextSize !== null)) {
-      openFamilyProduct(buyable[0].product_id);
-    }
+    const next = changeFamilySelection(product.family.members, selection, attributeId, optionId);
+    setSelection(next);
+    const resolved = resolveSelectedMember(product.family, next);
+    if (resolved && memberIsPurchasable(resolved)) openFamilyProduct(resolved.product_id);
   };
 
   // Optimistically use already-fetched family data while the selected Product detail loads.
@@ -152,9 +135,9 @@ export const ProductDetailScreen: React.FC = () => {
     const url = gallery[index];
     if (product && url) setSelectedImage({ rootProductId: product.family.root_product_id, url });
   };
+  const resolvedMember = product ? resolveSelectedMember(product.family, selection) : undefined;
   const selectionReady = detailReady && routedMember !== undefined
-    && (colorId === null || memberOption(routedMember, 'COLOR')?.attribute_value_id === colorId)
-    && (sizeId === null || memberOption(routedMember, 'SIZE')?.attribute_value_id === sizeId);
+    && resolvedMember?.product_id === routedMember.product_id;
   const availableQuantity = routedMember?.available_quantity ?? 0;
   const purchasable = routedMember ? memberIsPurchasable(routedMember) : false;
 
@@ -236,12 +219,10 @@ export const ProductDetailScreen: React.FC = () => {
     (metadata.data?.brands.find((item) => item.brand_id === product.brand?.brand_id)?.name ??
       product.brand.name);
   const specItems = [
-    product.sku ? { label: 'SKU', value: product.sku } : null,
     categoryName ? { label: 'Danh mục', value: categoryName } : null,
     brandName ? { label: 'Thương hiệu', value: brandName } : null,
-    { label: 'Trạng thái', value: product.status },
     ...product.attribute_values
-      .filter((value) => value.attribute_code !== 'COLOR' && value.attribute_code !== 'SIZE')
+      .filter((value) => !isColorOrSize(value))
       .map((value) => ({
         label: metadata.data?.attributes.find((attribute) => attribute.id === value.attribute_id)
           ?.name ?? value.attribute_name,
@@ -303,16 +284,13 @@ export const ProductDetailScreen: React.FC = () => {
         >
           {loading && !detailReady && (
             <p role="status" className="text-xs text-[#687069]">
-              Đang cập nhật thông tin Product được chọn...
+              Đang cập nhật sản phẩm đã chọn...
             </p>
           )}
           <ProductFamilySelector
             family={product.family}
-            currentProductId={displayProduct.product_id}
-            colorId={colorId}
-            sizeId={sizeId}
+            selection={selection}
             onSelectOption={selectFamilyOption}
-            onSelectProduct={openFamilyProduct}
           />
         </ProductPurchasePanel>
       </section>

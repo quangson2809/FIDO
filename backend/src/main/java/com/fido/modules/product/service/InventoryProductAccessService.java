@@ -2,8 +2,10 @@ package com.fido.modules.product.service;
 
 import com.fido.modules.product.entity.Product;
 import com.fido.modules.product.repository.ProductRepository;
+
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -21,17 +23,19 @@ public class InventoryProductAccessService {
         this.entityManager = entityManager;
     }
 
-    /** Product-owned reference check; does not expose a foreign JPA entity to Inventory. */
+    /** Module kho kiểm tra Product qua hợp đồng này, không nhận entity JPA của catalog. */
     public void requireTrackedProduct(Long productId) {
-        Product product = products.findById(productId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        Product product =
+                products.findById(productId)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         rejectDeleted(product);
     }
 
-    /** Holds the Product row lock until the caller's encompassing stock transaction completes. */
+    /** Giữ khóa Product đến khi giao dịch thay đổi kho của bên gọi kết thúc. */
     public void lockTrackedProduct(Long productId) {
-        Product product = products.findByIdForUpdate(productId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        Product product =
+                products.findByIdForUpdate(productId)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         entityManager.refresh(product, LockModeType.PESSIMISTIC_WRITE);
         rejectDeleted(product);
     }

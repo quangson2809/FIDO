@@ -140,6 +140,7 @@ try {
     );
     assert.match(await first.innerText(), /SKU FIDO-TEE-001/);
     assert.match(await first.innerText(), /200\.000/);
+    assert.doesNotMatch(await region.innerText(), /\bACTIVE\b|\bINACTIVE\b|\bDRAFT\b/);
     assert.match(await cards.nth(1).innerText(), /DANH MỤC: QUẦN/);
     assert.match(await cards.nth(1).innerText(), /SKU FIDO-TROUSER-002/);
     assert.match(await cards.nth(2).innerText(), /SKU FIDO-LONG-NAME-003/);
@@ -237,6 +238,7 @@ try {
     await page.keyboard.press('Enter');
     const dialog = page.getByRole('dialog', { name: 'Thuộc tính Áo cotton FIDO' });
     await dialog.getByText('Cotton; giặt nhẹ.', { exact: true }).waitFor();
+    assert.doesNotMatch(await dialog.innerText(), /được lấy từ thông tin sản phẩm hiện hành/);
     assert.ok(page.url().endsWith('/products'), 'information action does not navigate');
     for (let index = 0; index < 4; index++) {
       await page.keyboard.press('Tab');

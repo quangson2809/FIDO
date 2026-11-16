@@ -13,6 +13,7 @@ import com.fido.modules.inventory.entity.GoodsReceiptItem;
 import com.fido.modules.inventory.repository.GoodsReceiptItemRepository;
 import com.fido.modules.inventory.repository.GoodsReceiptRepository;
 import com.fido.modules.inventory.repository.SupplierRepository;
+import com.fido.modules.inventory.service.stock.InventoryCommandService;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -75,23 +76,29 @@ public class GoodsReceiptService {
         receipts.save(receipt);
         saveItems(receipt.getReceiptId(), requestedItems);
 
-        audit.record(AuditWriteEvent.withChanges(
-                AuditAction.GOODS_RECEIPT_CREATE,
-                AuditEntityType.GOODS_RECEIPT,
-                receipt.getReceiptId().toString(),
-                Map.of(),
-                snapshot(receipt.getReceiptStatus(), warehouseId,
-                        items.findAllByReceiptIdOrderByReceiptItemIdAsc(receipt.getReceiptId()))));
+        audit.record(
+                AuditWriteEvent.withChanges(
+                        AuditAction.GOODS_RECEIPT_CREATE,
+                        AuditEntityType.GOODS_RECEIPT,
+                        receipt.getReceiptId().toString(),
+                        Map.of(),
+                        snapshot(
+                                receipt.getReceiptStatus(),
+                                warehouseId,
+                                items.findAllByReceiptIdOrderByReceiptItemIdAsc(
+                                        receipt.getReceiptId()))));
         return query.detailInternal(receipt);
     }
 
     @PreAuthorize(WRITE)
-    public GoodsReceiptDetailDto update(Long actor, Long receiptId, GoodsReceiptPatchRequest request) {
+    public GoodsReceiptDetailDto update(
+            Long actor, Long receiptId, GoodsReceiptPatchRequest request) {
         GoodsReceipt receipt = receiptForUpdate(receiptId);
         requireDraft(receipt);
         List<GoodsReceiptItem> beforeItems =
                 items.findAllByReceiptIdOrderByReceiptItemIdAsc(receiptId);
-        Map<String, Object> before = snapshot(receipt.getReceiptStatus(), receipt.getWarehouseId(), beforeItems);
+        Map<String, Object> before =
+                snapshot(receipt.getReceiptStatus(), receipt.getWarehouseId(), beforeItems);
 
         if (request.getSupplierId() != null) {
             requireActiveSupplier(request.getSupplierId());
@@ -108,17 +115,24 @@ public class GoodsReceiptService {
 
         List<GoodsReceiptItem> afterItems =
                 items.findAllByReceiptIdOrderByReceiptItemIdAsc(receiptId);
-        audit.record(AuditWriteEvent.withChanges(
-                AuditAction.GOODS_RECEIPT_UPDATE,
-                AuditEntityType.GOODS_RECEIPT,
-                receiptId.toString(),
-                before,
-                snapshot(receipt.getReceiptStatus(), receipt.getWarehouseId(), afterItems)));
+        audit.record(
+                AuditWriteEvent.withChanges(
+                        AuditAction.GOODS_RECEIPT_UPDATE,
+                        AuditEntityType.GOODS_RECEIPT,
+                        receiptId.toString(),
+                        before,
+                        snapshot(
+                                receipt.getReceiptStatus(), receipt.getWarehouseId(), afterItems)));
         return query.detailInternal(receipt);
     }
 
+    /**
+     * actor từ JWT, receiptId từ URL; request chọn CONFIRM hoặc CANCEL, không gửi số lượng tồn mới.
+     * Xác nhận đọc lại các dòng phiếu để nhập kho; hủy chỉ đổi phiếu DRAFT và không tác động kho.
+     */
     @PreAuthorize(WRITE)
-    public GoodsReceiptDetailDto action(Long actor, Long receiptId, GoodsReceiptActionRequest request) {
+    public GoodsReceiptDetailDto action(
+            Long actor, Long receiptId, GoodsReceiptActionRequest request) {
         return switch (request.action()) {
             case "CONFIRM" -> confirm(actor, receiptId);
             case "CANCEL" -> cancel(actor, receiptId);
@@ -127,7 +141,7 @@ public class GoodsReceiptService {
     }
 
     private GoodsReceiptDetailDto confirm(Long actor, Long receiptId) {
-        // Source aggregate is locked before source lines or inventory balance rows.
+        // Khóa phiếu nguồn trước dòng hàng và số dư kho để mọi lệnh dùng cùng thứ tự khóa.
         GoodsReceipt current = receiptForUpdate(receiptId);
         if (InventoryPolicy.RECEIPT_CONFIRMED.equals(current.getReceiptStatus())) {
             return query.detailInternal(current);
@@ -146,25 +160,37 @@ public class GoodsReceiptService {
                 snapshot(current.getReceiptStatus(), current.getWarehouseId(), receiptItems);
 
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        // Đổi trạng thái dưới khóa phiếu; nếu ghi kho hoặc audit lỗi, cả trạng thái và dòng kho đều
+        // rollback.
         current.setReceiptStatus(InventoryPolicy.RECEIPT_CONFIRMED);
         current.setConfirmedByAccountId(actor);
         current.setConfirmedAt(now);
         current.setUpdatedAt(now);
 
-        var stockLines = receiptItems.stream()
-                .map(item -> new InventoryCommandService.StockLine(
-                        item.getProductId(), item.getQuantity(), null, item.getReceiptItemId()))
-                .toList();
+        var stockLines =
+                receiptItems.stream()
+                        .map(
+                                item ->
+                                        new InventoryCommandService.StockLine(
+                                                item.getProductId(),
+                                                item.getQuantity(),
+                                                null,
+                                                item.getReceiptItemId()))
+                        .toList();
 
-        // Inventory writes balance/version and immutable semantic-source ledger keys in this transaction.
+        // Ghi số dư/version và ledger theo từng dòng phiếu trong cùng giao dịch xác nhận.
         inventoryCommands.receiveGoods(actor, receiptId, current.getWarehouseId(), stockLines);
 
-        audit.record(AuditWriteEvent.withChanges(
-                AuditAction.GOODS_RECEIPT_CONFIRM,
-                AuditEntityType.GOODS_RECEIPT,
-                receiptId.toString(),
-                before,
-                snapshot(current.getReceiptStatus(), current.getWarehouseId(), receiptItems)));
+        audit.record(
+                AuditWriteEvent.withChanges(
+                        AuditAction.GOODS_RECEIPT_CONFIRM,
+                        AuditEntityType.GOODS_RECEIPT,
+                        receiptId.toString(),
+                        before,
+                        snapshot(
+                                current.getReceiptStatus(),
+                                current.getWarehouseId(),
+                                receiptItems)));
         return query.detailInternal(current);
     }
 
@@ -183,19 +209,23 @@ public class GoodsReceiptService {
                 snapshot(current.getReceiptStatus(), current.getWarehouseId(), currentItems);
         current.setReceiptStatus(InventoryPolicy.RECEIPT_CANCELLED);
         current.setUpdatedAt(LocalDateTime.now(ZoneOffset.UTC));
-        audit.record(AuditWriteEvent.withChanges(
-                AuditAction.GOODS_RECEIPT_CANCEL,
-                AuditEntityType.GOODS_RECEIPT,
-                receiptId.toString(),
-                before,
-                snapshot(current.getReceiptStatus(), current.getWarehouseId(), currentItems)));
+        audit.record(
+                AuditWriteEvent.withChanges(
+                        AuditAction.GOODS_RECEIPT_CANCEL,
+                        AuditEntityType.GOODS_RECEIPT,
+                        receiptId.toString(),
+                        before,
+                        snapshot(
+                                current.getReceiptStatus(),
+                                current.getWarehouseId(),
+                                currentItems)));
         return query.detailInternal(current);
     }
 
-    private Map<String, Object> snapshot(String status, Long warehouseId, List<GoodsReceiptItem> rows) {
-        long totalQuantity = rows.stream()
-                .map(item -> (long) item.getQuantity())
-                .reduce(0L, Math::addExact);
+    private Map<String, Object> snapshot(
+            String status, Long warehouseId, List<GoodsReceiptItem> rows) {
+        long totalQuantity =
+                rows.stream().map(item -> (long) item.getQuantity()).reduce(0L, Math::addExact);
         return Map.of(
                 "status", status,
                 "warehouse_id", warehouseId,
@@ -218,34 +248,46 @@ public class GoodsReceiptService {
         if (requested == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         var productIds = new HashSet<Long>();
         for (var item : requested) {
-            if (item == null || item.productId() == null || item.quantity() == null
-                    || item.quantity() <= 0 || item.unitCost() == null || item.unitCost() < 0) {
+            if (item == null
+                    || item.productId() == null
+                    || item.quantity() == null
+                    || item.quantity() <= 0
+                    || item.unitCost() == null
+                    || item.unitCost() < 0) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
             }
             inventoryCommands.requireTrackedProduct(item.productId());
             if (!productIds.add(item.productId())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "GOODS_RECEIPT_DUPLICATE_PRODUCT");
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT, "GOODS_RECEIPT_DUPLICATE_PRODUCT");
             }
         }
     }
 
-    private List<ReceiptItemInput> createItems(List<GoodsReceiptCreateRequest.ItemInput> requested) {
+    private List<ReceiptItemInput> createItems(
+            List<GoodsReceiptCreateRequest.ItemInput> requested) {
         if (requested == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         return requested.stream()
-                .map(item -> {
-                    if (item == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-                    return new ReceiptItemInput(item.product_id(), item.quantity_received(), item.unit_cost());
-                })
+                .map(
+                        item -> {
+                            if (item == null)
+                                throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+                            return new ReceiptItemInput(
+                                    item.product_id(), item.quantity_received(), item.unit_cost());
+                        })
                 .toList();
     }
 
     private List<ReceiptItemInput> patchItems(List<GoodsReceiptPatchRequest.ItemInput> requested) {
         if (requested == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         return requested.stream()
-                .map(item -> {
-                    if (item == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-                    return new ReceiptItemInput(item.product_id(), item.quantity_received(), item.unit_cost());
-                })
+                .map(
+                        item -> {
+                            if (item == null)
+                                throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+                            return new ReceiptItemInput(
+                                    item.product_id(), item.quantity_received(), item.unit_cost());
+                        })
                 .toList();
     }
 
@@ -256,18 +298,22 @@ public class GoodsReceiptService {
         var productIds = new HashSet<Long>();
         for (GoodsReceiptItem item : storedItems) {
             if (item.getQuantity() == null || item.getQuantity() <= 0) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "GOODS_RECEIPT_INVALID_ITEM");
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT, "GOODS_RECEIPT_INVALID_ITEM");
             }
             inventoryCommands.requireTrackedProduct(item.getProductId());
             if (!productIds.add(item.getProductId())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "GOODS_RECEIPT_DUPLICATE_PRODUCT");
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT, "GOODS_RECEIPT_DUPLICATE_PRODUCT");
             }
         }
     }
 
     private void requireActiveSupplier(Long supplierId) {
-        var supplier = suppliers.findById(supplierId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        var supplier =
+                suppliers
+                        .findById(supplierId)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if (!InventoryPolicy.SUPPLIER_ACTIVE.equals(supplier.getStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }

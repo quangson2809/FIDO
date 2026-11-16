@@ -647,9 +647,17 @@ try {
   await withConfirm(() => page.getByRole('button', { name: 'Đóng hộp thoại' }).click(), 'accept');
   await page.getByRole('dialog').waitFor({ state: 'detached' });
   await goto('/admin/audit');
+  const auditChanges = page.locator('details').filter({ hasText: 'Xem thay đổi' });
+  await auditChanges.locator('summary').waitFor();
+  assert.equal(await auditChanges.getAttribute('open'), null);
+  assert.equal(await auditChanges.locator('pre').last().isVisible(), false);
+  await auditChanges.locator('summary').focus();
+  await page.keyboard.press('Enter');
+  await auditChanges.getByText('Sau thay đổi', { exact: true }).waitFor();
+  assert.match(await auditChanges.locator('pre').last().innerText(), /Sản phẩm mới/);
   await page.getByRole('button', { name: 'Sau', exact: true }).click();
   await page.getByText('Trang 2', { exact: false }).waitFor();
-  await page.getByRole('textbox', { name: 'Target type' }).fill('PRODUCT');
+  await page.getByRole('textbox', { name: 'Loại đối tượng' }).fill('PRODUCT');
   await Promise.all([
     page.waitForResponse((response) => response.url().includes('/admin/audit-logs?') && new URL(response.url()).searchParams.get('entity_type') === 'PRODUCT'),
     page.getByRole('button', { name: 'Lọc', exact: true }).click(),

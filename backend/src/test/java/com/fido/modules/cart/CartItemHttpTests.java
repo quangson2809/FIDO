@@ -105,9 +105,12 @@ class CartItemHttpTests extends CartHttpSupport {
                                 Map.of("product_id", stopped.productId(), "quantity", 1))
                         .status());
 
-        var outOfStockAdded = call(
-                "POST", "/api/v1/cart/items", owner.token(),
-                Map.of("product_id", outOfStock.productId(), "quantity", 1));
+        var outOfStockAdded =
+                call(
+                        "POST",
+                        "/api/v1/cart/items",
+                        owner.token(),
+                        Map.of("product_id", outOfStock.productId(), "quantity", 1));
         assertEquals(200, outOfStockAdded.status(), outOfStockAdded.body());
         long outOfStockItemId = 0L;
         for (var item : outOfStockAdded.data().get("data").get("items")) {
@@ -116,8 +119,10 @@ class CartItemHttpTests extends CartHttpSupport {
             }
         }
         assertTrue(outOfStockItemId > 0);
-        assertEquals(200, call("DELETE", "/api/v1/cart/items/" + outOfStockItemId,
-                owner.token(), null).status());
+        assertEquals(
+                200,
+                call("DELETE", "/api/v1/cart/items/" + outOfStockItemId, owner.token(), null)
+                        .status());
 
         assertEquals(
                 409,

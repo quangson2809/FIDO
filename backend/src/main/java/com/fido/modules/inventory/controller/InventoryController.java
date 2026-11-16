@@ -5,20 +5,22 @@ import com.fido.common.response.ApiResponse;
 import com.fido.modules.inventory.dto.request.InventoryAdjustmentRequest;
 import com.fido.modules.inventory.dto.request.InventoryReversalRequest;
 import com.fido.modules.inventory.dto.response.InventoryReconciliationRowDto;
-import com.fido.modules.inventory.service.InventoryReconciliationService;
 import com.fido.modules.inventory.dto.response.InventoryRowDto;
 import com.fido.modules.inventory.dto.response.InventoryTransactionDto;
 import com.fido.modules.inventory.service.InventoryAdjustmentService;
 import com.fido.modules.inventory.service.InventoryQueryService;
+import com.fido.modules.inventory.service.InventoryReconciliationService;
 import com.fido.modules.inventory.service.InventoryTransactionFilter;
+
 import jakarta.validation.Valid;
+
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -91,8 +93,15 @@ public class InventoryController {
             @RequestParam(name = "page_size", required = false) Integer pageSize) {
         return query.transactions(
                 new InventoryTransactionFilter(
-                        productId, transactionType, orderItemId, goodsReceiptItemId,
-                        actorAccountId, from, to, page, pageSize));
+                        productId,
+                        transactionType,
+                        orderItemId,
+                        goodsReceiptItemId,
+                        actorAccountId,
+                        from,
+                        to,
+                        page,
+                        pageSize));
     }
 
     private Long actor(Jwt jwt) {

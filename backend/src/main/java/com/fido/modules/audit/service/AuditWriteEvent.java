@@ -6,12 +6,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
-/**
- * Explicit audit input from an owning application service.
- *
- * <p>Actor and timestamp are deliberately absent: the writer derives the actor from the
- * authenticated security principal, while AUDIT_LOGS owns the generated ID and timestamp.
- */
+/** Service sở hữu nghiệp vụ cung cấp sự kiện; actor lấy từ đăng nhập, ID/thời gian do DB sinh. */
 public record AuditWriteEvent(
         AuditAction action,
         AuditEntityType entityType,
@@ -28,7 +23,8 @@ public record AuditWriteEvent(
 
         entityId = entityId.trim();
         if (!SAFE_ENTITY_ID.matcher(entityId).matches()) {
-            throw new IllegalArgumentException("entityId must be a stable non-sensitive identifier");
+            throw new IllegalArgumentException(
+                    "entityId must be a stable non-sensitive identifier");
         }
 
         beforeData = immutableCopy(beforeData);

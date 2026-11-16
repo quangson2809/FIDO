@@ -3,6 +3,7 @@ package com.fido.modules.inventory.dto.request;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -15,12 +16,18 @@ public class GoodsReceiptPatchRequest {
     @Valid private List<ItemInput> items;
     private boolean itemsPresent;
 
-    public Long getSupplierId() { return supplierId; }
+    public Long getSupplierId() {
+        return supplierId;
+    }
 
     @JsonSetter(value = "supplier_id", nulls = Nulls.FAIL)
-    public void setSupplierId(Long value) { supplierId = value; }
+    public void setSupplierId(Long value) {
+        supplierId = value;
+    }
 
-    public List<ItemInput> getItems() { return items; }
+    public List<ItemInput> getItems() {
+        return items;
+    }
 
     @JsonSetter(value = "items", nulls = Nulls.FAIL)
     public void setItems(List<ItemInput> value) {
@@ -29,7 +36,9 @@ public class GoodsReceiptPatchRequest {
     }
 
     @JsonIgnore
-    public boolean isItemsPresent() { return itemsPresent; }
+    public boolean isItemsPresent() {
+        return itemsPresent;
+    }
 
     public record ItemInput(
             @NotNull @Positive Long product_id,

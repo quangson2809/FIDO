@@ -16,6 +16,7 @@ import com.fido.modules.product.mapper.CatalogMapper;
 import com.fido.modules.product.repository.BrandRepository;
 import com.fido.modules.product.repository.CategoryRepository;
 import com.fido.modules.product.repository.ProductRepository;
+import com.fido.modules.product.service.query.CatalogReferenceService;
 
 import jakarta.persistence.EntityManager;
 
@@ -78,14 +79,19 @@ public class CatalogMasterDataService {
 
         categories.save(category);
         flushOrConflict("Category slug or parent reference conflicts with existing data");
-        audit.record(AuditWriteEvent.of(AuditAction.CATEGORY_CREATE, AuditEntityType.CATEGORY, category.getCategoryId().toString()));
+        audit.record(
+                AuditWriteEvent.of(
+                        AuditAction.CATEGORY_CREATE,
+                        AuditEntityType.CATEGORY,
+                        category.getCategoryId().toString()));
         return CatalogMapper.category(category);
     }
 
     @PreAuthorize(WRITE)
     public CategoryDto updateCategory(Long actor, Long categoryId, CategoryPatchRequest request) {
         if (!request.hasChanges()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category patch must contain a change");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Category patch must contain a change");
         }
         Category category = references.categoryForUpdate(categoryId);
         if (request.isParentPresent()) {
@@ -105,19 +111,28 @@ public class CatalogMasterDataService {
         }
         categories.save(category);
         flushOrConflict("Category violates a uniqueness or reference constraint");
-        audit.record(AuditWriteEvent.of(AuditAction.CATEGORY_UPDATE, AuditEntityType.CATEGORY, categoryId.toString()));
+        audit.record(
+                AuditWriteEvent.of(
+                        AuditAction.CATEGORY_UPDATE,
+                        AuditEntityType.CATEGORY,
+                        categoryId.toString()));
         return CatalogMapper.category(category);
     }
 
     @PreAuthorize(WRITE)
     public void deleteCategory(Long actor, Long categoryId) {
         Category category = references.category(categoryId);
-        if (categories.existsByParentCategoryId(categoryId) || products.existsByCategoryId(categoryId)) {
+        if (categories.existsByParentCategoryId(categoryId)
+                || products.existsByCategoryId(categoryId)) {
             conflict("Category is still referenced");
         }
         categories.delete(category);
         flushOrConflict("Category is still referenced");
-        audit.record(AuditWriteEvent.of(AuditAction.CATEGORY_DELETE, AuditEntityType.CATEGORY, categoryId.toString()));
+        audit.record(
+                AuditWriteEvent.of(
+                        AuditAction.CATEGORY_DELETE,
+                        AuditEntityType.CATEGORY,
+                        categoryId.toString()));
     }
 
     @PreAuthorize(WRITE)
@@ -134,14 +149,19 @@ public class CatalogMasterDataService {
         brand.setStatus(status);
         brands.save(brand);
         flushOrConflict("Brand slug conflicts with existing data");
-        audit.record(AuditWriteEvent.of(AuditAction.BRAND_CREATE, AuditEntityType.BRAND, brand.getBrandId().toString()));
+        audit.record(
+                AuditWriteEvent.of(
+                        AuditAction.BRAND_CREATE,
+                        AuditEntityType.BRAND,
+                        brand.getBrandId().toString()));
         return CatalogMapper.brand(brand);
     }
 
     @PreAuthorize(WRITE)
     public BrandDto updateBrand(Long actor, Long brandId, BrandPatchRequest request) {
         if (!request.hasChanges()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Brand patch must contain a change");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Brand patch must contain a change");
         }
         Brand brand = references.brand(brandId);
         if (request.isNamePresent()) {
@@ -157,7 +177,9 @@ public class CatalogMasterDataService {
         }
         brands.save(brand);
         flushOrConflict("Brand violates a uniqueness or reference constraint");
-        audit.record(AuditWriteEvent.of(AuditAction.BRAND_UPDATE, AuditEntityType.BRAND, brandId.toString()));
+        audit.record(
+                AuditWriteEvent.of(
+                        AuditAction.BRAND_UPDATE, AuditEntityType.BRAND, brandId.toString()));
         return CatalogMapper.brand(brand);
     }
 
@@ -169,7 +191,9 @@ public class CatalogMasterDataService {
         }
         brands.delete(brand);
         flushOrConflict("Brand is still referenced");
-        audit.record(AuditWriteEvent.of(AuditAction.BRAND_DELETE, AuditEntityType.BRAND, brandId.toString()));
+        audit.record(
+                AuditWriteEvent.of(
+                        AuditAction.BRAND_DELETE, AuditEntityType.BRAND, brandId.toString()));
     }
 
     private void validateParent(Long categoryId, Long parentId) {
@@ -188,16 +212,18 @@ public class CatalogMasterDataService {
     }
 
     private void requireCategorySlugAvailable(String slug, Long categoryId) {
-        boolean exists = categoryId == null
-                ? categories.existsBySlug(slug)
-                : categories.existsBySlugAndCategoryIdNot(slug, categoryId);
+        boolean exists =
+                categoryId == null
+                        ? categories.existsBySlug(slug)
+                        : categories.existsBySlugAndCategoryIdNot(slug, categoryId);
         if (exists) conflict("Category slug already exists");
     }
 
     private void requireBrandSlugAvailable(String slug, Long brandId) {
-        boolean exists = brandId == null
-                ? brands.existsBySlug(slug)
-                : brands.existsBySlugAndBrandIdNot(slug, brandId);
+        boolean exists =
+                brandId == null
+                        ? brands.existsBySlug(slug)
+                        : brands.existsBySlugAndBrandIdNot(slug, brandId);
         if (exists) conflict("Brand slug already exists");
     }
 
@@ -210,14 +236,18 @@ public class CatalogMasterDataService {
     }
 
     private static String slug(String value) {
-        String normalized = Normalizer.normalize(value, Normalizer.Form.NFD)
-                .replace('\u0111', 'd').replace('\u0110', 'D');
+        String normalized =
+                Normalizer.normalize(value, Normalizer.Form.NFD)
+                        .replace('\u0111', 'd')
+                        .replace('\u0110', 'D');
         normalized = normalized.replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT);
         normalized = normalized.replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
         if (normalized.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Name cannot produce a slug");
         }
-        return normalized.length() > 180 ? normalized.substring(0, 180).replaceAll("-+$", "") : normalized;
+        return normalized.length() > 180
+                ? normalized.substring(0, 180).replaceAll("-+$", "")
+                : normalized;
     }
 
     private static void conflict(String message) {

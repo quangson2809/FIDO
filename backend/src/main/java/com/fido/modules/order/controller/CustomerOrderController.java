@@ -4,8 +4,7 @@ import com.fido.common.response.ApiListResponse;
 import com.fido.common.response.ApiResponse;
 import com.fido.modules.order.dto.response.OrderCustomerDetailDto;
 import com.fido.modules.order.dto.response.OrderSummaryDto;
-import com.fido.modules.order.service.OrderQueryService;
-
+import com.fido.modules.order.service.lifecycle.OrderQueryService;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;

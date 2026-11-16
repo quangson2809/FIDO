@@ -38,8 +38,7 @@ public class AdminCatalogAttributeController {
 
     @PatchMapping("/{attributeId}")
     public ApiResponse<AttributeDto> updateAttribute(
-            @PathVariable Long attributeId,
-            @Valid @RequestBody AttributePatchRequest request) {
+            @PathVariable Long attributeId, @Valid @RequestBody AttributePatchRequest request) {
         return ApiResponse.of(service.updateAttribute(attributeId, request));
     }
 
@@ -58,5 +57,4 @@ public class AdminCatalogAttributeController {
             @Valid @RequestBody AttributeOptionPatchRequest request) {
         return ApiResponse.of(service.updateOption(attributeId, optionId, request));
     }
-
 }

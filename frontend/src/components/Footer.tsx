@@ -3,9 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { APP_PATHS } from '../routes/paths';
 import { supportContact } from '../features/content/model/supportContact';
+import { useAuthSession } from '../features/auth/session/useAuthSession';
 
 export const Footer: React.FC = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuthSession();
 
   return (
     <footer className="border-t border-[#164E35] bg-[#0B2419] text-white/80">
@@ -23,8 +25,7 @@ export const Footer: React.FC = () => {
               Fit • Innovate • Devote • Open
             </p>
             <p className="mt-4 max-w-xs text-xs leading-6 text-white/55">
-              Không gian thời trang FIDO với ngôn ngữ thị giác tối giản, tập trung vào sản phẩm và
-              trải nghiệm mua sắm rõ ràng.
+              Khám phá trang phục FIDO với phom dáng, màu sắc và chất liệu phù hợp phong cách của bạn.
             </p>
           </div>
 
@@ -79,13 +80,15 @@ export const Footer: React.FC = () => {
               >
                 Đơn hàng của tôi
               </button>
-              <button
-                type="button"
-                onClick={() => navigate('/login')}
-                className="transition-colors hover:text-white"
-              >
-                Đăng nhập / đăng ký
-              </button>
+              {!isAuthenticated && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/login')}
+                  className="transition-colors hover:text-white"
+                >
+                  Đăng nhập / đăng ký
+                </button>
+              )}
             </div>
           </div>
 
@@ -93,38 +96,36 @@ export const Footer: React.FC = () => {
             <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-white">
               Chăm sóc khách hàng
             </h4>
-            <dl className="mt-4 space-y-4 text-sm text-white/80">
-              <div>
-                <dt className="text-xs text-white/60">Email</dt>
-                <dd className="mt-1 break-all">
-                  {supportContact.email ? (
-                    <a
-                      className="inline-flex min-h-11 items-center underline"
-                      href={`mailto:${supportContact.email}`}
-                    >
-                      {supportContact.email}
-                    </a>
-                  ) : (
-                    'Chưa cập nhật email CSKH'
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-white/60">Hotline</dt>
-                <dd className="mt-1">
-                  {supportContact.hotline ? (
-                    <a
-                      className="inline-flex min-h-11 items-center underline"
-                      href={`tel:${supportContact.hotline.replace(/[\s().-]/g, '')}`}
-                    >
-                      {supportContact.hotline}
-                    </a>
-                  ) : (
-                    'Chưa cập nhật hotline CSKH'
-                  )}
-                </dd>
-              </div>
-            </dl>
+            {(supportContact.email || supportContact.hotline) && (
+              <dl className="mt-4 space-y-4 text-sm text-white/80">
+                {supportContact.email && (
+                  <div>
+                    <dt className="text-xs text-white/60">Email</dt>
+                    <dd className="mt-1 break-all">
+                      <a
+                        className="inline-flex min-h-11 items-center underline"
+                        href={`mailto:${supportContact.email}`}
+                      >
+                        {supportContact.email}
+                      </a>
+                    </dd>
+                  </div>
+                )}
+                {supportContact.hotline && (
+                  <div>
+                    <dt className="text-xs text-white/60">Hotline</dt>
+                    <dd className="mt-1">
+                      <a
+                        className="inline-flex min-h-11 items-center underline"
+                        href={`tel:${supportContact.hotline.replace(/[\s().-]/g, '')}`}
+                      >
+                        {supportContact.hotline}
+                      </a>
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            )}
             <Link
               to="/policies"
               className="mt-4 inline-flex min-h-11 items-center text-sm underline"

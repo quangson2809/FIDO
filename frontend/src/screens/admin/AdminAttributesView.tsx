@@ -227,7 +227,7 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
             Quản lý thuộc tính
           </h1>
           <p className="mt-2 max-w-3xl text-sm text-[#606863]">
-            Mỗi Attribute quản lý một danh sách Option. Product lưu lựa chọn bằng các attribute_value_id; không phát sinh biến thể tự động.
+            Quản lý thuộc tính và các giá trị có thể chọn cho sản phẩm.
           </p>
         </div>
         <button
@@ -247,11 +247,6 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
       )}
       {loading && meta && (
         <p role="status" className="text-sm text-[#606863]">Đang làm mới dữ liệu thuộc tính...</p>
-      )}
-      {!canWrite && (
-        <div className="border border-[#E2E5DE] bg-[#F8FAF4] p-3 text-sm text-[#606863]">
-          Chế độ chỉ đọc. Cần CATALOG_WRITE để tạo hoặc sửa thuộc tính và option.
-        </div>
       )}
 
       {canWrite && (
@@ -339,7 +334,7 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
         )}
         {!loading && !meta && error && (
           <div className="rounded-lg border border-[#E2E5DE] bg-white p-6 text-sm text-[#606863]">
-            Chưa thể hiển thị danh sách vì không tải được metadata. Hãy thử làm mới.
+            Chưa tải được danh sách thuộc tính. Hãy thử làm mới.
           </div>
         )}
         {meta && meta.attributes.length === 0 && (

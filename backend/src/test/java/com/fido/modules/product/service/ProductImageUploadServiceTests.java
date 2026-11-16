@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fido.modules.product.entity.Product;
+import com.fido.modules.product.service.query.CatalogReferenceService;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
