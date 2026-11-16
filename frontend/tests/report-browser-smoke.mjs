@@ -275,6 +275,20 @@ try {
   await page.getByText('Top 5 sản phẩm', { exact: true }).waitFor();
   assert.equal(await page.locator('[data-chart="revenue-area"]').count(), 1);
   assert.equal(await page.locator('[data-chart="order-status-donut"]').count(), 1);
+  await page.getByLabel('Từ ngày', { exact: true }).fill('2026-09-01');
+  await page.getByLabel('Đến ngày', { exact: true }).fill('2026-09-30');
+  await page.getByRole('button', { name: 'Áp dụng khoảng tùy chỉnh' }).click();
+  await page.getByText('990.000₫', { exact: true }).first().waitFor();
+  const dashboardRequests = app.requests
+    .map((request) => new URL(request, base))
+    .filter((request) => request.searchParams.get('from') === '2026-09-01'
+      && request.searchParams.get('to') === '2026-09-30');
+  for (const endpoint of ['overview', 'sales-trend', 'product-performance']) {
+    assert.ok(dashboardRequests.some((request) => request.pathname.endsWith(`/${endpoint}`)));
+  }
+  const reportLink = page.getByRole('link', { name: 'Mở báo cáo doanh số →' });
+  assert.equal(new URL(await reportLink.getAttribute('href'), base).searchParams.get('from'), '2026-09-01');
+  assert.equal(new URL(await reportLink.getAttribute('href'), base).searchParams.get('to'), '2026-09-30');
   for (const width of [375, 768, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     assert.equal(
@@ -287,6 +301,9 @@ try {
       fullPage: true,
     });
   }
+  await page.getByRole('button', { name: '30 ngày', exact: true }).click();
+  await page.getByText('123.000₫', { exact: true }).first().waitFor();
+  assert.notEqual(await page.getByLabel('Từ ngày', { exact: true }).inputValue(), '2026-09-01');
   await app.context.close();
   const readOnly = await fixture(['REPORT_READ']);
   await readOnly.page.goto(base + path.replace('tab=sales', 'tab=products'));

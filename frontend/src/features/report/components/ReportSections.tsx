@@ -85,7 +85,7 @@ export function SalesSection({
       </p>
       {empty && (
         <p role="status" className="report-empty">
-          Chưa có doanh số trong khoảng này. Các kỳ được hiển thị với giá trị 0.
+          Chưa có doanh số trong khoảng này. Kiểm tra khoảng ngày và các đơn đã giao, thu tiền.
         </p>
       )}
       <RevenueAreaChart points={report.points} previousPoints={previous?.points} />
