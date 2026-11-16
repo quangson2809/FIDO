@@ -178,6 +178,18 @@ class ReportRepositoryTests {
     }
 
     @Test
+    void productWithoutOptionalNameUsesItsSkuForDisplay() {
+        String sku = "RPT-NAMELESS-" + UUID.randomUUID().toString().replace("-", "");
+        long product = createIndependentChildProduct(null, "nameless-" + sku, sku, 100);
+        long order = completedOrder("COMPLETED", "2020-01-02 00:00:00");
+        item(order, product, 2);
+        var result = reports.topProducts(START, END, 10);
+        assertEquals(1, result.size());
+        assertEquals(sku, result.get(0).product_name());
+        assertEquals(2, result.get(0).net_units());
+    }
+
+    @Test
     void mysqlExplainExecutesTheActualParameterizedAggregateQueries() throws Exception {
         try (var connection = jdbc.getDataSource().getConnection()) {
             if (!connection.getMetaData().getDatabaseProductName().equals("MySQL")) return;

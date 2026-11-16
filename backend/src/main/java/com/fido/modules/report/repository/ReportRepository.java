@@ -72,7 +72,7 @@ public class ReportRepository {
     static final String TOP_PRODUCTS_SQL =
             """
             SELECT totals.product_id,
-                   p.name AS product_name,
+                   COALESCE(p.name, p.sku) AS product_name,
                    image.image_url AS thumbnail,
                    totals.completed_units,
                    totals.returned_units,

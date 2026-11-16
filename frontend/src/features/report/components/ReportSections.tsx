@@ -193,7 +193,7 @@ export function ProductsSection({
     <article className="report-card">
       <h2>{preview ? 'Top 5 sản phẩm' : 'Top sản phẩm bán thuần'}</h2>
       <p className="report-description">
-        Theo ngày hoàn tất · Gộp mọi biến thể · Trừ số lượng trả hàng toàn đơn.
+        Theo ngày hoàn tất · Theo từng sản phẩm/SKU · Trừ số lượng trả hàng toàn đơn.
       </p>
       {report.items.length === 0 ? (
         <p className="report-empty" role="status">

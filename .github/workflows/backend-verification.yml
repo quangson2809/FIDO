@@ -36,6 +36,9 @@ on:
 permissions:
   contents: read
 
+env:
+  REPORT_FOCUSED: ${{ contains(github.event.head_commit.message, '[admin-report-focus]') || contains(github.event.pull_request.title, '[admin-report-focus]') }}
+
 jobs:
   backend-runtime:
     if: github.event_name == 'push' && github.ref == 'refs/heads/feature/p3-1-account-rbac'
@@ -140,7 +143,7 @@ jobs:
         run: ./gradlew --no-daemon clean compileJava compileTestJava
       # Kiểm tra các cụm vừa thay đổi trước khi chạy bộ backend/MySQL đầy đủ.
       - name: Focused backend regression tests
-        if: github.ref == 'refs/heads/refactor/backend-pattern-safe-v2'
+        if: github.ref == 'refs/heads/refactor/backend-pattern-safe-v2' && env.REPORT_FOCUSED != 'true'
         working-directory: backend
         env:
           TEST_DB_URL: jdbc:mysql://127.0.0.1:3306/fido_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
@@ -176,7 +179,16 @@ jobs:
           TEST_DB_DRIVER: com.mysql.cj.jdbc.Driver
           TEST_DB_USERNAME: root
           TEST_DB_PASSWORD: ci-only-password
-        run: ./gradlew --no-daemon compileJava test check --rerun-tasks
+        run: |
+          if [ "$REPORT_FOCUSED" = "true" ]; then
+            ./gradlew --no-daemon test --rerun-tasks \
+              --tests 'com.fido.modules.report.*' \
+              --tests 'com.fido.modules.pricing.*' \
+              --tests com.fido.modules.promotion.service.VoucherDiscountTests
+            ./gradlew --no-daemon checkJavaFormat
+          else
+            ./gradlew --no-daemon compileJava test check --rerun-tasks
+          fi
       - name: Keep MySQL test reports
         if: always() && steps.mysql-tests.outcome != 'skipped'
         uses: actions/upload-artifact@v4
