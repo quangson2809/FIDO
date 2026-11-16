@@ -59,7 +59,6 @@ class ApiBaselineRouteContractTests {
                     new Route("POST", "/api/v1/admin/vouchers"),
                     new Route("GET", "/api/v1/admin/vouchers/{id}"),
                     new Route("PATCH", "/api/v1/admin/vouchers/{id}"),
-                    // P1.3 API-79–82: owner-approved Attribute and Option management routes.
                     new Route("POST", "/api/v1/admin/catalog/attributes"),
                     new Route("PATCH", "/api/v1/admin/catalog/attributes/{attributeId}"),
                     new Route("POST", "/api/v1/admin/catalog/attributes/{attributeId}/options"),

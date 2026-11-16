@@ -95,7 +95,7 @@ class DynamicCatalogHttpTests extends CatalogHttpSupport {
         assertEquals(2, page.data().get("meta").get("total_pages").asInt());
         assertEquals(1, page.data().get("data").size());
         var admin = call("GET", "/api/v1/admin/products?parent_product_id=" + f.productId(), w.token(), null);
-        // Public queries do not change the admin list's child visibility.
+        // Bộ lọc công khai không được làm danh sách quản trị mất Product con.
         assertEquals(200, admin.status(), admin.body());
         assertTrue(admin.data().get("data").size() >= 2);
         for (long id : List.of(f.productId(), blackL, whiteM)) {
@@ -185,7 +185,7 @@ class DynamicCatalogHttpTests extends CatalogHttpSupport {
                 SecurityContextHolder.setContext(context);
                 try {
                     return new TransactionTemplate(transactionManager).execute(status -> {
-                        // Establish the old REPEATABLE_READ view while the other writer is uncommitted.
+                        // Tạo ảnh đọc REPEATABLE_READ cũ khi giao dịch sửa bên kia chưa commit.
                         db.queryForObject("SELECT id FROM products WHERE id=?", Long.class, rootId);
                         snapshot.countDown();
                         try { return mutation.call(); }

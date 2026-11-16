@@ -43,6 +43,11 @@ public class CheckoutCalculationService {
         return calculate(accountId, voucherCode, true);
     }
 
+    /**
+     * accountId lấy từ đăng nhập; voucherCode lấy từ request và có thể không có.
+     * advisoryQuote=true chỉ báo giá; false khóa voucher để chuẩn bị tạo đơn trong giao dịch của bên
+     * gọi.
+     */
     private CheckoutCalculation calculate(Long accountId, String voucherCode, boolean advisoryQuote) {
         CheckoutCartView current = cart.checkoutView(accountId);
         if (current.items().isEmpty()) {
@@ -62,6 +67,7 @@ public class CheckoutCalculationService {
                     : vouchers.evaluate(accountId, voucherCode, lines);
         }
 
+        // Dùng giá/số lượng vừa đọc từ giỏ, số giảm do voucher xác định và phí ship cấu hình phía máy chủ.
         var result = pricing.calculate(
                 current.items().stream()
                         .map(item -> new PricingCalculator.LineInput(

@@ -67,8 +67,8 @@ abstract class CartHttpSupport {
     }
 
     /**
-     * Compatibility-shaped factory for existing tests: the approved model has one sellable
-     * Product, not size/color variants. Either old status argument can mark the Product inactive.
+     * Giữ cách gọi của test cũ nhưng tạo một Product bán được; một trong hai trạng thái cũ có thể đánh
+     * dấu Product không hoạt động.
      */
     CatalogFixture createVariant(String productStatus, String legacyVariantStatus,
             int quantityOnHand, int basePrice, Integer overridePrice) {

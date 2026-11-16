@@ -25,6 +25,10 @@ public class OrderProductSnapshotService {
         this.values = values;
     }
 
+    /**
+     * productIds lấy từ các dòng giỏ khi đặt đơn; trả Product ID → JSON thuộc tính tại thời điểm đọc.
+     * Lưu cả mã/tên Attribute và value/label Option để chỉnh metadata sau này không đổi đơn cũ.
+     */
     public Map<Long, String> attributeSnapshots(Collection<Long> productIds) {
         if (productIds == null || productIds.isEmpty()) return Map.of();
         List<Long> ids = productIds.stream().filter(java.util.Objects::nonNull).distinct().toList();
@@ -50,6 +54,8 @@ public class OrderProductSnapshotService {
         for (Long id : ids) {
             try {
                 String snapshot = json.writeValueAsString(byProduct.get(id));
+                // Chặn snapshot vượt sức chứa cột trước khi ghi OrderItem để không lưu lịch sử bị
+                // cắt mất dữ liệu.
                 if (snapshot.codePointCount(0, snapshot.length()) > 2000) {
                     throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
                             "ORDER_ATTRIBUTE_SNAPSHOT_TOO_LARGE");

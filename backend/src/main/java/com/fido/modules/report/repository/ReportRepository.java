@@ -15,11 +15,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Read-only report projections against the target schema.
- *
- * <p>Money is aggregated from persisted integer-VND Order snapshots. The Payment and
- * ShippingInfo joins enforce the approved COD completion/refund facts and date basis;
- * current catalog fields are used only for optional display data.</p>
+ * Tổng hợp từ số tiền chụp tại thời điểm đặt đơn; Payment/Shipping xác nhận thu COD, hoàn tiền và mốc
+ * ngày. Catalog hiện tại chỉ bổ sung thông tin hiển thị.
  */
 @Repository
 public class ReportRepository {
@@ -186,8 +183,8 @@ public class ReportRepository {
     }
 
     /**
-     * MySQL returns SUM(BIGINT) as DECIMAL. Convert exactly so an aggregate cannot
-     * silently truncate, round, or overflow the API's signed-BIGINT integer VND contract.
+     * MySQL trả SUM(BIGINT) dưới dạng DECIMAL; chuyển chính xác sang long để không cắt lẻ hoặc tràn số
+     * VND.
      */
     private static long exactAggregate(ResultSet result, String column) throws SQLException {
         BigDecimal value = result.getBigDecimal(column);

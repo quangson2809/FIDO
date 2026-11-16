@@ -10,7 +10,7 @@ import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
 
-/** Presence-aware partial update. Nullable cap, window bounds and usage_limit can be cleared explicitly. */
+/** Cờ hiện diện cho phép xóa rõ ràng cap, mốc thời gian hoặc usage_limit bằng null khi PATCH. */
 public class VoucherPatchRequest {
     @Size(max = 80)
     @Pattern(regexp = ".*\\S.*")

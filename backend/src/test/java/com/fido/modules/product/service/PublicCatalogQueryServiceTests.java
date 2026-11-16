@@ -26,10 +26,7 @@ import org.springframework.data.jpa.domain.Specification;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Contract tests stay at PublicCatalogQueryService's public API even though
- * family assembly now lives in a focused collaborator.
- */
+/** Test qua API service công khai dù phần ghép family đã tách sang lớp cộng tác. */
 @ExtendWith(MockitoExtension.class)
 class PublicCatalogQueryServiceTests {
     @Mock private ProductRepository products;
@@ -48,8 +45,7 @@ class PublicCatalogQueryServiceTests {
 
     @BeforeEach
     void setUp() {
-        // Build the real family reader: the existing detail contract must not
-        // accidentally turn into a mock-only test that misses regressions.
+        // Dùng bộ đọc family thật để test bắt được lỗi ghép dữ liệu, không chỉ xác nhận mock.
         var familyReader = new PublicCatalogFamilyReadService(
                 products, inventory, images, attributeValueRead, references);
         service = new PublicCatalogQueryService(
@@ -142,7 +138,7 @@ class PublicCatalogQueryServiceTests {
 
     @Test
     void activeParentAndChildHaveIndependentStockAndRemainSelectableSkus() {
-        // The parent is a real purchasable SKU, not just a family heading.
+        // Product cha là SKU bán được, không chỉ là tiêu đề nhóm.
         Product parent = product(50L, "PARENT-50", 300000L);
         Product child = product(51L, "CHILD-51", 320000L);
         child.setParentProductId(50L);

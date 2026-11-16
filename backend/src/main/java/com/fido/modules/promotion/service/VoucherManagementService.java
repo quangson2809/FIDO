@@ -134,6 +134,11 @@ public class VoucherManagementService {
         return dto(saved);
     }
 
+    /**
+     * Nhận cấu hình cuối cùng sau create/PATCH; FIXED là VND, PERCENT là basis point tối đa 10.000.
+     * minimumOrderValue chưa có ship; cap, mốc thời gian và usageLimit có thể không giới hạn bằng
+     * null.
+     */
     private static void validateConfiguration(
             String discountType,
             Long discountValue,

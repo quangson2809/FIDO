@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Locale;
 
-/** Persistence predicates for order history queries. */
 public final class OrderSpecifications {
 
     private OrderSpecifications() {}

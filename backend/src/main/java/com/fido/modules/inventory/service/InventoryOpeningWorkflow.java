@@ -44,6 +44,10 @@ class InventoryOpeningWorkflow {
         this.posting = posting;
     }
 
+    /**
+     * actor từ JWT; productId và openingQuantity là yêu cầu mở tồn, số lượng phải dương.
+     * Khóa nghiệp vụ theo kho/Product để chỉ có một lần mở tồn và không chèn vào lịch sử đã phát sinh.
+     */
     InventoryTransaction openStock(Long actor, Long productId, int openingQuantity) {
         if (actor == null
                 || actor <= 0

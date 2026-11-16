@@ -82,6 +82,10 @@ public class CartQueryService {
                 carts.findAllByAccountIdAndStatusOrderByCartIdAsc(accountId, OPEN));
     }
 
+    /**
+     * openCarts là mọi giỏ OPEN của cùng tài khoản do repository trả về; nhiều hơn một là lỗi dữ liệu.
+     * Không chọn theo thời gian vì có thể sửa/checkout nhầm giỏ của người dùng.
+     */
     static Cart selectSoleOpen(List<Cart> openCarts) {
         if (openCarts.size() > 1) {
             throw new ResponseStatusException(
@@ -98,6 +102,10 @@ public class CartQueryService {
                 resolved.subtotal());
     }
 
+    /**
+     * cart lấy từ DB của tài khoản; đọc lại thông tin bán hàng theo Product ID rồi tính tiền VND.
+     * Không tin giá cũ từ UI và không giữ hàng ở bước đọc giỏ.
+     */
     private ResolvedCart resolveCart(Cart cart) {
         List<CartItem> cartItems = items.findAllByCartIdOrderByCartItemIdAsc(cart.getCartId());
         Map<Long, CatalogProductReadService.ProductView> productsById =

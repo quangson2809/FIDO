@@ -13,7 +13,7 @@ public record CartItemDto(
         Long unit_price,
         Long line_total,
         Integer available_quantity) {
-    /** Compatibility adapter for old test fixtures; response money is integer VND. */
+    /** Chuyển dữ liệu test cũ sang VND nguyên; giá trị thập phân không được cắt ngầm. */
     public CartItemDto(
             Long cart_item_id, Long product_id, Integer quantity, String product_name,
             String image_url, String thumbnail, String sku, BigDecimal unit_price,

@@ -87,7 +87,7 @@ class AccountAccessServiceTests {
     void recognizesSuperadminRoleWithoutInventingPermissionGrants() {
         fixture();
 
-        // Isolate this service test from the global SUPERADMIN seed catalogue.
+        // Tách dữ liệu test service khỏi danh mục SUPERADMIN được seed chung.
         jdbc.update(
                 """
                 DELETE FROM role_permissions

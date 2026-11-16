@@ -61,6 +61,10 @@ public class OrderAfterSalesService {
         return returnAndRefundFull(actor, orderId, request.reason(), authentication);
     }
 
+    /**
+     * actor từ JWT, orderId từ URL; reason là lý do nhân viên gửi khi nhận trả và hoàn toàn bộ COD.
+     * Thao tác chỉ ghi nhận hoàn tiền/trả đơn, không chứng minh hàng còn bán được để tự nhập kho.
+     */
     private OrderAdminDetailDto returnAndRefundFull(
             Long actor, Long orderId, String reason, Authentication authentication) {
         Order order = orders.findByIdForUpdate(orderId)

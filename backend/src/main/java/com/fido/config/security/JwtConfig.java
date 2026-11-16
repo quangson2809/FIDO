@@ -26,10 +26,15 @@ import javax.crypto.spec.SecretKeySpec;
 
 @Configuration
 public class JwtConfig {
-    // SHA-256 of the previously published development signing key; not a signing secret.
+    // Dấu băm nhận diện khóa dev từng công khai để từ chối dùng lại; đây không phải khóa ký.
     private static final String REVOKED_PUBLIC_KEY_SHA256 =
             "565d07b454cc4bfebf2ac2d045ba9b49284c27af61af3138d9228e6290fe4dd8";
 
+    /**
+     * secret lấy từ JWT_SECRET_BASE64 qua cấu hình; giải mã và kiểm tra độ dài trước khi tạo khóa
+     * HS256.
+     * Từ chối khóa dev từng công khai để cấu hình nhầm không biến thành khóa ký đang dùng.
+     */
     @Bean
     SecretKey jwtKey(@Value("${app.jwt.secret-base64}") String secret) {
         if (secret == null || secret.isBlank()) {
@@ -89,7 +94,7 @@ public class JwtConfig {
                             return OAuth2TokenValidatorResult.success();
                         }
                     } catch (RuntimeException ignored) {
-                        // Invalid subject or malformed claims are handled as invalid_token below.
+                        // Subject hoặc claim sai định dạng cùng bị từ chối như token không hợp lệ ở bước dưới.
                     }
 
                     return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token"));

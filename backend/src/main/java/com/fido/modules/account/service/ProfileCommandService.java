@@ -43,6 +43,10 @@ public class ProfileCommandService {
         applyAllFields(address,request); address.setDefault(makeDefault);
         return toDto(addresses.save(address));
     }
+    /**
+     * actor là chủ tài khoản từ JWT, addressId từ URL; request có cờ hiện diện để cập nhật từng phần.
+     * Khóa tài khoản để việc đổi địa chỉ và chọn một mặc định không đua với thêm/xóa địa chỉ khác.
+     */
     public AddressDto updateAddress(Long actor,Long addressId,AddressRequest request) {
         accountLocks.lock(actor); requireActiveOwner(actor);
         if(!request.hasAnyField()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"EMPTY_PATCH");
@@ -60,7 +64,7 @@ public class ProfileCommandService {
                 if(hasAnotherAddress) {
                     promoteMostRecentOther(actor,address.getId());
                 }
-                // Preserve exactly one default when this is the Account's only saved address.
+                // Địa chỉ duy nhất phải tiếp tục là mặc định dù request yêu cầu bỏ chọn.
             }
         }
         Address saved=addresses.save(address); entityManager.flush(); return toDto(saved);
@@ -83,9 +87,8 @@ public class ProfileCommandService {
                 .orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
     /**
-     * Repairs legacy rows with missing/multiple defaults under the owning Account lock.
-     * Prefer a previous default; otherwise use latest updated_at, then highest id.
-     * Missing structured recipient/location fields are deliberately not fabricated.
+     * Sửa dữ liệu cũ thiếu/thừa mặc định dưới khóa tài khoản. Ưu tiên địa chỉ đã mặc định, rồi thời
+     * gian sửa và ID mới nhất; không tự điền địa chỉ thiếu.
      */
     private void ensureExactlyOneDefault(List<Address> all) {
         if (all.isEmpty()) {
@@ -103,8 +106,8 @@ public class ProfileCommandService {
                         .thenComparing(Address::getId, Comparator.reverseOrder());
         Address winner = candidates.stream().min(latestFirst).orElseThrow();
 
-        // Legacy rows may have NULL structured address fields. Update only the invariant columns
-        // in SQL instead of saving the incomplete entity through Hibernate's NOT NULL checks.
+        // Dữ liệu cũ có thể thiếu trường bắt buộc; chỉ cập nhật cột mặc định bằng SQL để không
+        // lưu lại entity thiếu dữ liệu.
         entityManager.flush();
         entityManager.createNativeQuery(
                         "UPDATE addresses SET is_default = FALSE, updated_at = CURRENT_TIMESTAMP(6) "
@@ -135,6 +138,11 @@ public class ProfileCommandService {
         all.forEach(entityManager::refresh);
     }
 
+    /**
+     * actor là chủ sổ địa chỉ; excludedId là địa chỉ vừa bỏ mặc định/xóa.
+     * Chọn địa chỉ còn lại sửa gần nhất; cập nhật cột mặc định trực tiếp để hỗ trợ cả dữ liệu cũ thiếu
+     * trường.
+     */
     private void promoteMostRecentOther(Long actor, Long excludedId) {
         Long promotedId =
                 addresses.findByAccountIdMostRecentlyUpdated(actor).stream()

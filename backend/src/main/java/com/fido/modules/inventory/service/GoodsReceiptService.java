@@ -117,6 +117,10 @@ public class GoodsReceiptService {
         return query.detailInternal(receipt);
     }
 
+    /**
+     * actor từ JWT, receiptId từ URL; request chọn CONFIRM hoặc CANCEL, không gửi số lượng tồn mới.
+     * Xác nhận đọc lại các dòng phiếu để nhập kho; hủy chỉ đổi phiếu DRAFT và không tác động kho.
+     */
     @PreAuthorize(WRITE)
     public GoodsReceiptDetailDto action(Long actor, Long receiptId, GoodsReceiptActionRequest request) {
         return switch (request.action()) {
@@ -127,7 +131,7 @@ public class GoodsReceiptService {
     }
 
     private GoodsReceiptDetailDto confirm(Long actor, Long receiptId) {
-        // Source aggregate is locked before source lines or inventory balance rows.
+        // Khóa phiếu nguồn trước dòng hàng và số dư kho để mọi lệnh dùng cùng thứ tự khóa.
         GoodsReceipt current = receiptForUpdate(receiptId);
         if (InventoryPolicy.RECEIPT_CONFIRMED.equals(current.getReceiptStatus())) {
             return query.detailInternal(current);
@@ -146,6 +150,7 @@ public class GoodsReceiptService {
                 snapshot(current.getReceiptStatus(), current.getWarehouseId(), receiptItems);
 
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        // Đổi trạng thái dưới khóa phiếu; nếu ghi kho hoặc audit lỗi, cả trạng thái và dòng kho đều rollback.
         current.setReceiptStatus(InventoryPolicy.RECEIPT_CONFIRMED);
         current.setConfirmedByAccountId(actor);
         current.setConfirmedAt(now);
@@ -156,7 +161,7 @@ public class GoodsReceiptService {
                         item.getProductId(), item.getQuantity(), null, item.getReceiptItemId()))
                 .toList();
 
-        // Inventory writes balance/version and immutable semantic-source ledger keys in this transaction.
+        // Ghi số dư/version và ledger theo từng dòng phiếu trong cùng giao dịch xác nhận.
         inventoryCommands.receiveGoods(actor, receiptId, current.getWarehouseId(), stockLines);
 
         audit.record(AuditWriteEvent.withChanges(

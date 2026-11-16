@@ -39,6 +39,11 @@ public class AuditQueryService {
         this.audit = audit;
     }
 
+    /**
+     * filter lấy từ query string của quản trị viên có quyền; đọc log trước rồi ghi một sự kiện truy
+     * cập.
+     * Sự kiện chỉ giữ tiêu chí lọc được phép, không sao chép nội dung kết quả hoặc dữ liệu cá nhân.
+     */
     @PreAuthorize("hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_AUDIT_READ')")
     public ApiListResponse<AuditLogDto> search(AuditSearchFilter filter) {
         validate(filter);
@@ -51,8 +56,7 @@ public class AuditQueryService {
 
         List<AuditLogDto> data = result.getContent().stream().map(this::toDto).toList();
 
-        // One metadata-only access event, appended after the read so it is not included in its own
-        // result page. The audit writer never audits its own insert.
+        // Ghi một sự kiện truy cập sau khi đọc để nó không xuất hiện trong chính trang kết quả vừa lấy.
         audit.record(AuditWriteEvent.withChanges(
                 AuditAction.AUDIT_LOG_QUERY,
                 AuditEntityType.AUDIT_LOG,

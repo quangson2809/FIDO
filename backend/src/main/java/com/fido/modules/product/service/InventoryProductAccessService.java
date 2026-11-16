@@ -21,14 +21,14 @@ public class InventoryProductAccessService {
         this.entityManager = entityManager;
     }
 
-    /** Product-owned reference check; does not expose a foreign JPA entity to Inventory. */
+    /** Module kho kiểm tra Product qua hợp đồng này, không nhận entity JPA của catalog. */
     public void requireTrackedProduct(Long productId) {
         Product product = products.findById(productId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         rejectDeleted(product);
     }
 
-    /** Holds the Product row lock until the caller's encompassing stock transaction completes. */
+    /** Giữ khóa Product đến khi giao dịch thay đổi kho của bên gọi kết thúc. */
     public void lockTrackedProduct(Long productId) {
         Product product = products.findByIdForUpdate(productId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));

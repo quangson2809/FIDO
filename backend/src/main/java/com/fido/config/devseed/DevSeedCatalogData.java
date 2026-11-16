@@ -4,9 +4,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
-/**
- * Product-based demo catalog. Attributes are defined directly and Product values select predefined Options only.
- */
+/** Tạo Product demo và các Option được định nghĩa sẵn; giá trị thuộc tính chỉ tham chiếu Option. */
 @Component
 @Profile({"dev", "test"})
 public class DevSeedCatalogData {

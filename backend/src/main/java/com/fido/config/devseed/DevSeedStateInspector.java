@@ -9,8 +9,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Detects whether the known demo dataset is absent, complete or partially present.
- * Flyway-owned system roles, permissions and attribute types are intentionally excluded.
+ * Đếm các bản ghi demo theo ID cố định để phân biệt bộ dữ liệu chưa có, đầy đủ hoặc dở dang; không
+ * kiểm tra danh mục role/quyền do Flyway tạo.
  */
 @Component
 @Profile({"dev", "test"})
@@ -80,6 +80,7 @@ public class DevSeedStateInspector {
         List<ProbeResult> results = new ArrayList<>(PROBES.size());
         for (SeedProbe probe : PROBES) {
             Integer count =
+                    // Tên bảng/điều kiện chỉ lấy từ PROBES cố định trong code, không ghép từ request người dùng.
                     jdbc.queryForObject(
                             "SELECT COUNT(*) FROM " + probe.table() + " WHERE " + probe.predicate(),
                             Integer.class);

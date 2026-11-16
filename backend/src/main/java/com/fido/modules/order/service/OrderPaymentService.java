@@ -50,6 +50,11 @@ public class OrderPaymentService {
         this.audit = audit;
     }
 
+    /**
+     * actor là người thao tác từ JWT; orderId từ URL, request chỉ cho phép hoàn tất giao hàng kèm thu
+     * COD.
+     * Order, Shipping và Payment phải đổi cùng giao dịch để không có đơn hoàn tất nhưng tiền chưa thu.
+     */
     @PreAuthorize(PAYMENT)
     public OrderAdminDetailDto action(
             Long actor, Long orderId, PaymentActionRequest request, Authentication authentication) {
@@ -71,6 +76,8 @@ public class OrderPaymentService {
         if (OrderPolicy.PAID.equals(payment.getPaymentStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "PAYMENT_ALREADY_COLLECTED");
         }
+        // Đối chiếu cả trạng thái, số tiền, tiền tệ và dấu vết thu/hoàn; UNPAID đơn lẻ chưa chứng
+        // minh đủ điều kiện thu.
         if (actor == null || actor <= 0
                 || !OrderPolicy.SHIPPING.equals(order.getOrderStatus())
                 || !OrderPolicy.UNPAID.equals(payment.getPaymentStatus())

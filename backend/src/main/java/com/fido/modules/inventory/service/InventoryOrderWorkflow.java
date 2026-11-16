@@ -44,6 +44,10 @@ class InventoryOrderWorkflow {
         this.posting = posting;
     }
 
+    /**
+     * orderId/lines lấy từ đơn và OrderItem đã khóa; reason bắt buộc ORDER_CONFIRM.
+     * Mỗi dòng trừ kho dùng khóa ghép đơn + OrderItem + loại bút toán để không ghi lại cùng nguồn.
+     */
     void deductConfirmedOrder(Long actor, Long orderId, List<StockLine> lines, String reason) {
         if (actor == null
                 || actor <= 0
@@ -77,6 +81,7 @@ class InventoryOrderWorkflow {
 
         Long warehouseId = operationalWarehouse.requireOperationalWarehouseId();
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        // Khóa/cập nhật theo Product ID rồi ID nguồn tăng dần để các giao dịch lấy khóa nhất quán.
         for (StockLine line : sortByProductAndSourceId(expected.values().stream().toList())) {
             int delta = -line.quantity();
             posting.post(
@@ -151,6 +156,10 @@ class InventoryOrderWorkflow {
         return "order:" + orderId + ":item:" + orderItemId + ":" + transactionType;
     }
 
+    /**
+     * lines do bên hủy đơn đọc từ OrderItem đã khóa; chỉ hoàn đúng lượng từng bút toán ORDER gốc.
+     * Khóa đảo dựa trên ID bút toán gốc để yêu cầu hủy lặp không cộng kho lần hai.
+     */
     void restoreCancelledOrder(Long actor, Long orderId, List<StockLine> lines, String reason) {
         if (actor == null
                 || actor <= 0
@@ -180,7 +189,7 @@ class InventoryOrderWorkflow {
                     HttpStatus.CONFLICT, "INVENTORY_ORDER_MOVEMENT_INVALID");
         }
 
-        // Reject every missing, changed, or already reversed source before mutating any balance.
+        // Kiểm tra toàn bộ bút toán gốc trước khi đổi số dư; từ chối nguồn thiếu, sai dữ liệu hoặc đã đảo.
         for (InventoryTransaction original : originals) {
             StockLine line = expected.get(original.getOrderItemId());
             String key = orderCancellationReversalKey(original.getTxnId());
@@ -285,7 +294,7 @@ class InventoryOrderWorkflow {
             return;
         }
 
-        // Compatibility callers without OrderItem references use the server-resolved warehouse.
+        // Nhánh tương thích không có OrderItem dùng kho vận hành do máy chủ xác định.
         Long warehouseId = operationalWarehouse.requireOperationalWarehouseId();
         for (StockLine line : sortByProductAndSourceId(lines)) {
             posting.post(

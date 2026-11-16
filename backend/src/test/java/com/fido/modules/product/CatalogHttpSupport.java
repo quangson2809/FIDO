@@ -163,7 +163,7 @@ abstract class CatalogHttpSupport {
         for (Long accountId : accounts) db.update("DELETE FROM accounts WHERE id=?", accountId);
     }
 
-    /** Explicit operational warehouse fixture for public stock-aware Product detail tests. */
+    /** Tạo kho vận hành rõ ràng để test chi tiết Product lấy đúng tồn kho. */
     long createOperationalWarehouse() {
         String code = "CATALOG-STOCK-" + UUID.randomUUID();
         db.update("INSERT INTO warehouses(code,name,status) VALUES (?,?, 'ACTIVE')",

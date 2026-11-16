@@ -44,6 +44,7 @@ class CancelOrderHandler implements OrderActionHandler {
         String fromOrderStatus = order.getOrderStatus();
         List<StockLine> lines = stockLines.loadForUpdate(order.getOrderId());
 
+        // Đơn PENDING chưa trừ kho; các trạng thái đã xác nhận phải đảo bút toán gốc khi hủy.
         if (!OrderPolicy.PENDING.equals(fromOrderStatus)) {
             inventory.restoreCancelledOrder(actor, order.getOrderId(), lines, "ORDER_CANCELLED");
         }
@@ -53,8 +54,7 @@ class CancelOrderHandler implements OrderActionHandler {
         orders.save(order);
         shippingInfos.save(shipping);
 
-        // The locked Order transition is the one-time release guard; both writes share this
-        // transaction.
+        // Chuyển trạng thái dưới khóa bảo đảm chỉ giải phóng lượt voucher một lần trong cùng giao dịch.
         voucherRedemption.release(order.getVoucherId());
     }
 }

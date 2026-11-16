@@ -11,10 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
-/**
- * Internal read contract. Callers must supply the authenticated account ID, never a request actor
- * ID. Security must use findActiveAccess; administration can inspect locked accounts via findAccess.
- */
+/** Nhận ID từ danh tính đã xác thực; kiểm tra truy cập dùng findActiveAccess, màn quản trị dùng findAccess. */
 @Service
 @Transactional(readOnly = true)
 public class AccountAccessService {
@@ -30,7 +27,7 @@ public class AccountAccessService {
         this.permissions = permissions;
     }
 
-    /** Includes lifecycle status for administrative views, but never exposes soft-deleted accounts. */
+    /** Cho phép quản trị xem tài khoản bị khóa nhưng luôn loại tài khoản đã xóa mềm. */
     public Optional<StaffAccountDetailDto> findAccess(Long accountId) {
         if (accountId == null) {
             return Optional.empty();
@@ -55,7 +52,7 @@ public class AccountAccessService {
                         });
     }
 
-    /** Principal resolution uses this method; every protected request rechecks current DB state. */
+    /** Mỗi request bảo vệ đều đọc lại trạng thái DB để token cũ không vượt qua việc khóa tài khoản. */
     public Optional<StaffAccountDetailDto> findActiveAccess(Long accountId) {
         return findAccess(accountId)
                 .filter(detail -> "ACTIVE".equals(detail.account().status()));

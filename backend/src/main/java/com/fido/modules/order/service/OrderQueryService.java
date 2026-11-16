@@ -76,6 +76,10 @@ public class OrderQueryService {
                 pagination.meta(result.getTotalElements()));
     }
 
+    /**
+     * accountId lấy từ JWT, orderId từ URL; chỉ đọc đơn thuộc tài khoản đó, sai chủ trả như không tìm
+     * thấy.
+     */
     public OrderCustomerDetailDto customerDetail(Long accountId, Long orderId) {
         return customerDetailInternal(customerOrder(accountId, orderId));
     }
@@ -164,6 +168,7 @@ public class OrderQueryService {
                 order.getCustomerAccountId(),
                 order.getVoucherId(),
                 OrderMapper.paymentAdmin(payment),
+                // Nút hiển thị phải vừa hợp lệ theo trạng thái vừa thuộc quyền của người quản trị hiện tại.
                 authorization.filterAllowed(
                         authentication, actionPolicy.allowedActions(order, payment)));
     }

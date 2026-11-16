@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Validates the active, selectable SKU combinations; drafts can be prepared independently. */
+/** Kiểm tra tổ hợp của các Product ACTIVE trong cùng family; bản nháp có thể chuẩn bị riêng. */
 @Service
 @Transactional(propagation = Propagation.MANDATORY)
 public class ProductFamilyValidationService {
@@ -37,12 +37,12 @@ public class ProductFamilyValidationService {
         this.em = em;
     }
 
-    /** Metadata readers precede family locks; metadata edits take the corresponding write locks. */
+    /** Khóa đọc metadata trước khóa family; thao tác sửa metadata lấy khóa ghi tương ứng. */
     public void beginProductWrite() {
         attributes.lockMetadataForRead();
     }
 
-    /** Lock both family roots in ID order before the member being changed. */
+    /** Khóa gốc family cũ/mới theo ID tăng dần trước Product đang sửa để thống nhất thứ tự khóa. */
     public Product lockProductForUpdate(Long productId, Long nextParentId) {
         Product observed = products.findById(productId).filter(p -> !p.isDeleted())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
@@ -63,7 +63,13 @@ public class ProductFamilyValidationService {
         return product;
     }
 
+    /**
+     * rootId là Product gốc đã khóa; chỉ kiểm tra các thành viên ACTIVE.
+     * COLOR và mã bắt đầu SIZE là trục chọn: mọi thành viên phải có cùng trục và tổ hợp Option duy
+     * nhất.
+     */
     public void validateFamily(Long rootId) {
+        // Đẩy thay đổi đang chờ xuống DB để truy vấn kiểm tra family thấy cả dữ liệu vừa sửa trong giao dịch.
         em.flush();
         List<Product> members = products.findActiveFamilyForValidation(rootId);
         if (members.size() < 2) return;
@@ -78,6 +84,7 @@ public class ProductFamilyValidationService {
                 signatures.get(value.getProductId()).put(value.getAttributeId(), value.getOptionId());
             }
         }
+        // Lấy hợp các trục xuất hiện trong family rồi buộc mỗi thành viên có đủ đúng tập trục đó.
         Set<Long> axes = new HashSet<>();
         signatures.values().forEach(s -> axes.addAll(s.keySet()));
         if (axes.isEmpty()) throw conflict("PRODUCT_FAMILY_SELECTION_ATTRIBUTES_MISSING");

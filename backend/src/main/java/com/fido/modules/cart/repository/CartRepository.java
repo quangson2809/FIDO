@@ -16,10 +16,7 @@ public interface CartRepository extends Repository<Cart, Long> {
 
     List<Cart> findAllByAccountIdAndStatusOrderByCartIdAsc(Long accountId, String status);
 
-    /**
-     * The Account row is locked before this query. Locking every OPEN row then lets the
-     * command fail closed on legacy duplicate OPEN carts instead of choosing by timestamp.
-     */
+    /** Bên gọi khóa tài khoản trước; khóa mọi giỏ OPEN để phát hiện dữ liệu trùng thay vì tự chọn một giỏ. */
     @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select c from Cart c

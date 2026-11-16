@@ -12,7 +12,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.Collection;
 import java.util.List;
 
-/** InventoryTransaction is an append-only ledger; this repository exposes no update/delete API. */
+/** Sổ kho chỉ thêm mới; repository không mở API sửa/xóa bút toán cũ. */
 public interface InventoryTransactionRepository
         extends Repository<InventoryTransaction, Long>, JpaSpecificationExecutor<InventoryTransaction> {
 

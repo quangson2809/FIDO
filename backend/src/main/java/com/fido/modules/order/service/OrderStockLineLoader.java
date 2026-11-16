@@ -18,6 +18,10 @@ class OrderStockLineLoader {
         this.items = items;
     }
 
+    /**
+     * orderId thuộc đơn đã khóa; đọc và khóa OrderItem để lấy số lượng nguồn cho bút toán kho.
+     * Không lấy số lượng trừ/hoàn từ request hoặc catalog hiện tại.
+     */
     List<StockLine> loadForUpdate(Long orderId) {
         List<OrderItem> orderItems = items.findAllByOrderIdForUpdate(orderId);
         if (orderItems.isEmpty()) {

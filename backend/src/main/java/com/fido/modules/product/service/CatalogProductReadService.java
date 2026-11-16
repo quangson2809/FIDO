@@ -34,6 +34,10 @@ public class CatalogProductReadService {
         return getAll(java.util.List.of(productId)).get(productId);
     }
 
+    /**
+     * productIds lấy từ giỏ hoặc nghiệp vụ gọi; trả map Product ID → dữ liệu bán hàng hiện tại.
+     * Chỉ nạp ảnh đại diện và tồn của kho vận hành, không mở rộng sang Product con.
+     */
     public Map<Long, ProductView> getAll(Collection<Long> productIds) {
         if (productIds == null || productIds.isEmpty()) return Map.of();
         var ids = productIds.stream().filter(java.util.Objects::nonNull).distinct().toList();
@@ -77,7 +81,7 @@ public class CatalogProductReadService {
             String status,
             Integer availableQuantity,
             boolean purchasable) {
-        /** Compatibility adapter for older test fixtures; production money stays integer VND. */
+        /** Hỗ trợ dữ liệu test cũ dùng BigDecimal; tiền thật vẫn phải chuyển chính xác sang VND nguyên. */
         public ProductView(
                 Long productId, String productName, String sku, String imageUrl,
                 BigDecimal unitPrice, String status, Integer availableQuantity, boolean purchasable) {

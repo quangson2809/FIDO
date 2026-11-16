@@ -239,8 +239,7 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         long productId = createCatalog(writer).productId();
         List<String> before = storedImageUrls(productId);
-        // The second provider URL is rejected before it reaches VARCHAR(1000); the first insert
-        // must roll back.
+        // URL thứ hai bị từ chối trước cột VARCHAR(1000); ảnh đầu đã ghi cũng phải rollback.
         storage.succeed(
                 "https://storage.test/valid.png", "https://storage.test/" + "x".repeat(1001));
 

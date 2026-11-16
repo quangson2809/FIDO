@@ -49,6 +49,7 @@ public class DevDataSeedService {
             return;
         }
 
+        // Bộ demo đang dở dang phải dừng để không ghi đè dữ liệu cũ hoặc tạo quan hệ nửa mới nửa cũ.
         if (initial.anyPresent()) {
             throw new IllegalStateException(
                     "Partial FIDO development seed detected. "

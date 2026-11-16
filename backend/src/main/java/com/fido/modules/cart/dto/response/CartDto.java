@@ -11,7 +11,7 @@ public record CartDto(
         Long subtotal,
         LocalDateTime created_at,
         LocalDateTime updated_at) {
-    /** Compatibility adapter for old test fixtures; response money is integer VND. */
+    /** Chuyển dữ liệu test cũ sang VND nguyên; giá trị thập phân không được cắt ngầm. */
     public CartDto(
             Long cart_id, Long account_id, List<CartItemDto> items, BigDecimal subtotal,
             LocalDateTime created_at, LocalDateTime updated_at) {

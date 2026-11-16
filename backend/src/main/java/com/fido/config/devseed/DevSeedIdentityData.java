@@ -6,10 +6,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/**
- * Creates local-only identities and their links to the system roles seeded by Flyway.
- * It deliberately does not duplicate or modify the system role/permission catalogue.
- */
+/** Tạo tài khoản demo và gán role hệ thống đã có từ Flyway; không sửa danh mục role/quyền. */
 @Component
 @Profile({"dev", "test"})
 public class DevSeedIdentityData {

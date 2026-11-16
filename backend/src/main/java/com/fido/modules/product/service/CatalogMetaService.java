@@ -42,6 +42,8 @@ public class CatalogMetaService {
         this.brands = brands;
         this.attributes = attributes;
         this.options = options;
+        // Giới hạn từng file phải lấy mức nhỏ hơn giữa service và multipart, để UI không cho tải
+        // vượt mức BE nhận.
         this.imageUploadLimits = new AdminCatalogMetaDtoV2.ImageUploadLimits(
                 multipartFileSize.toBytes() < 0 ? maxFileSize.toBytes() : Math.min(maxFileSize.toBytes(), multipartFileSize.toBytes()),
                 maxRequestSize.toBytes(), maxFiles,

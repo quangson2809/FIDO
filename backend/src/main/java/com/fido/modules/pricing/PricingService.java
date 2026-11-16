@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Application-facing boundary for the single authoritative pricing calculator. */
+/** Các module gọi chung bộ tính tiền này; lỗi số học được đổi thành lỗi HTTP tại một nơi. */
 @Service
 public class PricingService {
     private final PricingCalculator calculator;

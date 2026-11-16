@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/** Extends the existing top-level HTTP error shape with stable public codes; diagnostics stay internal. */
+/** Giữ cấu trúc lỗi HTTP thống nhất; chỉ trả mã công khai, giữ thông tin chẩn đoán ở máy chủ. */
 @ControllerAdvice
 public class ApiExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
@@ -78,7 +78,7 @@ public class ApiExceptionHandler {
         writeError(request, response, status, errorCode(exception, request, status));
     }
 
-    /** Used by the security filter chain, where MVC exception advice is not invoked. */
+    /** Bộ lọc bảo mật chạy trước MVC nên cần ghi phản hồi lỗi trực tiếp tại đây. */
     public void writeSecurityError(
             HttpServletRequest request, HttpServletResponse response, int status, String code)
             throws IOException {
@@ -233,7 +233,7 @@ public class ApiExceptionHandler {
     }
 
     private Throwable diagnosticTrace(Throwable failure, int depth) {
-        // Raw exception messages can contain SQL bind values, passwords or provider URLs/tokens.
+        // Thông báo lỗi gốc có thể chứa tham số SQL, mật khẩu hoặc URL/token của dịch vụ ngoài.
         Throwable safe = new Throwable(failure.getClass().getName());
         safe.setStackTrace(failure.getStackTrace());
         if (failure.getCause() != null && failure.getCause() != failure && depth < 8) {

@@ -47,6 +47,11 @@ public class PublicCatalogController {
                         optionFilters(queryParams)));
     }
 
+    /**
+     * params là toàn bộ query string HTTP, ví dụ attribute_filters[SIZE_SHOE]=42.
+     * Trích mã Attribute và giá trị Option; mỗi khóa chỉ có một giá trị, không nhận ID Option tại bước
+     * này.
+     */
     private static Map<String, String> optionFilters(MultiValueMap<String, String> params) {
         Map<String, String> result = new LinkedHashMap<>();
         params.forEach((name, values) -> {

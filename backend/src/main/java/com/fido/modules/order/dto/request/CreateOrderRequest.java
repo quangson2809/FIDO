@@ -3,7 +3,7 @@ package com.fido.modules.order.dto.request;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-/** Canonical order-placement body. Idempotency-Key is supplied only as an HTTP header. */
+/** Body giữ thông tin nhận hàng và voucher; khóa chống lặp chỉ nhận qua header Idempotency-Key. */
 public record CreateOrderRequest(
         @NotBlank @Size(max = 150) String recipient_name,
         @NotBlank @Size(max = 20) String recipient_phone,

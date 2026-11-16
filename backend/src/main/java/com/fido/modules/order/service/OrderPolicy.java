@@ -68,6 +68,10 @@ public final class OrderPolicy {
         return TRANSITIONS.getOrDefault(from, Set.of()).contains(to);
     }
 
+    /**
+     * completedAt nhận thời điểm đã giao trong ShippingInfo; now là giờ UTC hiện tại.
+     * Chỉ chấp nhận thời điểm trả từ lúc giao đến hết hai ngày sau đó.
+     */
     public static void requireReturnWithinWindow(LocalDateTime completedAt, LocalDateTime now) {
         if (completedAt == null
                 || now.isBefore(completedAt)

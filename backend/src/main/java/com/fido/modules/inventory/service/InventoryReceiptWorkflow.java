@@ -38,6 +38,11 @@ class InventoryReceiptWorkflow {
         this.posting = posting;
     }
 
+    /**
+     * receiptId/warehouseId lấy từ phiếu đã khóa; lines lấy số lượng và goodsReceiptItemId trong DB.
+     * Đối chiếu từng dòng với nguồn, chấp nhận đã ghi đủ hoặc chưa ghi dòng nào; dữ liệu ghi dở bị từ
+     * chối.
+     */
     void receiveGoods(Long actor, Long receiptId, Long warehouseId, List<StockLine> lines) {
         operationalWarehouse.requireOperationalWarehouse(warehouseId);
         if (actor == null
@@ -54,7 +59,7 @@ class InventoryReceiptWorkflow {
         Set<Long> productIds = new HashSet<>();
         int alreadyPosted = 0;
 
-        // Validate all sources and all existing semantic keys before mutating the first balance.
+        // Kiểm tra hết dòng nguồn và khóa nghiệp vụ trước khi thay đổi số dư đầu tiên.
         for (StockLine line : orderedLines) {
             if (line.goodsReceiptItemId() == null
                     || !receiptItemIds.add(line.goodsReceiptItemId())
@@ -100,6 +105,8 @@ class InventoryReceiptWorkflow {
             alreadyPosted++;
         }
 
+        // Toàn bộ nguồn đã có bút toán khớp thì là gửi lại hợp lệ; chỉ một phần đã có là trạng
+        // thái không nhất quán.
         if (alreadyPosted == orderedLines.size()) return;
         if (alreadyPosted != 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "INVENTORY_SOURCE_CONFLICT");

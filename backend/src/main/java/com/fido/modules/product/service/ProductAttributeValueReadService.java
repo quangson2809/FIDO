@@ -36,7 +36,7 @@ public class ProductAttributeValueReadService {
         return forProducts(List.of(productId)).get(productId);
     }
 
-    /** Resolve a Product family without per-row Attribute or Option queries. */
+    /** Đọc theo lô cho cả family để không truy vấn Attribute/Option riêng từng Product. */
     public Map<Long, List<ProductAttributeValueDto>> forProducts(Collection<Long> productIds) {
         if (productIds == null || productIds.isEmpty()) return Map.of();
         List<Long> ids = productIds.stream().distinct().toList();

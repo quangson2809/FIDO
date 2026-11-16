@@ -97,7 +97,7 @@ class ProductImageConcurrencyTests extends CatalogHttpSupport {
     }
 
     private void meetBeforeProductLock(long productId) {
-        // Both real transactions reach the lock boundary before either can mutate the gallery.
+        // Cả hai giao dịch phải tới ranh giới khóa trước khi một bên được sửa gallery.
         var ready = new CountDownLatch(2);
         doAnswer(
                         invocation -> {

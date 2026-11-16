@@ -167,7 +167,7 @@ public class RbacCommandService {
         permissions.save(permission);
         entityManager.flush();
 
-        // Permission creation and the corresponding SUPERADMIN grant are one atomic mutation.
+        // Tạo quyền và gán quyền đó cho SUPERADMIN cùng giao dịch để giữ đủ quyền hệ thống.
         RolePermission grant = new RolePermission();
         grant.setRoleId(superadmin.getRoleId());
         grant.setPermissionId(permission.getPermissionId());
@@ -230,6 +230,11 @@ public class RbacCommandService {
                 permissionId.toString(), before, Map.of()));
     }
 
+    /**
+     * role là bản ghi đã lấy trong giao dịch; permissionIds là danh sách đầy đủ từ create/PATCH, null
+     * nghĩa giữ nguyên.
+     * SUPERADMIN phải giữ đúng toàn bộ quyền hiện có, không chấp nhận tập con.
+     */
     private void replacePermissions(Role role, List<Long> permissionIds) {
         if (permissionIds == null) {
             if ("SUPERADMIN".equals(role.getCode())) {

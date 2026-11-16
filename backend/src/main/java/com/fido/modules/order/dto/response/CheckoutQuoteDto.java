@@ -2,7 +2,7 @@ package com.fido.modules.order.dto.response;
 
 import java.util.List;
 
-/** Advisory response only; deliberately has no quote_id or expiry/commit token. */
+/** Chỉ là báo giá tham khảo; không có quote_id hoặc token cam kết giữ giá/tồn kho. */
 public record CheckoutQuoteDto(
         List<CheckoutItemDto> items,
         Long subtotal,

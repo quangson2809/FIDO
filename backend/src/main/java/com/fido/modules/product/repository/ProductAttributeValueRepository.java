@@ -20,7 +20,8 @@ public interface ProductAttributeValueRepository
     ProductAttributeValue save(ProductAttributeValue entity);
     void deleteAllByProductId(Long productId);
 
-    // Load the whole checkout selection at once; services consume named fields, not SQL column positions.
+    // Đọc thuộc tính cho toàn bộ Product được checkout trong một lượt; kết quả có tên trường thay vì
+    // vị trí cột SQL.
     @Query(value = """
             select pav.product_id as productId, pav.attribute_id as attributeId,
                    a.code as attributeCode, a.name as attributeName,

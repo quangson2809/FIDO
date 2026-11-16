@@ -10,7 +10,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
 
-/** Demo Cart, Voucher and Order snapshots using the current Product-based target schema. */
+/** Tạo giỏ, voucher và snapshot đơn demo theo Product của schema hiện tại. */
 @Component
 @Profile({"dev", "test"})
 public class DevSeedOrderData {

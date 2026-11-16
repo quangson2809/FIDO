@@ -25,9 +25,8 @@ public class AuditWriteRepository {
     }
 
     /**
-     * Inserts only the approved target columns; ID and created_at are database-owned.
-     * MySQL parses CAST(? AS JSON); H2 uses its FORMAT JSON binding syntax so a JSON object
-     * remains an object instead of being persisted as a JSON string scalar.
+     * DB tự sinh ID/thời gian. MySQL dùng CAST AS JSON, H2 dùng FORMAT JSON để lưu object thay vì
+     * chuỗi JSON.
      */
     public void insert(
             Long actorAccountId,
@@ -64,6 +63,8 @@ public class AuditWriteRepository {
                     statement.setString(3, entityType);
                     statement.setString(4, entityId);
 
+                    // Payload null đã thành SQL NULL, không chiếm dấu ?; chỉ tăng chỉ số bind cho
+                    // payload thực sự có dữ liệu.
                     int parameterIndex = 5;
                     if (beforeDataJson != null) {
                         statement.setString(parameterIndex++, beforeDataJson);

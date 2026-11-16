@@ -57,7 +57,7 @@ public class ContentPageCommandService {
             pages.save(page);
             pages.flush();
         } catch (DataIntegrityViolationException ex) {
-            // The unique constraint remains the final arbiter under concurrent creates.
+            // Hai yêu cầu có thể cùng thấy slug còn trống; ràng buộc unique của DB chặn lượt tạo trùng.
             if (isSlugConflict(ex)) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "CONTENT_SLUG_CONFLICT");
             }
@@ -73,6 +73,11 @@ public class ContentPageCommandService {
         return ContentMapper.admin(page);
     }
 
+    /**
+     * actor lấy từ JWT, id từ URL; request chỉ chứa các trường được phép sửa và trạng thái đích.
+     * So sánh giá trị cuối với DB để từ chối cập nhật rỗng và chỉ audit cờ thay đổi, không ghi nội
+     * dung tự do.
+     */
     @PreAuthorize("hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_CONTENT_WRITE')")
     public ContentPageDto update(Long actor, Long id, ContentPagePatchRequest request) {
         requireActor(actor);

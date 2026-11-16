@@ -22,13 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Assembles the Product-detail view and its SELECTABLE family.
- *
- * <p>Unlike list/search, this read intentionally expands direct children. It
- * does not infer a child's stock from its parent: every Product ID is its own
- * purchasable SKU with its own image gallery and inventory balance.
- */
+/** Ghép chi tiết và các Product cùng family để chọn mua; mỗi Product có SKU, ảnh và tồn kho riêng. */
 @Service
 @Transactional(readOnly = true)
 public class PublicCatalogFamilyReadService {
@@ -51,14 +45,19 @@ public class PublicCatalogFamilyReadService {
         this.references = references;
     }
 
+    /**
+     * productId từ URL có thể là cha hoặc con; đọc family ACTIVE để giao diện chọn đúng tổ hợp.
+     * Mỗi thành viên dùng giá, ảnh, thuộc tính và tồn theo ID riêng, không kế thừa ngầm từ cha.
+     */
     public ProductDetailDto detail(Long productId) {
         Product requested = references.publicProduct(productId);
+        // Nếu đang mở Product con thì dùng parent_product_id làm gốc để tải cả các tổ hợp cùng nhóm.
         Long rootId = requested.getParentProductId() == null
                 ? requested.getProductId() : requested.getParentProductId();
         List<Product> family = activeFamily(requested, rootId);
         List<Long> ids = family.stream().map(Product::getProductId).toList();
 
-        // Load all family images/attributes/stock in batches, avoiding N+1 reads.
+        // Đọc ảnh, thuộc tính và tồn kho theo lô cho cả family để tránh truy vấn từng Product.
         Map<Long, List<ProductImageDto>> galleries = imageGalleries(ids);
         Map<Long, List<ProductAttributeValueDto>> attributes = attributeValueRead.forProducts(ids);
         Map<Long, Integer> stock = inventory.availableQuantities(ids);
@@ -96,7 +95,7 @@ public class PublicCatalogFamilyReadService {
         if (rootId.equals(requested.getProductId())) {
             members.add(requested);
         } else {
-            // Parent may be inactive while a directly requested child is still public.
+            // Cha có thể bị ẩn trong khi Product con được truy cập trực tiếp vẫn ACTIVE.
             products.findById(rootId).filter(PublicCatalogFamilyReadService::isPublic)
                     .ifPresent(members::add);
         }

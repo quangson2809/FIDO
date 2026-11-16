@@ -8,12 +8,17 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Normalizes the P1.2 Vietnamese phone identity before lookup, uniqueness checks, and writes. */
+/** Chuẩn hóa số điện thoại trước khi tra cứu, kiểm tra trùng hoặc ghi DB. */
 @Service
 public class PhoneNumberCanonicalizer {
     private static final Pattern NATIONAL = Pattern.compile("0([0-9]{9})");
     private static final Pattern INTERNATIONAL = Pattern.compile("\\+84([0-9]{9})");
 
+    /**
+     * input là điện thoại từ request/cấu hình; bỏ dấu cách, gạch nối và ngoặc rồi chấp nhận dạng 0
+     * hoặc +84.
+     * Kết quả hiện tại luôn là +84 kèm chín chữ số, dùng để so trùng và ghi dữ liệu mới.
+     */
     public String canonicalize(String input) {
         if (input == null) {
             throw invalidPhone();
@@ -34,10 +39,7 @@ public class PhoneNumberCanonicalizer {
         throw invalidPhone();
     }
 
-    /**
-     * Includes the old national representation for safe lookup during migration from legacy rows.
-     * New writes must always store the first (canonical) value.
-     */
+    /** Tra cả dạng +84 và dạng 0 của dữ liệu cũ; dữ liệu ghi mới dùng giá trị chuẩn đầu tiên. */
     public List<String> lookupValues(String canonicalPhone) {
         String canonical = canonicalize(canonicalPhone);
         return List.of(canonical, "0" + canonical.substring(3));

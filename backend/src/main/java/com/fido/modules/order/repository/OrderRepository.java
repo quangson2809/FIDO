@@ -13,7 +13,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
-/** Order history is never hard-deleted through the application repository. */
+/** Không mở thao tác xóa cứng lịch sử đơn qua repository ứng dụng. */
 public interface OrderRepository extends Repository<Order, Long>, JpaSpecificationExecutor<Order> {
 
     Optional<Order> findById(Long id);

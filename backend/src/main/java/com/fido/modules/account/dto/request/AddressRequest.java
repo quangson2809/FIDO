@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.Nulls;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-/** Shared create/patch input with presence tracking for partial updates. */
+/** Dùng chung cho tạo/sửa địa chỉ; cờ hiện diện phân biệt trường không gửi với giá trị được gửi. */
 public class AddressRequest {
     @Pattern(regexp = ".*\\S.*") @Size(max = 150)
     private String recipient_name;

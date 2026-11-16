@@ -18,10 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Focused regression checks for the COD prerequisite extracted in the refactor.
- * Existing OrderActionMatrixTests still verify the entire six-action matrix.
- */
+/** Kiểm tra điều kiện COD dùng chung; OrderActionMatrixTests kiểm tra đủ sáu hành động. */
 class OrderActionPolicyInvariantTests {
     private final InventoryMovementQueryService movements = mock(InventoryMovementQueryService.class);
     private final ShippingInfoRepository shippingInfos = mock(ShippingInfoRepository.class);
@@ -93,7 +90,6 @@ class OrderActionPolicyInvariantTests {
 
     @Test
     void cancelledOrderCannotBeCancelledAgain() {
-        // Keep the removed legacy test's terminal-state guard in this focused suite.
         order.setOrderStatus(OrderPolicy.CANCELLED);
         shipping.setShippingStatus("CANCELLED");
 

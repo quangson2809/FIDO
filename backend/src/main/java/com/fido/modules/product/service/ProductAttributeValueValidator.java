@@ -14,7 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/** Resolves selected Option IDs to their owning Attributes and validates Product values. */
+/** Nhận ID Option từ request, suy ra Attribute sở hữu và kiểm tra bộ giá trị của Product. */
 @Service
 @Transactional(readOnly = true)
 public class ProductAttributeValueValidator {
@@ -26,6 +26,12 @@ public class ProductAttributeValueValidator {
         this.options = options;
     }
 
+    /**
+     * productId là Product đã lưu; productStatus là trạng thái sau thay đổi, attributeValueIds là ID
+     * Option từ request.
+     * Suy ra Attribute sở hữu, chặn trùng Option/Attribute và yêu cầu đủ thuộc tính bắt buộc khi
+     * ACTIVE.
+     */
     public List<ProductAttributeValue> validateCompleteSet(
             Long productId, String productStatus, List<Long> attributeValueIds) {
         if (productId == null || productId <= 0) {

@@ -65,6 +65,12 @@ public interface InventoryRepository extends Repository<Inventory, Inventory.Inv
             @Param("warehouseId") Long warehouseId,
             Pageable pageable);
 
+    /**
+     * quantityDelta do workflow kiểm tra từ chứng từ; maxQuantity/maxVersion là giới hạn INT phía máy
+     * chủ.
+     * UPDATE vừa đổi số dư vừa tăng version và chặn âm/tràn; bên gọi phải kiểm tra số dòng kết quả
+     * bằng 1.
+     */
     @Modifying(flushAutomatically = true)
     @Query(value = """
             UPDATE inventories

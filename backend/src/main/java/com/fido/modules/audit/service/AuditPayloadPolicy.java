@@ -12,7 +12,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
 
-/** Applies an action-specific field allowlist before JSON reaches the persistence layer. */
+/** Lọc trường và giá trị được phép theo hành động trước khi ghi hoặc trả dữ liệu audit. */
 @Component
 public class AuditPayloadPolicy {
 
@@ -65,13 +65,12 @@ public class AuditPayloadPolicy {
                             + "|private.?key|signed.?url|email|phone|address|raw|bytes).*",
                     Pattern.CASE_INSENSITIVE);
 
-    // Only allowlisted scalar values reach this serializer; no application-wide mapper bean is needed.
+    // Chỉ tuần tự hóa giá trị đơn đã được lọc; không dùng cấu hình JSON chung của ứng dụng.
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     /**
-     * Returns null for an empty/fully-redacted payload. Values are limited to safe code-like
-     * strings, booleans for active-state fields, and integral numeric business facts. Free-form
-     * text, nested objects, collections and arbitrary objects are excluded.
+     * Payload rỗng/bị lọc hết trả null. Chỉ giữ mã an toàn, boolean đúng trường và số nguyên; bỏ văn
+     * bản tự do và cấu trúc lồng.
      */
     public String toJson(AuditAction action, Map<String, ?> source) {
         if (source == null || source.isEmpty()) {
@@ -100,15 +99,12 @@ public class AuditPayloadPolicy {
         try {
             return OBJECT_MAPPER.writeValueAsString(safe);
         } catch (JsonProcessingException ex) {
-            // Do not include the input map or serializer details in the surfaced failure.
+            // Không kèm payload đầu vào hoặc lỗi bộ tuần tự hóa vào thông báo công khai.
             throw new IllegalStateException("Could not encode allowlisted audit fields");
         }
     }
 
-    /**
-     * Applies the same action-specific field/value allowlist to historical rows before DTO
-     * serialization. Unknown action codes and nested/unrecognized values fail closed.
-     */
+    /** Lọc lại cả lịch sử trước khi trả DTO; mã hành động lạ không được trả dữ liệu chưa kiểm chứng. */
     public Map<String, Object> redactForRead(String actionCode, Map<String, ?> source) {
         if (source == null) {
             return null;
@@ -137,6 +133,10 @@ public class AuditPayloadPolicy {
         return java.util.Collections.unmodifiableMap(safe);
     }
 
+    /**
+     * action là mã AuditAction do service nghiệp vụ truyền; chọn đúng tập trường được lưu/trả cho nhóm
+     * hành động.
+     */
     private Set<String> allowedFields(AuditAction action) {
         return switch (action) {
             case AUDIT_LOG_QUERY -> AUDIT_QUERY_FIELDS;
@@ -190,6 +190,11 @@ public class AuditPayloadPolicy {
         };
     }
 
+    /**
+     * key/value là từng cặp trong before/after; chỉ giữ kiểu dữ liệu và định dạng được phép cho key
+     * đó.
+     * Trả null nghĩa loại bỏ giá trị, không phải ghi chuỗi null hoặc nguyên object đầu vào.
+     */
     private Object normalizeValue(String key, Object value) {
         if (value == null) {
             return null;
@@ -219,7 +224,7 @@ public class AuditPayloadPolicy {
             return decimal.stripTrailingZeros().scale() <= 0 ? decimal.stripTrailingZeros() : null;
         }
 
-        // No free-form strings, JPA entities, DTOs, collections, nested maps or byte arrays.
+        // Bỏ văn bản tự do, entity, DTO, danh sách, map lồng và mảng byte.
         return null;
     }
 }

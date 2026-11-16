@@ -24,8 +24,10 @@ public class ProductPatchRequest {
     @PositiveOrZero private Long costPrice;
     @Pattern(regexp = "DRAFT|ACTIVE|INACTIVE|ARCHIVED") private String status;
     @Valid private List<@NotNull ProductImageInput> images;
+    // Danh sách ID Option thay thế toàn bộ bộ thuộc tính nếu trường được gửi trong PATCH.
     private List<@NotNull @Positive Long> attributeValueIds;
 
+    // Jackson bật cờ khi nhận trường JSON, kể cả null; service dùng cờ để phân biệt bỏ qua với xóa giá trị.
     private boolean parentProductIdPresent, categoryIdPresent, brandIdPresent, namePresent,
             slugPresent, skuPresent, descriptionPresent, sellingPricePresent, costPricePresent,
             statusPresent, imagesPresent, attributeValueIdsPresent;

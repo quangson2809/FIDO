@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Account-owned lock for commands that need serialization before a child row exists. */
+/** Khóa tài khoản trước khi tạo/sửa dữ liệu con để tuần tự hóa cả khi dòng con chưa tồn tại. */
 @Service
 @Transactional(propagation = Propagation.MANDATORY)
 public class AccountMutationLockService {

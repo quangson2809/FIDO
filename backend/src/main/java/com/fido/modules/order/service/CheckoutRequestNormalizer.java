@@ -14,7 +14,7 @@ import java.text.Normalizer;
 import java.util.HexFormat;
 import java.util.Locale;
 
-/** Canonicalizes checkout's semantic input before reading mutable Cart or catalog state. */
+/** Chuẩn hóa thông tin checkout trước khi đọc giỏ hoặc catalog có thể thay đổi. */
 @Component
 public class CheckoutRequestNormalizer {
     private final PhoneNumberCanonicalizer phones;
@@ -25,6 +25,11 @@ public class CheckoutRequestNormalizer {
         this.json = json;
     }
 
+    /**
+     * Nhận các trường nhận hàng/voucher từ body checkout; chuẩn hóa Unicode, khoảng trắng và điện
+     * thoại.
+     * Kết quả dùng chung cho đặt đơn và dấu băm so sánh request, không chứa giá hoặc dòng giỏ.
+     */
     public Normalized normalize(
             String recipientName,
             String recipientPhone,
@@ -62,7 +67,11 @@ public class CheckoutRequestNormalizer {
                 normalizedAddressLine, normalizedVoucher);
     }
 
-    /** RFC 8785 field ordering with normalized values and an explicit JSON null for no Voucher. */
+    /**
+     * request là dữ liệu đã normalize; băm JSON có thứ tự trường cố định để nhận ra body tương đương.
+     * Không đưa giỏ, giá/tồn hiện tại hoặc khóa request vào hash vì chúng có thể đổi sau khi đơn được
+     * tạo.
+     */
     public String fingerprint(Normalized request) {
         try {
             String canonicalJson = "{"
@@ -81,6 +90,7 @@ public class CheckoutRequestNormalizer {
         }
     }
 
+    /** raw lấy từ body nhận hàng; maxLength giới hạn số ký tự Unicode, không phải số byte UTF-8. */
     private String requiredText(String raw, int maxLength) {
         if (raw == null) {
             throw validationError();

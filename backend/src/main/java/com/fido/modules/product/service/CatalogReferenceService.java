@@ -70,6 +70,10 @@ public class CatalogReferenceService {
                 .orElseThrow(CatalogReferenceService::notFound);
     }
 
+    /**
+     * categoryId từ bộ lọc; duyệt cây danh mục trong DB để lọc cả sản phẩm ở danh mục con.
+     * visited chặn duyệt lặp nếu dữ liệu cây cũ có chu trình.
+     */
     public Set<Long> categoryIdsIncludingDescendants(Long categoryId) {
         category(categoryId);
         Map<Long, List<Long>> children = new HashMap<>();

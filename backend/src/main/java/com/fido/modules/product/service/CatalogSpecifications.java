@@ -10,7 +10,7 @@ import java.util.Collection;
 import java.util.Locale;
 import java.util.Map;
 
-/** Catalog query predicates for canonical Product rows. */
+/** Ghép điều kiện truy vấn Product theo bộ lọc; không tạo hoặc sửa dữ liệu catalog. */
 public final class CatalogSpecifications {
 
     private CatalogSpecifications() {}
@@ -26,6 +26,8 @@ public final class CatalogSpecifications {
         return (root, query, cb) -> {
             var predicates = new ArrayList<Predicate>();
             predicates.add(cb.equal(root.get("status"), "ACTIVE"));
+            // Danh sách công khai chỉ trả Product gốc; Product con chỉ tham gia kiểm tra bộ lọc và
+            // dữ liệu chi tiết.
             predicates.add(cb.isNull(root.get("parentProductId")));
             predicates.add(cb.isNull(root.get("deletedAt")));
 
@@ -48,6 +50,8 @@ public final class CatalogSpecifications {
                 predicates.add(cb.lessThanOrEqualTo(root.<Long>get("sellingPrice"), filter.maxPrice()));
             }
             if (!optionIdsByAttribute.isEmpty()) {
+                // EXISTS kiểm tra một SKU trong family thỏa đồng thời mọi Option; không ghép màu của
+                // con này với size của con khác.
                 var familyMatch = query.subquery(Long.class);
                 var sku = familyMatch.from(Product.class);
                 var skuPredicates = new ArrayList<Predicate>();

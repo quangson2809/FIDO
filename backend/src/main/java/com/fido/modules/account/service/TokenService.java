@@ -33,6 +33,11 @@ public class TokenService {
         this.ttl = ttl;
     }
 
+    /**
+     * account là tài khoản đã được service xác thực hoặc vừa đăng ký thành công; subject JWT là
+     * account.id.
+     * issuer và ttl lấy cấu hình máy chủ, ttl tính bằng giây; quyền không được lấy từ dữ liệu client.
+     */
     public LoginResponse issue(AccountDto account) {
         Instant now = Instant.now();
 

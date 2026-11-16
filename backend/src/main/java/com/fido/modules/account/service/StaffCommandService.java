@@ -91,6 +91,11 @@ public class StaffCommandService {
         return access.findAccess(account.getAccountId()).orElseThrow();
     }
 
+    /**
+     * actor từ JWT, accountId từ URL là nhân sự được sửa; request có thể đổi thông tin, trạng thái và
+     * tập role.
+     * Tính trạng thái/role cuối trước khi ghi để bảo vệ quản trị viên ACTIVE cuối cùng.
+     */
     public StaffAccountDetailDto update(Long actor, Long accountId, StaffPatchRequest request) {
         Role superadminRole = lockSuperadminRole();
 
@@ -114,8 +119,7 @@ public class StaffCommandService {
                         : selectedRoles.stream().anyMatch(role -> "SUPERADMIN".equals(role.getCode()));
         String finalStatus = request.status() == null ? account.getStatus() : request.status();
 
-        // The locked SUPERADMIN row serializes role and lifecycle changes, so concurrent updates
-        // cannot both observe a count of two and remove both final ACTIVE assignments.
+        // Khóa role SUPERADMIN để hai yêu cầu đồng thời không cùng gỡ hai quản trị viên cuối cùng.
         if (account.isActive()
                 && access.isSuperadmin(accountId)
                 && (!"ACTIVE".equals(finalStatus) || !finalSuperadmin)

@@ -42,6 +42,12 @@ class InventoryPostingService {
         return post(movement, now, idempotencyKey, null);
     }
 
+    /**
+     * movement do workflow tạo từ nguồn đã kiểm tra; now là giờ UTC, idempotencyKey là khóa nghiệp vụ
+     * do máy chủ sinh.
+     * ledgerConflictCode cho phép bên gọi đổi lỗi trùng ledger thành mã xung đột riêng; balance và
+     * ledger dùng chung giao dịch.
+     */
     InventoryTransaction post(
             InventoryMovement movement,
             LocalDateTime now,
@@ -57,6 +63,10 @@ class InventoryPostingService {
         }
     }
 
+    /**
+     * warehouseId do máy chủ/chứng từ hợp lệ xác định; quantityDelta có dấu: dương nhập, âm xuất.
+     * Khóa Product/số dư rồi cập nhật có điều kiện để không âm kho hoặc tràn số lượng/version.
+     */
     private void applyBalanceDelta(
             Long warehouseId, Long productId, int quantityDelta, LocalDateTime now) {
         if (quantityDelta == 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
@@ -67,6 +77,7 @@ class InventoryPostingService {
                 inventories
                         .findByWarehouseIdAndProductIdForUpdate(warehouseId, productId)
                         .orElse(null);
+        // Thiếu dòng tồn xem như 0: chỉ lệnh cộng được tạo số dư ban đầu, lệnh trừ phải thất bại.
         if (balance == null) {
             if (quantityDelta < 0) throw new ResponseStatusException(HttpStatus.CONFLICT);
             ensureInventoryRow(warehouseId, productId);
@@ -77,12 +88,13 @@ class InventoryPostingService {
         }
         em.refresh(balance, LockModeType.PESSIMISTIC_WRITE);
 
+        // SQL tự kiểm tra giới hạn và tăng version; chỉ đúng một dòng được cập nhật mới xem là thành công.
         int updated =
                 inventories.applyBalanceDeltaGuarded(
                         warehouseId, productId, quantityDelta, now, MAX_SQL_INT, MAX_SQL_INT);
         if (updated != 1) throw new ResponseStatusException(HttpStatus.CONFLICT);
 
-        // Keep a balance entity already loaded by the caller's persistence context in sync.
+        // SQL cập nhật trực tiếp không tự đổi entity đã nạp; refresh để bên gọi thấy số dư/version mới.
         em.refresh(balance);
     }
 

@@ -61,7 +61,7 @@ tasks.withType<Test> {
     }
 }
 
-// Resolve the optional backend/.env import relative to the project, not an IDE working directory.
+// Cố định thư mục chạy ở backend để .env được tìm đúng dù IDE khởi chạy từ thư mục khác.
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
     workingDir = projectDir
 }

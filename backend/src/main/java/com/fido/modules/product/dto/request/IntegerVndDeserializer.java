@@ -6,7 +6,7 @@ import tools.jackson.core.JsonToken;
 import tools.jackson.databind.DeserializationContext;
 import tools.jackson.databind.ValueDeserializer;
 
-/** Accept only JSON integer tokens for VND monetary fields; do not truncate decimals. */
+/** Chỉ nhận token số nguyên trong JSON; không cắt phần thập phân của tiền VND. */
 public final class IntegerVndDeserializer extends ValueDeserializer<Long> {
     @Override
     public Long deserialize(JsonParser parser, DeserializationContext context) throws JacksonException {

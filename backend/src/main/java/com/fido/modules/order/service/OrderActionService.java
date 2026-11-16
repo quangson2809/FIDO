@@ -51,6 +51,8 @@ public class OrderActionService {
         this.shippingInfos = shippingInfos;
         this.query = query;
         this.audit = audit;
+        // Spring cấp các handler; mỗi action phải ánh xạ đúng một handler để lỗi thiếu/trùng bị
+        // phát hiện lúc khởi động.
         var registry = new EnumMap<OrderAction, OrderActionHandler>(OrderAction.class);
         for (var handler : handlers)
             for (var action : handler.supportedActions()) {
@@ -62,6 +64,11 @@ public class OrderActionService {
         this.handlers = Map.copyOf(registry);
     }
 
+    /**
+     * actor lấy từ JWT, orderId từ URL, request chứa lệnh quản trị; authentication dùng lọc quyền
+     * trong phản hồi.
+     * Khóa và đọc lại đơn trước khi kiểm tra điều kiện, chạy handler và ghi audit cùng giao dịch.
+     */
     @PreAuthorize("@orderAuthorization.canExecute(authentication, #request.action())")
     public OrderAdminDetailDto executeAction(
             Long actor, Long orderId, OrderActionRequest request, Authentication authentication) {
@@ -82,6 +89,7 @@ public class OrderActionService {
 
         policy.requireExecutable(order, payment, shipping, request.action());
         OrderAction orderAction = OrderAction.require(request.action());
+        // Giữ trạng thái trước xử lý vì handler sẽ sửa trực tiếp entity; audit cần cả trước và sau.
         String fromOrderStatus = order.getOrderStatus();
         String fromShippingStatus = shipping.getShippingStatus();
         handlers.get(orderAction).execute(actor, order, shipping, request);

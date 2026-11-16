@@ -49,6 +49,10 @@ public class AuthenticationService {
         this.dummyHash = passwords.encode(UUID.randomUUID().toString());
     }
 
+    /**
+     * request là body đăng ký công khai; role CUSTOMER do máy chủ chọn, không nhận từ client.
+     * Chuẩn hóa điện thoại và kiểm tra số đang dùng trước khi lưu tài khoản.
+     */
     @Transactional
     public LoginResponse register(RegisterRequest request) {
         String phone = phoneNumbers.canonicalize(request.phone());
@@ -74,13 +78,13 @@ public class AuthenticationService {
         assignment.setRoleId(customerRole.getRoleId());
         accountRoles.save(assignment);
 
-        // Account creation, CUSTOMER assignment, and token response share one transaction.
+        // Tạo tài khoản, gán CUSTOMER và tạo phản hồi token cùng giao dịch để tránh tài khoản thiếu role.
         AccountDto accountDto = AccountMapper.account(account);
         return tokens.issue(accountDto);
     }
 
     public String hashPassword(String raw) {
-        // BCrypt has a 72-byte limit; do not silently truncate passwords.
+        // BCrypt giới hạn 72 byte; từ chối mật khẩu vượt giới hạn để tránh bị cắt ngầm.
         if (raw == null
                 || raw.isBlank()
                 || raw.length() < 8
@@ -92,6 +96,10 @@ public class AuthenticationService {
         return passwords.encode(raw);
     }
 
+    /**
+     * request chứa điện thoại/mật khẩu từ body; tra cả dạng chuẩn và dạng nội địa cũ.
+     * Nếu không tìm được đúng một tài khoản thì vẫn so hash giả để giảm khác biệt thời gian phản hồi.
+     */
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         String phone = phoneNumbers.canonicalize(request.phone());
@@ -105,15 +113,15 @@ public class AuthenticationService {
                             request.password(),
                             account == null ? dummyHash : account.getPasswordHash());
         } catch (IllegalArgumentException ignored) {
-            // Invalid encoded password is handled as an unauthorized login below.
+            // Hash lưu sai định dạng vẫn được xử lý như đăng nhập sai ở bước dưới.
         }
 
-        // Unknown phone, ambiguous legacy alias, and wrong password share the same 401 envelope.
+        // Số điện thoại không tồn tại, trùng dạng cũ và sai mật khẩu cùng trả 401 để tránh lộ danh tính.
         if (account == null || !matches) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS");
         }
 
-        // Do not issue a token or disclose the specific lifecycle state for non-ACTIVE accounts.
+        // Tài khoản không ACTIVE không nhận token; không tiết lộ trạng thái cụ thể cho người đăng nhập.
         if (!account.isActive()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "ACCOUNT_NOT_ACTIVE");
         }

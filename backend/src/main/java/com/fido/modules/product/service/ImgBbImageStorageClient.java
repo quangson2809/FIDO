@@ -45,6 +45,11 @@ public class ImgBbImageStorageClient implements ImageStorageGateway {
         this.apiKey = apiKey;
     }
 
+    /**
+     * image là file multipart đã kiểm tra ở service upload; gửi byte tới ImgBB rồi chỉ trả URL HTTPS
+     * hợp lệ.
+     * API key lấy từ cấu hình máy chủ, không nhận từ request và không đưa vào lỗi trả client.
+     */
     @Override
     public UploadedImage upload(MultipartFile image) {
         requireConfigured();

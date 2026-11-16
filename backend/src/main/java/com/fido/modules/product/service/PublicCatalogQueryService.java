@@ -30,13 +30,7 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/**
- * Public Catalog list/search API orchestration.
- *
- * <p>The collection query pages ROOT Product rows in SQL; it must never load
- * every child and then deduplicate after pagination. Detail/family expansion
- * belongs to PublicCatalogFamilyReadService.
- */
+/** Phân trang Product gốc ngay trong SQL; phần chi tiết/family mới tải các Product con. */
 @Service
 @Transactional(readOnly = true)
 public class PublicCatalogQueryService {
@@ -71,6 +65,11 @@ public class PublicCatalogQueryService {
         this.familyReader = familyReader;
     }
 
+    /**
+     * filter do controller ghép từ query string: từ khóa, ID danh mục/nhãn hiệu, giá VND, trang và mã
+     * Option.
+     * SQL phân trang Product gốc; lọc thuộc tính có thể khớp một Product bán được trong family.
+     */
     public ApiListResponse<ProductSummaryDto> publicProducts(CatalogProductFilter filter) {
         validatePriceRange(filter);
         Map<Long, Long> selectedOptions = resolveAttributeFilters(filter.attributeFilters());
@@ -85,7 +84,7 @@ public class PublicCatalogQueryService {
         List<Product> roots = page.getContent();
         List<Long> ids = roots.stream().map(Product::getProductId).toList();
 
-        // Batch only the fields required for this page of root summaries.
+        // Chỉ đọc theo lô danh mục, nhãn hiệu và ảnh cần cho trang tóm tắt hiện tại.
         Map<Long, Category> categoriesById = categoryMap(roots);
         Map<Long, Brand> brandsById = brandMap(roots);
         Map<Long, String> thumbnails = imageRead.representativeByProductIds(ids);
@@ -101,7 +100,6 @@ public class PublicCatalogQueryService {
         return ApiListResponse.of(data, pagination.meta(page.getTotalElements()));
     }
 
-    /** Preserves the existing controller-facing contract; only delegation changes. */
     public ProductDetailDto publicDetail(Long productId) {
         return familyReader.detail(productId);
     }
@@ -110,6 +108,10 @@ public class PublicCatalogQueryService {
         return metaService.publicMeta();
     }
 
+    /**
+     * filters ánh xạ mã Attribute sang value của Option từ query string.
+     * Tra DB để đổi thành Attribute ID → Option ID; Option phải thuộc đúng Attribute đó.
+     */
     private Map<Long, Long> resolveAttributeFilters(Map<String, String> filters) {
         Map<Long, Long> selected = new LinkedHashMap<>();
         for (var filter : filters.entrySet()) {

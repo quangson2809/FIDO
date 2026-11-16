@@ -108,6 +108,11 @@ public class ProductImageAdminService {
         recordProductUpdate(actor, productId);
     }
 
+    /**
+     * productId từ URL; request chứa image_id và vị trí mới của ảnh thuộc Product đó.
+     * Các ảnh không được gửi giữ vị trí cũ; thứ tự cuối phải duy nhất, liên tục từ 0, ảnh đầu là ảnh
+     * chính.
+     */
     @PreAuthorize(WRITE)
     public AdminProductDetailDto reorderImages(
             Long actor, Long productId, ProductImageReorderRequest request) {
@@ -132,11 +137,8 @@ public class ProductImageAdminService {
     }
 
     /**
-     * Replaces the complete gallery inside the caller's transaction.
-     *
-     * <p>The caller must hold the Product write lock before calling this method, so Product changes
-     * and gallery replacement commit or roll back together. MANDATORY enforces the transaction; it
-     * does not acquire the Product lock.
+     * Thay toàn bộ gallery trong giao dịch của bên gọi. Bên gọi phải khóa Product trước; MANDATORY chỉ
+     * yêu cầu có giao dịch, không tự lấy khóa.
      */
     @Transactional(propagation = Propagation.MANDATORY)
     void replaceImages(Product product, List<ProductImageInput> requested) {
@@ -198,7 +200,7 @@ public class ProductImageAdminService {
             ProductImage image = orderedImages.get(index);
             if (!Objects.equals(image.getSortOrder(), index)
                     || !Objects.equals(image.getIsPrimary(), index == 0)) {
-                // Existing-data repair is intentionally not implicit in a gallery command.
+                // Không tự sửa gallery sai thứ tự/ảnh chính trong một lệnh quản trị ảnh.
                 throw new ResponseStatusException(
                         HttpStatus.CONFLICT, "Product image gallery requires an approved repair");
             }
@@ -287,13 +289,14 @@ public class ProductImageAdminService {
                         .mapToLong(Integer::longValue)
                         .max()
                         .orElse(-1L);
+        // Chọn dải vị trí tạm phía sau vị trí lớn nhất để không đụng unique trong lúc hoán đổi ảnh.
         long temporaryBase = maxSortOrder + 1L;
         if (!orderedImages.isEmpty()
                 && temporaryBase + orderedImages.size() - 1L > Integer.MAX_VALUE) {
             conflict();
         }
 
-        // Vacate unique positions first, then persist the dense final permutation.
+        // Chuyển ảnh sang vị trí tạm chưa dùng rồi mới đánh lại thứ tự liên tục để tránh vi phạm unique.
         for (int index = 0; index < orderedImages.size(); index++) {
             ProductImage image = orderedImages.get(index);
             image.setSortOrder((int) (temporaryBase + index));

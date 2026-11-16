@@ -6,13 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Pure arithmetic for the FIDO integer-VND contract.
- *
- * <p>This class has no Spring, persistence, clock, locale, or I/O dependency. It uses checked
- * signed-BIGINT arithmetic for every intermediate monetary product/sum and deterministic
- * largest-remainder allocation.
- */
+/** Tính VND nguyên, kiểm tra tràn số và phân bổ giảm giá xác định; không đọc DB hay đồng hồ. */
 public final class PricingCalculator {
     private static final long BASIS_POINTS = 10_000L;
     private static final long HALF_UP_BIAS = 5_000L;
@@ -52,6 +46,12 @@ public final class PricingCalculator {
         }
     }
 
+    /**
+     * lines lấy từ giá Product và số lượng giỏ do service đọc lại; requestedDiscount là giảm toàn đơn
+     * do voucher tính.
+     * shippingFee là phí máy chủ, mọi tiền tính bằng VND nguyên; trả dòng đã phân bổ và tổng khớp
+     * nhau.
+     */
     public PricingResult calculate(List<LineInput> lines, long requestedDiscount, long shippingFee) {
         if (lines == null) {
             throw new PricingException("VALIDATION_ERROR");
@@ -67,7 +67,7 @@ public final class PricingCalculator {
         for (LineInput line : lines) {
             validateLine(line);
             if (!productIds.add(line.productId())) {
-                // The approved Cart key is (Cart, Product); duplicate Product lines are invalid.
+                // Mỗi Product chỉ có một dòng trong giỏ; dòng trùng làm sai phép phân bổ giảm giá.
                 throw new PricingException("MONEY_TOTAL_MISMATCH");
             }
             long gross = calculateLineGross(line.unitPrice(), line.quantity());
@@ -75,11 +75,12 @@ public final class PricingCalculator {
             allocations.add(new Allocation(line, gross, index++));
         }
 
-        // A fixed voucher can exceed merchandise subtotal, but may never create a negative line.
+        // Giảm cố định có thể lớn hơn tiền hàng nhưng tổng giảm thực tế không được vượt subtotal.
         long discount = Math.min(requestedDiscount, subtotal);
         if (subtotal > 0 && discount > 0) {
             long allocatedBase = 0L;
             for (Allocation allocation : allocations) {
+                // Chia giảm giá theo tỷ trọng tiền gốc từng dòng; giữ phần dư để xử lý các đồng còn lẻ.
                 long numerator = multiply(discount, allocation.gross);
                 allocation.discount = numerator / subtotal;
                 allocation.remainder = numerator % subtotal;
@@ -88,6 +89,7 @@ public final class PricingCalculator {
 
             long leftover = discount - allocatedBase;
             List<Allocation> ranked = new ArrayList<>(allocations);
+            // Ưu tiên phần dư lớn nhất, bằng nhau chọn Product ID nhỏ hơn để kết quả không phụ thuộc thứ tự giỏ.
             ranked.sort(
                     Comparator.comparingLong((Allocation a) -> a.remainder)
                             .reversed()
@@ -95,6 +97,7 @@ public final class PricingCalculator {
             if (leftover < 0 || leftover > ranked.size()) {
                 throw new PricingException("MONEY_TOTAL_MISMATCH");
             }
+            // Phát thêm từng đồng còn dư cho các dòng ưu tiên để tổng giảm dòng đúng bằng giảm toàn đơn.
             for (int i = 0; i < (int) leftover; i++) {
                 ranked.get(i).discount = add(ranked.get(i).discount, 1L);
             }
@@ -139,7 +142,11 @@ public final class PricingCalculator {
         return multiply(unitPrice, quantity.longValue());
     }
 
-    /** Returns the order-wide integer-VND voucher amount before line allocation. */
+    /**
+     * discountType/value và maximumDiscount lấy từ voucher trong DB; subtotal là tiền hàng trước giảm,
+     * chưa có ship.
+     * FIXED dùng VND, PERCENT dùng basis point (100 = 1%); chặn mức giảm theo cap rồi theo subtotal.
+     */
     public long calculateDiscountAmount(
             String discountType, Long discountValue, Long maximumDiscount, long subtotal) {
         if (subtotal < 0 || discountValue == null || discountValue <= 0
@@ -157,7 +164,7 @@ public final class PricingCalculator {
             if (subtotal == 0) {
                 candidate = 0L;
             } else {
-                // HALF-UP for non-negative integer ratios; intermediate overflow is rejected.
+                // Cộng nửa mẫu số để làm tròn HALF-UP; phép nhân/cộng vẫn phải kiểm tra tràn số.
                 long numerator = add(multiply(subtotal, discountValue), HALF_UP_BIAS);
                 candidate = numerator / BASIS_POINTS;
             }

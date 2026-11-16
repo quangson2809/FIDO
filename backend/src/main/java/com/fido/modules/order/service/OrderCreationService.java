@@ -91,6 +91,12 @@ public class OrderCreationService {
         this.productSnapshots = productSnapshots;
     }
 
+    /**
+     * Tạo đơn từ giỏ hiện tại, không lấy giá/tổng tiền từ client.
+     * @param accountId ID tài khoản từ subject JWT, dùng giới hạn giỏ và khóa chống lặp.
+     * @param request thông tin nhận hàng và voucher trong body HTTP.
+     * @param headerValues các giá trị header Idempotency-Key; chỉ chấp nhận đúng một khóa.
+     */
     public OrderCreationResult createWithIdempotencyKey(
             Long accountId, CreateOrderRequest request, List<String> headerValues) {
         String clientKey = requireIdempotencyKey(headerValues);
@@ -103,25 +109,28 @@ public class OrderCreationService {
                 request.address_line(),
                 request.voucher_code());
         String fingerprint = normalizer.fingerprint(normalized);
+        // Ghép ID tài khoản với hash khóa client để hai khách dùng cùng khóa vẫn là hai lần mua độc lập.
         String storedKey = accountId + ":" + sha256(clientKey);
 
-        // Serialize Account commands before durable-key lookup; replay must not inspect the Cart.
+        // Khóa tài khoản trước khi tra khóa chống lặp; trả lại đơn cũ trước khi đọc giỏ có thể đã bị làm rỗng.
         accountLocks.lock(accountId);
         var existing = orders.findByIdempotencyKeyAndCustomerAccountId(storedKey, accountId);
         if (existing.isPresent()) {
             return replay(existing.get(), fingerprint);
         }
 
-        // Hold Account and current Cart locks for the whole atomic Order write set.
+        // Giữ khóa tài khoản và giỏ đến hết giao dịch để toàn bộ dữ liệu tạo đơn cùng commit hoặc rollback.
         cart.lockForCheckout(accountId);
         CheckoutCalculation calculation =
                 checkout.calculateForOrder(accountId, normalized.voucherCode());
 
+        // Chụp thuộc tính theo Product ID từ DB để đơn cũ không đổi khi catalog được chỉnh sau này.
         Map<Long, String> attributeSnapshots = productSnapshots.attributeSnapshots(
                 calculation.items().stream()
                         .map(CheckoutCartView.Item::productId)
                         .collect(Collectors.toSet()));
 
+        // Lưu trọn bộ đơn PENDING, snapshot, COD và vận chuyển; bước đặt đơn chưa trừ tồn kho.
         Order order = persistOrder(accountId, storedKey, fingerprint, calculation);
         persistOrderItems(order.getOrderId(), calculation, attributeSnapshots);
         OrderAddress address = persistAddress(order.getOrderId(), normalized);
@@ -137,6 +146,10 @@ public class OrderCreationService {
                 OrderMapper.confirmation(order, payment, address), order.getOrderId(), false);
     }
 
+    /**
+     * order lấy bằng khóa chống lặp trong DB; fingerprint là hash body đã chuẩn hóa.
+     * Chỉ trả đơn đã tạo khi body khớp, không tạo lại đơn hoặc tiêu thụ giỏ lần nữa.
+     */
     private OrderCreationResult replay(Order order, String fingerprint) {
         if (!fingerprint.equals(order.getRequestFingerprint())) {
             throw new ResponseStatusException(
@@ -168,6 +181,11 @@ public class OrderCreationService {
         return orders.save(order);
     }
 
+    /**
+     * calculation chứa giá/số lượng vừa tính lại từ giỏ; attributeSnapshots ánh xạ Product ID sang
+     * JSON thuộc tính.
+     * Ghi giá trị lịch sử vào từng OrderItem, không giữ liên kết đọc giá hiện tại khi xem đơn cũ.
+     */
     private void persistOrderItems(
             Long orderId,
             CheckoutCalculation calculation,

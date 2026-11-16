@@ -46,6 +46,10 @@ public class SuperadminBootstrapService {
         this.audit = audit;
     }
 
+    /**
+     * phone/password nhận từ cấu hình bootstrap phía máy chủ, chỉ chạy khi bật chủ động.
+     * Tạo quản trị viên mới hoặc kiểm tra tài khoản đã có, không tự đổi mật khẩu hay nâng quyền.
+     */
     @Transactional
     public void initialize(String phone, String password) {
         if (phone == null
@@ -75,7 +79,7 @@ public class SuperadminBootstrapService {
                         "Bootstrap phone already belongs to a non-superadmin account");
             }
 
-            // Never reset passwords or silently elevate an existing account.
+            // Không đặt lại mật khẩu hoặc tự nâng quyền tài khoản đã tồn tại khi khởi tạo quản trị viên.
             return;
         }
 

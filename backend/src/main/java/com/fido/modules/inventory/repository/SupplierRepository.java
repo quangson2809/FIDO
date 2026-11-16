@@ -7,10 +7,7 @@ import org.springframework.data.repository.Repository;
 
 import java.util.Optional;
 
-/**
- * Supplier history is preserved through usage status. No delete operation is exposed by the
- * baseline API.
- */
+/** Giữ lịch sử nhà cung cấp bằng trạng thái; API hiện tại không cung cấp thao tác xóa. */
 public interface SupplierRepository
         extends Repository<Supplier, Long>, JpaSpecificationExecutor<Supplier> {
 

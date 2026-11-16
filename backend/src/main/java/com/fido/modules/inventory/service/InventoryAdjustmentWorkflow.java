@@ -45,6 +45,12 @@ class InventoryAdjustmentWorkflow {
         this.posting = posting;
     }
 
+    /**
+     * Đầu vào do InventoryCommandService chuyển từ request đã phân quyền; lượng thay đổi có dấu và
+     * version có thể vắng.
+     * semanticKey sinh từ sourceOperationId để nhận diện lần điều chỉnh: cùng nội dung trả bút toán
+     * cũ, khác nội dung bị từ chối.
+     */
     InventoryTransaction adjustManually(
             Long actor,
             Long productId,
@@ -56,8 +62,8 @@ class InventoryAdjustmentWorkflow {
         Long warehouseId = operationalWarehouse.requireOperationalWarehouseId();
         String semanticKey = adjustmentMovementKey(sourceOperationId);
 
-        // Serialize writers for this Product, then use a locking read so MySQL REPEATABLE_READ
-        // sees a committed winner even if warehouse resolution established an earlier snapshot.
+        // Khóa Product rồi đọc khóa chống lặp bằng truy vấn có khóa để thấy lượt thắng đã commit
+        // dù MySQL đang REPEATABLE_READ.
         productAccess.lockTrackedProduct(productId);
         var prior = transactions.findByIdempotencyKeyForUpdate(semanticKey);
         if (prior.isPresent()) {
@@ -83,6 +89,7 @@ class InventoryAdjustmentWorkflow {
         int currentVersion = balance == null ? 0 : balance.getVersion();
         requireExpectedVersion(expectedVersion, currentVersion);
 
+        // Nâng phép cộng sang long để kiểm tra giới hạn INT trước khi ghi số dư/version.
         long nextQuantity = (long) currentQuantity + quantityDelta;
         if (nextQuantity < 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "INVENTORY_INSUFFICIENT_STOCK");
@@ -146,8 +153,8 @@ class InventoryAdjustmentWorkflow {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "INVENTORY_BALANCE_OVERFLOW");
         }
 
-        // A source transaction is locked before the balance. This serializes competing reversal
-        // requests and makes source identity decisive even when the caller retries with a new key.
+        // Khóa bút toán gốc trước số dư để hai yêu cầu không đảo cùng nguồn, kể cả gửi lại
+        // bằng khóa request khác.
         if (!transactions.findAllByReversesTransactionId(sourceTransactionId).isEmpty()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "INVENTORY_SOURCE_CONFLICT");
         }
@@ -169,6 +176,7 @@ class InventoryAdjustmentWorkflow {
         requireExpectedVersion(expectedVersion, currentVersion);
 
         int quantityDelta = Math.negateExact(source.getQuantityDelta());
+        // Đảo điều chỉnh cũng phải kiểm tra tồn/giới hạn: lượng đối dấu có thể làm kho âm hoặc tràn.
         long nextQuantity = (long) currentQuantity + quantityDelta;
         if (nextQuantity < 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "INVENTORY_INSUFFICIENT_STOCK");

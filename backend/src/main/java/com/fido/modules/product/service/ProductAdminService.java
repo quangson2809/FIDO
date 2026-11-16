@@ -65,6 +65,10 @@ public class ProductAdminService {
         this.em = em;
     }
 
+    /**
+     * actor lấy từ JWT; request là một Product độc lập với SKU/giá riêng và danh sách ID Option.
+     * parent_product_id chỉ liên kết Product đã có, metadata không tự sinh tổ hợp hoặc Product con.
+     */
     @PreAuthorize(WRITE)
     public AdminProductDetailDto createProduct(Long actor, ProductCreateRequest request) {
         families.beginProductWrite();
@@ -110,6 +114,11 @@ public class ProductAdminService {
         return query.detailInternal(product.getProductId());
     }
 
+    /**
+     * actor từ JWT, productId từ URL; các cờ is...Present cho biết trường nào thật sự được gửi khi
+     * PATCH.
+     * Trường vắng được giữ nguyên; null được gửi rõ ràng xử lý theo hợp đồng từng trường.
+     */
     @PreAuthorize(WRITE)
     public AdminProductDetailDto updateProduct(
             Long actor, Long productId, ProductPatchRequest request) {
@@ -157,6 +166,7 @@ public class ProductAdminService {
                 productAttributeValues.findForFamilyValidation(List.of(productId)).stream()
                         .map(ProductAttributeValue::getOptionId)
                         .toList();
+        // Kiểm tra bộ thuộc tính sau PATCH: dùng danh sách mới nếu được gửi, nếu không giữ các Option đang lưu.
         List<Long> resultingValueIds =
                 request.isAttributeValueIdsPresent()
                         ? request.getAttributeValueIds()
@@ -175,6 +185,7 @@ public class ProductAdminService {
             replaceAttributeValues(productId, validatedValues);
         }
 
+        // Đổi cha có thể làm cả family cũ và mới thiếu/trùng tổ hợp; phải kiểm tra cả hai trước khi commit.
         families.validateFamily(oldRootId);
         Long newRootId = product.getParentProductId() == null ? productId : product.getParentProductId();
         if (!oldRootId.equals(newRootId)) families.validateFamily(newRootId);

@@ -1,6 +1,6 @@
 package com.fido.modules.inventory.repository;
 
-/** Read-only projection for balance-to-ledger reconciliation; no persistence entity is exposed. */
+/** Kết quả đọc đối chiếu số dư với ledger; không đưa entity lưu trữ ra ngoài. */
 public interface InventoryReconciliationView {
     Long getWarehouseId();
     Long getProductId();

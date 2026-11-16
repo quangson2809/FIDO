@@ -10,7 +10,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-/** Persistence only. Delete operations are intentionally not exposed by default. */
+/** Không cung cấp thao tác xóa mặc định để bảo vệ lịch sử tài khoản. */
 public interface AccountRepository extends Repository<Account, Long> {
     Optional<Account> findById(Long id);
 
@@ -36,7 +36,10 @@ public interface AccountRepository extends Repository<Account, Long> {
     @Query("select a from Account a where a.phone in :phones and a.deletedAt is null")
     List<Account> findByPhoneInAndNotDeleted(@Param("phones") Collection<String> phones);
 
-    /** Includes soft-deleted rows for explicit legacy/bootstrap identity checks; not for availability decisions. */
+    /**
+     * Có cả tài khoản xóa mềm để kiểm tra danh tính cũ khi khởi tạo; không dùng để xét số điện thoại
+     * còn trống.
+     */
     List<Account> findByPhoneIn(Collection<String> phones);
 
     @Query(
@@ -47,10 +50,13 @@ public interface AccountRepository extends Repository<Account, Long> {
             """)
     boolean existsByPhoneInAndNotDeleted(@Param("phones") Collection<String> phones);
 
-    /** All-row identity check for callers that must account for historical soft-deleted records. */
+    /** Tra cả lịch sử xóa mềm khi nghiệp vụ cần đối chiếu danh tính cũ. */
     boolean existsByPhoneIn(Collection<String> phones);
 
-    /** All-row identity check excluding one ID; use the non-deleted query for target phone availability. */
+    /**
+     * Loại trừ tài khoản đang sửa nhưng vẫn xét lịch sử; kiểm tra số điện thoại còn trống dùng truy
+     * vấn chưa xóa.
+     */
     boolean existsByPhoneInAndAccountIdNot(Collection<String> phones, Long accountId);
 
     @Query(

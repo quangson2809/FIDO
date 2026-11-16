@@ -255,7 +255,7 @@ class DatabaseBaselineTests {
         try {
             installSchema(dataSource);
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-            // Verify the physical composite uniqueness and column order, not just static dictionary metadata.
+            // Kiểm tra unique kép và đúng thứ tự cột trong DB thật, không chỉ đối chiếu tài liệu.
             var indexRows = jdbc.queryForList(
                     "SELECT NON_UNIQUE AS non_unique, SEQ_IN_INDEX AS seq_in_index, " +
                             "COLUMN_NAME AS column_name FROM information_schema.statistics " +

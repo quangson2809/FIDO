@@ -50,16 +50,20 @@ public class VoucherRedemptionService {
         }
     }
 
-    /** Order placement reads and locks the Voucher before recalculating eligibility. */
+    /** Đặt đơn phải khóa voucher rồi kiểm tra lại điều kiện theo dữ liệu hiện tại. */
     public Discount evaluate(Long accountId, String code, List<Line> lines) {
         return evaluate(accountId, code, lines, true);
     }
 
-    /** Quotes are advisory: they do not reserve or consume quota. */
+    /** Báo giá chỉ tham khảo; không giữ hoặc tiêu thụ lượt dùng voucher. */
     public Discount evaluateForQuote(Long accountId, String code, List<Line> lines) {
         return evaluate(accountId, code, lines, false);
     }
 
+    /**
+     * accountId từ đăng nhập; code từ request, lines chứa tiền gốc từng Product do checkout tính lại.
+     * lockVoucher=true khi đặt đơn để khóa cấu hình/quota; báo giá dùng false và không tiêu thụ lượt.
+     */
     private Discount evaluate(Long accountId, String code, List<Line> lines, boolean lockVoucher) {
         if (code == null || code.isBlank()) {
             return new Discount(null, null, 0L);
@@ -76,6 +80,7 @@ public class VoucherRedemptionService {
                 ? vouchers.lockByCode(code.trim())
                 : vouchers.findByCodeIgnoreCase(code.trim()))
                 .orElseThrow(() -> rejected("VOUCHER_NOT_FOUND"));
+        // So thời gian hiện tại với cửa sổ voucher: gồm startsAt, không gồm endsAt.
         Instant now = Instant.now();
         requireRedeemable(voucher, now);
 
@@ -100,7 +105,11 @@ public class VoucherRedemptionService {
                 subtotal);
     }
 
-    /** Claims one global quota use inside the caller's Order transaction. */
+    /**
+     * discount là kết quả evaluate vừa tính dưới khóa; dùng voucherId và subtotal để kiểm tra lại hạn
+     * mức.
+     * Chỉ tăng một lượt dùng trong giao dịch tạo đơn; rollback đơn cũng rollback bộ đếm.
+     */
     public void consume(Discount discount) {
         if (discount == null || discount.voucherId() == null) return;
 
@@ -113,6 +122,8 @@ public class VoucherRedemptionService {
         }
 
         int before = valueOrZero(voucher.getUsageCount());
+        // UPDATE có điều kiện trong DB quyết định lượt dùng cuối cùng; kiểm tra trước ở Java không
+        // thay thế bước này.
         if (vouchers.incrementUsageCountIfAvailable(
                         voucher.getVoucherId(), now, discount.subtotal()) != 1) {
             throw rejected("VOUCHER_QUOTA_CONFLICT");
@@ -125,7 +136,7 @@ public class VoucherRedemptionService {
                 before + 1);
     }
 
-    /** P1.7 calls release only as part of an eligible, locked cancellation transition. */
+    /** Chỉ gọi khi chuyển hủy đơn hợp lệ dưới khóa; không tự giải phóng lượt dùng khi hoàn tiền. */
     public void release(Long voucherId) {
         if (voucherId == null) return;
 

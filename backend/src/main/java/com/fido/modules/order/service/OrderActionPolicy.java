@@ -16,14 +16,8 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Shared business policy for both admin action visibility and execution.
- *
- * <p>This is a domain policy, NOT the GoF State pattern. OrderPolicy stores
- * the allowed transition graph; this class enforces payment, shipping and
- * inventory prerequisites for each action.
- *
- * <p>Call requireExecutable only AFTER acquiring the Order write lock.
- * allowedActions is an advisory UI view, never the authoritative guard.
+ * Dùng chung điều kiện cho nút quản trị và lúc thực thi. Đây là policy, không phải GoF State; chỉ gọi
+ * requireExecutable sau khi đã khóa đơn.
  */
 @Service
 public class OrderActionPolicy {
@@ -36,7 +30,7 @@ public class OrderActionPolicy {
         this.shippingInfos = shippingInfos;
     }
 
-    /** List the currently permitted actions; execution will check again under lock. */
+    /** Danh sách này chỉ gợi ý cho UI; thực thi phải kiểm tra lại dưới khóa đơn. */
     public List<String> allowedActions(Order order, Payment payment) {
         if (order == null || payment == null) return List.of();
         ShippingInfo shipping = shippingInfos.findById(order.getOrderId()).orElse(null);
@@ -49,7 +43,7 @@ public class OrderActionPolicy {
                 .toList();
     }
 
-    /** Authoritative guard for a locked Order; error codes remain unchanged. */
+    /** Kiểm tra Order/Payment/Shipping và ledger hiện tại sau khi bên gọi đã khóa đơn. */
     public void requireExecutable(
             Order order, Payment payment, ShippingInfo shipping, String action) {
         OrderAction parsed = OrderAction.require(action);
@@ -76,8 +70,7 @@ public class OrderActionPolicy {
             return false;
         }
 
-        // Every manual Order action requires a still-uncollected COD payment.
-        // The old implementation repeated this SAME prerequisite six times.
+        // Mọi hành động thủ công bên dưới đều yêu cầu COD chưa thu và chưa có dấu vết hoàn tiền.
         String from = order.getOrderStatus();
         String shippingStatus = shipping.getShippingStatus();
         boolean noStockMovement = !stock.deducted() && !stock.restored();
@@ -118,7 +111,7 @@ public class OrderActionPolicy {
         };
     }
 
-    /** A COD record must have no collected/refunded data, including audit columns. */
+    /** UNPAID chưa đủ: dữ liệu người/thời điểm thu, hoàn tiền cũng phải còn trống. */
     private static boolean isCleanUnpaidPayment(Payment payment) {
         return OrderPolicy.UNPAID.equals(payment.getPaymentStatus())
                 && Objects.equals(payment.getRefundAmount(), 0L)

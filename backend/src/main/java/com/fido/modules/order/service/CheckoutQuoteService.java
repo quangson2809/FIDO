@@ -7,7 +7,7 @@ import com.fido.modules.order.dto.response.VoucherDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Read-only advisory calculation. Order placement always reloads and recalculates independently. */
+/** Báo giá không ghi dữ liệu; đặt đơn luôn tải lại và tính lại độc lập. */
 @Service
 @Transactional(readOnly = true)
 public class CheckoutQuoteService {

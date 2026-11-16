@@ -8,7 +8,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-/** Cross-module read contract for stock availability by canonical Product ID. */
+/** Hợp đồng đọc tồn kho theo Product ID cho các module khác. */
 @Service
 @Transactional(readOnly = true)
 public class InventoryAvailabilityService {
@@ -25,7 +25,7 @@ public class InventoryAvailabilityService {
         return balance(productId).quantityOnHand();
     }
 
-    /** Returns logical zeroes for a missing composite balance row without creating it. */
+    /** Chưa có dòng tồn kho thì đọc như số lượng/version bằng 0; không tạo dòng mới. */
     public BalanceSnapshot balance(Long productId) {
         Long warehouseId = operationalWarehouse.requireOperationalWarehouseId();
         return inventories.findByWarehouseIdAndProductId(warehouseId, productId)
@@ -35,7 +35,7 @@ public class InventoryAvailabilityService {
                 .orElseGet(() -> new BalanceSnapshot(0, 0));
     }
 
-    /** Availability is the resolved operational warehouse's balance, never a sum of warehouses. */
+    /** Chỉ trả tồn của kho vận hành do máy chủ chọn, không cộng gộp các kho. */
     public Map<Long, Integer> availableQuantities(Collection<Long> productIds) {
         Map<Long, Integer> result = new HashMap<>();
         if (productIds == null || productIds.isEmpty()) return Map.of();

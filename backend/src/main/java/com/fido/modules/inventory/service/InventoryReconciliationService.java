@@ -21,6 +21,10 @@ public class InventoryReconciliationService {
         this.transactions = transactions;
     }
 
+    /**
+     * page/pageSize từ query string; so số dư với tổng delta ledger, version với số bút toán.
+     * Chỉ trả sai lệch để kiểm tra, không tự ghi sửa số dư hoặc ledger.
+     */
     @PreAuthorize(READ)
     public ApiListResponse<InventoryReconciliationRowDto> reconcile(Integer page, Integer pageSize) {
         Pagination pagination = Pagination.of(page, pageSize);

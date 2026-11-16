@@ -49,6 +49,8 @@ public class SecurityConfig {
                                         HttpMethod.GET, "/api/v1/catalog/**", "/api/v1/content-pages/**",
                                         "/actuator/health", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                                 .permitAll()
+                                // Lọc quyền vào vùng quản trị; từng service còn kiểm tra quyền
+                                // cụ thể bằng @PreAuthorize.
                                 .requestMatchers("/api/v1/admin/**")
                                 .access((authentication, context) ->
                                         new AuthorizationDecision(authentication.get().isAuthenticated()
@@ -68,6 +70,8 @@ public class SecurityConfig {
                                 .accessDeniedHandler((request, response, failure) ->
                                         errors.writeSecurityError(request, response, 403, "FORBIDDEN"))
                                 .jwt(jwt -> jwt.jwtAuthenticationConverter(token -> {
+                                    // Token chỉ xác định accountId; role/quyền và trạng thái ACTIVE
+                                    // phải đọc lại từ DB ở mỗi request.
                                     var account = access.findActiveAccess(Long.valueOf(token.getSubject()))
                                             .orElseThrow(() -> new OAuth2AuthenticationException("invalid_token"));
                                     var authorities = new ArrayList<SimpleGrantedAuthority>();

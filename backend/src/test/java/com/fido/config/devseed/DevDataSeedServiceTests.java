@@ -91,7 +91,7 @@ class DevDataSeedServiceTests {
         assertEquals(17, firstCounts.get("inventories"));
         assertEquals(25, firstCounts.get("inventory_transactions"));
 
-        // Each +84 seed number must map to exactly ten national digits (0 + nine digits).
+        // Mỗi số seed dạng +84 phải đổi thành đúng 10 chữ số nội địa: 0 và chín số phía sau.
         List<String> accountPhones = jdbc.queryForList(
                 "SELECT phone FROM accounts WHERE id BETWEEN 900001 AND 900008 ORDER BY id",
                 String.class);

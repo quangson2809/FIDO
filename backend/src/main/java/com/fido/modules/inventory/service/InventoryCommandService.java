@@ -41,6 +41,12 @@ public class InventoryCommandService {
         return opening.openStock(actor, productId, openingQuantity);
     }
 
+    /**
+     * actor từ JWT, productId từ body; quantityDelta là lượng cộng/trừ có dấu, reasonCode thuộc tập
+     * cho phép.
+     * sourceOperationId nhận từ client để định danh nghiệp vụ khi gửi lại; expectedVersion là version
+     * client đã đọc, có thể null.
+     */
     public InventoryTransaction adjustManually(
             Long actor,
             Long productId,
@@ -52,6 +58,11 @@ public class InventoryCommandService {
                 actor, productId, quantityDelta, reasonCode, sourceOperationId, expectedVersion);
     }
 
+    /**
+     * sourceTransactionId từ URL là bút toán điều chỉnh gốc; reasonCode/expectedVersion lấy từ
+     * request.
+     * Tạo bút toán đối dấu liên kết nguồn, không sửa/xóa bút toán cũ.
+     */
     public InventoryTransaction reverseAdjustment(
             Long actor, Long sourceTransactionId, String reasonCode, Integer expectedVersion) {
         return adjustments.reverseAdjustment(
@@ -81,6 +92,8 @@ public class InventoryCommandService {
         productAccess.requireTrackedProduct(productId);
     }
 
+    // Dòng nguồn do nghiệp vụ đọc từ DB: productId/số lượng dương; orderItemId hoặc
+    // goodsReceiptItemId xác định dòng chứng từ.
     public record StockLine(
             Long productId, int quantity, Long orderItemId, Long goodsReceiptItemId) {
         public StockLine(Long productId, int quantity) {

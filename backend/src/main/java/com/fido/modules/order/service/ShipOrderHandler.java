@@ -38,6 +38,7 @@ class ShipOrderHandler implements OrderActionHandler {
     @Override
     public void execute(
             Long actor, Order order, ShippingInfo shipping, OrderActionRequest request) {
+        // Kiểm tra đã trừ kho hợp lệ; giao lần đầu hoặc giao lại đều không trừ kho lần nữa.
         inventory.requireConfirmedOrderMovements(
                 order.getOrderId(), stockLines.loadForUpdate(order.getOrderId()));
 

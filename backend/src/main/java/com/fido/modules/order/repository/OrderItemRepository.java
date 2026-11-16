@@ -11,7 +11,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
-/** OrderItem rows are immutable historical snapshots. */
+/** Dòng hàng giữ dữ liệu chụp lúc đặt đơn; thay đổi catalog không được sửa lịch sử này. */
 public interface OrderItemRepository extends Repository<OrderItem, Long> {
 
     Optional<OrderItem> findById(Long id);

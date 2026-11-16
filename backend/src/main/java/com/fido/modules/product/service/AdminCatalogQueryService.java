@@ -94,6 +94,11 @@ public class AdminCatalogQueryService {
         return metaService.adminMeta();
     }
 
+    /**
+     * productId là Product đang xem; trả cả liên kết cha/con với thông tin riêng để điều hướng trang
+     * quản trị.
+     * Đọc ảnh và thuộc tính theo lô cho các bản ghi liên quan, không suy ra giá/tồn từ cha.
+     */
     AdminProductDetailDto detailInternal(Long productId) {
         Product product = references.product(productId);
 

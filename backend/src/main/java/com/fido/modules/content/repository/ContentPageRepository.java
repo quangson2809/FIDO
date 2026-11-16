@@ -10,7 +10,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
-/** Persistence only. Content pages are archived, never hard-deleted through the application. */
+/** Nội dung được lưu trữ bằng trạng thái ARCHIVED; ứng dụng không xóa cứng. */
 public interface ContentPageRepository extends Repository<ContentPage, Long> {
     Optional<ContentPage> findById(Long id);
 
