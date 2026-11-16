@@ -1,6 +1,6 @@
 import { AdminIcon } from '../../shared/admin/AdminIcon';
 import { AdminWorkQueue } from '../../features/adminAccess/components/AdminWorkQueue';
-import React from 'react';
+import React, { useState } from 'react';
 import { DashboardAnalytics } from '../../features/report/components/ReportTabs';
 import { defaultReportRange } from '../../features/report/model/reportFilters';
 
@@ -27,6 +27,7 @@ export const AdminDashboardView: React.FC<{
   visibleModuleKeys: readonly string[];
 }> = ({ onNavigateTab, visibleModuleKeys }) => {
   const visibleModules = modules.filter(([key]) => visibleModuleKeys.includes(key));
+  const [reportQuery, setReportQuery] = useState(defaultReportRange);
 
   return (
     <section className="space-y-7">
@@ -59,7 +60,8 @@ export const AdminDashboardView: React.FC<{
 
       {visibleModuleKeys.includes('reports') && (
         <DashboardAnalytics
-          query={defaultReportRange()}
+          query={reportQuery}
+          onQueryChange={setReportQuery}
           canReadCatalog={visibleModuleKeys.includes('products')}
           canReadOrders={visibleModuleKeys.includes('orders')}
         />

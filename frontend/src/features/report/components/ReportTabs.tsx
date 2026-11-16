@@ -16,6 +16,7 @@ import {
 } from './ReportSections';
 import { Link } from 'react-router-dom';
 import { OrderStatusDonut } from './OrderStatusDonut';
+import { ReportFilters } from './ReportFilters';
 
 export function SalesReport({ query }: { query: TrendQuery }) {
   const result = useSalesReport(query);
@@ -91,10 +92,12 @@ export function ProductsReport({
 }
 export function DashboardAnalytics({
   query,
+  onQueryChange,
   canReadCatalog,
   canReadOrders,
 }: {
   query: TrendQuery;
+  onQueryChange: (query: TrendQuery) => void;
   canReadCatalog: boolean;
   canReadOrders: boolean;
 }) {
@@ -103,7 +106,7 @@ export function DashboardAnalytics({
     <section aria-label="Phân tích kinh doanh" className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="font-serif text-2xl">Kinh doanh 30 ngày gần nhất</h2>
+          <h2 className="font-serif text-2xl">Kinh doanh theo khoảng ngày</h2>
           <p className="report-description">
             {query.from} → {query.to} · Múi giờ Việt Nam
           </p>
@@ -112,6 +115,11 @@ export function DashboardAnalytics({
           Mở báo cáo doanh số →
         </Link>
       </div>
+      <ReportFilters
+        key={`${query.from}/${query.to}`}
+        query={query}
+        onChange={onQueryChange}
+      />
       <ReportFeedback {...result} onRetry={result.reload} />
       {result.data && (
         <>

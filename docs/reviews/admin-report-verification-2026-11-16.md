@@ -28,3 +28,13 @@ The report API tests cover payment/refund cohort rules, start/end microseconds i
 | P2 | Voucher effectiveness | Existing voucher snapshots and Order outcomes. Descriptive usage/discount/net sales are feasible; causal uplift and per-customer attribution are not proven by current schema. |
 | P2 | Family/category contribution | Agree whether grouping follows current catalog relationships or historical classification. Current Product-level reports must remain available. |
 | Deferred | Historical gross margin and funnel conversion | Current cost price is not historical COGS; page/cart events are not stored. Require approved cost snapshots/event instrumentation before reporting these as accurate. |
+
+## Zero-valued dashboard follow-up
+
+The supplied screenshot selects 2026-10-18 through 2026-11-16. All nine development seed orders were created in September 2026, with delivered/collected dates also in September. The dashboard previously fixed the filter to the last 30 days. A database containing only these seed orders correctly returns zeros for the screenshot range.
+
+Reuse the report date controls on the dashboard, keep 30 days as the initial range, and carry the selected dates into report/drilldown links. Clarify the empty-sales message. Do not change historical timestamps or loosen delivery/payment rules to force nonzero totals.
+
+Add an authenticated HTTP integration regression using the actual development seeder and all four report endpoints: September must reconcile to nine orders, 2,265,000 VND completed sales, 489,000 VND returned adjustment, 1,776,000 VND net sales and four net units. The screenshot range must remain empty. Browser regression checks that dashboard filters trigger the matching requests and update links and metrics.
+
+This reproduces the seeded-data case, not the user's running database. If recent orders exist in the selected interval, inspect the actual report response and the connected database before attributing that environment's zeros to the seed dates.
