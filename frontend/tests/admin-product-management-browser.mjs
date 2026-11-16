@@ -500,7 +500,7 @@ try {
   await page.getByRole('button', { name: 'Bỏ lựa chọn #12', exact: true }).waitFor();
   const beforeMissing = createRequests().length;
   await page.getByRole('button', { name: 'Lưu nháp', exact: true }).click();
-  await page.getByText('Một lựa chọn thuộc tính không còn trong metadata.', { exact: false }).waitFor();
+  await page.getByText('Một giá trị thuộc tính không còn trong danh sách.', { exact: false }).waitFor();
   assert.equal(createRequests().length, beforeMissing);
   adminMeta.attributes = attributes;
   await Promise.all([
