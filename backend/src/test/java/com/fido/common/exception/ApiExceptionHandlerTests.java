@@ -11,9 +11,9 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.web.servlet.HandlerMapping;
 
-import java.util.Map;
-
 import tools.jackson.databind.ObjectMapper;
+
+import java.util.Map;
 
 @ExtendWith(OutputCaptureExtension.class)
 class ApiExceptionHandlerTests {
@@ -48,7 +48,10 @@ class ApiExceptionHandlerTests {
         var body = new ObjectMapper().readTree(response.getContentAsString());
         assertEquals("CONFLICT", body.get("code").asText());
         assertEquals(409, body.get("status").asInt());
-        for (String secret : new String[] {"secret-token", "secret-phone", "secret-password", "secret-provider-key"}) {
+        for (String secret :
+                new String[] {
+                    "secret-token", "secret-phone", "secret-password", "secret-provider-key"
+                }) {
             assertFalse(response.getContentAsString().contains(secret));
         }
     }

@@ -35,14 +35,12 @@ public final class PricingCalculator {
     private static final class Allocation {
         private final LineInput input;
         private final long gross;
-        private final int originalIndex;
         private long discount;
         private long remainder;
 
-        private Allocation(LineInput input, long gross, int originalIndex) {
+        private Allocation(LineInput input, long gross) {
             this.input = input;
             this.gross = gross;
-            this.originalIndex = originalIndex;
         }
     }
 
@@ -52,7 +50,8 @@ public final class PricingCalculator {
      * shippingFee là phí máy chủ, mọi tiền tính bằng VND nguyên; trả dòng đã phân bổ và tổng khớp
      * nhau.
      */
-    public PricingResult calculate(List<LineInput> lines, long requestedDiscount, long shippingFee) {
+    public PricingResult calculate(
+            List<LineInput> lines, long requestedDiscount, long shippingFee) {
         if (lines == null) {
             throw new PricingException("VALIDATION_ERROR");
         }
@@ -63,7 +62,6 @@ public final class PricingCalculator {
         List<Allocation> allocations = new ArrayList<>(lines.size());
         Set<Long> productIds = new HashSet<>();
         long subtotal = 0L;
-        int index = 0;
         for (LineInput line : lines) {
             validateLine(line);
             if (!productIds.add(line.productId())) {
@@ -72,7 +70,7 @@ public final class PricingCalculator {
             }
             long gross = calculateLineGross(line.unitPrice(), line.quantity());
             subtotal = add(subtotal, gross);
-            allocations.add(new Allocation(line, gross, index++));
+            allocations.add(new Allocation(line, gross));
         }
 
         // Giảm cố định có thể lớn hơn tiền hàng nhưng tổng giảm thực tế không được vượt subtotal.
@@ -80,7 +78,8 @@ public final class PricingCalculator {
         if (subtotal > 0 && discount > 0) {
             long allocatedBase = 0L;
             for (Allocation allocation : allocations) {
-                // Chia giảm giá theo tỷ trọng tiền gốc từng dòng; giữ phần dư để xử lý các đồng còn lẻ.
+                // Chia giảm giá theo tỷ trọng tiền gốc từng dòng; giữ phần dư để xử lý các đồng còn
+                // lẻ.
                 long numerator = multiply(discount, allocation.gross);
                 allocation.discount = numerator / subtotal;
                 allocation.remainder = numerator % subtotal;
@@ -89,7 +88,8 @@ public final class PricingCalculator {
 
             long leftover = discount - allocatedBase;
             List<Allocation> ranked = new ArrayList<>(allocations);
-            // Ưu tiên phần dư lớn nhất, bằng nhau chọn Product ID nhỏ hơn để kết quả không phụ thuộc thứ tự giỏ.
+            // Ưu tiên phần dư lớn nhất, bằng nhau chọn Product ID nhỏ hơn để kết quả không phụ
+            // thuộc thứ tự giỏ.
             ranked.sort(
                     Comparator.comparingLong((Allocation a) -> a.remainder)
                             .reversed()
@@ -97,7 +97,8 @@ public final class PricingCalculator {
             if (leftover < 0 || leftover > ranked.size()) {
                 throw new PricingException("MONEY_TOTAL_MISMATCH");
             }
-            // Phát thêm từng đồng còn dư cho các dòng ưu tiên để tổng giảm dòng đúng bằng giảm toàn đơn.
+            // Phát thêm từng đồng còn dư cho các dòng ưu tiên để tổng giảm dòng đúng bằng giảm toàn
+            // đơn.
             for (int i = 0; i < (int) leftover; i++) {
                 ranked.get(i).discount = add(ranked.get(i).discount, 1L);
             }
@@ -149,7 +150,9 @@ public final class PricingCalculator {
      */
     public long calculateDiscountAmount(
             String discountType, Long discountValue, Long maximumDiscount, long subtotal) {
-        if (subtotal < 0 || discountValue == null || discountValue <= 0
+        if (subtotal < 0
+                || discountValue == null
+                || discountValue <= 0
                 || (maximumDiscount != null && maximumDiscount < 0)) {
             throw new PricingException("VOUCHER_CONFIGURATION_INVALID");
         }

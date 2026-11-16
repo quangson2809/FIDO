@@ -15,11 +15,27 @@ public record CartItemDto(
         Integer available_quantity) {
     /** Chuyển dữ liệu test cũ sang VND nguyên; giá trị thập phân không được cắt ngầm. */
     public CartItemDto(
-            Long cart_item_id, Long product_id, Integer quantity, String product_name,
-            String image_url, String thumbnail, String sku, BigDecimal unit_price,
-            BigDecimal line_total, Integer available_quantity) {
-        this(cart_item_id, product_id, quantity, product_name, image_url, thumbnail, sku,
-                exactVnd(unit_price), exactVnd(line_total), available_quantity);
+            Long cart_item_id,
+            Long product_id,
+            Integer quantity,
+            String product_name,
+            String image_url,
+            String thumbnail,
+            String sku,
+            BigDecimal unit_price,
+            BigDecimal line_total,
+            Integer available_quantity) {
+        this(
+                cart_item_id,
+                product_id,
+                quantity,
+                product_name,
+                image_url,
+                thumbnail,
+                sku,
+                exactVnd(unit_price),
+                exactVnd(line_total),
+                available_quantity);
     }
 
     private static Long exactVnd(BigDecimal amount) {

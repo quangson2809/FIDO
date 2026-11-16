@@ -22,10 +22,6 @@ public final class OrderPolicy {
     public static final String PAID = "PAID";
     public static final String REFUNDED = "REFUNDED";
 
-    public static final String ORDER_CONFIRM_OUT = "ORDER_CONFIRM_OUT";
-    public static final String ORDER_CANCEL_IN = "ORDER_CANCEL_IN";
-    public static final String DELIVERY_RETURN_IN = "DELIVERY_RETURN_IN";
-
     public static final String ORDER_READ = "ORDER_READ";
     public static final String ORDER_EDIT = "ORDER_EDIT";
     public static final String ORDER_PROCESS = "ORDER_PROCESS";

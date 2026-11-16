@@ -30,7 +30,12 @@ public class Account {
     @Column(name = "phone", nullable = false, length = 20)
     private String phone;
 
-    @Column(name = "phone_active_key", insertable = false, updatable = false, length = 20, unique = true)
+    @Column(
+            name = "phone_active_key",
+            insertable = false,
+            updatable = false,
+            length = 20,
+            unique = true)
     private String phoneActiveKey;
 
     @Column(name = "email", length = 254)

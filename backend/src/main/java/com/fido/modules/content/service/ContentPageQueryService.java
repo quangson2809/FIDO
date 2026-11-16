@@ -1,7 +1,7 @@
 package com.fido.modules.content.service;
 
-import com.fido.modules.content.dto.response.ContentPageSummaryDto;
 import com.fido.modules.content.dto.response.ContentPageDto;
+import com.fido.modules.content.dto.response.ContentPageSummaryDto;
 import com.fido.modules.content.dto.response.PublicContentPageDto;
 import com.fido.modules.content.mapper.ContentMapper;
 import com.fido.modules.content.repository.ContentPageRepository;
@@ -31,7 +31,10 @@ public class ContentPageQueryService {
         String slug = normalizePublicSlug(requestedSlug);
         return ContentMapper.publicPage(
                 pages.findBySlugAndStatus(slug, "PUBLISHED")
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "CONTENT_PAGE_NOT_FOUND")));
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "CONTENT_PAGE_NOT_FOUND")));
     }
 
     @PreAuthorize("hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_CONTENT_READ')")
@@ -42,14 +45,19 @@ public class ContentPageQueryService {
 
     @PreAuthorize("hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_CONTENT_READ')")
     public ContentPageDto detail(Long id) {
-        return ContentMapper.admin(pages.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "CONTENT_PAGE_NOT_FOUND")));
+        return ContentMapper.admin(
+                pages.findById(id)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "CONTENT_PAGE_NOT_FOUND")));
     }
 
     private String normalizePublicSlug(String input) {
         String slug = input == null ? "" : input.trim().toLowerCase(Locale.ROOT);
         if (slug.length() > 180 || !SLUG.matcher(slug).matches()) {
-            // Trang không có, slug sai, bản nháp và trang lưu trữ cùng bị ẩn khỏi truy cập công khai.
+            // Trang không có, slug sai, bản nháp và trang lưu trữ cùng bị ẩn khỏi truy cập công
+            // khai.
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "CONTENT_PAGE_NOT_FOUND");
         }
         return slug;

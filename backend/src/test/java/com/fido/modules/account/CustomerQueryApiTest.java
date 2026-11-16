@@ -3,12 +3,12 @@ package com.fido.modules.account;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.fido.support.OperationsHttpSupport;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 class CustomerQueryApiTest extends OperationsHttpSupport {
@@ -35,13 +35,22 @@ class CustomerQueryApiTest extends OperationsHttpSupport {
         String suffix = UUID.randomUUID().toString().replace("-", "");
         String categorySlug = "customer-report-" + suffix;
         String sku = "CUSTOMER-REPORT-" + suffix;
-        db.update("INSERT INTO categories(parent_category_id,name,slug,status) VALUES (NULL,?,?, 'ACTIVE')",
-                "Customer query test category", categorySlug);
-        categoryId = db.queryForObject("SELECT id FROM categories WHERE slug=?", Long.class, categorySlug);
-        db.update("""
+        db.update(
+                "INSERT INTO categories(parent_category_id,name,slug,status) VALUES (NULL,?,?, 'ACTIVE')",
+                "Customer query test category",
+                categorySlug);
+        categoryId =
+                db.queryForObject(
+                        "SELECT id FROM categories WHERE slug=?", Long.class, categorySlug);
+        db.update(
+                """
                 INSERT INTO products(category_id,name,slug,sku,selling_price,status)
                 VALUES (?,?,?,?,100,'ACTIVE')
-                """, categoryId, "Customer query test product", "customer-product-" + suffix, sku);
+                """,
+                categoryId,
+                "Customer query test product",
+                "customer-product-" + suffix,
+                sku);
         productId = db.queryForObject("SELECT id FROM products WHERE sku=?", Long.class, sku);
     }
 
@@ -59,9 +68,16 @@ class CustomerQueryApiTest extends OperationsHttpSupport {
                     placed_at, created_at, updated_at
                 ) VALUES (?,NULL,?,?,?,'PENDING',100,0,0,100,'VND',?,?,?)
                 """,
-                accountId, orderNumber, idempotencyKey, fingerprint, date, date, date);
-        long id = db.queryForObject(
-                "SELECT id FROM orders WHERE order_number=?", Long.class, orderNumber);
+                accountId,
+                orderNumber,
+                idempotencyKey,
+                fingerprint,
+                date,
+                date,
+                date);
+        long id =
+                db.queryForObject(
+                        "SELECT id FROM orders WHERE order_number=?", Long.class, orderNumber);
         orderIds.add(id);
         db.update(
                 """
@@ -76,7 +92,8 @@ class CustomerQueryApiTest extends OperationsHttpSupport {
                     image_url_snapshot,quantity,unit_price,discount_amount,line_total)
                 VALUES (?,?,'FIXTURE-SKU','Customer order snapshot','{}','',1,100,0,100)
                 """,
-                id, productId);
+                id,
+                productId);
         db.update(
                 """
                 INSERT INTO order_addresses(
@@ -114,7 +131,8 @@ class CustomerQueryApiTest extends OperationsHttpSupport {
                 customer.id());
 
         String path = "/api/v1/admin/customers";
-        var list = call("GET", path + "?q=" + customer.phone() + "&page_size=1", root.token(), null);
+        var list =
+                call("GET", path + "?q=" + customer.phone() + "&page_size=1", root.token(), null);
         assertEquals(200, list.status());
         assertEquals(1, list.body().get("meta").get("total").asInt());
         var row = list.body().get("data").get(0);
@@ -132,13 +150,23 @@ class CustomerQueryApiTest extends OperationsHttpSupport {
         assertEquals(old, data.get("orders").get(1).get("order_id").asLong());
         assertEquals("UNPAID", data.get("orders").get(0).get("payment_status").asText());
 
-        var zero = call("GET", path + "?q=" + root.phone(), root.token(), null)
-                .body().get("data").get(0);
+        var zero =
+                call("GET", path + "?q=" + root.phone(), root.token(), null)
+                        .body()
+                        .get("data")
+                        .get(0);
         assertEquals(0, zero.get("order_count").asInt());
         assertTrue(zero.get("last_order_at").isNull());
-        assertEquals(0, call(
-                "GET", path + "?q=" + customer.phone() + "&page=2&page_size=1", root.token(), null)
-                .body().get("data").size());
+        assertEquals(
+                0,
+                call(
+                                "GET",
+                                path + "?q=" + customer.phone() + "&page=2&page_size=1",
+                                root.token(),
+                                null)
+                        .body()
+                        .get("data")
+                        .size());
         assertEquals(404, call("GET", path + "/9223372036854775807", root.token(), null).status());
         assertEquals(400, call("GET", path + "?page_size=101", root.token(), null).status());
     }

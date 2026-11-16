@@ -50,8 +50,6 @@ class ProductImageAuthorizationHttpTests extends CatalogHttpSupport {
         assertEquals(
                 1,
                 db.queryForObject(
-                        "SELECT COUNT(*) FROM product_images WHERE id=?",
-                        Integer.class,
-                        imageId));
+                        "SELECT COUNT(*) FROM product_images WHERE id=?", Integer.class, imageId));
     }
 }

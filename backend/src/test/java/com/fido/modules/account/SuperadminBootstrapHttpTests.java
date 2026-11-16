@@ -14,25 +14,20 @@ class SuperadminBootstrapHttpTests extends AccountHttpSupport {
         bootstrap.initialize(phone, PASSWORD);
 
         long accountId =
-                db.queryForObject(
-                        "SELECT id FROM accounts WHERE phone=?", Long.class, phone);
+                db.queryForObject("SELECT id FROM accounts WHERE phone=?", Long.class, phone);
 
         created.add(accountId);
 
         String hash =
                 db.queryForObject(
-                        "SELECT password_hash FROM accounts WHERE id=?",
-                        String.class,
-                        accountId);
+                        "SELECT password_hash FROM accounts WHERE id=?", String.class, accountId);
 
         bootstrap.initialize(phone, "Different-password");
 
         assertEquals(
                 hash,
                 db.queryForObject(
-                        "SELECT password_hash FROM accounts WHERE id=?",
-                        String.class,
-                        accountId));
+                        "SELECT password_hash FROM accounts WHERE id=?", String.class, accountId));
 
         assertEquals(
                 1,
@@ -52,18 +47,12 @@ class SuperadminBootstrapHttpTests extends AccountHttpSupport {
     void bootstrapRejectsPhoneOwnedBySoftDeletedAccount() throws Exception {
         String phone = phone();
         long deletedAccountId = register(phone);
-        db.update(
-                "UPDATE accounts SET deleted_at=CURRENT_TIMESTAMP WHERE id=?",
-                deletedAccountId);
+        db.update("UPDATE accounts SET deleted_at=CURRENT_TIMESTAMP WHERE id=?", deletedAccountId);
 
-        assertThrows(
-                IllegalStateException.class,
-                () -> bootstrap.initialize(phone, PASSWORD));
+        assertThrows(IllegalStateException.class, () -> bootstrap.initialize(phone, PASSWORD));
         assertEquals(
                 1,
                 db.queryForObject(
-                        "SELECT COUNT(*) FROM accounts WHERE phone=?",
-                        Integer.class,
-                        phone));
+                        "SELECT COUNT(*) FROM accounts WHERE phone=?", Integer.class, phone));
     }
 }

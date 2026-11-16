@@ -1,7 +1,9 @@
 package com.fido.modules.content.repository;
 
 import com.fido.modules.content.entity.ContentPage;
+
 import jakarta.persistence.LockModeType;
+
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;

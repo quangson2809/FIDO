@@ -120,8 +120,18 @@ class CartCheckoutImageHttpTests extends CartHttpSupport {
                         "/api/v1/checkout/quote",
                         user.token(),
                         Map.of(
-                                "recipient_phone", "0900000000",
-                                "recipient_name", "Test Recipient", "province", "Hanoi", "district", "Cau Giay", "ward", "Dich Vong", "address_line", "Hanoi"));
+                                "recipient_phone",
+                                "0900000000",
+                                "recipient_name",
+                                "Test Recipient",
+                                "province",
+                                "Hanoi",
+                                "district",
+                                "Cau Giay",
+                                "ward",
+                                "Dich Vong",
+                                "address_line",
+                                "Hanoi"));
 
         assertEquals(200, response.status(), response.body());
         return response.data().get("data").get("items").get(0);

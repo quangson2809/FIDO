@@ -17,6 +17,8 @@ import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
 import com.fido.modules.order.repository.ShippingInfoRepository;
+import com.fido.modules.order.service.action.OrderActionPolicy;
+import com.fido.modules.order.service.action.OrderAuthorization;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

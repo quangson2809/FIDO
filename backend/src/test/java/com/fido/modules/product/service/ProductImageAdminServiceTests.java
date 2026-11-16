@@ -14,6 +14,7 @@ import com.fido.modules.product.dto.request.ProductImageReorderRequest;
 import com.fido.modules.product.entity.Product;
 import com.fido.modules.product.entity.ProductImage;
 import com.fido.modules.product.repository.ProductImageRepository;
+import com.fido.modules.product.service.query.CatalogReferenceService;
 
 import jakarta.persistence.EntityManager;
 

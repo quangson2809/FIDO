@@ -62,9 +62,7 @@ public class DevSeedIdentityData {
         for (String roleCode : List.of("CUSTOMER", "ADMIN", "SUPERADMIN")) {
             Integer count =
                     jdbc.queryForObject(
-                            "SELECT COUNT(*) FROM roles WHERE code = ?",
-                            Integer.class,
-                            roleCode);
+                            "SELECT COUNT(*) FROM roles WHERE code = ?", Integer.class, roleCode);
             if (count == null || count != 1) {
                 throw new IllegalStateException(
                         "Required Flyway system role is missing or ambiguous: " + roleCode);
@@ -146,7 +144,8 @@ public class DevSeedIdentityData {
                         roleCode);
 
         if (inserted != 1) {
-            throw new IllegalStateException("Required system role could not be assigned: " + roleCode);
+            throw new IllegalStateException(
+                    "Required system role could not be assigned: " + roleCode);
         }
     }
 

@@ -9,7 +9,9 @@ import com.fido.modules.account.entity.Role;
 import com.fido.modules.account.repository.AccountRepository;
 import com.fido.modules.account.repository.AccountRoleRepository;
 import com.fido.modules.account.repository.RoleRepository;
-import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.account.service.identity.AccountAccessService;
+import com.fido.modules.account.service.identity.AuthenticationService;
+import com.fido.modules.account.service.identity.PhoneNumberCanonicalizer;
 import com.fido.modules.audit.service.AuditAction;
 import com.fido.modules.audit.service.AuditEntityType;
 import com.fido.modules.audit.service.AuditWriteEvent;
@@ -67,7 +69,10 @@ public class StaffCommandService {
         requireCreatePhoneAvailable(phone);
 
         List<Role> selectedRoles =
-                resolveCreateRoles(request.role_ids() == null ? List.of(defaultAdminRoleId()) : request.role_ids());
+                resolveCreateRoles(
+                        request.role_ids() == null
+                                ? List.of(defaultAdminRoleId())
+                                : request.role_ids());
 
         Account account = new Account();
         account.setFullName(request.full_name().trim());
@@ -77,7 +82,7 @@ public class StaffCommandService {
         account.setPasswordHash(authentication.hashPassword(request.password()));
         account = accounts.save(account);
 
-        replace(account.getAccountId(), selectedRoles);
+        replaceRoles(account.getAccountId(), selectedRoles);
         em.flush();
 
         audit.record(
@@ -86,7 +91,13 @@ public class StaffCommandService {
                         AuditEntityType.ACCOUNT,
                         account.getAccountId().toString(),
                         Map.of(),
-                        Map.of("status", "ACTIVE", "active", true, "role_count", selectedRoles.size())));
+                        Map.of(
+                                "status",
+                                "ACTIVE",
+                                "active",
+                                true,
+                                "role_count",
+                                selectedRoles.size())));
 
         return access.findAccess(account.getAccountId()).orElseThrow();
     }
@@ -108,7 +119,8 @@ public class StaffCommandService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
 
-        int oldRoleCount = access.findAccess(accountId).map(detail -> detail.roles().size()).orElse(0);
+        int oldRoleCount =
+                access.findAccess(accountId).map(detail -> detail.roles().size()).orElse(0);
         String oldStatus = account.getStatus();
         boolean oldActive = account.isActive();
         List<Role> selectedRoles =
@@ -116,7 +128,8 @@ public class StaffCommandService {
         boolean finalSuperadmin =
                 selectedRoles == null
                         ? access.isSuperadmin(accountId)
-                        : selectedRoles.stream().anyMatch(role -> "SUPERADMIN".equals(role.getCode()));
+                        : selectedRoles.stream()
+                                .anyMatch(role -> "SUPERADMIN".equals(role.getCode()));
         String finalStatus = request.status() == null ? account.getStatus() : request.status();
 
         // Khóa role SUPERADMIN để hai yêu cầu đồng thời không cùng gỡ hai quản trị viên cuối cùng.
@@ -129,18 +142,31 @@ public class StaffCommandService {
 
         applyAccountPatch(account, request);
         if (selectedRoles != null) {
-            replace(accountId, selectedRoles);
+            replaceRoles(accountId, selectedRoles);
         }
 
         em.flush();
-        int newRoleCount = access.findAccess(accountId).map(detail -> detail.roles().size()).orElse(0);
+        int newRoleCount =
+                access.findAccess(accountId).map(detail -> detail.roles().size()).orElse(0);
         audit.record(
                 AuditWriteEvent.withChanges(
                         AuditAction.STAFF_UPDATE,
                         AuditEntityType.ACCOUNT,
                         accountId.toString(),
-                        Map.of("status", oldStatus, "active", oldActive, "role_count", oldRoleCount),
-                        Map.of("status", account.getStatus(), "active", account.isActive(), "role_count", newRoleCount)));
+                        Map.of(
+                                "status",
+                                oldStatus,
+                                "active",
+                                oldActive,
+                                "role_count",
+                                oldRoleCount),
+                        Map.of(
+                                "status",
+                                account.getStatus(),
+                                "active",
+                                account.isActive(),
+                                "role_count",
+                                newRoleCount)));
 
         return access.findAccess(accountId).orElseThrow();
     }
@@ -152,7 +178,7 @@ public class StaffCommandService {
     }
 
     private List<Role> resolveCreateRoles(List<Long> requestedRoleIds) {
-        List<Role> selectedRoles = resolve(requestedRoleIds);
+        List<Role> selectedRoles = resolveRoles(requestedRoleIds);
         requireStaffRole(selectedRoles);
         return selectedRoles;
     }
@@ -207,7 +233,7 @@ public class StaffCommandService {
         }
     }
 
-    private List<Role> resolve(List<Long> roleIds) {
+    private List<Role> resolveRoles(List<Long> roleIds) {
         LinkedHashSet<Long> uniqueRoleIds = new LinkedHashSet<>(roleIds);
         if (uniqueRoleIds.size() != roleIds.size()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
@@ -219,11 +245,13 @@ public class StaffCommandService {
                                 roles.findById(roleId)
                                         .filter(role -> "ACTIVE".equals(role.getStatus()))
                                         .orElseThrow(
-                                                () -> new ResponseStatusException(HttpStatus.NOT_FOUND)))
+                                                () ->
+                                                        new ResponseStatusException(
+                                                                HttpStatus.NOT_FOUND)))
                 .toList();
     }
 
-    private void replace(Long accountId, List<Role> selectedRoles) {
+    private void replaceRoles(Long accountId, List<Role> selectedRoles) {
         assignments.deleteByAccountId(accountId);
         em.flush();
 

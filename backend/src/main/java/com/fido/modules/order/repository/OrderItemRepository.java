@@ -3,6 +3,7 @@ package com.fido.modules.order.repository;
 import com.fido.modules.order.entity.OrderItem;
 
 import jakarta.persistence.LockModeType;
+
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
@@ -19,7 +20,8 @@ public interface OrderItemRepository extends Repository<OrderItem, Long> {
     List<OrderItem> findAllByOrderIdOrderByOrderItemIdAsc(Long orderId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
+    @Query(
+            """
             select item
             from OrderItem item
             where item.orderId = :orderId

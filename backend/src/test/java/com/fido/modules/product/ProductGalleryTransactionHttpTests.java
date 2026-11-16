@@ -45,7 +45,7 @@ class ProductGalleryTransactionHttpTests extends CatalogHttpSupport {
         var before =
                 db.queryForList(
                         "SELECT id,image_url,sort_order,is_primary FROM product_images WHERE"
-                            + " product_id=? ORDER BY sort_order",
+                                + " product_id=? ORDER BY sort_order",
                         id);
         assertEquals(2, before.size());
         AuditWriteService target = AopTestUtils.getUltimateTargetObject(auditWriter);
@@ -76,7 +76,7 @@ class ProductGalleryTransactionHttpTests extends CatalogHttpSupport {
                     before,
                     db.queryForList(
                             "SELECT id,image_url,sort_order,is_primary FROM product_images WHERE"
-                                + " product_id=? ORDER BY sort_order",
+                                    + " product_id=? ORDER BY sort_order",
                             id));
         } finally {
             reset(target);

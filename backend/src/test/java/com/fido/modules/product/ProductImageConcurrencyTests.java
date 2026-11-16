@@ -6,18 +6,18 @@ import static org.mockito.Mockito.doAnswer;
 
 import com.fido.modules.product.dto.request.ProductImageReorderRequest;
 import com.fido.modules.product.dto.response.AdminProductDetailDto;
-import com.fido.modules.product.service.CatalogReferenceService;
 import com.fido.modules.product.service.ImageStorageGateway.UploadedImage;
 import com.fido.modules.product.service.ProductImageAdminService;
+import com.fido.modules.product.service.query.CatalogReferenceService;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import java.util.List;
@@ -47,7 +47,8 @@ class ProductImageConcurrencyTests extends CatalogHttpSupport {
         String second = "https://storage.test/parallel-b.png";
 
         meetBeforeProductLock(productId);
-        runConcurrently(writer.id(),
+        runConcurrently(
+                writer.id(),
                 () ->
                         imageCommands.appendUploadedImages(
                                 writer.id(), productId, List.of(new UploadedImage(first))),
@@ -78,7 +79,8 @@ class ProductImageConcurrencyTests extends CatalogHttpSupport {
 
         meetBeforeProductLock(productId);
         List<AdminProductDetailDto> responses =
-                runConcurrently(writer.id(),
+                runConcurrently(
+                        writer.id(),
                         () -> imageCommands.reorderImages(writer.id(), productId, reorder(first)),
                         () -> imageCommands.reorderImages(writer.id(), productId, reorder(second)));
 
@@ -113,7 +115,8 @@ class ProductImageConcurrencyTests extends CatalogHttpSupport {
 
     private List<AdminProductDetailDto> runConcurrently(
             long actorId,
-            Callable<AdminProductDetailDto> first, Callable<AdminProductDetailDto> second)
+            Callable<AdminProductDetailDto> first,
+            Callable<AdminProductDetailDto> second)
             throws Exception {
         var executor = Executors.newFixedThreadPool(2);
         try {
@@ -132,12 +135,14 @@ class ProductImageConcurrencyTests extends CatalogHttpSupport {
     private AdminProductDetailDto authenticated(
             long actorId, Callable<AdminProductDetailDto> command) throws Exception {
         var context = SecurityContextHolder.createEmptyContext();
-        Jwt jwt = Jwt.withTokenValue("phase14-test")
-                .header("alg", "none")
-                .subject(Long.toString(actorId))
-                .build();
-        context.setAuthentication(new JwtAuthenticationToken(
-                jwt, List.of(new SimpleGrantedAuthority("PERMISSION_CATALOG_WRITE"))));
+        Jwt jwt =
+                Jwt.withTokenValue("phase14-test")
+                        .header("alg", "none")
+                        .subject(Long.toString(actorId))
+                        .build();
+        context.setAuthentication(
+                new JwtAuthenticationToken(
+                        jwt, List.of(new SimpleGrantedAuthority("PERMISSION_CATALOG_WRITE"))));
         SecurityContextHolder.setContext(context);
         try {
             return command.call();
@@ -213,7 +218,7 @@ class ProductImageConcurrencyTests extends CatalogHttpSupport {
                 IntStream.range(0, size).boxed().toList(),
                 db.query(
                         "SELECT sort_order FROM product_images WHERE product_id=? ORDER BY"
-                            + " sort_order",
+                                + " sort_order",
                         (row, index) -> row.getInt(1),
                         productId));
     }

@@ -39,7 +39,12 @@ public class InventoryTransaction {
     @Column(name = "order_item_id", updatable = false)
     private Long orderItemId;
 
-    @Column(name = "idempotency_key", nullable = false, length = 120, unique = true, updatable = false)
+    @Column(
+            name = "idempotency_key",
+            nullable = false,
+            length = 120,
+            unique = true,
+            updatable = false)
     private String idempotencyKey;
 
     @Column(name = "reverses_transaction_id", updatable = false)

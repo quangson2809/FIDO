@@ -1,6 +1,7 @@
 package com.fido.modules.inventory.service;
 
 import com.fido.modules.inventory.repository.InventoryRepository;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,10 +29,17 @@ public class InventoryAvailabilityService {
     /** Chưa có dòng tồn kho thì đọc như số lượng/version bằng 0; không tạo dòng mới. */
     public BalanceSnapshot balance(Long productId) {
         Long warehouseId = operationalWarehouse.requireOperationalWarehouseId();
-        return inventories.findByWarehouseIdAndProductId(warehouseId, productId)
-                .map(inventory -> new BalanceSnapshot(
-                        inventory.getQuantityOnHand() == null ? 0 : inventory.getQuantityOnHand(),
-                        inventory.getVersion() == null ? 0 : inventory.getVersion()))
+        return inventories
+                .findByWarehouseIdAndProductId(warehouseId, productId)
+                .map(
+                        inventory ->
+                                new BalanceSnapshot(
+                                        inventory.getQuantityOnHand() == null
+                                                ? 0
+                                                : inventory.getQuantityOnHand(),
+                                        inventory.getVersion() == null
+                                                ? 0
+                                                : inventory.getVersion()))
                 .orElseGet(() -> new BalanceSnapshot(0, 0));
     }
 
@@ -40,10 +48,15 @@ public class InventoryAvailabilityService {
         Map<Long, Integer> result = new HashMap<>();
         if (productIds == null || productIds.isEmpty()) return Map.of();
         Long warehouseId = operationalWarehouse.requireOperationalWarehouseId();
-        inventories.findAllByWarehouseIdAndProductIdIn(warehouseId, productIds).forEach(
-                inventory -> result.put(
-                        inventory.getProductId(),
-                        inventory.getQuantityOnHand() == null ? 0 : inventory.getQuantityOnHand()));
+        inventories
+                .findAllByWarehouseIdAndProductIdIn(warehouseId, productIds)
+                .forEach(
+                        inventory ->
+                                result.put(
+                                        inventory.getProductId(),
+                                        inventory.getQuantityOnHand() == null
+                                                ? 0
+                                                : inventory.getQuantityOnHand()));
         return Map.copyOf(result);
     }
 

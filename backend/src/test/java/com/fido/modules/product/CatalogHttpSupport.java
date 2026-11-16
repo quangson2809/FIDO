@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -44,7 +45,9 @@ abstract class CatalogHttpSupport {
     final List<Long> receipts = new ArrayList<>();
 
     record Result(int status, JsonNode data, String body) {}
+
     record Employee(long id, String token) {}
+
     record CatalogFixture(
             long categoryId,
             long brandId,
@@ -54,26 +57,42 @@ abstract class CatalogHttpSupport {
             Result createProductResponse) {}
 
     Result call(String method, String path, String token, Object body) throws Exception {
-        var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
-                .header("Accept", "application/json")
-                .header("Content-Type", "application/json");
+        var request =
+                HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
+                        .header("Accept", "application/json")
+                        .header("Content-Type", "application/json");
         if (token != null) request.header("Authorization", "Bearer " + token);
-        request.method(method, body == null
-                ? HttpRequest.BodyPublishers.noBody()
-                : HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)));
+        request.method(
+                method,
+                body == null
+                        ? HttpRequest.BodyPublishers.noBody()
+                        : HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)));
         var response = client.send(request.build(), HttpResponse.BodyHandlers.ofString());
-        return new Result(response.statusCode(),
-                response.body().isBlank() ? null : json.readTree(response.body()), response.body());
+        return new Result(
+                response.statusCode(),
+                response.body().isBlank() ? null : json.readTree(response.body()),
+                response.body());
     }
 
     String phone() {
-        return "+84" + java.util.concurrent.ThreadLocalRandom.current()
-                .nextLong(100_000_000L, 1_000_000_000L);
+        return "+84"
+                + java.util.concurrent.ThreadLocalRandom.current()
+                        .nextLong(100_000_000L, 1_000_000_000L);
     }
 
     long register(String phone) throws Exception {
-        var response = call("POST", "/api/v1/auth/register", null,
-                Map.of("phone", phone, "full_name", "Catalog Test Account", "password", PASSWORD));
+        var response =
+                call(
+                        "POST",
+                        "/api/v1/auth/register",
+                        null,
+                        Map.of(
+                                "phone",
+                                phone,
+                                "full_name",
+                                "Catalog Test Account",
+                                "password",
+                                PASSWORD));
         assertEquals(201, response.status(), response.body());
         long accountId = response.data().get("data").get("account").get("id").asLong();
         accounts.add(accountId);
@@ -81,14 +100,19 @@ abstract class CatalogHttpSupport {
     }
 
     String login(String phone) throws Exception {
-        var response = call("POST", "/api/v1/auth/login", null,
-                Map.of("phone", phone, "password", PASSWORD));
+        var response =
+                call(
+                        "POST",
+                        "/api/v1/auth/login",
+                        null,
+                        Map.of("phone", phone, "password", PASSWORD));
         assertEquals(200, response.status(), response.body());
         return response.data().get("data").get("access_token").asText();
     }
 
     void grantRole(long accountId, String code) {
-        db.update("INSERT INTO account_roles SELECT ?, id FROM roles WHERE code=?", accountId, code);
+        db.update(
+                "INSERT INTO account_roles SELECT ?, id FROM roles WHERE code=?", accountId, code);
     }
 
     String root() throws Exception {
@@ -99,8 +123,11 @@ abstract class CatalogHttpSupport {
     }
 
     long ensurePermission(String code) {
-        var found = db.query("SELECT id FROM permissions WHERE code=?",
-                (rs, row) -> rs.getLong(1), code);
+        var found =
+                db.query(
+                        "SELECT id FROM permissions WHERE code=?",
+                        (rs, row) -> rs.getLong(1),
+                        code);
         if (!found.isEmpty()) return found.get(0);
         db.update("INSERT INTO permissions(code,name) VALUES (?,?)", code, code);
         long id = db.queryForObject("SELECT id FROM permissions WHERE code=?", Long.class, code);
@@ -113,7 +140,10 @@ abstract class CatalogHttpSupport {
         db.update("INSERT INTO roles(code,name) VALUES (?,?)", code, "Catalog test");
         long id = db.queryForObject("SELECT id FROM roles WHERE code=?", Long.class, code);
         customRoles.add(id);
-        db.update("INSERT INTO role_permissions(role_id,permission_id) VALUES (?,?)", id, permissionId);
+        db.update(
+                "INSERT INTO role_permissions(role_id,permission_id) VALUES (?,?)",
+                id,
+                permissionId);
         return id;
     }
 
@@ -152,51 +182,79 @@ abstract class CatalogHttpSupport {
         for (Long brandId : brands) db.update("DELETE FROM brands WHERE id=?", brandId);
         var categoryCopy = new ArrayList<>(categories);
         Collections.reverse(categoryCopy);
-        for (Long categoryId : categoryCopy) db.update("DELETE FROM categories WHERE id=?", categoryId);
-        for (Long warehouseId : warehouses) db.update("DELETE FROM warehouses WHERE id=?", warehouseId);
-        for (Long accountId : accounts) db.update("DELETE FROM account_roles WHERE account_id=?", accountId);
+        for (Long categoryId : categoryCopy)
+            db.update("DELETE FROM categories WHERE id=?", categoryId);
+        for (Long warehouseId : warehouses)
+            db.update("DELETE FROM warehouses WHERE id=?", warehouseId);
+        for (Long accountId : accounts)
+            db.update("DELETE FROM account_roles WHERE account_id=?", accountId);
         for (Long roleId : customRoles) {
             db.update("DELETE FROM role_permissions WHERE role_id=?", roleId);
             db.update("DELETE FROM roles WHERE id=?", roleId);
         }
-        for (Long permissionId : createdPermissions) db.update("DELETE FROM permissions WHERE id=?", permissionId);
+        for (Long permissionId : createdPermissions)
+            db.update("DELETE FROM permissions WHERE id=?", permissionId);
         for (Long accountId : accounts) db.update("DELETE FROM accounts WHERE id=?", accountId);
     }
 
     /** Tạo kho vận hành rõ ràng để test chi tiết Product lấy đúng tồn kho. */
     long createOperationalWarehouse() {
         String code = "CATALOG-STOCK-" + UUID.randomUUID();
-        db.update("INSERT INTO warehouses(code,name,status) VALUES (?,?, 'ACTIVE')",
-                code, "Catalog stock test");
+        db.update(
+                "INSERT INTO warehouses(code,name,status) VALUES (?,?, 'ACTIVE')",
+                code,
+                "Catalog stock test");
         long id = db.queryForObject("SELECT id FROM warehouses WHERE code=?", Long.class, code);
         warehouses.add(id);
         return id;
     }
 
     CatalogFixture createCatalog(Employee writer) throws Exception {
-        var categoryResponse = call("POST", "/api/v1/admin/categories", writer.token(),
-                Map.of("name", "Category " + UUID.randomUUID()));
+        var categoryResponse =
+                call(
+                        "POST",
+                        "/api/v1/admin/categories",
+                        writer.token(),
+                        Map.of("name", "Category " + UUID.randomUUID()));
         assertEquals(201, categoryResponse.status(), categoryResponse.body());
         long categoryId = categoryResponse.data().get("data").get("category_id").asLong();
         categories.add(categoryId);
 
-        var brandResponse = call("POST", "/api/v1/admin/brands", writer.token(),
-                Map.of("name", "Brand " + UUID.randomUUID()));
+        var brandResponse =
+                call(
+                        "POST",
+                        "/api/v1/admin/brands",
+                        writer.token(),
+                        Map.of("name", "Brand " + UUID.randomUUID()));
         assertEquals(201, brandResponse.status(), brandResponse.body());
         long brandId = brandResponse.data().get("data").get("brand_id").asLong();
         brands.add(brandId);
 
-        var created = call("POST", "/api/v1/admin/products", writer.token(),
-                Map.of("category_id", categoryId, "brand_id", brandId,
-                        "sku", "SKU-" + UUID.randomUUID(),
-                        "name", "FIDO Product " + UUID.randomUUID(),
-                        "description", "Catalog test fixture",
-                        "selling_price", 100000, "status", "ACTIVE"));
+        var created =
+                call(
+                        "POST",
+                        "/api/v1/admin/products",
+                        writer.token(),
+                        Map.of(
+                                "category_id",
+                                categoryId,
+                                "brand_id",
+                                brandId,
+                                "sku",
+                                "SKU-" + UUID.randomUUID(),
+                                "name",
+                                "FIDO Product " + UUID.randomUUID(),
+                                "description",
+                                "Catalog test fixture",
+                                "selling_price",
+                                100000,
+                                "status",
+                                "ACTIVE"));
         assertEquals(201, created.status(), created.body());
         long productId = created.data().get("data").get("product_id").asLong();
         products.add(productId);
 
-        return new CatalogFixture(categoryId, brandId, productId, categoryResponse, brandResponse, created);
+        return new CatalogFixture(
+                categoryId, brandId, productId, categoryResponse, brandResponse, created);
     }
-
 }

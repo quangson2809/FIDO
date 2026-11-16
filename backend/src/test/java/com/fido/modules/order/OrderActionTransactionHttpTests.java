@@ -29,7 +29,7 @@ class OrderActionTransactionHttpTests extends OrderHttpSupport {
         String code = "REFAC-" + UUID.randomUUID();
         db.update(
                 "INSERT INTO vouchers(code,discount_type,discount_value,status) VALUES"
-                    + " (?,'FIXED',1000,'ACTIVE')",
+                        + " (?,'FIXED',1000,'ACTIVE')",
                 code);
         Long voucherId =
                 db.queryForObject("SELECT id FROM vouchers WHERE code=?", Long.class, code);

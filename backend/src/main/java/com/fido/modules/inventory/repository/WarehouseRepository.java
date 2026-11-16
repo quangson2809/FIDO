@@ -1,6 +1,7 @@
 package com.fido.modules.inventory.repository;
 
 import com.fido.modules.inventory.entity.Warehouse;
+
 import org.springframework.data.repository.Repository;
 
 import java.util.List;

@@ -3,7 +3,7 @@ package com.fido.modules.order.controller;
 import com.fido.common.response.ApiResponse;
 import com.fido.modules.order.dto.request.CheckoutQuoteRequest;
 import com.fido.modules.order.dto.response.CheckoutQuoteDto;
-import com.fido.modules.order.service.CheckoutQuoteService;
+import com.fido.modules.order.service.checkout.CheckoutQuoteService;
 
 import jakarta.validation.Valid;
 

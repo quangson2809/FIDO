@@ -1,6 +1,6 @@
 package com.fido.modules.order.dto.request;
 
-import com.fido.modules.order.service.OrderAction;
+import com.fido.modules.order.service.action.OrderAction;
 
 import jakarta.validation.Constraint;
 import jakarta.validation.ConstraintValidator;

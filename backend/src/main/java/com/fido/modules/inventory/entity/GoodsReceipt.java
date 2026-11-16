@@ -1,6 +1,7 @@
 package com.fido.modules.inventory.entity;
 
 import jakarta.persistence.*;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -11,7 +12,10 @@ import java.time.ZoneOffset;
 @Entity
 @Table(
         name = "goods_receipts",
-        uniqueConstraints = @UniqueConstraint(name = "uq_goods_receipts_number", columnNames = {"receipt_number"}))
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uq_goods_receipts_number",
+                        columnNames = {"receipt_number"}))
 @Getter
 @Setter
 @NoArgsConstructor

@@ -1,6 +1,6 @@
 package com.fido.config.security;
 
-import com.fido.modules.account.service.SuperadminBootstrapService;
+import com.fido.modules.account.service.identity.SuperadminBootstrapService;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;

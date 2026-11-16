@@ -17,21 +17,21 @@ import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.jdbc.datasource.init.ScriptUtils;
 
-import javax.sql.DataSource;
-import java.util.UUID;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.jdbc.datasource.init.ScriptUtils;
+import java.util.UUID;
+
+import javax.sql.DataSource;
 
 @EnabledIfEnvironmentVariable(named = "CLEAN_RESET_TEST_DB_URL", matches = "jdbc:mysql:.*")
 class CleanTargetEntityMappingTests {
-
 
     private void installSchema(DataSource dataSource) {
         dropAllTables(dataSource);
@@ -45,12 +45,13 @@ class CleanTargetEntityMappingTests {
 
     private void dropAllTables(DataSource dataSource) {
         try (Connection connection = dataSource.getConnection();
-             var statement = connection.createStatement()) {
+                var statement = connection.createStatement()) {
             statement.execute("SET FOREIGN_KEY_CHECKS=0");
             List<String> tables = new ArrayList<>();
-            try (var rows = statement.executeQuery(
-                    "SELECT TABLE_NAME FROM information_schema.tables "
-                            + "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_TYPE='BASE TABLE'")) {
+            try (var rows =
+                    statement.executeQuery(
+                            "SELECT TABLE_NAME FROM information_schema.tables "
+                                    + "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_TYPE='BASE TABLE'")) {
                 while (rows.next()) tables.add(rows.getString(1));
             }
             for (String table : tables) {
@@ -58,17 +59,20 @@ class CleanTargetEntityMappingTests {
             }
             statement.execute("SET FOREIGN_KEY_CHECKS=1");
         } catch (SQLException failure) {
-            throw new IllegalStateException("Could not reset disposable schema-test database", failure);
+            throw new IllegalStateException(
+                    "Could not reset disposable schema-test database", failure);
         }
     }
 
     private DataSource newDataSource() {
-        DriverManagerDataSource dataSource = new DriverManagerDataSource(
-                System.getenv("CLEAN_RESET_TEST_DB_URL"),
-                System.getenv().getOrDefault("CLEAN_RESET_TEST_DB_USERNAME", "root"),
-                System.getenv().getOrDefault("CLEAN_RESET_TEST_DB_PASSWORD", ""));
+        DriverManagerDataSource dataSource =
+                new DriverManagerDataSource(
+                        System.getenv("CLEAN_RESET_TEST_DB_URL"),
+                        System.getenv().getOrDefault("CLEAN_RESET_TEST_DB_USERNAME", "root"),
+                        System.getenv().getOrDefault("CLEAN_RESET_TEST_DB_PASSWORD", ""));
         dataSource.setDriverClassName(
-                System.getenv().getOrDefault("CLEAN_RESET_TEST_DB_DRIVER", "com.mysql.cj.jdbc.Driver"));
+                System.getenv()
+                        .getOrDefault("CLEAN_RESET_TEST_DB_DRIVER", "com.mysql.cj.jdbc.Driver"));
         return dataSource;
     }
 
@@ -80,28 +84,37 @@ class CleanTargetEntityMappingTests {
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
             assertTargetNotNull(jdbc, "accounts", "full_name");
             assertTargetNotNull(jdbc, "accounts", "phone");
-            for (String column : new String[] {
-                    "recipient_name", "recipient_phone", "province", "district", "ward",
-                    "address_line", "updated_at"
-            }) {
+            for (String column :
+                    new String[] {
+                        "recipient_name",
+                        "recipient_phone",
+                        "province",
+                        "district",
+                        "ward",
+                        "address_line",
+                        "updated_at"
+                    }) {
                 assertTargetNotNull(jdbc, "addresses", column);
             }
 
-            StandardServiceRegistry registry = new StandardServiceRegistryBuilder()
-                    .applySetting("hibernate.connection.datasource", dataSource)
-                    .applySetting("hibernate.dialect", "org.hibernate.dialect.MySQLDialect")
-                    .applySetting("hibernate.hbm2ddl.auto", "validate")
-                    .build();
+            StandardServiceRegistry registry =
+                    new StandardServiceRegistryBuilder()
+                            .applySetting("hibernate.connection.datasource", dataSource)
+                            .applySetting("hibernate.dialect", "org.hibernate.dialect.MySQLDialect")
+                            .applySetting("hibernate.hbm2ddl.auto", "validate")
+                            .build();
             try {
-                MetadataSources metadata = new MetadataSources(registry)
-                        .addAnnotatedClass(Account.class)
-                        .addAnnotatedClass(Address.class)
-                        .addAnnotatedClass(Role.class)
-                        .addAnnotatedClass(Permission.class)
-                        .addAnnotatedClass(AccountRole.class)
-                        .addAnnotatedClass(RolePermission.class);
-                try (SessionFactory sessionFactory = metadata.buildMetadata().buildSessionFactory();
-                     Session session = sessionFactory.openSession()) {
+                MetadataSources metadata =
+                        new MetadataSources(registry)
+                                .addAnnotatedClass(Account.class)
+                                .addAnnotatedClass(Address.class)
+                                .addAnnotatedClass(Role.class)
+                                .addAnnotatedClass(Permission.class)
+                                .addAnnotatedClass(AccountRole.class)
+                                .addAnnotatedClass(RolePermission.class);
+                try (SessionFactory sessionFactory =
+                                metadata.buildMetadata().buildSessionFactory();
+                        Session session = sessionFactory.openSession()) {
                     Transaction transaction = session.beginTransaction();
                     Account account = new Account();
                     account.setFullName("Target Mapping Verification");
@@ -111,13 +124,23 @@ class CleanTargetEntityMappingTests {
                     session.persist(account);
 
                     Role role = new Role();
-                    role.setCode("P31_MAPPING_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12));
+                    role.setCode(
+                            "P31_MAPPING_"
+                                    + UUID.randomUUID()
+                                            .toString()
+                                            .replace("-", "")
+                                            .substring(0, 12));
                     role.setName("Mapping Verification");
                     role.setStatus("ACTIVE");
                     session.persist(role);
 
                     Permission permission = new Permission();
-                    permission.setCode("P31_MAPPING_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12));
+                    permission.setCode(
+                            "P31_MAPPING_"
+                                    + UUID.randomUUID()
+                                            .toString()
+                                            .replace("-", "")
+                                            .substring(0, 12));
                     permission.setName("Mapping Verification");
                     session.persist(permission);
                     session.flush();
@@ -145,17 +168,33 @@ class CleanTargetEntityMappingTests {
                     session.flush();
                     transaction.commit();
 
-                    assertEquals(1, jdbc.queryForObject(
-                            "SELECT COUNT(*) FROM accounts WHERE id=?", Integer.class, account.getAccountId()));
-                    assertEquals(1, jdbc.queryForObject(
-                            "SELECT COUNT(*) FROM addresses WHERE id=? AND account_id=?",
-                            Integer.class, address.getId(), account.getAccountId()));
-                    assertEquals(1, jdbc.queryForObject(
-                            "SELECT COUNT(*) FROM account_roles WHERE account_id=? AND role_id=?",
-                            Integer.class, account.getAccountId(), role.getRoleId()));
-                    assertEquals(1, jdbc.queryForObject(
-                            "SELECT COUNT(*) FROM role_permissions WHERE role_id=? AND permission_id=?",
-                            Integer.class, role.getRoleId(), permission.getPermissionId()));
+                    assertEquals(
+                            1,
+                            jdbc.queryForObject(
+                                    "SELECT COUNT(*) FROM accounts WHERE id=?",
+                                    Integer.class,
+                                    account.getAccountId()));
+                    assertEquals(
+                            1,
+                            jdbc.queryForObject(
+                                    "SELECT COUNT(*) FROM addresses WHERE id=? AND account_id=?",
+                                    Integer.class,
+                                    address.getId(),
+                                    account.getAccountId()));
+                    assertEquals(
+                            1,
+                            jdbc.queryForObject(
+                                    "SELECT COUNT(*) FROM account_roles WHERE account_id=? AND role_id=?",
+                                    Integer.class,
+                                    account.getAccountId(),
+                                    role.getRoleId()));
+                    assertEquals(
+                            1,
+                            jdbc.queryForObject(
+                                    "SELECT COUNT(*) FROM role_permissions WHERE role_id=? AND permission_id=?",
+                                    Integer.class,
+                                    role.getRoleId(),
+                                    permission.getPermissionId()));
                 }
             } finally {
                 StandardServiceRegistryBuilder.destroy(registry);
@@ -166,12 +205,13 @@ class CleanTargetEntityMappingTests {
     }
 
     private void assertTargetNotNull(JdbcTemplate jdbc, String table, String column) {
-        String nullable = jdbc.queryForObject(
-                "SELECT IS_NULLABLE FROM information_schema.columns "
-                        + "WHERE table_schema=DATABASE() AND table_name=? AND column_name=?",
-                String.class,
-                table,
-                column);
+        String nullable =
+                jdbc.queryForObject(
+                        "SELECT IS_NULLABLE FROM information_schema.columns "
+                                + "WHERE table_schema=DATABASE() AND table_name=? AND column_name=?",
+                        String.class,
+                        table,
+                        column);
         assertEquals("NO", nullable, table + "." + column + " must be NOT NULL in target schema");
     }
 }

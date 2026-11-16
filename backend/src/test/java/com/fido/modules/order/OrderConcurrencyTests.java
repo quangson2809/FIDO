@@ -72,7 +72,7 @@ class OrderConcurrencyTests extends OrderHttpSupport {
             var appliedOrder =
                     db.queryForList(
                             "SELECT tx.product_id FROM inventory_transactions tx JOIN order_items oi ON oi.id=tx.order_item_id WHERE oi.order_id=? AND"
-                                + " tx.transaction_type='ORDER' ORDER BY tx.id",
+                                    + " tx.transaction_type='ORDER' ORDER BY tx.id",
                             Long.class,
                             orderId);
             assertEquals(

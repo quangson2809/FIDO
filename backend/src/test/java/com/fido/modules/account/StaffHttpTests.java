@@ -31,14 +31,22 @@ class StaffHttpTests extends AccountHttpSupport {
 
         created.add(accountId);
 
-        var duplicatePhone = call(
-                "POST", "/api/v1/admin/staff-accounts", token,
-                Map.of("phone", phone, "full_name", "Duplicate Staff", "password", PASSWORD));
+        var duplicatePhone =
+                call(
+                        "POST",
+                        "/api/v1/admin/staff-accounts",
+                        token,
+                        Map.of(
+                                "phone",
+                                phone,
+                                "full_name",
+                                "Duplicate Staff",
+                                "password",
+                                PASSWORD));
         assertEquals(409, duplicatePhone.status(), duplicatePhone.body());
         assertEquals("PHONE_ALREADY_IN_USE", duplicatePhone.data().get("code").asText());
 
-        long adminRoleId =
-                db.queryForObject("SELECT id FROM roles WHERE code='ADMIN'", Long.class);
+        long adminRoleId = db.queryForObject("SELECT id FROM roles WHERE code='ADMIN'", Long.class);
 
         assertEquals("ADMIN", added.data().get("data").get("roles").get(0).get("code").asText());
 
@@ -58,7 +66,10 @@ class StaffHttpTests extends AccountHttpSupport {
         var page =
                 call(
                         "GET",
-                        "/api/v1/admin/staff-accounts?q=" + phone.replace("+", "%2B") + "&role_id=" + adminRoleId,
+                        "/api/v1/admin/staff-accounts?q="
+                                + phone.replace("+", "%2B")
+                                + "&role_id="
+                                + adminRoleId,
                         token,
                         null);
 
@@ -72,7 +83,8 @@ class StaffHttpTests extends AccountHttpSupport {
                 400,
                 call("GET", "/api/v1/admin/staff-accounts?page_size=101", token, null).status());
 
-        var protectedAdminDelete = call("DELETE", "/api/v1/admin/roles/" + adminRoleId, token, null);
+        var protectedAdminDelete =
+                call("DELETE", "/api/v1/admin/roles/" + adminRoleId, token, null);
         assertEquals(409, protectedAdminDelete.status(), protectedAdminDelete.body());
         assertEquals("SYSTEM_ROLE_PROTECTED", protectedAdminDelete.data().get("code").asText());
 
@@ -106,7 +118,7 @@ class StaffHttpTests extends AccountHttpSupport {
                 0,
                 db.queryForObject(
                         "SELECT COUNT(*) FROM accounts WHERE id=? AND"
-                            + " email='staff@example.test'",
+                                + " email='staff@example.test'",
                         Integer.class,
                         accountId));
 
@@ -142,9 +154,12 @@ class StaffHttpTests extends AccountHttpSupport {
 
         long rootId = me.data().get("data").get("account").get("id").asLong();
 
-        var lastSuperadmin = call(
-                "PATCH", "/api/v1/admin/staff-accounts/" + rootId, token,
-                Map.of("role_ids", List.of(adminRoleId)));
+        var lastSuperadmin =
+                call(
+                        "PATCH",
+                        "/api/v1/admin/staff-accounts/" + rootId,
+                        token,
+                        Map.of("role_ids", List.of(adminRoleId)));
         assertEquals(409, lastSuperadmin.status(), lastSuperadmin.body());
         assertEquals("LAST_SUPERADMIN_REQUIRED", lastSuperadmin.data().get("code").asText());
     }
@@ -154,56 +169,78 @@ class StaffHttpTests extends AccountHttpSupport {
         String token = root();
         String phone = phone();
         long deletedAccountId = register(phone);
-        db.update(
-                "UPDATE accounts SET deleted_at=CURRENT_TIMESTAMP WHERE id=?",
-                deletedAccountId);
+        db.update("UPDATE accounts SET deleted_at=CURRENT_TIMESTAMP WHERE id=?", deletedAccountId);
 
-        var response = call(
-                "POST",
-                "/api/v1/admin/staff-accounts",
-                token,
-                Map.of("phone", phone, "full_name", "Replacement Staff", "password", PASSWORD));
+        var response =
+                call(
+                        "POST",
+                        "/api/v1/admin/staff-accounts",
+                        token,
+                        Map.of(
+                                "phone",
+                                phone,
+                                "full_name",
+                                "Replacement Staff",
+                                "password",
+                                PASSWORD));
 
         assertEquals(201, response.status(), response.body());
         long replacementId = response.data().get("data").get("account").get("id").asLong();
         created.add(replacementId);
-        assertEquals(2, db.queryForObject(
-                "SELECT COUNT(*) FROM accounts WHERE phone=?", Integer.class, phone));
-        assertEquals(1, db.queryForObject(
-                "SELECT COUNT(*) FROM accounts WHERE phone=? AND deleted_at IS NULL",
-                Integer.class, phone));
+        assertEquals(
+                2,
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM accounts WHERE phone=?", Integer.class, phone));
+        assertEquals(
+                1,
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM accounts WHERE phone=? AND deleted_at IS NULL",
+                        Integer.class,
+                        phone));
     }
 
     @Test
     void staffUpdateAllowsPhoneReusedAfterSoftDelete() throws Exception {
         String token = root();
         String staffPhone = phone();
-        var createdStaff = call(
-                "POST",
-                "/api/v1/admin/staff-accounts",
-                token,
-                Map.of("phone", staffPhone, "full_name", "Staff Update Test", "password", PASSWORD));
+        var createdStaff =
+                call(
+                        "POST",
+                        "/api/v1/admin/staff-accounts",
+                        token,
+                        Map.of(
+                                "phone",
+                                staffPhone,
+                                "full_name",
+                                "Staff Update Test",
+                                "password",
+                                PASSWORD));
         assertEquals(201, createdStaff.status(), createdStaff.body());
         long staffId = createdStaff.data().get("data").get("account").get("id").asLong();
         created.add(staffId);
 
         String deletedPhone = phone();
         long deletedAccountId = register(deletedPhone);
-        db.update(
-                "UPDATE accounts SET deleted_at=CURRENT_TIMESTAMP WHERE id=?",
-                deletedAccountId);
+        db.update("UPDATE accounts SET deleted_at=CURRENT_TIMESTAMP WHERE id=?", deletedAccountId);
 
-        var response = call(
-                "PATCH",
-                "/api/v1/admin/staff-accounts/" + staffId,
-                token,
-                Map.of("phone", deletedPhone));
+        var response =
+                call(
+                        "PATCH",
+                        "/api/v1/admin/staff-accounts/" + staffId,
+                        token,
+                        Map.of("phone", deletedPhone));
 
         assertEquals(200, response.status(), response.body());
-        assertEquals(deletedPhone, response.data().get("data").get("account").get("phone").asText());
-        assertEquals(deletedPhone, db.queryForObject(
-                "SELECT phone FROM accounts WHERE id=?", String.class, staffId));
-        assertEquals(2, db.queryForObject(
-                "SELECT COUNT(*) FROM accounts WHERE phone=?", Integer.class, deletedPhone));
+        assertEquals(
+                deletedPhone, response.data().get("data").get("account").get("phone").asText());
+        assertEquals(
+                deletedPhone,
+                db.queryForObject("SELECT phone FROM accounts WHERE id=?", String.class, staffId));
+        assertEquals(
+                2,
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM accounts WHERE phone=?",
+                        Integer.class,
+                        deletedPhone));
     }
 }

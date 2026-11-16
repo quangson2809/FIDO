@@ -31,10 +31,10 @@ public final class InventoryPolicy {
     /** Mã lý do điều chỉnh thuộc tập cho phép; không lưu văn bản tự do vào reason_code. */
     private static final Set<String> ADJUSTMENT_REASON_CODES =
             Set.of("COUNT_CORRECTION", "DAMAGE", "LOSS", "FOUND", "DATA_CORRECTION");
+
     private static final Set<String> REVERSAL_REASON_CODES =
             Set.of("COUNT_CORRECTION", "DATA_CORRECTION", "REVERSAL");
-    private static final Pattern SOURCE_OPERATION_ID =
-            Pattern.compile("[A-Za-z0-9._:-]{1,80}");
+    private static final Pattern SOURCE_OPERATION_ID = Pattern.compile("[A-Za-z0-9._:-]{1,80}");
 
     private InventoryPolicy() {}
 
@@ -47,7 +47,8 @@ public final class InventoryPolicy {
     }
 
     public static boolean isValidSourceOperationId(String sourceOperationId) {
-        return sourceOperationId != null && SOURCE_OPERATION_ID.matcher(sourceOperationId).matches();
+        return sourceOperationId != null
+                && SOURCE_OPERATION_ID.matcher(sourceOperationId).matches();
     }
 
     public static void requireSupplierStatus(String status) {

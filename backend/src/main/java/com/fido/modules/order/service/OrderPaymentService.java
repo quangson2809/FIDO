@@ -58,17 +58,31 @@ public class OrderPaymentService {
     @PreAuthorize(PAYMENT)
     public OrderAdminDetailDto action(
             Long actor, Long orderId, PaymentActionRequest request, Authentication authentication) {
-        if (request == null
-                || !"COMPLETE_DELIVERY_AND_COLLECT_COD".equals(request.action())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ORDER_PAYMENT_ACTION_INVALID");
+        if (request == null || !"COMPLETE_DELIVERY_AND_COLLECT_COD".equals(request.action())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "ORDER_PAYMENT_ACTION_INVALID");
         }
 
-        Order order = orders.findByIdForUpdate(orderId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND"));
-        Payment payment = payments.findByOrderIdForUpdate(orderId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "ORDER_PAYMENT_MISSING"));
-        ShippingInfo shipping = shippingInfos.findById(orderId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "ORDER_SHIPPING_INFO_MISSING"));
+        Order order =
+                orders.findByIdForUpdate(orderId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND"));
+        Payment payment =
+                payments.findByOrderIdForUpdate(orderId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.CONFLICT, "ORDER_PAYMENT_MISSING"));
+        ShippingInfo shipping =
+                shippingInfos
+                        .findById(orderId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.CONFLICT,
+                                                "ORDER_SHIPPING_INFO_MISSING"));
 
         if (OrderPolicy.REFUNDED.equals(payment.getPaymentStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "PAYMENT_ALREADY_REFUNDED");
@@ -78,7 +92,8 @@ public class OrderPaymentService {
         }
         // Đối chiếu cả trạng thái, số tiền, tiền tệ và dấu vết thu/hoàn; UNPAID đơn lẻ chưa chứng
         // minh đủ điều kiện thu.
-        if (actor == null || actor <= 0
+        if (actor == null
+                || actor <= 0
                 || !OrderPolicy.SHIPPING.equals(order.getOrderStatus())
                 || !OrderPolicy.UNPAID.equals(payment.getPaymentStatus())
                 || !"SHIPPED".equals(shipping.getShippingStatus())
@@ -94,7 +109,8 @@ public class OrderPaymentService {
                 || payment.getRefundedAt() != null
                 || payment.getRefundReason() != null
                 || shipping.getDeliveredAt() != null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "ORDER_COD_COLLECTION_NOT_ALLOWED");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "ORDER_COD_COLLECTION_NOT_ALLOWED");
         }
 
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
@@ -114,27 +130,31 @@ public class OrderPaymentService {
         shippingInfos.save(shipping);
         payments.save(payment);
 
-        audit.record(AuditWriteEvent.withChanges(
-                AuditAction.ORDER_COMPLETE,
-                AuditEntityType.ORDER,
-                orderId.toString(),
-                Map.of(
-                        "status", beforeOrderStatus,
-                        "payment_status", beforePaymentStatus,
-                        "shipping_status", beforeShippingStatus),
-                Map.of(
-                        "status", order.getOrderStatus(),
-                        "payment_status", payment.getPaymentStatus(),
-                        "shipping_status", shipping.getShippingStatus(),
-                        "total_amount", collectionAmount)));
-        audit.record(AuditWriteEvent.withChanges(
-                AuditAction.ORDER_COD_COLLECT,
-                AuditEntityType.PAYMENT,
-                orderId.toString(),
-                Map.of("payment_status", beforePaymentStatus),
-                Map.of(
-                        "payment_status", payment.getPaymentStatus(),
-                        "total_amount", collectionAmount)));
+        audit.record(
+                AuditWriteEvent.withChanges(
+                        AuditAction.ORDER_COMPLETE,
+                        AuditEntityType.ORDER,
+                        orderId.toString(),
+                        Map.of(
+                                "status", beforeOrderStatus,
+                                "payment_status", beforePaymentStatus,
+                                "shipping_status", beforeShippingStatus),
+                        Map.of(
+                                "status", order.getOrderStatus(),
+                                "payment_status", payment.getPaymentStatus(),
+                                "shipping_status", shipping.getShippingStatus(),
+                                "total_amount", collectionAmount)));
+        audit.record(
+                AuditWriteEvent.withChanges(
+                        AuditAction.ORDER_COD_COLLECT,
+                        AuditEntityType.PAYMENT,
+                        orderId.toString(),
+                        Map.of("payment_status", beforePaymentStatus),
+                        Map.of(
+                                "payment_status",
+                                payment.getPaymentStatus(),
+                                "total_amount",
+                                collectionAmount)));
 
         return query.adminDetailInternal(order, authentication);
     }

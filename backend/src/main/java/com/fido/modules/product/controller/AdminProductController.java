@@ -61,7 +61,8 @@ public class AdminProductController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Integer page,
             @RequestParam(name = "page_size", required = false) Integer pageSize) {
-        return query.adminProducts(q, categoryId, brandId, parentProductId, rootOnly, status, page, pageSize);
+        return query.adminProducts(
+                q, categoryId, brandId, parentProductId, rootOnly, status, page, pageSize);
     }
 
     @GetMapping("/products/{productId}")

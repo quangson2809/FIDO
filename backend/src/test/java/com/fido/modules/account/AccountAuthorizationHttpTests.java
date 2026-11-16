@@ -56,12 +56,17 @@ class AccountAuthorizationHttpTests extends AccountHttpSupport {
         long accountId = register(phone);
         long permissionId =
                 db.queryForObject(
-                        "SELECT id FROM permissions WHERE code='REPORT_READ'",
-                        Long.class);
+                        "SELECT id FROM permissions WHERE code='REPORT_READ'", Long.class);
         String roleCode = "inactive-test-" + java.util.UUID.randomUUID();
-        db.update("INSERT INTO roles(code,name,status) VALUES (?,?,'ACTIVE')", roleCode, "Inactive test");
+        db.update(
+                "INSERT INTO roles(code,name,status) VALUES (?,?,'ACTIVE')",
+                roleCode,
+                "Inactive test");
         long roleId = db.queryForObject("SELECT id FROM roles WHERE code=?", Long.class, roleCode);
-        db.update("INSERT INTO role_permissions(role_id,permission_id) VALUES (?,?)", roleId, permissionId);
+        db.update(
+                "INSERT INTO role_permissions(role_id,permission_id) VALUES (?,?)",
+                roleId,
+                permissionId);
         db.update(
                 "INSERT INTO account_roles(account_id,role_id) SELECT ?,id FROM roles WHERE code='ADMIN'",
                 accountId);

@@ -5,8 +5,8 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.TypeMismatchException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -33,16 +33,33 @@ import java.util.stream.Collectors;
 @ControllerAdvice
 public class ApiExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
-    private static final Set<String> PUBLIC_CODES = Set.of(
-            "INVALID_CREDENTIALS", "UNAUTHENTICATED", "FORBIDDEN", "ACCOUNT_NOT_ACTIVE",
-            "VALIDATION_ERROR", "RESOURCE_NOT_FOUND", "PHONE_ALREADY_IN_USE",
-            "ROLE_CODE_ALREADY_EXISTS", "PERMISSION_CODE_ALREADY_EXISTS",
-            "LAST_SUPERADMIN_REQUIRED", "ROLE_IN_USE", "PERMISSION_IN_USE",
-            "SYSTEM_ROLE_PROTECTED", "SYSTEM_PERMISSION_PROTECTED", "ACCOUNT_STATE_CONFLICT",
-            "CART_SELECTION_AMBIGUOUS", "CART_ITEM_NOT_FOUND", "PRODUCT_NOT_AVAILABLE",
-            "PRODUCT_SKU_ALREADY_EXISTS", "PRODUCT_PARENT_INVALID", "PRODUCT_PARENT_NOT_FOUND",
-            "PRODUCT_CATEGORY_INACTIVE", "PRODUCT_BRAND_INACTIVE",
-            "PRODUCT_CATEGORY_NOT_FOUND", "PRODUCT_BRAND_NOT_FOUND");
+    private static final Set<String> PUBLIC_CODES =
+            Set.of(
+                    "INVALID_CREDENTIALS",
+                    "UNAUTHENTICATED",
+                    "FORBIDDEN",
+                    "ACCOUNT_NOT_ACTIVE",
+                    "VALIDATION_ERROR",
+                    "RESOURCE_NOT_FOUND",
+                    "PHONE_ALREADY_IN_USE",
+                    "ROLE_CODE_ALREADY_EXISTS",
+                    "PERMISSION_CODE_ALREADY_EXISTS",
+                    "LAST_SUPERADMIN_REQUIRED",
+                    "ROLE_IN_USE",
+                    "PERMISSION_IN_USE",
+                    "SYSTEM_ROLE_PROTECTED",
+                    "SYSTEM_PERMISSION_PROTECTED",
+                    "ACCOUNT_STATE_CONFLICT",
+                    "CART_SELECTION_AMBIGUOUS",
+                    "CART_ITEM_NOT_FOUND",
+                    "PRODUCT_NOT_AVAILABLE",
+                    "PRODUCT_SKU_ALREADY_EXISTS",
+                    "PRODUCT_PARENT_INVALID",
+                    "PRODUCT_PARENT_NOT_FOUND",
+                    "PRODUCT_CATEGORY_INACTIVE",
+                    "PRODUCT_BRAND_INACTIVE",
+                    "PRODUCT_CATEGORY_NOT_FOUND",
+                    "PRODUCT_BRAND_NOT_FOUND");
 
     private final ObjectMapper json;
 
@@ -63,10 +80,14 @@ public class ApiExceptionHandler {
         String diagnosticMessage = diagnosticMessage(exception, status);
         Object route = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
         String context =
-                "method=" + request.getMethod()
-                        + " route=" + (route == null ? "unmapped" : route)
-                        + " ids=" + numericPathIds(request)
-                        + " status=" + status;
+                "method="
+                        + request.getMethod()
+                        + " route="
+                        + (route == null ? "unmapped" : route)
+                        + " ids="
+                        + numericPathIds(request)
+                        + " status="
+                        + status;
         if (status >= 500) {
             log.error("{}; {}", diagnosticMessage, context, diagnosticTrace(exception, 0));
         } else if (exception instanceof ConcurrencyFailureException
@@ -122,7 +143,8 @@ public class ApiExceptionHandler {
             return error.getStatusCode().value();
         }
         ResponseStatus annotation =
-                AnnotatedElementUtils.findMergedAnnotation(exception.getClass(), ResponseStatus.class);
+                AnnotatedElementUtils.findMergedAnnotation(
+                        exception.getClass(), ResponseStatus.class);
         return annotation == null ? 500 : annotation.code().value();
     }
 
@@ -180,23 +202,27 @@ public class ApiExceptionHandler {
             case "PERMISSION_IN_USE" -> "Permission is still granted to a business role.";
             case "SYSTEM_ROLE_PROTECTED" -> "The requested system role mutation is protected.";
             case "SYSTEM_PERMISSION_PROTECTED" -> "The requested system permission is protected.";
-            case "ACCOUNT_STATE_CONFLICT" -> "The account state transition conflicts with current state.";
-            case "CART_SELECTION_AMBIGUOUS" -> "Exactly one OPEN cart is required for this operation.";
+            case "ACCOUNT_STATE_CONFLICT" ->
+                    "The account state transition conflicts with current state.";
+            case "CART_SELECTION_AMBIGUOUS" ->
+                    "Exactly one OPEN cart is required for this operation.";
             case "CART_ITEM_NOT_FOUND" -> "Cart item was not found in the current OPEN cart.";
             case "PRODUCT_NOT_AVAILABLE" -> "Product is not available for sale.";
             case "PRODUCT_CATEGORY_NOT_FOUND" -> "Selected category was not found.";
             case "PRODUCT_BRAND_NOT_FOUND" -> "Selected brand was not found.";
             case "PRODUCT_SKU_ALREADY_EXISTS" -> "Product SKU already exists.";
-            case "PRODUCT_PARENT_INVALID" -> "Product parent must preserve a single-level hierarchy.";
+            case "PRODUCT_PARENT_INVALID" ->
+                    "Product parent must preserve a single-level hierarchy.";
             case "PRODUCT_PARENT_NOT_FOUND" -> "Product parent was not found.";
             case "PRODUCT_CATEGORY_INACTIVE" -> "Selected category is inactive.";
             case "PRODUCT_BRAND_INACTIVE" -> "Selected brand is inactive.";
             case "CONFLICT" -> "Operation conflicts with the current resource state.";
             case "INTERNAL_ERROR" -> "Unexpected server failure while processing request.";
             case "NOT_IMPLEMENTED" -> "Requested operation is not implemented.";
-            default -> status >= 500
-                    ? "Unexpected server failure while processing request."
-                    : "Request was rejected.";
+            default ->
+                    status >= 500
+                            ? "Unexpected server failure while processing request."
+                            : "Request was rejected.";
         };
     }
 
@@ -216,9 +242,10 @@ public class ApiExceptionHandler {
             case 502 -> "Upstream service rejected the request or returned invalid data";
             case 503 -> "Required service is unavailable or not configured";
             case 504 -> "Upstream service request timed out";
-            default -> status >= 500
-                    ? "Unexpected server failure while processing request"
-                    : "Request was rejected";
+            default ->
+                    status >= 500
+                            ? "Unexpected server failure while processing request"
+                            : "Request was rejected";
         };
     }
 
@@ -226,8 +253,10 @@ public class ApiExceptionHandler {
         Object variables = request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
         if (!(variables instanceof Map<?, ?> paths)) return "{}";
         return paths.entrySet().stream()
-                .filter(entry -> entry.getValue() instanceof String value
-                        && value.matches("[0-9]{1,19}"))
+                .filter(
+                        entry ->
+                                entry.getValue() instanceof String value
+                                        && value.matches("[0-9]{1,19}"))
                 .map(entry -> entry.getKey() + "=" + entry.getValue())
                 .collect(Collectors.joining(",", "{", "}"));
     }

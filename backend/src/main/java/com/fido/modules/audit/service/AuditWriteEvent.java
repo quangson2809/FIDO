@@ -23,7 +23,8 @@ public record AuditWriteEvent(
 
         entityId = entityId.trim();
         if (!SAFE_ENTITY_ID.matcher(entityId).matches()) {
-            throw new IllegalArgumentException("entityId must be a stable non-sensitive identifier");
+            throw new IllegalArgumentException(
+                    "entityId must be a stable non-sensitive identifier");
         }
 
         beforeData = immutableCopy(beforeData);

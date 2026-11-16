@@ -3,8 +3,9 @@ package com.fido.modules.inventory.service;
 import com.fido.common.response.ApiListResponse;
 import com.fido.common.response.Pagination;
 import com.fido.modules.inventory.dto.response.InventoryReconciliationRowDto;
-import com.fido.modules.inventory.repository.InventoryReconciliationView;
 import com.fido.modules.inventory.repository.InventoryTransactionRepository;
+import com.fido.modules.inventory.repository.projection.InventoryReconciliationView;
+
 import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -26,23 +27,32 @@ public class InventoryReconciliationService {
      * Chỉ trả sai lệch để kiểm tra, không tự ghi sửa số dư hoặc ledger.
      */
     @PreAuthorize(READ)
-    public ApiListResponse<InventoryReconciliationRowDto> reconcile(Integer page, Integer pageSize) {
+    public ApiListResponse<InventoryReconciliationRowDto> reconcile(
+            Integer page, Integer pageSize) {
         Pagination pagination = Pagination.of(page, pageSize);
         Page<InventoryReconciliationView> result = transactions.reconcile(pagination.toPageable());
-        var rows = result.getContent().stream().map(row -> {
-            boolean quantityMatches = row.getQuantityMatches() != null && row.getQuantityMatches().intValue() != 0;
-            boolean versionMatches = row.getVersionMatches() != null && row.getVersionMatches().intValue() != 0;
-            return new InventoryReconciliationRowDto(
-                    row.getWarehouseId(),
-                    row.getProductId(),
-                    row.getBalanceQuantity(),
-                    row.getBalanceVersion(),
-                    row.getLedgerQuantity(),
-                    row.getMovementCount(),
-                    quantityMatches,
-                    versionMatches,
-                    quantityMatches && versionMatches);
-        }).toList();
+        var rows =
+                result.getContent().stream()
+                        .map(
+                                row -> {
+                                    boolean quantityMatches =
+                                            row.getQuantityMatches() != null
+                                                    && row.getQuantityMatches().intValue() != 0;
+                                    boolean versionMatches =
+                                            row.getVersionMatches() != null
+                                                    && row.getVersionMatches().intValue() != 0;
+                                    return new InventoryReconciliationRowDto(
+                                            row.getWarehouseId(),
+                                            row.getProductId(),
+                                            row.getBalanceQuantity(),
+                                            row.getBalanceVersion(),
+                                            row.getLedgerQuantity(),
+                                            row.getMovementCount(),
+                                            quantityMatches,
+                                            versionMatches,
+                                            quantityMatches && versionMatches);
+                                })
+                        .toList();
         return ApiListResponse.of(rows, pagination.meta(result.getTotalElements()));
     }
 }

@@ -55,9 +55,16 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
                         List.of(imagePart("front.png"), imagePart("back.png")));
 
         assertEquals(201, response.status(), response.body());
-        var timestamp = db.queryForObject("SELECT updated_at FROM products WHERE id=?", java.time.LocalDateTime.class, fixture.productId());
+        var timestamp =
+                db.queryForObject(
+                        "SELECT updated_at FROM products WHERE id=?",
+                        java.time.LocalDateTime.class,
+                        fixture.productId());
         org.junit.jupiter.api.Assertions.assertTrue(timestamp.isAfter(old));
-        assertEquals(timestamp, java.time.LocalDateTime.parse(response.data().get("data").get("updated_at").asText()));
+        assertEquals(
+                timestamp,
+                java.time.LocalDateTime.parse(
+                        response.data().get("data").get("updated_at").asText()));
         assertEquals(
                 List.of("https://storage.test/front.png", "https://storage.test/back.png"),
                 responseImageUrls(response));
@@ -185,7 +192,11 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
         var fixture = createCatalog(writer);
         clearImages(fixture.productId());
 
-        var beforeTimestamp = db.queryForObject("SELECT updated_at FROM products WHERE id=?", java.time.LocalDateTime.class, fixture.productId());
+        var beforeTimestamp =
+                db.queryForObject(
+                        "SELECT updated_at FROM products WHERE id=?",
+                        java.time.LocalDateTime.class,
+                        fixture.productId());
         storage.fail(HttpStatus.BAD_GATEWAY, "Image storage request failed");
 
         var response =
@@ -193,7 +204,12 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
 
         assertEquals(502, response.status(), response.body());
         assertEquals(List.of("failed.png"), storage.uploadedFilenames());
-        assertEquals(beforeTimestamp, db.queryForObject("SELECT updated_at FROM products WHERE id=?", java.time.LocalDateTime.class, fixture.productId()));
+        assertEquals(
+                beforeTimestamp,
+                db.queryForObject(
+                        "SELECT updated_at FROM products WHERE id=?",
+                        java.time.LocalDateTime.class,
+                        fixture.productId()));
         assertEquals(0, imageCount(fixture.productId()));
     }
 
@@ -386,8 +402,7 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
                         "SELECT sort_order FROM product_images WHERE product_id=? ORDER BY sort_order,id",
                         (resultSet, rowNumber) -> resultSet.getInt(1),
                         productId);
-        assertEquals(
-                java.util.stream.IntStream.range(0, orders.size()).boxed().toList(), orders);
+        assertEquals(java.util.stream.IntStream.range(0, orders.size()).boxed().toList(), orders);
     }
 
     private record UploadPart(String filename, String contentType, byte[] content) {}

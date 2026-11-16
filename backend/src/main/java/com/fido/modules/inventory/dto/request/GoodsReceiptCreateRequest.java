@@ -8,8 +8,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import java.util.List;
 
 public record GoodsReceiptCreateRequest(
-        @NotNull @Positive Long supplier_id,
-        @NotNull @Valid List<ItemInput> items) {
+        @NotNull @Positive Long supplier_id, @NotNull @Valid List<ItemInput> items) {
 
     public record ItemInput(
             @NotNull @Positive Long product_id,

@@ -52,7 +52,9 @@ class ApiBaselineRouteContractTests {
                     new Route("GET", "/api/v1/content-pages/{slug}"),
                     new Route("GET", "/api/v1/admin/inventory/reconciliation"),
                     new Route("GET", "/api/v1/admin/content-pages/{pageId}"),
-                    new Route("POST", "/api/v1/admin/inventory/transactions/{transactionId}/reversal"),
+                    new Route(
+                            "POST",
+                            "/api/v1/admin/inventory/transactions/{transactionId}/reversal"),
                     new Route("DELETE", "/api/v1/admin/products/{productId}/images/{imageId}"),
                     new Route("PATCH", "/api/v1/admin/products/{productId}/images"),
                     new Route("GET", "/api/v1/admin/vouchers"),
@@ -62,7 +64,9 @@ class ApiBaselineRouteContractTests {
                     new Route("POST", "/api/v1/admin/catalog/attributes"),
                     new Route("PATCH", "/api/v1/admin/catalog/attributes/{attributeId}"),
                     new Route("POST", "/api/v1/admin/catalog/attributes/{attributeId}/options"),
-                    new Route("PATCH", "/api/v1/admin/catalog/attributes/{attributeId}/options/{optionId}"));
+                    new Route(
+                            "PATCH",
+                            "/api/v1/admin/catalog/attributes/{attributeId}/options/{optionId}"));
 
     @Autowired
     @Qualifier("requestMappingHandlerMapping")
@@ -73,7 +77,8 @@ class ApiBaselineRouteContractTests {
         Set<Route> baseline = baselineRoutes();
         Set<Route> expected =
                 Stream.concat(
-                                baseline.stream().filter(route -> !APPROVED_ROUTE_REMOVALS.contains(route)),
+                                baseline.stream()
+                                        .filter(route -> !APPROVED_ROUTE_REMOVALS.contains(route)),
                                 Stream.concat(
                                         APPROVED_REFINEMENT_ROUTES.stream(),
                                         APPROVED_ROUTE_ADDITIONS.stream()))

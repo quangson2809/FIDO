@@ -36,37 +36,38 @@ import javax.sql.DataSource;
 @Transactional
 @Sql("/persistence-fixture.sql")
 class SchemaMappingTests {
-    private static final Map<String, String> OWNERS = Map.ofEntries(
-            Map.entry("accounts", "account"),
-            Map.entry("addresses", "account"),
-            Map.entry("roles", "account"),
-            Map.entry("permissions", "account"),
-            Map.entry("account_roles", "account"),
-            Map.entry("role_permissions", "account"),
-            Map.entry("categories", "product"),
-            Map.entry("brands", "product"),
-            Map.entry("attributes", "product"),
-            Map.entry("attribute_options", "product"),
-            Map.entry("products", "product"),
-            Map.entry("product_attribute_values", "product"),
-            Map.entry("product_images", "product"),
-            Map.entry("carts", "cart"),
-            Map.entry("cart_items", "cart"),
-            Map.entry("vouchers", "promotion"),
-            Map.entry("orders", "order"),
-            Map.entry("order_items", "order"),
-            Map.entry("order_addresses", "order"),
-            Map.entry("order_voucher_snapshots", "order"),
-            Map.entry("payments", "order"),
-            Map.entry("shipping_infos", "order"),
-            Map.entry("suppliers", "inventory"),
-            Map.entry("warehouses", "inventory"),
-            Map.entry("goods_receipts", "inventory"),
-            Map.entry("goods_receipt_items", "inventory"),
-            Map.entry("inventories", "inventory"),
-            Map.entry("inventory_transactions", "inventory"),
-            Map.entry("audit_logs", "audit"),
-            Map.entry("content_pages", "content"));
+    private static final Map<String, String> OWNERS =
+            Map.ofEntries(
+                    Map.entry("accounts", "account"),
+                    Map.entry("addresses", "account"),
+                    Map.entry("roles", "account"),
+                    Map.entry("permissions", "account"),
+                    Map.entry("account_roles", "account"),
+                    Map.entry("role_permissions", "account"),
+                    Map.entry("categories", "product"),
+                    Map.entry("brands", "product"),
+                    Map.entry("attributes", "product"),
+                    Map.entry("attribute_options", "product"),
+                    Map.entry("products", "product"),
+                    Map.entry("product_attribute_values", "product"),
+                    Map.entry("product_images", "product"),
+                    Map.entry("carts", "cart"),
+                    Map.entry("cart_items", "cart"),
+                    Map.entry("vouchers", "promotion"),
+                    Map.entry("orders", "order"),
+                    Map.entry("order_items", "order"),
+                    Map.entry("order_addresses", "order"),
+                    Map.entry("order_voucher_snapshots", "order"),
+                    Map.entry("payments", "order"),
+                    Map.entry("shipping_infos", "order"),
+                    Map.entry("suppliers", "inventory"),
+                    Map.entry("warehouses", "inventory"),
+                    Map.entry("goods_receipts", "inventory"),
+                    Map.entry("goods_receipt_items", "inventory"),
+                    Map.entry("inventories", "inventory"),
+                    Map.entry("inventory_transactions", "inventory"),
+                    Map.entry("audit_logs", "audit"),
+                    Map.entry("content_pages", "content"));
 
     @Autowired EntityManager em;
     @Autowired DataSource dataSource;
@@ -80,18 +81,20 @@ class SchemaMappingTests {
             Table tableAnnotation = type.getAnnotation(Table.class);
             assertNotNull(tableAnnotation, type.getName());
             String table = tableAnnotation.name();
-            assertEquals("com.fido.modules." + OWNERS.get(table) + ".entity", type.getPackageName());
+            assertEquals(
+                    "com.fido.modules." + OWNERS.get(table) + ".entity", type.getPackageName());
             mapped.add(table);
 
-            Object key = switch (table) {
-                case "roles" -> 101L;
-                case "permissions" -> 1001L;
-                case "account_roles" -> new AccountRoleId(1L, 101L);
-                case "role_permissions" -> new RolePermissionId(101L, 1001L);
-                case "product_attribute_values" -> new ProductAttributeValueId(1L, 1L);
-                case "inventories" -> new Inventory.InventoryId(1L, 1L);
-                default -> 1L;
-            };
+            Object key =
+                    switch (table) {
+                        case "roles" -> 101L;
+                        case "permissions" -> 1001L;
+                        case "account_roles" -> new AccountRoleId(1L, 101L);
+                        case "role_permissions" -> new RolePermissionId(101L, 1001L);
+                        case "product_attribute_values" -> new ProductAttributeValueId(1L, 1L);
+                        case "inventories" -> new Inventory.InventoryId(1L, 1L);
+                        default -> 1L;
+                    };
             assertNotNull(em.find(type, key), "Cannot read canonical fixture for " + table);
         }
         assertEquals(OWNERS.keySet(), mapped);
@@ -99,14 +102,22 @@ class SchemaMappingTests {
 
         try (Connection connection = dataSource.getConnection()) {
             Set<String> actualTables = new HashSet<>();
-            try (var rows = connection.getMetaData().getTables(
-                    connection.getCatalog(), connection.getSchema(), "%", new String[] {"TABLE"})) {
+            try (var rows =
+                    connection
+                            .getMetaData()
+                            .getTables(
+                                    connection.getCatalog(),
+                                    connection.getSchema(),
+                                    "%",
+                                    new String[] {"TABLE"})) {
                 while (rows.next()) {
                     String name = rows.getString("TABLE_NAME").toLowerCase(Locale.ROOT);
                     if (!name.equals("flyway_schema_history")) actualTables.add(name);
                 }
             }
-            assertEquals(OWNERS.keySet(), actualTables,
+            assertEquals(
+                    OWNERS.keySet(),
+                    actualTables,
                     "The database must contain exactly the approved 30 target tables.");
 
             for (EntityType<?> entity : em.getMetamodel().getEntities()) {
@@ -118,10 +129,18 @@ class SchemaMappingTests {
                 }
 
                 Set<String> actualColumns = new HashSet<>();
-                String dbTable = connection.getMetaData().storesUpperCaseIdentifiers()
-                        ? table.toUpperCase(Locale.ROOT) : table;
-                try (var columns = connection.getMetaData().getColumns(
-                        connection.getCatalog(), connection.getSchema(), dbTable, "%")) {
+                String dbTable =
+                        connection.getMetaData().storesUpperCaseIdentifiers()
+                                ? table.toUpperCase(Locale.ROOT)
+                                : table;
+                try (var columns =
+                        connection
+                                .getMetaData()
+                                .getColumns(
+                                        connection.getCatalog(),
+                                        connection.getSchema(),
+                                        dbTable,
+                                        "%")) {
                     while (columns.next()) {
                         String name = columns.getString("COLUMN_NAME").toLowerCase(Locale.ROOT);
                         actualColumns.add(name);

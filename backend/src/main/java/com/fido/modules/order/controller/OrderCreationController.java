@@ -3,11 +3,10 @@ package com.fido.modules.order.controller;
 import com.fido.common.response.ApiResponse;
 import com.fido.modules.order.dto.request.CreateOrderRequest;
 import com.fido.modules.order.dto.response.OrderConfirmationDto;
-import com.fido.modules.order.service.OrderCreationService;
+import com.fido.modules.order.service.checkout.OrderCreationService;
 
 import jakarta.validation.Valid;
 
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -34,13 +33,16 @@ public class OrderCreationController {
     @PostMapping
     public ResponseEntity<ApiResponse<OrderConfirmationDto>> create(
             @AuthenticationPrincipal Jwt jwt,
-            @RequestHeader(value = "Idempotency-Key", required = false) List<String> idempotencyKeys,
+            @RequestHeader(value = "Idempotency-Key", required = false)
+                    List<String> idempotencyKeys,
             @Valid @RequestBody CreateOrderRequest request) {
-        OrderCreationService.OrderCreationResult result = service.createWithIdempotencyKey(
-                Long.valueOf(jwt.getSubject()), request, idempotencyKeys);
+        OrderCreationService.OrderCreationResult result =
+                service.createWithIdempotencyKey(
+                        Long.valueOf(jwt.getSubject()), request, idempotencyKeys);
 
-        ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.CREATED)
-                .location(URI.create("/api/v1/me/orders/" + result.orderId()));
+        ResponseEntity.BodyBuilder response =
+                ResponseEntity.status(HttpStatus.CREATED)
+                        .location(URI.create("/api/v1/me/orders/" + result.orderId()));
         if (result.replayed()) {
             response.header("Idempotency-Replayed", "true");
         }

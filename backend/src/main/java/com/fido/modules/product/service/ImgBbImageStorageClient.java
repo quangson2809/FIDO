@@ -90,7 +90,7 @@ public class ImgBbImageStorageClient implements ImageStorageGateway {
         } catch (RestClientResponseException exception) {
             log.warn(
                     "Image storage request completed result=http_error providerStatus={}"
-                        + " durationMs={}",
+                            + " durationMs={}",
                     exception.getStatusCode().value(),
                     elapsedMillis(startedAt));
             throw integrationFailure(

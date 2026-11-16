@@ -9,6 +9,7 @@ import com.fido.modules.promotion.dto.request.VoucherPatchRequest;
 import com.fido.modules.promotion.dto.response.VoucherDetailDto;
 import com.fido.modules.promotion.entity.Voucher;
 import com.fido.modules.promotion.repository.VoucherRepository;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -51,8 +52,12 @@ public class VoucherManagementService {
     @PreAuthorize(READ)
     @Transactional(readOnly = true)
     public VoucherDetailDto detail(Long id) {
-        return dto(vouchers.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "VOUCHER_NOT_FOUND")));
+        return dto(
+                vouchers.findById(id)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "VOUCHER_NOT_FOUND")));
     }
 
     @PreAuthorize(WRITE)
@@ -75,7 +80,8 @@ public class VoucherManagementService {
         voucher.setCode(code);
         voucher.setDiscountType(request.discount_type());
         voucher.setDiscountValue(request.discount_value());
-        voucher.setMinimumOrderValue(request.minimum_order_value() == null ? 0L : request.minimum_order_value());
+        voucher.setMinimumOrderValue(
+                request.minimum_order_value() == null ? 0L : request.minimum_order_value());
         voucher.setMaximumDiscount(request.maximum_discount());
         voucher.setStartsAt(micros(request.starts_at()));
         voucher.setEndsAt(micros(request.ends_at()));
@@ -84,28 +90,38 @@ public class VoucherManagementService {
         voucher.setStatus("DRAFT");
 
         Voucher saved = vouchers.save(voucher);
-        audit.record(AuditWriteEvent.of(
-                AuditAction.VOUCHER_CREATE, AuditEntityType.VOUCHER, saved.getVoucherId().toString()));
+        audit.record(
+                AuditWriteEvent.of(
+                        AuditAction.VOUCHER_CREATE,
+                        AuditEntityType.VOUCHER,
+                        saved.getVoucherId().toString()));
         return dto(saved);
     }
 
     @PreAuthorize(WRITE)
     public VoucherDetailDto update(Long id, VoucherPatchRequest request) {
         if (request == null || request.isEmpty()) bad("VOUCHER_CONFIGURATION_INVALID");
-        Voucher voucher = vouchers.lockById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "VOUCHER_NOT_FOUND"));
+        Voucher voucher =
+                vouchers.lockById(id)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "VOUCHER_NOT_FOUND"));
 
         if (request.isCodePresent()) {
             String code = normalizeCode(request.getCode());
             if (vouchers.existsByCodeIgnoreCaseAndVoucherIdNot(code, id)) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "VOUCHER_CODE_ALREADY_EXISTS");
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT, "VOUCHER_CODE_ALREADY_EXISTS");
             }
             voucher.setCode(code);
         }
         if (request.isDiscountTypePresent()) voucher.setDiscountType(request.getDiscountType());
         if (request.isDiscountValuePresent()) voucher.setDiscountValue(request.getDiscountValue());
-        if (request.isMinimumOrderValuePresent()) voucher.setMinimumOrderValue(request.getMinimumOrderValue());
-        if (request.isMaximumDiscountPresent()) voucher.setMaximumDiscount(request.getMaximumDiscount());
+        if (request.isMinimumOrderValuePresent())
+            voucher.setMinimumOrderValue(request.getMinimumOrderValue());
+        if (request.isMaximumDiscountPresent())
+            voucher.setMaximumDiscount(request.getMaximumDiscount());
         if (request.isStartsAtPresent()) voucher.setStartsAt(micros(request.getStartsAt()));
         if (request.isEndsAtPresent()) voucher.setEndsAt(micros(request.getEndsAt()));
         if (request.isUsageLimitPresent()) voucher.setUsageLimit(request.getUsageLimit());
@@ -129,8 +145,11 @@ public class VoucherManagementService {
         }
 
         Voucher saved = vouchers.save(voucher);
-        audit.record(AuditWriteEvent.of(
-                AuditAction.VOUCHER_UPDATE, AuditEntityType.VOUCHER, saved.getVoucherId().toString()));
+        audit.record(
+                AuditWriteEvent.of(
+                        AuditAction.VOUCHER_UPDATE,
+                        AuditEntityType.VOUCHER,
+                        saved.getVoucherId().toString()));
         return dto(saved);
     }
 
@@ -156,7 +175,8 @@ public class VoucherManagementService {
         if ("PERCENT".equals(discountType) && discountValue > 10_000L) {
             bad("VOUCHER_PERCENT_BPS_OUT_OF_RANGE");
         }
-        if (minimumOrderValue == null || minimumOrderValue < 0L
+        if (minimumOrderValue == null
+                || minimumOrderValue < 0L
                 || (maximumDiscount != null && maximumDiscount < 0L)) {
             bad("VOUCHER_CONFIGURATION_INVALID");
         }
@@ -171,15 +191,17 @@ public class VoucherManagementService {
     private static void requireStatusTransition(String current, String next) {
         if (current == null || next == null) bad("VOUCHER_STATUS_TRANSITION_INVALID");
         if (current.equals(next)) return;
-        boolean allowed = switch (current) {
-            case "DRAFT" -> "ACTIVE".equals(next) || "INACTIVE".equals(next);
-            case "ACTIVE" -> "INACTIVE".equals(next) || "EXPIRED".equals(next);
-            case "INACTIVE" -> "ACTIVE".equals(next) || "EXPIRED".equals(next);
-            case "EXPIRED" -> false;
-            default -> false;
-        };
+        boolean allowed =
+                switch (current) {
+                    case "DRAFT" -> "ACTIVE".equals(next) || "INACTIVE".equals(next);
+                    case "ACTIVE" -> "INACTIVE".equals(next) || "EXPIRED".equals(next);
+                    case "INACTIVE" -> "ACTIVE".equals(next) || "EXPIRED".equals(next);
+                    case "EXPIRED" -> false;
+                    default -> false;
+                };
         if (!allowed) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "VOUCHER_STATUS_TRANSITION_INVALID");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "VOUCHER_STATUS_TRANSITION_INVALID");
         }
     }
 

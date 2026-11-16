@@ -1,12 +1,13 @@
 package com.fido.modules.promotion.service;
 
-import com.fido.modules.account.service.AccountAccessService;
+import com.fido.modules.account.service.identity.AccountAccessService;
 import com.fido.modules.audit.service.AuditAction;
 import com.fido.modules.audit.service.AuditEntityType;
 import com.fido.modules.audit.service.AuditWriteEvent;
 import com.fido.modules.audit.service.AuditWriteService;
 import com.fido.modules.promotion.entity.Voucher;
 import com.fido.modules.promotion.repository.VoucherRepository;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -68,18 +69,28 @@ public class VoucherRedemptionService {
         if (code == null || code.isBlank()) {
             return new Discount(null, null, 0L);
         }
-        boolean internalAccount = accounts.findAccess(accountId)
-                .map(access -> access.roles().stream()
-                        .anyMatch(role -> "ADMIN".equals(role.code()) || "SUPERADMIN".equals(role.code())))
-                .orElse(true);
+        boolean internalAccount =
+                accounts.findAccess(accountId)
+                        .map(
+                                access ->
+                                        access.roles().stream()
+                                                .anyMatch(
+                                                        role ->
+                                                                "ADMIN".equals(role.code())
+                                                                        || "SUPERADMIN"
+                                                                                .equals(
+                                                                                        role
+                                                                                                .code())))
+                        .orElse(true);
         if (internalAccount) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "FORBIDDEN");
         }
 
-        Voucher voucher = (lockVoucher
-                ? vouchers.lockByCode(code.trim())
-                : vouchers.findByCodeIgnoreCase(code.trim()))
-                .orElseThrow(() -> rejected("VOUCHER_NOT_FOUND"));
+        Voucher voucher =
+                (lockVoucher
+                                ? vouchers.lockByCode(code.trim())
+                                : vouchers.findByCodeIgnoreCase(code.trim()))
+                        .orElseThrow(() -> rejected("VOUCHER_NOT_FOUND"));
         // So thời gian hiện tại với cửa sổ voucher: gồm startsAt, không gồm endsAt.
         Instant now = Instant.now();
         requireRedeemable(voucher, now);
@@ -88,11 +99,12 @@ public class VoucherRedemptionService {
         if (subtotal < voucher.getMinimumOrderValue()) {
             throw rejected("VOUCHER_MINIMUM_ORDER_NOT_MET");
         }
-        long amount = pricing.calculateDiscountAmount(
-                voucher.getDiscountType(),
-                voucher.getDiscountValue(),
-                voucher.getMaximumDiscount(),
-                subtotal);
+        long amount =
+                pricing.calculateDiscountAmount(
+                        voucher.getDiscountType(),
+                        voucher.getDiscountValue(),
+                        voucher.getMaximumDiscount(),
+                        subtotal);
         if (amount <= 0L) {
             throw rejected("VOUCHER_NOT_ELIGIBLE");
         }
@@ -113,8 +125,9 @@ public class VoucherRedemptionService {
     public void consume(Discount discount) {
         if (discount == null || discount.voucherId() == null) return;
 
-        Voucher voucher = vouchers.lockById(discount.voucherId())
-                .orElseThrow(() -> rejected("VOUCHER_NOT_FOUND"));
+        Voucher voucher =
+                vouchers.lockById(discount.voucherId())
+                        .orElseThrow(() -> rejected("VOUCHER_NOT_FOUND"));
         Instant now = Instant.now();
         requireRedeemable(voucher, now);
         if (discount.subtotal() < voucher.getMinimumOrderValue()) {
@@ -125,23 +138,21 @@ public class VoucherRedemptionService {
         // UPDATE có điều kiện trong DB quyết định lượt dùng cuối cùng; kiểm tra trước ở Java không
         // thay thế bước này.
         if (vouchers.incrementUsageCountIfAvailable(
-                        voucher.getVoucherId(), now, discount.subtotal()) != 1) {
+                        voucher.getVoucherId(), now, discount.subtotal())
+                != 1) {
             throw rejected("VOUCHER_QUOTA_CONFLICT");
         }
         voucher.setUsageCount(Math.addExact(before, 1));
         auditQuotaChange(
-                AuditAction.VOUCHER_QUOTA_CONSUME,
-                voucher.getVoucherId(),
-                before,
-                before + 1);
+                AuditAction.VOUCHER_QUOTA_CONSUME, voucher.getVoucherId(), before, before + 1);
     }
 
     /** Chỉ gọi khi chuyển hủy đơn hợp lệ dưới khóa; không tự giải phóng lượt dùng khi hoàn tiền. */
     public void release(Long voucherId) {
         if (voucherId == null) return;
 
-        Voucher voucher = vouchers.lockById(voucherId)
-                .orElseThrow(() -> rejected("VOUCHER_NOT_FOUND"));
+        Voucher voucher =
+                vouchers.lockById(voucherId).orElseThrow(() -> rejected("VOUCHER_NOT_FOUND"));
         int before = valueOrZero(voucher.getUsageCount());
         if (vouchers.decrementUsageCountAbove(voucherId, 0) != 1) {
             throw rejected("VOUCHER_QUOTA_CONFLICT");
@@ -163,12 +174,13 @@ public class VoucherRedemptionService {
     }
 
     private void auditQuotaChange(AuditAction action, Long voucherId, int before, int after) {
-        audit.record(AuditWriteEvent.withChanges(
-                action,
-                AuditEntityType.VOUCHER,
-                voucherId.toString(),
-                Map.of("usage_count", before),
-                Map.of("usage_count", after)));
+        audit.record(
+                AuditWriteEvent.withChanges(
+                        action,
+                        AuditEntityType.VOUCHER,
+                        voucherId.toString(),
+                        Map.of("usage_count", before),
+                        Map.of("usage_count", after)));
     }
 
     private static int valueOrZero(Integer value) {

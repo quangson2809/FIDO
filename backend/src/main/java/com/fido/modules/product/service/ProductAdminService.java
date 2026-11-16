@@ -11,6 +11,7 @@ import com.fido.modules.product.entity.Product;
 import com.fido.modules.product.entity.ProductAttributeValue;
 import com.fido.modules.product.repository.ProductAttributeValueRepository;
 import com.fido.modules.product.repository.ProductRepository;
+import com.fido.modules.product.service.query.CatalogReferenceService;
 
 import jakarta.persistence.EntityManager;
 
@@ -103,7 +104,10 @@ public class ProductAdminService {
                         product.getProductId(), status, requestedValueIds);
 
         replaceAttributeValues(product.getProductId(), validatedValues);
-        families.validateFamily(product.getParentProductId() == null ? product.getProductId() : product.getParentProductId());
+        families.validateFamily(
+                product.getParentProductId() == null
+                        ? product.getProductId()
+                        : product.getParentProductId());
         flushOrConflict();
 
         audit.record(
@@ -123,9 +127,12 @@ public class ProductAdminService {
     public AdminProductDetailDto updateProduct(
             Long actor, Long productId, ProductPatchRequest request) {
         families.beginProductWrite();
-        Product product = families.lockProductForUpdate(productId,
-                request.isParentProductIdPresent() ? request.getParentProductId() : null);
-        Long oldRootId = product.getParentProductId() == null ? productId : product.getParentProductId();
+        Product product =
+                families.lockProductForUpdate(
+                        productId,
+                        request.isParentProductIdPresent() ? request.getParentProductId() : null);
+        Long oldRootId =
+                product.getParentProductId() == null ? productId : product.getParentProductId();
 
         if (request.isParentProductIdPresent()) {
             validateParent(productId, request.getParentProductId());
@@ -166,7 +173,8 @@ public class ProductAdminService {
                 productAttributeValues.findForFamilyValidation(List.of(productId)).stream()
                         .map(ProductAttributeValue::getOptionId)
                         .toList();
-        // Kiểm tra bộ thuộc tính sau PATCH: dùng danh sách mới nếu được gửi, nếu không giữ các Option đang lưu.
+        // Kiểm tra bộ thuộc tính sau PATCH: dùng danh sách mới nếu được gửi, nếu không giữ các
+        // Option đang lưu.
         List<Long> resultingValueIds =
                 request.isAttributeValueIdsPresent()
                         ? request.getAttributeValueIds()
@@ -185,9 +193,11 @@ public class ProductAdminService {
             replaceAttributeValues(productId, validatedValues);
         }
 
-        // Đổi cha có thể làm cả family cũ và mới thiếu/trùng tổ hợp; phải kiểm tra cả hai trước khi commit.
+        // Đổi cha có thể làm cả family cũ và mới thiếu/trùng tổ hợp; phải kiểm tra cả hai trước khi
+        // commit.
         families.validateFamily(oldRootId);
-        Long newRootId = product.getParentProductId() == null ? productId : product.getParentProductId();
+        Long newRootId =
+                product.getParentProductId() == null ? productId : product.getParentProductId();
         if (!oldRootId.equals(newRootId)) families.validateFamily(newRootId);
         flushOrConflict();
 
@@ -201,7 +211,8 @@ public class ProductAdminService {
     public void deleteProduct(Long actor, Long productId) {
         families.beginProductWrite();
         Product product = families.lockProductForUpdate(productId, null);
-        if (products.findChildrenForValidation(productId).stream().anyMatch(child -> !child.isDeleted())) {
+        if (products.findChildrenForValidation(productId).stream()
+                .anyMatch(child -> !child.isDeleted())) {
             conflict("A parent product with children cannot be deleted");
         }
         product.setDeletedAt(LocalDateTime.now(ZoneOffset.UTC));

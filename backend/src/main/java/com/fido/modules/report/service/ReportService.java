@@ -48,8 +48,7 @@ public class ReportService {
      */
     public SalesTrendDto salesTrend(LocalDate from, LocalDate to, ReportGranularity granularity) {
         var range = ReportRange.of(from, to);
-        var buckets =
-                periods(range, granularity, new ReportRepository.SalesTotals(0L, 0L));
+        var buckets = periods(range, granularity, new ReportRepository.SalesTotals(0L, 0L));
         for (var daily : reports.dailySales(range.startUtc(), range.endUtc())) {
             var period = granularity.periodStart(daily.date());
             var previous = buckets.get(period);

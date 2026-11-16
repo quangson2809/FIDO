@@ -13,8 +13,12 @@ import java.time.ZoneOffset;
 @Table(
         name = "orders",
         uniqueConstraints = {
-            @UniqueConstraint(name = "uq_orders_number", columnNames = {"order_number"}),
-            @UniqueConstraint(name = "uq_orders_idempotency_key", columnNames = {"idempotency_key"})
+            @UniqueConstraint(
+                    name = "uq_orders_number",
+                    columnNames = {"order_number"}),
+            @UniqueConstraint(
+                    name = "uq_orders_idempotency_key",
+                    columnNames = {"idempotency_key"})
         })
 @Getter
 @Setter
@@ -30,7 +34,6 @@ public class Order {
 
     @Column(name = "account_id", nullable = false)
     private Long customerAccountId;
-
 
     @Column(name = "voucher_id")
     private Long voucherId;
@@ -62,8 +65,11 @@ public class Order {
     @Column(name = "status", nullable = false, length = 30)
     private String orderStatus = "PENDING";
 
-
-    @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP(6)", updatable = false)
+    @Column(
+            name = "created_at",
+            nullable = false,
+            columnDefinition = "TIMESTAMP(6)",
+            updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")

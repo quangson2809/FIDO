@@ -46,12 +46,9 @@ public class AuditWriteRepository {
                     }
 
                     String jsonPlaceholder = h2 ? "? FORMAT JSON" : "CAST(? AS JSON)";
-                    String beforeExpression =
-                            beforeDataJson == null ? "NULL" : jsonPlaceholder;
-                    String afterExpression =
-                            afterDataJson == null ? "NULL" : jsonPlaceholder;
-                    String sql =
-                            INSERT_SQL_TEMPLATE.formatted(beforeExpression, afterExpression);
+                    String beforeExpression = beforeDataJson == null ? "NULL" : jsonPlaceholder;
+                    String afterExpression = afterDataJson == null ? "NULL" : jsonPlaceholder;
+                    String sql = INSERT_SQL_TEMPLATE.formatted(beforeExpression, afterExpression);
                     var statement = connection.prepareStatement(sql);
 
                     if (actorAccountId == null) {

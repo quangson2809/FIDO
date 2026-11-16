@@ -91,7 +91,7 @@ class ApiContractMatrixTests {
                 EXPECTED_DEFERRED_API_NUMBERS,
                 deferredApiNumbers,
                 "Deferred API set changed; update the canonical TBD decision before changing"
-                    + " executable scope");
+                        + " executable scope");
 
         long fullyExecutable =
                 matrix.values().stream().filter(row -> "PASS".equals(row.contractStatus())).count();

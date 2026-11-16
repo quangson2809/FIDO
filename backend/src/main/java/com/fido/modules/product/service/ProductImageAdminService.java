@@ -10,6 +10,7 @@ import com.fido.modules.product.dto.response.AdminProductDetailDto;
 import com.fido.modules.product.entity.Product;
 import com.fido.modules.product.entity.ProductImage;
 import com.fido.modules.product.repository.ProductImageRepository;
+import com.fido.modules.product.service.query.CatalogReferenceService;
 
 import jakarta.persistence.EntityManager;
 
@@ -161,8 +162,7 @@ public class ProductImageAdminService {
                         HttpStatus.CONFLICT, "Image sort order must be contiguous");
             }
         }
-        List<ProductImage> current =
-                images.findAllByProductIdForUpdate(productId);
+        List<ProductImage> current = images.findAllByProductIdForUpdate(productId);
         List<ProductImageInput> ordered =
                 requested.stream()
                         .sorted(java.util.Comparator.comparing(ProductImageInput::sort_order))
@@ -296,7 +296,8 @@ public class ProductImageAdminService {
             conflict();
         }
 
-        // Chuyển ảnh sang vị trí tạm chưa dùng rồi mới đánh lại thứ tự liên tục để tránh vi phạm unique.
+        // Chuyển ảnh sang vị trí tạm chưa dùng rồi mới đánh lại thứ tự liên tục để tránh vi phạm
+        // unique.
         for (int index = 0; index < orderedImages.size(); index++) {
             ProductImage image = orderedImages.get(index);
             image.setSortOrder((int) (temporaryBase + index));

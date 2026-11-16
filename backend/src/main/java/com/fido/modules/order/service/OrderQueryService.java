@@ -15,6 +15,8 @@ import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
 import com.fido.modules.order.repository.ShippingInfoRepository;
+import com.fido.modules.order.service.action.OrderActionPolicy;
+import com.fido.modules.order.service.action.OrderAuthorization;
 
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
@@ -168,13 +170,15 @@ public class OrderQueryService {
                 order.getCustomerAccountId(),
                 order.getVoucherId(),
                 OrderMapper.paymentAdmin(payment),
-                // Nút hiển thị phải vừa hợp lệ theo trạng thái vừa thuộc quyền của người quản trị hiện tại.
+                // Nút hiển thị phải vừa hợp lệ theo trạng thái vừa thuộc quyền của người quản trị
+                // hiện tại.
                 authorization.filterAllowed(
                         authentication, actionPolicy.allowedActions(order, payment)));
     }
 
     private OrderAddress address(Long orderId) {
-        return addresses.findById(orderId)
+        return addresses
+                .findById(orderId)
                 .orElseThrow(() -> new IllegalStateException("ORDER_ADDRESS_SNAPSHOT_MISSING"));
     }
 

@@ -3,38 +3,54 @@ package com.fido.modules.product;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+
 import java.util.HashMap;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 class ProductCoreHttpTests extends CatalogHttpSupport {
     private Long colorAttribute;
     private final java.util.List<Long> colorOptions = new java.util.ArrayList<>();
 
-    @AfterEach void cleanColorValues() {
-        for (Long id : products) db.update("DELETE FROM product_attribute_values WHERE product_id=?", id);
+    @AfterEach
+    void cleanColorValues() {
+        for (Long id : products)
+            db.update("DELETE FROM product_attribute_values WHERE product_id=?", id);
         for (Long id : colorOptions) db.update("DELETE FROM attribute_options WHERE id=?", id);
         if (colorAttribute != null) db.update("DELETE FROM attributes WHERE id=?", colorAttribute);
     }
 
     private long colorOption(String value) {
         if (colorAttribute == null) {
-            db.update("INSERT INTO attributes(code,name,is_required,is_variant_defining,sort_order) VALUES ('COLOR','Color',FALSE,TRUE,0)");
-            colorAttribute = db.queryForObject("SELECT id FROM attributes WHERE code='COLOR'", Long.class);
+            db.update(
+                    "INSERT INTO attributes(code,name,is_required,is_variant_defining,sort_order) VALUES ('COLOR','Color',FALSE,TRUE,0)");
+            colorAttribute =
+                    db.queryForObject("SELECT id FROM attributes WHERE code='COLOR'", Long.class);
         }
-        db.update("INSERT INTO attribute_options(attribute_id,`value`,label,sort_order) VALUES (?,?,?,0)", colorAttribute, value, value);
-        long id = db.queryForObject("SELECT id FROM attribute_options WHERE attribute_id=? AND `value`=?", Long.class, colorAttribute, value);
-        colorOptions.add(id); return id;
+        db.update(
+                "INSERT INTO attribute_options(attribute_id,`value`,label,sort_order) VALUES (?,?,?,0)",
+                colorAttribute,
+                value,
+                value);
+        long id =
+                db.queryForObject(
+                        "SELECT id FROM attribute_options WHERE attribute_id=? AND `value`=?",
+                        Long.class,
+                        colorAttribute,
+                        value);
+        colorOptions.add(id);
+        return id;
     }
 
     @Test
     void productsOwnTheirSkuAndIntegerVndPriceAndHierarchyStopsAtOneLevel() throws Exception {
         Employee writer = catalogWriter();
         String suffix = UUID.randomUUID().toString().replace("-", "");
-        Result parentResponse = createProduct(writer, "PARENT-" + suffix, "Parent " + suffix, 125000, null);
+        Result parentResponse =
+                createProduct(writer, "PARENT-" + suffix, "Parent " + suffix, 125000, null);
         assertEquals(201, parentResponse.status(), parentResponse.body());
         long parentId = parentResponse.data().get("data").get("product_id").asLong();
         products.add(parentId);
@@ -51,43 +67,85 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
         assertEquals(parentId, child.get("parent_product_id").asLong());
         assertEquals("CHILD-" + suffix, child.get("sku").asText());
         assertEquals(91000, child.get("selling_price").asLong());
-        assertTrue(!child.has("name") || child.get("name").isNull(), "NULL child fields must not inherit parent values");
+        assertTrue(
+                !child.has("name") || child.get("name").isNull(),
+                "NULL child fields must not inherit parent values");
 
-        Result parentDetail = call("GET", "/api/v1/admin/products/" + parentId, writer.token(), null);
+        Result parentDetail =
+                call("GET", "/api/v1/admin/products/" + parentId, writer.token(), null);
         assertEquals(125000, parentDetail.data().get("data").get("selling_price").asLong());
-        assertEquals(childId, parentDetail.data().get("data").get("child_product_ids").get(0).asLong());
+        assertEquals(
+                childId, parentDetail.data().get("data").get("child_product_ids").get(0).asLong());
 
         String updatedParentSku = "PARENT-UPDATED-" + suffix;
-        Result parentUpdate = call("PATCH", "/api/v1/admin/products/" + parentId, writer.token(),
-                Map.of("sku", updatedParentSku, "selling_price", 149000));
+        Result parentUpdate =
+                call(
+                        "PATCH",
+                        "/api/v1/admin/products/" + parentId,
+                        writer.token(),
+                        Map.of("sku", updatedParentSku, "selling_price", 149000));
         assertEquals(200, parentUpdate.status(), parentUpdate.body());
         assertEquals(updatedParentSku, parentUpdate.data().get("data").get("sku").asText());
         assertEquals(149000, parentUpdate.data().get("data").get("selling_price").asLong());
 
-        Result childAfterParentUpdate = call(
-                "GET", "/api/v1/admin/products/" + childId, writer.token(), null);
+        Result childAfterParentUpdate =
+                call("GET", "/api/v1/admin/products/" + childId, writer.token(), null);
         assertEquals(200, childAfterParentUpdate.status(), childAfterParentUpdate.body());
-        assertEquals("CHILD-" + suffix,
-                childAfterParentUpdate.data().get("data").get("sku").asText());
-        assertEquals(91000,
-                childAfterParentUpdate.data().get("data").get("selling_price").asLong());
-        assertEquals(parentId,
+        assertEquals(
+                "CHILD-" + suffix, childAfterParentUpdate.data().get("data").get("sku").asText());
+        assertEquals(
+                91000, childAfterParentUpdate.data().get("data").get("selling_price").asLong());
+        assertEquals(
+                parentId,
                 childAfterParentUpdate.data().get("data").get("parent_product_id").asLong());
 
-        assertEquals(409, call("PATCH", "/api/v1/admin/products/" + parentId, writer.token(),
-                Map.of("parent_product_id", parentId)).status(), "Self-parenting must be rejected");
-        assertEquals(409, call("POST", "/api/v1/admin/products", writer.token(),
-                Map.of("parent_product_id", childId, "sku", "GRAND-" + suffix,
-                        "selling_price", 40000, "status", "ACTIVE")).status(),
+        assertEquals(
+                409,
+                call(
+                                "PATCH",
+                                "/api/v1/admin/products/" + parentId,
+                                writer.token(),
+                                Map.of("parent_product_id", parentId))
+                        .status(),
+                "Self-parenting must be rejected");
+        assertEquals(
+                409,
+                call(
+                                "POST",
+                                "/api/v1/admin/products",
+                                writer.token(),
+                                Map.of(
+                                        "parent_product_id",
+                                        childId,
+                                        "sku",
+                                        "GRAND-" + suffix,
+                                        "selling_price",
+                                        40000,
+                                        "status",
+                                        "ACTIVE"))
+                        .status(),
                 "Product nesting beyond one child level must be rejected");
-        assertEquals(409, call("PATCH", "/api/v1/admin/products/" + parentId, writer.token(),
-                Map.of("parent_product_id", childId)).status(),
+        assertEquals(
+                409,
+                call(
+                                "PATCH",
+                                "/api/v1/admin/products/" + parentId,
+                                writer.token(),
+                                Map.of("parent_product_id", childId))
+                        .status(),
                 "Re-parenting a root beneath its child must be rejected");
-        assertEquals(409, call("DELETE", "/api/v1/admin/products/" + parentId,
-                writer.token(), null).status(),
+        assertEquals(
+                409,
+                call("DELETE", "/api/v1/admin/products/" + parentId, writer.token(), null).status(),
                 "A Product with child Products must not be deleted");
-        assertEquals(404, call("POST", "/api/v1/admin/products/" + parentId + "/variants",
-                writer.token(), Map.of("variants", List.of())).status(),
+        assertEquals(
+                404,
+                call(
+                                "POST",
+                                "/api/v1/admin/products/" + parentId + "/variants",
+                                writer.token(),
+                                Map.of("variants", List.of()))
+                        .status(),
                 "The legacy variant write route must no longer exist");
     }
 
@@ -102,24 +160,58 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
         Result duplicate = createProduct(writer, sku, "Duplicate", 110000, null);
         assertEquals(409, duplicate.status(), duplicate.body());
 
-        Result invalidStatus = call("POST", "/api/v1/admin/products", writer.token(),
-                Map.of("sku", "BAD-STATUS-" + UUID.randomUUID(), "selling_price", 10000, "status", "ON_SALE"));
+        Result invalidStatus =
+                call(
+                        "POST",
+                        "/api/v1/admin/products",
+                        writer.token(),
+                        Map.of(
+                                "sku",
+                                "BAD-STATUS-" + UUID.randomUUID(),
+                                "selling_price",
+                                10000,
+                                "status",
+                                "ON_SALE"));
         assertEquals(400, invalidStatus.status(), invalidStatus.body());
 
-        Result negativePrice = call("POST", "/api/v1/admin/products", writer.token(),
-                Map.of("sku", "NEGATIVE-" + UUID.randomUUID(), "selling_price", -1, "status", "ACTIVE"));
+        Result negativePrice =
+                call(
+                        "POST",
+                        "/api/v1/admin/products",
+                        writer.token(),
+                        Map.of(
+                                "sku",
+                                "NEGATIVE-" + UUID.randomUUID(),
+                                "selling_price",
+                                -1,
+                                "status",
+                                "ACTIVE"));
         assertEquals(400, negativePrice.status(), negativePrice.body());
 
-        Result decimalPrice = call("POST", "/api/v1/admin/products", writer.token(),
-                Map.of("sku", "DECIMAL-" + UUID.randomUUID(), "selling_price", 10000.50, "status", "ACTIVE"));
+        Result decimalPrice =
+                call(
+                        "POST",
+                        "/api/v1/admin/products",
+                        writer.token(),
+                        Map.of(
+                                "sku",
+                                "DECIMAL-" + UUID.randomUUID(),
+                                "selling_price",
+                                10000.50,
+                                "status",
+                                "ACTIVE"));
         assertEquals(400, decimalPrice.status(), decimalPrice.body());
 
         Result second = createProduct(writer, "OTHER-" + UUID.randomUUID(), "Second", 120000, null);
         assertEquals(201, second.status(), second.body());
         long secondId = second.data().get("data").get("product_id").asLong();
         products.add(secondId);
-        Result duplicatePatch = call("PATCH", "/api/v1/admin/products/" + secondId, writer.token(),
-                Map.of("sku", sku));
+        Result duplicatePatch =
+                call(
+                        "PATCH",
+                        "/api/v1/admin/products/" + secondId,
+                        writer.token(),
+                        Map.of("sku", sku));
         assertEquals(409, duplicatePatch.status(), duplicatePatch.body());
     }
 
@@ -128,39 +220,72 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
         Employee writer = catalogWriter();
         CatalogFixture fixture = createCatalog(writer);
         createOperationalWarehouse();
-        var adminDetail = call("GET", "/api/v1/admin/products/" + fixture.productId(), writer.token(), null);
-        var publicDetail = call("GET", "/api/v1/catalog/products/" + fixture.productId(), null, null);
+        var adminDetail =
+                call("GET", "/api/v1/admin/products/" + fixture.productId(), writer.token(), null);
+        var publicDetail =
+                call("GET", "/api/v1/catalog/products/" + fixture.productId(), null, null);
 
         assertEquals(200, adminDetail.status(), adminDetail.body());
         assertEquals(200, publicDetail.status(), publicDetail.body());
-        assertEquals(fixture.productId(), adminDetail.data().get("data").get("product_id").asLong());
-        assertEquals(fixture.productId(), publicDetail.data().get("data").get("product_id").asLong());
+        assertEquals(
+                fixture.productId(), adminDetail.data().get("data").get("product_id").asLong());
+        assertEquals(
+                fixture.productId(), publicDetail.data().get("data").get("product_id").asLong());
 
         String rootToken = root();
-        var category = call("POST", "/api/v1/admin/categories", rootToken,
-                Map.of("name", "Category " + UUID.randomUUID()));
+        var category =
+                call(
+                        "POST",
+                        "/api/v1/admin/categories",
+                        rootToken,
+                        Map.of("name", "Category " + UUID.randomUUID()));
         assertEquals(201, category.status(), category.body());
         long categoryId = category.data().get("data").get("category_id").asLong();
         categories.add(categoryId);
         assertTrue(category.data().get("data").get("slug").asText().length() > 0);
 
-        var childCategory = call("POST", "/api/v1/admin/categories", rootToken,
-                Map.of("parent_category_id", categoryId, "name", "Child " + UUID.randomUUID()));
+        var childCategory =
+                call(
+                        "POST",
+                        "/api/v1/admin/categories",
+                        rootToken,
+                        Map.of(
+                                "parent_category_id",
+                                categoryId,
+                                "name",
+                                "Child " + UUID.randomUUID()));
         assertEquals(201, childCategory.status(), childCategory.body());
         long childCategoryId = childCategory.data().get("data").get("category_id").asLong();
         categories.add(childCategoryId);
-        var grandchildCategory = call("POST", "/api/v1/admin/categories", rootToken,
-                Map.of("parent_category_id", childCategoryId, "name", "Grandchild " + UUID.randomUUID()));
+        var grandchildCategory =
+                call(
+                        "POST",
+                        "/api/v1/admin/categories",
+                        rootToken,
+                        Map.of(
+                                "parent_category_id",
+                                childCategoryId,
+                                "name",
+                                "Grandchild " + UUID.randomUUID()));
         assertEquals(201, grandchildCategory.status(), grandchildCategory.body());
-        long grandchildCategoryId = grandchildCategory.data().get("data").get("category_id").asLong();
+        long grandchildCategoryId =
+                grandchildCategory.data().get("data").get("category_id").asLong();
         categories.add(grandchildCategoryId);
 
-        var categoryCycle = call("PATCH", "/api/v1/admin/categories/" + categoryId, rootToken,
-                Map.of("parent_category_id", childCategoryId));
+        var categoryCycle =
+                call(
+                        "PATCH",
+                        "/api/v1/admin/categories/" + categoryId,
+                        rootToken,
+                        Map.of("parent_category_id", childCategoryId));
         assertEquals(409, categoryCycle.status(), categoryCycle.body());
 
-        var duplicateCategory = call("POST", "/api/v1/admin/categories", rootToken,
-                Map.of("name", category.data().get("data").get("name").asText()));
+        var duplicateCategory =
+                call(
+                        "POST",
+                        "/api/v1/admin/categories",
+                        rootToken,
+                        Map.of("name", category.data().get("data").get("name").asText()));
         assertEquals(409, duplicateCategory.status(), duplicateCategory.body());
 
         String brandName = "Brand " + UUID.randomUUID();
@@ -168,7 +293,8 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
         assertEquals(201, brand.status(), brand.body());
         long brandId = brand.data().get("data").get("brand_id").asLong();
         brands.add(brandId);
-        var duplicateBrand = call("POST", "/api/v1/admin/brands", rootToken, Map.of("name", brandName));
+        var duplicateBrand =
+                call("POST", "/api/v1/admin/brands", rootToken, Map.of("name", brandName));
         assertEquals(409, duplicateBrand.status(), duplicateBrand.body());
     }
 
@@ -177,22 +303,43 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
         Employee writer = catalogWriter();
         CatalogFixture fixture = createCatalog(writer);
 
-        var categoryResponse = call("POST", "/api/v1/admin/categories", writer.token(),
-                Map.of("name", "Updated category " + UUID.randomUUID()));
+        var categoryResponse =
+                call(
+                        "POST",
+                        "/api/v1/admin/categories",
+                        writer.token(),
+                        Map.of("name", "Updated category " + UUID.randomUUID()));
         assertEquals(201, categoryResponse.status(), categoryResponse.body());
         long newCategoryId = categoryResponse.data().get("data").get("category_id").asLong();
         categories.add(newCategoryId);
 
-        var brandResponse = call("POST", "/api/v1/admin/brands", writer.token(),
-                Map.of("name", "Updated brand " + UUID.randomUUID()));
+        var brandResponse =
+                call(
+                        "POST",
+                        "/api/v1/admin/brands",
+                        writer.token(),
+                        Map.of("name", "Updated brand " + UUID.randomUUID()));
         assertEquals(201, brandResponse.status(), brandResponse.body());
         long newBrandId = brandResponse.data().get("data").get("brand_id").asLong();
         brands.add(newBrandId);
 
         String updatedSku = "UPDATED-" + UUID.randomUUID().toString().replace("-", "");
-        var updated = call("PATCH", "/api/v1/admin/products/" + fixture.productId(), writer.token(),
-                Map.of("category_id", newCategoryId, "brand_id", newBrandId,
-                        "sku", updatedSku, "selling_price", 0, "status", "INACTIVE"));
+        var updated =
+                call(
+                        "PATCH",
+                        "/api/v1/admin/products/" + fixture.productId(),
+                        writer.token(),
+                        Map.of(
+                                "category_id",
+                                newCategoryId,
+                                "brand_id",
+                                newBrandId,
+                                "sku",
+                                updatedSku,
+                                "selling_price",
+                                0,
+                                "status",
+                                "INACTIVE"));
         assertEquals(200, updated.status(), updated.body());
         var data = updated.data().get("data");
         assertEquals(fixture.productId(), data.get("product_id").asLong());
@@ -202,20 +349,38 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
         assertEquals(0, data.get("selling_price").asLong());
         assertEquals("INACTIVE", data.get("status").asText());
 
-        var invalidStatus = call("PATCH", "/api/v1/admin/products/" + fixture.productId(),
-                writer.token(), Map.of("status", "ON_SALE"));
+        var invalidStatus =
+                call(
+                        "PATCH",
+                        "/api/v1/admin/products/" + fixture.productId(),
+                        writer.token(),
+                        Map.of("status", "ON_SALE"));
         assertEquals(400, invalidStatus.status(), invalidStatus.body());
 
-        var decimalPrice = call("PATCH", "/api/v1/admin/products/" + fixture.productId(),
-                writer.token(), Map.of("selling_price", 999.50));
+        var decimalPrice =
+                call(
+                        "PATCH",
+                        "/api/v1/admin/products/" + fixture.productId(),
+                        writer.token(),
+                        Map.of("selling_price", 999.50));
         assertEquals(400, decimalPrice.status(), decimalPrice.body());
 
-        var deleted = call("DELETE", "/api/v1/admin/products/" + fixture.productId(), writer.token(), null);
+        var deleted =
+                call(
+                        "DELETE",
+                        "/api/v1/admin/products/" + fixture.productId(),
+                        writer.token(),
+                        null);
         assertEquals(204, deleted.status(), deleted.body());
-        assertEquals(404, call("GET", "/api/v1/admin/products/" + fixture.productId(), writer.token(), null).status());
-        assertEquals(404, call("GET", "/api/v1/catalog/products/" + fixture.productId(), null, null).status());
+        assertEquals(
+                404,
+                call("GET", "/api/v1/admin/products/" + fixture.productId(), writer.token(), null)
+                        .status());
+        assertEquals(
+                404,
+                call("GET", "/api/v1/catalog/products/" + fixture.productId(), null, null)
+                        .status());
     }
-
 
     @Test
     void inactiveReferencesMayBeRetainedButNeverNewlyAssigned() throws Exception {
@@ -224,30 +389,70 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
         long id = fixture.productId();
         db.update("UPDATE categories SET status = 'INACTIVE' WHERE id = ?", fixture.categoryId());
         db.update("UPDATE brands SET status = 'INACTIVE' WHERE id = ?", fixture.brandId());
-        assertEquals(200, call("PATCH", "/api/v1/admin/products/" + id, writer.token(),
-                Map.of("selling_price", 99000)).status());
-        assertEquals(200, call("PATCH", "/api/v1/admin/products/" + id, writer.token(),
-                Map.of("category_id", fixture.categoryId(), "brand_id", fixture.brandId(),
-                        "selling_price", 98000)).status());
-        for (var ref : Map.of("category_id", fixture.categoryId(), "brand_id", fixture.brandId()).entrySet()) {
+        assertEquals(
+                200,
+                call(
+                                "PATCH",
+                                "/api/v1/admin/products/" + id,
+                                writer.token(),
+                                Map.of("selling_price", 99000))
+                        .status());
+        assertEquals(
+                200,
+                call(
+                                "PATCH",
+                                "/api/v1/admin/products/" + id,
+                                writer.token(),
+                                Map.of(
+                                        "category_id",
+                                        fixture.categoryId(),
+                                        "brand_id",
+                                        fixture.brandId(),
+                                        "selling_price",
+                                        98000))
+                        .status());
+        for (var ref :
+                Map.of("category_id", fixture.categoryId(), "brand_id", fixture.brandId())
+                        .entrySet()) {
             var body = new HashMap<String, Object>();
             body.put("sku", "INACTIVE-" + UUID.randomUUID());
             body.put("selling_price", 10000);
             body.put(ref.getKey(), ref.getValue());
-            assertEquals(409, call("POST", "/api/v1/admin/products", writer.token(), body).status());
+            assertEquals(
+                    409, call("POST", "/api/v1/admin/products", writer.token(), body).status());
         }
         var cleared = new HashMap<String, Object>();
         cleared.put("category_id", null);
         cleared.put("brand_id", null);
-        assertEquals(200, call("PATCH", "/api/v1/admin/products/" + id, writer.token(), cleared).status());
-        for (var ref : Map.of("category_id", fixture.categoryId(), "brand_id", fixture.brandId()).entrySet()) {
-            assertEquals(409, call("PATCH", "/api/v1/admin/products/" + id, writer.token(),
-                    Map.of(ref.getKey(), ref.getValue())).status());
+        assertEquals(
+                200,
+                call("PATCH", "/api/v1/admin/products/" + id, writer.token(), cleared).status());
+        for (var ref :
+                Map.of("category_id", fixture.categoryId(), "brand_id", fixture.brandId())
+                        .entrySet()) {
+            assertEquals(
+                    409,
+                    call(
+                                    "PATCH",
+                                    "/api/v1/admin/products/" + id,
+                                    writer.token(),
+                                    Map.of(ref.getKey(), ref.getValue()))
+                            .status());
         }
         db.update("UPDATE categories SET status = 'ACTIVE' WHERE id = ?", fixture.categoryId());
         db.update("UPDATE brands SET status = 'ACTIVE' WHERE id = ?", fixture.brandId());
-        assertEquals(200, call("PATCH", "/api/v1/admin/products/" + id, writer.token(),
-                Map.of("category_id", fixture.categoryId(), "brand_id", fixture.brandId())).status());
+        assertEquals(
+                200,
+                call(
+                                "PATCH",
+                                "/api/v1/admin/products/" + id,
+                                writer.token(),
+                                Map.of(
+                                        "category_id",
+                                        fixture.categoryId(),
+                                        "brand_id",
+                                        fixture.brandId()))
+                        .status());
     }
 
     @Test
@@ -255,17 +460,32 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
         Employee writer = catalogWriter();
         long parent = createCatalog(writer).productId();
         long other = createCatalog(writer).productId();
-        Result childResponse = createProduct(writer, "CHILD-" + UUID.randomUUID(), "Child", 10000, parent);
+        Result childResponse =
+                createProduct(writer, "CHILD-" + UUID.randomUUID(), "Child", 10000, parent);
         assertEquals(201, childResponse.status(), childResponse.body());
         long child = childResponse.data().get("data").get("product_id").asLong();
         products.add(child);
-        assertEquals(409, call("DELETE", "/api/v1/admin/products/" + parent, writer.token(), null).status());
-        assertEquals(204, call("DELETE", "/api/v1/admin/products/" + child, writer.token(), null).status());
-        assertEquals(409, call("PATCH", "/api/v1/admin/products/" + parent, writer.token(),
-                Map.of("parent_product_id", other)).status());
-        assertEquals(204, call("DELETE", "/api/v1/admin/products/" + parent, writer.token(), null).status());
-        assertEquals(parent, db.queryForObject("SELECT parent_product_id FROM products WHERE id = ?",
-                Long.class, child));
+        assertEquals(
+                409,
+                call("DELETE", "/api/v1/admin/products/" + parent, writer.token(), null).status());
+        assertEquals(
+                204,
+                call("DELETE", "/api/v1/admin/products/" + child, writer.token(), null).status());
+        assertEquals(
+                409,
+                call(
+                                "PATCH",
+                                "/api/v1/admin/products/" + parent,
+                                writer.token(),
+                                Map.of("parent_product_id", other))
+                        .status());
+        assertEquals(
+                204,
+                call("DELETE", "/api/v1/admin/products/" + parent, writer.token(), null).status());
+        assertEquals(
+                parent,
+                db.queryForObject(
+                        "SELECT parent_product_id FROM products WHERE id = ?", Long.class, child));
     }
 
     private Employee catalogWriter() throws Exception {
@@ -278,8 +498,8 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
         return employee(roleId);
     }
 
-    private Result createProduct(Employee writer, String sku, String name, long price, Long parentId)
-            throws Exception {
+    private Result createProduct(
+            Employee writer, String sku, String name, long price, Long parentId) throws Exception {
         Map<String, Object> body = new HashMap<>();
         body.put("sku", sku);
         body.put("selling_price", price);
@@ -288,7 +508,11 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
         if (parentId != null) {
             body.put("parent_product_id", parentId);
             long parentColor = colorOption("PARENT-" + parentId);
-            db.update("INSERT INTO product_attribute_values(product_id,attribute_id,option_id) VALUES (?,?,?)", parentId, colorAttribute, parentColor);
+            db.update(
+                    "INSERT INTO product_attribute_values(product_id,attribute_id,option_id) VALUES (?,?,?)",
+                    parentId,
+                    colorAttribute,
+                    parentColor);
             body.put("attribute_value_ids", List.of(colorOption("CHILD-" + sku)));
         }
         return call("POST", "/api/v1/admin/products", writer.token(), body);

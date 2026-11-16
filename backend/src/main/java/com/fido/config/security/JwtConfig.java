@@ -94,7 +94,8 @@ public class JwtConfig {
                             return OAuth2TokenValidatorResult.success();
                         }
                     } catch (RuntimeException ignored) {
-                        // Subject hoặc claim sai định dạng cùng bị từ chối như token không hợp lệ ở bước dưới.
+                        // Subject hoặc claim sai định dạng cùng bị từ chối như token không hợp lệ ở
+                        // bước dưới.
                     }
 
                     return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token"));

@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -15,8 +16,12 @@ import lombok.Setter;
 @Table(
         name = "attribute_options",
         uniqueConstraints = {
-            @UniqueConstraint(name = "uq_attribute_options_value", columnNames = {"attribute_id", "value"}),
-            @UniqueConstraint(name = "uq_attribute_options_id_attribute", columnNames = {"id", "attribute_id"})
+            @UniqueConstraint(
+                    name = "uq_attribute_options_value",
+                    columnNames = {"attribute_id", "value"}),
+            @UniqueConstraint(
+                    name = "uq_attribute_options_id_attribute",
+                    columnNames = {"id", "attribute_id"})
         })
 @Getter
 @Setter

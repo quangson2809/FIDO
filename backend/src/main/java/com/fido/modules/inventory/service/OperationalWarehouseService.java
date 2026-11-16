@@ -2,6 +2,7 @@ package com.fido.modules.inventory.service;
 
 import com.fido.modules.inventory.entity.Warehouse;
 import com.fido.modules.inventory.repository.WarehouseRepository;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;

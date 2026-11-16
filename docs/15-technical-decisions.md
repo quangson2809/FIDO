@@ -129,3 +129,12 @@ Owner-approved behavior and target schema are recorded; application/DTO/frontend
 - Frontend uses the shared recognition predicate for selection, matching and excluding size values from general specifications. Backend family validation uses the same prefix rule; complete, consistent, unique parent/child tuples remain required.
 - Option values still come only from the actual family. No schema, seed, API payload, public error-code or stock/Cart behavior change is introduced.
 - Focused model, parameterized HTTP validation/detail/filter and browser regressions cover prefixed sizes. Ubuntu CI remains the verification route; the rejected Windows test runtime is not retried.
+
+## 2026-11-16 — Định dạng và nhóm trách nhiệm backend
+
+- Dùng google-java-format 1.22.0 chế độ AOSP: thụt lề 4 dấu cách, sắp xếp/bỏ import không dùng. Giữ nguyên nội dung Javadoc tiếng Việt và không tự tách chuỗi dài. Formatter nằm trong configuration riêng, không đi vào dependency runtime. `./gradlew formatJava` sửa định dạng; `./gradlew checkJavaFormat` kiểm tra, được nối vào `check` của CI.
+- Chỉ thêm package con khi có một cụm lớp cộng tác: `account.service.identity`, `order.service.action`, `order.service.checkout`, `inventory.service.stock`, `product.service.query`. Hai projection đọc kho nằm trong `inventory.repository.projection`. Các module/tầng ít lớp giữ cách bố trí hiện tại; DTO tiếp tục chia request/response.
+- Chuyển các test cần truy cập package-private cùng cụm triển khai; giữ nguyên mức truy cập, tên bean Spring, biểu thức quyền, route, JSON và transaction. Sửa selector CI theo tên package mới.
+- Gom lọc payload audit đọc/ghi vào một hàm; giữ khác biệt null/rỗng ở hai hợp đồng. Gom kiểm tra giới hạn số dư trong điều chỉnh/đảo điều chỉnh, giữ nguyên mã lỗi và thứ tự kiểm tra version/khóa.
+- Bỏ `Allocation.originalIndex`, hai constructor `CheckoutCalculation` không được gọi, helper `leafCategory`/`productsById` không có nơi dùng và ba hằng loại bút toán lỗi thời trong `OrderPolicy`. Nguồn loại bút toán đang dùng vẫn là `InventoryPolicy`.
+- Bỏ đường ghi `restoreDeliveryReturn`/`restoreOrderStock` không có caller trong source/test; không nối nghiệp vụ trả hàng vào hoàn kho. Giữ mã lịch sử `RETURN_RESTOCK` và các truy vấn ledger để đọc dữ liệu đã có. Không sửa migration/schema.

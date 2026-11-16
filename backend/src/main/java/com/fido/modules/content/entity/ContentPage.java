@@ -9,6 +9,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -20,7 +21,10 @@ import java.time.temporal.ChronoUnit;
 @Entity
 @Table(
         name = "content_pages",
-        uniqueConstraints = @UniqueConstraint(name = "uq_content_pages_slug", columnNames = {"slug"}))
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uq_content_pages_slug",
+                        columnNames = {"slug"}))
 @Getter
 @Setter
 @NoArgsConstructor

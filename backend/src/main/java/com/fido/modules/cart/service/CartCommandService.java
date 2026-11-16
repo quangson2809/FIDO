@@ -1,6 +1,6 @@
 package com.fido.modules.cart.service;
 
-import com.fido.modules.account.service.AccountMutationLockService;
+import com.fido.modules.account.service.identity.AccountMutationLockService;
 import com.fido.modules.cart.dto.request.CartItemCreateRequest;
 import com.fido.modules.cart.dto.request.CartItemQuantityRequest;
 import com.fido.modules.cart.dto.response.CartDto;
@@ -8,7 +8,7 @@ import com.fido.modules.cart.entity.Cart;
 import com.fido.modules.cart.entity.CartItem;
 import com.fido.modules.cart.repository.CartItemRepository;
 import com.fido.modules.cart.repository.CartRepository;
-import com.fido.modules.product.service.CatalogProductReadService;
+import com.fido.modules.product.service.query.CatalogProductReadService;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -146,8 +146,7 @@ public class CartCommandService {
             product = catalog.get(productId);
         } catch (ResponseStatusException exception) {
             if (exception.getStatusCode().value() == HttpStatus.NOT_FOUND.value()) {
-                throw new ResponseStatusException(
-                        HttpStatus.CONFLICT, "PRODUCT_NOT_AVAILABLE");
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "PRODUCT_NOT_AVAILABLE");
             }
             throw exception;
         }

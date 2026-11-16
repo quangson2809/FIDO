@@ -3,6 +3,7 @@ package com.fido.modules.order;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
+
 import java.util.Map;
 
 class OrderAuthorizationHttpTests extends OrderHttpSupport {
@@ -15,10 +16,15 @@ class OrderAuthorizationHttpTests extends OrderHttpSupport {
         long orderId = pendingOrder();
 
         assertEquals(401, call("GET", "/api/v1/admin/orders/" + orderId, null, null).status());
-        assertEquals(200, call("GET", "/api/v1/admin/orders/" + orderId, root.token(), null).status());
-        assertEquals(403, call("GET", "/api/v1/admin/orders/" + orderId, plainAdmin.token(), null).status());
-        assertEquals(200, call("GET", "/api/v1/admin/orders/" + orderId, reader.token(), null).status());
-        assertEquals(403, call("GET", "/api/v1/admin/orders/" + orderId, editor.token(), null).status());
+        assertEquals(
+                200, call("GET", "/api/v1/admin/orders/" + orderId, root.token(), null).status());
+        assertEquals(
+                403,
+                call("GET", "/api/v1/admin/orders/" + orderId, plainAdmin.token(), null).status());
+        assertEquals(
+                200, call("GET", "/api/v1/admin/orders/" + orderId, reader.token(), null).status());
+        assertEquals(
+                403, call("GET", "/api/v1/admin/orders/" + orderId, editor.token(), null).status());
         assertEquals(403, action(reader, orderId, "CONFIRM").status());
         assertEquals(200, action(editor, orderId, "CONFIRM").status());
     }
@@ -33,10 +39,22 @@ class OrderAuthorizationHttpTests extends OrderHttpSupport {
         assertEquals(200, action(root, orderId, "START_PREPARING").status());
         assertEquals(403, action(oldPermission, orderId, "DISPATCH").status());
         assertEquals(200, action(root, orderId, "DISPATCH").status());
-        assertEquals(403, call("POST", "/api/v1/admin/orders/" + orderId + "/payment-actions",
-                oldPermission.token(), Map.of("action", "COMPLETE_DELIVERY_AND_COLLECT_COD")).status());
-        assertEquals(200, call("POST", "/api/v1/admin/orders/" + orderId + "/payment-actions",
-                root.token(), Map.of("action", "COMPLETE_DELIVERY_AND_COLLECT_COD")).status());
+        assertEquals(
+                403,
+                call(
+                                "POST",
+                                "/api/v1/admin/orders/" + orderId + "/payment-actions",
+                                oldPermission.token(),
+                                Map.of("action", "COMPLETE_DELIVERY_AND_COLLECT_COD"))
+                        .status());
+        assertEquals(
+                200,
+                call(
+                                "POST",
+                                "/api/v1/admin/orders/" + orderId + "/payment-actions",
+                                root.token(),
+                                Map.of("action", "COMPLETE_DELIVERY_AND_COLLECT_COD"))
+                        .status());
     }
 
     @Test
@@ -48,12 +66,30 @@ class OrderAuthorizationHttpTests extends OrderHttpSupport {
         assertEquals(200, action(root, orderId, "CONFIRM").status());
         assertEquals(200, action(root, orderId, "START_PREPARING").status());
         assertEquals(200, action(root, orderId, "DISPATCH").status());
-        assertEquals(200, call("POST", "/api/v1/admin/orders/" + orderId + "/payment-actions",
-                root.token(), Map.of("action", "COMPLETE_DELIVERY_AND_COLLECT_COD")).status());
-        assertEquals(403, call("POST", "/api/v1/admin/orders/" + orderId + "/after-sales",
-                afterSalesOnly.token(), Map.of("action", "RETURN_AND_REFUND_FULL", "reason", "Returned")).status());
-        assertEquals(200, call("POST", "/api/v1/admin/orders/" + orderId + "/after-sales",
-                root.token(), Map.of("action", "RETURN_AND_REFUND_FULL", "reason", "Returned")).status());
+        assertEquals(
+                200,
+                call(
+                                "POST",
+                                "/api/v1/admin/orders/" + orderId + "/payment-actions",
+                                root.token(),
+                                Map.of("action", "COMPLETE_DELIVERY_AND_COLLECT_COD"))
+                        .status());
+        assertEquals(
+                403,
+                call(
+                                "POST",
+                                "/api/v1/admin/orders/" + orderId + "/after-sales",
+                                afterSalesOnly.token(),
+                                Map.of("action", "RETURN_AND_REFUND_FULL", "reason", "Returned"))
+                        .status());
+        assertEquals(
+                200,
+                call(
+                                "POST",
+                                "/api/v1/admin/orders/" + orderId + "/after-sales",
+                                root.token(),
+                                Map.of("action", "RETURN_AND_REFUND_FULL", "reason", "Returned"))
+                        .status());
     }
 
     private long pendingOrder() throws Exception {

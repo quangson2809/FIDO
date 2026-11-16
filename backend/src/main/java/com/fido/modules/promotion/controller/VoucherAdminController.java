@@ -6,9 +6,11 @@ import com.fido.modules.promotion.dto.request.VoucherCreateRequest;
 import com.fido.modules.promotion.dto.request.VoucherPatchRequest;
 import com.fido.modules.promotion.dto.response.VoucherDetailDto;
 import com.fido.modules.promotion.service.VoucherManagementService;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,7 +35,8 @@ public class VoucherAdminController {
         var result = service.list(search, page, page_size);
         return new VoucherPage(
                 result.getContent(),
-                new PaginationMeta(page, page_size, result.getTotalElements(), result.getTotalPages()));
+                new PaginationMeta(
+                        page, page_size, result.getTotalElements(), result.getTotalPages()));
     }
 
     @GetMapping("/{id}")

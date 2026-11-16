@@ -8,17 +8,16 @@ import com.fido.modules.account.service.StaffCommandService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
 import java.time.Instant;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -47,8 +46,7 @@ class SuperadminAssignmentConcurrencyTests extends AccountHttpSupport {
         grant(firstTarget, "SUPERADMIN");
         grant(secondTarget, "SUPERADMIN");
 
-        long adminRoleId =
-                db.queryForObject("SELECT id FROM roles WHERE code='ADMIN'", Long.class);
+        long adminRoleId = db.queryForObject("SELECT id FROM roles WHERE code='ADMIN'", Long.class);
         StaffPatchRequest demoteToAdmin = new StaffPatchRequest();
         demoteToAdmin.setRole_ids(List.of(adminRoleId));
 
@@ -65,9 +63,7 @@ class SuperadminAssignmentConcurrencyTests extends AccountHttpSupport {
             start.countDown();
 
             List<Integer> statuses =
-                    List.of(
-                                    first.get(30, TimeUnit.SECONDS),
-                                    second.get(30, TimeUnit.SECONDS))
+                    List.of(first.get(30, TimeUnit.SECONDS), second.get(30, TimeUnit.SECONDS))
                             .stream()
                             .sorted()
                             .toList();
@@ -92,19 +88,17 @@ class SuperadminAssignmentConcurrencyTests extends AccountHttpSupport {
     }
 
     private int attemptDemotion(
-            long actorId,
-            long targetId,
-            StaffPatchRequest request,
-            CountDownLatch start)
+            long actorId, long targetId, StaffPatchRequest request, CountDownLatch start)
             throws InterruptedException {
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         Instant now = Instant.now();
-        Jwt jwt = Jwt.withTokenValue("test-superadmin-token")
-                .header("alg", "HS256")
-                .subject(Long.toString(actorId))
-                .issuedAt(now)
-                .expiresAt(now.plusSeconds(60))
-                .build();
+        Jwt jwt =
+                Jwt.withTokenValue("test-superadmin-token")
+                        .header("alg", "HS256")
+                        .subject(Long.toString(actorId))
+                        .issuedAt(now)
+                        .expiresAt(now.plusSeconds(60))
+                        .build();
         context.setAuthentication(
                 new JwtAuthenticationToken(
                         jwt, List.of(new SimpleGrantedAuthority("ROLE_SUPERADMIN"))));

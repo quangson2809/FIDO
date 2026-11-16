@@ -8,8 +8,7 @@ public final class CorrelationIdContext {
 
     public static final String HEADER_NAME = "X-Correlation-ID";
 
-    private static final Pattern SAFE_CORRELATION_ID =
-            Pattern.compile("[A-Za-z0-9._:-]{1,120}");
+    private static final Pattern SAFE_CORRELATION_ID = Pattern.compile("[A-Za-z0-9._:-]{1,120}");
     private static final ThreadLocal<String> CURRENT = new ThreadLocal<>();
 
     private CorrelationIdContext() {}

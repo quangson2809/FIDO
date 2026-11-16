@@ -24,7 +24,8 @@ public interface ProductRepository
     Optional<Product> findByIdForUpdate(@Param("productId") Long productId);
 
     @Lock(LockModeType.PESSIMISTIC_READ)
-    @Query("select p from Product p where (p.productId = :rootId or p.parentProductId = :rootId) and p.deletedAt is null and p.status = 'ACTIVE' order by p.productId")
+    @Query(
+            "select p from Product p where (p.productId = :rootId or p.parentProductId = :rootId) and p.deletedAt is null and p.status = 'ACTIVE' order by p.productId")
     List<Product> findActiveFamilyForValidation(@Param("rootId") Long rootId);
 
     Product save(Product entity);

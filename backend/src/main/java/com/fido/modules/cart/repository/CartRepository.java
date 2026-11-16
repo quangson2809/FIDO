@@ -18,7 +18,8 @@ public interface CartRepository extends Repository<Cart, Long> {
 
     /** Bên gọi khóa tài khoản trước; khóa mọi giỏ OPEN để phát hiện dữ liệu trùng thay vì tự chọn một giỏ. */
     @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
+    @Query(
+            """
             select c from Cart c
             where c.accountId = :accountId and c.status = 'OPEN'
             order by c.cartId asc

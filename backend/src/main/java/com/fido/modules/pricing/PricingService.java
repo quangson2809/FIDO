@@ -1,11 +1,11 @@
 package com.fido.modules.pricing;
 
-import java.util.List;
-import java.util.function.Supplier;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
+import java.util.function.Supplier;
 
 /** Các module gọi chung bộ tính tiền này; lỗi số học được đổi thành lỗi HTTP tại một nơi. */
 @Service
@@ -32,8 +32,9 @@ public class PricingService {
     public long calculateDiscountAmount(
             String discountType, Long discountValue, Long maximumDiscount, long subtotal) {
         return translate(
-                () -> calculator.calculateDiscountAmount(
-                        discountType, discountValue, maximumDiscount, subtotal));
+                () ->
+                        calculator.calculateDiscountAmount(
+                                discountType, discountValue, maximumDiscount, subtotal));
     }
 
     public long sumAmounts(List<Long> amounts) {
@@ -44,9 +45,10 @@ public class PricingService {
         try {
             return calculation.get();
         } catch (PricingException ex) {
-            HttpStatus status = "MONEY_TOTAL_MISMATCH".equals(ex.code())
-                    ? HttpStatus.CONFLICT
-                    : HttpStatus.BAD_REQUEST;
+            HttpStatus status =
+                    "MONEY_TOTAL_MISMATCH".equals(ex.code())
+                            ? HttpStatus.CONFLICT
+                            : HttpStatus.BAD_REQUEST;
             throw new ResponseStatusException(status, ex.code());
         }
     }

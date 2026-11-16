@@ -1,6 +1,7 @@
 package com.fido.modules.product.service;
 
 import com.fido.modules.product.dto.response.AdminProductDetailDto;
+import com.fido.modules.product.service.query.CatalogReferenceService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

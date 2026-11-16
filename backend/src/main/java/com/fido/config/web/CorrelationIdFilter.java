@@ -16,14 +16,12 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain)
+            HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        // Header chỉ dùng nếu hợp lệ; phạm vi tự đóng để luồng được tái sử dụng không mang mã của request trước.
+        // Header chỉ dùng nếu hợp lệ; phạm vi tự đóng để luồng được tái sử dụng không mang mã của
+        // request trước.
         try (CorrelationIdContext.Scope ignored =
-                CorrelationIdContext.open(
-                        request.getHeader(CorrelationIdContext.HEADER_NAME))) {
+                CorrelationIdContext.open(request.getHeader(CorrelationIdContext.HEADER_NAME))) {
             filterChain.doFilter(request, response);
         }
     }

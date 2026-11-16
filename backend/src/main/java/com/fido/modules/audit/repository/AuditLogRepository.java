@@ -11,5 +11,4 @@ public interface AuditLogRepository
         extends Repository<AuditLog, Long>,
                 org.springframework.data.jpa.repository.JpaSpecificationExecutor<AuditLog> {
     Optional<AuditLog> findById(Long id);
-
 }
