@@ -184,6 +184,7 @@ jobs:
             ./gradlew --no-daemon test --rerun-tasks \
               --tests 'com.fido.modules.report.*' \
               --tests 'com.fido.modules.pricing.*' \
+              --tests com.fido.config.devseed.DevDataSeedServiceTests.reportsDistinguishSeedPeriodFromEmptyRecentRange \
               --tests com.fido.modules.promotion.service.VoucherDiscountTests
             ./gradlew --no-daemon checkJavaFormat
           else

@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fido.support.OperationsHttpSupport;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,9 +19,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-class DevDataSeedServiceTests {
+class DevDataSeedServiceTests extends OperationsHttpSupport {
     private static final List<String> TARGET_TABLES =
             List.of(
                     "accounts",
@@ -247,6 +249,72 @@ class DevDataSeedServiceTests {
                         """,
                         Integer.class),
                 "the demo seed must not invent implicit permission grants for ADMIN");
+    }
+
+    @Test
+    void reportsDistinguishSeedPeriodFromEmptyRecentRange() throws Exception {
+        seeder.seed();
+        var login =
+                call(
+                        "POST",
+                        "/api/v1/auth/login",
+                        null,
+                        Map.of(
+                                "phone",
+                                "+84909000001",
+                                "password",
+                                DevDataSeedService.DEFAULT_PASSWORD));
+        assertEquals(200, login.status(), String.valueOf(login.body()));
+        String token = login.body().get("data").get("access_token").asText();
+
+        assertSeedReportRange(token, "2026-09-01", "2026-09-30", 9L, 2_265_000L, 489_000L, 4L);
+        assertSeedReportRange(token, "2026-10-18", "2026-11-16", 0L, 0L, 0L, 0L);
+    }
+
+    private void assertSeedReportRange(
+            String token,
+            String from,
+            String to,
+            long expectedOrders,
+            long expectedSales,
+            long expectedReturns,
+            long expectedUnits)
+            throws Exception {
+        String query = "?from=" + from + "&to=" + to;
+        String base = "/api/v1/admin/reports/";
+        var overview = call("GET", base + "overview" + query, token, null);
+        assertEquals(200, overview.status(), String.valueOf(overview.body()));
+        var data = overview.body().get("data");
+        assertEquals(expectedSales, data.get("completed_sales").asLong());
+        assertEquals(expectedReturns, data.get("returned_adjustment").asLong());
+        assertEquals(expectedSales - expectedReturns, data.get("net_sales").asLong());
+        long orderCount = 0;
+        for (var count : data.get("orders_by_status")) orderCount += count.asLong();
+        assertEquals(expectedOrders, orderCount);
+
+        var sales = call("GET", base + "sales-trend" + query, token, null);
+        assertEquals(200, sales.status(), String.valueOf(sales.body()));
+        long netSales = 0;
+        for (var point : sales.body().get("data").get("points")) {
+            netSales += point.get("net_sales").asLong();
+        }
+        assertEquals(expectedSales - expectedReturns, netSales);
+
+        var orders = call("GET", base + "orders-trend" + query, token, null);
+        assertEquals(200, orders.status(), String.valueOf(orders.body()));
+        long trendCount = 0;
+        for (var point : orders.body().get("data").get("points")) {
+            trendCount += point.get("total_orders").asLong();
+        }
+        assertEquals(expectedOrders, trendCount);
+
+        var products = call("GET", base + "product-performance" + query, token, null);
+        assertEquals(200, products.status(), String.valueOf(products.body()));
+        long units = 0;
+        for (var item : products.body().get("data").get("items")) {
+            units += item.get("net_units").asLong();
+        }
+        assertEquals(expectedUnits, units);
     }
 
     @Test
