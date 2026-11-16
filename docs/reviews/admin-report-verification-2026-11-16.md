@@ -8,6 +8,7 @@ Reviewed branch: refactor/backend-pattern-safe-v2, baseline 33bf548.
 - Product.name is optional. The ranking SQL previously returned null, while FE requires a display string, breaking the entire product report/dashboard. Use the same Product SKU as the display fallback. Add a repository regression with a nameless child Product.
 - FE previously accepted fractional, negative and unsafe integer money, and trusted inconsistent net totals. Reject those responses with recoverable report errors rather than displaying rounded or contradictory metrics. Retain the existing numeric API; supporting exact figures above JavaScript's safe integer range would require an explicit wire-format/BigInt change.
 - Correct the product-report description: each independently sellable Product/SKU has its own units; the current approved contract does not group a family into one row.
+- Development-stack verification exposed an incompatible shipping-fee example: `30000.00` cannot bind to the required whole-VND `Long`. Correct the supplied `.env.example` to `30000`; the monetary amount and policy stay unchanged. Docker Compose boot/health checks verify the example in the real runtime. Existing local environments copied from the old example should update this value too.
 - Keep current price/catalog edits separate from historical order quantity/money. No new metrics, database fields, permissions, routes or accounting policy introduced.
 
 ## Targeted verification
