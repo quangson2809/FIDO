@@ -409,6 +409,7 @@ try {
       if (name === 'policies')
         await page.getByRole('heading', { name: 'Chính sách trả hàng', exact: true }).waitFor();
       const customerText = await page.locator('#storefront-main').innerText();
+      assert.doesNotMatch(await page.locator('footer').innerText(), /Chưa cập nhật.*CSKH/);
       assert.doesNotMatch(
         customerText,
         /\bBackend\b|\bmetadata\b|attribute_value_id|\bPATCH\b|Variant legacy|mã chống trùng|kho vận hành|\bACTIVE\b|\bINACTIVE\b|\bDRAFT\b/,

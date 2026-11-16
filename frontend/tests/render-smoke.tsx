@@ -136,6 +136,17 @@ const headerHtml = renderWithShell(<Header />);
 assert.match(headerHtml, /FIDO/);
 assert.match(headerHtml, /Giỏ hàng/);
 assert.match(headerHtml, /Tài khoản/);
+assert.doesNotMatch(headerHtml, /Đăng nhập để dùng giỏ hàng/);
+const guestHeaderHtml = renderToStaticMarkup(
+  <MemoryRouter>
+    <AuthSessionContext.Provider value={{ ...authValue, isAuthenticated: false }}>
+      <ToastProvider>
+        <CartContext.Provider value={cartValue}><Header /></CartContext.Provider>
+      </ToastProvider>
+    </AuthSessionContext.Provider>
+  </MemoryRouter>,
+);
+assert.match(guestHeaderHtml, /Đăng nhập để dùng giỏ hàng/);
 
 const adminHtml = renderWithShell(
   <Routes>
@@ -440,14 +451,11 @@ assert.match(
 assert.match(renderWithShell(<Footer />), /href="\/about"/);
 console.log('About render and navigation checks passed');
 
-const footerHtml = renderToStaticMarkup(
-  <MemoryRouter>
-    <Footer />
-  </MemoryRouter>,
-);
+const footerHtml = renderWithShell(<Footer />);
 assert.match(footerHtml, /Chăm sóc khách hàng/);
-if (!import.meta.env.VITE_SUPPORT_EMAIL) assert.match(footerHtml, /Chưa cập nhật email CSKH/);
-if (!import.meta.env.VITE_SUPPORT_HOTLINE) assert.match(footerHtml, /Chưa cập nhật hotline CSKH/);
+assert.doesNotMatch(footerHtml, /Chưa cập nhật|Đăng nhập \/ đăng ký/);
+if (!import.meta.env.VITE_SUPPORT_EMAIL) assert.doesNotMatch(footerHtml, /mailto:/);
+if (!import.meta.env.VITE_SUPPORT_HOTLINE) assert.doesNotMatch(footerHtml, /tel:/);
 
 const orderedAttributeMarkup = renderToStaticMarkup(<ProductAttributeFields
   attributes={[

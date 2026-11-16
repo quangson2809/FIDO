@@ -19,6 +19,8 @@ Nhánh: `refactor/backend-pattern-safe-v2`. Source gốc: `dddd5bf6c31ae9e2d7394
 | Admin chỉ đọc | Banner chỉ đọc xuất hiện ở shell và lặp lại ở view thuộc tính/danh mục/nội dung | Giữ banner chung tại shell; giữ nguyên việc ẩn/khóa các thao tác ghi. |
 | Nhật ký admin | JSON trước/sau trải dài ở mỗi dòng; ví dụ mã hành động `ORDER_CONFIRMED` không đúng mã backend | Thu gọn vào `details` “Xem thay đổi”, mở được bằng bàn phím; tách trước/sau khi mở. Sửa ví dụ thành `ORDER_CONFIRM`. |
 | Footer | Đoạn mô tả ngôn ngữ thị giác và trải nghiệm thiết kế | Đổi thành giới thiệu trang phục dành cho người mua. |
+| Header và footer sau đăng nhập | Lời nhắc đăng nhập và nút đăng nhập còn hiện với tài khoản đã đăng nhập | Chỉ hiện cho khách chưa đăng nhập. |
+| Liên hệ footer | “Chưa cập nhật email/hotline CSKH” khi chưa cấu hình thông tin liên hệ | Chỉ hiện kênh liên hệ hợp lệ đã có dữ liệu. Giữ đường dẫn chính sách; không tạo số điện thoại/email giả. |
 
 ## Thông tin giữ lại có chủ đích
 
