@@ -1,4 +1,4 @@
-package com.fido.modules.order.service.action;
+package com.fido.modules.order.service.lifecycle;
 
 import com.fido.modules.inventory.service.InventoryMovementQueryService;
 import com.fido.modules.inventory.service.InventoryMovementQueryService.OrderStockState;

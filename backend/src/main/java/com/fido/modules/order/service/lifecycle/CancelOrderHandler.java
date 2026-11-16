@@ -1,4 +1,4 @@
-package com.fido.modules.order.service.action;
+package com.fido.modules.order.service.lifecycle;
 
 import com.fido.modules.inventory.service.stock.InventoryCommandService;
 import com.fido.modules.inventory.service.stock.InventoryCommandService.StockLine;

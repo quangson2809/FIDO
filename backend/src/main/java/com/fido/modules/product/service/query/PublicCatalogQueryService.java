@@ -16,6 +16,7 @@ import com.fido.modules.product.repository.AttributeRepository;
 import com.fido.modules.product.repository.BrandRepository;
 import com.fido.modules.product.repository.CategoryRepository;
 import com.fido.modules.product.repository.ProductRepository;
+import com.fido.modules.product.service.CatalogMetaService;
 
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;

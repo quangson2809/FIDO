@@ -31,7 +31,7 @@ Các folder con chỉ gom những lớp cùng xử lý một mục đích, khôn
 | Package | Mục đích |
 | --- | --- |
 | `account.service.identity` | Đăng nhập, token, danh tính điện thoại, truy cập và khóa tài khoản |
-| `order.service.action` | Policy, phân quyền và handler của sáu hành động quản trị đơn |
+| `order.service.lifecycle` | Policy, handler, thu/hoàn COD và truy vấn chi tiết vòng đời đơn |
 | `order.service.checkout` | Chuẩn hóa request, báo giá, tính toán và tạo đơn |
 | `inventory.service.stock` | Lệnh kho, các workflow nguồn và ghi số dư/ledger |
 | `inventory.repository.projection` | Giao diện kết quả đọc kho và đối soát |

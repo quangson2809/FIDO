@@ -1,4 +1,4 @@
-package com.fido.modules.order.service;
+package com.fido.modules.order.service.lifecycle;
 
 import com.fido.modules.audit.service.AuditAction;
 import com.fido.modules.audit.service.AuditEntityType;
@@ -12,6 +12,7 @@ import com.fido.modules.order.entity.ShippingInfo;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
 import com.fido.modules.order.repository.ShippingInfoRepository;
+import com.fido.modules.order.service.OrderPolicy;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;

@@ -1,4 +1,4 @@
-package com.fido.modules.product.service.query;
+package com.fido.modules.product.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyCollection;

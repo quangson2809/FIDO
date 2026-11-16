@@ -1,4 +1,4 @@
-package com.fido.modules.order.service;
+package com.fido.modules.order.service.lifecycle;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -17,8 +17,8 @@ import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
 import com.fido.modules.order.repository.ShippingInfoRepository;
-import com.fido.modules.order.service.action.OrderActionPolicy;
-import com.fido.modules.order.service.action.OrderAuthorization;
+import com.fido.modules.order.service.OrderPolicy;
+import com.fido.modules.order.service.OrderSummaryReadService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

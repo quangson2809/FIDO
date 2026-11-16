@@ -1,4 +1,4 @@
-package com.fido.modules.product.service.query;
+package com.fido.modules.product.service;
 
 import com.fido.modules.product.dto.response.AdminCatalogMetaDtoV2;
 import com.fido.modules.product.dto.response.AttributeDto;
@@ -13,7 +13,6 @@ import com.fido.modules.product.repository.AttributeOptionRepository;
 import com.fido.modules.product.repository.AttributeRepository;
 import com.fido.modules.product.repository.BrandRepository;
 import com.fido.modules.product.repository.CategoryRepository;
-import com.fido.modules.product.service.ProductImageUploadService;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;

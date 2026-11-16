@@ -1,4 +1,4 @@
-package com.fido.modules.order.service.action;
+package com.fido.modules.order.service.lifecycle;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;

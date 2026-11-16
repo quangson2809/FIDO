@@ -1,4 +1,4 @@
-package com.fido.modules.order.service.action;
+package com.fido.modules.order.service.lifecycle;
 
 import com.fido.modules.order.dto.request.OrderActionRequest;
 import com.fido.modules.order.entity.Order;

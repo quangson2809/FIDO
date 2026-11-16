@@ -1,6 +1,6 @@
 package com.fido.modules.order.dto.request;
 
-import com.fido.modules.order.service.action.OrderAction;
+import com.fido.modules.order.service.lifecycle.OrderAction;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 

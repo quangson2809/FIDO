@@ -13,6 +13,7 @@ import com.fido.modules.product.repository.BrandRepository;
 import com.fido.modules.product.repository.CategoryRepository;
 import com.fido.modules.product.repository.ProductImageRepository;
 import com.fido.modules.product.repository.ProductRepository;
+import com.fido.modules.product.service.CatalogMetaService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

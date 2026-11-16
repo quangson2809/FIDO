@@ -7,10 +7,10 @@ import com.fido.modules.order.dto.request.OrderActionRequest;
 import com.fido.modules.order.dto.request.PaymentActionRequest;
 import com.fido.modules.order.dto.response.OrderAdminDetailDto;
 import com.fido.modules.order.dto.response.OrderSummaryDto;
-import com.fido.modules.order.service.OrderAfterSalesService;
-import com.fido.modules.order.service.OrderPaymentService;
-import com.fido.modules.order.service.OrderQueryService;
-import com.fido.modules.order.service.action.OrderActionService;
+import com.fido.modules.order.service.lifecycle.OrderActionService;
+import com.fido.modules.order.service.lifecycle.OrderAfterSalesService;
+import com.fido.modules.order.service.lifecycle.OrderPaymentService;
+import com.fido.modules.order.service.lifecycle.OrderQueryService;
 
 import jakarta.validation.Valid;
 

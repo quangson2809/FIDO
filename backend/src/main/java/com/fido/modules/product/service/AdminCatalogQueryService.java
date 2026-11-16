@@ -14,7 +14,6 @@ import com.fido.modules.product.entity.Product;
 import com.fido.modules.product.mapper.CatalogMapper;
 import com.fido.modules.product.repository.ProductImageRepository;
 import com.fido.modules.product.repository.ProductRepository;
-import com.fido.modules.product.service.query.CatalogMetaService;
 import com.fido.modules.product.service.query.CatalogReferenceService;
 import com.fido.modules.product.service.query.CatalogSpecifications;
 import com.fido.modules.product.service.query.ProductAttributeValueReadService;

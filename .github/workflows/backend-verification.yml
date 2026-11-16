@@ -156,9 +156,9 @@ jobs:
             --tests com.fido.modules.inventory.InventoryAdjustmentHttpTests \
             --tests com.fido.modules.promotion.service.VoucherDiscountTests \
             --tests com.fido.modules.pricing.PricingCalculatorTests \
-            --tests com.fido.modules.order.service.action.OrderActionPolicyInvariantTests \
-            --tests com.fido.modules.order.service.action.OrderActionMatrixTests \
-            --tests com.fido.modules.order.service.action.OrderActionSchemaTests \
+            --tests com.fido.modules.order.service.lifecycle.OrderActionPolicyInvariantTests \
+            --tests com.fido.modules.order.service.lifecycle.OrderActionMatrixTests \
+            --tests com.fido.modules.order.service.lifecycle.OrderActionSchemaTests \
             --tests com.fido.modules.order.OrderActionContractHttpTests \
             --tests com.fido.modules.order.OrderActionTransactionHttpTests \
             --tests com.fido.modules.order.OrderStockHttpTests \
