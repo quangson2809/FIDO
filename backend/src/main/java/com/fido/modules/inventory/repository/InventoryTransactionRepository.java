@@ -1,8 +1,10 @@
 package com.fido.modules.inventory.repository;
 
 import com.fido.modules.inventory.entity.InventoryTransaction;
+import com.fido.modules.inventory.repository.projection.InventoryReconciliationView;
 
 import jakarta.persistence.LockModeType;
+
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -12,21 +14,24 @@ import org.springframework.data.repository.query.Param;
 import java.util.Collection;
 import java.util.List;
 
-/** InventoryTransaction is an append-only ledger; this repository exposes no update/delete API. */
+/** Sổ kho chỉ thêm mới; repository không mở API sửa/xóa bút toán cũ. */
 public interface InventoryTransactionRepository
-        extends Repository<InventoryTransaction, Long>, JpaSpecificationExecutor<InventoryTransaction> {
+        extends Repository<InventoryTransaction, Long>,
+                JpaSpecificationExecutor<InventoryTransaction> {
 
     InventoryTransaction save(InventoryTransaction entity);
 
     java.util.Optional<InventoryTransaction> findByIdempotencyKey(String idempotencyKey);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select movement from InventoryTransaction movement where movement.idempotencyKey = :idempotencyKey")
+    @Query(
+            "select movement from InventoryTransaction movement where movement.idempotencyKey = :idempotencyKey")
     java.util.Optional<InventoryTransaction> findByIdempotencyKeyForUpdate(
             @Param("idempotencyKey") String idempotencyKey);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select movement from InventoryTransaction movement where movement.txnId = :transactionId")
+    @Query(
+            "select movement from InventoryTransaction movement where movement.txnId = :transactionId")
     java.util.Optional<InventoryTransaction> findByTxnIdForUpdate(
             @Param("transactionId") Long transactionId);
 
@@ -45,7 +50,8 @@ public interface InventoryTransactionRepository
             Collection<Long> orderItemIds, String transactionType);
 
     @Query(
-            value = """
+            value =
+                    """
                     SELECT pair_keys.warehouse_id AS warehouseId,
                            pair_keys.product_id AS productId,
                            COALESCE(inventory.quantity_on_hand, 0) AS balanceQuantity,
@@ -72,7 +78,8 @@ public interface InventoryTransactionRepository
                              inventory.quantity_on_hand, inventory.version
                     ORDER BY pair_keys.warehouse_id, pair_keys.product_id
                     """,
-            countQuery = """
+            countQuery =
+                    """
                     SELECT COUNT(*) FROM (
                         SELECT warehouse_id, product_id FROM inventories
                         UNION
@@ -83,7 +90,8 @@ public interface InventoryTransactionRepository
     org.springframework.data.domain.Page<InventoryReconciliationView> reconcile(
             org.springframework.data.domain.Pageable pageable);
 
-    @Query("""
+    @Query(
+            """
             SELECT COUNT(movement)
             FROM InventoryTransaction movement
             WHERE movement.orderItemId IN (

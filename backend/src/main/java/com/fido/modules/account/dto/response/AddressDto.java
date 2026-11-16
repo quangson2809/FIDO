@@ -1,6 +1,6 @@
 package com.fido.modules.account.dto.response;
 
-/** Target Address response shape. Null structured fields indicate a legacy row awaiting replacement. */
+/** Trường địa chỉ có cấu trúc bị null là dữ liệu cũ chưa được thay bằng địa chỉ đầy đủ. */
 public record AddressDto(
         Long id,
         String recipient_name,

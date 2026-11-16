@@ -49,19 +49,27 @@ public abstract class OperationsHttpSupport {
     }
 
     protected User user(String role) throws Exception {
-        String phone = "+84" + java.util.concurrent.ThreadLocalRandom.current().nextLong(100_000_000L, 1_000_000_000L);
+        String phone =
+                "+84"
+                        + java.util.concurrent.ThreadLocalRandom.current()
+                                .nextLong(100_000_000L, 1_000_000_000L);
         var created =
                 call(
                         "POST",
                         "/api/v1/auth/register",
                         null,
-                        Map.of("phone", phone, "full_name", "Operations Test Account", "password", "Test-password-123"));
+                        Map.of(
+                                "phone",
+                                phone,
+                                "full_name",
+                                "Operations Test Account",
+                                "password",
+                                "Test-password-123"));
         assertEquals(201, created.status());
         long id = created.body().get("data").get("account").get("id").asLong();
         accounts.add(id);
         if (role != null && !"CUSTOMER".equals(role))
-            db.update(
-                    "INSERT INTO account_roles SELECT ?,id FROM roles WHERE code=?", id, role);
+            db.update("INSERT INTO account_roles SELECT ?,id FROM roles WHERE code=?", id, role);
         var login =
                 call(
                         "POST",
@@ -81,14 +89,12 @@ public abstract class OperationsHttpSupport {
         if (permission == null) {
             db.update("INSERT INTO permissions(code,name) VALUES (?,?)", code, code);
             permission =
-                    db.queryForObject(
-                            "SELECT id FROM permissions WHERE code=?", Long.class, code);
+                    db.queryForObject("SELECT id FROM permissions WHERE code=?", Long.class, code);
             permissions.add(permission);
         }
         String roleCode = "T" + UUID.randomUUID().toString().replace("-", "");
         db.update("INSERT INTO roles(code,name) VALUES (?,?)", roleCode, roleCode);
-        long role =
-                db.queryForObject("SELECT id FROM roles WHERE code=?", Long.class, roleCode);
+        long role = db.queryForObject("SELECT id FROM roles WHERE code=?", Long.class, roleCode);
         roles.add(role);
         db.update(
                 "INSERT INTO role_permissions(role_id,permission_id) VALUES (?,?)",

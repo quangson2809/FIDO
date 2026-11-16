@@ -4,7 +4,7 @@ import com.fido.common.response.ApiResponse;
 import com.fido.modules.account.dto.request.LoginRequest;
 import com.fido.modules.account.dto.request.RegisterRequest;
 import com.fido.modules.account.dto.response.LoginResponse;
-import com.fido.modules.account.service.AuthenticationService;
+import com.fido.modules.account.service.identity.AuthenticationService;
 
 import jakarta.validation.Valid;
 

@@ -93,3 +93,49 @@
 ## 9. Delivery status
 
 Owner-approved behavior and target schema are recorded; application/DTO/frontend alignment and runtime acceptance remain open until verified on the exact candidate SHA. DDL validation does not prove transaction/concurrency, authorization or user-flow behavior. Clean Schema Reset may be run only against a verified disposable development/test database; no reset is authorized against persistent/shared data.
+
+
+## 2026-11-12 — Internal backend responsibility refactor
+
+- OrderAction is the single source of the six wire actions, target status, permission and audit metadata. Request String validation and OpenAPI vocabulary derive from it; policy remains shared by visibility and execution.
+- OrderActionService retains authorization, locking/loading, transaction, audit and response projection. Its complete, duplicate-rejecting registry selects package-private action handlers; dispatch/retry share execution with distinct policy/audit.
+- ProductImageAdminService owns gallery replace/append/reorder/remove. Product patch delegates replace with its locked Product in a mandatory transaction; replacement identity/no-op, original validation/errors and EntityManager flush sequence remain unchanged.
+- InventoryCommandService keeps its API, StockLine and mandatory propagation. Package-private receipt/opening/adjustment/order workflows own source validation. Internal posting combines guarded balance/version update and ledger append, translating only ledger errors as before. No return-restock wiring, schema or dependency change.
+- This candidate was reconstructed in the Windows workspace after the original cloud workspace became unavailable. Verification is rerun on this candidate; earlier cloud results do not prove its status. See refactor-demo1-report.md.
+
+## 2026-11-12 — Backend naming clarification
+
+- OrderStockLineLoader.loadForUpdate explicitly names its OrderItem write-locking read. StartPreparingOrderHandler and MarkDeliveryFailedOrderHandler match the existing action semantics; wire action names remain unchanged.
+- OrderActionService.executeAction and OrderActionHandler.supportedActions clarify execution versus handler registration. Enum variables and audit status variables use explicit action/status names.
+- ProductImageAdminService.persistGalleryOrderAndPrimary names both primary selection and database persistence. replaceImages documents that the caller must already hold the Product write lock in the shared transaction.
+- Inventory posting uses idempotencyKey, sortByProductAndSourceId and normalizeReason to make duplicate prevention, processing order and reason normalization clear at call sites.
+- This is a naming/documentation change only. Existing permission expressions, transaction boundaries, lock order, flush sequence, stock/ledger semantics and HTTP/JSON contracts are preserved.
+
+## 2026-11-13 — Parent catalog summary and color/size combination selection
+
+- Public list/search pagination is parent-only. Search/name, category, brand and price retain parent-field semantics. Attribute equality filters use one correlated family-SKU EXISTS with all selected values on that same ACTIVE, non-deleted Product. Admin list is unchanged.
+- Owner clarification: the purchase selector contains only COLOR and/or SIZE. COLOR is an exact immutable Attribute code; size roles are immutable codes beginning with uppercase SIZE, not category-specific branches. Options come only from actual Product assignments within the public family; a shirt, trousers and shoes can use different SIZE Options without a global hard-coded list. Other Attributes remain descriptive even when is_variant_defining=true.
+- Product attribute-value responses retain the additive is_variant_defining and Attribute sort_order metadata. Generic flag toggles cannot bypass color/size matching or create a third purchase axis. Existing family detail carries Product identity, price, images and stock; no schema or endpoint change is needed.
+- Frontend selection is Attribute ID → Option ID. Earlier metadata-ordered axes constrain later axes; missing choices stay missing. Exactly one complete ACTIVE combination must match, regardless of stock on duplicates. Cart additionally requires the matching detail Product ID and available stock.
+- Parent is the display representative AND an ordinary sellable combination. It has the same complete color/size axis set as its active children. There is no manual SKU picker, no separate root button, no empty-parent exception and no direct-URL ambiguity bypass. A standalone Product without variants can still be bought.
+- Active multi-member families must have at least one COLOR/SIZE axis, the same complete set on every member, and unique Option tuples. Draft rows may be prepared independently; create/update/activation/reparent validate the affected family. Attribute code/Option identity are immutable under existing write contracts, so changing descriptive flags/labels does not change selection semantics.
+- Product writes share-lock Attribute metadata, then affected roots in ID order, then the member. Post-wait decisions use current locking reads for values, children and gallery. Deletions use already locked entities instead of derived-delete snapshot queries.
+- Development seed marks its existing SIZE/COLOR definitions variant-defining for metadata consistency. Applied migrations and business data are untouched. Existing invalid families must be repaired explicitly; the storefront blocks ambiguous/incomplete combinations rather than guessing or offering SKU buttons.
+- Existing backend CI is enabled for this feature branch and frontend CI runs the focused selection model test. This provides verification on Ubuntu instead of retrying the Windows runtime whose unsolicited telemetry was rejected. No workflow permissions or dependencies are added.
+
+## 2026-11-14 — SIZE prefix selection
+
+- Owner request broadens size recognition from exact SIZE to any Attribute code starting with uppercase SIZE, including SIZE_SHOES, SIZE_GIAY and SIZE_TROUSERS. The prefix is literal: no underscore is required; SHOE_SIZE/OVERSIZE do not match. COLOR recognition stays exact.
+- Frontend uses the shared recognition predicate for selection, matching and excluding size values from general specifications. Backend family validation uses the same prefix rule; complete, consistent, unique parent/child tuples remain required.
+- Option values still come only from the actual family. No schema, seed, API payload, public error-code or stock/Cart behavior change is introduced.
+- Focused model, parameterized HTTP validation/detail/filter and browser regressions cover prefixed sizes. Ubuntu CI remains the verification route; the rejected Windows test runtime is not retried.
+
+## 2026-11-16 — Định dạng và nhóm trách nhiệm backend
+
+- Dùng google-java-format 1.22.0 chế độ AOSP: thụt lề 4 dấu cách, sắp xếp/bỏ import không dùng. Giữ nguyên nội dung Javadoc tiếng Việt và không tự tách chuỗi dài. Formatter nằm trong configuration riêng, không đi vào dependency runtime. `./gradlew formatJava` sửa định dạng; `./gradlew checkJavaFormat` kiểm tra, được nối vào `check` của CI.
+- Chỉ thêm package con khi có một cụm lớp cộng tác: `account.service.identity`, `order.service.lifecycle`, `order.service.checkout`, `inventory.service.stock`, `product.service.query`. Hai projection đọc kho nằm trong `inventory.repository.projection`. Các module/tầng ít lớp giữ cách bố trí hiện tại; DTO tiếp tục chia request/response.
+- `OrderQueryService` ở cùng cụm lifecycle với các lệnh dùng projection chi tiết nội bộ; `CatalogMetaService` ở cùng nhóm upload do dùng giới hạn định dạng ảnh. Cách gom này giữ helper/constant package-private, không mở public chỉ để chuyển folder.
+- Chuyển các test cần truy cập package-private cùng cụm triển khai; giữ nguyên mức truy cập, tên bean Spring, biểu thức quyền, route, JSON và transaction. Sửa selector CI theo tên package mới.
+- Gom lọc payload audit đọc/ghi vào một hàm; giữ khác biệt null/rỗng ở hai hợp đồng. Gom kiểm tra giới hạn số dư trong điều chỉnh/đảo điều chỉnh, giữ nguyên mã lỗi và thứ tự kiểm tra version/khóa.
+- Bỏ `Allocation.originalIndex`, hai constructor `CheckoutCalculation` không được gọi, helper `leafCategory`/`productsById` không có nơi dùng và ba hằng loại bút toán lỗi thời trong `OrderPolicy`. Nguồn loại bút toán đang dùng vẫn là `InventoryPolicy`.
+- Bỏ đường ghi `restoreDeliveryReturn`/`restoreOrderStock` không có caller trong source/test; không nối nghiệp vụ trả hàng vào hoàn kho. Giữ mã lịch sử `RETURN_RESTOCK` và các truy vấn ledger để đọc dữ liệu đã có. Không sửa migration/schema.

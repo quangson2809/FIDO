@@ -12,7 +12,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
-/** Confirmed receipts are historical records. No delete operation is exposed. */
+/** Phiếu đã xác nhận là lịch sử; không cung cấp thao tác xóa qua repository. */
 public interface GoodsReceiptRepository
         extends Repository<GoodsReceipt, Long>, JpaSpecificationExecutor<GoodsReceipt> {
 

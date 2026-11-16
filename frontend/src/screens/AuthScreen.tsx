@@ -6,7 +6,7 @@ import { authService } from '../features/auth/api/service';
 import { useAuthSession } from '../features/auth/session/useAuthSession';
 import { isAdminProfile } from '../features/auth/session/sessionAccess';
 import { getStorefrontErrorMessage } from '../services/http/storefrontError';
-import { getApiErrorMessage, normalizeApiError } from '../services/http/apiError';
+import { normalizeApiError } from '../services/http/apiError';
 
 type AuthMode = 'login' | 'register';
 
@@ -94,9 +94,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ adminOnly = false }) => 
       navigate(isInternalUser ? '/admin/dashboard' : customerDestination, { replace: true });
     } catch (requestError: unknown) {
       const message =
-        !adminOnly && mode === 'login' && normalizeApiError(requestError).status === 401
+        mode === 'login' && normalizeApiError(requestError).status === 401
           ? 'Số điện thoại hoặc mật khẩu chưa đúng. Vui lòng kiểm tra lại.'
-          : (adminOnly ? getApiErrorMessage : getStorefrontErrorMessage)(
+          : getStorefrontErrorMessage(
               requestError,
               !adminOnly && mode === 'register'
                 ? 'Đăng ký thất bại. Kiểm tra dữ liệu tài khoản.'

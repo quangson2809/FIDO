@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -16,7 +17,10 @@ import java.time.Instant;
 @Entity
 @Table(
         name = "vouchers",
-        uniqueConstraints = @UniqueConstraint(name = "uq_vouchers_code", columnNames = {"code"}))
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uq_vouchers_code",
+                        columnNames = {"code"}))
 @Getter
 @Setter
 @NoArgsConstructor

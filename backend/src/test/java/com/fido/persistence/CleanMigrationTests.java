@@ -53,7 +53,8 @@ class CleanMigrationTests {
         try {
             assertEquals(1, flyway.migrate().migrationsExecuted);
             var jdbc = new JdbcTemplate(dataSource);
-            jdbc.update("INSERT INTO categories(name,slug,status) VALUES ('baseline-before-clean','baseline-before-clean','ACTIVE')");
+            jdbc.update(
+                    "INSERT INTO categories(name,slug,status) VALUES ('baseline-before-clean','baseline-before-clean','ACTIVE')");
 
             flyway.clean();
             assertEquals(1, flyway.migrate().migrationsExecuted);

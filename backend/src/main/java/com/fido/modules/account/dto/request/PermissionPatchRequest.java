@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.Nulls;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-/** Permission code is an immutable technical identifier. Description can explicitly be cleared. */
+/** Mã quyền không được đổi; mô tả có thể bị xóa bằng giá trị null được gửi rõ ràng. */
 public class PermissionPatchRequest {
 
     @Pattern(regexp = ".*\\S.*")

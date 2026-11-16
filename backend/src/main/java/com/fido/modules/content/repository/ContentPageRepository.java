@@ -1,7 +1,9 @@
 package com.fido.modules.content.repository;
 
 import com.fido.modules.content.entity.ContentPage;
+
 import jakarta.persistence.LockModeType;
+
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
@@ -10,7 +12,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
-/** Persistence only. Content pages are archived, never hard-deleted through the application. */
+/** Nội dung được lưu trữ bằng trạng thái ARCHIVED; ứng dụng không xóa cứng. */
 public interface ContentPageRepository extends Repository<ContentPage, Long> {
     Optional<ContentPage> findById(Long id);
 

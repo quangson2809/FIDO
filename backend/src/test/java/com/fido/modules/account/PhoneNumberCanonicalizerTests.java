@@ -3,7 +3,7 @@ package com.fido.modules.account;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.fido.modules.account.service.PhoneNumberCanonicalizer;
+import com.fido.modules.account.service.identity.PhoneNumberCanonicalizer;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
@@ -23,8 +23,7 @@ class PhoneNumberCanonicalizerTests {
     @Test
     void legacyLookupChecksBothRepresentations() {
         assertEquals(
-                java.util.List.of("+84912345678", "0912345678"),
-                phones.lookupValues("0912345678"));
+                java.util.List.of("+84912345678", "0912345678"), phones.lookupValues("0912345678"));
     }
 
     @Test

@@ -2,7 +2,7 @@ package com.fido.modules.account;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import com.fido.modules.account.service.SuperadminBootstrapService;
+import com.fido.modules.account.service.identity.SuperadminBootstrapService;
 
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,7 +51,8 @@ abstract class AccountHttpSupport {
     record Result(int status, JsonNode data, String body) {}
 
     Result call(String method, String path, String token, Object body) throws Exception {
-        var request = java.net.http.HttpRequest.newBuilder(URI.create("http://localhost:" + port + path));
+        var request =
+                java.net.http.HttpRequest.newBuilder(URI.create("http://localhost:" + port + path));
 
         request.header("Accept", "application/json");
 
@@ -65,7 +66,8 @@ abstract class AccountHttpSupport {
                 method,
                 body == null
                         ? java.net.http.HttpRequest.BodyPublishers.noBody()
-                        : java.net.http.HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)));
+                        : java.net.http.HttpRequest.BodyPublishers.ofString(
+                                json.writeValueAsString(body)));
 
         var response =
                 client.send(request.build(), java.net.http.HttpResponse.BodyHandlers.ofString());
@@ -77,10 +79,11 @@ abstract class AccountHttpSupport {
     }
 
     String phone() {
-        return "+84" + String.format(
-                Locale.ROOT,
-                "%09d",
-                ThreadLocalRandom.current().nextLong(100_000_000L, 1_000_000_000L));
+        return "+84"
+                + String.format(
+                        Locale.ROOT,
+                        "%09d",
+                        ThreadLocalRandom.current().nextLong(100_000_000L, 1_000_000_000L));
     }
 
     long register(String phone) throws Exception {

@@ -10,10 +10,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Item replacement is allowed only while the parent receipt is DRAFT. The Service layer owns that
- * state guard.
- */
+/** Chỉ thay dòng khi phiếu còn DRAFT; service chịu trách nhiệm kiểm tra trạng thái trước khi gọi. */
 public interface GoodsReceiptItemRepository extends Repository<GoodsReceiptItem, Long> {
 
     Optional<GoodsReceiptItem> findById(Long id);

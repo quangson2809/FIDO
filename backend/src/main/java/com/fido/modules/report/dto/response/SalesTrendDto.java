@@ -5,7 +5,7 @@ import com.fido.modules.report.dto.request.ReportGranularity;
 import java.time.LocalDate;
 import java.util.List;
 
-/** Monetary values are whole VND integers. */
+/** Các số tiền trả về tính bằng VND nguyên. */
 public record SalesTrendDto(
         LocalDate from,
         LocalDate to,

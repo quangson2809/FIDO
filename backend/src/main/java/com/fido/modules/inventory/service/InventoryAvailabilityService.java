@@ -1,6 +1,7 @@
 package com.fido.modules.inventory.service;
 
 import com.fido.modules.inventory.repository.InventoryRepository;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -8,7 +9,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-/** Cross-module read contract for stock availability by canonical Product ID. */
+/** Hợp đồng đọc tồn kho theo Product ID cho các module khác. */
 @Service
 @Transactional(readOnly = true)
 public class InventoryAvailabilityService {
@@ -25,25 +26,37 @@ public class InventoryAvailabilityService {
         return balance(productId).quantityOnHand();
     }
 
-    /** Returns logical zeroes for a missing composite balance row without creating it. */
+    /** Chưa có dòng tồn kho thì đọc như số lượng/version bằng 0; không tạo dòng mới. */
     public BalanceSnapshot balance(Long productId) {
         Long warehouseId = operationalWarehouse.requireOperationalWarehouseId();
-        return inventories.findByWarehouseIdAndProductId(warehouseId, productId)
-                .map(inventory -> new BalanceSnapshot(
-                        inventory.getQuantityOnHand() == null ? 0 : inventory.getQuantityOnHand(),
-                        inventory.getVersion() == null ? 0 : inventory.getVersion()))
+        return inventories
+                .findByWarehouseIdAndProductId(warehouseId, productId)
+                .map(
+                        inventory ->
+                                new BalanceSnapshot(
+                                        inventory.getQuantityOnHand() == null
+                                                ? 0
+                                                : inventory.getQuantityOnHand(),
+                                        inventory.getVersion() == null
+                                                ? 0
+                                                : inventory.getVersion()))
                 .orElseGet(() -> new BalanceSnapshot(0, 0));
     }
 
-    /** Availability is the resolved operational warehouse's balance, never a sum of warehouses. */
+    /** Chỉ trả tồn của kho vận hành do máy chủ chọn, không cộng gộp các kho. */
     public Map<Long, Integer> availableQuantities(Collection<Long> productIds) {
         Map<Long, Integer> result = new HashMap<>();
         if (productIds == null || productIds.isEmpty()) return Map.of();
         Long warehouseId = operationalWarehouse.requireOperationalWarehouseId();
-        inventories.findAllByWarehouseIdAndProductIdIn(warehouseId, productIds).forEach(
-                inventory -> result.put(
-                        inventory.getProductId(),
-                        inventory.getQuantityOnHand() == null ? 0 : inventory.getQuantityOnHand()));
+        inventories
+                .findAllByWarehouseIdAndProductIdIn(warehouseId, productIds)
+                .forEach(
+                        inventory ->
+                                result.put(
+                                        inventory.getProductId(),
+                                        inventory.getQuantityOnHand() == null
+                                                ? 0
+                                                : inventory.getQuantityOnHand()));
         return Map.copyOf(result);
     }
 

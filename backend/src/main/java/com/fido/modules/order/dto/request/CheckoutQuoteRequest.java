@@ -3,7 +3,7 @@ package com.fido.modules.order.dto.request;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-/** Stateless advisory checkout input; no quote ID or client-calculated values. */
+/** Client chỉ gửi mã voucher; không gửi tổng tiền tự tính hoặc ID báo giá đã lưu. */
 public record CheckoutQuoteRequest(
         @NotBlank @Size(max = 150) String recipient_name,
         @NotBlank @Size(max = 20) String recipient_phone,

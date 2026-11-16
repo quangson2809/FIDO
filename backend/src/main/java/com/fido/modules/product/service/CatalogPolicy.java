@@ -26,7 +26,8 @@ public final class CatalogPolicy {
 
     public static void requireMasterDataStatus(String status) {
         if (!MASTER_DATA_STATUSES.contains(status)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid category or brand status");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Invalid category or brand status");
         }
     }
 }

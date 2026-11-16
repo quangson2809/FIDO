@@ -8,7 +8,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-/** Public registration accepts only the P1.2 fields; account identity/roles are never client input. */
+/** Chỉ nhận thông tin đăng ký; ID và role do máy chủ quyết định, không lấy từ client. */
 public class RegisterRequest {
 
     @NotBlank

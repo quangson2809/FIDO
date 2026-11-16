@@ -3,6 +3,7 @@ package com.fido.modules.promotion.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.fido.modules.pricing.PricingService;
+
 import org.junit.jupiter.api.Test;
 
 class VoucherDiscountTests {

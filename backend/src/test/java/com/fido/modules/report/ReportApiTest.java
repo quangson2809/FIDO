@@ -32,7 +32,8 @@ class ReportApiTest extends OperationsHttpSupport {
             db.update("DELETE FROM orders WHERE id=?", id);
         }
         if (productId != null) db.update("DELETE FROM products WHERE id=?", productId);
-        if (productCategoryId != null) db.update("DELETE FROM categories WHERE id=?", productCategoryId);
+        if (productCategoryId != null)
+            db.update("DELETE FROM categories WHERE id=?", productCategoryId);
     }
 
     private void ensureProduct() {
@@ -40,14 +41,22 @@ class ReportApiTest extends OperationsHttpSupport {
         String suffix = UUID.randomUUID().toString().replace("-", "");
         String categorySlug = "report-api-" + suffix;
         String sku = "REPORT-API-" + suffix;
-        db.update("INSERT INTO categories(parent_category_id,name,slug,status) VALUES (NULL,?,?, 'ACTIVE')",
-                "Report API test category", categorySlug);
-        productCategoryId = db.queryForObject(
-                "SELECT id FROM categories WHERE slug=?", Long.class, categorySlug);
-        db.update("""
+        db.update(
+                "INSERT INTO categories(parent_category_id,name,slug,status) VALUES (NULL,?,?, 'ACTIVE')",
+                "Report API test category",
+                categorySlug);
+        productCategoryId =
+                db.queryForObject(
+                        "SELECT id FROM categories WHERE slug=?", Long.class, categorySlug);
+        db.update(
+                """
                 INSERT INTO products(category_id,name,slug,sku,selling_price,status)
                 VALUES (?,?,?,?,100,'ACTIVE')
-                """, productCategoryId, "Report API test product", "report-product-" + suffix, sku);
+                """,
+                productCategoryId,
+                "Report API test product",
+                "report-product-" + suffix,
+                sku);
         productId = db.queryForObject("SELECT id FROM products WHERE sku=?", Long.class, sku);
     }
 
@@ -64,54 +73,93 @@ class ReportApiTest extends OperationsHttpSupport {
         String suffix = UUID.randomUUID().toString().replace("-", "");
         String orderNumber = "RPT-" + suffix;
         String fingerprint = suffix + UUID.randomUUID().toString().replace("-", "");
-        db.update("""
+        db.update(
+                """
                 INSERT INTO orders(
                     account_id,order_number,idempotency_key,request_fingerprint,status,
                     subtotal,discount_amount,shipping_fee,total_amount,currency,
                     placed_at,created_at,updated_at)
                 VALUES (?,?,?,?,?,?,?,?,?,'VND',?,?,?)
                 """,
-                reportAccountId, orderNumber, "report-idem-" + suffix, fingerprint, status,
-                subtotal, discount, shipping, total, created, created, created);
-        long id = db.queryForObject("SELECT id FROM orders WHERE order_number=?", Long.class, orderNumber);
+                reportAccountId,
+                orderNumber,
+                "report-idem-" + suffix,
+                fingerprint,
+                status,
+                subtotal,
+                discount,
+                shipping,
+                total,
+                created,
+                created,
+                created);
+        long id =
+                db.queryForObject(
+                        "SELECT id FROM orders WHERE order_number=?", Long.class, orderNumber);
         orders.add(id);
 
-        db.update("""
+        db.update(
+                """
                 INSERT INTO order_items(
                     order_id,product_id,sku_snapshot,product_name_snapshot,attribute_snapshot,
                     image_url_snapshot,quantity,unit_price,discount_amount,line_total)
                 VALUES (?,?, 'FIXTURE-SKU','Report snapshot','{}','',1,?,?,?)
-                """, id, productId, subtotal, discount, subtotal - discount);
-        db.update("""
+                """,
+                id,
+                productId,
+                subtotal,
+                discount,
+                subtotal - discount);
+        db.update(
+                """
                 INSERT INTO order_addresses(
                     order_id,recipient_name,recipient_phone,province,district,ward,address_line)
                 VALUES (?,'Report recipient','0900000000','Hà Nội','Cầu Giấy','Dịch Vọng','Report test')
-                """, id);
+                """,
+                id);
 
         String deliveredAt = delivered;
-        String shippingStatus = deliveredAt != null ? "DELIVERED"
-                : "SHIPPING".equals(status) ? "SHIPPED" : "PENDING";
-        db.update("""
+        String shippingStatus =
+                deliveredAt != null
+                        ? "DELIVERED"
+                        : "SHIPPING".equals(status) ? "SHIPPED" : "PENDING";
+        db.update(
+                """
                 INSERT INTO shipping_infos(
                     order_id,recipient_name,recipient_phone,carrier_name,tracking_number,
                     shipping_status,shipped_at,delivered_at,updated_at)
                 VALUES (?,'Report recipient','0900000000',NULL,NULL,?,?,?,CURRENT_TIMESTAMP(6))
-                """, id, shippingStatus, deliveredAt, deliveredAt);
+                """,
+                id,
+                shippingStatus,
+                deliveredAt,
+                deliveredAt);
 
         String paymentStatus = "RETURNED".equals(status) ? "REFUNDED" : paid ? "PAID" : "UNPAID";
-        String collectedAt = paid || "RETURNED".equals(status)
-                ? (deliveredAt != null ? deliveredAt : created) : null;
+        String collectedAt =
+                paid || "RETURNED".equals(status)
+                        ? (deliveredAt != null ? deliveredAt : created)
+                        : null;
         Long collectedBy = paid || "RETURNED".equals(status) ? reportActorId : null;
         Long refundAmount = "RETURNED".equals(status) ? total : 0L;
         Long refundedBy = "RETURNED".equals(status) ? reportActorId : null;
         String refundedAt = "RETURNED".equals(status) ? deliveredAt : null;
-        db.update("""
+        db.update(
+                """
                 INSERT INTO payments(
                     order_id,method,payment_status,amount,currency,collected_by_account_id,collected_at,
                     refund_amount,refunded_by_account_id,refunded_at,refund_reason,created_at,updated_at)
                 VALUES (?,'COD',?,?,'VND',?,?,?,?,?, ?,CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6))
-                """, id, paymentStatus, total, collectedBy, collectedAt, refundAmount, refundedBy,
-                refundedAt, "RETURNED".equals(status) ? "Report fixture refund" : null);
+                """,
+                id,
+                paymentStatus,
+                total,
+                collectedBy,
+                collectedAt,
+                refundAmount,
+                refundedBy,
+                refundedAt,
+                "RETURNED".equals(status) ? "Report fixture refund" : null);
         return id;
     }
 
@@ -122,17 +170,19 @@ class ReportApiTest extends OperationsHttpSupport {
     }
 
     private void money(JsonNode result, String field, String expected) {
-        assertEquals(0, new BigDecimal(expected).compareTo(result.get(field).decimalValue()), field);
+        assertEquals(
+                0, new BigDecimal(expected).compareTo(result.get(field).decimalValue()), field);
     }
 
     @Test
-    void returnsRestateCompletionPeriodIncludingShippingRegardlessOfRefundTiming() throws Exception {
+    void returnsRestateCompletionPeriodIncludingShippingRegardlessOfRefundTiming()
+            throws Exception {
         var root = user("SUPERADMIN");
         reportActorId = root.id();
         reportAccountId = root.id();
         order("COMPLETED", "2025-09-01 02:00:00", "2025-09-10 02:00:00", 100, 0, 20, true);
-        long returned = order("COMPLETED", "2025-08-20 02:00:00",
-                "2025-09-20 02:00:00", 250, 30, 15, true);
+        long returned =
+                order("COMPLETED", "2025-08-20 02:00:00", "2025-09-20 02:00:00", 250, 30, 15, true);
         order("SHIPPING", "2025-09-22 02:00:00", null, 999, 0, 0, false);
         order("PENDING", "2025-09-23 02:00:00", null, 888, 0, 0, false);
         order("CANCELLED", "2025-09-24 02:00:00", null, 777, 0, 0, false);
@@ -144,12 +194,15 @@ class ReportApiTest extends OperationsHttpSupport {
         money(beforeReturn, "net_sales", "355");
 
         db.update("UPDATE orders SET status='RETURNED' WHERE id=?", returned);
-        db.update("""
+        db.update(
+                """
                 UPDATE payments
                 SET payment_status='REFUNDED',refund_amount=amount,refunded_by_account_id=?,
                     refunded_at='2025-10-01 02:00:00',refund_reason='Report fixture refund'
                 WHERE order_id=?
-                """, reportActorId, returned);
+                """,
+                reportActorId,
+                returned);
 
         var september = report(root.token(), "2025-09-01", "2025-09-30");
         assertEquals(6, september.size());
@@ -181,9 +234,23 @@ class ReportApiTest extends OperationsHttpSupport {
         var root = user("SUPERADMIN");
         reportActorId = root.id();
         reportAccountId = root.id();
-        order("COMPLETED", "2025-03-09 16:59:59.999999", "2025-03-09 16:59:59.999999", 100, 0, 0, true);
+        order(
+                "COMPLETED",
+                "2025-03-09 16:59:59.999999",
+                "2025-03-09 16:59:59.999999",
+                100,
+                0,
+                0,
+                true);
         order("COMPLETED", "2025-03-09 17:00:00", "2025-03-09 17:00:00", 10, 0, 0, true);
-        order("COMPLETED", "2025-03-10 16:59:59.999999", "2025-03-10 16:59:59.999999", 20, 0, 0, true);
+        order(
+                "COMPLETED",
+                "2025-03-10 16:59:59.999999",
+                "2025-03-10 16:59:59.999999",
+                20,
+                0,
+                0,
+                true);
         order("COMPLETED", "2025-03-10 17:00:00", "2025-03-10 17:00:00", 40, 0, 0, true);
         var result = report(root.token(), "2025-03-10", "2025-03-10");
         money(result, "completed_sales", "30");
@@ -203,9 +270,14 @@ class ReportApiTest extends OperationsHttpSupport {
         assertEquals(403, call("GET", valid, customer.token(), null).status());
         capability(employee, "ORDER_READ");
         assertEquals(403, call("GET", valid, employee.token(), null).status());
-        for (String query : List.of("", "?from=2025-01-01", "?to=2025-01-01",
-                "?from=bad&to=2025-01-01", "?from=2025-02-30&to=2025-03-01",
-                "?from=2025-02-01&to=2025-01-31")) {
+        for (String query :
+                List.of(
+                        "",
+                        "?from=2025-01-01",
+                        "?to=2025-01-01",
+                        "?from=bad&to=2025-01-01",
+                        "?from=2025-02-30&to=2025-03-01",
+                        "?from=2025-02-01&to=2025-01-31")) {
             assertEquals(400, call("GET", PATH + query, root.token(), null).status(), query);
         }
         var empty = report(root.token(), "2024-01-01", "2024-01-31");
@@ -230,7 +302,8 @@ class ReportApiTest extends OperationsHttpSupport {
         reportActorId = root.id();
         reportAccountId = root.id();
         String dates = "?from=2024-01-01&to=2024-01-02";
-        for (String endpoint : List.of("overview", "sales-trend", "orders-trend", "product-performance")) {
+        for (String endpoint :
+                List.of("overview", "sales-trend", "orders-trend", "product-performance")) {
             String path = "/api/v1/admin/reports/" + endpoint + dates;
             assertEquals(401, call("GET", path, null, null).status());
             assertEquals(403, call("GET", path, staff.token(), null).status());
@@ -238,16 +311,26 @@ class ReportApiTest extends OperationsHttpSupport {
             assertEquals(200, call("GET", path, root.token(), null).status());
         }
         capability(staff, "REPORT_READ");
-        for (String endpoint : List.of("overview", "sales-trend", "orders-trend", "product-performance")) {
-            assertEquals(200, call("GET", "/api/v1/admin/reports/" + endpoint + dates, staff.token(), null).status());
+        for (String endpoint :
+                List.of("overview", "sales-trend", "orders-trend", "product-performance")) {
+            assertEquals(
+                    200,
+                    call("GET", "/api/v1/admin/reports/" + endpoint + dates, staff.token(), null)
+                            .status());
         }
-        db.update("""
+        db.update(
+                """
                 DELETE FROM role_permissions
                 WHERE permission_id=(SELECT id FROM permissions WHERE code='REPORT_READ')
                   AND role_id IN (SELECT role_id FROM account_roles WHERE account_id=?)
-                """, staff.id());
-        for (String endpoint : List.of("overview", "sales-trend", "orders-trend", "product-performance")) {
-            assertEquals(403, call("GET", "/api/v1/admin/reports/" + endpoint + dates, staff.token(), null).status());
+                """,
+                staff.id());
+        for (String endpoint :
+                List.of("overview", "sales-trend", "orders-trend", "product-performance")) {
+            assertEquals(
+                    403,
+                    call("GET", "/api/v1/admin/reports/" + endpoint + dates, staff.token(), null)
+                            .status());
         }
     }
 
@@ -259,23 +342,36 @@ class ReportApiTest extends OperationsHttpSupport {
         order("COMPLETED", "2023-01-31 17:00:00", "2023-01-31 17:00:00", 100, 10, 20, true);
         order("RETURNED", "2023-02-05 00:00:00", "2023-02-05 17:00:00", 200, 20, 15, true);
         order("SHIPPING", "2023-02-06 00:00:00", null, 999, 0, 0, false);
-        order("COMPLETED", "2023-02-10 16:59:59.999999", "2023-02-10 16:59:59.999999", 900, 0, 0, true);
+        order(
+                "COMPLETED",
+                "2023-02-10 16:59:59.999999",
+                "2023-02-10 16:59:59.999999",
+                900,
+                0,
+                0,
+                true);
 
         var overview = report(root.token(), "2023-02-01", "2023-02-10");
         for (String granularity : List.of("DAY", "WEEK", "MONTH")) {
-            var result = analytics(root.token(), "sales-trend",
-                    "?from=2023-02-01&to=2023-02-10&granularity=" + granularity);
+            var result =
+                    analytics(
+                            root.token(),
+                            "sales-trend",
+                            "?from=2023-02-01&to=2023-02-10&granularity=" + granularity);
             assertEquals("Asia/Ho_Chi_Minh", result.get("timezone").asText());
             assertEquals(granularity, result.get("granularity").asText());
             for (String field : List.of("completed_sales", "returned_adjustment", "net_sales")) {
                 BigDecimal sum = BigDecimal.ZERO;
-                for (var point : result.get("points")) sum = sum.add(point.get(field).decimalValue());
+                for (var point : result.get("points"))
+                    sum = sum.add(point.get(field).decimalValue());
                 assertEquals(0, sum.compareTo(overview.get(field).decimalValue()), field);
             }
-            assertEquals(granularity.equals("DAY") ? 10 : granularity.equals("WEEK") ? 2 : 1,
+            assertEquals(
+                    granularity.equals("DAY") ? 10 : granularity.equals("WEEK") ? 2 : 1,
                     result.get("points").size());
-            if (granularity.equals("WEEK")) assertEquals("2023-01-30",
-                    result.get("points").get(0).get("period_start").asText());
+            if (granularity.equals("WEEK"))
+                assertEquals(
+                        "2023-01-30", result.get("points").get(0).get("period_start").asText());
             if (granularity.equals("DAY")) money(result.get("points").get(1), "net_sales", "0");
         }
         var defaultDay = analytics(root.token(), "sales-trend", "?from=2023-02-01&to=2023-02-01");
@@ -288,16 +384,28 @@ class ReportApiTest extends OperationsHttpSupport {
         var root = user("SUPERADMIN");
         reportActorId = root.id();
         reportAccountId = root.id();
-        for (String status : List.of("PENDING", "CONFIRMED", "PREPARING", "SHIPPING",
-                "COMPLETED", "DELIVERY_FAILED", "CANCELLED", "RETURNED")) {
+        for (String status :
+                List.of(
+                        "PENDING",
+                        "CONFIRMED",
+                        "PREPARING",
+                        "SHIPPING",
+                        "COMPLETED",
+                        "DELIVERY_FAILED",
+                        "CANCELLED",
+                        "RETURNED")) {
             order(status, "2022-12-31 17:00:00", "2023-04-01 00:00:00", 10, 0, 0, true);
         }
         order("PENDING", "2023-01-01 17:00:00", null, 10, 0, 0, false);
         order("PENDING", "2022-12-31 16:59:59.999999", null, 10, 0, 0, false);
         var overview = report(root.token(), "2023-01-01", "2023-01-02");
         for (String granularity : List.of("DAY", "WEEK", "MONTH")) {
-            var points = analytics(root.token(), "orders-trend",
-                    "?from=2023-01-01&to=2023-01-02&granularity=" + granularity).get("points");
+            var points =
+                    analytics(
+                                    root.token(),
+                                    "orders-trend",
+                                    "?from=2023-01-01&to=2023-01-02&granularity=" + granularity)
+                            .get("points");
             long total = 0;
             var counts = new java.util.HashMap<String, Long>();
             for (var point : points) {
@@ -312,7 +420,9 @@ class ReportApiTest extends OperationsHttpSupport {
             }
             assertEquals(9, total);
             for (var entry : counts.entrySet()) {
-                assertEquals(overview.get("orders_by_status").get(entry.getKey()).asLong(), entry.getValue());
+                assertEquals(
+                        overview.get("orders_by_status").get(entry.getKey()).asLong(),
+                        entry.getValue());
             }
         }
         var empty = analytics(root.token(), "orders-trend", "?from=2021-02-01&to=2021-02-03");
@@ -326,18 +436,42 @@ class ReportApiTest extends OperationsHttpSupport {
         reportActorId = root.id();
         reportAccountId = root.id();
         for (String endpoint : List.of("sales-trend", "orders-trend", "product-performance")) {
-            for (String dates : List.of("", "?from=2024-01-01", "?from=bad&to=2024-01-02",
-                    "?from=2024-02-30&to=2024-03-01", "?from=2024-02-01&to=2024-01-01")) {
-                assertEquals(400, call("GET", "/api/v1/admin/reports/" + endpoint + dates, root.token(), null).status());
+            for (String dates :
+                    List.of(
+                            "",
+                            "?from=2024-01-01",
+                            "?from=bad&to=2024-01-02",
+                            "?from=2024-02-30&to=2024-03-01",
+                            "?from=2024-02-01&to=2024-01-01")) {
+                assertEquals(
+                        400,
+                        call("GET", "/api/v1/admin/reports/" + endpoint + dates, root.token(), null)
+                                .status());
             }
         }
         for (String endpoint : List.of("sales-trend", "orders-trend")) {
-            assertEquals(400, call("GET", "/api/v1/admin/reports/" + endpoint
-                    + "?from=2024-01-01&to=2024-01-02&granularity=YEAR", root.token(), null).status());
+            assertEquals(
+                    400,
+                    call(
+                                    "GET",
+                                    "/api/v1/admin/reports/"
+                                            + endpoint
+                                            + "?from=2024-01-01&to=2024-01-02&granularity=YEAR",
+                                    root.token(),
+                                    null)
+                            .status());
         }
         for (String limit : List.of("0", "101", "bad")) {
-            assertEquals(400, call("GET", "/api/v1/admin/reports/product-performance"
-                    + "?from=2024-01-01&to=2024-01-02&limit=" + limit, root.token(), null).status());
+            assertEquals(
+                    400,
+                    call(
+                                    "GET",
+                                    "/api/v1/admin/reports/product-performance"
+                                            + "?from=2024-01-01&to=2024-01-02&limit="
+                                            + limit,
+                                    root.token(),
+                                    null)
+                            .status());
         }
     }
 }

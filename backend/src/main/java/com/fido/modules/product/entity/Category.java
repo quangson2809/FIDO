@@ -2,17 +2,20 @@ package com.fido.modules.product.entity;
 
 import jakarta.persistence.*;
 
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+
 @Entity
 @Table(
         name = "categories",
-        uniqueConstraints = @UniqueConstraint(name = "uq_categories_slug", columnNames = {"slug"}))
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uq_categories_slug",
+                        columnNames = {"slug"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -35,7 +38,11 @@ public class Category {
     @Column(name = "status", nullable = false, length = 20)
     private String status = "ACTIVE";
 
-    @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP(6)", updatable = false)
+    @Column(
+            name = "created_at",
+            nullable = false,
+            columnDefinition = "TIMESTAMP(6)",
+            updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")

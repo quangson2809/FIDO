@@ -23,8 +23,16 @@ import java.util.Set;
 @RestController
 @RequestMapping("/api/v1/admin/audit-logs")
 public class AuditController {
-    private static final Set<String> ALLOWED_QUERY_PARAMETERS = Set.of(
-            "actor_account_id", "action", "entity_type", "entity_id", "from", "to", "page", "page_size");
+    private static final Set<String> ALLOWED_QUERY_PARAMETERS =
+            Set.of(
+                    "actor_account_id",
+                    "action",
+                    "entity_type",
+                    "entity_id",
+                    "from",
+                    "to",
+                    "page",
+                    "page_size");
 
     private final AuditQueryService service;
 
@@ -39,22 +47,29 @@ public class AuditController {
             @RequestParam(required = false) String action,
             @RequestParam(name = "entity_type", required = false) String entityType,
             @RequestParam(name = "entity_id", required = false) String entityId,
-            @RequestParam(required = false)
-                    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
                     OffsetDateTime from,
-            @RequestParam(required = false)
-                    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
                     OffsetDateTime to,
             @RequestParam(required = false) Integer page,
             @RequestParam(name = "page_size", required = false) Integer pageSize) {
         rejectUnknownParameters(request);
-        return service.search(new AuditSearchFilter(
-                actorAccountId, action, entityType, entityId, utc(from), utc(to), page, pageSize));
+        return service.search(
+                new AuditSearchFilter(
+                        actorAccountId,
+                        action,
+                        entityType,
+                        entityId,
+                        utc(from),
+                        utc(to),
+                        page,
+                        pageSize));
     }
 
     private void rejectUnknownParameters(HttpServletRequest request) {
-        boolean unknown = request.getParameterMap().keySet().stream()
-                .anyMatch(name -> !ALLOWED_QUERY_PARAMETERS.contains(name));
+        boolean unknown =
+                request.getParameterMap().keySet().stream()
+                        .anyMatch(name -> !ALLOWED_QUERY_PARAMETERS.contains(name));
         if (unknown) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "AUDIT_FILTER_UNKNOWN");
         }

@@ -39,7 +39,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
       setPublicMeta(catalog);
       setError(null);
     } catch (failure: unknown) {
-      setError(getApiErrorMessage(failure, 'Không thể tải catalog metadata.'));
+      setError(getApiErrorMessage(failure, 'Không thể tải danh mục và thương hiệu.'));
     } finally {
       setLoading(false);
     }
@@ -76,9 +76,9 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
 
       resetForm();
       await load();
-      showToast('Đã cập nhật catalog metadata.');
+      showToast('Đã cập nhật danh mục và thương hiệu.');
     } catch (failure: unknown) {
-      setError(getApiErrorMessage(failure, 'Không thể tạo metadata.'));
+      setError(getApiErrorMessage(failure, 'Không thể tạo danh mục hoặc thương hiệu.'));
     } finally {
       setBusy(false);
     }
@@ -116,7 +116,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
       else await adminCatalogMetaService.deleteBrand(id);
       await load();
     } catch (failure: unknown) {
-      setError(getApiErrorMessage(failure, 'Không thể xóa metadata đang được tham chiếu.'));
+      setError(getApiErrorMessage(failure, 'Không thể xóa danh mục hoặc thương hiệu đang được sử dụng.'));
     } finally {
       setBusy(false);
     }
@@ -140,7 +140,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
   if (loading && !publicMeta) {
     return (
       <div className="rounded-lg border border-[#E2E5DE] bg-white p-10 text-center text-sm">
-        Đang tải catalog metadata...
+        Đang tải danh mục và thương hiệu...
       </div>
     );
   }
@@ -155,9 +155,6 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
           <h1 className="mt-1 font-serif text-3xl font-bold text-[#0B2419]">
             Danh mục & thương hiệu
           </h1>
-          <p className="mt-2 text-sm text-[#606863]">
-            Quản lý danh mục và thương hiệu theo API backend.
-          </p>
         </div>
         <button
           type="button"
@@ -174,13 +171,8 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
           {error}
         </div>
       )}
-      {!canWrite && (
-        <div className="border border-[#E2E5DE] bg-[#F8FAF4] p-3 text-sm text-[#606863]">
-          Chế độ chỉ đọc. Cần CATALOG_WRITE để tạo, sửa hoặc xóa dữ liệu.
-        </div>
-      )}
 
-      <nav aria-label="Catalog metadata" className="flex flex-wrap gap-2">
+      <nav aria-label="Danh mục và thương hiệu" className="flex flex-wrap gap-2">
         {(['categories', 'brands'] as const).map((tab) => (
           <button
             key={tab}
@@ -344,7 +336,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
       )}
 
       {renameTarget && canWrite && (
-        <div role="dialog" aria-modal="true" aria-label="Đổi tên metadata" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div role="dialog" aria-modal="true" aria-label="Đổi tên danh mục hoặc thương hiệu" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <form onSubmit={(event) => { event.preventDefault(); void saveRename(); }} className="w-full max-w-md space-y-4 rounded-lg bg-white p-5">
             <h2 className="font-semibold">Đổi tên: {renameTarget.name}</h2>
             <input autoFocus value={renameValue} onChange={(event) => setRenameValue(event.target.value)} className="w-full border border-[#D9DDD6] px-3 py-2" maxLength={150} required />

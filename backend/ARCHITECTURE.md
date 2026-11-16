@@ -24,6 +24,30 @@ This branch now includes Flyway migrations for the approved relational baseline,
 
 Some services have distinct query and command entry points to isolate real responsibilities. This is an in-process service organization, not a requirement to split every service or adopt separate read/write data stores. Commands may read for validation; queries have no persistence side effects. Use KISS/YAGNI and evidence about cohesion, coupling, transaction boundaries and change cost before adding abstractions.
 
+## Bố trí source và định dạng
+
+Các folder con chỉ gom những lớp cùng xử lý một mục đích, không tạo thêm tầng trung gian:
+
+| Package | Mục đích |
+| --- | --- |
+| `account.service.identity` | Đăng nhập, token, danh tính điện thoại, truy cập và khóa tài khoản |
+| `order.service.lifecycle` | Policy, handler, thu/hoàn COD và truy vấn chi tiết vòng đời đơn |
+| `order.service.checkout` | Chuẩn hóa request, báo giá, tính toán và tạo đơn |
+| `inventory.service.stock` | Lệnh kho, các workflow nguồn và ghi số dư/ledger |
+| `inventory.repository.projection` | Giao diện kết quả đọc kho và đối soát |
+| `product.service.query` | Đọc catalog, family, metadata và snapshot Product |
+
+Service còn lại, controller, entity và DTO giữ nhóm hiện có khi chưa cần chia nhỏ. Các lớp package-private đi cùng cụm cộng tác; việc chuyển folder không mở rộng quyền truy cập.
+
+Java dùng google-java-format chế độ AOSP, thụt lề 4 dấu cách theo `.editorconfig`. Chạy trong thư mục `backend`:
+
+```sh
+./gradlew formatJava
+./gradlew checkJavaFormat
+```
+
+`check` tự chạy `checkJavaFormat`. Formatter giữ Javadoc tiếng Việt và không tự tách chuỗi dài; không chạy trên SQL migration.
+
 ## Verification boundary
 
 `.github/workflows/backend-verification.yml` runs H2 build and MySQL migration/mapping/tests. `ArchitectureBoundaryTests` also enforces a small set of non-negotiable structural rules against production classes: no field injection, no controller-to-persistence dependency, no cross-module repository dependency, and no entity dependency on API/service/repository/DTO layers.

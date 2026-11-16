@@ -1,6 +1,6 @@
 package com.fido.modules.cart.service;
 
-import com.fido.modules.account.service.AccountMutationLockService;
+import com.fido.modules.account.service.identity.AccountMutationLockService;
 import com.fido.modules.cart.dto.request.CartItemCreateRequest;
 import com.fido.modules.cart.dto.request.CartItemQuantityRequest;
 import com.fido.modules.cart.dto.response.CartDto;
@@ -8,7 +8,7 @@ import com.fido.modules.cart.entity.Cart;
 import com.fido.modules.cart.entity.CartItem;
 import com.fido.modules.cart.repository.CartItemRepository;
 import com.fido.modules.cart.repository.CartRepository;
-import com.fido.modules.product.service.CatalogProductReadService;
+import com.fido.modules.product.service.query.CatalogProductReadService;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -46,7 +46,7 @@ public class CartCommandService {
         Cart cart = currentOpenForMutation(accountId);
         requireActiveProduct(request.product_id());
 
-        // Cart records intent only. Stock is advisory and is revalidated by checkout/order flows.
+        // Giỏ ghi nhận số lượng muốn mua, chưa giữ/trừ kho; checkout sẽ kiểm tra lại tồn thực tế.
         if (cart == null) {
             cart = new Cart();
             cart.setAccountId(accountId);
@@ -54,8 +54,6 @@ public class CartCommandService {
             cart = carts.save(cart);
         }
 
-        // Capture a stable reference for the lambda; the local variable above was reassigned
-        // while resolving or creating the current OPEN cart.
         final Cart activeCart = cart;
         CartItem item =
                 items.findByCartIdAndProductId(activeCart.getCartId(), request.product_id())
@@ -116,7 +114,7 @@ public class CartCommandService {
         return query.toDto(cart);
     }
 
-    /** Consume the current Cart as part of the same transaction that commits the Order write set. */
+    /** Hoàn tất giỏ trong cùng giao dịch tạo đơn để không mất giỏ khi lưu đơn thất bại. */
     public void completeForOrder(Long accountId) {
         Cart cart = currentOpenForMutation(accountId);
         if (cart == null) {
@@ -127,15 +125,16 @@ public class CartCommandService {
         touch(cart);
     }
 
-    /**
-     * Checkout orchestration calls this inside its transaction to serialize against Cart
-     * mutations. It deliberately does not create a Cart; quote/read paths must be no-write.
-     */
+    /** Khóa giỏ trong giao dịch checkout để chặn sửa đồng thời; không tạo giỏ mới ở bước này. */
     @Transactional(propagation = Propagation.MANDATORY)
     public void lockForCheckout(Long accountId) {
         currentOpenForMutation(accountId);
     }
 
+    /**
+     * accountId do controller lấy từ JWT; khóa tài khoản trước cả khi chưa tồn tại giỏ.
+     * Chỉ chấp nhận không có hoặc đúng một giỏ OPEN, không tự chọn/ghép khi DB có nhiều giỏ.
+     */
     private Cart currentOpenForMutation(Long accountId) {
         accountLocks.lock(accountId);
         return CartQueryService.selectSoleOpen(carts.findOpenForUpdateByAccountId(accountId));
@@ -147,8 +146,7 @@ public class CartCommandService {
             product = catalog.get(productId);
         } catch (ResponseStatusException exception) {
             if (exception.getStatusCode().value() == HttpStatus.NOT_FOUND.value()) {
-                throw new ResponseStatusException(
-                        HttpStatus.CONFLICT, "PRODUCT_NOT_AVAILABLE");
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "PRODUCT_NOT_AVAILABLE");
             }
             throw exception;
         }

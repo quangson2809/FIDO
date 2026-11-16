@@ -1,9 +1,9 @@
 package com.fido.config.devseed;
 
-import org.springframework.context.annotation.Profile;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,10 +45,13 @@ public class DevDataSeedService {
         DevSeedStateInspector.SeedState initial = state.inspect();
 
         if (initial.complete()) {
-            log.info("FIDO development seed completed and validated against target schema (already present).");
+            log.info(
+                    "FIDO development seed completed and validated against target schema (already present).");
             return;
         }
 
+        // Bộ demo đang dở dang phải dừng để không ghi đè dữ liệu cũ hoặc tạo quan hệ nửa mới nửa
+        // cũ.
         if (initial.anyPresent()) {
             throw new IllegalStateException(
                     "Partial FIDO development seed detected. "

@@ -9,10 +9,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class AuditActorResolver {
 
-    /**
-     * Prevents a request carrying an authenticated human identity from being recorded as a
-     * NULL-actor system event. The caller of the system entry point must still be trusted code.
-     */
+    /** Chặn ghi sự kiện hệ thống với actor null nếu request đang có người dùng đăng nhập. */
     public void requireSystemContext() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null
@@ -23,10 +20,7 @@ public class AuditActorResolver {
         }
     }
 
-    /**
-     * Resolves a human actor only from the JWT authentication established by SecurityConfig.
-     * Never accepts an actor ID from an audit event, request DTO or domain method parameter.
-     */
+    /** Chỉ lấy người thực hiện từ JWT đã xác thực; không tin ID trong DTO, sự kiện hay tham số nghiệp vụ. */
     public Long requireAuthenticatedAccountId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken jwtAuthentication)
@@ -41,7 +35,7 @@ public class AuditActorResolver {
                 return accountId;
             }
         } catch (RuntimeException ignored) {
-            // Invalid or missing subject is not a valid audit actor.
+            // Subject thiếu hoặc không hợp lệ không được dùng làm người thực hiện audit.
         }
 
         throw new IllegalStateException("The authenticated principal has no valid account ID");

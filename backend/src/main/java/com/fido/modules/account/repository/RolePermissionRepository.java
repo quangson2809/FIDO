@@ -9,7 +9,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-/** Persistence only. Delete operations are intentionally not exposed by default. */
+/** Chỉ cung cấp thao tác gán/gỡ quyền có chủ đích; không mở toàn bộ API xóa mặc định. */
 public interface RolePermissionRepository extends Repository<RolePermission, RolePermissionId> {
     Optional<RolePermission> findById(RolePermissionId id);
 

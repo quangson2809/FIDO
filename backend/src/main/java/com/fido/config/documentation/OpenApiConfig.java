@@ -19,7 +19,7 @@ import org.springframework.context.annotation.Configuration;
         bearerFormat = "JWT",
         description =
                 "Enter the raw access token returned by /api/v1/auth/login; Swagger UI adds the"
-                    + " Bearer prefix.")
+                        + " Bearer prefix.")
 public class OpenApiConfig {
 
     static final String BEARER_AUTH = "bearerAuth";

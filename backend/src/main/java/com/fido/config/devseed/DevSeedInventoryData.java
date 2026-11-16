@@ -4,7 +4,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
-/** Product-based target-schema warehouse, balance and append-only ledger demo data. */
+/** Tạo kho, số dư và ledger demo theo Product ID; sổ kho chỉ thêm mới. */
 @Component
 @Profile({"dev", "test"})
 public class DevSeedInventoryData {

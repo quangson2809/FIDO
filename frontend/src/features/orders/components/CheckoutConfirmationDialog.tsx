@@ -35,7 +35,7 @@ export function CheckoutConfirmationDialog({
         <h2 className="font-serif text-2xl">Xác nhận đặt hàng</h2>
         <p className="mt-2 text-sm text-[#687069]">
           {replaying
-            ? 'Gửi lại đúng thông tin và cùng mã chống trùng để xác minh kết quả lần gửi trước.'
+            ? 'Kiểm tra kết quả đặt hàng trước đó để tránh đặt trùng đơn.'
             : 'Kiểm tra thông tin bên dưới trước khi gửi đơn hàng.'}
         </p>
 
@@ -86,8 +86,7 @@ export function CheckoutConfirmationDialog({
 
         <p className="mt-3 text-sm">Thanh toán tiền mặt khi nhận hàng (COD).</p>
         <p className="mt-3 text-xs leading-5 text-[#687069]">
-          Báo giá không phải mã xác nhận đơn. Backend sẽ kiểm tra lại giá, tồn kho và tính tổng
-          tiền trong giao dịch tạo đơn; số tiền xác nhận cuối cùng của Backend là nguồn chuẩn.
+          Giá và tình trạng hàng sẽ được kiểm tra lại khi bạn xác nhận đặt hàng.
         </p>
         {!current && (
           <p role="alert" className="mt-4 text-sm text-red-700">

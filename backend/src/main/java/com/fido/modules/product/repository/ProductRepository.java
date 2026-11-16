@@ -23,6 +23,11 @@ public interface ProductRepository
     @Query("select product from Product product where product.productId = :productId")
     Optional<Product> findByIdForUpdate(@Param("productId") Long productId);
 
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query(
+            "select p from Product p where (p.productId = :rootId or p.parentProductId = :rootId) and p.deletedAt is null and p.status = 'ACTIVE' order by p.productId")
+    List<Product> findActiveFamilyForValidation(@Param("rootId") Long rootId);
+
     Product save(Product entity);
 
     List<Product> findAllByProductIdIn(Collection<Long> productIds);
@@ -36,6 +41,10 @@ public interface ProductRepository
     boolean existsByCategoryId(Long categoryId);
 
     boolean existsByBrandId(Long brandId);
+
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("select p from Product p where p.parentProductId = :parentId order by p.productId")
+    List<Product> findChildrenForValidation(@Param("parentId") Long parentId);
 
     boolean existsByParentProductId(Long parentProductId);
 

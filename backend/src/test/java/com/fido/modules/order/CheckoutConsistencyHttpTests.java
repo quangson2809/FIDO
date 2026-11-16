@@ -25,8 +25,18 @@ class CheckoutConsistencyHttpTests extends OrderHttpSupport {
 
         Map<String, Object> checkoutRequest =
                 Map.of(
-                        "recipient_phone", "0900000000",
-                        "recipient_name", "Test Recipient", "province", "Hanoi", "district", "Cau Giay", "ward", "Dich Vong", "address_line", "Cau Giay, Hanoi");
+                        "recipient_phone",
+                        "0900000000",
+                        "recipient_name",
+                        "Test Recipient",
+                        "province",
+                        "Hanoi",
+                        "district",
+                        "Cau Giay",
+                        "ward",
+                        "Dich Vong",
+                        "address_line",
+                        "Cau Giay, Hanoi");
 
         var quote = call("POST", "/api/v1/checkout/quote", customer.token(), checkoutRequest);
 
@@ -40,11 +50,12 @@ class CheckoutConsistencyHttpTests extends OrderHttpSupport {
 
         orderIds.add(orderId);
 
-        Map<String, String> quoteFields = Map.of(
-                "subtotal", "subtotal",
-                "discount", "discount_amount",
-                "shipping_fee", "shipping_fee",
-                "total", "total_amount");
+        Map<String, String> quoteFields =
+                Map.of(
+                        "subtotal", "subtotal",
+                        "discount", "discount_amount",
+                        "shipping_fee", "shipping_fee",
+                        "total", "total_amount");
         for (var field : quoteFields.entrySet()) {
             assertEquals(
                     quote.data().get("data").get(field.getValue()).decimalValue(),

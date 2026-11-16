@@ -9,6 +9,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -20,7 +21,10 @@ import java.time.temporal.ChronoUnit;
 @Entity
 @Table(
         name = "products",
-        uniqueConstraints = @UniqueConstraint(name = "uq_products_sku", columnNames = {"sku"}))
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uq_products_sku",
+                        columnNames = {"sku"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -64,7 +68,11 @@ public class Product {
     @Column(name = "deleted_at", columnDefinition = "TIMESTAMP(6)")
     private LocalDateTime deletedAt;
 
-    @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP(6)", updatable = false)
+    @Column(
+            name = "created_at",
+            nullable = false,
+            columnDefinition = "TIMESTAMP(6)",
+            updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")

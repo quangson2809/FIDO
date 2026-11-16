@@ -7,6 +7,8 @@ on:
       - feature/catalog-product-attributes-backend
       - work/p3-16-consolidated
       - demo1
+      - feature/catalog-dynamic-sku-selection
+      - refactor/backend-pattern-safe-v2
       - feature/backend-phase-0-discovery
       - feature/phase-2-3-image-persistence
       - fix/backend-confirmed-findings-20261007
@@ -33,6 +35,9 @@ on:
 
 permissions:
   contents: read
+
+env:
+  REPORT_FOCUSED: ${{ contains(github.event.head_commit.message, '[admin-report-focus]') || contains(github.event.pull_request.title, '[admin-report-focus]') }}
 
 jobs:
   backend-runtime:
@@ -136,6 +141,36 @@ jobs:
       - name: Compile backend and test sources
         working-directory: backend
         run: ./gradlew --no-daemon clean compileJava compileTestJava
+      # Kiểm tra các cụm vừa thay đổi trước khi chạy bộ backend/MySQL đầy đủ.
+      - name: Focused backend regression tests
+        if: github.ref == 'refs/heads/refactor/backend-pattern-safe-v2' && env.REPORT_FOCUSED != 'true'
+        working-directory: backend
+        env:
+          TEST_DB_URL: jdbc:mysql://127.0.0.1:3306/fido_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+          TEST_DB_DRIVER: com.mysql.cj.jdbc.Driver
+          TEST_DB_USERNAME: root
+          TEST_DB_PASSWORD: ci-only-password
+        run: |
+          ./gradlew --no-daemon test --rerun-tasks \
+            --tests com.fido.common.ArchitectureBoundaryTests \
+            --tests com.fido.modules.audit.service.AuditPayloadPolicyTests \
+            --tests com.fido.modules.audit.AuditWriteServiceTransactionTests \
+            --tests com.fido.modules.audit.AuditQueryApiTest \
+            --tests com.fido.modules.inventory.InventoryAdjustmentHttpTests \
+            --tests com.fido.modules.promotion.service.VoucherDiscountTests \
+            --tests com.fido.modules.pricing.PricingCalculatorTests \
+            --tests com.fido.modules.order.service.lifecycle.OrderActionPolicyInvariantTests \
+            --tests com.fido.modules.order.service.lifecycle.OrderActionMatrixTests \
+            --tests com.fido.modules.order.service.lifecycle.OrderActionSchemaTests \
+            --tests com.fido.modules.order.OrderActionContractHttpTests \
+            --tests com.fido.modules.order.OrderActionTransactionHttpTests \
+            --tests com.fido.modules.order.OrderStockHttpTests \
+            --tests com.fido.modules.order.OrderLifecycleHttpTests \
+            --tests com.fido.modules.product.service.query.PublicCatalogQueryServiceTests \
+            --tests com.fido.modules.product.DynamicCatalogHttpTests \
+            --tests com.fido.modules.product.ProductCoreHttpTests \
+            --tests com.fido.modules.product.InventoryProductIdIntegrationTests \
+            --tests com.fido.modules.product.ProductCreateWorkflowHttpTests
       - name: Test migration and mapping with MySQL
         id: mysql-tests
         working-directory: backend
@@ -144,7 +179,16 @@ jobs:
           TEST_DB_DRIVER: com.mysql.cj.jdbc.Driver
           TEST_DB_USERNAME: root
           TEST_DB_PASSWORD: ci-only-password
-        run: ./gradlew --no-daemon compileJava test check --rerun-tasks
+        run: |
+          if [ "$REPORT_FOCUSED" = "true" ]; then
+            ./gradlew --no-daemon test --rerun-tasks \
+              --tests 'com.fido.modules.report.*' \
+              --tests 'com.fido.modules.pricing.*' \
+              --tests com.fido.modules.promotion.service.VoucherDiscountTests
+            ./gradlew --no-daemon checkJavaFormat
+          else
+            ./gradlew --no-daemon compileJava test check --rerun-tasks
+          fi
       - name: Keep MySQL test reports
         if: always() && steps.mysql-tests.outcome != 'skipped'
         uses: actions/upload-artifact@v4

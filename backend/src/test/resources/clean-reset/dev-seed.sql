@@ -1,6 +1,6 @@
--- Development/test demo data ONLY; not a Flyway migration and never auto-run in production.
--- Execute only after applying db/clean-reset migrations to a disposable target-schema database.
--- This fixture creates no user accounts or passwords.
+-- Chỉ chứa dữ liệu demo dev/test, không phải migration Flyway và không tự chạy trên production.
+-- Chỉ chạy sau khi đã tạo schema chuẩn trên DB dev/test có thể hủy bỏ.
+-- Bộ dữ liệu này không tạo tài khoản hoặc mật khẩu.
 
 INSERT INTO categories (id,parent_category_id,name,slug,status)
 VALUES (10001,NULL,'Áo','ao-demo','ACTIVE');

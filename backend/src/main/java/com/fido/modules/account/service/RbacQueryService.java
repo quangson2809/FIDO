@@ -68,7 +68,8 @@ public class RbacQueryService {
                 .forEach(
                         mapping ->
                                 result.computeIfAbsent(
-                                                mapping.getRoleId(), ignored -> new LinkedHashSet<>())
+                                                mapping.getRoleId(),
+                                                ignored -> new LinkedHashSet<>())
                                         .add(mapping.getPermissionId()));
         return result;
     }

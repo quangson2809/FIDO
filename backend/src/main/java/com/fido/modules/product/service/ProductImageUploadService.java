@@ -1,6 +1,7 @@
 package com.fido.modules.product.service;
 
 import com.fido.modules.product.dto.response.AdminProductDetailDto;
+import com.fido.modules.product.service.query.CatalogReferenceService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +61,10 @@ public class ProductImageUploadService {
         this.maxFilesPerRequest = maxFilesPerRequest;
     }
 
+    /**
+     * actor từ JWT, productId từ URL; imageFiles là các phần file multipart do client tải lên.
+     * Kiểm tra toàn bộ file trước khi gọi nhà cung cấp, sau đó mới gắn các URL trả về vào gallery.
+     */
     @PreAuthorize(WRITE)
     public AdminProductDetailDto upload(Long actor, Long productId, MultipartFile[] imageFiles) {
         long startedAt = System.nanoTime();
@@ -93,6 +98,10 @@ public class ProductImageUploadService {
         return result;
     }
 
+    /**
+     * file chứa cả MIME khai báo và byte thực; kiểm tra kích thước cấu hình và chữ ký file để không
+     * tin MIME giả.
+     */
     private void validate(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw badRequest("Image file must not be empty");
@@ -123,6 +132,7 @@ public class ProductImageUploadService {
         return mediaType.trim().toLowerCase(Locale.ROOT);
     }
 
+    /** Đọc tối đa 12 byte đầu của file để nhận PNG/JPEG/WebP, không dựa vào đuôi tên file. */
     private String detectContentType(MultipartFile file) {
         byte[] signature = readSignature(file);
 

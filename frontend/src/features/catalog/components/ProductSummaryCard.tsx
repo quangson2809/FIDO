@@ -46,9 +46,6 @@ function ProductSummaryDetails({ productId }: { productId: number }) {
           {attributes.length === 0 && (
             <p className="text-sm text-muted-grey">Sản phẩm chưa có thuộc tính mô tả.</p>
           )}
-          <p className="mt-4 text-sm text-muted-grey">
-            Giá, trạng thái và thuộc tính được lấy từ thông tin sản phẩm hiện hành.
-          </p>
         </>
       )}
     </>
@@ -96,7 +93,6 @@ export function ProductSummaryCard({
         <span className="product-summary-footer">
           <span className="product-summary-price" title="Giá bán của sản phẩm">
             <span>{product.selling_price.toLocaleString('vi-VN')} đ</span>
-            <span className="product-summary-price-label">{product.status}</span>
           </span>
           <span className="product-summary-sku" title={product.sku}>
             SKU {product.sku}

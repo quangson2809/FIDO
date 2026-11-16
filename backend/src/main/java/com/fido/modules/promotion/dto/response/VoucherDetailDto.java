@@ -2,7 +2,7 @@ package com.fido.modules.promotion.dto.response;
 
 import java.time.Instant;
 
-/** Admin view of the canonical vouchers row and its global quota counter. */
+/** Dữ liệu voucher cho quản trị, gồm bộ đếm lượt dùng chung toàn hệ thống. */
 public record VoucherDetailDto(
         Long id,
         String code,

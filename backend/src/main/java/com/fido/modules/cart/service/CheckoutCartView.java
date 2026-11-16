@@ -16,7 +16,5 @@ public record CheckoutCartView(Long cartId, List<Item> items, Long subtotal) {
             Long unitPrice,
             Long lineTotal,
             Integer availableQuantity,
-            boolean purchasable) {
-    }
-
+            boolean purchasable) {}
 }

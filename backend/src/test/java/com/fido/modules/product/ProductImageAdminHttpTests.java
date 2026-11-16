@@ -12,40 +12,79 @@ import java.util.UUID;
 class ProductImageAdminHttpTests extends CatalogHttpSupport {
 
     @Test
-    void onlyGalleryChangesTouchProductAndEquivalentReplacementPreservesImageIds() throws Exception {
+    void onlyGalleryChangesTouchProductAndEquivalentReplacementPreservesImageIds()
+            throws Exception {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         long id = createCatalog(writer).productId();
         Result gallery = replaceImages(writer, id);
         var inputs = gallery.data().get("data").get("images");
         List<Map<String, Object>> same = new ArrayList<>();
-        for (var input : inputs) same.add(Map.of("image_url", input.get("image_url").asText(),
-                "sort_order", input.get("sort_order").asInt()));
+        for (var input : inputs)
+            same.add(
+                    Map.of(
+                            "image_url",
+                            input.get("image_url").asText(),
+                            "sort_order",
+                            input.get("sort_order").asInt()));
         var old = java.time.LocalDateTime.of(2000, 1, 1, 0, 0);
         db.update("UPDATE products SET updated_at=? WHERE id=?", old, id);
-        Result noop = call("PATCH", "/api/v1/admin/products/" + id, writer.token(), Map.of("images", same));
+        Result noop =
+                call(
+                        "PATCH",
+                        "/api/v1/admin/products/" + id,
+                        writer.token(),
+                        Map.of("images", same));
         assertEquals(200, noop.status(), noop.body());
         assertEquals(imageIds(gallery), imageIds(noop));
         assertEquals(old, productTimestamp(id));
         List<Long> ids = imageIds(gallery);
-        Result reordered = call("PATCH", "/api/v1/admin/products/" + id + "/images", writer.token(),
-                Map.of("images", List.of(Map.of("image_id", ids.get(1), "sort_order", 0),
-                        Map.of("image_id", ids.get(0), "sort_order", 1))));
+        Result reordered =
+                call(
+                        "PATCH",
+                        "/api/v1/admin/products/" + id + "/images",
+                        writer.token(),
+                        Map.of(
+                                "images",
+                                List.of(
+                                        Map.of("image_id", ids.get(1), "sort_order", 0),
+                                        Map.of("image_id", ids.get(0), "sort_order", 1))));
         assertEquals(200, reordered.status(), reordered.body());
         org.junit.jupiter.api.Assertions.assertTrue(productTimestamp(id).isAfter(old));
         var changed = productTimestamp(id);
-        assertEquals(200, call("PATCH", "/api/v1/admin/products/" + id + "/images", writer.token(),
-                Map.of("images", List.of())).status());
+        assertEquals(
+                200,
+                call(
+                                "PATCH",
+                                "/api/v1/admin/products/" + id + "/images",
+                                writer.token(),
+                                Map.of("images", List.of()))
+                        .status());
         assertEquals(changed, productTimestamp(id), "No-op reorder must keep updated_at");
         db.update("UPDATE products SET updated_at=? WHERE id=?", old, id);
-        assertEquals(204, call("DELETE", "/api/v1/admin/products/" + id + "/images/" + ids.get(0), writer.token(), null).status());
+        assertEquals(
+                204,
+                call(
+                                "DELETE",
+                                "/api/v1/admin/products/" + id + "/images/" + ids.get(0),
+                                writer.token(),
+                                null)
+                        .status());
         org.junit.jupiter.api.Assertions.assertTrue(productTimestamp(id).isAfter(old));
         db.update("UPDATE products SET updated_at=? WHERE id=?", old, id);
-        assertEquals(200, call("PATCH", "/api/v1/admin/products/" + id, writer.token(), Map.of("images", List.of())).status());
+        assertEquals(
+                200,
+                call(
+                                "PATCH",
+                                "/api/v1/admin/products/" + id,
+                                writer.token(),
+                                Map.of("images", List.of()))
+                        .status());
         org.junit.jupiter.api.Assertions.assertTrue(productTimestamp(id).isAfter(old));
     }
 
     private java.time.LocalDateTime productTimestamp(long id) {
-        return db.queryForObject("SELECT updated_at FROM products WHERE id=?", java.time.LocalDateTime.class, id);
+        return db.queryForObject(
+                "SELECT updated_at FROM products WHERE id=?", java.time.LocalDateTime.class, id);
     }
 
     @Test
@@ -88,20 +127,31 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
         Employee writer = employee(customRole(ensurePermission("CATALOG_WRITE")));
         var fixture = createCatalog(writer);
 
-        var response = call(
-                "POST",
-                "/api/v1/admin/products",
-                writer.token(),
-                Map.of(
-                        "category_id", fixture.categoryId(),
-                        "brand_id", fixture.brandId(),
-                        "name", "No image writes from create " + UUID.randomUUID(),
-                        "sku", "NO-IMAGE-" + UUID.randomUUID(),
-                        "selling_price", 100000,
-                        "status", "ACTIVE",
-                        "images", List.of(Map.of(
-                                "image_url", "https://example.test/legacy.png",
-                                "sort_order", 0))));
+        var response =
+                call(
+                        "POST",
+                        "/api/v1/admin/products",
+                        writer.token(),
+                        Map.of(
+                                "category_id",
+                                fixture.categoryId(),
+                                "brand_id",
+                                fixture.brandId(),
+                                "name",
+                                "No image writes from create " + UUID.randomUUID(),
+                                "sku",
+                                "NO-IMAGE-" + UUID.randomUUID(),
+                                "selling_price",
+                                100000,
+                                "status",
+                                "ACTIVE",
+                                "images",
+                                List.of(
+                                        Map.of(
+                                                "image_url",
+                                                "https://example.test/legacy.png",
+                                                "sort_order",
+                                                0))));
 
         assertEquals(400, response.status(), response.body());
     }
@@ -402,8 +452,7 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
 
     private void assertPrimaryInvariant(long productId) {
         List<Integer> orders = sortOrders(productId);
-        assertEquals(
-                java.util.stream.IntStream.range(0, orders.size()).boxed().toList(), orders);
+        assertEquals(java.util.stream.IntStream.range(0, orders.size()).boxed().toList(), orders);
         long gallerySize =
                 db.queryForObject(
                         "SELECT COUNT(*) FROM product_images WHERE product_id=?",
@@ -463,9 +512,7 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                         "PATCH",
                         "/api/v1/admin/products/" + productId,
                         writer.token(),
-                        Map.of(
-                                "images",
-                                List.of(image("https://example.test/foreign.png", 0))));
+                        Map.of("images", List.of(image("https://example.test/foreign.png", 0))));
         assertEquals(200, withImage.status(), withImage.body());
 
         return withImage.data().get("data").get("images").get(0).get("id").asLong();

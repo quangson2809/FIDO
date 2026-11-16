@@ -10,6 +10,7 @@ import com.fido.modules.inventory.dto.response.SupplierDto;
 import com.fido.modules.inventory.entity.Supplier;
 import com.fido.modules.inventory.mapper.InventoryMapper;
 import com.fido.modules.inventory.repository.SupplierRepository;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -39,14 +40,19 @@ public class SupplierCommandService {
         InventoryPolicy.requireSupplierStatus(request.status());
 
         Supplier supplier = new Supplier();
-        supplier.setCode("SUP-" + UUID.randomUUID().toString().replace("-", "").toUpperCase(Locale.ROOT));
+        supplier.setCode(
+                "SUP-" + UUID.randomUUID().toString().replace("-", "").toUpperCase(Locale.ROOT));
         supplier.setName(request.name().trim());
         supplier.setPhone(request.phone());
         supplier.setEmail(request.email());
         supplier.setStatus(request.status());
 
         suppliers.save(supplier);
-        audit.record(AuditWriteEvent.of(AuditAction.SUPPLIER_CREATE, AuditEntityType.SUPPLIER, supplier.getSupplierId().toString()));
+        audit.record(
+                AuditWriteEvent.of(
+                        AuditAction.SUPPLIER_CREATE,
+                        AuditEntityType.SUPPLIER,
+                        supplier.getSupplierId().toString()));
         return InventoryMapper.supplier(supplier);
     }
 
@@ -63,12 +69,17 @@ public class SupplierCommandService {
         }
 
         suppliers.save(supplier);
-        audit.record(AuditWriteEvent.of(AuditAction.SUPPLIER_UPDATE, AuditEntityType.SUPPLIER, supplierId.toString()));
+        audit.record(
+                AuditWriteEvent.of(
+                        AuditAction.SUPPLIER_UPDATE,
+                        AuditEntityType.SUPPLIER,
+                        supplierId.toString()));
         return InventoryMapper.supplier(supplier);
     }
 
     private Supplier supplier(Long supplierId) {
-        return suppliers.findById(supplierId)
+        return suppliers
+                .findById(supplierId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 }

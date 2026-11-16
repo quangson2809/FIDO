@@ -11,6 +11,7 @@ import com.fido.modules.account.mapper.AccountMapper;
 import com.fido.modules.account.repository.AccountRepository;
 import com.fido.modules.account.repository.AccountRoleRepository;
 import com.fido.modules.account.repository.RoleRepository;
+import com.fido.modules.account.service.identity.AccountAccessService;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;

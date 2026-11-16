@@ -92,7 +92,7 @@ export const buildProductCreate = (
     )
   )
     errors.attributes =
-      'Một lựa chọn thuộc tính không còn trong metadata. Tải lại hoặc bỏ lựa chọn đó trước khi lưu.';
+      'Một giá trị thuộc tính không còn trong danh sách. Tải lại hoặc bỏ lựa chọn đó trước khi lưu.';
   return {
     errors,
     payload: Object.keys(errors).length
@@ -139,7 +139,7 @@ export const validateProductImageFiles = (
   limits?: ImageUploadLimits,
 ): string | null => {
   if (!files.length) return null;
-  if (!limits) return 'Chưa tải được giới hạn ảnh. Tải lại metadata trước khi tạo kèm ảnh.';
+  if (!limits) return 'Chưa tải được giới hạn ảnh. Tải lại thông tin trước khi tạo kèm ảnh.';
   if (files.length > limits.max_files)
     return `Mỗi lần tải tối đa ${limits.max_files} ảnh. Bỏ bớt ảnh để tiếp tục.`;
   for (const file of files) {

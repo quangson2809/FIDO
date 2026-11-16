@@ -19,7 +19,7 @@ function text(value: unknown): string {
   return value;
 }
 function numeric(value: unknown): number {
-  if (typeof value !== 'number' || !Number.isFinite(value))
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0)
     throw new ApiClientError('Dữ liệu báo cáo thiếu số hợp lệ.');
   return value;
 }
@@ -45,6 +45,14 @@ function statusCounts(value: unknown): StatusCounts {
     RETURNED: count(field(value, 'RETURNED')),
   };
 }
+function salesTotals(value: unknown) {
+  const completed_sales = numeric(field(value, 'completed_sales'));
+  const returned_adjustment = numeric(field(value, 'returned_adjustment'));
+  const net_sales = numeric(field(value, 'net_sales'));
+  if (completed_sales - returned_adjustment !== net_sales)
+    throw new ApiClientError('Doanh số thuần không khớp doanh số và trả hàng.');
+  return { completed_sales, returned_adjustment, net_sales };
+}
 function range(value: unknown) {
   return { from: text(field(value, 'from')), to: text(field(value, 'to')) };
 }
@@ -60,9 +68,7 @@ function trend(value: unknown) {
 export function parseOverview(value: unknown): ReportOverviewDto {
   return {
     ...range(value),
-    completed_sales: numeric(field(value, 'completed_sales')),
-    returned_adjustment: numeric(field(value, 'returned_adjustment')),
-    net_sales: numeric(field(value, 'net_sales')),
+    ...salesTotals(value),
     orders_by_status: statusCounts(field(value, 'orders_by_status')),
   };
 }
@@ -71,9 +77,7 @@ export function parseSales(value: unknown): SalesTrendDto {
     ...trend(value),
     points: list(field(value, 'points')).map((point) => ({
       period_start: text(field(point, 'period_start')),
-      completed_sales: numeric(field(point, 'completed_sales')),
-      returned_adjustment: numeric(field(point, 'returned_adjustment')),
-      net_sales: numeric(field(point, 'net_sales')),
+      ...salesTotals(point),
     })),
   };
 }
@@ -98,13 +102,16 @@ export function parseProducts(value: unknown): ProductPerformanceDto {
     ...range(value),
     items: list(field(value, 'items')).map((item) => {
       const thumbnail = field(item, 'thumbnail');
+      const completed_units = count(field(item, 'completed_units'));
+      const returned_units = count(field(item, 'returned_units'));
+      const net_units = count(field(item, 'net_units'));
+      if (completed_units - returned_units !== net_units)
+        throw new ApiClientError('Số lượng bán thuần không khớp dữ liệu trả hàng.');
       return {
         product_id: count(field(item, 'product_id')),
         product_name: text(field(item, 'product_name')),
         thumbnail: thumbnail === null ? null : text(thumbnail),
-        completed_units: count(field(item, 'completed_units')),
-        returned_units: count(field(item, 'returned_units')),
-        net_units: count(field(item, 'net_units')),
+        completed_units, returned_units, net_units,
       };
     }),
   };

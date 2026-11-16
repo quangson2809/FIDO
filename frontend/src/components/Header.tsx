@@ -101,8 +101,12 @@ export const Header: React.FC = () => {
           <span>FIDO Ready-to-Wear</span>
           <span className="hidden opacity-35 sm:inline">•</span>
           <span>Thanh toán COD</span>
-          <span className="hidden opacity-35 md:inline">•</span>
-          <span className="hidden md:inline">Đăng nhập để dùng giỏ hàng và đặt hàng</span>
+          {!isAuthenticated && (
+            <>
+              <span className="hidden opacity-35 md:inline">•</span>
+              <span className="hidden md:inline">Đăng nhập để dùng giỏ hàng và đặt hàng</span>
+            </>
+          )}
         </div>
       </div>
 

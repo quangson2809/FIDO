@@ -3,6 +3,7 @@ package com.fido.modules.audit;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fido.config.web.CorrelationIdContext;
 import com.fido.modules.audit.repository.AuditWriteRepository;
 import com.fido.modules.audit.service.AuditAction;
 import com.fido.modules.audit.service.AuditActorResolver;
@@ -10,36 +11,34 @@ import com.fido.modules.audit.service.AuditEntityType;
 import com.fido.modules.audit.service.AuditPayloadPolicy;
 import com.fido.modules.audit.service.AuditWriteEvent;
 import com.fido.modules.audit.service.AuditWriteService;
-import com.fido.config.web.CorrelationIdContext;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.IllegalTransactionStateException;
-import org.springframework.transaction.support.TransactionTemplate;
-
-import org.springframework.dao.DataAccessException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.transaction.IllegalTransactionStateException;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.transaction.support.TransactionTemplate;
 
-import javax.sql.DataSource;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+
+import javax.sql.DataSource;
 
 @ExtendWith(SpringExtension.class)
 @ContextConfiguration(classes = AuditWriteServiceTransactionTests.TestConfiguration.class)
@@ -129,8 +128,7 @@ class AuditWriteServiceTransactionTests {
         assertEquals(
                 "CONTENT_PAGE",
                 jdbc.queryForObject(
-                        "SELECT entity_type FROM audit_logs WHERE entity_id = '42'",
-                        String.class));
+                        "SELECT entity_type FROM audit_logs WHERE entity_id = '42'", String.class));
         assertEquals(
                 "trace:request-42",
                 jdbc.queryForObject(
@@ -139,12 +137,10 @@ class AuditWriteServiceTransactionTests {
 
         String beforeJson =
                 jdbc.queryForObject(
-                        "SELECT before_data FROM audit_logs WHERE entity_id = '42'",
-                        String.class);
+                        "SELECT before_data FROM audit_logs WHERE entity_id = '42'", String.class);
         String afterJson =
                 jdbc.queryForObject(
-                        "SELECT after_data FROM audit_logs WHERE entity_id = '42'",
-                        String.class);
+                        "SELECT after_data FROM audit_logs WHERE entity_id = '42'", String.class);
         var beforeNode = new ObjectMapper().readTree(beforeJson);
         var afterNode = new ObjectMapper().readTree(afterJson);
         assertEquals("DRAFT", beforeNode.path("status").asText());
@@ -194,9 +190,7 @@ class AuditWriteServiceTransactionTests {
                 () ->
                         writer.record(
                                 AuditWriteEvent.of(
-                                        AuditAction.ORDER_CREATE,
-                                        AuditEntityType.ORDER,
-                                        "99")));
+                                        AuditAction.ORDER_CREATE, AuditEntityType.ORDER, "99")));
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM audit_logs", Integer.class));
     }
 
@@ -225,11 +219,9 @@ class AuditWriteServiceTransactionTests {
                         "SELECT COUNT(*) FROM audit_logs WHERE actor_account_id IS NULL",
                         Integer.class));
         String correlationId =
-                jdbc.queryForObject(
-                        "SELECT correlation_id FROM audit_logs", String.class);
+                jdbc.queryForObject("SELECT correlation_id FROM audit_logs", String.class);
         assertTrue(correlationId.matches("[A-Za-z0-9._:-]{1,120}"));
     }
-
 
     @Test
     void systemEventRejectsAnAuthenticatedHumanContext() {
@@ -263,8 +255,7 @@ class AuditWriteServiceTransactionTests {
                         .build();
         var context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(
-                new JwtAuthenticationToken(
-                        jwt, List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+                new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
         SecurityContextHolder.setContext(context);
     }
 

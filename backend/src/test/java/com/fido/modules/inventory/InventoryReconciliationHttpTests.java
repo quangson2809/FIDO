@@ -12,14 +12,26 @@ class InventoryReconciliationHttpTests extends InventoryHttpSupport {
         Employee reader = employee(capabilityRole(ensurePermission("INVENTORY_READ")));
         CatalogFixture fixture = createProduct();
         long sibling = createSiblingProduct(fixture);
-        db.update("INSERT INTO inventory_transactions(warehouse_id,product_id,transaction_type,quantity_delta,idempotency_key) "
+        db.update(
+                "INSERT INTO inventory_transactions(warehouse_id,product_id,transaction_type,quantity_delta,idempotency_key) "
                         + "VALUES (?,?,'OPENING',5,?)",
-                fixture.warehouseId(), fixture.productId(), "reconcile-" + fixture.sku());
-        db.update("UPDATE inventories SET quantity_on_hand=5,version=1 WHERE warehouse_id=? AND product_id=?",
-                fixture.warehouseId(), fixture.productId());
-        db.update("UPDATE inventories SET quantity_on_hand=7,version=2 WHERE warehouse_id=? AND product_id=?",
-                fixture.warehouseId(), sibling);
-        var response = call("GET", "/api/v1/admin/inventory/reconciliation?page_size=100", reader.token(), null);
+                fixture.warehouseId(),
+                fixture.productId(),
+                "reconcile-" + fixture.sku());
+        db.update(
+                "UPDATE inventories SET quantity_on_hand=5,version=1 WHERE warehouse_id=? AND product_id=?",
+                fixture.warehouseId(),
+                fixture.productId());
+        db.update(
+                "UPDATE inventories SET quantity_on_hand=7,version=2 WHERE warehouse_id=? AND product_id=?",
+                fixture.warehouseId(),
+                sibling);
+        var response =
+                call(
+                        "GET",
+                        "/api/v1/admin/inventory/reconciliation?page_size=100",
+                        reader.token(),
+                        null);
         assertEquals(200, response.status(), response.body());
         JsonNode matched = null;
         JsonNode mismatched = null;
@@ -29,7 +41,7 @@ class InventoryReconciliationHttpTests extends InventoryHttpSupport {
         }
         assertNotNull(matched);
         assertNotNull(mismatched);
-        for (String flag : new String[]{"quantity_matches", "version_matches", "consistent"}) {
+        for (String flag : new String[] {"quantity_matches", "version_matches", "consistent"}) {
             assertTrue(matched.get(flag).isBoolean());
             assertTrue(matched.get(flag).asBoolean());
             assertTrue(mismatched.get(flag).isBoolean());
