@@ -20,7 +20,7 @@ Branch: feature/catalog-dynamic-sku-selection. Reference demo1: 5c22e6c7b2ce6e03
 | CatalogSpecifications | Public list paged all Products; Option checks matched the returned row | Parent-only DB paging; all selected Options must match one ACTIVE undeleted member using EXISTS |
 | PublicCatalogQueryService | Batched summary reads and existing family detail | Reused; no summary child expansion |
 | Controller/filter | Existing attribute_filters[CODE]=VALUE parser | Reused; no route or request parameter added |
-| Detail DTO/read service | Row/family identity, stock and Option data available | Added is_variant_defining and Attribute sort_order; purchase roles remain COLOR/SIZE only |
+| Detail DTO/read service | Row/family identity, stock and Option data available | Attribute sort_order orders axes; purchase roles remain COLOR/SIZE only |
 | CatalogMetaService | Existing metadata/options/order | Reused |
 | ProductFamilyValidationService | Earlier implementation allowed an empty parent and generic defining axes | Parent and children now share complete, unique COLOR/SIZE tuples; no empty-axis multi-member family |
 | ProductAdminService / repositories / gallery | Post-wait reads could retain MySQL snapshot state | Current locking reads and deletion of locked entities protect values, hierarchy and gallery replacement |
@@ -34,7 +34,7 @@ Search, category, brand and price continue to use parent fields. Searching child
 ## 3. API contract and examples
 
 - GET /api/v1/catalog/products: query semantics change to parent-only; response shape stays the same.
-- GET /api/v1/catalog/products/{productId}: parent and direct child detail remain available, with existing family.members. Attribute records add is_variant_defining and sort_order.
+- GET /api/v1/catalog/products/{productId}: parent and direct child detail remain available, with existing family.members. Attribute records expose sort_order.
 - Metadata routes already supply the required definitions. Admin list and write request payload shapes are unchanged. Invalid active family combinations are rejected with409.
 
 Illustrative family: root100 BLACK/M, child101 BLACK/L, child102 WHITE/M. IDs below are examples, not captured production output.
@@ -57,7 +57,7 @@ Summary response example:
 Attribute record excerpt from either parent/child detail:
 
 ```json
-{"attribute_id":2,"attribute_code":"SIZE","attribute_name":"Kích thước","is_variant_defining":true,"sort_order":2,"attribute_value_id":21,"value":"M","label":"M"}
+{"attribute_id":2,"attribute_code":"SIZE","attribute_name":"Kích thước","sort_order":2,"attribute_value_id":21,"value":"M","label":"M"}
 ```
 
 ## 4. Verification and acceptance tracking

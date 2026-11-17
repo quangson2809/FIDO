@@ -61,12 +61,12 @@ public final class OrderMapper {
                 payment.getRefundedAt());
     }
 
-    public static ShippingInfoDto shipping(ShippingInfo shipping) {
+    public static ShippingInfoDto shipping(ShippingInfo shipping, OrderAddress address) {
         if (shipping == null) return null;
         return new ShippingInfoDto(
                 shipping.getShippingStatus(),
-                shipping.getRecipientName(),
-                shipping.getRecipientPhone(),
+                address.getRecipientName(),
+                address.getRecipientPhone(),
                 shipping.getCarrierName(),
                 shipping.getTrackingNumber(),
                 shipping.getShippedAt(),

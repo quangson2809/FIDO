@@ -210,9 +210,9 @@ assert.equal(adminCustomerDetailPath(7), '/admin/customers/7');
 assert.equal(toAdminChildPath('/admin/catalog/categories'), 'catalog/categories');
 
 const imageFixtures = [
-  { id: 3, image_url: '3.jpg', is_primary: false, sort_order: 2 },
-  { id: 1, image_url: '1.jpg', is_primary: true, sort_order: 0 },
-  { id: 2, image_url: '2.jpg', is_primary: false, sort_order: 1 },
+  { id: 3, image_url: '3.jpg', sort_order: 2 },
+  { id: 1, image_url: '1.jpg', sort_order: 0 },
+  { id: 2, image_url: '2.jpg', sort_order: 1 },
 ];
 assert.deepEqual(
   sortProductImages(imageFixtures).map((image) => image.id),
@@ -232,8 +232,7 @@ const galleryMember = (id: number, images: ProductImageDto[]): ProductFamilyDto[
   available_quantity: 0, purchasable: false,
 });
 const galleryImage = (id: number, sort: number, url: string): ProductImageDto => ({
-  id, sort_order: sort, image_url: url, is_primary: sort === 0,
-});
+  id, sort_order: sort, image_url: url, });
 const galleryFamily: ProductFamilyDto = { root_product_id: 10, members: [
   galleryMember(30, [galleryImage(30, 0, 'child-30.jpg')]),
   galleryMember(2, [galleryImage(22, 1, 'child-2.jpg'), galleryImage(21, 0, 'shared.jpg')]),
@@ -592,7 +591,7 @@ console.log('Storefront URL, structured recipient and safe error models: PASS');
 
 // Product option drafts preserve persisted IDs even when metadata is partial.
 const optionAttribute = { id: 99, code: 'MATERIAL', name: 'Material', is_required: true,
-  is_variant_defining: false, sort_order: 0,
+  sort_order: 0,
   options: [{ id: 991, attribute_id: 99, value: 'COTTON', label: 'Cotton', sort_order: 0 }] };
 const savedOption = { attribute_id: 99, attribute_code: 'MATERIAL', attribute_name: 'Material',
   attribute_value_id: 992, value: 'WOOL', label: 'Wool' };

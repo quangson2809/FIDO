@@ -6,7 +6,7 @@ The [ERD v2 reconstruction index](refactor-v2/README.md) organizes target assets
 
 Use the following artifacts as the current development contract, in this order:
 
-1. **Owner decisions:** [P1 owner approval](refactor-v2/p1/P1-owner-approval-2026-10-23.md), the [P1.9 owner amendment](refactor-v2/p1/P1-owner-amendment-2026-10-25.md), and approved rows in [P1 Decision Log](refactor-v2/p1/P1-decision-log.md).
+1. **Owner decisions:** the [2026-11-17 schema simplification](15-technical-decisions.md#2026-11-17--remove-redundant-persistence-fields-on-demo1) supersedes earlier rules for the ten removed columns; [P1 owner approval](refactor-v2/p1/P1-owner-approval-2026-10-23.md), the [P1.9 owner amendment](refactor-v2/p1/P1-owner-amendment-2026-10-25.md), and approved rows in [P1 Decision Log](refactor-v2/p1/P1-decision-log.md).
 2. **Logical data model:** [Owner-approved ERD v2](refactor-v2/target/erd-v2-approved.mmd).
 3. **Physical data contract:** [P1 Data Dictionary](refactor-v2/p1/P1-data-dictionary.csv), the single schema-and-seed baseline `backend/src/main/resources/db/migration/V1__fido_target_schema.sql`.
 4. **HTTP and wire contracts:** [API Contract](04-api-contract.md) and [DTO Contract](05-dto-contract.md).

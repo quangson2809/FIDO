@@ -27,7 +27,4 @@ public class OrderVoucherSnapshot {
 
     @Column(name = "discount_value_snapshot", nullable = false)
     private Long discountValueSnapshot;
-
-    @Column(name = "discount_amount_snapshot", nullable = false)
-    private Long discountAmountSnapshot;
 }

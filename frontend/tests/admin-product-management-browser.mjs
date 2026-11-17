@@ -33,19 +33,19 @@ const catalogMeta = {
   attributes: [],
 };
 const attributes = [
-  { id: 11, code: 'COLOR', name: 'Màu sắc', is_required: false, is_variant_defining: true, sort_order: 0, options: [
+  { id: 11, code: 'COLOR', name: 'Màu sắc', is_required: false, sort_order: 0, options: [
     { id: 111, attribute_id: 11, value: 'BLACK', label: 'Đen', sort_order: 0 },
     { id: 112, attribute_id: 11, value: 'WHITE', label: 'Trắng', sort_order: 1 },
   ] },
-  { id: 12, code: 'MATERIAL', name: 'Chất liệu', is_required: true, is_variant_defining: false, sort_order: 1, options: [
+  { id: 12, code: 'MATERIAL', name: 'Chất liệu', is_required: true, sort_order: 1, options: [
     { id: 121, attribute_id: 12, value: 'COTTON', label: 'Cotton', sort_order: 0 },
     { id: 122, attribute_id: 12, value: 'LINEN', label: 'Linen', sort_order: 1 },
   ] },
-  { id: 13, code: 'WEIGHT', name: 'Định lượng', is_required: false, is_variant_defining: false, sort_order: 2, options: [
+  { id: 13, code: 'WEIGHT', name: 'Định lượng', is_required: false, sort_order: 2, options: [
     { id: 131, attribute_id: 13, value: '180GSM', label: '180 GSM', sort_order: 0 },
     { id: 132, attribute_id: 13, value: '220GSM', label: '220 GSM', sort_order: 1 },
   ] },
-  { id: 14, code: 'WATERPROOF', name: 'Chống nước', is_required: false, is_variant_defining: false, sort_order: 3, options: [
+  { id: 14, code: 'WATERPROOF', name: 'Chống nước', is_required: false, sort_order: 3, options: [
     { id: 141, attribute_id: 14, value: 'YES', label: 'Có', sort_order: 0 },
     { id: 142, attribute_id: 14, value: 'NO', label: 'Không', sort_order: 1 },
   ] },
@@ -78,8 +78,8 @@ const initialProduct = {
   category: catalogMeta.categories[1], brand: catalogMeta.brands[1], category_id: 2, brand_id: 8,
   selling_price: 200000, cost_price: 120000, status: 'DRAFT',
   images: [
-    { id: 51, image_url: 'https://cdn.example.test/51.png', is_primary: true, sort_order: 0 },
-    { id: 52, image_url: 'https://cdn.example.test/52.png', is_primary: false, sort_order: 1 },
+    { id: 51, image_url: 'https://cdn.example.test/51.png', sort_order: 0 },
+    { id: 52, image_url: 'https://cdn.example.test/52.png', sort_order: 1 },
   ],
   created_at: timestamp, updated_at: timestamp, attribute_values: initialValues,
   parent_product: null, children: [],
@@ -123,7 +123,7 @@ let notifyCreateStarted;
 const requests = [];
 const summary = (product) => ({
   product_id: product.product_id, parent_product_id: product.parent_product_id, sku: product.sku,
-  name: product.name, thumbnail: product.images.find((image) => image.is_primary)?.image_url ?? null,
+  name: product.name, thumbnail: product.images.find((image) => image.sort_order === 0)?.image_url ?? null,
   category_id: product.category_id, brand_id: product.brand_id, selling_price: product.selling_price,
   cost_price: product.cost_price, status: product.status, created_at: product.created_at, updated_at: product.updated_at,
 });
@@ -203,8 +203,8 @@ await page.route('**/api/v1/**', async (route) => {
     assert.ok(rawBody?.includes('filename="shirt.png"') || rawBody?.includes('filename="retry-shirt.png"'), 'upload contains selected image');
     const start = product.images.length;
     const uploadedNames = [...rawBody.matchAll(/filename="([^"]+)"/g)].map((match) => match[1]);
-    product.images = [...product.images, ...uploadedNames.map((name, index) => ({ id: id * 10 + start + index + 1, image_url: 'https://cdn.example.test/' + name, is_primary: false, sort_order: start + index }))]
-      .map((image, index) => ({ ...image, sort_order: index, is_primary: index === 0 }));
+    product.images = [...product.images, ...uploadedNames.map((name, index) => ({ id: id * 10 + start + index + 1, image_url: 'https://cdn.example.test/' + name, sort_order: start + index }))]
+      .map((image, index) => ({ ...image, sort_order: index, }));
     if (loseNextUploadResponse) { loseNextUploadResponse = false; return route.abort('failed'); }
     return send(route, { data: clone(product) }, 201);
   }
@@ -215,7 +215,7 @@ await page.route('**/api/v1/**', async (route) => {
     const byId = new Map(body.images.map((image) => [image.image_id, image.sort_order]));
     product.images = product.images.map((image) => ({ ...image, sort_order: byId.get(image.id) ?? image.sort_order }))
       .sort((left, right) => left.sort_order - right.sort_order)
-      .map((image, index) => ({ ...image, sort_order: index, is_primary: index === 0 }));
+      .map((image, index) => ({ ...image, sort_order: index, }));
     return send(route, { data: clone(product) });
   }
   const imageDeleteMatch = path.match(/^\/admin\/products\/(\d+)\/images\/(\d+)$/);
@@ -223,7 +223,7 @@ await page.route('**/api/v1/**', async (route) => {
     const product = products.get(Number(imageDeleteMatch[1]));
     if (!product) return send(route, { message: 'Product not found' }, 404);
     product.images = product.images.filter((image) => image.id !== Number(imageDeleteMatch[2]))
-      .map((image, index) => ({ ...image, sort_order: index, is_primary: index === 0 }));
+      .map((image, index) => ({ ...image, sort_order: index, }));
     return route.fulfill({ status: 204, body: '', headers: { 'access-control-allow-origin': '*' } });
   }
   const detailMatch = path.match(/^\/admin\/products\/(\d+)$/);
@@ -643,7 +643,8 @@ try {
   const uploaded = products.get(nextProductId - 1).images;
   assert.equal(uploaded.length, 2);
   assert.ok(uploaded[0].image_url.endsWith('retry-shirt.png'));
-  assert.equal(uploaded[0].is_primary, true);
+  assert.equal(uploaded[0].sort_order, 0);
+  assert.equal(Object.hasOwn(uploaded[0], 'is_primary'), false);
   assert.equal(uploaded[1].sort_order, 1);
 
   // Pending image retry does not depend on an in-flight metadata request or call Create again.

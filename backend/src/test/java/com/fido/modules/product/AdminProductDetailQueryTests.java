@@ -129,10 +129,9 @@ class AdminProductDetailQueryTests extends CatalogHttpSupport {
     private void enrich(long product, int count) {
         for (int i = 0; i < 2; i++)
             db.update(
-                    "INSERT INTO product_images(product_id,image_url,is_primary,sort_order) VALUES (?,?,?,?)",
+                    "INSERT INTO product_images(product_id,image_url,sort_order) VALUES (?,?,?)",
                     product,
                     "https://cdn.test/" + product + "/" + i + ".png",
-                    i == 0,
                     i);
         for (int i = 0; i < count; i++) {
             String code = "QUERY-" + UUID.randomUUID();

@@ -13,7 +13,7 @@
 | T-PROD-01 | Product parent/child | One level only; self-parent, cycles and invalid references rejected. Each Product has own SKU, required integer-VND selling price and stock. | Unit, API and concurrent hierarchy tests. |
 | T-PROD-02 | NULL and field updates | NULL name/slug/description remain NULL; no implicit parent inheritance. | Create/update omitted-vs-null tests. |
 | T-ATTR-01 | Typed attributes | OPTION/TEXT/NUMBER/BOOLEAN values match the declared Attribute type; exactly one compatible typed value. | Unit/API and database constraint tests. |
-| T-ATTR-02 | Option ownership / variant metadata | Cross-Attribute option rejected; is_variant_defining does not create Products or generate sale identity. | MySQL FK/composite-check + service tests. |
+| T-ATTR-02 | Option ownership / variant metadata | Cross-Attribute option rejected; Attribute metadata does not create Products or generate sale identity. | MySQL FK/composite-check + service tests. |
 | T-CART-01 | Authenticated Cart item CRUD | Lines use product_id; positive quantity; account/line ownership enforced; mutations never reserve stock. | API/integration tests, including multiple Cart rows if present. |
 | T-CART-02 | Current Cart selection | The API/workflow contract explicitly defines and tests current-Cart selection if multiple Cart rows exist; do not infer one-active-Cart uniqueness or merge from the schema. | API contract review and service tests. |
 | T-QUOTE-01 | Quote calculation | Stateless/advisory; no quote row/ID, stock reservation, voucher mutation or Order side effect. | Database write-set assertions around quote calls. |

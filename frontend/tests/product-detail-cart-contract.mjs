@@ -26,7 +26,7 @@ const brand = { brand_id: 1, name: 'FIDO', slug: 'fido', status: 'ACTIVE' };
 const attribute = {
   attribute_id: 1,
   attribute_code: 'MATERIAL',
-  attribute_name: 'Chất liệu', is_variant_defining: false, sort_order: 3,
+  attribute_name: 'Chất liệu', sort_order: 3,
   attribute_value_id: 101,
   value: 'COTTON',
   label: 'Cotton',
@@ -46,7 +46,7 @@ const product = {
   status: 'ACTIVE',
   images: [{
     id: 1001, image_url: '/images/about/palette.svg',
-    is_primary: true, sort_order: 0,
+    sort_order: 0,
   }],
   created_at: date,
   updated_at: date,
@@ -61,11 +61,11 @@ const emptyCart = {
   updated_at: null,
 };
 const colorValue = (id, value, label) => ({
-  attribute_id: 2, attribute_code: 'COLOR', attribute_name: 'Màu sắc', is_variant_defining: true, sort_order: 0,
+  attribute_id: 2, attribute_code: 'COLOR', attribute_name: 'Màu sắc', sort_order: 0,
   attribute_value_id: id, value, label,
 });
 const sizeValue = (id, value) => ({
-  attribute_id: 3, attribute_code: 'SIZE', attribute_name: 'Kích thước', is_variant_defining: true, sort_order: 1,
+  attribute_id: 3, attribute_code: 'SIZE', attribute_name: 'Kích thước', sort_order: 1,
   attribute_value_id: id, value, label: value,
 });
 const artwork = {
@@ -81,7 +81,7 @@ const child = (id, sku, name, price, color, size, image) => ({
   sku, name, selling_price: price,
   images: [{
     id: 1000 + id, image_url: artwork[image],
-    is_primary: true, sort_order: 0,
+    sort_order: 0,
   }],
   attribute_values: [attribute, color, size],
 });
@@ -89,7 +89,7 @@ const blackM = child(2, 'FIDO-TEE-BLACK-S', 'Áo FIDO Đen S', 219000,
   colorValue(201, 'BLACK', 'Đen'), sizeValue(301, 'S'), 'black-m');
 blackM.images.push({
   id: 2002, image_url: '/images/about/details.svg',
-  is_primary: false, sort_order: 1,
+  sort_order: 1,
 });
 const blackL = child(3, 'FIDO-TEE-BLACK-L', 'Áo FIDO Đen L', 239000,
   colorValue(201, 'BLACK', 'Đen'), sizeValue(302, 'L'), 'black-l');
@@ -98,7 +98,7 @@ const whiteL = child(4, 'FIDO-TEE-WHITE-L', 'Áo FIDO Trắng L', 229000,
   colorValue(202, 'WHITE', 'Trắng'), sizeValue(302, 'L'), 'white-l');
 const whiteLAlt = child(5, 'FIDO-TEE-WHITE-L-ALT', 'Áo FIDO Trắng L kiểu khác', 249000,
   colorValue(202, 'WHITE', 'Trắng'), sizeValue(302, 'L'), 'white-l-alt');
-whiteL.images.push({ id: 2004, image_url: artwork['black-m'], is_primary: false, sort_order: 1 });
+whiteL.images.push({ id: 2004, image_url: artwork['black-m'], sort_order: 1 });
 product.attribute_values = [attribute, colorValue(201, 'BLACK', 'Đen'), sizeValue(303, 'M')];
 const familyProducts = [product, blackM, blackL, whiteL, whiteLAlt];
 const availableByProduct = new Map([[1, 8], [2, 2], [3, 0], [4, 3], [5, 4]]);
@@ -116,8 +116,8 @@ const detailed = new Map(familyProducts.map((p) => [p.product_id, { ...p, family
 const standalone = {
   ...product, product_id: 6, sku: 'FIDO-SINGLE', name: 'Sản phẩm độc lập', attribute_values: [attribute],
   images: [
-    { id: 6002, image_url: artwork['black-m'], is_primary: false, sort_order: 1 },
-    { id: 6001, image_url: artwork['black-l'], is_primary: true, sort_order: 0 },
+    { id: 6002, image_url: artwork['black-m'], sort_order: 1 },
+    { id: 6001, image_url: artwork['black-l'], sort_order: 0 },
   ],
 };
 const withoutImages = { ...product, product_id: 7, sku: 'FIDO-EMPTY', name: 'Sản phẩm chưa có ảnh', attribute_values: [attribute], images: [] };

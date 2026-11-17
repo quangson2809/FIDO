@@ -69,9 +69,7 @@ public class OrderActionPolicy {
                 || shipping == null
                 || stock == null
                 || !OrderPolicy.canTransition(order.getOrderStatus(), action.targetStatus())
-                || !"COD".equals(payment.getMethod())
                 || !Objects.equals(payment.getAmount(), order.getTotalAmount())
-                || !Objects.equals(payment.getCurrency(), order.getCurrency())
                 || !isCleanUnpaidPayment(payment)) {
             return false;
         }

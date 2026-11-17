@@ -63,16 +63,14 @@ class CustomerQueryApiTest extends OperationsHttpSupport {
         db.update(
                 """
                 INSERT INTO orders(
-                    account_id, voucher_id, order_number, idempotency_key, request_fingerprint,
-                    status, subtotal, discount_amount, shipping_fee, total_amount, currency,
-                    placed_at, created_at, updated_at
-                ) VALUES (?,NULL,?,?,?,'PENDING',100,0,0,100,'VND',?,?,?)
+                    account_id,voucher_id,order_number,idempotency_key,request_fingerprint,status,subtotal,
+                    discount_amount,shipping_fee,total_amount,created_at,updated_at
+                ) VALUES (?,NULL,?,?,?,'PENDING',100,0,0,100,?,?)
                 """,
                 accountId,
                 orderNumber,
                 idempotencyKey,
                 fingerprint,
-                date,
                 date,
                 date);
         long id =
@@ -81,8 +79,8 @@ class CustomerQueryApiTest extends OperationsHttpSupport {
         orderIds.add(id);
         db.update(
                 """
-                INSERT INTO payments(order_id,method,payment_status,amount,currency,refund_amount)
-                VALUES (?,'COD','UNPAID',100,'VND',0)
+                INSERT INTO payments(order_id,payment_status,amount,refund_amount)
+                VALUES (?,'UNPAID',100,0)
                 """,
                 id);
         db.update(
@@ -103,9 +101,8 @@ class CustomerQueryApiTest extends OperationsHttpSupport {
                 id);
         db.update(
                 """
-                INSERT INTO shipping_infos(
-                    order_id,recipient_name,recipient_phone,shipping_status,updated_at)
-                VALUES (?,'Customer Test','0901234567','PENDING',CURRENT_TIMESTAMP(6))
+                INSERT INTO shipping_infos(order_id,shipping_status,updated_at)
+                VALUES (?,'PENDING',CURRENT_TIMESTAMP(6))
                 """,
                 id);
         return id;

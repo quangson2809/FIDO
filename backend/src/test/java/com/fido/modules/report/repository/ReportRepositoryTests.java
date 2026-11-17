@@ -31,11 +31,9 @@ class ReportRepositoryTests {
         jdbc.update(
                 """
                 INSERT INTO orders(
-                    account_id,order_number,idempotency_key,request_fingerprint,status,
-                    subtotal,discount_amount,shipping_fee,total_amount,currency,
-                    placed_at,created_at,updated_at)
-                VALUES (1,?,?,?, ?,100,0,0,100,'VND',
-                    '2020-01-02 00:00:00','2020-01-02 00:00:00','2020-01-02 00:00:00')
+                    account_id,order_number,idempotency_key,request_fingerprint,status,subtotal,discount_amount,
+                    shipping_fee,total_amount,created_at,updated_at
+                ) VALUES (1,?,?,?, ?,100,0,0,100,'2020-01-02 00:00:00','2020-01-02 00:00:00')
                 """,
                 "RPT-" + suffix.substring(0, 24),
                 "report-idem-" + suffix,
@@ -49,9 +47,8 @@ class ReportRepositoryTests {
         String shippingStatus = delivered != null ? "DELIVERED" : "SHIPPED";
         jdbc.update(
                 """
-                INSERT INTO shipping_infos(
-                    order_id,recipient_name,recipient_phone,shipping_status,shipped_at,delivered_at,updated_at)
-                VALUES (?,'Report recipient','0900000000',?,?,?,CURRENT_TIMESTAMP(6))
+                INSERT INTO shipping_infos(order_id,shipping_status,shipped_at,delivered_at,updated_at)
+                VALUES (?,?,?,?,CURRENT_TIMESTAMP(6))
                 """,
                 orderId,
                 shippingStatus,
@@ -99,8 +96,8 @@ class ReportRepositoryTests {
                         999999);
         jdbc.update(
                 """
-                INSERT INTO product_images(product_id,image_url,is_primary,sort_order)
-                VALUES (?, 'https://example.invalid/second.png', TRUE, 0)
+                INSERT INTO product_images(product_id,image_url,sort_order)
+                VALUES (?, 'https://example.invalid/second.png', 0)
                 """,
                 child);
 

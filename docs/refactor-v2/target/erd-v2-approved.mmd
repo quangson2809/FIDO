@@ -99,7 +99,6 @@ erDiagram
         varchar code UK
         varchar name
         boolean is_required
-        boolean is_variant_defining
         int sort_order
     }
 
@@ -122,7 +121,6 @@ erDiagram
         bigint id PK
         bigint product_id FK
         varchar image_url
-        boolean is_primary
         int sort_order
         timestamp created_at
     }
@@ -140,7 +138,6 @@ erDiagram
         bigint cart_id FK
         bigint product_id FK
         int quantity
-        timestamp added_at
         timestamp updated_at
     }
 
@@ -170,8 +167,6 @@ erDiagram
         bigint discount_amount "Integer VND"
         bigint shipping_fee "Integer VND"
         bigint total_amount "Integer VND"
-        char(3) currency
-        timestamp placed_at
         timestamp created_at
         timestamp updated_at
     }
@@ -205,15 +200,12 @@ erDiagram
         varchar voucher_code_snapshot
         varchar discount_type_snapshot
         bigint discount_value_snapshot "Integer VND or integer percent basis points"
-        bigint discount_amount_snapshot "Integer VND"
     }
 
     PAYMENTS {
         bigint order_id PK,FK
-        varchar method
         varchar payment_status
         bigint amount "Integer VND"
-        char(3) currency "VND only"
         bigint collected_by_account_id FK
         timestamp collected_at
         bigint refund_amount "Integer VND; default zero"
@@ -226,8 +218,6 @@ erDiagram
 
     SHIPPING_INFOS {
         bigint order_id PK,FK
-        varchar recipient_name
-        varchar recipient_phone
         varchar carrier_name
         varchar tracking_number
         varchar shipping_status

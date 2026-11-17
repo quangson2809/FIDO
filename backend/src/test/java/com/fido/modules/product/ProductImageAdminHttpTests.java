@@ -443,7 +443,7 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                 """
                 SELECT id
                 FROM product_images
-                WHERE product_id=? AND is_primary=TRUE
+                WHERE product_id=? AND sort_order=0
                 ORDER BY sort_order,id
                 """,
                 (resultSet, rowNumber) -> resultSet.getLong(1),
@@ -460,22 +460,10 @@ class ProductImageAdminHttpTests extends CatalogHttpSupport {
                         productId);
         long primaryCount =
                 db.queryForObject(
-                        "SELECT COUNT(*) FROM product_images WHERE product_id=? AND is_primary=TRUE",
+                        "SELECT COUNT(*) FROM product_images WHERE product_id=? AND sort_order=0",
                         Long.class,
                         productId);
         assertEquals(gallerySize == 0 ? 0L : 1L, primaryCount);
-        int mismatchCount =
-                db.queryForObject(
-                        """
-                        SELECT COUNT(*)
-                        FROM product_images
-                        WHERE product_id=?
-                          AND ((sort_order=0 AND is_primary=FALSE)
-                            OR (sort_order<>0 AND is_primary=TRUE))
-                        """,
-                        Integer.class,
-                        productId);
-        assertEquals(0, mismatchCount);
     }
 
     private Map<String, Object> image(String imageUrl, int sortOrder) {

@@ -148,12 +148,12 @@ class ProductAttributeValueHttpTests extends CatalogHttpSupport {
 
         String galleryUrl = "https://cdn.example.test/product-child-gallery.jpg";
         db.update(
-                "INSERT INTO product_images(product_id,image_url,is_primary,sort_order) VALUES (?,?,TRUE,0)",
+                "INSERT INTO product_images(product_id,image_url,sort_order) VALUES (?,?,0)",
                 childId,
                 galleryUrl);
         String secondGalleryUrl = "https://cdn.example.test/product-child-gallery-second.jpg";
         db.update(
-                "INSERT INTO product_images(product_id,image_url,is_primary,sort_order) VALUES (?,?,FALSE,1)",
+                "INSERT INTO product_images(product_id,image_url,sort_order) VALUES (?,?,1)",
                 childId,
                 secondGalleryUrl);
         long draftId =
@@ -462,8 +462,6 @@ class ProductAttributeValueHttpTests extends CatalogHttpSupport {
                                 "New required attribute",
                                 "is_required",
                                 true,
-                                "is_variant_defining",
-                                false,
                                 "sort_order",
                                 0));
         assertEquals(409, rejectedCreate.status(), rejectedCreate.body());
@@ -727,8 +725,6 @@ class ProductAttributeValueHttpTests extends CatalogHttpSupport {
                                 name,
                                 "is_required",
                                 required,
-                                "is_variant_defining",
-                                false,
                                 "sort_order",
                                 0));
         assertEquals(201, result.status(), result.body());

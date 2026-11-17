@@ -23,8 +23,8 @@ The inventory above is the complete logical target table set. Schema additions r
 - No implicit field inheritance exists. In particular, NULL `name`, `slug` or `description` does not trigger a parent fallback. SKU, selling price and inventory belong to the individual Product row.
 - Category hierarchy must remain acyclic. Product parent/child depth is a separate invariant limited to one level. Validate each hierarchy mutation in its owning service under concurrent updates.
 - Dynamic metadata is descriptive and option-only. A Product/Attribute pair has at most one value, stored in a required `option_id` referencing an Option owned by the same Attribute. Backend derives `attribute_id` from the selected Option ID. Values never generate Product records.
-- `is_variant_defining` is informational metadata only; it must not trigger automatic Product creation or combinations.
-- Product images belong to the Product. Primary-image behavior follows `is_primary` and the approved image contract. Order image references must continue to resolve to the retained order-time content.
+- Purchase selection recognizes exact `COLOR` and Attribute codes starting with `SIZE`; other Attributes are descriptive. No persisted selection flag is used.
+- Product images belong to the Product. The primary image is the row at `sort_order = 0`; no separate flag is persisted. Order image references must continue to resolve to the retained order-time content.
 
 ## 4. Cart, order and money
 
@@ -35,6 +35,8 @@ The inventory above is the complete logical target table set. Schema additions r
 - Monetary amounts use whole VND and integer storage. `subtotal = Σ(unit_price × quantity)` before discount/shipping; calculate one order-wide Voucher discount using FIXED VND or PERCENT basis points (100 bps=1%), HALF_UP for the percentage result, optional VND cap and subtotal bound. Allocate with largest remainder and ascending Product ID tie-break. Line discounts sum exactly to Order.discount_amount; `line_total = unit_price × quantity − allocated discount`; `total_amount = subtotal − discount_amount + shipping_fee`; Payment.amount equals Order.total_amount. See [P1.5 Pricing and Voucher Contract](refactor-v2/p1/P1.5-pricing-voucher-contract.md) for exact examples.
 - A checkout quote is stateless and advisory. It has no persisted quote record, stock reservation or voucher quota side effect. Order placement reloads/reprices current server-side state and atomically consumes one Voucher use with the Order/snapshot if eligible.
 - Idempotency is scoped to the authenticated account and uses a canonical SHA-256 fingerprint of the semantic request. Same-key/same-payload retries replay the committed result; changed payloads conflict. A different account cannot access another account's result.
+
+- `orders.created_at` is the order placement time. `order_addresses` is the sole stored recipient snapshot; shipping responses project its name/phone. `orders.discount_amount` is the authoritative actual Voucher discount. COD and integer VND are fixed application semantics; Payment/Order rows do not store method/currency constants. Cart lines retain `updated_at` only.
 
 ## 5. Inventory and procurement
 

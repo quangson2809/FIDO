@@ -17,12 +17,6 @@ public class ShippingInfo {
     @Column(name = "order_id", nullable = false)
     private Long orderId;
 
-    @Column(name = "recipient_name", nullable = false, length = 150)
-    private String recipientName;
-
-    @Column(name = "recipient_phone", nullable = false, length = 20)
-    private String recipientPhone;
-
     @Column(name = "carrier_name", nullable = true, length = 150)
     private String carrierName;
 

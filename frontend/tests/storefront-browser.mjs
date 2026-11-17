@@ -257,8 +257,8 @@ try {
   await page.getByRole('heading', { name: 'Áo FIDO', exact: true }).waitFor();
   // Gallery order, keyboard enlargement, and broken media.
   product.images = [
-    { id: 2, image_url: '/images/about/palette.svg', is_primary: false, sort_order: 1 },
-    { id: 1, image_url: '/images/about/wardrobe.svg', is_primary: true, sort_order: 0 },
+    { id: 2, image_url: '/images/about/palette.svg', sort_order: 1 },
+    { id: 1, image_url: '/images/about/wardrobe.svg', sort_order: 0 },
   ];
   await go('/products/1');
   await page.getByRole('button', { name: 'Phóng to ảnh' }).waitFor();
@@ -275,14 +275,14 @@ try {
   await page.getByRole('dialog', { name: 'Ảnh sản phẩm' }).waitFor();
   await page.keyboard.press('Escape');
   product.images = [
-    { id: 1, image_url: '/broken-fixture.png', is_primary: true, sort_order: 0 },
+    { id: 1, image_url: '/broken-fixture.png', sort_order: 0 },
   ];
   await page.route('**/broken-fixture.png', (route) => route.fulfill({ status: 404, body: '' }));
   await go('/products/1');
   await page.getByRole('img', { name: 'Áo FIDO: ảnh chưa khả dụng' }).waitFor();
   product.images = [
-    { id: 1, image_url: '/images/about/wardrobe.svg', is_primary: true, sort_order: 0 },
-    { id: 2, image_url: '/images/about/palette.svg', is_primary: false, sort_order: 1 },
+    { id: 1, image_url: '/images/about/wardrobe.svg', sort_order: 0 },
+    { id: 2, image_url: '/images/about/palette.svg', sort_order: 1 },
   ];
   await go('/products/1');
   const addToCart = page.getByRole('button', { name: 'Thêm vào giỏ hàng', exact: true });

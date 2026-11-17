@@ -35,20 +35,12 @@ public class CartItem {
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
 
-    @Column(
-            name = "added_at",
-            nullable = false,
-            columnDefinition = "TIMESTAMP(6)",
-            updatable = false)
-    private LocalDateTime addedAt;
-
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
     private LocalDateTime updatedAt;
 
     @PrePersist
     void onCreate() {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-        if (addedAt == null) addedAt = now;
         updatedAt = now;
     }
 

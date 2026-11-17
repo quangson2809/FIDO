@@ -264,7 +264,7 @@ def main():
         "selling_price", "cost_price", "discount_value", "minimum_order_value",
         "maximum_discount", "subtotal", "discount_amount", "shipping_fee",
         "total_amount", "unit_price", "unit_cost", "line_total", "amount",
-        "refund_amount", "discount_value_snapshot", "discount_amount_snapshot",
+        "refund_amount", "discount_value_snapshot",
     }
     for t, cols in sql.items():
         for c in money & set(cols):

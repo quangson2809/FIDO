@@ -143,7 +143,7 @@ public class OrderCreationService {
         OrderAddress address = persistAddress(order.getOrderId(), normalized);
         persistVoucherSnapshot(order.getOrderId(), calculation);
         Payment payment = persistInitialPayment(order.getOrderId(), calculation.total());
-        persistInitialShipping(order.getOrderId(), normalized);
+        persistInitialShipping(order.getOrderId());
         vouchers.consume(calculation.voucher());
         cart.completeForOrder(accountId);
         audit.record(
@@ -189,7 +189,6 @@ public class OrderCreationService {
         order.setDiscountAmount(calculation.discount());
         order.setShippingFee(calculation.shippingFee());
         order.setTotalAmount(calculation.total());
-        order.setCurrency("VND");
         order.setVoucherId(calculation.voucher().voucherId());
         order.setOrderStatus(OrderPolicy.PENDING);
         return orders.save(order);
@@ -249,27 +248,21 @@ public class OrderCreationService {
         snapshot.setVoucherCodeSnapshot(discount.code());
         snapshot.setDiscountTypeSnapshot(discount.discountType());
         snapshot.setDiscountValueSnapshot(discount.discountValue());
-        snapshot.setDiscountAmountSnapshot(calculation.discount());
         voucherSnapshots.save(snapshot);
     }
 
     private Payment persistInitialPayment(Long orderId, long total) {
         Payment payment = new Payment();
         payment.setOrderId(orderId);
-        payment.setMethod("COD");
         payment.setPaymentStatus(OrderPolicy.UNPAID);
         payment.setAmount(total);
-        payment.setCurrency("VND");
         payment.setRefundAmount(0L);
         return payments.save(payment);
     }
 
-    private void persistInitialShipping(
-            Long orderId, CheckoutRequestNormalizer.Normalized request) {
+    private void persistInitialShipping(Long orderId) {
         ShippingInfo shipping = new ShippingInfo();
         shipping.setOrderId(orderId);
-        shipping.setRecipientName(request.recipientName());
-        shipping.setRecipientPhone(request.recipientPhone());
         shipping.setShippingStatus("PENDING");
         shippingInfos.save(shipping);
     }

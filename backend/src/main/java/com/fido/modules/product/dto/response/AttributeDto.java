@@ -7,6 +7,5 @@ public record AttributeDto(
         String code,
         String name,
         boolean is_required,
-        boolean is_variant_defining,
         Integer sort_order,
         List<AttributeOptionDto> options) {}

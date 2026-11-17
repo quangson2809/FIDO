@@ -9,7 +9,7 @@ const displayMoney = (value: number | null): string =>
   value === null ? '—' : value.toLocaleString('vi-VN') + '₫';
 
 const primaryImage = (images: readonly ProductImageDto[]): string | null => {
-  const primary = images.find((image) => image.is_primary);
+  const primary = images.find((image) => image.sort_order === 0);
   const first = [...images].sort((left, right) => left.sort_order - right.sort_order)[0];
   return resolveImageUrl((primary ?? first)?.image_url ?? null) ?? null;
 };

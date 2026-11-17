@@ -36,14 +36,11 @@ class OrderActionPolicyInvariantTests {
         order.setOrderId(13L);
         order.setOrderStatus(OrderPolicy.PENDING);
         order.setTotalAmount(250000L);
-        order.setCurrency("VND");
 
         payment = new Payment();
         payment.setOrderId(13L);
-        payment.setMethod("COD");
         payment.setPaymentStatus(OrderPolicy.UNPAID);
         payment.setAmount(250000L);
-        payment.setCurrency("VND");
         payment.setRefundAmount(0L);
 
         shipping = new ShippingInfo();

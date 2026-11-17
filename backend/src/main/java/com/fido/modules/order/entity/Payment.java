@@ -18,17 +18,11 @@ public class Payment {
     @Column(name = "order_id", nullable = false)
     private Long orderId;
 
-    @Column(name = "method", nullable = false, length = 30)
-    private String method = "COD";
-
     @Column(name = "payment_status", nullable = false, length = 20)
     private String paymentStatus = "UNPAID";
 
     @Column(name = "amount", nullable = false)
     private Long amount;
-
-    @Column(name = "currency", nullable = false, length = 3)
-    private String currency = "VND";
 
     @Column(name = "refund_amount", nullable = false)
     private Long refundAmount = 0L;

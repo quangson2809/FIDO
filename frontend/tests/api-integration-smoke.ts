@@ -135,7 +135,6 @@ const server = createServer((request, response) => {
         code: 'MATERIAL',
         name: 'Material',
         is_required: false,
-        is_variant_defining: false,
         sort_order: 0,
         options: [],
       };
@@ -576,7 +575,6 @@ try {
     code: 'MATERIAL',
     name: 'Material',
     is_required: false,
-    is_variant_defining: false,
     sort_order: 0,
   };
   const createdAttribute = await adminCatalogMetaService.createAttribute(attributeInput);
@@ -585,7 +583,6 @@ try {
   const attributePatch = {
     name: 'Chất liệu',
     is_required: true,
-    is_variant_defining: false,
     sort_order: 1,
   };
   await adminCatalogMetaService.updateAttribute(1, attributePatch);

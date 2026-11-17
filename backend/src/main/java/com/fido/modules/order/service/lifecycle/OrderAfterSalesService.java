@@ -24,7 +24,6 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Map;
-import java.util.Objects;
 
 @Service
 @Transactional
@@ -97,10 +96,8 @@ public class OrderAfterSalesService {
                 || !OrderPolicy.COMPLETED.equals(order.getOrderStatus())
                 || !OrderPolicy.PAID.equals(payment.getPaymentStatus())
                 || !"DELIVERED".equals(shipping.getShippingStatus())
-                || !"COD".equals(payment.getMethod())
                 || payment.getAmount() == null
                 || !payment.getAmount().equals(order.getTotalAmount())
-                || !Objects.equals(payment.getCurrency(), order.getCurrency())
                 || payment.getRefundAmount() == null
                 || payment.getRefundAmount() != 0L
                 || payment.getCollectedByAccountId() == null

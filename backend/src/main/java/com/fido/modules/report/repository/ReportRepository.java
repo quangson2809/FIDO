@@ -36,8 +36,6 @@ public class ReportRepository {
             WHERE o.status IN ('COMPLETED', 'RETURNED')
               AND s.shipping_status = 'DELIVERED'
               AND s.delivered_at >= ? AND s.delivered_at < ?
-              AND o.currency = 'VND'
-              AND p.currency = 'VND'
               AND p.amount = o.total_amount
               AND (
                   (o.status = 'COMPLETED'
@@ -91,14 +89,7 @@ public class ReportRepository {
                 GROUP BY oi.product_id
             ) totals
             JOIN products p ON p.id = totals.product_id
-            LEFT JOIN (
-                SELECT product_id, image_url,
-                       ROW_NUMBER() OVER (
-                           PARTITION BY product_id
-                           ORDER BY is_primary DESC, sort_order ASC, id ASC
-                       ) AS image_rank
-                FROM product_images
-            ) image ON image.product_id = totals.product_id AND image.image_rank = 1
+            LEFT JOIN product_images image ON image.product_id = totals.product_id AND image.sort_order = 0
             ORDER BY net_units DESC, totals.completed_units DESC, totals.product_id ASC
             LIMIT ?
             """;

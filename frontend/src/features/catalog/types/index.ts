@@ -31,7 +31,6 @@ export interface AttributeDto {
   code: string;
   name: string;
   is_required: boolean;
-  is_variant_defining: boolean;
   sort_order: number;
   options: AttributeOptionDto[];
 }
@@ -40,7 +39,6 @@ export interface ProductAttributeValueDto {
   attribute_id: number;
   attribute_code: string;
   attribute_name: string;
-  is_variant_defining: boolean;
   sort_order: number;
   attribute_value_id: number;
   value: string;
@@ -68,7 +66,6 @@ export interface AdminCatalogMetaDto {
 export interface ProductImageDto {
   id: number;
   image_url: string;
-  is_primary: boolean;
   sort_order: number;
 }
 
@@ -256,14 +253,12 @@ export interface AttributeCreateInput {
   code: string;
   name: string;
   is_required: boolean;
-  is_variant_defining?: boolean;
   sort_order?: number;
 }
 
 export interface AttributePatchInput {
   name?: string;
   is_required?: boolean;
-  is_variant_defining?: boolean;
   sort_order?: number;
 }
 

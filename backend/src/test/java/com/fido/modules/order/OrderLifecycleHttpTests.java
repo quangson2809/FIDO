@@ -55,6 +55,28 @@ class OrderLifecycleHttpTests extends OrderHttpSupport {
                 customerDetail.data().get("data").get("items").get(0).get("sku").asText());
         assertEquals(210000, customerDetail.data().get("data").get("total").asInt());
         assertEquals(
+                db.queryForObject(
+                        "SELECT recipient_name FROM order_addresses WHERE order_id=?",
+                        String.class,
+                        orderId),
+                customerDetail
+                        .data()
+                        .get("data")
+                        .get("shipping_info")
+                        .get("recipient_name")
+                        .asText());
+        assertEquals(
+                db.queryForObject(
+                        "SELECT recipient_phone FROM order_addresses WHERE order_id=?",
+                        String.class,
+                        orderId),
+                customerDetail
+                        .data()
+                        .get("data")
+                        .get("shipping_info")
+                        .get("recipient_phone")
+                        .asText());
+        assertEquals(
                 404,
                 call("GET", "/api/v1/me/orders/" + orderId, otherCustomer.token(), null).status());
 
@@ -77,6 +99,12 @@ class OrderLifecycleHttpTests extends OrderHttpSupport {
 
         var adminDetail = call("GET", "/api/v1/admin/orders/" + orderId, root.token(), null);
         assertEquals(200, adminDetail.status(), adminDetail.body());
+        assertEquals(
+                customerDetail.data().get("data").get("shipping_info").get("recipient_name"),
+                adminDetail.data().get("data").get("shipping_info").get("recipient_name"));
+        assertEquals(
+                customerDetail.data().get("data").get("shipping_info").get("recipient_phone"),
+                adminDetail.data().get("data").get("shipping_info").get("recipient_phone"));
         assertTrue(
                 adminDetail
                         .data()

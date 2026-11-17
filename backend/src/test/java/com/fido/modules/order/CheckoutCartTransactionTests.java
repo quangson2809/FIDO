@@ -134,8 +134,8 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
                                                                 customer.accountId()));
                                                 db.update(
                                                         """
-                                INSERT INTO payments(order_id,method,payment_status,amount,currency)
-                                SELECT p.order_id,p.method,p.payment_status,p.amount,p.currency
+                                INSERT INTO payments(order_id,payment_status,amount)
+                                SELECT p.order_id,p.payment_status,p.amount
                                 FROM payments p JOIN orders o ON o.id=p.order_id
                                 WHERE o.account_id=?
                                 """,

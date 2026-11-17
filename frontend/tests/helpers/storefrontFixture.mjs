@@ -12,7 +12,6 @@ export const meta = {
       code: 'MATERIAL',
       name: 'Chất liệu',
       is_required: false,
-      is_variant_defining: false,
       sort_order: 0,
       options: [{ id: 101, attribute_id: 1, value: 'COTTON', label: 'Cotton', sort_order: 0 }],
     },

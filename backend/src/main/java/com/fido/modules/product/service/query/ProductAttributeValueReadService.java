@@ -80,7 +80,6 @@ public class ProductAttributeValueReadService {
                                     attribute.getAttributeId(),
                                     attribute.getCode(),
                                     attribute.getName(),
-                                    attribute.isVariantDefining(),
                                     attribute.getSortOrder(),
                                     option.getAttributeOptionId(),
                                     option.getValue(),

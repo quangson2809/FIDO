@@ -151,11 +151,9 @@ class DevDataSeedServiceTests extends OperationsHttpSupport {
                 UNION ALL SELECT recipient_phone FROM addresses WHERE id BETWEEN 910001 AND 910003
                 UNION ALL SELECT recipient_phone FROM order_addresses
                     WHERE order_id IN (1001001,1001002,1001003,1001004,1001005,1001006,1001101,1001102,1001103)
-                UNION ALL SELECT recipient_phone FROM shipping_infos
-                    WHERE order_id IN (1001001,1001002,1001003,1001004,1001005,1001006,1001101,1001102,1001103)
                 """,
                         String.class);
-        assertEquals(29, allSeedPhones.size());
+        assertEquals(20, allSeedPhones.size());
         for (String phone : allSeedPhones) {
             assertTrue(
                     phone.matches("\\+84[0-9]{9}"),

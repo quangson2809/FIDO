@@ -158,13 +158,7 @@ class DatabaseBaselineTests {
                             Set.of("attribute_id", "id", "label", "sort_order", "value")),
                     Map.entry(
                             "attributes",
-                            Set.of(
-                                    "code",
-                                    "id",
-                                    "is_required",
-                                    "is_variant_defining",
-                                    "name",
-                                    "sort_order")),
+                            Set.of("code", "id", "is_required", "name", "sort_order")),
                     Map.entry(
                             "audit_logs",
                             Set.of(
@@ -180,13 +174,7 @@ class DatabaseBaselineTests {
                     Map.entry("brands", Set.of("id", "name", "slug", "status")),
                     Map.entry(
                             "cart_items",
-                            Set.of(
-                                    "added_at",
-                                    "cart_id",
-                                    "id",
-                                    "product_id",
-                                    "quantity",
-                                    "updated_at")),
+                            Set.of("cart_id", "id", "product_id", "quantity", "updated_at")),
                     Map.entry(
                             "carts",
                             Set.of("account_id", "created_at", "id", "status", "updated_at")),
@@ -281,7 +269,6 @@ class DatabaseBaselineTests {
                     Map.entry(
                             "order_voucher_snapshots",
                             Set.of(
-                                    "discount_amount_snapshot",
                                     "discount_type_snapshot",
                                     "discount_value_snapshot",
                                     "order_id",
@@ -291,12 +278,10 @@ class DatabaseBaselineTests {
                             Set.of(
                                     "account_id",
                                     "created_at",
-                                    "currency",
                                     "discount_amount",
                                     "id",
                                     "idempotency_key",
                                     "order_number",
-                                    "placed_at",
                                     "request_fingerprint",
                                     "shipping_fee",
                                     "status",
@@ -311,8 +296,6 @@ class DatabaseBaselineTests {
                                     "collected_at",
                                     "collected_by_account_id",
                                     "created_at",
-                                    "currency",
-                                    "method",
                                     "order_id",
                                     "payment_status",
                                     "refund_amount",
@@ -326,13 +309,7 @@ class DatabaseBaselineTests {
                             Set.of("attribute_id", "option_id", "product_id")),
                     Map.entry(
                             "product_images",
-                            Set.of(
-                                    "created_at",
-                                    "id",
-                                    "image_url",
-                                    "is_primary",
-                                    "product_id",
-                                    "sort_order")),
+                            Set.of("created_at", "id", "image_url", "product_id", "sort_order")),
                     Map.entry(
                             "products",
                             Set.of(
@@ -358,8 +335,6 @@ class DatabaseBaselineTests {
                                     "carrier_name",
                                     "delivered_at",
                                     "order_id",
-                                    "recipient_name",
-                                    "recipient_phone",
                                     "shipped_at",
                                     "shipping_status",
                                     "tracking_number",

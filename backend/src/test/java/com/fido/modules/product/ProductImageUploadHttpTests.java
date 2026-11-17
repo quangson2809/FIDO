@@ -69,7 +69,7 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
                 List.of("https://storage.test/front.png", "https://storage.test/back.png"),
                 responseImageUrls(response));
         assertEquals(List.of(0, 1), responseSortOrders(response));
-        assertEquals(List.of(true, false), responsePrimaryFlags(response));
+        assertNoPrimaryFlag(response);
         assertPrimaryInvariant(fixture.productId());
         assertEquals(List.of("front.png", "back.png"), storage.uploadedFilenames());
         assertEquals(
@@ -365,12 +365,10 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
         return List.copyOf(orders);
     }
 
-    private List<Boolean> responsePrimaryFlags(Result response) {
-        var primaryFlags = new ArrayList<Boolean>();
+    private void assertNoPrimaryFlag(Result response) {
         for (var image : response.data().get("data").get("images")) {
-            primaryFlags.add(image.get("is_primary").asBoolean());
+            org.junit.jupiter.api.Assertions.assertFalse(image.has("is_primary"));
         }
-        return List.copyOf(primaryFlags);
     }
 
     private void assertPrimaryInvariant(long productId) {
@@ -381,22 +379,10 @@ class ProductImageUploadHttpTests extends CatalogHttpSupport {
                         productId);
         long primaryCount =
                 db.queryForObject(
-                        "SELECT COUNT(*) FROM product_images WHERE product_id=? AND is_primary=TRUE",
+                        "SELECT COUNT(*) FROM product_images WHERE product_id=? AND sort_order=0",
                         Long.class,
                         productId);
         assertEquals(gallerySize == 0 ? 0L : 1L, primaryCount);
-        int mismatchCount =
-                db.queryForObject(
-                        """
-                        SELECT COUNT(*)
-                        FROM product_images
-                        WHERE product_id=?
-                          AND ((sort_order=0 AND is_primary=FALSE)
-                            OR (sort_order<>0 AND is_primary=TRUE))
-                        """,
-                        Integer.class,
-                        productId);
-        assertEquals(0, mismatchCount);
         List<Integer> orders =
                 db.query(
                         "SELECT sort_order FROM product_images WHERE product_id=? ORDER BY sort_order,id",

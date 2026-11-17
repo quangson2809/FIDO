@@ -167,7 +167,7 @@ The target Product model is row-based, not variant-based. Every Product has a ge
 Attribute filter query parameters:
 - **attribute_filters[ATTRIBUTE_CODE]=value** selects Products by a predefined Option machine value owned by that Attribute. Different Attribute predicates combine with AND.
 - TEXT/NUMBER/BOOLEAN typed operators (including **attribute_min** and **attribute_max**) are not supported. Unknown Attribute codes, unknown or mismatched Option values, duplicate keys and malformed filters return HTTP 400.
-- is_variant_defining never changes filtering into Product generation.
+- Attribute metadata never changes filtering into Product generation.
 
 Image gallery writes are Product-scoped and atomic. Positions are contiguous from zero; position zero is the single primary image whenever the gallery is non-empty. Order-time image snapshots refer to stable immutable object/version content; numeric retention and legal deletion exceptions remain P1.8 decisions.
 

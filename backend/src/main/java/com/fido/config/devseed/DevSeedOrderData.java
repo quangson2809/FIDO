@@ -182,9 +182,9 @@ public class DevSeedOrderData {
                 """);
         jdbc.update(
                 """
-                INSERT INTO cart_items(id,cart_id,product_id,quantity,added_at,updated_at) VALUES
-                (981001,980001,960001,1,'2026-09-05 00:00:00','2026-09-05 00:00:00'),
-                (981002,980002,960006,1,'2026-09-05 00:00:00','2026-09-05 00:00:00')
+                INSERT INTO cart_items(id,cart_id,product_id,quantity,updated_at) VALUES
+                (981001,980001,960001,1,'2026-09-05 00:00:00'),
+                (981002,980002,960006,1,'2026-09-05 00:00:00')
                 """);
     }
 
@@ -230,10 +230,9 @@ public class DevSeedOrderData {
             jdbc.update(
                     """
                     INSERT INTO orders(
-                        id,account_id,voucher_id,order_number,idempotency_key,request_fingerprint,
-                        status,subtotal,discount_amount,shipping_fee,total_amount,currency,
-                        placed_at,created_at,updated_at
-                    ) VALUES (?,?,NULL,?,?,?,?,?,0,?,?,'VND',?,?,?)
+                        id,account_id,voucher_id,order_number,idempotency_key,request_fingerprint,status,subtotal,
+                        discount_amount,shipping_fee,total_amount,created_at,updated_at
+                    ) VALUES (?,?,NULL,?,?,?,?,?,0,?,?,?,?)
                     """,
                     order.orderId(),
                     CUSTOMER_ID,
@@ -244,9 +243,8 @@ public class DevSeedOrderData {
                     subtotal,
                     SHIPPING_FEE,
                     total,
-                    order.placedAt(),
-                    order.placedAt(),
-                    order.placedAt());
+                    order.createdAt(),
+                    order.createdAt());
 
             jdbc.update(
                     """
@@ -287,9 +285,9 @@ public class DevSeedOrderData {
             jdbc.update(
                     """
                     INSERT INTO payments(
-                        order_id,method,payment_status,amount,currency,collected_by_account_id,collected_at,
-                        refund_amount,refunded_by_account_id,refunded_at,refund_reason,created_at,updated_at
-                    ) VALUES (?,'COD',?,?,'VND',?,?,?,?,?,?,?,?)
+                        order_id,payment_status,amount,collected_by_account_id,collected_at,refund_amount,
+                        refunded_by_account_id,refunded_at,refund_reason,created_at,updated_at
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?)
                     """,
                     order.orderId(),
                     order.paymentStatus(),
@@ -300,26 +298,23 @@ public class DevSeedOrderData {
                     refundedAt == null ? null : PAYMENT_ACTOR_ID,
                     refundedAt,
                     order.refundReason(),
-                    order.placedAt(),
-                    order.placedAt());
+                    order.createdAt(),
+                    order.createdAt());
 
             jdbc.update(
                     """
                     INSERT INTO shipping_infos(
-                        order_id,recipient_name,recipient_phone,carrier_name,tracking_number,
-                        shipping_status,shipped_at,delivered_at,updated_at
-                    ) VALUES (?,?,?,?,?,?,?,?,?)
+                        order_id,carrier_name,tracking_number,shipping_status,shipped_at,delivered_at,updated_at
+                    ) VALUES (?,?,?,?,?,?,?)
                     """,
                     order.orderId(),
-                    "Demo Customer",
-                    "+84909000002",
                     order.shippedAt() == null ? null : "FIDO Local",
                     order.shippedAt() == null ? null : "DEV-" + order.orderId(),
                     order.shippingStatus(),
                     order.shippedAt(),
                     order.deliveredAt(),
                     order.deliveredAt() == null
-                            ? (order.shippedAt() == null ? order.placedAt() : order.shippedAt())
+                            ? (order.shippedAt() == null ? order.createdAt() : order.shippedAt())
                             : order.deliveredAt());
         }
     }
@@ -344,7 +339,7 @@ public class DevSeedOrderData {
             int quantity,
             long unitPrice,
             String orderStatus,
-            String placedAt,
+            String createdAt,
             String shippingStatus,
             String shippedAt,
             String deliveredAt,

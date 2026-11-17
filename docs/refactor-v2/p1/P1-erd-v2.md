@@ -18,7 +18,7 @@ The canonical ERD contains exactly 31 logical tables. This file intentionally do
 
 - Parent/child Products are explicit, independently sellable Product rows. Each row owns SKU, required integer-VND selling price and stock. One parent-child level is allowed; no field implicitly inherits from NULL.
 - Cart, OrderItems, GoodsReceiptItems, Inventories and InventoryTransactions identify the Product directly using `product_id`.
-- OPTION/TEXT/NUMBER/BOOLEAN attributes are descriptive; they do not generate Products. Values must match the Attribute's type, and an OPTION must belong to the same Attribute. `is_variant_defining` is informational only.
+- OPTION/TEXT/NUMBER/BOOLEAN attributes are descriptive; they do not generate Products. Values must match the Attribute's type, and an OPTION must belong to the same Attribute.
 - Cart/order placement require authentication. Checkout quote is stateless and advisory, without a persisted quote ID, stock reservation or voucher side effect.
 - Money is integer VND. Apply order-level HALF-UP rounding, then largest-remainder line allocation with ascending Product ID tie-break.
 - Inventory source changes, balance, append-only ledger and required audit commit atomically; use source-derived duplicate prevention and deterministic locking.

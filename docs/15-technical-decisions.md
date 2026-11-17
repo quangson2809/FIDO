@@ -139,3 +139,12 @@ Owner-approved behavior and target schema are recorded; application/DTO/frontend
 - Gom lọc payload audit đọc/ghi vào một hàm; giữ khác biệt null/rỗng ở hai hợp đồng. Gom kiểm tra giới hạn số dư trong điều chỉnh/đảo điều chỉnh, giữ nguyên mã lỗi và thứ tự kiểm tra version/khóa.
 - Bỏ `Allocation.originalIndex`, hai constructor `CheckoutCalculation` không được gọi, helper `leafCategory`/`productsById` không có nơi dùng và ba hằng loại bút toán lỗi thời trong `OrderPolicy`. Nguồn loại bút toán đang dùng vẫn là `InventoryPolicy`.
 - Bỏ đường ghi `restoreDeliveryReturn`/`restoreOrderStock` không có caller trong source/test; không nối nghiệp vụ trả hàng vào hoàn kho. Giữ mã lịch sử `RETURN_RESTOCK` và các truy vấn ledger để đọc dữ liệu đã có. Không sửa migration/schema.
+
+
+## 2026-11-17 — Remove redundant persistence fields on demo1
+
+- Owner explicitly removes ten columns: `attributes.is_variant_defining`, `orders.placed_at/currency`, `shipping_infos.recipient_name/recipient_phone`, `product_images.is_primary`, `payments.currency/method`, `cart_items.added_at`, and `order_voucher_snapshots.discount_amount_snapshot`. This supersedes earlier dated decisions that retained these columns.
+- Preserve the single pre-release V1 baseline policy. Update the canonical SQL, ERD, dictionary, seed, entities, API contracts, frontend and affected tests together. Existing databases with the old V1 checksum require a separately controlled upgrade or a verified disposable reset; no reset of an existing/shared database is performed by this change.
+- `orders.created_at` is the one placement timestamp; account/status indexes now use it. `order_addresses` owns the immutable receiver snapshot. Shipping API fields remain available by projection from that snapshot.
+- Image position zero is the primary image for reads, gallery controls and reports. Gallery writes retain Product locks, contiguous ordering and the two-flush temporary-position strategy for the unique index. Image/attribute responses and write forms no longer expose deleted flags; selection still uses exact COLOR and SIZE-prefixed codes.
+- Whole integer VND and COD remain fixed application semantics. Keep amount equality, refund limits, state/actor/time, stock/ledger and idempotency checks; remove checks against constants that are no longer stored. `orders.discount_amount` remains the actual historical Voucher discount; code/type/value snapshots stay immutable.

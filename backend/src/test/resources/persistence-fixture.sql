@@ -22,8 +22,8 @@ INSERT INTO categories(id,parent_category_id,name,slug,status,created_at,updated
 VALUES (1,NULL,'Root','fixture-root','ACTIVE',CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6));
 INSERT INTO brands(id,name,slug,status) VALUES (1,'Fixture brand','fixture-brand','ACTIVE');
 
-INSERT INTO attributes(id,code,name,is_required,is_variant_defining,sort_order)
-VALUES (1,'fixture-option','Fixture option',FALSE,FALSE,0);
+INSERT INTO attributes(id,code,name,is_required,sort_order)
+VALUES (1,'fixture-option','Fixture option',FALSE,0);
 INSERT INTO attribute_options(id,attribute_id,`value`,label,sort_order)
 VALUES (1,1,'fixture-option','Fixture option',0);
 
@@ -36,26 +36,23 @@ INSERT INTO products(
 );
 INSERT INTO product_attribute_values(product_id,attribute_id,option_id)
 VALUES (1,1,1);
-INSERT INTO product_images(id,product_id,image_url,is_primary,sort_order,created_at)
-VALUES (1,1,'https://example.invalid/test.png',TRUE,0,CURRENT_TIMESTAMP(6));
+INSERT INTO product_images(id,product_id,image_url,sort_order,created_at)
+VALUES (1,1,'https://example.invalid/test.png',0,CURRENT_TIMESTAMP(6));
 
 INSERT INTO carts(id,account_id,status,created_at,updated_at)
 VALUES (1,1,'OPEN',CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6));
-INSERT INTO cart_items(id,cart_id,product_id,quantity,added_at,updated_at)
-VALUES (1,1,1,1,CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6));
+INSERT INTO cart_items(id,cart_id,product_id,quantity,updated_at)
+VALUES (1,1,1,1,CURRENT_TIMESTAMP(6));
 
 INSERT INTO vouchers(
     id,code,discount_type,discount_value,minimum_order_value,maximum_discount,
     starts_at,ends_at,usage_limit,usage_count,status
 ) VALUES (1,'FIXTURE-VOUCHER','FIXED',100,0,NULL,NULL,NULL,10,1,'DRAFT');
 
-INSERT INTO orders(
-    id,account_id,voucher_id,order_number,idempotency_key,request_fingerprint,status,
-    subtotal,discount_amount,shipping_fee,total_amount,currency,placed_at,created_at,updated_at
-) VALUES (
+INSERT INTO orders(id,account_id,voucher_id,order_number,idempotency_key,request_fingerprint,status,subtotal,discount_amount,shipping_fee,total_amount,created_at,updated_at) VALUES (
     1,1,1,'FIXTURE-ORDER','fixture-idempotency-key',
     '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-    'PENDING',1000,100,30000,30900,'VND',CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6)
+    'PENDING',1000,100,30000,30900,CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6)
 );
 INSERT INTO order_items(
     id,order_id,product_id,sku_snapshot,product_name_snapshot,attribute_snapshot,image_url_snapshot,
@@ -64,19 +61,11 @@ INSERT INTO order_items(
 INSERT INTO order_addresses(
     order_id,recipient_name,recipient_phone,province,district,ward,address_line
 ) VALUES (1,'Fixture recipient','0900000001','Hà Nội','Cầu Giấy','Dịch Vọng','Test address');
-INSERT INTO order_voucher_snapshots(
-    order_id,voucher_code_snapshot,discount_type_snapshot,discount_value_snapshot,discount_amount_snapshot
-) VALUES (1,'FIXTURE-VOUCHER','FIXED',100,100);
-INSERT INTO payments(
-    order_id,method,payment_status,amount,currency,collected_by_account_id,collected_at,
-    refund_amount,refunded_by_account_id,refunded_at,refund_reason,created_at,updated_at
-) VALUES (
-    1,'COD','UNPAID',30900,'VND',NULL,NULL,0,NULL,NULL,NULL,CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6)
+INSERT INTO order_voucher_snapshots(order_id,voucher_code_snapshot,discount_type_snapshot,discount_value_snapshot) VALUES (1,'FIXTURE-VOUCHER','FIXED',100);
+INSERT INTO payments(order_id,payment_status,amount,collected_by_account_id,collected_at,refund_amount,refunded_by_account_id,refunded_at,refund_reason,created_at,updated_at) VALUES (
+    1,'UNPAID',30900,NULL,NULL,0,NULL,NULL,NULL,CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6)
 );
-INSERT INTO shipping_infos(
-    order_id,recipient_name,recipient_phone,carrier_name,tracking_number,
-    shipping_status,shipped_at,delivered_at,updated_at
-) VALUES (1,'Fixture recipient','0900000001',NULL,NULL,'PENDING',NULL,NULL,CURRENT_TIMESTAMP(6));
+INSERT INTO shipping_infos(order_id,carrier_name,tracking_number,shipping_status,shipped_at,delivered_at,updated_at) VALUES (1,NULL,NULL,'PENDING',NULL,NULL,CURRENT_TIMESTAMP(6));
 
 INSERT INTO suppliers(id,code,name,phone,email,status,created_at,updated_at)
 VALUES (1,'FIXTURE-SUPPLIER','Fixture supplier',NULL,NULL,'ACTIVE',CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6));

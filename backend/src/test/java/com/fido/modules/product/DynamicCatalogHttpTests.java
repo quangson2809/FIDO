@@ -54,16 +54,9 @@ class DynamicCatalogHttpTests extends CatalogHttpSupport {
                         "POST",
                         "/api/v1/admin/catalog/attributes",
                         writer.token(),
-                        Map.of(
-                                "code",
-                                code,
-                                "name",
-                                name,
-                                "is_required",
-                                false,
-                                "is_variant_defining",
-                                true));
+                        Map.of("code", code, "name", name, "is_required", false));
         assertEquals(201, r.status(), r.body());
+        assertFalse(r.data().get("data").has("is_variant_defining"));
         long id = r.data().get("data").get("id").asLong();
         attributes.add(id);
         codes.put(id, code);
@@ -178,7 +171,7 @@ class DynamicCatalogHttpTests extends CatalogHttpSupport {
             assertEquals(id, detail.data().get("data").get("product_id").asLong());
             assertEquals(3, detail.data().get("data").get("family").get("members").size());
             for (var value : detail.data().get("data").get("attribute_values")) {
-                assertTrue(value.get("is_variant_defining").asBoolean());
+                assertFalse(value.has("is_variant_defining"));
                 assertTrue(value.has("sort_order"));
             }
         }
@@ -250,7 +243,7 @@ class DynamicCatalogHttpTests extends CatalogHttpSupport {
     }
 
     @Test
-    void colorSizeTuplesRemainUniqueRegardlessOfDescriptiveFlags() throws Exception {
+    void colorSizeTuplesRemainUniqueAfterAttributeLabelChange() throws Exception {
         Employee w = writer();
         var f = createCatalog(w);
         long color = attribute(w, "COLOR"), size = attribute(w, "SIZE");
@@ -271,17 +264,14 @@ class DynamicCatalogHttpTests extends CatalogHttpSupport {
                         "PATCH",
                         "/api/v1/admin/catalog/attributes/" + size,
                         w.token(),
-                        Map.of("is_variant_defining", false));
+                        Map.of("name", "Updated size label"));
         assertEquals(200, changed.status(), changed.body());
         assertEquals(
                 409,
                 create(w, f.productId(), f.categoryId(), "ACTIVE", List.of(black, l)).status());
         assertEquals(
-                false,
-                db.queryForObject(
-                        "SELECT is_variant_defining FROM attributes WHERE id=?",
-                        Boolean.class,
-                        size));
+                "Updated size label",
+                db.queryForObject("SELECT name FROM attributes WHERE id=?", String.class, size));
     }
 
     @Test
@@ -478,7 +468,7 @@ class DynamicCatalogHttpTests extends CatalogHttpSupport {
                 f.productId(),
                 () ->
                         db.update(
-                                "INSERT INTO product_images(product_id,image_url,is_primary,sort_order) VALUES (?,?,TRUE,0)",
+                                "INSERT INTO product_images(product_id,image_url,sort_order) VALUES (?,?,0)",
                                 f.productId(),
                                 "https://cdn.example.test/concurrent.jpg"),
                 w,

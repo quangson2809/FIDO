@@ -25,7 +25,6 @@ public final class AttributeMapper {
                 attribute.getCode(),
                 attribute.getName(),
                 attribute.isRequired(),
-                attribute.isVariantDefining(),
                 attribute.getSortOrder(),
                 options.stream().map(AttributeMapper::option).toList());
     }

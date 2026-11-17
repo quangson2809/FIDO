@@ -44,7 +44,6 @@ const metadata = {
       code: 'MATERIAL',
       name: 'Chất liệu',
       is_required: false,
-      is_variant_defining: false,
       sort_order: 0,
       options: baseMeta.attributes[0].options,
     },
@@ -53,7 +52,6 @@ const metadata = {
       code: 'FABRIC_TYPE',
       name: 'Loại vải',
       is_required: false,
-      is_variant_defining: false,
       sort_order: 1,
       options: [{ id: 42, attribute_id: 2, value: 'COTTON', label: 'Cotton', sort_order: 0 }],
     },
@@ -359,7 +357,7 @@ try {
   await main.getByRole('heading', { name: 'Chất liệu sợi', exact: true }).waitFor();
   assert.deepEqual(
     requests.filter((request) => request.path === '/admin/catalog/attributes/1' && request.method === 'PATCH').at(-1)?.body,
-    { name: 'Chất liệu sợi', is_required: false, is_variant_defining: false, sort_order: 0 },
+    { name: 'Chất liệu sợi', is_required: false, sort_order: 0 },
   );
 
   const optionArticle = main.locator('article').filter({ hasText: 'Loại vải' });

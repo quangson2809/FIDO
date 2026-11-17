@@ -60,11 +60,8 @@ class OrderActionMatrixTests {
         order.setOrderId(1L);
         order.setOrderStatus(status);
         order.setTotalAmount(100L);
-        order.setCurrency("VND");
         var payment = new Payment();
-        payment.setMethod("COD");
         payment.setAmount(100L);
-        payment.setCurrency("VND");
         payment.setPaymentStatus("UNPAID");
         payment.setRefundAmount(0L);
         var shipping = new ShippingInfo();

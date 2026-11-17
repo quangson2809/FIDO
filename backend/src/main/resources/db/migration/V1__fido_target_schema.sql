@@ -76,7 +76,7 @@ CREATE TABLE brands (
 CREATE TABLE attributes (
  id BIGINT NOT NULL AUTO_INCREMENT, code VARCHAR(80) NOT NULL,
  name VARCHAR(150) NOT NULL, is_required BOOLEAN NOT NULL DEFAULT FALSE,
- is_variant_defining BOOLEAN NOT NULL DEFAULT FALSE, sort_order INT NOT NULL DEFAULT 0,
+ sort_order INT NOT NULL DEFAULT 0,
  CONSTRAINT pk_attributes PRIMARY KEY (id), CONSTRAINT uq_attributes_code UNIQUE (code),
  CONSTRAINT ck_attributes_sort_order CHECK (sort_order >= 0)
 );
@@ -124,7 +124,7 @@ CREATE INDEX ix_product_attribute_values_attribute ON product_attribute_values (
 
 CREATE TABLE product_images (
  id BIGINT NOT NULL AUTO_INCREMENT, product_id BIGINT NOT NULL, image_url VARCHAR(1000) NOT NULL,
- is_primary BOOLEAN NOT NULL DEFAULT FALSE, sort_order INT NOT NULL DEFAULT 0,
+ sort_order INT NOT NULL DEFAULT 0,
  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
  CONSTRAINT pk_product_images PRIMARY KEY (id),
  CONSTRAINT fk_product_images_product FOREIGN KEY (product_id) REFERENCES products (id),
@@ -144,7 +144,6 @@ CREATE INDEX ix_carts_account_status ON carts (account_id, status);
 
 CREATE TABLE cart_items (
  id BIGINT NOT NULL AUTO_INCREMENT, cart_id BIGINT NOT NULL, product_id BIGINT NOT NULL, quantity INT NOT NULL,
- added_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
  updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
  CONSTRAINT pk_cart_items PRIMARY KEY (id), CONSTRAINT uq_cart_items_cart_product UNIQUE (cart_id, product_id),
  CONSTRAINT fk_cart_items_cart FOREIGN KEY (cart_id) REFERENCES carts (id),
@@ -175,8 +174,7 @@ CREATE TABLE orders (
  request_fingerprint CHAR(64) NOT NULL,
  status VARCHAR(30) NOT NULL DEFAULT 'PENDING', subtotal BIGINT NOT NULL,
  discount_amount BIGINT NOT NULL DEFAULT 0, shipping_fee BIGINT NOT NULL DEFAULT 0,
- total_amount BIGINT NOT NULL, currency CHAR(3) NOT NULL DEFAULT 'VND',
- placed_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+ total_amount BIGINT NOT NULL,
  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
  updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
  CONSTRAINT pk_orders PRIMARY KEY (id), CONSTRAINT uq_orders_number UNIQUE (order_number),
@@ -187,11 +185,10 @@ CREATE TABLE orders (
  CONSTRAINT ck_orders_subtotal CHECK (subtotal >= 0),
  CONSTRAINT ck_orders_discount CHECK (discount_amount >= 0 AND discount_amount <= subtotal),
  CONSTRAINT ck_orders_shipping_fee CHECK (shipping_fee >= 0),
- CONSTRAINT ck_orders_total CHECK (total_amount >= 0 AND total_amount = subtotal - discount_amount + shipping_fee),
- CONSTRAINT ck_orders_currency CHECK (currency = 'VND')
+ CONSTRAINT ck_orders_total CHECK (total_amount >= 0 AND total_amount = subtotal - discount_amount + shipping_fee)
 );
-CREATE INDEX ix_orders_account_placed ON orders (account_id, placed_at);
-CREATE INDEX ix_orders_status_placed ON orders (status, placed_at);
+CREATE INDEX ix_orders_account_created ON orders (account_id, created_at);
+CREATE INDEX ix_orders_status_created ON orders (status, created_at);
 
 CREATE TABLE order_items (
  id BIGINT NOT NULL AUTO_INCREMENT, order_id BIGINT NOT NULL, product_id BIGINT NOT NULL,
@@ -219,18 +216,16 @@ CREATE TABLE order_addresses (
 CREATE TABLE order_voucher_snapshots (
  order_id BIGINT NOT NULL, voucher_code_snapshot VARCHAR(80) NOT NULL,
  discount_type_snapshot VARCHAR(20) NOT NULL, discount_value_snapshot BIGINT NOT NULL,
- discount_amount_snapshot BIGINT NOT NULL,
  CONSTRAINT pk_order_voucher_snapshots PRIMARY KEY (order_id),
  CONSTRAINT fk_order_voucher_snapshots_order FOREIGN KEY (order_id) REFERENCES orders (id),
  CONSTRAINT ck_order_voucher_discount_type CHECK (discount_type_snapshot IN ('PERCENT','FIXED')),
- CONSTRAINT ck_order_voucher_discount_value CHECK (discount_value_snapshot > 0),
- CONSTRAINT ck_order_voucher_discount_amount CHECK (discount_amount_snapshot >= 0)
+ CONSTRAINT ck_order_voucher_discount_value CHECK (discount_value_snapshot > 0)
 );
 
 CREATE TABLE payments (
- order_id BIGINT NOT NULL, method VARCHAR(30) NOT NULL DEFAULT 'COD',
+ order_id BIGINT NOT NULL,
  payment_status VARCHAR(20) NOT NULL DEFAULT 'UNPAID', amount BIGINT NOT NULL,
- currency CHAR(3) NOT NULL DEFAULT 'VND', collected_by_account_id BIGINT NULL,
+ collected_by_account_id BIGINT NULL,
  collected_at TIMESTAMP(6) NULL, refund_amount BIGINT NOT NULL DEFAULT 0,
  refunded_by_account_id BIGINT NULL, refunded_at TIMESTAMP(6) NULL, refund_reason VARCHAR(500) NULL,
  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -239,16 +234,14 @@ CREATE TABLE payments (
  CONSTRAINT fk_payments_order FOREIGN KEY (order_id) REFERENCES orders (id),
  CONSTRAINT fk_payments_collected_by FOREIGN KEY (collected_by_account_id) REFERENCES accounts (id),
  CONSTRAINT fk_payments_refunded_by FOREIGN KEY (refunded_by_account_id) REFERENCES accounts (id),
- CONSTRAINT ck_payments_method CHECK (method = 'COD'),
  CONSTRAINT ck_payments_status CHECK (payment_status IN ('UNPAID','PAID','REFUNDED')),
  CONSTRAINT ck_payments_amount CHECK (amount >= 0),
  CONSTRAINT ck_payments_refund CHECK (refund_amount >= 0 AND refund_amount <= amount),
- CONSTRAINT ck_payments_refund_metadata CHECK ((refund_amount = 0 AND refunded_by_account_id IS NULL AND refunded_at IS NULL) OR (refund_amount > 0 AND refunded_by_account_id IS NOT NULL AND refunded_at IS NOT NULL)),
- CONSTRAINT ck_payments_currency CHECK (currency = 'VND')
+ CONSTRAINT ck_payments_refund_metadata CHECK ((refund_amount = 0 AND refunded_by_account_id IS NULL AND refunded_at IS NULL) OR (refund_amount > 0 AND refunded_by_account_id IS NOT NULL AND refunded_at IS NOT NULL))
 );
 
 CREATE TABLE shipping_infos (
- order_id BIGINT NOT NULL, recipient_name VARCHAR(150) NOT NULL, recipient_phone VARCHAR(20) NOT NULL,
+ order_id BIGINT NOT NULL,
  carrier_name VARCHAR(150) NULL, tracking_number VARCHAR(120) NULL,
  shipping_status VARCHAR(20) NOT NULL DEFAULT 'PENDING', shipped_at TIMESTAMP(6) NULL,
  delivered_at TIMESTAMP(6) NULL, updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),

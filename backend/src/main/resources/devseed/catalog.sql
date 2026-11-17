@@ -36,20 +36,20 @@ INSERT INTO brands(id,name,slug,status) VALUES
 (930020,'Yellow Bee','yellow-bee','ACTIVE'),
 (930021,'Eego Italy','eego-italy','ACTIVE'),
 (930022,'Crocs','crocs','ACTIVE');
-INSERT INTO attributes(id,code,name,is_required,is_variant_defining,sort_order) VALUES
-(940001,'SIZE_SHOE','Cỡ giày theo nguồn',FALSE,TRUE,1),
-(940002,'SIZE_SHIRT','Cỡ áo sơ mi',FALSE,TRUE,2),
-(940003,'SIZE_TOP','Cỡ áo phông',FALSE,TRUE,3),
-(940004,'SIZE_JEANS','Cỡ quần jeans',FALSE,TRUE,4),
-(940005,'SIZE_WAIST_LENGTH','Vòng eo / dài ống',FALSE,TRUE,5),
-(940006,'SIZE_BELT','Cỡ thắt lưng theo vòng eo',FALSE,TRUE,6),
-(940007,'SIZE_CHILD_AGE','Cỡ dép theo độ tuổi',FALSE,TRUE,7),
-(940008,'COLOR','Màu sắc',FALSE,TRUE,8),
-(940009,'MATERIAL','Chất liệu',FALSE,FALSE,9),
-(940010,'FIT','Phom dáng',FALSE,FALSE,10),
-(940011,'GENDER','Đối tượng',FALSE,FALSE,11),
-(940012,'PATTERN','Họa tiết',FALSE,FALSE,12),
-(940013,'PRODUCT_TYPE','Kiểu sản phẩm',FALSE,FALSE,13);
+INSERT INTO attributes(id,code,name,is_required,sort_order) VALUES
+(940001,'SIZE_SHOE','Cỡ giày theo nguồn',FALSE,1),
+(940002,'SIZE_SHIRT','Cỡ áo sơ mi',FALSE,2),
+(940003,'SIZE_TOP','Cỡ áo phông',FALSE,3),
+(940004,'SIZE_JEANS','Cỡ quần jeans',FALSE,4),
+(940005,'SIZE_WAIST_LENGTH','Vòng eo / dài ống',FALSE,5),
+(940006,'SIZE_BELT','Cỡ thắt lưng theo vòng eo',FALSE,6),
+(940007,'SIZE_CHILD_AGE','Cỡ dép theo độ tuổi',FALSE,7),
+(940008,'COLOR','Màu sắc',FALSE,8),
+(940009,'MATERIAL','Chất liệu',FALSE,9),
+(940010,'FIT','Phom dáng',FALSE,10),
+(940011,'GENDER','Đối tượng',FALSE,11),
+(940012,'PATTERN','Họa tiết',FALSE,12),
+(940013,'PRODUCT_TYPE','Kiểu sản phẩm',FALSE,13);
 INSERT INTO attribute_options(id,attribute_id,`value`,label,sort_order) VALUES
 (941001,940008,'WHITE','Trắng',1),
 (941002,940009,'Synthetic','Tổng hợp',2),

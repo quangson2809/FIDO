@@ -34,7 +34,6 @@ let metadata = {
       code: 'COLOR',
       name: 'Màu sắc',
       is_required: false,
-      is_variant_defining: false,
       sort_order: 0,
       options: [{ id: 100, attribute_id: 10, value: 'BLACK', label: 'Đen', sort_order: 0 }],
     },
@@ -43,7 +42,6 @@ let metadata = {
       code: 'MATERIAL',
       name: 'Chất liệu',
       is_required: true,
-      is_variant_defining: false,
       sort_order: 1,
       options: [{ id: 110, attribute_id: 11, value: 'COTTON', label: 'Cotton', sort_order: 0 }],
     },
@@ -90,7 +88,6 @@ await page.route('**/api/v1/**', async (route) => {
       code: body.code,
       name: body.name,
       is_required: body.is_required,
-      is_variant_defining: body.is_variant_defining ?? false,
       sort_order: body.sort_order ?? 0,
       options: [],
     };
@@ -167,7 +164,6 @@ try {
       code: 'WEIGHT',
       name: 'Định lượng',
       is_required: false,
-      is_variant_defining: false,
       sort_order: 2,
     },
   );
@@ -179,7 +175,7 @@ try {
   await colorCard.getByLabel('Tên thuộc tính COLOR').fill('Màu chính');
   await colorCard.getByLabel('Thứ tự thuộc tính COLOR').fill('2');
   await colorCard.getByLabel('Bắt buộc COLOR').check();
-  await colorCard.getByLabel('Phân biệt COLOR').check();
+  assert.equal(await colorCard.getByLabel('Phân biệt COLOR').count(), 0);
   await colorCard.getByRole('button', { name: 'Lưu thuộc tính', exact: true }).click();
   await page.getByText('Màu chính', { exact: true }).waitFor();
   assert.deepEqual(
@@ -187,7 +183,6 @@ try {
     {
       name: 'Màu chính',
       is_required: true,
-      is_variant_defining: true,
       sort_order: 2,
     },
   );

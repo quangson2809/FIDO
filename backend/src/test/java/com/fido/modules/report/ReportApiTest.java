@@ -76,10 +76,9 @@ class ReportApiTest extends OperationsHttpSupport {
         db.update(
                 """
                 INSERT INTO orders(
-                    account_id,order_number,idempotency_key,request_fingerprint,status,
-                    subtotal,discount_amount,shipping_fee,total_amount,currency,
-                    placed_at,created_at,updated_at)
-                VALUES (?,?,?,?,?,?,?,?,?,'VND',?,?,?)
+                    account_id,order_number,idempotency_key,request_fingerprint,status,subtotal,discount_amount,
+                    shipping_fee,total_amount,created_at,updated_at
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?)
                 """,
                 reportAccountId,
                 orderNumber,
@@ -90,7 +89,6 @@ class ReportApiTest extends OperationsHttpSupport {
                 discount,
                 shipping,
                 total,
-                created,
                 created,
                 created);
         long id =
@@ -126,9 +124,8 @@ class ReportApiTest extends OperationsHttpSupport {
         db.update(
                 """
                 INSERT INTO shipping_infos(
-                    order_id,recipient_name,recipient_phone,carrier_name,tracking_number,
-                    shipping_status,shipped_at,delivered_at,updated_at)
-                VALUES (?,'Report recipient','0900000000',NULL,NULL,?,?,?,CURRENT_TIMESTAMP(6))
+                    order_id,carrier_name,tracking_number,shipping_status,shipped_at,delivered_at,updated_at
+                ) VALUES (?,NULL,NULL,?,?,?,CURRENT_TIMESTAMP(6))
                 """,
                 id,
                 shippingStatus,
@@ -147,9 +144,9 @@ class ReportApiTest extends OperationsHttpSupport {
         db.update(
                 """
                 INSERT INTO payments(
-                    order_id,method,payment_status,amount,currency,collected_by_account_id,collected_at,
-                    refund_amount,refunded_by_account_id,refunded_at,refund_reason,created_at,updated_at)
-                VALUES (?,'COD',?,?,'VND',?,?,?,?,?, ?,CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6))
+                    order_id,payment_status,amount,collected_by_account_id,collected_at,refund_amount,
+                    refunded_by_account_id,refunded_at,refund_reason,created_at,updated_at
+                ) VALUES (?,?,?,?,?,?,?,?, ?,CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6))
                 """,
                 id,
                 paymentStatus,

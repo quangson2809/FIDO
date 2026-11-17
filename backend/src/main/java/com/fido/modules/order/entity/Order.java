@@ -56,12 +56,6 @@ public class Order {
     @Column(name = "total_amount", nullable = false)
     private Long totalAmount;
 
-    @Column(name = "currency", nullable = false, length = 3)
-    private String currency = "VND";
-
-    @Column(name = "placed_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
-    private LocalDateTime placedAt;
-
     @Column(name = "status", nullable = false, length = 30)
     private String orderStatus = "PENDING";
 
@@ -78,7 +72,6 @@ public class Order {
     @PrePersist
     void onCreate() {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-        if (placedAt == null) placedAt = now;
         if (orderStatus == null) orderStatus = "PENDING";
         createdAt = now;
         updatedAt = now;
