@@ -400,13 +400,14 @@ const server = createServer((request, response) => {
     return;
   }
 
-  if (request.method === 'GET' && url.pathname === '/api/v1/me/orders/42') {
+  if ((request.method === 'GET' && url.pathname === '/api/v1/me/orders/42') || (request.method === 'POST' && url.pathname === '/api/v1/me/orders/42/cancel')) {
     requireBearer(request);
     writeJson(response, 200, {
       data: {
         order_id: 42,
         order_code: 'FIDO-42',
-        order_status: 'PENDING',
+        order_status: request.method === 'POST' ? 'CANCELLED' : 'PENDING',
+        allowed_actions: request.method === 'POST' ? [] : ['CANCEL'],
         recipient: { phone: '0909000001', email: null, address: 'Hà Nội' },
         items: [],
         subtotal: 100000,
@@ -677,6 +678,10 @@ try {
 
   const orderDetail = await orderService.getOrder(42);
   assert.equal(orderDetail.order_code, 'FIDO-42');
+  assert.deepEqual(orderDetail.allowed_actions, ['CANCEL']);
+  const cancelled = await orderService.cancelOrder(42);
+  assert.equal(cancelled.order_status, 'CANCELLED');
+  assert.deepEqual(cancelled.allowed_actions, []);
 
   const policy = await contentService.getPublicPage('shipping-policy');
   assert.equal(policy.page_code, 'shipping-policy');

@@ -21,6 +21,9 @@ const mockOrderService: OrderService = {
   async getOrder(orderId) {
     throw new Error(`Mock order ${orderId} is not configured`);
   },
+  async cancelOrder(orderId) {
+    throw new Error(`Mock order ${orderId} is not configured`);
+  },
 };
 
 const realOrderService: OrderService = {
@@ -33,6 +36,12 @@ const realOrderService: OrderService = {
   async getOrder(orderId) {
     const response = await apiClient.get<ApiResponse<OrderCustomerDetailDto>>(
       `/me/orders/${orderId}`,
+    );
+    return response.data;
+  },
+  async cancelOrder(orderId) {
+    const response = await apiClient.post<ApiResponse<OrderCustomerDetailDto>>(
+      `/me/orders/${orderId}/cancel`,
     );
     return response.data;
   },

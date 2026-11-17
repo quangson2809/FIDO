@@ -99,6 +99,7 @@ An optional voucher code on quote/order is evaluated against pre-discount mercha
 
 | Method | Route | Access |
 |---|---|---|
+| POST | `/me/orders/{orderId}/cancel` | JWT; owns Order; PENDING only; no request body; returns customer detail with `allowed_actions` |
 | GET | `/admin/orders` | JWT + `ORDER_READ` |
 | GET | `/admin/orders/{orderId}` | JWT + `ORDER_READ` |
 | POST | `/admin/orders/{orderId}/actions` | JWT + `ORDER_EDIT`; `CONFIRM`, `START_PREPARING`, `DISPATCH`, `MARK_DELIVERY_FAILED`, `RETRY_DELIVERY`, `CANCEL` |
@@ -107,7 +108,7 @@ An optional voucher code on quote/order is evaluated against pre-discount mercha
 
 The normative actor, precondition, state, side-effect and error matrix is [P1.7 Order/Payment Contract](refactor-v2/p1/P1.7-order-payment-contract.md). A new Order starts `PENDING`, its Payment starts COD/`UNPAID`, and its ShippingInfo starts `PENDING`. **No Inventory deduction is posted at placement**; `PENDING → CONFIRMED` rechecks and deducts stock atomically. Order-state mutation must use explicit action commands, not generic status PATCH. Manual COD collection is atomic with delivery completion; return is limited to one whole-order offline full refund.
 
-`PATCH /api/v1/me/orders/{orderId}/recipient` is legacy-only and is not part of the target v1 API: the placed `ORDER_ADDRESSES` snapshot is immutable. No customer-side cancellation route, partial/multiple refund, item-level return/exchange flow, payment gateway, carrier API or dedicated Order timeline is included. Snapshot reads must use order-time Product, SKU, attribute, image, address, money and Voucher facts, not current catalog/address-book/Voucher values.
+`PATCH /api/v1/me/orders/{orderId}/recipient` is legacy-only and is not part of the target v1 API: the placed `ORDER_ADDRESSES` snapshot is immutable. Customer cancellation is limited to the owned PENDING Order through the explicit command above. No partial/multiple refund, item-level return/exchange flow, payment gateway, carrier API or dedicated Order timeline is included. Snapshot reads must use order-time Product, SKU, attribute, image, address, money and Voucher facts, not current catalog/address-book/Voucher values.
 
 ### Supplier, receiving and inventory
 
@@ -172,3 +173,10 @@ Attribute filter query parameters:
 Image gallery writes are Product-scoped and atomic. Positions are contiguous from zero; position zero is the single primary image whenever the gallery is non-empty. Order-time image snapshots refer to stable immutable object/version content; numeric retention and legal deletion exceptions remain P1.8 decisions.
 
 Admin Attribute/Option write routes use CATALOG_WRITE: POST/PATCH /admin/catalog/attributes and /admin/catalog/attributes/{attributeId}, plus POST/PATCH /admin/catalog/attributes/{attributeId}/options and /admin/catalog/attributes/{attributeId}/options/{optionId}. Every Attribute owns predefined Options; there is no AttributeType registry. Attribute/Option DELETE routes remain undefined until P1.8 resolves lifecycle.
+
+
+### 2026-11-17 — Customer cancellation
+
+`POST /api/v1/me/orders/{orderId}/cancel` has no request body. Resolve the actor from JWT, lock the Order scoped to that owner, then recheck PENDING + clean UNPAID Payment + PENDING Shipping + no stock movement. Missing/foreign Orders return 404; ineligible/repeated cancellation returns 409. Set Order/Shipping to CANCELLED, release a consumed Voucher use once and write actor-bound audit atomically. Pending cancellation never changes inventory. A racing administrator confirmation and customer cancellation serialize on the same Order lock; only one transition wins.
+
+Customer detail includes `allowed_actions: ["CANCEL"]` only when eligible, otherwise `[]`. This is a UI hint; the POST revalidates current state. Customer cancellation does not grant administrative Order actions.

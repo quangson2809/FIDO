@@ -83,6 +83,7 @@ export interface OrderCustomerDetailDto {
   returned_at: string | null;
   created_at: string;
   updated_at: string;
+  allowed_actions: 'CANCEL'[];
 }
 
 export interface OrderListQuery {
@@ -199,6 +200,7 @@ export interface AfterSalesReturnInput {
 export interface OrderService {
   getOrders(query?: OrderListQuery): Promise<OrderPage>;
   getOrder(orderId: number | string): Promise<OrderCustomerDetailDto>;
+  cancelOrder(orderId: number | string): Promise<OrderCustomerDetailDto>;
 }
 
 export interface CheckoutService {

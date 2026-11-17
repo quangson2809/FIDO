@@ -20,6 +20,7 @@ permissions:
   contents: read
 
 env:
+  CUSTOMER_CANCEL_FOCUSED: ${{ contains(github.event.head_commit.message, '[customer-cancel-focus]') || contains(github.event.pull_request.title, '[customer-cancel-focus]') }}
   IMAGE_FOCUSED: ${{ contains(github.event.head_commit.message, '[product-images-focus]') || contains(github.event.pull_request.title, '[product-images-focus]') }}
   REPORT_FOCUSED: ${{ contains(github.event.head_commit.message, '[admin-report-focus]') || contains(github.event.pull_request.title, '[admin-report-focus]') }}
 
@@ -89,7 +90,7 @@ jobs:
         run: npm run test:architecture
 
       - name: Product color and size selection
-        if: env.REPORT_FOCUSED != 'true' && env.IMAGE_FOCUSED != 'true'
+        if: env.REPORT_FOCUSED != 'true' && env.IMAGE_FOCUSED != 'true' && env.CUSTOMER_CANCEL_FOCUSED != 'true'
         working-directory: frontend
         run: npm run test:selection
 
@@ -110,7 +111,9 @@ jobs:
       - name: Customer browser journeys and responsive checks
         working-directory: frontend
         run: |
-          if [ "$IMAGE_FOCUSED" = "true" ]; then
+          if [ "$CUSTOMER_CANCEL_FOCUSED" = "true" ]; then
+            npm run test:order-cancel-browser
+          elif [ "$IMAGE_FOCUSED" = "true" ]; then
             node tests/admin-product-management-browser.mjs --images-only
           elif [ "$REPORT_FOCUSED" = "true" ]; then
             node tests/report-browser-smoke.mjs

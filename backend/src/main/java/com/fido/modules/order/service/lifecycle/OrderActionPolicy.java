@@ -44,6 +44,31 @@ public class OrderActionPolicy {
                 .toList();
     }
 
+    public List<String> customerAllowedActions(
+            Order order, Payment payment, ShippingInfo shipping) {
+        return canCustomerCancel(order, payment, shipping)
+                ? List.of(OrderAction.CANCEL.name())
+                : List.of();
+    }
+
+    /** Chỉ gọi sau khi khóa đơn của chính tài khoản đăng nhập. */
+    public void requireCustomerCancellation(Order order, Payment payment, ShippingInfo shipping) {
+        if (!canCustomerCancel(order, payment, shipping)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "ORDER_TRANSITION_NOT_ALLOWED");
+        }
+    }
+
+    private boolean canCustomerCancel(Order order, Payment payment, ShippingInfo shipping) {
+        return order != null
+                && OrderPolicy.PENDING.equals(order.getOrderStatus())
+                && canApply(
+                        order,
+                        payment,
+                        shipping,
+                        movements.orderStockState(order.getOrderId()),
+                        OrderAction.CANCEL);
+    }
+
     /** Kiểm tra Order/Payment/Shipping và ledger hiện tại sau khi bên gọi đã khóa đơn. */
     public void requireExecutable(
             Order order, Payment payment, ShippingInfo shipping, String action) {

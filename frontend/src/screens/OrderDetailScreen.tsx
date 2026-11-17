@@ -1,24 +1,38 @@
 import { StorefrontImage } from '../shared/ui/storefront/StorefrontImage';
 import { formatVietnamDateTime } from '../shared/time/formatVietnamDateTime';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { orderService } from '../features/orders/api/service';
 import type { OrderCustomerDetailDto } from '../features/orders/types';
 import { getStorefrontErrorMessage } from '../services/http/storefrontError';
 import { resolveImageUrl } from '../services/media/imageUrl';
+import { normalizeApiError } from '../services/http/apiError';
+import { StorefrontDialog } from '../shared/ui/storefront/StorefrontDialog';
+import { customerOrderLabels } from '../features/orders/model/orderLabels';
 
 export const OrderDetailScreen: React.FC = () => {
-  const navigate = useNavigate();
   const { orderId = '' } = useParams<{ orderId: string }>();
+  return <OrderDetail key={orderId} orderId={orderId} />;
+};
+
+function OrderDetail({ orderId }: { orderId: string }) {
+  const navigate = useNavigate();
   const [order, setOrder] = useState<OrderCustomerDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
+  const requestGeneration = useRef(0);
+  // Chặn cả hai cú bấm xảy ra trước khi React kịp cập nhật trạng thái disabled.
+  const cancellationInFlight = useRef(false);
 
   useEffect(() => {
     if (!orderId) return undefined;
 
     let active = true;
+    const generation = ++requestGeneration.current;
     const loadOrder = async () => {
       setLoading(true);
       try {
@@ -39,8 +53,38 @@ export const OrderDetailScreen: React.FC = () => {
     void loadOrder();
     return () => {
       active = false;
+      requestGeneration.current = generation + 1;
     };
   }, [orderId, retry]);
+
+  const cancelOrder = async () => {
+    if (cancellationInFlight.current || !order?.allowed_actions?.includes('CANCEL')) return;
+    cancellationInFlight.current = true;
+    const generation = requestGeneration.current;
+    setCancelling(true);
+    setFeedback(null);
+    try {
+      const cancelled = await orderService.cancelOrder(orderId);
+      if (generation !== requestGeneration.current) return;
+      setOrder(cancelled);
+      setCancelOpen(false);
+      setFeedback({ kind: 'success', message: 'Đã hủy đơn hàng.' });
+    } catch (requestError) {
+      if (generation !== requestGeneration.current) return;
+      setCancelOpen(false);
+      const conflict = normalizeApiError(requestError).status === 409;
+      setFeedback({
+        kind: 'error',
+        message: conflict
+          ? 'Đơn hàng đã thay đổi hoặc không còn đủ điều kiện hủy. Vui lòng kiểm tra trạng thái mới.'
+          : getStorefrontErrorMessage(requestError, 'Chưa thể hủy đơn hàng. Vui lòng thử lại.'),
+      });
+      if (conflict) setRetry((value) => value + 1);
+    } finally {
+      cancellationInFlight.current = false;
+      if (generation === requestGeneration.current) setCancelling(false);
+    }
+  };
 
   if (!orderId) {
     return (
@@ -109,12 +153,25 @@ export const OrderDetailScreen: React.FC = () => {
               <p className="mt-2 text-sm text-white/55">
                 Tạo lúc {formatVietnamDateTime(order.created_at)}
               </p>
+              <p className="mt-2 text-sm font-semibold">{customerOrderLabels[order.order_status]}</p>
             </div>
+            {order.allowed_actions?.includes('CANCEL') && (
+              <button type="button" disabled={cancelling} onClick={() => setCancelOpen(true)}
+                className="border border-white/40 px-4 py-3 text-sm font-semibold disabled:opacity-50">
+                Hủy đơn hàng
+              </button>
+            )}
           </div>
         </div>
       </section>
 
       <section className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-8">
+        {feedback && (
+          <div role={feedback.kind === 'error' ? 'alert' : 'status'}
+            className={`border p-4 text-sm ${feedback.kind === 'error' ? 'border-red-200 bg-red-50 text-red-700' : 'border-green-200 bg-green-50 text-green-800'}`}>
+            {feedback.message}
+          </div>
+        )}
         {error && (
           <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
         )}
@@ -231,6 +288,23 @@ export const OrderDetailScreen: React.FC = () => {
           </aside>
         </div>
       </section>
+      {cancelOpen && (
+        <StorefrontDialog name="Xác nhận hủy đơn hàng" busy={cancelling}
+          onClose={() => setCancelOpen(false)} className="order-cancel-dialog">
+          <div className="p-6">
+            <h2 className="break-words font-serif text-2xl">Hủy đơn {order.order_code}?</h2>
+            <p className="mt-3 text-sm leading-6">Đơn hàng sẽ ngừng được xử lý. Bạn chỉ có thể tự hủy khi cửa hàng chưa xác nhận đơn.</p>
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button type="button" disabled={cancelling} onClick={() => setCancelOpen(false)}
+                className="border border-[#D9DDD6] px-4 py-3 text-sm disabled:opacity-50">Giữ đơn hàng</button>
+              <button type="button" disabled={cancelling} onClick={() => void cancelOrder()}
+                className="bg-[#0B2419] px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">
+                {cancelling ? 'Đang hủy...' : 'Xác nhận hủy'}
+              </button>
+            </div>
+          </div>
+        </StorefrontDialog>
+      )}
     </div>
   );
-};
+}

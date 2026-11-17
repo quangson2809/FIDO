@@ -144,7 +144,8 @@ public class OrderQueryService {
                 shippingInfo == null ? null : shippingInfo.getDeliveredAt(),
                 payment.getRefundedAt(),
                 order.getCreatedAt(),
-                order.getUpdatedAt());
+                order.getUpdatedAt(),
+                actionPolicy.customerAllowedActions(order, payment, shippingInfo));
     }
 
     OrderAdminDetailDto adminDetailInternal(Order order, Authentication authentication) {

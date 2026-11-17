@@ -156,3 +156,12 @@ Owner-approved behavior and target schema are recorded; application/DTO/frontend
 - Apply the same membership/deletion predicate to the paginated list/count and ID detail lookup. Use correlated EXISTS to avoid row multiplication from multiple roles. Non-customer and soft-deleted IDs return 404 before reading addresses/orders.
 - Membership classifies the target Account, independently of the viewer's `CUSTOMER_READ` permission, prior orders and Account login status. Customers without orders or with LOCKED/SUSPENDED status remain manageable; another role alongside CUSTOMER does not erase customer membership. Role status controls access separately from this classification.
 - FE already calls the correct customer endpoints. Preserve its request/response contract, existing permission boundary, order statistics and schema. Regression tests use staff-only fixtures (the shared registration helper otherwise also assigns CUSTOMER).
+
+
+## 2026-11-17 — Customer cancellation of pending orders
+
+- Owner approves the proposed customer self-cancellation scope: PENDING only, own Order, clean UNPAID/undispatched state and no prior stock movement. This supersedes the former exclusion of customer cancellation in API/P1.7 contracts. No schema/dependency change is required.
+- Add POST `/api/v1/me/orders/{orderId}/cancel` without a request body. A customer-scoped pessimistic Order query prevents access to foreign Orders; the same row lock used by administrator confirmation serializes competing transitions. Foreign/missing Orders return 404; state conflicts/repeats return 409.
+- OrderActionService keeps separate authorization/eligibility entry points and shares handler execution/audit. Reuse CancelOrderHandler and mandatory Voucher release. Admin permissions and cancellation of confirmed/preparing/failed-delivery Orders are preserved.
+- Customer detail exposes `allowed_actions`, evaluated with the same customer policy as execution. FE shows the control from this field, asks for confirmation, disables busy controls, refreshes after 409, and ignores late responses after changing Orders. History is read again on returning to the list.
+- Commit marker `[customer-cancel-focus]` selects the relevant backend lifecycle/security/stock/rollback/concurrency tests and the customer cancellation browser regression in CI, following existing focused-check conventions. Static compilation, formatting, frontend lint/build, API/architecture/render checks and canonical schema verification remain available. Other commits retain the default suites.

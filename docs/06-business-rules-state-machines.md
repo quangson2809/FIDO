@@ -88,3 +88,8 @@ All other transitions are rejected. Cancellation is not allowed directly from SH
 ## 6. Scope exclusions
 
 Guest checkout, persisted guest carts, online gateways, automatic shipping integration, multi-refund/partial-refund workflows and detailed item-level return/exchange workflows are outside v1. Extending the persistence model requires explicit owner approval and an ERD/API amendment.
+
+
+## 2026-11-17 — Customer self-cancellation
+
+The authenticated owner may cancel only an owned PENDING Order whose Payment is clean UNPAID, ShippingInfo remains PENDING, and no deduction/reversal exists. All later states are operator-managed. Check after acquiring the Order lock; cancelling and administrator confirmation cannot both succeed. Cancellation writes Order/Shipping status, Voucher release and audit atomically; no inventory mutation occurs for PENDING. Repeated cancellation conflicts without repeating side effects.

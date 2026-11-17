@@ -37,6 +37,7 @@ permissions:
   contents: read
 
 env:
+  CUSTOMER_CANCEL_FOCUSED: ${{ contains(github.event.head_commit.message, '[customer-cancel-focus]') || contains(github.event.pull_request.title, '[customer-cancel-focus]') }}
   SEED_CATALOG_FOCUSED: ${{ contains(github.event.head_commit.message, '[seed-catalog-focus]') || contains(github.event.pull_request.title, '[seed-catalog-focus]') }}
   REPORT_FOCUSED: ${{ contains(github.event.head_commit.message, '[admin-report-focus]') || contains(github.event.pull_request.title, '[admin-report-focus]') }}
 
@@ -181,7 +182,21 @@ jobs:
           TEST_DB_USERNAME: root
           TEST_DB_PASSWORD: ci-only-password
         run: |
-          if [ "$SEED_CATALOG_FOCUSED" = "true" ]; then
+          if [ "$CUSTOMER_CANCEL_FOCUSED" = "true" ]; then
+            ./gradlew --no-daemon test --rerun-tasks \
+              --tests com.fido.modules.order.CustomerOrderCancellationHttpTests \
+              --tests com.fido.modules.order.OrderActionContractHttpTests \
+              --tests com.fido.modules.order.OrderActionTransactionHttpTests \
+              --tests com.fido.modules.order.OrderConcurrencyTests \
+              --tests com.fido.modules.order.OrderStockHttpTests \
+              --tests com.fido.modules.order.OrderAuthorizationHttpTests \
+              --tests com.fido.modules.order.OrderLifecycleHttpTests \
+              --tests com.fido.modules.order.service.lifecycle.OrderActionPolicyInvariantTests \
+              --tests com.fido.modules.order.service.lifecycle.OrderActionMatrixTests \
+              --tests com.fido.modules.order.service.lifecycle.OrderActionSchemaTests \
+              --tests com.fido.modules.order.service.lifecycle.OrderQueryServiceTests
+            ./gradlew --no-daemon checkJavaFormat
+          elif [ "$SEED_CATALOG_FOCUSED" = "true" ]; then
             ./gradlew --no-daemon test --rerun-tasks \
               --tests com.fido.config.devseed.DevDataSeedServiceTests \
               --tests com.fido.persistence.DatabaseBaselineTests.developmentFixtureSeedsParentChildAttributesAndInventory

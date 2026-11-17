@@ -6,6 +6,7 @@ import com.fido.modules.audit.service.AuditWriteEvent;
 import com.fido.modules.audit.service.AuditWriteService;
 import com.fido.modules.order.dto.request.OrderActionRequest;
 import com.fido.modules.order.dto.response.OrderAdminDetailDto;
+import com.fido.modules.order.dto.response.OrderCustomerDetailDto;
 import com.fido.modules.order.entity.Order;
 import com.fido.modules.order.entity.Payment;
 import com.fido.modules.order.entity.ShippingInfo;
@@ -78,16 +79,51 @@ public class OrderActionService {
                                 () ->
                                         new ResponseStatusException(
                                                 HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND"));
-        Payment payment =
-                payments.findById(orderId)
-                        .orElseThrow(() -> new IllegalStateException("ORDER_PAYMENT_MISSING"));
-        ShippingInfo shipping =
-                shippingInfos
-                        .findById(orderId)
-                        .orElseThrow(
-                                () -> new IllegalStateException("ORDER_SHIPPING_INFO_MISSING"));
+        Payment payment = payment(orderId);
+        ShippingInfo shipping = shipping(orderId);
 
         policy.requireExecutable(order, payment, shipping, request.action());
+        applyAction(actor, order, payment, shipping, request);
+        return query.adminDetailInternal(order, authentication);
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    public OrderCustomerDetailDto cancelOwnOrder(Long accountId, Long orderId) {
+        Order order =
+                orders.findCustomerOrderForUpdate(orderId, accountId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND"));
+        Payment payment = payment(orderId);
+        ShippingInfo shipping = shipping(orderId);
+        policy.requireCustomerCancellation(order, payment, shipping);
+        applyAction(
+                accountId,
+                order,
+                payment,
+                shipping,
+                new OrderActionRequest(OrderAction.CANCEL.name(), null, null, null));
+        return query.customerDetailInternal(order);
+    }
+
+    private Payment payment(Long orderId) {
+        return payments.findById(orderId)
+                .orElseThrow(() -> new IllegalStateException("ORDER_PAYMENT_MISSING"));
+    }
+
+    private ShippingInfo shipping(Long orderId) {
+        return shippingInfos
+                .findById(orderId)
+                .orElseThrow(() -> new IllegalStateException("ORDER_SHIPPING_INFO_MISSING"));
+    }
+
+    private void applyAction(
+            Long actor,
+            Order order,
+            Payment payment,
+            ShippingInfo shipping,
+            OrderActionRequest request) {
         OrderAction orderAction = OrderAction.require(request.action());
         // Giữ trạng thái trước xử lý vì handler sẽ sửa trực tiếp entity; audit cần cả trước và sau.
         String fromOrderStatus = order.getOrderStatus();
@@ -101,7 +137,6 @@ public class OrderActionService {
                 order.getOrderStatus(),
                 shipping.getShippingStatus(),
                 orderAction == OrderAction.CANCEL ? payment.getPaymentStatus() : null);
-        return query.adminDetailInternal(order, authentication);
     }
 
     private void auditTransition(

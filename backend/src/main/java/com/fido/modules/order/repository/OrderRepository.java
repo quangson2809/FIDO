@@ -42,4 +42,13 @@ public interface OrderRepository extends Repository<Order, Long>, JpaSpecificati
             where orderEntity.orderId = :orderId
             """)
     Optional<Order> findByIdForUpdate(@Param("orderId") Long orderId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            """
+            select orderEntity from Order orderEntity
+            where orderEntity.orderId = :orderId and orderEntity.customerAccountId = :accountId
+            """)
+    Optional<Order> findCustomerOrderForUpdate(
+            @Param("orderId") Long orderId, @Param("accountId") Long accountId);
 }

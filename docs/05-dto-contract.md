@@ -120,3 +120,8 @@ This is the target DTO contract. Any old response shape not represented here mus
 - AttributeDto exposes id, code, name, is_required, sort_order and options[]. AttributeOptionDto exposes id, attribute_id, value, label and sort_order. Attribute code and Option machine value are immutable under the target write contract; display label/order may change.
 - ProductImageDto exposes id, image_url and sort_order. A non-empty gallery has exactly one primary image at sort_order zero; writes atomically renumber the full gallery. Order snapshots never resolve through mutable current gallery state.
 - Exact routes, typed filter operators, errors and evidence are owned by [P1.3 Catalog Metadata Contract](refactor-v2/p1/P1.3-catalog-metadata-contract.md). This is target documentation, not a claim that current runtime DTOs conform.
+
+
+### 2026-11-17 — Customer Order actions
+
+`OrderCustomerDetailDto` adds `allowed_actions: string[]`, currently `["CANCEL"]` or `[]`, derived from current eligibility. `POST /api/v1/me/orders/{orderId}/cancel` takes no body and returns `{data: OrderCustomerDetailDto}`. Only the JWT owner of a PENDING/UNPAID, undispatched Order with no stock movement may cancel. Admin DTO/action permissions are unchanged.
