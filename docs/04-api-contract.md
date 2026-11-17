@@ -148,7 +148,7 @@ POST `/api/v1/admin/inventory/adjustments` requires non-zero `quantity_delta`, c
   - `GET /admin/reports/product-performance?from=...&to=...&limit=...` returns Product-level completed, returned and net units; limit defaults to 10 and is constrained to 1–100.
   - Reporting uses Asia/Ho_Chi_Minh date boundaries and current Order state/approved completion/return accounting rules; currency amounts are integer VND and ranking/tie-break rules must be deterministic.
 - Content: public `GET /content-pages/{slug}` returns only `PUBLISHED`; missing, `DRAFT` and `ARCHIVED` return the same 404 behavior. Admin reads require `CONTENT_READ`; create/update/status changes require `CONTENT_WRITE`. The `DRAFT/PUBLISHED/ARCHIVED` transition matrix, slug validation, public/admin DTO exposure and atomic audit rules are normative in [P1.8](refactor-v2/p1/P1.8-operations-seed-contract.md). Ordinary removal archives a page; no hard-delete/purge route is introduced.
-- Customers: `GET /admin/customers` and `GET /admin/customers/{customerId}`; customer records derive from authenticated Accounts and their linked Orders, not synthetic guest identities.
+- Customers: `GET /admin/customers` and `GET /admin/customers/{customerId}`; list and detail include only non-soft-deleted Accounts assigned the `CUSTOMER` Role. Staff-only/unassigned Accounts are excluded even when they have Orders; detail returns 404 outside this scope. Customers without Orders and locked/suspended customers remain visible. Multiple Role assignments do not duplicate customer rows or pagination totals. Customer records derive from real Accounts and their linked Orders, not synthetic guest identities.
 
 ## 3. Wire and persistence invariants
 

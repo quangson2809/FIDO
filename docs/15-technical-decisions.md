@@ -148,3 +148,11 @@ Owner-approved behavior and target schema are recorded; application/DTO/frontend
 - `orders.created_at` is the one placement timestamp; account/status indexes now use it. `order_addresses` owns the immutable receiver snapshot. Shipping API fields remain available by projection from that snapshot.
 - Image position zero is the primary image for reads, gallery controls and reports. Gallery writes retain Product locks, contiguous ordering and the two-flush temporary-position strategy for the unique index. Image/attribute responses and write forms no longer expose deleted flags; selection still uses exact COLOR and SIZE-prefixed codes.
 - Whole integer VND and COD remain fixed application semantics. Keep amount equality, refund limits, state/actor/time, stock/ledger and idempotency checks; remove checks against constants that are no longer stored. `orders.discount_amount` remains the actual historical Voucher discount; code/type/value snapshots stay immutable.
+
+
+## 2026-11-17 — Customer admin query scope
+
+- Fix API #76/#77: a customer is a non-soft-deleted Account with an assigned `CUSTOMER` Role. The previous list only checked deletion and detail used unrestricted Account lookup, so staff-only Accounts leaked into the customer view.
+- Apply the same membership/deletion predicate to the paginated list/count and ID detail lookup. Use correlated EXISTS to avoid row multiplication from multiple roles. Non-customer and soft-deleted IDs return 404 before reading addresses/orders.
+- Membership classifies the target Account, independently of the viewer's `CUSTOMER_READ` permission, prior orders and Account login status. Customers without orders or with LOCKED/SUSPENDED status remain manageable; another role alongside CUSTOMER does not erase customer membership. Role status controls access separately from this classification.
+- FE already calls the correct customer endpoints. Preserve its request/response contract, existing permission boundary, order statistics and schema. Regression tests use staff-only fixtures (the shared registration helper otherwise also assigns CUSTOMER).

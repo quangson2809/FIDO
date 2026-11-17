@@ -16,6 +16,14 @@ class CustomerQueryApiTest extends OperationsHttpSupport {
     private Long productId;
     private Long categoryId;
 
+    private User staff(String role) throws Exception {
+        var staff = user(role);
+        db.update(
+                "DELETE FROM account_roles WHERE account_id=? AND role_id IN (SELECT id FROM roles WHERE code='CUSTOMER')",
+                staff.id());
+        return staff;
+    }
+
     @AfterEach
     void cleanOrders() {
         for (long id : orderIds) {
@@ -110,9 +118,10 @@ class CustomerQueryApiTest extends OperationsHttpSupport {
 
     @Test
     void accountSearchStatsDetailAndAccountIsolation() throws Exception {
-        var root = user("SUPERADMIN");
+        var root = staff("SUPERADMIN");
         var customer = user(null);
         var other = user(null);
+        var withoutOrders = user(null);
         long old = order(customer.id(), "2026-09-01 12:00:00");
         long recent = order(customer.id(), "2026-09-20 12:00:00");
         order(other.id(), "2026-09-21 12:00:00");
@@ -148,7 +157,7 @@ class CustomerQueryApiTest extends OperationsHttpSupport {
         assertEquals("UNPAID", data.get("orders").get(0).get("payment_status").asText());
 
         var zero =
-                call("GET", path + "?q=" + root.phone(), root.token(), null)
+                call("GET", path + "?q=" + withoutOrders.phone(), root.token(), null)
                         .body()
                         .get("data")
                         .get(0);
@@ -170,14 +179,86 @@ class CustomerQueryApiTest extends OperationsHttpSupport {
 
     @Test
     void customerPermissionDoesNotGrantOrderAdminAccess() throws Exception {
-        var employee = user("ADMIN");
+        var employee = staff("ADMIN");
+        var customer = user(null);
         String path = "/api/v1/admin/customers";
         assertEquals(401, call("GET", path, null, null).status());
         assertEquals(403, call("GET", path, employee.token(), null).status());
         assertEquals(403, call("GET", path + "/" + employee.id(), employee.token(), null).status());
         capability(employee, "CUSTOMER_READ");
         assertEquals(200, call("GET", path, employee.token(), null).status());
-        assertEquals(200, call("GET", path + "/" + employee.id(), employee.token(), null).status());
+        assertEquals(404, call("GET", path + "/" + employee.id(), employee.token(), null).status());
+        assertEquals(200, call("GET", path + "/" + customer.id(), employee.token(), null).status());
         assertEquals(403, call("GET", "/api/v1/admin/orders", employee.token(), null).status());
+    }
+
+    @Test
+    void customerRoleScopesSearchPaginationAndDetailWithoutDuplicatingAccounts() throws Exception {
+        var root = staff("SUPERADMIN");
+        var employee = staff("ADMIN");
+        String path = "/api/v1/admin/customers";
+        int existingCustomers =
+                call("GET", path, root.token(), null).body().get("meta").get("total").asInt();
+        var customer = user(null);
+        var withoutOrders = user(null);
+        var lockedCustomer = user(null);
+        var deletedCustomer = user(null);
+        var unassigned = user(null);
+        db.update("DELETE FROM account_roles WHERE account_id=?", unassigned.id());
+        db.update("UPDATE accounts SET status='LOCKED' WHERE id=?", lockedCustomer.id());
+        db.update(
+                "UPDATE accounts SET deleted_at=CURRENT_TIMESTAMP(6) WHERE id=?",
+                deletedCustomer.id());
+        capability(customer, "CUSTOMER_READ");
+        order(employee.id(), "2026-09-20 12:00:00");
+
+        String marker = "customer-scope-" + UUID.randomUUID().toString().replace("-", "");
+        for (var account :
+                List.of(
+                        root,
+                        employee,
+                        customer,
+                        withoutOrders,
+                        lockedCustomer,
+                        deletedCustomer,
+                        unassigned)) {
+            db.update(
+                    "UPDATE accounts SET email=? WHERE id=?",
+                    marker + "-" + account.id() + "@example.test",
+                    account.id());
+        }
+
+        var all = call("GET", path, root.token(), null);
+        assertEquals(200, all.status());
+        assertEquals(existingCustomers + 3, all.body().get("meta").get("total").asInt());
+        var first = call("GET", path + "?q=" + marker + "&page_size=2", root.token(), null);
+        assertEquals(200, first.status());
+        assertEquals(3, first.body().get("meta").get("total").asInt());
+        assertEquals(2, first.body().get("meta").get("total_pages").asInt());
+        assertEquals(2, first.body().get("data").size());
+        assertEquals(customer.id(), first.body().get("data").get(0).get("account_id").asLong());
+        assertEquals(
+                withoutOrders.id(), first.body().get("data").get(1).get("account_id").asLong());
+        assertEquals(0, first.body().get("data").get(1).get("order_count").asInt());
+
+        var second = call("GET", path + "?q=" + marker + "&page=2&page_size=2", root.token(), null);
+        assertEquals(200, second.status());
+        assertEquals(3, second.body().get("meta").get("total").asInt());
+        assertEquals(1, second.body().get("data").size());
+        assertEquals(
+                lockedCustomer.id(), second.body().get("data").get(0).get("account_id").asLong());
+        assertEquals(
+                200, call("GET", path + "/" + lockedCustomer.id(), root.token(), null).status());
+
+        for (var excluded : List.of(root, employee, deletedCustomer, unassigned)) {
+            for (String search :
+                    List.of(excluded.phone(), marker + "-" + excluded.id() + "@example.test")) {
+                var result = call("GET", path + "?q=" + search, root.token(), null);
+                assertEquals(200, result.status());
+                assertEquals(0, result.body().get("data").size());
+                assertEquals(0, result.body().get("meta").get("total").asInt());
+            }
+            assertEquals(404, call("GET", path + "/" + excluded.id(), root.token(), null).status());
+        }
     }
 }
