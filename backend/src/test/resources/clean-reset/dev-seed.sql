@@ -20,8 +20,6 @@ INSERT INTO attribute_options (id,attribute_id,`value`,label,sort_order) VALUES
 INSERT INTO product_attribute_values (product_id,attribute_id,option_id) VALUES
  (30002,41001,42001),(30002,41002,42002);
 
-INSERT INTO product_images (id,product_id,image_url,is_primary,sort_order)
-VALUES (43001,30001,'https://example.invalid/fido-demo-shirt.png',TRUE,0);
 INSERT INTO warehouses (id,code,name,status) VALUES (50001,'MAIN','Kho chính','ACTIVE');
 INSERT INTO inventories (warehouse_id,product_id,quantity_on_hand,version) VALUES (50001,30002,50,0);
 INSERT INTO vouchers (id,code,discount_type,discount_value,minimum_order_value,maximum_discount,starts_at,ends_at,usage_limit,status)

@@ -10,14 +10,20 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -62,7 +68,7 @@ class DevDataSeedServiceTests extends OperationsHttpSupport {
     @AfterEach
     void removeSeedData() {
         delete("DELETE FROM audit_logs WHERE id BETWEEN 1050001 AND 1050003");
-        delete("DELETE FROM inventory_transactions WHERE id BETWEEN 1040001 AND 1040025");
+        delete("DELETE FROM inventory_transactions WHERE id BETWEEN 1040001 AND 1040999");
         delete("DELETE FROM goods_receipt_items WHERE id BETWEEN 1030001 AND 1030003");
         delete("DELETE FROM goods_receipts WHERE id BETWEEN 1010001 AND 1010003");
         delete(
@@ -78,22 +84,24 @@ class DevDataSeedServiceTests extends OperationsHttpSupport {
         delete("DELETE FROM carts WHERE id BETWEEN 980001 AND 980002");
         delete("DELETE FROM inventories WHERE warehouse_id=1021001");
         delete("DELETE FROM warehouses WHERE id=1021001");
-        delete("DELETE FROM product_attribute_values WHERE product_id IN (960001,960002,960006)");
-        delete("DELETE FROM product_images WHERE id BETWEEN 961001 AND 961017");
-        delete("DELETE FROM attribute_options WHERE id BETWEEN 941001 AND 941007");
-        delete("DELETE FROM attributes WHERE id BETWEEN 940001 AND 940002");
-        delete("DELETE FROM products WHERE id=960006");
-        delete("DELETE FROM products WHERE id BETWEEN 960001 AND 960017");
+        delete("DELETE FROM product_attribute_values WHERE product_id BETWEEN 960001 AND 960199");
+        delete("DELETE FROM product_images WHERE id BETWEEN 961001 AND 961199");
+        delete("DELETE FROM attribute_options WHERE id BETWEEN 941001 AND 941999");
+        delete("DELETE FROM attributes WHERE id BETWEEN 940001 AND 940013");
+        delete(
+                "DELETE FROM products WHERE id BETWEEN 960001 AND 960199 AND parent_product_id IS NOT NULL");
+        delete("DELETE FROM products WHERE id BETWEEN 960001 AND 960199");
         delete("DELETE FROM suppliers WHERE id BETWEEN 1020001 AND 1020002");
         delete("DELETE FROM vouchers WHERE id=990001");
         delete("DELETE FROM content_pages WHERE id BETWEEN 1060001 AND 1060003");
         delete("DELETE FROM addresses WHERE id BETWEEN 910001 AND 910003");
         delete("DELETE FROM account_roles WHERE account_id BETWEEN 900001 AND 900008");
         delete("DELETE FROM accounts WHERE id BETWEEN 900001 AND 900008");
-        delete("DELETE FROM categories WHERE id BETWEEN 920005 AND 920008");
+        delete("DELETE FROM categories WHERE id BETWEEN 920005 AND 920012");
         delete("DELETE FROM categories WHERE id BETWEEN 920001 AND 920004");
-        delete("DELETE FROM brands WHERE id BETWEEN 930001 AND 930002");
+        delete("DELETE FROM brands WHERE id BETWEEN 930001 AND 930022");
         delete("DELETE FROM accounts WHERE id=899001");
+        delete("DELETE FROM brands WHERE id=899001");
     }
 
     @Test
@@ -106,19 +114,19 @@ class DevDataSeedServiceTests extends OperationsHttpSupport {
         assertEquals(firstCounts, tableCounts());
         assertEquals(8, firstCounts.get("accounts"));
         assertEquals(8, firstCounts.get("account_roles"));
-        assertEquals(8, firstCounts.get("categories"));
-        assertEquals(2, firstCounts.get("brands"));
-        assertEquals(2, firstCounts.get("attributes"));
-        assertEquals(7, firstCounts.get("attribute_options"));
-        assertEquals(17, firstCounts.get("products"));
-        assertEquals(17, firstCounts.get("product_images"));
+        assertEquals(12, firstCounts.get("categories"));
+        assertEquals(22, firstCounts.get("brands"));
+        assertEquals(13, firstCounts.get("attributes"));
+        assertEquals(78, firstCounts.get("attribute_options"));
+        assertEquals(75, firstCounts.get("products"));
+        assertEquals(0, firstCounts.get("product_images"));
         assertEquals(9, firstCounts.get("orders"));
         assertEquals(9, firstCounts.get("order_items"));
         assertEquals(9, firstCounts.get("order_addresses"));
         assertEquals(9, firstCounts.get("payments"));
         assertEquals(9, firstCounts.get("shipping_infos"));
-        assertEquals(17, firstCounts.get("inventories"));
-        assertEquals(25, firstCounts.get("inventory_transactions"));
+        assertEquals(75, firstCounts.get("inventories"));
+        assertEquals(83, firstCounts.get("inventory_transactions"));
 
         // Mỗi số seed dạng +84 phải đổi thành đúng 10 chữ số nội địa: 0 và chín số phía sau.
         List<String> accountPhones =
@@ -163,7 +171,7 @@ class DevDataSeedServiceTests extends OperationsHttpSupport {
         assertTrue(passwords.matches(DevDataSeedService.DEFAULT_PASSWORD, passwordHash));
 
         assertEquals(
-                List.of("Áo", "Quần", "Váy & Đầm", "Áo khoác"),
+                List.of("Áo", "Quần", "Giày dép", "Phụ kiện"),
                 jdbc.queryForList(
                         """
                         SELECT name FROM categories
@@ -173,7 +181,7 @@ class DevDataSeedServiceTests extends OperationsHttpSupport {
                         String.class));
 
         assertEquals(
-                "Áo thun",
+                "Giày",
                 jdbc.queryForObject(
                         """
                         SELECT c.name FROM products p
@@ -185,24 +193,19 @@ class DevDataSeedServiceTests extends OperationsHttpSupport {
                 1,
                 jdbc.queryForObject(
                         """
-                        SELECT COUNT(*) FROM products
-                        WHERE id=960006 AND parent_product_id=960001
-                          AND sku='FIDO-TEE-006' AND selling_price=259000
-                        """,
-                        Integer.class),
-                "child Products must own their SKU and selling price");
-
-        for (long leafCategoryId = 920005; leafCategoryId <= 920008; leafCategoryId++) {
+            SELECT COUNT(*) FROM products
+            WHERE id=960101 AND parent_product_id=960001
+              AND sku='DEMO-17631178-7' AND selling_price=199000
+              AND category_id=920005 AND brand_id=930001
+            """,
+                        Integer.class));
+        for (long categoryId = 920005; categoryId <= 920012; categoryId++) {
             assertEquals(
-                    4,
+                    categoryId == 920011 ? 5 : 10,
                     jdbc.queryForObject(
-                            """
-                            SELECT COUNT(*) FROM products
-                            WHERE category_id=? AND status='ACTIVE'
-                            """,
+                            "SELECT COUNT(*) FROM products WHERE category_id=? AND status='ACTIVE'",
                             Integer.class,
-                            leafCategoryId),
-                    "each homepage category must have four active, independently sellable Products");
+                            categoryId));
         }
 
         assertEquals(
@@ -249,6 +252,136 @@ class DevDataSeedServiceTests extends OperationsHttpSupport {
                         """,
                         Integer.class),
                 "the demo seed must not invent implicit permission grants for ADMIN");
+    }
+
+    @Test
+    void catalogMatchesManifestAndEverySkuReconcilesWithItsLedger() throws Exception {
+        seeder.seed();
+        var manifest = new ClassPathResource("devseed/image-manifest.csv");
+        var folders = new TreeMap<String, Integer>();
+        try (var reader =
+                new BufferedReader(
+                        new InputStreamReader(manifest.getInputStream(), StandardCharsets.UTF_8))) {
+            reader.readLine();
+            for (String line; (line = reader.readLine()) != null; ) {
+                String file = line.substring(line.lastIndexOf(',') + 1);
+                String folder = file.substring(0, file.lastIndexOf('/'));
+                folders.merge(folder, 1, Integer::sum);
+            }
+        }
+        assertEquals(40, folders.size());
+        for (var entry : folders.entrySet()) {
+            assertEquals(5, entry.getValue());
+            String folder = entry.getKey();
+            String sourceId = folder.substring(folder.lastIndexOf('_') + 1);
+            assertEquals(
+                    folder.startsWith("07_vo/") ? 1 : 2,
+                    jdbc.queryForObject(
+                            "SELECT COUNT(*) FROM products WHERE sku LIKE ?",
+                            Integer.class,
+                            "DEMO-" + sourceId + "%"));
+        }
+        assertEquals(
+                36,
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM products WHERE parent_product_id IS NULL",
+                        Integer.class));
+        assertEquals(
+                0,
+                jdbc.queryForObject(
+                        """
+            SELECT COUNT(*) FROM products p JOIN products parent ON parent.id=p.parent_product_id
+            WHERE parent.parent_product_id IS NOT NULL OR p.brand_id<>parent.brand_id
+              OR p.category_id<>parent.category_id OR p.name IS NULL OR p.description IS NULL
+            """,
+                        Integer.class));
+        assertEquals(
+                0,
+                jdbc.queryForObject(
+                        """
+            SELECT COUNT(*) FROM (
+                SELECT i.product_id FROM inventories i
+                LEFT JOIN inventory_transactions t ON t.warehouse_id=i.warehouse_id AND t.product_id=i.product_id
+                GROUP BY i.warehouse_id,i.product_id,i.quantity_on_hand
+                HAVING i.quantity_on_hand<>COALESCE(SUM(t.quantity_delta),0)
+            ) mismatched
+            """,
+                        Integer.class));
+        assertEquals(
+                75,
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM inventory_transactions WHERE transaction_type='OPENING'",
+                        Integer.class));
+        assertEquals(
+                0,
+                jdbc.queryForObject(
+                        """
+            SELECT COUNT(*) FROM order_items oi JOIN products p ON p.id=oi.product_id
+            WHERE oi.sku_snapshot<>p.sku OR oi.product_name_snapshot<>p.name OR oi.image_url_snapshot<>''
+            """,
+                        Integer.class));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM product_images", Integer.class));
+        assertEquals(
+                1,
+                jdbc.queryForObject(
+                        """
+            SELECT COUNT(*) FROM product_attribute_values v
+            JOIN attributes a ON a.id=v.attribute_id
+            JOIN attribute_options o ON o.id=v.option_id
+            WHERE v.product_id=960038 AND a.code='SIZE_CHILD_AGE' AND o.`value`='1-1.5Y'
+            """,
+                        Integer.class));
+        for (var snapshot :
+                jdbc.queryForList("SELECT attribute_snapshot FROM order_items", String.class)) {
+            for (var attribute : json.readTree(snapshot)) {
+                assertEquals(
+                        1,
+                        jdbc.queryForObject(
+                                "SELECT COUNT(*) FROM attribute_options WHERE id=? AND attribute_id=?",
+                                Integer.class,
+                                attribute.get("option_id").asLong(),
+                                attribute.get("attribute_id").asLong()));
+            }
+        }
+    }
+
+    @Test
+    void publicCatalogExposesSellableFamiliesWithoutSeededImages() throws Exception {
+        seeder.seed();
+        var summary = call("GET", "/api/v1/catalog/products?page_size=100", null, null);
+        assertEquals(200, summary.status(), String.valueOf(summary.body()));
+        assertEquals(36, summary.body().get("meta").get("total").asInt());
+        for (var product : summary.body().get("data")) {
+            assertTrue(product.get("parent_product_id").isNull());
+        }
+        for (long categoryId = 920005; categoryId <= 920012; categoryId++) {
+            var category =
+                    call("GET", "/api/v1/catalog/products?category_id=" + categoryId, null, null);
+            assertEquals(200, category.status(), String.valueOf(category.body()));
+            assertEquals(
+                    categoryId == 920009 ? 1 : 5, category.body().get("meta").get("total").asInt());
+        }
+        for (var sample : Map.of(960001L, 2, 960021L, 10, 960031L, 1).entrySet()) {
+            var detail = call("GET", "/api/v1/catalog/products/" + sample.getKey(), null, null);
+            assertEquals(200, detail.status(), String.valueOf(detail.body()));
+            assertEquals(
+                    sample.getValue(),
+                    detail.body().get("data").get("family").get("members").size());
+        }
+    }
+
+    @Test
+    void catalogConflictRollsBackEarlierSeedWrites() {
+        jdbc.update(
+                "INSERT INTO brands(id,name,slug,status) VALUES (899001,'Existing brand','slazenger','ACTIVE')");
+        assertThrows(DataAccessException.class, seeder::seed);
+        assertEquals(
+                0,
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM accounts WHERE id BETWEEN 900001 AND 900008",
+                        Integer.class));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM categories", Integer.class));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM brands", Integer.class));
     }
 
     @Test

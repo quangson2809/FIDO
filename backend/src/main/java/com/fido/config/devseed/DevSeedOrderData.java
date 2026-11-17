@@ -4,11 +4,14 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import tools.jackson.databind.ObjectMapper;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
 
 /** Tạo giỏ, voucher và snapshot đơn demo theo Product của schema hiện tại. */
 @Component
@@ -18,27 +21,14 @@ public class DevSeedOrderData {
     private static final long PAYMENT_ACTOR_ID = 900001L;
     private static final long SHIPPING_FEE = 30_000L;
 
-    private static final String SIZE_M_BLACK =
-            "[{\"attribute_id\":940001,\"attribute_code_snapshot\":\"SIZE\",\"attribute_name_snapshot\":\"Kích thước\",\"data_type\":\"OPTION\",\"option_value_snapshot\":\"M\",\"option_label_snapshot\":\"M\"},"
-                    + "{\"attribute_id\":940002,\"attribute_code_snapshot\":\"COLOR\",\"attribute_name_snapshot\":\"Màu sắc\",\"data_type\":\"OPTION\",\"option_value_snapshot\":\"BLACK\",\"option_label_snapshot\":\"Đen\"}]";
-    private static final String SIZE_S_WHITE =
-            "[{\"attribute_id\":940001,\"attribute_code_snapshot\":\"SIZE\",\"attribute_name_snapshot\":\"Kích thước\",\"data_type\":\"OPTION\",\"option_value_snapshot\":\"S\",\"option_label_snapshot\":\"S\"},"
-                    + "{\"attribute_id\":940002,\"attribute_code_snapshot\":\"COLOR\",\"attribute_name_snapshot\":\"Màu sắc\",\"data_type\":\"OPTION\",\"option_value_snapshot\":\"WHITE\",\"option_label_snapshot\":\"Trắng\"}]";
-    private static final String SIZE_L_BLUE =
-            "[{\"attribute_id\":940001,\"attribute_code_snapshot\":\"SIZE\",\"attribute_name_snapshot\":\"Kích thước\",\"data_type\":\"OPTION\",\"option_value_snapshot\":\"L\",\"option_label_snapshot\":\"L\"},"
-                    + "{\"attribute_id\":940002,\"attribute_code_snapshot\":\"COLOR\",\"attribute_name_snapshot\":\"Màu sắc\",\"data_type\":\"OPTION\",\"option_value_snapshot\":\"BLUE\",\"option_label_snapshot\":\"Xanh denim\"}]";
-
     private static final List<SeedOrder> ORDERS =
             List.of(
-                    order(
-                            1001001,
-                            1101001,
-                            960001,
-                            "FIDO-TEE-001",
-                            "FIDO Essential Tee",
-                            SIZE_M_BLACK,
+                    new SeedOrder(
+                            1001001L,
+                            1101001L,
+                            960001L,
                             2,
-                            199000,
+                            199000L,
                             "PENDING",
                             "2026-09-05 02:00:00",
                             "PENDING",
@@ -48,15 +38,12 @@ public class DevSeedOrderData {
                             null,
                             null,
                             null),
-                    order(
-                            1001002,
-                            1101002,
-                            960006,
-                            "FIDO-TEE-006",
-                            "FIDO Heavyweight Tee",
-                            SIZE_S_WHITE,
+                    new SeedOrder(
+                            1001002L,
+                            1101002L,
+                            960006L,
                             1,
-                            259000,
+                            259000L,
                             "CONFIRMED",
                             "2026-09-08 02:00:00",
                             "PENDING",
@@ -66,15 +53,12 @@ public class DevSeedOrderData {
                             null,
                             null,
                             null),
-                    order(
-                            1001003,
-                            1101003,
-                            960004,
-                            "FIDO-DRESS-001",
-                            "FIDO Linen Midi Dress",
-                            "{}",
+                    new SeedOrder(
+                            1001003L,
+                            1101003L,
+                            960004L,
                             1,
-                            459000,
+                            459000L,
                             "SHIPPING",
                             "2026-09-09 02:00:00",
                             "SHIPPED",
@@ -84,15 +68,12 @@ public class DevSeedOrderData {
                             null,
                             null,
                             null),
-                    order(
-                            1001004,
-                            1101004,
-                            960002,
-                            "FIDO-DENIM-001",
-                            "FIDO Denim Straight",
-                            SIZE_L_BLUE,
+                    new SeedOrder(
+                            1001004L,
+                            1101004L,
+                            960002L,
                             1,
-                            499000,
+                            499000L,
                             "COMPLETED",
                             "2026-09-10 02:00:00",
                             "DELIVERED",
@@ -102,15 +83,12 @@ public class DevSeedOrderData {
                             "2026-09-10 05:00:00",
                             null,
                             null),
-                    order(
-                            1001005,
-                            1101005,
-                            960001,
-                            "FIDO-TEE-001",
-                            "FIDO Essential Tee",
-                            SIZE_M_BLACK,
+                    new SeedOrder(
+                            1001005L,
+                            1101005L,
+                            960001L,
                             1,
-                            199000,
+                            199000L,
                             "DELIVERY_FAILED",
                             "2026-09-11 02:00:00",
                             "FAILED",
@@ -120,15 +98,12 @@ public class DevSeedOrderData {
                             null,
                             null,
                             null),
-                    order(
-                            1001006,
-                            1101006,
-                            960012,
-                            "FIDO-DRESS-012",
-                            "FIDO Shirt Dress",
-                            "{}",
+                    new SeedOrder(
+                            1001006L,
+                            1101006L,
+                            960012L,
                             1,
-                            529000,
+                            529000L,
                             "COMPLETED",
                             "2026-09-12 02:00:00",
                             "DELIVERED",
@@ -138,15 +113,12 @@ public class DevSeedOrderData {
                             "2026-09-14 07:00:00",
                             null,
                             null),
-                    order(
-                            1001101,
-                            1101007,
-                            960007,
-                            "FIDO-SHIRT-001",
-                            "FIDO Oxford Shirt",
-                            "{}",
+                    new SeedOrder(
+                            1001101L,
+                            1101007L,
+                            960007L,
                             2,
-                            329000,
+                            329000L,
                             "COMPLETED",
                             "2026-09-10 01:00:00",
                             "DELIVERED",
@@ -156,15 +128,12 @@ public class DevSeedOrderData {
                             "2026-09-15 07:00:00",
                             null,
                             null),
-                    order(
-                            1001102,
-                            1101008,
-                            960004,
-                            "FIDO-DRESS-001",
-                            "FIDO Linen Midi Dress",
-                            "{}",
+                    new SeedOrder(
+                            1001102L,
+                            1101008L,
+                            960004L,
                             1,
-                            459000,
+                            459000L,
                             "RETURNED",
                             "2026-09-11 01:00:00",
                             "DELIVERED",
@@ -173,16 +142,13 @@ public class DevSeedOrderData {
                             "REFUNDED",
                             "2026-09-12 07:00:00",
                             "2026-09-13 08:00:00",
-                            "Seed demo whole-order COD refund"),
-                    order(
-                            1001103,
-                            1101009,
-                            960001,
-                            "FIDO-TEE-001",
-                            "FIDO Essential Tee",
-                            SIZE_M_BLACK,
+                            "Hoàn COD toàn đơn mẫu"),
+                    new SeedOrder(
+                            1001103L,
+                            1101009L,
+                            960001L,
                             1,
-                            199000,
+                            199000L,
                             "CANCELLED",
                             "2026-09-26 02:00:00",
                             "CANCELLED",
@@ -194,9 +160,11 @@ public class DevSeedOrderData {
                             null));
 
     private final JdbcTemplate jdbc;
+    private final ObjectMapper json;
 
-    public DevSeedOrderData(JdbcTemplate jdbc) {
+    public DevSeedOrderData(JdbcTemplate jdbc, ObjectMapper json) {
         this.jdbc = jdbc;
+        this.json = json;
     }
 
     public void seed() {
@@ -235,6 +203,27 @@ public class DevSeedOrderData {
 
     private void seedOrders() {
         for (SeedOrder order : ORDERS) {
+            // Snapshot lấy từ SKU catalog vừa seed, tránh tên và Option cũ lệch bộ ảnh.
+            var product =
+                    jdbc.queryForMap("SELECT sku,name FROM products WHERE id=?", order.productId());
+            var attributes =
+                    jdbc.query(
+                            """
+                SELECT a.id, a.code, a.name, o.id AS option_id, o.`value`, o.label
+                FROM product_attribute_values v
+                JOIN attributes a ON a.id=v.attribute_id
+                JOIN attribute_options o ON o.id=v.option_id AND o.attribute_id=a.id
+                WHERE v.product_id=? ORDER BY a.sort_order,a.id
+                """,
+                            (rs, row) ->
+                                    Map.of(
+                                            "attribute_id", rs.getLong("id"),
+                                            "attribute_code_snapshot", rs.getString("code"),
+                                            "attribute_name_snapshot", rs.getString("name"),
+                                            "option_id", rs.getLong("option_id"),
+                                            "option_value_snapshot", rs.getString("value"),
+                                            "option_label_snapshot", rs.getString("label")),
+                            order.productId());
             long subtotal = Math.multiplyExact(order.unitPrice(), (long) order.quantity());
             long total = Math.addExact(subtotal, SHIPPING_FEE);
 
@@ -269,10 +258,10 @@ public class DevSeedOrderData {
                     order.orderItemId(),
                     order.orderId(),
                     order.productId(),
-                    order.skuSnapshot(),
-                    order.productName(),
-                    order.attributeSnapshot(),
-                    imageSnapshot(order.productId()),
+                    product.get("sku"),
+                    product.get("name"),
+                    json.writeValueAsString(attributes),
+                    "",
                     order.quantity(),
                     order.unitPrice(),
                     subtotal);
@@ -335,18 +324,6 @@ public class DevSeedOrderData {
         }
     }
 
-    private static String imageSnapshot(long productId) {
-        return switch ((int) productId) {
-            case 960001 -> "https://example.invalid/fido/tee-black-v1.jpg";
-            case 960002 -> "https://example.invalid/fido/denim-blue-v1.jpg";
-            case 960004 -> "https://example.invalid/fido/dress-midi-v1.jpg";
-            case 960006 -> "https://example.invalid/fido/tee-heavyweight-v1.jpg";
-            case 960007 -> "https://example.invalid/fido/oxford-shirt-v1.jpg";
-            case 960012 -> "https://example.invalid/fido/shirt-dress-v1.jpg";
-            default -> "https://example.invalid/fido/seed-product-v1.jpg";
-        };
-    }
-
     private static String fingerprint(long orderId) {
         try {
             byte[] digest =
@@ -360,51 +337,10 @@ public class DevSeedOrderData {
         }
     }
 
-    private static SeedOrder order(
-            long orderId,
-            long orderItemId,
-            long productId,
-            String sku,
-            String productName,
-            String attributeSnapshot,
-            int quantity,
-            long unitPrice,
-            String orderStatus,
-            String placedAt,
-            String shippingStatus,
-            String shippedAt,
-            String deliveredAt,
-            String paymentStatus,
-            String collectedAt,
-            String refundedAt,
-            String refundReason) {
-        return new SeedOrder(
-                orderId,
-                orderItemId,
-                productId,
-                sku,
-                productName,
-                attributeSnapshot,
-                quantity,
-                unitPrice,
-                orderStatus,
-                placedAt,
-                shippingStatus,
-                shippedAt,
-                deliveredAt,
-                paymentStatus,
-                collectedAt,
-                refundedAt,
-                refundReason);
-    }
-
     private record SeedOrder(
             long orderId,
             long orderItemId,
             long productId,
-            String skuSnapshot,
-            String productName,
-            String attributeSnapshot,
             int quantity,
             long unitPrice,
             String orderStatus,

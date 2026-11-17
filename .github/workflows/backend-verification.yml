@@ -37,6 +37,7 @@ permissions:
   contents: read
 
 env:
+  SEED_CATALOG_FOCUSED: ${{ contains(github.event.head_commit.message, '[seed-catalog-focus]') || contains(github.event.pull_request.title, '[seed-catalog-focus]') }}
   REPORT_FOCUSED: ${{ contains(github.event.head_commit.message, '[admin-report-focus]') || contains(github.event.pull_request.title, '[admin-report-focus]') }}
 
 jobs:
@@ -180,7 +181,12 @@ jobs:
           TEST_DB_USERNAME: root
           TEST_DB_PASSWORD: ci-only-password
         run: |
-          if [ "$REPORT_FOCUSED" = "true" ]; then
+          if [ "$SEED_CATALOG_FOCUSED" = "true" ]; then
+            ./gradlew --no-daemon test --rerun-tasks \
+              --tests com.fido.config.devseed.DevDataSeedServiceTests \
+              --tests com.fido.persistence.DatabaseBaselineTests.developmentFixtureSeedsParentChildAttributesAndInventory
+            ./gradlew --no-daemon checkJavaFormat
+          elif [ "$REPORT_FOCUSED" = "true" ]; then
             ./gradlew --no-daemon test --rerun-tasks \
               --tests 'com.fido.modules.report.*' \
               --tests 'com.fido.modules.pricing.*' \
