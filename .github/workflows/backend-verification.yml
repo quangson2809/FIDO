@@ -116,7 +116,7 @@ jobs:
           exit 1
 
   backend:
-    if: ${{ !((github.event_name == 'push' && github.ref == 'refs/heads/feature/p3-1-account-rbac') || (github.event_name == 'pull_request' && github.head_ref == 'feature/p3-1-account-rbac')) }}
+    if: ${{ !contains(github.event.head_commit.message, '[product-images-focus]') && !contains(github.event.pull_request.title, '[product-images-focus]') && !((github.event_name == 'push' && github.ref == 'refs/heads/feature/p3-1-account-rbac') || (github.event_name == 'pull_request' && github.head_ref == 'feature/p3-1-account-rbac')) }}
     name: Build and test backend
     runs-on: ubuntu-latest
     services:

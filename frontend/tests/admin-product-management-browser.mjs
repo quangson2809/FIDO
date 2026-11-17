@@ -108,6 +108,9 @@ let products = new Map([[101, clone(initialProduct)]]);
 let nextProductId = 202;
 let failNextUpload = false;
 let loseNextUploadResponse = false;
+let holdNextUpload = false;
+let releaseUpload;
+let notifyUploadStarted;
 let failNextCreate = false;
 let rejectNextCreateCode;
 let loseNextCreateResponse = false;
@@ -189,6 +192,10 @@ await page.route('**/api/v1/**', async (route) => {
   const uploadMatch = path.match(/^\/admin\/products\/(\d+)\/images$/);
   if (method === 'POST' && uploadMatch) {
     const id = Number(uploadMatch[1]);
+    if (holdNextUpload) {
+      holdNextUpload = false;
+      await new Promise((resolve) => { releaseUpload = resolve; notifyUploadStarted?.(); });
+    }
     if (failNextUpload) { failNextUpload = false; return send(route, { message: 'storage temporarily unavailable' }, 502); }
     const product = products.get(id);
     if (!product) return send(route, { message: 'Product not found' }, 404);
@@ -256,7 +263,89 @@ await page.route('**/api/v1/**', async (route) => {
   return send(route, { message: 'Unhandled request: ' + method + ' ' + path }, 404);
 });
 
+const verifyDetailImageSelection = async () => {
+  const originalLimits = adminMeta.image_upload;
+  adminMeta.image_upload = { ...originalLimits, max_file_bytes: 1024, max_request_bytes: 1500 };
+  await page.goto('http://localhost:5182/admin/products/101', { waitUntil: 'domcontentloaded' });
+  const gallery = page.locator('#product-images');
+  const input = gallery.getByLabel('Chọn ảnh sản phẩm');
+  const file = (name, size = 16, mimeType = 'image/png') => ({ name, mimeType, buffer: Buffer.alloc(size) });
+  const assertPending = async (expected) => {
+    assert.deepEqual(await gallery.locator('figcaption').filter({ hasNot: page.locator('button') }).allTextContents(), expected);
+    assert.equal(await gallery.getByRole('button', { name: /^Bỏ ảnh / }).count(), expected.length);
+  };
+  await input.setInputFiles(file('shirt.png'));
+  await input.setInputFiles(file('retry-shirt.png'));
+  await assertPending(['shirt.png', 'retry-shirt.png']);
+  assert.equal(await input.inputValue(), '', 'reset file input after each selection');
+  await input.setInputFiles([]);
+  await assertPending(['shirt.png', 'retry-shirt.png']);
+  await gallery.getByRole('button', { name: 'Bỏ ảnh shirt.png', exact: true }).click();
+  await assertPending(['retry-shirt.png']);
+  await input.setInputFiles(file('shirt.png'));
+  await assertPending(['retry-shirt.png', 'shirt.png']);
+  await gallery.getByRole('button', { name: 'Đưa ảnh 2 lên trước', exact: true }).first().click();
+  await assertPending(['shirt.png', 'retry-shirt.png']);
+
+  // Validate the accumulated queue before sending any multipart request.
+  const uploads = () => requests.filter((item) => item.method === 'POST' && item.path === '/admin/products/101/images');
+  await input.setInputFiles(Array.from({ length: 9 }, (_, i) => file(`extra-${i}.png`)));
+  await gallery.getByRole('button', { name: 'Tải 11 ảnh', exact: true }).click();
+  await page.getByText('Mỗi lần tải tối đa 10 ảnh. Bỏ bớt ảnh để tiếp tục.', { exact: true }).waitFor();
+  assert.equal(uploads().length, 0);
+  for (let i = 0; i < 9; i++) await gallery.getByRole('button', { name: `Bỏ ảnh extra-${i}.png`, exact: true }).click();
+  await input.setInputFiles(file('invalid.txt', 16, 'text/plain'));
+  await gallery.getByRole('button', { name: 'Tải 3 ảnh', exact: true }).click();
+  await page.getByText('Ảnh "invalid.txt" không thuộc định dạng JPEG, PNG hoặc WebP được hỗ trợ.', { exact: true }).waitFor();
+  assert.equal(uploads().length, 0);
+  await gallery.getByRole('button', { name: 'Bỏ ảnh invalid.txt', exact: true }).click();
+  await input.setInputFiles(file('oversized.png', 1025));
+  await gallery.getByRole('button', { name: 'Tải 3 ảnh', exact: true }).click();
+  await page.getByText(/Ảnh "oversized.png" vượt giới hạn/).waitFor();
+  assert.equal(uploads().length, 0);
+  await gallery.getByRole('button', { name: 'Bỏ ảnh oversized.png', exact: true }).click();
+  await input.setInputFiles([file('large-a.png', 750), file('large-b.png', 750)]);
+  await gallery.getByRole('button', { name: 'Tải 4 ảnh', exact: true }).click();
+  await page.getByText('Tổng dung lượng ảnh vượt giới hạn một lần tải. Bỏ bớt ảnh để tiếp tục.', { exact: true }).waitFor();
+  assert.equal(uploads().length, 0);
+  await gallery.getByRole('button', { name: 'Bỏ ảnh large-a.png', exact: true }).click();
+  await gallery.getByRole('button', { name: 'Bỏ ảnh large-b.png', exact: true }).click();
+
+  // A failed upload keeps the queue for retry; in-flight edits remain disabled.
+  holdNextUpload = true;
+  failNextUpload = true;
+  const started = new Promise((resolve) => { notifyUploadStarted = resolve; });
+  await gallery.getByRole('button', { name: 'Tải 2 ảnh', exact: true }).click();
+  await started;
+  assert.equal(await input.isDisabled(), true);
+  for (const button of await gallery.getByRole('button').all()) assert.equal(await button.isDisabled(), true);
+  releaseUpload();
+  await page.getByText('storage temporarily unavailable', { exact: true }).waitFor();
+  await assertPending(['shirt.png', 'retry-shirt.png']);
+  assert.equal(await input.isEnabled(), true);
+  await gallery.getByRole('button', { name: 'Tải 2 ảnh', exact: true }).click();
+  await page.getByText('Đã tải ảnh Product.', { exact: true }).waitFor();
+  await assertPending([]);
+  assert.equal(uploads().length, 2);
+  assert.deepEqual([...uploads().at(-1).rawBody.matchAll(/filename="([^"]+)"/g)].map((match) => match[1]), ['shirt.png', 'retry-shirt.png']);
+  assert.equal(products.get(101).images.length, 4, 'upload preserves existing gallery images');
+  assert.equal(await gallery.getByRole('button', { name: /^Tải .*ảnh$/ }).isDisabled(), true);
+  await input.setInputFiles(file('shirt.png'));
+  await gallery.getByRole('button', { name: 'Bỏ ảnh shirt.png', exact: true }).click();
+  await assertPending([]);
+  await input.setInputFiles(file('shirt.png'));
+  await assertPending(['shirt.png']);
+  await gallery.getByRole('button', { name: 'Bỏ ảnh shirt.png', exact: true }).click();
+  assert.deepEqual(pageErrors, [], 'no uncaught runtime errors in image selection');
+  products = new Map([[101, clone(initialProduct)]]);
+  adminMeta.image_upload = originalLimits;
+  requests.length = 0;
+  process.stdout.write('Admin Product detail image selection: PASS\n');
+};
+
 try {
+  await verifyDetailImageSelection();
+  if (!process.argv.includes('--images-only')) {
   await page.goto('http://localhost:5182/admin/products', { waitUntil: 'domcontentloaded' });
   await page.getByRole('heading', { name: 'Sản phẩm', level: 1, exact: true }).waitFor();
   await page.getByText('TEE-101', { exact: true }).waitFor();
@@ -613,6 +702,7 @@ try {
   await page.getByRole('button', { name: 'Đóng form', exact: true }).click();
   assert.deepEqual(pageErrors, [], 'no uncaught runtime errors');
   process.stdout.write('Admin Product management browser regression: PASS\n');
+  }
 } catch (failure) {
   console.error(await page.locator('body').innerText());
   throw failure;

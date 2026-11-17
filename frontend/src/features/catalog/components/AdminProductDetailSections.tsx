@@ -54,8 +54,12 @@ export const AdminProductGallerySection: React.FC<{
 }> = ({ productName, images, imageFiles, busy, canWrite, onFilesChange, onUpload, onMove, onDelete }) => (
   <section id="product-images" className="rounded-lg border border-[#E2E5DE] bg-white p-5">
     <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-serif text-xl font-bold">Ảnh sản phẩm</h2><p className="mt-1 text-xs text-[#606863]">Ảnh đầu tiên là ảnh bìa. Dùng các nút mũi tên để đổi thứ tự ảnh.</p></div><span className="text-xs text-[#606863]">{images.length} ảnh</span></div>
-    {canWrite ? <div className="mt-4 flex flex-wrap items-center gap-3 border border-dashed border-[#D9DDD6] bg-[#F8FAF4] p-3"><input aria-label="Chọn ảnh sản phẩm" disabled={busy} type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => onFilesChange(Array.from(event.target.files ?? []))} className="min-w-0 flex-1 text-xs" /><button type="button" disabled={busy || imageFiles.length === 0} onClick={onUpload} className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white disabled:opacity-40">Tải {imageFiles.length || ''} ảnh</button></div> : <p className="mt-4 text-xs text-[#687069]">Chế độ chỉ đọc. Bạn chưa có quyền thay đổi ảnh.</p>}
-    <ImageFilePreview files={imageFiles} />
+    {canWrite ? <div className="mt-4 flex flex-wrap items-center gap-3 border border-dashed border-[#D9DDD6] bg-[#F8FAF4] p-3"><input aria-label="Chọn ảnh sản phẩm" disabled={busy} type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => {
+      const selected = Array.from(event.currentTarget.files ?? []);
+      if (selected.length > 0) onFilesChange([...imageFiles, ...selected]);
+      event.currentTarget.value = '';
+    }} className="min-w-0 flex-1 text-xs" /><button type="button" disabled={busy || imageFiles.length === 0} onClick={onUpload} className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white disabled:opacity-40">Tải {imageFiles.length || ''} ảnh</button></div> : <p className="mt-4 text-xs text-[#687069]">Chế độ chỉ đọc. Bạn chưa có quyền thay đổi ảnh.</p>}
+    <ImageFilePreview files={imageFiles} onChange={canWrite ? onFilesChange : undefined} disabled={busy} />
     {images.length === 0 ? <div className="mt-4 border border-[#E2E5DE] bg-[#F5F6F2] p-8 text-center text-sm text-[#606863]">Chưa có ảnh sản phẩm.</div> : <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
       {images.map((image, index) => { const url = resolveImageUrl(image.image_url); return <figure key={image.id} className="border border-[#E2E5DE] bg-[#F5F6F2]">
         {url ? <img src={url} alt={productName} className="aspect-[3/4] w-full object-cover" /> : <div className="aspect-[3/4]" />}
