@@ -184,6 +184,7 @@ jobs:
         run: |
           if [ "$CUSTOMER_CANCEL_FOCUSED" = "true" ]; then
             ./gradlew --no-daemon test --rerun-tasks \
+              --tests com.fido.common.ApiBaselineRouteContractTests \
               --tests com.fido.modules.order.CustomerOrderCancellationHttpTests \
               --tests com.fido.modules.order.OrderActionContractHttpTests \
               --tests com.fido.modules.order.OrderActionTransactionHttpTests \

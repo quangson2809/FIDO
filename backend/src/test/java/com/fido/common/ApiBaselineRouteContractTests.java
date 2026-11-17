@@ -42,7 +42,9 @@ class ApiBaselineRouteContractTests {
                     new Route("PATCH", "/api/v1/admin/orders/{orderId}"),
                     new Route("GET", "/api/v1/content-pages/{pageCode}"));
     private static final Set<Route> APPROVED_ROUTE_ADDITIONS =
-            Set.of(new Route("DELETE", "/api/v1/admin/products/{productId}"));
+            Set.of(
+                    new Route("DELETE", "/api/v1/admin/products/{productId}"),
+                    new Route("POST", "/api/v1/me/orders/{orderId}/cancel"));
     private static final Set<Route> APPROVED_REFINEMENT_ROUTES =
             Set.of(
                     new Route("GET", "/api/v1/admin/reports/sales-trend"),
