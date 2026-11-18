@@ -5,6 +5,7 @@ on:
     branches:
       - demo1
       - feature/p3-1-account-rbac
+      - refactor/domain-entity-behaviors
     paths:
       - "backend/src/main/resources/db/migration/V1__fido_target_schema.sql"
       - "backend/src/test/java/com/fido/persistence/DatabaseBaselineTests.java"

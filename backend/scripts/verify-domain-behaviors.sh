@@ -23,8 +23,12 @@ set -euo pipefail
   --tests com.fido.modules.inventory.InventoryPhase4TransactionTests.failedLedgerInsertRollsBackReceiptAndInventoryTogether \
   --tests com.fido.modules.inventory.InventoryPhase4TransactionTests.receiptMovementReplayUsesPersistedReceiptItemIdentityAndDoesNotMutateTwice \
   --tests com.fido.modules.cart.CartItemHttpTests \
+  --tests com.fido.modules.cart.CartAccessHttpTests \
+  --tests com.fido.modules.cart.CartCheckoutImageHttpTests \
   --tests com.fido.modules.cart.CartConcurrencyTests \
   --tests com.fido.modules.cart.CheckoutQuoteHttpTests \
+  --tests com.fido.persistence.ReusableCartMigrationTests \
+  --tests com.fido.config.devseed.DevDataSeedServiceTests \
   --tests com.fido.modules.account.RbacHttpTests \
   --tests com.fido.modules.account.RbacTransactionTests \
   --tests com.fido.modules.account.SuperadminAssignmentConcurrencyTests \

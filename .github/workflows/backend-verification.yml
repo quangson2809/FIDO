@@ -26,6 +26,7 @@ on:
       - demo1
     paths:
       - "backend/**"
+      - "ops/sql/2026-11-18-reusable-cart.sql"
       - "reference/**"
       - "docs/refactor-v2/p1/P1-exit-gate.md"
       - "docs/refactor-v2/p1/P1.9-contract-consistency-report.md"

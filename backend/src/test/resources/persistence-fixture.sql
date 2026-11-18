@@ -39,8 +39,8 @@ VALUES (1,1,1);
 INSERT INTO product_images(id,product_id,image_url,sort_order,created_at)
 VALUES (1,1,'https://example.invalid/test.png',0,CURRENT_TIMESTAMP(6));
 
-INSERT INTO carts(id,account_id,status,created_at,updated_at)
-VALUES (1,1,'OPEN',CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6));
+INSERT INTO carts(id,account_id,created_at,updated_at)
+VALUES (1,1,CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6));
 INSERT INTO cart_items(id,cart_id,product_id,quantity,updated_at)
 VALUES (1,1,1,1,CURRENT_TIMESTAMP(6));
 

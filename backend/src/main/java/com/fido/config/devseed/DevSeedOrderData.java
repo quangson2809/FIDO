@@ -176,9 +176,9 @@ public class DevSeedOrderData {
     private void seedCarts() {
         jdbc.update(
                 """
-                INSERT INTO carts(id,account_id,status,created_at,updated_at) VALUES
-                (980001,900002,'OPEN','2026-09-05 00:00:00','2026-09-05 00:00:00'),
-                (980002,900008,'OPEN','2026-09-05 00:00:00','2026-09-05 00:00:00')
+                INSERT INTO carts(id,account_id,created_at,updated_at) VALUES
+                (980001,900002,'2026-09-05 00:00:00','2026-09-05 00:00:00'),
+                (980002,900008,'2026-09-05 00:00:00','2026-09-05 00:00:00')
                 """);
         jdbc.update(
                 """

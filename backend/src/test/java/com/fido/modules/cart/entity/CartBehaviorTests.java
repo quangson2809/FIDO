@@ -21,12 +21,4 @@ class CartBehaviorTests {
         assertThrows(BusinessRuleException.class, () -> item.increaseQuantity(1));
         assertEquals(Integer.MAX_VALUE, item.getQuantity());
     }
-
-    @Test
-    void completedCartCannotBeCompletedAgain() {
-        Cart cart = new Cart();
-        cart.complete();
-        assertThrows(BusinessRuleException.class, cart::complete);
-        assertEquals("COMPLETED", cart.getStatus());
-    }
 }

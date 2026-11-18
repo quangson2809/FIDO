@@ -1,10 +1,7 @@
 package com.fido.modules.cart.entity;
 
-import com.fido.common.exception.BusinessRuleException;
-
 import jakarta.persistence.*;
 
-import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -13,7 +10,10 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
 @Entity
-@Table(name = "carts")
+@Table(
+        name = "carts",
+        uniqueConstraints =
+                @UniqueConstraint(name = "uq_carts_account", columnNames = "account_id"))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -27,10 +27,6 @@ public class Cart {
     @Column(name = "account_id", nullable = false)
     private Long accountId;
 
-    @Column(name = "status", nullable = false, length = 20)
-    @Setter(AccessLevel.NONE)
-    private String status = "OPEN";
-
     @Column(
             name = "created_at",
             nullable = false,
@@ -40,13 +36,6 @@ public class Cart {
 
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
     private LocalDateTime updatedAt;
-
-    public void complete() {
-        if (!"OPEN".equals(status)) {
-            throw BusinessRuleException.conflict("CONFLICT");
-        }
-        status = "COMPLETED";
-    }
 
     @PrePersist
     void onCreate() {

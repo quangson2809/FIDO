@@ -15,6 +15,9 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.net.URI;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -40,18 +43,21 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
         User customer = user();
         var variant = createVariant(10, 100000, null);
         add(customer, variant, 2);
+        long originalCartId = cartId(customer);
         var result = place(customer);
         assertEquals(201, result.status(), result.body());
         long firstId = remember(result);
         assertEquals("PENDING", result.data().get("data").get("order_status").asText());
         assertEquals(2, orderedQuantity(firstId));
         assertEquals(0, cartQuantity(customer));
+        assertEquals(originalCartId, cartId(customer));
         assertEquals(409, place(customer).status());
         assertEquals(10, stock(variant.productId()));
         assertEquals(0, movementCount(firstId, "ORDER"));
         assertEquals(1, count("payments", customer));
 
         add(customer, variant, 1);
+        assertEquals(originalCartId, cartId(customer));
         var second = place(customer);
         assertEquals(201, second.status(), second.body());
         long secondId = remember(second);
@@ -59,6 +65,42 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
         assertEquals(1, orderedQuantity(secondId));
         assertEquals(0, cartQuantity(customer));
         assertEquals(2, count("orders", customer));
+        assertEquals(originalCartId, cartId(customer));
+        assertEquals(
+                1,
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM carts WHERE account_id=?",
+                        Integer.class,
+                        customer.accountId()));
+    }
+
+    @Test
+    void replayOfCommittedOrderDoesNotConsumeNewItemsInTheReusedCart() throws Exception {
+        User customer = user();
+        var variant = createVariant(10, 100000, null);
+        add(customer, variant, 2);
+        long originalCartId = cartId(customer);
+        var request =
+                HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1/orders"))
+                        .header("Authorization", "Bearer " + customer.token())
+                        .header("Content-Type", "application/json")
+                        .header("Idempotency-Key", "reused-cart-replay")
+                        .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(REQUEST)))
+                        .build();
+        var first = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(201, first.statusCode(), first.body());
+        long orderId = json.readTree(first.body()).get("data").get("order_id").asLong();
+        orderIds.add(orderId);
+
+        add(customer, variant, 3);
+        var replay = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(201, replay.statusCode(), replay.body());
+        assertEquals("true", replay.headers().firstValue("Idempotency-Replayed").orElseThrow());
+        assertEquals(orderId, json.readTree(replay.body()).get("data").get("order_id").asLong());
+        assertEquals(originalCartId, cartId(customer));
+        assertEquals(3, cartQuantity(customer));
+        assertEquals(2, orderedQuantity(orderId));
+        assertEquals(1, count("orders", customer));
     }
 
     @Test
@@ -244,6 +286,12 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
         for (var item : cart.data().get("data").get("items"))
             quantity += item.get("quantity").asInt();
         return quantity;
+    }
+
+    private long cartId(User customer) throws Exception {
+        var cart = call("GET", "/api/v1/cart", customer.token(), null);
+        assertEquals(200, cart.status(), cart.body());
+        return cart.data().get("data").get("cart_id").asLong();
     }
 
     private int orderedQuantity(long orderId) {

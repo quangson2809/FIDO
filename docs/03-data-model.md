@@ -28,7 +28,7 @@ The inventory above is the complete logical target table set. Schema additions r
 
 ## 4. Cart, order and money
 
-- A Cart belongs to an authenticated account. `CART_ITEMS.product_id` identifies a Product and `quantity` must be positive.
+- Each authenticated Account has at most one reusable Cart, enforced by UNIQUE(account_id). Cart has no status. Reads do not create a missing Cart; the first add does. Successful placement deletes purchased CartItems and retains the Cart row/ID; failed placement rolls back the lines. CART_ITEMS.product_id identifies a Product and quantity must be positive.
 - `CART_ITEMS`, `ORDER_ITEMS` and `GOODS_RECEIPT_ITEMS` reference Products directly.
 - Order placement creates the Order, line snapshots, address snapshot, optional voucher snapshot, COD Payment, cart mutation, inventory effects and required audit as one atomic write set.
 - Product, SKU/name/attribute, image, address and voucher facts needed to interpret a placed Order are recorded at order time. Later source edits must not rewrite historical order facts.

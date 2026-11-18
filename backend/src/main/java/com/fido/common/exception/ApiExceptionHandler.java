@@ -50,7 +50,6 @@ public class ApiExceptionHandler {
                     "SYSTEM_ROLE_PROTECTED",
                     "SYSTEM_PERMISSION_PROTECTED",
                     "ACCOUNT_STATE_CONFLICT",
-                    "CART_SELECTION_AMBIGUOUS",
                     "CART_ITEM_NOT_FOUND",
                     "PRODUCT_NOT_AVAILABLE",
                     "PRODUCT_SKU_ALREADY_EXISTS",
@@ -211,9 +210,7 @@ public class ApiExceptionHandler {
             case "SYSTEM_PERMISSION_PROTECTED" -> "The requested system permission is protected.";
             case "ACCOUNT_STATE_CONFLICT" ->
                     "The account state transition conflicts with current state.";
-            case "CART_SELECTION_AMBIGUOUS" ->
-                    "Exactly one OPEN cart is required for this operation.";
-            case "CART_ITEM_NOT_FOUND" -> "Cart item was not found in the current OPEN cart.";
+            case "CART_ITEM_NOT_FOUND" -> "Cart item was not found in the account's cart.";
             case "PRODUCT_NOT_AVAILABLE" -> "Product is not available for sale.";
             case "PRODUCT_CATEGORY_NOT_FOUND" -> "Selected category was not found.";
             case "PRODUCT_BRAND_NOT_FOUND" -> "Selected brand was not found.";

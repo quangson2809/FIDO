@@ -195,15 +195,13 @@ CREATE UNIQUE INDEX uq_product_images_product_order ON product_images (product_i
 CREATE TABLE carts (
     id         BIGINT       NOT NULL AUTO_INCREMENT,
     account_id BIGINT       NOT NULL,
-    status     VARCHAR(20)  NOT NULL DEFAULT 'OPEN',
     created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 
     CONSTRAINT pk_carts PRIMARY KEY (id),
     CONSTRAINT fk_carts_account FOREIGN KEY (account_id) REFERENCES accounts (id),
-    CONSTRAINT ck_carts_status CHECK (status IN ('OPEN', 'CHECKOUT', 'COMPLETED', 'ABANDONED'))
+    CONSTRAINT uq_carts_account UNIQUE (account_id)
 );
-CREATE INDEX ix_carts_account_status ON carts (account_id, status);
 
 CREATE TABLE cart_items (
     id         BIGINT       NOT NULL AUTO_INCREMENT,

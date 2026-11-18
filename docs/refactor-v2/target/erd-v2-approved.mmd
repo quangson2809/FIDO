@@ -127,8 +127,7 @@ erDiagram
 
     CARTS {
         bigint id PK
-        bigint account_id FK
-        varchar status
+        bigint account_id FK, UK
         timestamp created_at
         timestamp updated_at
     }
@@ -327,8 +326,8 @@ erDiagram
     ATTRIBUTE_OPTIONS ||--o{ PRODUCT_ATTRIBUTE_VALUES : selected_option
     PRODUCTS ||--o{ PRODUCT_IMAGES : has
 
-    ACCOUNTS ||--o{ CARTS : owns
-    CARTS ||--|{ CART_ITEMS : contains
+    ACCOUNTS ||--o| CARTS : owns
+    CARTS ||--o{ CART_ITEMS : contains
     PRODUCTS ||--o{ CART_ITEMS : selected
 
     ACCOUNTS ||--o{ ORDERS : places

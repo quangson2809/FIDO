@@ -175,9 +175,7 @@ class DatabaseBaselineTests {
                     Map.entry(
                             "cart_items",
                             Set.of("cart_id", "id", "product_id", "quantity", "updated_at")),
-                    Map.entry(
-                            "carts",
-                            Set.of("account_id", "created_at", "id", "status", "updated_at")),
+                    Map.entry("carts", Set.of("account_id", "created_at", "id", "updated_at")),
                     Map.entry(
                             "categories",
                             Set.of(

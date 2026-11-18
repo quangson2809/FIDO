@@ -1,5 +1,14 @@
 # 15 — Current Technical Decisions
 
+## 2026-11-18 — One reusable Cart per Account
+
+- Owner authorizes removing carts.status and its lifecycle/check/index, adding UNIQUE(account_id), and reusing a Cart across purchases. This amendment supersedes earlier sole-OPEN/ambiguity selection rules and Cart completion behavior.
+- Missing read/clear returns empty without persistence; only the first add creates a Cart. Success deletes purchased lines and retains Cart identity; failure rolls back all Order/Payment/audit/Voucher/Cart writes. Pending Orders and Carts still do not reserve stock.
+- AccountMutationLockService remains the first lock, followed by the Cart write lock. The Account lock also serializes first creation. Cart consumption requires an existing transaction and is called through the cart module service. Entity code has no HTTP, repository or cross-module coordination.
+- Preserve Order idempotency and all frontend pending/lock controls. Replay is resolved before reading the reused Cart so an old key cannot consume new lines. No API endpoint or CartDto field is added.
+- Fresh installs use the single canonical V1. A separate [manual upgrade](operations/reusable-cart-upgrade.md) checks existing rows, keeps a sole nonempty Cart (or lowest ID when all empty), and deletes only redundant empty rows. Multiple nonempty Carts abort before mutation. No live database reset, automatic repair or arbitrary merge is authorized.
+- Focused tests cover read/clear without creation, SQL uniqueness, retained Cart ID, transaction rollback, idempotency replay, concurrent mutations and the exact upgrade SQL on isolated MySQL.
+
 ## 2026-11-18 — Entity-owned business behavior
 
 - Follow-up review closes creation-only setters for Payment amount/order identity, GoodsReceipt number/warehouse/creator and Role code. Named factories initialize these facts; JPA retains protected no-argument constructors and field access. Role status accepts only ACTIVE/INACTIVE. Payment collection/refund preconditions have one implementation reused by the entity and application service; cross-entity eligibility and transaction boundaries stay in the service.
@@ -8,7 +17,7 @@
 - Owner authorizes moving local business rules from services into the existing JPA entities. Preserve Modular Monolith, feature packages, handler registry, module contracts, schema, HTTP envelopes, permissions, transaction propagation and locking order.
 - Order owns its transition matrix and named state changes. Payment owns clean unpaid/collected predicates, COD collection and one full refund; ShippingInfo owns manual dispatch/retry/failure/delivery/cancellation facts. Cross-entity eligibility, inventory/voucher effects and audit remain in the owning application service/policy.
 - GoodsReceipt guards draft edits and confirmation/cancellation; the service retains source-line validation, committed-state replay and atomic stock posting. Voucher validates a complete configuration before applying it and owns status/time/minimum/quota eligibility. The guarded database quota update and balance/ledger commands remain unchanged.
-- CartItem owns positive quantity/overflow checks, Cart owns completion, ContentPage owns its existing status matrix, and Role protects the ACTIVE SUPERADMIN invariant. Multi-account/address/family rules remain services because a single entity lacks the required state.
+- CartItem owns positive quantity/overflow checks; the later reusable-Cart amendment removes Cart completion. ContentPage owns its existing status matrix, and Role protects the ACTIVE SUPERADMIN invariant. Multi-account/address/family rules remain services because a single entity lacks the required state.
 - Remove public setters for protected workflow facts. JPA continues field access; tests that deliberately model stored corrupt/terminal states use explicit reflection fixtures. A small common BusinessRuleException carries only rejection kind/code; ApiExceptionHandler maps it to the existing 400/409 envelope without introducing HTTP dependencies in entities.
 - The branch-specific backend workflow and `backend/scripts/verify-domain-behaviors.sh` run the same focused entity, API/security, transaction/rollback, retry and concurrency checks on isolated MySQL. No full backend/frontend suite is selected for this refactor.
 
@@ -49,7 +58,7 @@
 ## 5. Cart, checkout, Order and vouchers
 
 - Persisted Cart and Order creation require authentication; Account scope comes from the security principal; guest Cart, checkout and merge are excluded.
-- Current Cart is the sole account-owned OPEN row. No OPEN row means empty read/create-on-mutation; more than one OPEN row fails closed with CART_SELECTION_AMBIGUOUS and no mutation/merge. No updated_at selection or one-active-Cart schema constraint is inferred; P3.8 serializes Account-scoped creation/mutations.
+- Each Account owns at most one reusable Cart, enforced by uq_carts_account. There is no Cart status or timestamp-based selection. Missing reads/clear do not write; first add creates; checkout consumes lines while retaining the Cart. Account-first locks and the Order transaction remain mandatory. See the dated 2026-11-18 amendment above.
 - Quote is stateless/advisory: no CHECKOUT_QUOTES, quote_id, stock reservation or Voucher use. Order placement reloads/reprices Product eligibility, price, stock, Voucher eligibility/quota and server-owned shipping inputs.
 - POST /orders requires Idempotency-Key; the stored key is Account-namespaced and the normalized semantic request gets a canonical SHA-256 fingerprint. Same committed key/payload replays; changed payload conflicts; another Account cannot discover the result. Details are normative in P1.6.
 - P1.6 placement atomically writes Order PENDING, OrderItems and immutable address/Product/Voucher/image snapshots, COD Payment UNPAID, ShippingInfo PENDING, applicable Voucher counter, Cart consumption and audit. It does not deduct stock. P1.7 requires stock deduction at PENDING→CONFIRMED and linked one-time reversal for eligible cancellation, with the Order/Inventory/audit write set atomic.

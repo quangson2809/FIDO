@@ -3,6 +3,7 @@ package com.fido.modules.cart;
 import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.List;
 import java.util.Map;
@@ -11,6 +12,18 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 class CartConcurrencyTests extends CartHttpSupport {
+    @Test
+    void databaseRejectsASecondCartForTheSameAccount() throws Exception {
+        User owner = user();
+        db.update("INSERT INTO carts(account_id) VALUES (?)", owner.accountId());
+        assertThrows(
+                DataIntegrityViolationException.class,
+                () -> db.update("INSERT INTO carts(account_id) VALUES (?)", owner.accountId()));
+        var current = call("GET", "/api/v1/cart", owner.token(), null);
+        assertEquals(200, current.status(), current.body());
+        assertEquals(0, current.data().get("data").get("items").size());
+    }
+
     @Test
     void concurrentFirstAndSubsequentAddsKeepOneCartOneItemAndAllQuantities() throws Exception {
         User owner = user();

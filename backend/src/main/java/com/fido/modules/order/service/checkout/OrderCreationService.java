@@ -144,7 +144,7 @@ public class OrderCreationService {
         Payment payment = persistInitialPayment(order.getOrderId(), calculation.total());
         persistInitialShipping(order.getOrderId());
         vouchers.consume(calculation.voucher());
-        cart.completeForOrder(accountId);
+        cart.consumeItemsForOrder(accountId);
         audit.record(
                 AuditWriteEvent.of(
                         AuditAction.ORDER_CREATE,

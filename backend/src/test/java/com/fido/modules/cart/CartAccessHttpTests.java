@@ -48,6 +48,9 @@ class CartAccessHttpTests extends CartHttpSupport {
         assertEquals(0, initial.data().get("data").get("items").size());
 
         assertEquals(0, initial.data().get("data").get("subtotal").asInt());
+        var cleared = call("DELETE", "/api/v1/cart", owner.token(), null);
+        assertEquals(200, cleared.status(), cleared.body());
+        assertTrue(cleared.data().get("data").get("cart_id").isNull());
 
         assertEquals(
                 0,

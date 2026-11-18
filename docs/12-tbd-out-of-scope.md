@@ -12,7 +12,7 @@ Until these rules are approved, do not implement scheduled purging of audit hist
 
 ## 2. Implementation contracts still requiring acceptance evidence
 
-- P1.6 now specifies fail-closed current-Cart resolution: zero OPEN rows yields an empty read/create-on-mutation; exactly one is current; multiple OPEN rows return CART_SELECTION_AMBIGUOUS with no mutation or merge. The approved schema still has no one-active-Cart unique constraint. P3.8 runtime enforcement and concurrency tests remain pending.
+- The 2026-11-18 owner amendment replaces Cart lifecycle selection with one reusable Cart per Account, enforced by UNIQUE(account_id). Runtime retains Account/Cart locks and transactional line consumption. Existing-data upgrade preserves a sole nonempty Cart, removes only redundant empty Carts, and stops on multiple nonempty Carts; see docs/operations/reusable-cart-upgrade.md.
 
 These items are engineering acceptance gates, not open choices about the approved database model:
 
