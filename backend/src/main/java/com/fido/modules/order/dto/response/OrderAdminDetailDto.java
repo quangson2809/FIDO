@@ -13,7 +13,6 @@ public record OrderAdminDetailDto(
         Long discount,
         Long shipping_fee,
         Long total,
-        ShippingInfoDto shipping_info,
         LocalDateTime completed_at,
         LocalDateTime returned_at,
         LocalDateTime created_at,

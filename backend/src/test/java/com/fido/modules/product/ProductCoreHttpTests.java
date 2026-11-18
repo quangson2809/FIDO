@@ -26,7 +26,7 @@ class ProductCoreHttpTests extends CatalogHttpSupport {
     private long colorOption(String value) {
         if (colorAttribute == null) {
             db.update(
-                    "INSERT INTO attributes(code,name,is_required,is_variant_defining,sort_order) VALUES ('COLOR','Color',FALSE,TRUE,0)");
+                    "INSERT INTO attributes(code,name,is_required,sort_order) VALUES ('COLOR','Color',FALSE,0)");
             colorAttribute =
                     db.queryForObject("SELECT id FROM attributes WHERE code='COLOR'", Long.class);
         }

@@ -14,11 +14,9 @@ public class AttributePatchRequest {
     private String name;
 
     private Boolean required;
-    private Boolean variantDefining;
     @PositiveOrZero private Integer sortOrder;
     private boolean namePresent;
     private boolean requiredPresent;
-    private boolean variantDefiningPresent;
     private boolean sortOrderPresent;
 
     public String getName() {
@@ -39,16 +37,6 @@ public class AttributePatchRequest {
     public void setRequired(Boolean value) {
         required = value;
         requiredPresent = true;
-    }
-
-    public Boolean getVariantDefining() {
-        return variantDefining;
-    }
-
-    @JsonSetter(value = "is_variant_defining", nulls = Nulls.FAIL)
-    public void setVariantDefining(Boolean value) {
-        variantDefining = value;
-        variantDefiningPresent = true;
     }
 
     public Integer getSortOrder() {
@@ -72,17 +60,12 @@ public class AttributePatchRequest {
     }
 
     @JsonIgnore
-    public boolean isVariantDefiningPresent() {
-        return variantDefiningPresent;
-    }
-
-    @JsonIgnore
     public boolean isSortOrderPresent() {
         return sortOrderPresent;
     }
 
     @JsonIgnore
     public boolean hasChanges() {
-        return namePresent || requiredPresent || variantDefiningPresent || sortOrderPresent;
+        return namePresent || requiredPresent || sortOrderPresent;
     }
 }

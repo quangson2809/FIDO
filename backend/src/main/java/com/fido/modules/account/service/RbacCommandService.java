@@ -80,11 +80,7 @@ public class RbacCommandService {
     public RoleDetailDto createRole(Long actor, RoleCreateRequest request) {
         lockSuperadminRole();
 
-        Role role = new Role();
-        role.setCode(request.code());
-        role.setName(request.name());
-        role.setDescription(request.description());
-        role.setStatus("ACTIVE");
+        Role role = Role.create(request.code(), request.name(), request.description());
 
         roles.save(role);
         replacePermissions(role, request.permission_ids());
@@ -130,10 +126,7 @@ public class RbacCommandService {
             role.setDescription(request.getDescription());
         }
         if (request.getStatus() != null) {
-            if ("SUPERADMIN".equals(role.getCode()) && !"ACTIVE".equals(request.getStatus())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "SYSTEM_ROLE_PROTECTED");
-            }
-            role.setStatus(request.getStatus());
+            role.changeStatus(request.getStatus());
         }
 
         replacePermissions(role, request.getPermissionIds());

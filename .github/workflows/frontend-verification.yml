@@ -20,6 +20,9 @@ permissions:
   contents: read
 
 env:
+  ORDER_MODEL_FOCUSED: ${{ github.ref == 'refs/heads/refactor/domain-entity-behaviors' || github.head_ref == 'refactor/domain-entity-behaviors' }}
+  CUSTOMER_CANCEL_FOCUSED: ${{ contains(github.event.head_commit.message, '[customer-cancel-focus]') || contains(github.event.pull_request.title, '[customer-cancel-focus]') }}
+  IMAGE_FOCUSED: ${{ contains(github.event.head_commit.message, '[product-images-focus]') || contains(github.event.pull_request.title, '[product-images-focus]') }}
   REPORT_FOCUSED: ${{ contains(github.event.head_commit.message, '[admin-report-focus]') || contains(github.event.pull_request.title, '[admin-report-focus]') }}
 
 concurrency:
@@ -78,22 +81,22 @@ jobs:
         run: npm ci
 
       - name: API integration smoke
-        if: env.REPORT_FOCUSED != 'true'
+        if: env.REPORT_FOCUSED != 'true' && env.IMAGE_FOCUSED != 'true'
         working-directory: frontend
         run: npm run test:api
 
       - name: Frontend architecture smoke
-        if: env.REPORT_FOCUSED != 'true'
+        if: env.REPORT_FOCUSED != 'true' && env.IMAGE_FOCUSED != 'true'
         working-directory: frontend
         run: npm run test:architecture
 
       - name: Product color and size selection
-        if: env.REPORT_FOCUSED != 'true'
+        if: env.REPORT_FOCUSED != 'true' && env.IMAGE_FOCUSED != 'true' && env.CUSTOMER_CANCEL_FOCUSED != 'true' && env.ORDER_MODEL_FOCUSED != 'true'
         working-directory: frontend
         run: npm run test:selection
 
       - name: Frontend render smoke
-        if: env.REPORT_FOCUSED != 'true'
+        if: env.REPORT_FOCUSED != 'true' && env.IMAGE_FOCUSED != 'true' && env.ORDER_MODEL_FOCUSED != 'true'
         working-directory: frontend
         run: npm run test:render
 
@@ -109,7 +112,14 @@ jobs:
       - name: Customer browser journeys and responsive checks
         working-directory: frontend
         run: |
-          if [ "$REPORT_FOCUSED" = "true" ]; then
+          if [ "$ORDER_MODEL_FOCUSED" = "true" ]; then
+            node tests/customer-order-cancel-browser.mjs
+            node tests/checkout-flow.mjs
+          elif [ "$CUSTOMER_CANCEL_FOCUSED" = "true" ]; then
+            npm run test:order-cancel-browser
+          elif [ "$IMAGE_FOCUSED" = "true" ]; then
+            node tests/admin-product-management-browser.mjs --images-only
+          elif [ "$REPORT_FOCUSED" = "true" ]; then
             node tests/report-browser-smoke.mjs
           else
             npm run test:browser

@@ -68,10 +68,6 @@ class ProductImageAdminServiceTests {
                 List.of("https://cdn.test/third.jpg", "https://cdn.test/fourth.jpg"),
                 saved.getAllValues().stream().map(ProductImage::getImageUrl).toList());
         assertEquals(0, cover.getSortOrder());
-        assertEquals(true, cover.getIsPrimary());
-        assertEquals(
-                List.of(false, false),
-                saved.getAllValues().stream().map(ProductImage::getIsPrimary).toList());
         verify(audit).record(any());
     }
 
@@ -87,8 +83,6 @@ class ProductImageAdminServiceTests {
         verify(images).delete(cover);
         assertEquals(0, second.getSortOrder());
         assertEquals(1, third.getSortOrder());
-        assertEquals(true, second.getIsPrimary());
-        assertEquals(false, third.getIsPrimary());
         verify(images, times(3)).flush();
         verify(audit).record(any());
     }
@@ -112,9 +106,6 @@ class ProductImageAdminServiceTests {
         assertEquals(0, third.getSortOrder());
         assertEquals(1, first.getSortOrder());
         assertEquals(2, second.getSortOrder());
-        assertEquals(true, third.getIsPrimary());
-        assertEquals(false, first.getIsPrimary());
-        assertEquals(false, second.getIsPrimary());
         verify(images, times(2)).flush();
         verify(audit).record(any());
     }
@@ -156,7 +147,6 @@ class ProductImageAdminServiceTests {
         ArgumentCaptor<ProductImage> saved = ArgumentCaptor.forClass(ProductImage.class);
         verify(images).save(saved.capture());
         assertEquals(0, saved.getValue().getSortOrder());
-        assertEquals(true, saved.getValue().getIsPrimary());
     }
 
     @Test
@@ -186,7 +176,6 @@ class ProductImageAdminServiceTests {
         image.setProductId(55L);
         image.setImageUrl(url);
         image.setSortOrder(sortOrder);
-        image.setIsPrimary(sortOrder == 0);
         return image;
     }
 }

@@ -1,6 +1,7 @@
 package com.fido.modules.order;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,8 @@ class OrderLifecycleHttpTests extends OrderHttpSupport {
         var customerDetail = call("GET", "/api/v1/me/orders/" + orderId, customer.token(), null);
         assertEquals(200, customerDetail.status(), customerDetail.body());
         assertEquals("PENDING", customerDetail.data().get("data").get("order_status").asText());
+        assertFalse(customerDetail.data().get("data").has("shipping_info"));
+        assertTrue(customerDetail.data().get("data").get("completed_at").isNull());
         assertEquals(
                 "UNPAID",
                 customerDetail.data().get("data").get("payment").get("payment_status").asText());
@@ -54,6 +57,18 @@ class OrderLifecycleHttpTests extends OrderHttpSupport {
                 product.sku(),
                 customerDetail.data().get("data").get("items").get(0).get("sku").asText());
         assertEquals(210000, customerDetail.data().get("data").get("total").asInt());
+        assertEquals(
+                db.queryForObject(
+                        "SELECT recipient_name FROM order_addresses WHERE order_id=?",
+                        String.class,
+                        orderId),
+                customerDetail.data().get("data").get("recipient").get("name").asText());
+        assertEquals(
+                db.queryForObject(
+                        "SELECT recipient_phone FROM order_addresses WHERE order_id=?",
+                        String.class,
+                        orderId),
+                customerDetail.data().get("data").get("recipient").get("phone").asText());
         assertEquals(
                 404,
                 call("GET", "/api/v1/me/orders/" + orderId, otherCustomer.token(), null).status());
@@ -77,6 +92,12 @@ class OrderLifecycleHttpTests extends OrderHttpSupport {
 
         var adminDetail = call("GET", "/api/v1/admin/orders/" + orderId, root.token(), null);
         assertEquals(200, adminDetail.status(), adminDetail.body());
+        assertEquals(
+                customerDetail.data().get("data").get("recipient").get("name"),
+                adminDetail.data().get("data").get("recipient").get("name"));
+        assertEquals(
+                customerDetail.data().get("data").get("recipient").get("phone"),
+                adminDetail.data().get("data").get("recipient").get("phone"));
         assertTrue(
                 adminDetail
                         .data()
@@ -108,13 +129,7 @@ class OrderLifecycleHttpTests extends OrderHttpSupport {
                                 "POST",
                                 "/api/v1/admin/orders/" + orderId + "/actions",
                                 root.token(),
-                                Map.of(
-                                        "action",
-                                        "DISPATCH",
-                                        "carrier_name",
-                                        "FIDO",
-                                        "tracking_number",
-                                        "TRACK-001"))
+                                Map.of("action", "DISPATCH"))
                         .status());
 
         var collected =
@@ -125,6 +140,10 @@ class OrderLifecycleHttpTests extends OrderHttpSupport {
                         Map.of("action", "COMPLETE_DELIVERY_AND_COLLECT_COD"));
         assertEquals(200, collected.status(), collected.body());
         assertEquals("COMPLETED", collected.data().get("data").get("order_status").asText());
+        assertFalse(collected.data().get("data").has("shipping_info"));
+        assertEquals(
+                collected.data().get("data").get("payment").get("collected_at"),
+                collected.data().get("data").get("completed_at"));
         assertEquals(
                 "PAID", collected.data().get("data").get("payment").get("payment_status").asText());
         assertEquals(
@@ -147,6 +166,14 @@ class OrderLifecycleHttpTests extends OrderHttpSupport {
                         Map.of("action", "RETURN_AND_REFUND_FULL", "reason", "Accepted at store"));
         assertEquals(200, returned.status(), returned.body());
         assertEquals("RETURNED", returned.data().get("data").get("order_status").asText());
+        assertEquals(
+                collected.data().get("data").get("completed_at"),
+                returned.data().get("data").get("completed_at"));
+        var completedSummary =
+                call("GET", "/api/v1/me/orders?order_status=RETURNED", customer.token(), null);
+        assertEquals(
+                collected.data().get("data").get("completed_at"),
+                completedSummary.data().get("data").get(0).get("completed_at"));
         assertEquals(
                 "REFUNDED",
                 returned.data().get("data").get("payment").get("payment_status").asText());

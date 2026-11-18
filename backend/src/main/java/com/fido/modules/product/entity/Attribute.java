@@ -38,9 +38,6 @@ public class Attribute {
     @Column(name = "is_required", nullable = false)
     private boolean required = false;
 
-    @Column(name = "is_variant_defining", nullable = false)
-    private boolean variantDefining = false;
-
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder = 0;
 }

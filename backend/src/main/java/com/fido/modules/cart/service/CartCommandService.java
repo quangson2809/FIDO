@@ -43,33 +43,27 @@ public class CartCommandService {
     }
 
     public CartDto add(Long accountId, CartItemCreateRequest request) {
-        Cart cart = currentOpenForMutation(accountId);
+        Cart cart = currentForMutation(accountId);
         requireActiveProduct(request.product_id());
 
         // Giỏ ghi nhận số lượng muốn mua, chưa giữ/trừ kho; checkout sẽ kiểm tra lại tồn thực tế.
         if (cart == null) {
             cart = new Cart();
             cart.setAccountId(accountId);
-            cart.setStatus("OPEN");
             cart = carts.save(cart);
         }
 
         final Cart activeCart = cart;
         CartItem item =
                 items.findByCartIdAndProductId(activeCart.getCartId(), request.product_id())
-                        .orElseGet(
-                                () -> {
-                                    CartItem created = new CartItem();
-                                    created.setCartId(activeCart.getCartId());
-                                    created.setProductId(request.product_id());
-                                    created.setQuantity(0);
-                                    return created;
-                                });
-
-        try {
-            item.setQuantity(Math.addExact(item.getQuantity(), request.quantity()));
-        } catch (ArithmeticException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR");
+                        .orElse(null);
+        if (item == null) {
+            item = new CartItem();
+            item.setCartId(activeCart.getCartId());
+            item.setProductId(request.product_id());
+            item.changeQuantity(request.quantity());
+        } else {
+            item.increaseQuantity(request.quantity());
         }
         items.save(item);
         touch(activeCart);
@@ -78,21 +72,21 @@ public class CartCommandService {
 
     public CartDto updateQuantity(
             Long accountId, Long cartItemId, CartItemQuantityRequest request) {
-        Cart cart = currentOpenForMutation(accountId);
+        Cart cart = currentForMutation(accountId);
         if (cart == null) {
             throw cartItemNotFound();
         }
 
         CartItem item = ownedItem(cart.getCartId(), cartItemId);
         requireActiveProduct(item.getProductId());
-        item.setQuantity(request.quantity());
+        item.changeQuantity(request.quantity());
         items.save(item);
         touch(cart);
         return query.toDto(cart);
     }
 
     public CartDto deleteItem(Long accountId, Long cartItemId) {
-        Cart cart = currentOpenForMutation(accountId);
+        Cart cart = currentForMutation(accountId);
         if (cart == null) {
             throw cartItemNotFound();
         }
@@ -104,7 +98,7 @@ public class CartCommandService {
     }
 
     public CartDto clear(Long accountId) {
-        Cart cart = currentOpenForMutation(accountId);
+        Cart cart = currentForMutation(accountId);
         if (cart == null) {
             return query.emptyCart(accountId);
         }
@@ -114,30 +108,30 @@ public class CartCommandService {
         return query.toDto(cart);
     }
 
-    /** Hoàn tất giỏ trong cùng giao dịch tạo đơn để không mất giỏ khi lưu đơn thất bại. */
-    public void completeForOrder(Long accountId) {
-        Cart cart = currentOpenForMutation(accountId);
+    /** Tiêu thụ các dòng đã mua trong giao dịch tạo đơn; giữ giỏ để dùng cho lần mua tiếp. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void consumeItemsForOrder(Long accountId) {
+        Cart cart = currentForMutation(accountId);
         if (cart == null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "CART_EMPTY");
         }
         items.deleteByCartId(cart.getCartId());
-        cart.setStatus("COMPLETED");
         touch(cart);
     }
 
     /** Khóa giỏ trong giao dịch checkout để chặn sửa đồng thời; không tạo giỏ mới ở bước này. */
     @Transactional(propagation = Propagation.MANDATORY)
     public void lockForCheckout(Long accountId) {
-        currentOpenForMutation(accountId);
+        currentForMutation(accountId);
     }
 
     /**
      * accountId do controller lấy từ JWT; khóa tài khoản trước cả khi chưa tồn tại giỏ.
-     * Chỉ chấp nhận không có hoặc đúng một giỏ OPEN, không tự chọn/ghép khi DB có nhiều giỏ.
+     * UNIQUE(account_id) bảo đảm mỗi tài khoản có tối đa một giỏ dùng lại.
      */
-    private Cart currentOpenForMutation(Long accountId) {
+    private Cart currentForMutation(Long accountId) {
         accountLocks.lock(accountId);
-        return CartQueryService.selectSoleOpen(carts.findOpenForUpdateByAccountId(accountId));
+        return carts.findByAccountIdForUpdate(accountId).orElse(null);
     }
 
     private void requireActiveProduct(Long productId) {

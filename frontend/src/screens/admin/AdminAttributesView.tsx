@@ -11,13 +11,11 @@ interface AttributeCreateDraft {
   code: string;
   name: string;
   isRequired: boolean;
-  isVariantDefining: boolean;
 }
 
 interface AttributeEditDraft {
   name: string;
   isRequired: boolean;
-  isVariantDefining: boolean;
   sortOrder: string;
 }
 
@@ -43,13 +41,11 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
     code: '',
     name: '',
     isRequired: false,
-    isVariantDefining: false,
   });
   const [editingAttributeId, setEditingAttributeId] = useState<number | null>(null);
   const [attributeEditDraft, setAttributeEditDraft] = useState<AttributeEditDraft>({
     name: '',
     isRequired: false,
-    isVariantDefining: false,
     sortOrder: '',
   });
   const [optionDrafts, setOptionDrafts] = useState<Record<number, OptionDraft>>({});
@@ -85,7 +81,6 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
           code,
           name,
           is_required: createDraft.isRequired,
-          is_variant_defining: createDraft.isVariantDefining,
           sort_order: sortOrder,
         }),
       'Không thể tạo thuộc tính.',
@@ -97,7 +92,6 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
         code: '',
         name: '',
         isRequired: false,
-        isVariantDefining: false,
       });
     }
   };
@@ -107,7 +101,6 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
     setAttributeEditDraft({
       name: attribute.name,
       isRequired: attribute.is_required,
-      isVariantDefining: attribute.is_variant_defining,
       sortOrder: String(attribute.sort_order),
     });
   };
@@ -134,7 +127,6 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
         adminCatalogMetaService.updateAttribute(attributeId, {
           name,
           is_required: attributeEditDraft.isRequired,
-          is_variant_defining: attributeEditDraft.isVariantDefining,
           sort_order: sortOrder,
         }),
       'Không thể cập nhật thuộc tính.',
@@ -289,16 +281,6 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
               />
               Bắt buộc
             </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                aria-label="Phân biệt khi tạo"
-                checked={createDraft.isVariantDefining}
-                disabled={busy || loading || !meta}
-                onChange={(event) => setCreateDraft((current) => ({ ...current, isVariantDefining: event.target.checked }))}
-              />
-              Đánh dấu thuộc tính phân biệt
-            </label>
           </div>
           <div className="flex items-end gap-2">
             <button type="submit" disabled={busy || loading || !meta} className="admin-primary">
@@ -368,9 +350,6 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
                   <span className="border border-[#D9DDD6] px-2 py-1">
                     {attribute.is_required ? 'Bắt buộc' : 'Không bắt buộc'}
                   </span>
-                  <span className="border border-[#D9DDD6] px-2 py-1">
-                    {attribute.is_variant_defining ? 'Có cờ phân biệt' : 'Không có cờ phân biệt'}
-                  </span>
                   {canWrite && !editingAttribute && (
                     <button
                       type="button"
@@ -433,16 +412,6 @@ export const AdminAttributesView: React.FC<Props> = ({ showToast, canWrite }) =>
                       onChange={(event) => setAttributeEditDraft((current) => ({ ...current, isRequired: event.target.checked }))}
                     />
                     Bắt buộc
-                  </label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      aria-label={`Phân biệt ${attribute.code}`}
-                      checked={attributeEditDraft.isVariantDefining}
-                      disabled={busy}
-                      onChange={(event) => setAttributeEditDraft((current) => ({ ...current, isVariantDefining: event.target.checked }))}
-                    />
-                    Đánh dấu thuộc tính phân biệt
                   </label>
                   <div className="flex flex-wrap gap-2 md:col-span-2">
                     <button type="submit" disabled={busy} className="admin-primary">

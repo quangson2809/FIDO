@@ -28,7 +28,6 @@ class ReportApiTest extends OperationsHttpSupport {
             db.update("DELETE FROM order_items WHERE order_id=?", id);
             db.update("DELETE FROM order_addresses WHERE order_id=?", id);
             db.update("DELETE FROM payments WHERE order_id=?", id);
-            db.update("DELETE FROM shipping_infos WHERE order_id=?", id);
             db.update("DELETE FROM orders WHERE id=?", id);
         }
         if (productId != null) db.update("DELETE FROM products WHERE id=?", productId);
@@ -76,10 +75,9 @@ class ReportApiTest extends OperationsHttpSupport {
         db.update(
                 """
                 INSERT INTO orders(
-                    account_id,order_number,idempotency_key,request_fingerprint,status,
-                    subtotal,discount_amount,shipping_fee,total_amount,currency,
-                    placed_at,created_at,updated_at)
-                VALUES (?,?,?,?,?,?,?,?,?,'VND',?,?,?)
+                    account_id,order_number,idempotency_key,request_fingerprint,status,subtotal,discount_amount,
+                    shipping_fee,total_amount,created_at,updated_at
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?)
                 """,
                 reportAccountId,
                 orderNumber,
@@ -90,7 +88,6 @@ class ReportApiTest extends OperationsHttpSupport {
                 discount,
                 shipping,
                 total,
-                created,
                 created,
                 created);
         long id =
@@ -118,38 +115,23 @@ class ReportApiTest extends OperationsHttpSupport {
                 """,
                 id);
 
-        String deliveredAt = delivered;
-        String shippingStatus =
-                deliveredAt != null
-                        ? "DELIVERED"
-                        : "SHIPPING".equals(status) ? "SHIPPED" : "PENDING";
-        db.update(
-                """
-                INSERT INTO shipping_infos(
-                    order_id,recipient_name,recipient_phone,carrier_name,tracking_number,
-                    shipping_status,shipped_at,delivered_at,updated_at)
-                VALUES (?,'Report recipient','0900000000',NULL,NULL,?,?,?,CURRENT_TIMESTAMP(6))
-                """,
-                id,
-                shippingStatus,
-                deliveredAt,
-                deliveredAt);
+        String completedAt = delivered;
 
         String paymentStatus = "RETURNED".equals(status) ? "REFUNDED" : paid ? "PAID" : "UNPAID";
         String collectedAt =
                 paid || "RETURNED".equals(status)
-                        ? (deliveredAt != null ? deliveredAt : created)
+                        ? (completedAt != null ? completedAt : created)
                         : null;
         Long collectedBy = paid || "RETURNED".equals(status) ? reportActorId : null;
         Long refundAmount = "RETURNED".equals(status) ? total : 0L;
         Long refundedBy = "RETURNED".equals(status) ? reportActorId : null;
-        String refundedAt = "RETURNED".equals(status) ? deliveredAt : null;
+        String refundedAt = "RETURNED".equals(status) ? completedAt : null;
         db.update(
                 """
                 INSERT INTO payments(
-                    order_id,method,payment_status,amount,currency,collected_by_account_id,collected_at,
-                    refund_amount,refunded_by_account_id,refunded_at,refund_reason,created_at,updated_at)
-                VALUES (?,'COD',?,?,'VND',?,?,?,?,?, ?,CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6))
+                    order_id,payment_status,amount,collected_by_account_id,collected_at,refund_amount,
+                    refunded_by_account_id,refunded_at,refund_reason,created_at,updated_at
+                ) VALUES (?,?,?,?,?,?,?,?, ?,CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6))
                 """,
                 id,
                 paymentStatus,

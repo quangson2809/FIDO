@@ -2,14 +2,13 @@ package com.fido.modules.order.service.lifecycle;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.util.ReflectionTestUtils.setField;
 
 import com.fido.modules.inventory.service.InventoryMovementQueryService;
 import com.fido.modules.inventory.service.InventoryMovementQueryService.OrderStockState;
 import com.fido.modules.order.dto.request.OrderActionRequest;
 import com.fido.modules.order.entity.Order;
 import com.fido.modules.order.entity.Payment;
-import com.fido.modules.order.entity.ShippingInfo;
-import com.fido.modules.order.repository.ShippingInfoRepository;
 
 import jakarta.validation.Validation;
 
@@ -22,7 +21,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 
 class OrderActionMatrixTests {
     private static final List<String> ACTIONS =
@@ -36,40 +34,27 @@ class OrderActionMatrixTests {
 
     @ParameterizedTest
     @CsvSource({
-        "PENDING,PENDING,false,false,CONFIRM;CANCEL",
-        "CONFIRMED,PENDING,true,false,START_PREPARING;CANCEL",
-        "PREPARING,PENDING,true,false,DISPATCH;CANCEL",
-        "SHIPPING,SHIPPED,true,false,MARK_DELIVERY_FAILED",
-        "DELIVERY_FAILED,FAILED,true,false,RETRY_DELIVERY;CANCEL",
-        "CANCELLED,CANCELLED,true,true,-",
-        "COMPLETED,DELIVERED,true,false,-",
-        "RETURNED,DELIVERED,true,false,-",
-        "CONFIRMED,PENDING,false,false,-",
-        "PREPARING,PENDING,true,true,-"
+        "PENDING,false,false,CONFIRM;CANCEL",
+        "CONFIRMED,true,false,START_PREPARING;CANCEL",
+        "PREPARING,true,false,DISPATCH;CANCEL",
+        "SHIPPING,true,false,MARK_DELIVERY_FAILED",
+        "DELIVERY_FAILED,true,false,RETRY_DELIVERY;CANCEL",
+        "CANCELLED,true,true,-",
+        "COMPLETED,true,false,-",
+        "RETURNED,true,false,-",
+        "CONFIRMED,false,false,-",
+        "PREPARING,true,true,-"
     })
     void visibilityExecutionAndAuthorizationAgree(
-            String status,
-            String shippingStatus,
-            boolean deducted,
-            boolean restored,
-            String expected) {
+            String status, boolean deducted, boolean restored, String expected) {
         var movements = mock(InventoryMovementQueryService.class);
-        var shippingRepository = mock(ShippingInfoRepository.class);
-        var policy = new OrderActionPolicy(movements, shippingRepository);
+        var policy = new OrderActionPolicy(movements);
         var order = new Order();
         order.setOrderId(1L);
-        order.setOrderStatus(status);
+        setField(order, "orderStatus", status);
         order.setTotalAmount(100L);
-        order.setCurrency("VND");
-        var payment = new Payment();
-        payment.setMethod("COD");
-        payment.setAmount(100L);
-        payment.setCurrency("VND");
-        payment.setPaymentStatus("UNPAID");
-        payment.setRefundAmount(0L);
-        var shipping = new ShippingInfo();
-        shipping.setShippingStatus(shippingStatus);
-        when(shippingRepository.findById(1L)).thenReturn(Optional.of(shipping));
+        var payment = Payment.unpaid(1L, 100L);
+        setField(payment, "paymentStatus", "UNPAID");
         when(movements.orderStockState(1L))
                 .thenReturn(new OrderStockState(deducted, restored, false));
         List<String> allowed =
@@ -87,16 +72,13 @@ class OrderActionMatrixTests {
             assertTrue(authorization.canExecute(editor, action));
             assertFalse(authorization.canExecute(reader, action));
             if (allowed.contains(action))
-                assertDoesNotThrow(
-                        () -> policy.requireExecutable(order, payment, shipping, action));
+                assertDoesNotThrow(() -> policy.requireExecutable(order, payment, action));
             else
                 assertEquals(
                         409,
                         assertThrows(
                                         ResponseStatusException.class,
-                                        () ->
-                                                policy.requireExecutable(
-                                                        order, payment, shipping, action))
+                                        () -> policy.requireExecutable(order, payment, action))
                                 .getStatusCode()
                                 .value());
         }
@@ -116,7 +98,7 @@ class OrderActionMatrixTests {
         try (var factory = Validation.buildDefaultValidatorFactory()) {
             assertTrue(
                     factory.getValidator()
-                            .validate(new OrderActionRequest(action, null, null, null))
+                            .validate(new OrderActionRequest(action, null))
                             .isEmpty());
         }
     }
@@ -136,7 +118,7 @@ class OrderActionMatrixTests {
         try (var factory = Validation.buildDefaultValidatorFactory()) {
             assertFalse(
                     factory.getValidator()
-                            .validate(new OrderActionRequest(action, null, null, null))
+                            .validate(new OrderActionRequest(action, null))
                             .isEmpty());
         }
         var auth = new OrderAuthorization();

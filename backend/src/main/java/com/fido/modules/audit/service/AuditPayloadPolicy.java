@@ -44,7 +44,6 @@ public class AuditPayloadPolicy {
             Set.of(
                     "status",
                     "payment_status",
-                    "shipping_status",
                     "reason_code",
                     "item_count",
                     "total_amount",
@@ -59,7 +58,6 @@ public class AuditPayloadPolicy {
                     "discount_type",
                     "reason_code",
                     "payment_status",
-                    "shipping_status",
                     "slug",
                     "action",
                     "entity_type",

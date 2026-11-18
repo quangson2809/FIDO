@@ -18,6 +18,7 @@ import {
   type ProductAttributeDraft,
 } from '../../features/catalog/model/productAttributeForm';
 import { buildMovedImageOrder, sortProductImages } from '../../features/catalog/model/productImageOrder';
+import { validateProductImageFiles } from '../../features/catalog/model/productCreateForm';
 import { catalogService } from '../../features/catalog/api/service';
 import type {
   AdminCatalogMetaDto,
@@ -310,6 +311,11 @@ export const AdminProductDetailView: React.FC<Props> = ({
 
   const uploadImages = async () => {
     if (!canWrite || !product || busy || editing || imageFiles.length === 0) return;
+    const fileError = validateProductImageFiles(imageFiles, adminMeta?.image_upload);
+    if (fileError) {
+      setError(fileError);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {

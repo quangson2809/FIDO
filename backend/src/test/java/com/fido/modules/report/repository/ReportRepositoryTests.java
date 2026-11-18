@@ -31,11 +31,9 @@ class ReportRepositoryTests {
         jdbc.update(
                 """
                 INSERT INTO orders(
-                    account_id,order_number,idempotency_key,request_fingerprint,status,
-                    subtotal,discount_amount,shipping_fee,total_amount,currency,
-                    placed_at,created_at,updated_at)
-                VALUES (1,?,?,?, ?,100,0,0,100,'VND',
-                    '2020-01-02 00:00:00','2020-01-02 00:00:00','2020-01-02 00:00:00')
+                    account_id,order_number,idempotency_key,request_fingerprint,status,subtotal,discount_amount,
+                    shipping_fee,total_amount,created_at,updated_at
+                ) VALUES (1,?,?,?, ?,100,0,0,100,'2020-01-02 00:00:00','2020-01-02 00:00:00')
                 """,
                 "RPT-" + suffix.substring(0, 24),
                 "report-idem-" + suffix,
@@ -46,17 +44,23 @@ class ReportRepositoryTests {
                         "SELECT id FROM orders WHERE order_number=?",
                         Long.class,
                         "RPT-" + suffix.substring(0, 24));
-        String shippingStatus = delivered != null ? "DELIVERED" : "SHIPPED";
+        boolean returned = "RETURNED".equals(status);
+        boolean collected = delivered != null;
         jdbc.update(
                 """
-                INSERT INTO shipping_infos(
-                    order_id,recipient_name,recipient_phone,shipping_status,shipped_at,delivered_at,updated_at)
-                VALUES (?,'Report recipient','0900000000',?,?,?,CURRENT_TIMESTAMP(6))
+                INSERT INTO payments(order_id,payment_status,amount,collected_by_account_id,collected_at,
+                    refund_amount,refunded_by_account_id,refunded_at,refund_reason)
+                VALUES (?,?,?,?,?,?,?,?,?)
                 """,
                 orderId,
-                shippingStatus,
+                returned ? "REFUNDED" : collected ? "PAID" : "UNPAID",
+                100L,
+                collected ? 1L : null,
                 delivered,
-                delivered);
+                returned ? 100L : 0L,
+                returned ? 1L : null,
+                returned ? delivered : null,
+                returned ? "Accepted return" : null);
         return orderId;
     }
 
@@ -99,8 +103,8 @@ class ReportRepositoryTests {
                         999999);
         jdbc.update(
                 """
-                INSERT INTO product_images(product_id,image_url,is_primary,sort_order)
-                VALUES (?, 'https://example.invalid/second.png', TRUE, 0)
+                INSERT INTO product_images(product_id,image_url,sort_order)
+                VALUES (?, 'https://example.invalid/second.png', 0)
                 """,
                 child);
 

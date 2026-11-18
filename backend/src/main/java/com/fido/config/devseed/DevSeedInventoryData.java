@@ -4,6 +4,8 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 /** Tạo kho, số dư và ledger demo theo Product ID; sổ kho chỉ thêm mới. */
 @Component
 @Profile({"dev", "test"})
@@ -39,6 +41,12 @@ public class DevSeedInventoryData {
                 (1021001,960016,100,1,'2026-09-01 01:00:00'),
                 (1021001,960017,100,1,'2026-09-01 01:00:00')
                 """);
+
+        for (Long productId : additionalProductIds()) {
+            jdbc.update(
+                    "INSERT INTO inventories(warehouse_id,product_id,quantity_on_hand,version,updated_at) VALUES (1021001,?,100,1,'2026-09-01 01:00:00')",
+                    productId);
+        }
     }
 
     public void seedReceivingAndLedger() {
@@ -46,6 +54,23 @@ public class DevSeedInventoryData {
         seedGoodsReceipts();
         seedGoodsReceiptItems();
         seedInventoryTransactions();
+        for (Long productId : additionalProductIds()) {
+            jdbc.update(
+                    """
+                INSERT INTO inventory_transactions(id,warehouse_id,product_id,transaction_type,
+                    quantity_delta,idempotency_key,reason_code,created_by,created_at)
+                VALUES (?,1021001,?,'OPENING',100,?,'OPENING',900001,'2026-09-01 01:00:00')
+                """,
+                    1040100L + productId - 960000L,
+                    productId,
+                    "opening:1021001:" + productId);
+        }
+    }
+
+    private List<Long> additionalProductIds() {
+        return jdbc.queryForList(
+                "SELECT id FROM products WHERE id BETWEEN 960018 AND 960199 ORDER BY id",
+                Long.class);
     }
 
     private void seedSuppliers() {

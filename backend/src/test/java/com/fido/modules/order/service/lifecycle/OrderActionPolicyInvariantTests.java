@@ -4,53 +4,35 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.util.ReflectionTestUtils.setField;
 
 import com.fido.modules.inventory.service.InventoryMovementQueryService;
 import com.fido.modules.order.entity.Order;
 import com.fido.modules.order.entity.Payment;
-import com.fido.modules.order.entity.ShippingInfo;
-import com.fido.modules.order.repository.ShippingInfoRepository;
-import com.fido.modules.order.service.OrderPolicy;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Optional;
 
 /** Kiểm tra điều kiện COD dùng chung; OrderActionMatrixTests kiểm tra đủ sáu hành động. */
 class OrderActionPolicyInvariantTests {
     private final InventoryMovementQueryService movements =
             mock(InventoryMovementQueryService.class);
-    private final ShippingInfoRepository shippingInfos = mock(ShippingInfoRepository.class);
-    private final OrderActionPolicy policy = new OrderActionPolicy(movements, shippingInfos);
+    private final OrderActionPolicy policy = new OrderActionPolicy(movements);
 
     private Order order;
     private Payment payment;
-    private ShippingInfo shipping;
 
     @BeforeEach
     void setUp() {
         order = new Order();
         order.setOrderId(13L);
-        order.setOrderStatus(OrderPolicy.PENDING);
         order.setTotalAmount(250000L);
-        order.setCurrency("VND");
 
-        payment = new Payment();
-        payment.setOrderId(13L);
-        payment.setMethod("COD");
-        payment.setPaymentStatus(OrderPolicy.UNPAID);
-        payment.setAmount(250000L);
-        payment.setCurrency("VND");
-        payment.setRefundAmount(0L);
+        payment = Payment.unpaid(13L, 250000L);
 
-        shipping = new ShippingInfo();
-        shipping.setOrderId(13L);
-        shipping.setShippingStatus("PENDING");
-
-        when(shippingInfos.findById(13L)).thenReturn(Optional.of(shipping));
         when(movements.orderStockState(13L))
                 .thenReturn(new InventoryMovementQueryService.OrderStockState(false, false, false));
     }
@@ -62,28 +44,28 @@ class OrderActionPolicyInvariantTests {
 
     @Test
     void paymentAlreadyCollectedDeniesConfirmAndCancel() {
-        payment.setCollectedByAccountId(4L);
+        setField(payment, "collectedByAccountId", 4L);
         assertDenied("CONFIRM");
         assertDenied("CANCEL");
     }
 
     @Test
     void mismatchBetweenPaymentAndOrderAmountDeniesActions() {
-        payment.setAmount(249999L);
+        setField(payment, "amount", 249999L);
         assertDenied("CONFIRM");
         assertDenied("CANCEL");
     }
 
     @Test
     void refundAmountDeniesActionsEvenWhenStatusStillUnpaid() {
-        payment.setRefundAmount(1L);
+        setField(payment, "refundAmount", 1L);
         assertDenied("CONFIRM");
         assertDenied("CANCEL");
     }
 
     @Test
     void cancellationAfterStockRestorationIsNotAllowed() {
-        order.setOrderStatus(OrderPolicy.CONFIRMED);
+        order.confirm();
         when(movements.orderStockState(13L))
                 .thenReturn(new InventoryMovementQueryService.OrderStockState(true, true, false));
         assertDenied("CANCEL");
@@ -91,13 +73,12 @@ class OrderActionPolicyInvariantTests {
 
     @Test
     void cancelledOrderCannotBeCancelledAgain() {
-        order.setOrderStatus(OrderPolicy.CANCELLED);
-        shipping.setShippingStatus("CANCELLED");
+        order.cancel();
 
         ResponseStatusException error =
                 assertThrows(
                         ResponseStatusException.class,
-                        () -> policy.requireExecutable(order, payment, shipping, "CANCEL"));
+                        () -> policy.requireExecutable(order, payment, "CANCEL"));
         assertEquals(409, error.getStatusCode().value());
         assertEquals("ORDER_TRANSITION_ALREADY_APPLIED", error.getReason());
     }
@@ -107,7 +88,7 @@ class OrderActionPolicyInvariantTests {
         ResponseStatusException error =
                 assertThrows(
                         ResponseStatusException.class,
-                        () -> policy.requireExecutable(order, payment, shipping, action));
+                        () -> policy.requireExecutable(order, payment, action));
         assertEquals(409, error.getStatusCode().value());
     }
 }

@@ -502,6 +502,12 @@ a:hover > .material-symbols-outlined {
 .storefront-dialog::backdrop {
   background: rgb(7 26 18 / 65%);
 }
+.order-cancel-dialog {
+  margin: auto;
+  width: min(100% - 24px, 448px);
+  max-height: 90dvh;
+  overflow-y: auto;
+}
 .filter-dialog {
   margin: auto;
   width: min(100% - 24px, 440px);

@@ -63,7 +63,6 @@ public class AttributeCatalogService {
         attribute.setCode(code);
         attribute.setName(name);
         attribute.setRequired(Boolean.TRUE.equals(request.is_required()));
-        attribute.setVariantDefining(Boolean.TRUE.equals(request.is_variant_defining()));
         attribute.setSortOrder(request.sort_order() == null ? 0 : request.sort_order());
 
         attributes.save(attribute);
@@ -95,9 +94,6 @@ public class AttributeCatalogService {
                 throw conflict("Required Attribute is missing from an ACTIVE Product");
             }
             attribute.setRequired(required);
-        }
-        if (request.isVariantDefiningPresent()) {
-            attribute.setVariantDefining(Boolean.TRUE.equals(request.getVariantDefining()));
         }
         if (request.isSortOrderPresent()) attribute.setSortOrder(request.getSortOrder());
 

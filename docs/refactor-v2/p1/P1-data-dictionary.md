@@ -18,7 +18,7 @@ Use a real CSV parser. The CSV records logical meaning, physical SQL proposal/nu
 - Target logical table count is 31. The physical DDL has a generated active-phone key that is not a separate logical table or owner-facing domain field.
 - Money amounts use whole integer VND. DECIMAL is permitted only where the target dictionary explicitly defines a descriptive numeric attribute, not as the application money type.
 - `product_id` is the item identity for Cart, OrderItems, GoodsReceiptItems, inventory balances and stock ledger.
-- Typed descriptive attributes never auto-generate Products; `is_variant_defining` is informational only.
+- Typed descriptive attributes never auto-generate Products; selection uses exact COLOR and SIZE-prefixed codes.
 - Approved DB-03 and DB-05 behavior is no longer an owner-decision blocker. Runtime concurrency/idempotency/rollback tests are still required.
 - Owner-approved status/defaults in the canonical contracts supersede older proposal wording and historical audit snapshots.
 

@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.dao.CannotAcquireLockException;
@@ -17,6 +19,38 @@ import java.util.Map;
 
 @ExtendWith(OutputCaptureExtension.class)
 class ApiExceptionHandlerTests {
+    @ParameterizedTest
+    @CsvSource({
+        "INVALID_INPUT, VOUCHER_CONFIGURATION_INVALID, 400",
+        "CONFLICT, SYSTEM_ROLE_PROTECTED, 409",
+        "CONFLICT, VOUCHER_NOT_ELIGIBLE, 409"
+    })
+    void businessRejectionsKeepTheExistingHttpEnvelope(
+            BusinessRuleException.Kind kind, String code, int status) throws Exception {
+        var request = new MockHttpServletRequest("PATCH", "/api/v1/admin/vouchers/5");
+        var before = new MockHttpServletResponse();
+        var after = new MockHttpServletResponse();
+        var handler = new ApiExceptionHandler();
+        handler.handle(
+                new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.valueOf(status), code),
+                request,
+                before);
+        handler.handle(
+                kind == BusinessRuleException.Kind.INVALID_INPUT
+                        ? BusinessRuleException.invalid(code)
+                        : BusinessRuleException.conflict(code),
+                request,
+                after);
+        assertEquals(before.getStatus(), after.getStatus());
+        var json = new ObjectMapper();
+        var beforeBody = json.readTree(before.getContentAsString());
+        var afterBody = json.readTree(after.getContentAsString());
+        for (String field : new String[] {"status", "error", "code", "message", "path"}) {
+            assertEquals(beforeBody.get(field), afterBody.get(field));
+        }
+    }
+
     @Test
     void lockConflictHasSafeMessageContextAndOriginalStack(CapturedOutput output) throws Exception {
         var request = new MockHttpServletRequest("POST", "/api/v1/admin/orders/42/actions");

@@ -19,8 +19,8 @@ const detail = {
   ...product,
   category: categories[3],
   images: [
-    { id: 1, image_url: '/images/about/wardrobe.svg', is_primary: true, sort_order: 0 },
-    { id: 2, image_url: '/images/about/details.svg', is_primary: false, sort_order: 1 },
+    { id: 1, image_url: '/images/about/wardrobe.svg', sort_order: 0 },
+    { id: 2, image_url: '/images/about/details.svg', sort_order: 1 },
   ],
 };
 detail.family = {

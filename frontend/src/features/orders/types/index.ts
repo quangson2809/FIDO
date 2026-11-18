@@ -38,6 +38,7 @@ export interface OrderItemDto {
 }
 
 export interface RecipientDto {
+  name: string;
   phone: string;
   email: string | null;
   address: string;
@@ -57,16 +58,6 @@ export interface PaymentAdminDto extends PaymentPublicDto {
   refunded_at: string | null;
 }
 
-export interface ShippingInfoDto {
-  shipping_status: string;
-  recipient_name: string;
-  recipient_phone: string;
-  carrier_name: string | null;
-  tracking_number: string | null;
-  shipped_at: string | null;
-  delivered_at: string | null;
-}
-
 export interface OrderCustomerDetailDto {
   order_id: number;
   order_code: string;
@@ -78,11 +69,11 @@ export interface OrderCustomerDetailDto {
   shipping_fee: number;
   total: number;
   payment: PaymentPublicDto;
-  shipping_info: ShippingInfoDto | null;
   completed_at: string | null;
   returned_at: string | null;
   created_at: string;
   updated_at: string;
+  allowed_actions: 'CANCEL'[];
 }
 
 export interface OrderListQuery {
@@ -165,7 +156,6 @@ export interface AdminOrderDetailDto {
   discount: number;
   shipping_fee: number;
   total: number;
-  shipping_info: ShippingInfoDto | null;
   completed_at: string | null;
   returned_at: string | null;
   created_at: string;
@@ -199,6 +189,7 @@ export interface AfterSalesReturnInput {
 export interface OrderService {
   getOrders(query?: OrderListQuery): Promise<OrderPage>;
   getOrder(orderId: number | string): Promise<OrderCustomerDetailDto>;
+  cancelOrder(orderId: number | string): Promise<OrderCustomerDetailDto>;
 }
 
 export interface CheckoutService {

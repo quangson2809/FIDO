@@ -64,7 +64,7 @@ public class CustomerQueryService {
 
     public CustomerDetailDto detail(Long id) {
         var account =
-                accounts.findById(id)
+                accounts.findCustomerById(id)
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         var addressDtos =
                 addresses.findByAccountIdOrderByIdAsc(id).stream()

@@ -80,8 +80,7 @@ class OrderImageSnapshotHttpTests extends OrderHttpSupport {
         CatalogFixture fixture = createVariant(5, 100000, 90000);
         String code = "ORDER_MATERIAL_" + UUID.randomUUID().toString().replace("-", "");
         db.update(
-                "INSERT INTO attributes(code,name,is_required,is_variant_defining,sort_order) "
-                        + "VALUES (?,'Order material',FALSE,FALSE,0)",
+                "INSERT INTO attributes(code,name,is_required,sort_order) VALUES (?,'Order material',FALSE,0)",
                 code);
         long attributeId =
                 db.queryForObject("SELECT id FROM attributes WHERE code=?", Long.class, code);
@@ -134,11 +133,10 @@ class OrderImageSnapshotHttpTests extends OrderHttpSupport {
     private long insertImage(long productId, String imageUrl, int sortOrder) {
         db.update(
                 """
-                INSERT INTO product_images(product_id,image_url,is_primary,sort_order) VALUES (?,?,?,?)
+                INSERT INTO product_images(product_id,image_url,sort_order) VALUES (?,?,?)
                 """,
                 productId,
                 imageUrl,
-                sortOrder == 0,
                 sortOrder);
 
         return db.queryForObject(
@@ -154,7 +152,7 @@ class OrderImageSnapshotHttpTests extends OrderHttpSupport {
 
     private Long currentPrimaryId(long productId) {
         return db.queryForObject(
-                "SELECT id FROM product_images WHERE product_id=? AND is_primary=TRUE",
+                "SELECT id FROM product_images WHERE product_id=? AND sort_order=0",
                 Long.class,
                 productId);
     }

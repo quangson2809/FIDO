@@ -6,12 +6,11 @@ import com.fido.modules.audit.service.AuditWriteEvent;
 import com.fido.modules.audit.service.AuditWriteService;
 import com.fido.modules.order.dto.request.OrderActionRequest;
 import com.fido.modules.order.dto.response.OrderAdminDetailDto;
+import com.fido.modules.order.dto.response.OrderCustomerDetailDto;
 import com.fido.modules.order.entity.Order;
 import com.fido.modules.order.entity.Payment;
-import com.fido.modules.order.entity.ShippingInfo;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
-import com.fido.modules.order.repository.ShippingInfoRepository;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,7 +31,6 @@ public class OrderActionService {
     private final OrderActionPolicy policy;
     private final OrderRepository orders;
     private final PaymentRepository payments;
-    private final ShippingInfoRepository shippingInfos;
     private final OrderQueryService query;
     private final AuditWriteService audit;
     private final Map<OrderAction, OrderActionHandler> handlers;
@@ -41,14 +39,12 @@ public class OrderActionService {
             OrderActionPolicy policy,
             OrderRepository orders,
             PaymentRepository payments,
-            ShippingInfoRepository shippingInfos,
             OrderQueryService query,
             AuditWriteService audit,
             List<OrderActionHandler> handlers) {
         this.policy = policy;
         this.orders = orders;
         this.payments = payments;
-        this.shippingInfos = shippingInfos;
         this.query = query;
         this.audit = audit;
         // Spring cấp các handler; mỗi action phải ánh xạ đúng một handler để lỗi thiếu/trùng bị
@@ -78,46 +74,56 @@ public class OrderActionService {
                                 () ->
                                         new ResponseStatusException(
                                                 HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND"));
-        Payment payment =
-                payments.findById(orderId)
-                        .orElseThrow(() -> new IllegalStateException("ORDER_PAYMENT_MISSING"));
-        ShippingInfo shipping =
-                shippingInfos
-                        .findById(orderId)
-                        .orElseThrow(
-                                () -> new IllegalStateException("ORDER_SHIPPING_INFO_MISSING"));
+        Payment payment = payment(orderId);
 
-        policy.requireExecutable(order, payment, shipping, request.action());
+        policy.requireExecutable(order, payment, request.action());
+        applyAction(actor, order, payment, request);
+        return query.adminDetailInternal(order, authentication);
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    public OrderCustomerDetailDto cancelOwnOrder(Long accountId, Long orderId) {
+        Order order =
+                orders.findCustomerOrderForUpdate(orderId, accountId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND"));
+        Payment payment = payment(orderId);
+        policy.requireCustomerCancellation(order, payment);
+        applyAction(
+                accountId, order, payment, new OrderActionRequest(OrderAction.CANCEL.name(), null));
+        return query.customerDetailInternal(order);
+    }
+
+    private Payment payment(Long orderId) {
+        return payments.findById(orderId)
+                .orElseThrow(() -> new IllegalStateException("ORDER_PAYMENT_MISSING"));
+    }
+
+    private void applyAction(Long actor, Order order, Payment payment, OrderActionRequest request) {
         OrderAction orderAction = OrderAction.require(request.action());
         // Giữ trạng thái trước xử lý vì handler sẽ sửa trực tiếp entity; audit cần cả trước và sau.
         String fromOrderStatus = order.getOrderStatus();
-        String fromShippingStatus = shipping.getShippingStatus();
-        handlers.get(orderAction).execute(actor, order, shipping, request);
+        handlers.get(orderAction).execute(actor, order, request);
         auditTransition(
                 orderAction.auditAction(),
                 order,
                 fromOrderStatus,
-                fromShippingStatus,
                 order.getOrderStatus(),
-                shipping.getShippingStatus(),
                 orderAction == OrderAction.CANCEL ? payment.getPaymentStatus() : null);
-        return query.adminDetailInternal(order, authentication);
     }
 
     private void auditTransition(
             AuditAction action,
             Order order,
             String fromOrderStatus,
-            String fromShippingStatus,
             String toOrderStatus,
-            String toShippingStatus,
             String paymentStatus) {
         Map<String, Object> before = new LinkedHashMap<>();
         before.put("status", fromOrderStatus);
-        before.put("shipping_status", fromShippingStatus);
         Map<String, Object> after = new LinkedHashMap<>();
         after.put("status", toOrderStatus);
-        after.put("shipping_status", toShippingStatus);
         if (paymentStatus != null) {
             before.put("payment_status", paymentStatus);
             after.put("payment_status", paymentStatus);

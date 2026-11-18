@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fido.common.exception.BusinessRuleException;
 import com.fido.modules.audit.service.AuditAction;
 import com.fido.modules.audit.service.AuditWriteService;
 import com.fido.modules.promotion.dto.request.VoucherCreateRequest;
@@ -16,7 +17,6 @@ import com.fido.modules.promotion.repository.VoucherRepository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -71,12 +71,9 @@ class VoucherManagementContractTests {
         Voucher voucher = new Voucher();
         voucher.setVoucherId(10L);
         voucher.setCode("SPRING");
-        voucher.setDiscountType("FIXED");
-        voucher.setDiscountValue(5_000L);
-        voucher.setMinimumOrderValue(0L);
         voucher.setUsageCount(2);
-        voucher.setUsageLimit(3);
-        voucher.setStatus("DRAFT");
+        voucher.configure(
+                new Voucher.Configuration("FIXED", 5_000L, 0L, null, null, null, 3), "DRAFT");
         when(vouchers.lockById(10L)).thenReturn(Optional.of(voucher));
         when(vouchers.save(any(Voucher.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -86,23 +83,23 @@ class VoucherManagementContractTests {
 
         VoucherPatchRequest lowerLimit = new VoucherPatchRequest();
         lowerLimit.setUsageLimit(1);
-        ResponseStatusException error =
-                assertThrows(ResponseStatusException.class, () -> service.update(10L, lowerLimit));
-        assertEquals(400, error.getStatusCode().value());
+        BusinessRuleException error =
+                assertThrows(BusinessRuleException.class, () -> service.update(10L, lowerLimit));
+        assertEquals(BusinessRuleException.Kind.INVALID_INPUT, error.kind());
     }
 
     @Test
     void percentVoucherRejectsBasisPointsAboveOneHundredPercent() {
         when(vouchers.existsByCodeIgnoreCaseAndVoucherIdNot(eq("TOOMUCH"), eq(0L)))
                 .thenReturn(false);
-        ResponseStatusException error =
+        BusinessRuleException error =
                 assertThrows(
-                        ResponseStatusException.class,
+                        BusinessRuleException.class,
                         () ->
                                 service.create(
                                         new VoucherCreateRequest(
                                                 "TOOMUCH", "PERCENT", 10_001L, 0L, null, null, null,
                                                 null)));
-        assertEquals(400, error.getStatusCode().value());
+        assertEquals(BusinessRuleException.Kind.INVALID_INPUT, error.kind());
     }
 }

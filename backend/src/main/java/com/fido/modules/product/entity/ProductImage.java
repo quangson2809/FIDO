@@ -24,9 +24,6 @@ public class ProductImage {
     @Column(name = "image_url", nullable = false, length = 1000)
     private String imageUrl;
 
-    @Column(name = "is_primary", nullable = false)
-    private Boolean isPrimary = false;
-
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder = 0;
 
@@ -45,15 +42,5 @@ public class ProductImage {
         if (sortOrder == null) {
             sortOrder = 0;
         }
-        synchronizePrimaryWithPosition();
-    }
-
-    @PreUpdate
-    void onUpdate() {
-        synchronizePrimaryWithPosition();
-    }
-
-    private void synchronizePrimaryWithPosition() {
-        isPrimary = sortOrder != null && sortOrder == 0;
     }
 }

@@ -11,10 +11,8 @@ import com.fido.modules.pricing.PricingService;
 import com.fido.modules.product.service.query.CatalogProductReadService;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -23,8 +21,6 @@ import java.util.stream.Collectors;
 @Service
 @Transactional(readOnly = true)
 public class CartQueryService {
-    private static final String OPEN = "OPEN";
-
     private final CartRepository carts;
     private final CartItemRepository items;
     private final CatalogProductReadService catalog;
@@ -48,12 +44,12 @@ public class CartQueryService {
     }
 
     public CartDto current(Long accountId) {
-        Cart cart = currentOpen(accountId);
+        Cart cart = currentCart(accountId);
         return cart == null ? emptyCart(accountId) : toDto(cart);
     }
 
     public CheckoutCartView checkoutView(Long accountId) {
-        Cart cart = currentOpen(accountId);
+        Cart cart = currentCart(accountId);
         return cart == null ? new CheckoutCartView(null, List.of(), 0L) : toCheckoutView(cart);
     }
 
@@ -72,19 +68,8 @@ public class CartQueryService {
                 cart.getUpdatedAt());
     }
 
-    private Cart currentOpen(Long accountId) {
-        return selectSoleOpen(carts.findAllByAccountIdAndStatusOrderByCartIdAsc(accountId, OPEN));
-    }
-
-    /**
-     * openCarts là mọi giỏ OPEN của cùng tài khoản do repository trả về; nhiều hơn một là lỗi dữ liệu.
-     * Không chọn theo thời gian vì có thể sửa/checkout nhầm giỏ của người dùng.
-     */
-    static Cart selectSoleOpen(List<Cart> openCarts) {
-        if (openCarts.size() > 1) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "CART_SELECTION_AMBIGUOUS");
-        }
-        return openCarts.isEmpty() ? null : openCarts.get(0);
+    private Cart currentCart(Long accountId) {
+        return carts.findByAccountId(accountId).orElse(null);
     }
 
     private CheckoutCartView toCheckoutView(Cart cart) {

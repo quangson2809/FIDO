@@ -1,0 +1,41 @@
+image_folder,source_product_id,product_name,brand,category,family_product_id,product_ids,image_count,source_url
+01_giay/01_17631178,17631178,Giày đi bộ nam Slazenger trắng dệt,Slazenger,Giày,960001,960001;960101,5,https://github.com/pazhanir/product-images
+01_giay/02_13686682,13686682,Giày đi bộ nữ Campus trắng phối xanh,Campus,Giày,960002,960002;960102,5,https://github.com/pazhanir/product-images
+01_giay/03_14480064,14480064,Giày chạy nam AfroJack đen,AfroJack,Giày,960003,960003;960103,5,https://github.com/pazhanir/product-images
+01_giay/04_10667394,10667394,Giày chạy nam Campus Madrid xanh navy,Campus,Giày,960004,960004;960104,5,https://github.com/pazhanir/product-images
+01_giay/05_20071104,20071104,Giày chạy nam ADIDAS Amalgo M,ADIDAS,Giày,960005,960005;960105,5,https://github.com/pazhanir/product-images
+02_ao_so_mi/01_18719236,18719236,Áo sơ mi nam SPYKAR xanh phai slim fit,SPYKAR,Áo sơ mi,960006,960006;960106,5,https://github.com/pazhanir/product-images
+02_ao_so_mi/02_18960048,18960048,Áo sơ mi nam The Indian Garage Co sọc trắng be,The Indian Garage Co,Áo sơ mi,960007,960007;960107,5,https://github.com/pazhanir/product-images
+02_ao_so_mi/03_18960188,18960188,Áo sơ mi nam The Indian Garage Co trắng in xám,The Indian Garage Co,Áo sơ mi,960008,960008;960108,5,https://github.com/pazhanir/product-images
+02_ao_so_mi/04_18960016,18960016,Áo sơ mi nam The Indian Garage Co màu kem,The Indian Garage Co,Áo sơ mi,960009,960009;960109,5,https://github.com/pazhanir/product-images
+02_ao_so_mi/05_18996772,18996772,Áo sơ mi nam U.S. Polo Assn. sọc san hô xanh,U.S. Polo Assn.,Áo sơ mi,960010,960010;960110,5,https://github.com/pazhanir/product-images
+03_ao_phong/01_17352320,17352320,Áo phông nữ ether Kora xanh,ether,Áo phông,960011,960011;960111,5,https://github.com/pazhanir/product-images
+03_ao_phong/02_17403950,17403950,Áo phông nam Mast & Harbour xanh mint in chữ,Mast & Harbour,Áo phông,960012,960012;960112,5,https://github.com/pazhanir/product-images
+03_ao_phong/03_17404018,17404018,Áo phông nam Mast & Harbour sọc xanh trắng,Mast & Harbour,Áo phông,960013,960013;960113,5,https://github.com/pazhanir/product-images
+03_ao_phong/04_22143924,22143924,Áo phông Urbano Plus in chữ cỡ lớn,Urbano Plus,Áo phông,960014,960014;960114,5,https://github.com/pazhanir/product-images
+03_ao_phong/05_14619398,14619398,Bộ 2 áo phông nữ ScoldMe nhiều màu,ScoldMe,Áo phông,960015,960015;960115,5,https://github.com/pazhanir/product-images
+04_quan_bo/01_18973692,18973692,Quần jeans nam Levis 65504 skinny xanh,Levis,Quần bò,960016,960016;960116,5,https://github.com/pazhanir/product-images
+04_quan_bo/02_18973742,18973742,Quần jeans nam Levis slim xanh rách gối,Levis,Quần bò,960017,960017;960117,5,https://github.com/pazhanir/product-images
+04_quan_bo/03_19008522,19008522,Quần jeans nữ Calvin Klein Jeans trắng ống đứng,Calvin Klein Jeans,Quần bò,960018,960018;960118,5,https://github.com/pazhanir/product-images
+04_quan_bo/04_18974084,18974084,Quần jeans nam Levis 512 slim tapered navy,Levis,Quần bò,960019,960019;960119,5,https://github.com/pazhanir/product-images
+04_quan_bo/05_18873126,18873126,Quần jeans nam KETCH slim xám than,KETCH,Quần bò,960020,960020;960120,5,https://github.com/pazhanir/product-images
+05_quan_au/01_15461081547123,15461081547123,Quần chino 34 Heritage Verona Jasper,34 Heritage,Quần âu / chino,960021,960021;960121,5,https://34heritage.com/products/verona-jasper-high-flyer
+05_quan_au/02_15461073584499,15461073584499,Quần chino 34 Heritage Verona Caribou,34 Heritage,Quần âu / chino,960021,960022;960122,5,https://34heritage.com/products/verona-caribou-high-flyer
+05_quan_au/03_15461074207091,15461074207091,Quần chino 34 Heritage Verona Mercury,34 Heritage,Quần âu / chino,960021,960023;960123,5,https://34heritage.com/products/verona-mercury-high-flyer
+05_quan_au/04_15461084037491,15461084037491,Quần chino 34 Heritage Verona Dark Denim,34 Heritage,Quần âu / chino,960021,960024;960124,5,https://34heritage.com/products/verona-dark-denim-high-flyer
+05_quan_au/05_15461075157363,15461075157363,Quần chino 34 Heritage Verona Stone,34 Heritage,Quần âu / chino,960021,960025;960125,5,https://34heritage.com/products/verona-stone-high-flyer-2wfx3f
+06_that_lung/01_15377583407295,15377583407295,Bộ thắt lưng GRIP6 Honeycomb Duo,GRIP6,Thắt lưng,960026,960026;960126,5,https://www.grip6.com/products/honeycomb-duo
+06_that_lung/02_15377582588095,15377582588095,Bộ thắt lưng GRIP6 Terra Duo,GRIP6,Thắt lưng,960027,960027;960127,5,https://www.grip6.com/products/terra-duo
+06_that_lung/03_15376492953791,15376492953791,Bộ thắt lưng GRIP6 Wasatch Duo,GRIP6,Thắt lưng,960028,960028;960128,5,https://www.grip6.com/products/wasatch-duo
+06_that_lung/04_7662202716351,7662202716351,Thắt lưng GRIP6 Honeycomb V2,GRIP6,Thắt lưng,960029,960029;960129,5,https://www.grip6.com/products/conservation-honeycomb-belt
+06_that_lung/05_7132620947647,7132620947647,Thắt lưng GRIP6 Tactical Pro Blue Steel,GRIP6,Thắt lưng,960030,960030;960130,5,https://www.grip6.com/products/tactical-pro-blue-steel
+07_vo/01_15690821009777,15690821009777,Vớ Sock It to Me Believe Performance Crew,Sock It to Me,Vớ,960031,960031,5,https://www.sockittome.com/products/believe-performance-crew-socks
+07_vo/02_15690814718321,15690814718321,Vớ Sock It to Me Moos-ive Slopes Performance Crew,Sock It to Me,Vớ,960032,960032,5,https://www.sockittome.com/products/moos-ive-slopes-performance-crew-socks
+07_vo/03_15690831036785,15690831036785,Vớ Sock It to Me Owlchemy Performance Crew,Sock It to Me,Vớ,960033,960033,5,https://www.sockittome.com/products/owlchemy-performance-crew-socks
+07_vo/04_15690825990513,15690825990513,Vớ Sock It to Me Have an Ice Day Performance Crew,Sock It to Me,Vớ,960034,960034,5,https://www.sockittome.com/products/have-an-ice-day-performance-crew-socks
+07_vo/05_15691057824113,15691057824113,Vớ đi trong nhà Sock It to Me Henny Penny,Sock It to Me,Vớ,960035,960035,5,https://www.sockittome.com/products/henny-penny-slipper-socks
+08_dep/01_15679734,15679734,Dép nam John Karsun đen,John Karsun,Dép,960036,960036;960136,5,https://github.com/pazhanir/product-images
+08_dep/02_10044165,10044165,Dép nam Coolers đen,Coolers,Dép,960037,960037;960137,5,https://github.com/pazhanir/product-images
+08_dep/03_17696210,17696210,Dép trẻ em Yellow Bee trắng đen,Yellow Bee,Dép,960038,960038;960138,5,https://github.com/pazhanir/product-images
+08_dep/04_12932560,12932560,Dép nam Eego Italy nâu tan,Eego Italy,Dép,960039,960039;960139,5,https://github.com/pazhanir/product-images
+08_dep/05_19183770,19183770,Dép Crocs Classic Spray Dye nhiều màu,Crocs,Dép,960040,960040;960140,5,https://github.com/pazhanir/product-images

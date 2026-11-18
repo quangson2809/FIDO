@@ -33,19 +33,19 @@ const catalogMeta = {
   attributes: [],
 };
 const attributes = [
-  { id: 11, code: 'COLOR', name: 'Màu sắc', is_required: false, is_variant_defining: true, sort_order: 0, options: [
+  { id: 11, code: 'COLOR', name: 'Màu sắc', is_required: false, sort_order: 0, options: [
     { id: 111, attribute_id: 11, value: 'BLACK', label: 'Đen', sort_order: 0 },
     { id: 112, attribute_id: 11, value: 'WHITE', label: 'Trắng', sort_order: 1 },
   ] },
-  { id: 12, code: 'MATERIAL', name: 'Chất liệu', is_required: true, is_variant_defining: false, sort_order: 1, options: [
+  { id: 12, code: 'MATERIAL', name: 'Chất liệu', is_required: true, sort_order: 1, options: [
     { id: 121, attribute_id: 12, value: 'COTTON', label: 'Cotton', sort_order: 0 },
     { id: 122, attribute_id: 12, value: 'LINEN', label: 'Linen', sort_order: 1 },
   ] },
-  { id: 13, code: 'WEIGHT', name: 'Định lượng', is_required: false, is_variant_defining: false, sort_order: 2, options: [
+  { id: 13, code: 'WEIGHT', name: 'Định lượng', is_required: false, sort_order: 2, options: [
     { id: 131, attribute_id: 13, value: '180GSM', label: '180 GSM', sort_order: 0 },
     { id: 132, attribute_id: 13, value: '220GSM', label: '220 GSM', sort_order: 1 },
   ] },
-  { id: 14, code: 'WATERPROOF', name: 'Chống nước', is_required: false, is_variant_defining: false, sort_order: 3, options: [
+  { id: 14, code: 'WATERPROOF', name: 'Chống nước', is_required: false, sort_order: 3, options: [
     { id: 141, attribute_id: 14, value: 'YES', label: 'Có', sort_order: 0 },
     { id: 142, attribute_id: 14, value: 'NO', label: 'Không', sort_order: 1 },
   ] },
@@ -78,8 +78,8 @@ const initialProduct = {
   category: catalogMeta.categories[1], brand: catalogMeta.brands[1], category_id: 2, brand_id: 8,
   selling_price: 200000, cost_price: 120000, status: 'DRAFT',
   images: [
-    { id: 51, image_url: 'https://cdn.example.test/51.png', is_primary: true, sort_order: 0 },
-    { id: 52, image_url: 'https://cdn.example.test/52.png', is_primary: false, sort_order: 1 },
+    { id: 51, image_url: 'https://cdn.example.test/51.png', sort_order: 0 },
+    { id: 52, image_url: 'https://cdn.example.test/52.png', sort_order: 1 },
   ],
   created_at: timestamp, updated_at: timestamp, attribute_values: initialValues,
   parent_product: null, children: [],
@@ -108,6 +108,9 @@ let products = new Map([[101, clone(initialProduct)]]);
 let nextProductId = 202;
 let failNextUpload = false;
 let loseNextUploadResponse = false;
+let holdNextUpload = false;
+let releaseUpload;
+let notifyUploadStarted;
 let failNextCreate = false;
 let rejectNextCreateCode;
 let loseNextCreateResponse = false;
@@ -120,7 +123,7 @@ let notifyCreateStarted;
 const requests = [];
 const summary = (product) => ({
   product_id: product.product_id, parent_product_id: product.parent_product_id, sku: product.sku,
-  name: product.name, thumbnail: product.images.find((image) => image.is_primary)?.image_url ?? null,
+  name: product.name, thumbnail: product.images.find((image) => image.sort_order === 0)?.image_url ?? null,
   category_id: product.category_id, brand_id: product.brand_id, selling_price: product.selling_price,
   cost_price: product.cost_price, status: product.status, created_at: product.created_at, updated_at: product.updated_at,
 });
@@ -189,6 +192,10 @@ await page.route('**/api/v1/**', async (route) => {
   const uploadMatch = path.match(/^\/admin\/products\/(\d+)\/images$/);
   if (method === 'POST' && uploadMatch) {
     const id = Number(uploadMatch[1]);
+    if (holdNextUpload) {
+      holdNextUpload = false;
+      await new Promise((resolve) => { releaseUpload = resolve; notifyUploadStarted?.(); });
+    }
     if (failNextUpload) { failNextUpload = false; return send(route, { message: 'storage temporarily unavailable' }, 502); }
     const product = products.get(id);
     if (!product) return send(route, { message: 'Product not found' }, 404);
@@ -196,8 +203,8 @@ await page.route('**/api/v1/**', async (route) => {
     assert.ok(rawBody?.includes('filename="shirt.png"') || rawBody?.includes('filename="retry-shirt.png"'), 'upload contains selected image');
     const start = product.images.length;
     const uploadedNames = [...rawBody.matchAll(/filename="([^"]+)"/g)].map((match) => match[1]);
-    product.images = [...product.images, ...uploadedNames.map((name, index) => ({ id: id * 10 + start + index + 1, image_url: 'https://cdn.example.test/' + name, is_primary: false, sort_order: start + index }))]
-      .map((image, index) => ({ ...image, sort_order: index, is_primary: index === 0 }));
+    product.images = [...product.images, ...uploadedNames.map((name, index) => ({ id: id * 10 + start + index + 1, image_url: 'https://cdn.example.test/' + name, sort_order: start + index }))]
+      .map((image, index) => ({ ...image, sort_order: index, }));
     if (loseNextUploadResponse) { loseNextUploadResponse = false; return route.abort('failed'); }
     return send(route, { data: clone(product) }, 201);
   }
@@ -208,7 +215,7 @@ await page.route('**/api/v1/**', async (route) => {
     const byId = new Map(body.images.map((image) => [image.image_id, image.sort_order]));
     product.images = product.images.map((image) => ({ ...image, sort_order: byId.get(image.id) ?? image.sort_order }))
       .sort((left, right) => left.sort_order - right.sort_order)
-      .map((image, index) => ({ ...image, sort_order: index, is_primary: index === 0 }));
+      .map((image, index) => ({ ...image, sort_order: index, }));
     return send(route, { data: clone(product) });
   }
   const imageDeleteMatch = path.match(/^\/admin\/products\/(\d+)\/images\/(\d+)$/);
@@ -216,7 +223,7 @@ await page.route('**/api/v1/**', async (route) => {
     const product = products.get(Number(imageDeleteMatch[1]));
     if (!product) return send(route, { message: 'Product not found' }, 404);
     product.images = product.images.filter((image) => image.id !== Number(imageDeleteMatch[2]))
-      .map((image, index) => ({ ...image, sort_order: index, is_primary: index === 0 }));
+      .map((image, index) => ({ ...image, sort_order: index, }));
     return route.fulfill({ status: 204, body: '', headers: { 'access-control-allow-origin': '*' } });
   }
   const detailMatch = path.match(/^\/admin\/products\/(\d+)$/);
@@ -256,7 +263,89 @@ await page.route('**/api/v1/**', async (route) => {
   return send(route, { message: 'Unhandled request: ' + method + ' ' + path }, 404);
 });
 
+const verifyDetailImageSelection = async () => {
+  const originalLimits = adminMeta.image_upload;
+  adminMeta.image_upload = { ...originalLimits, max_file_bytes: 1024, max_request_bytes: 1500 };
+  await page.goto('http://localhost:5182/admin/products/101', { waitUntil: 'domcontentloaded' });
+  const gallery = page.locator('#product-images');
+  const input = gallery.getByLabel('Chọn ảnh sản phẩm');
+  const file = (name, size = 16, mimeType = 'image/png') => ({ name, mimeType, buffer: Buffer.alloc(size) });
+  const assertPending = async (expected) => {
+    assert.deepEqual(await gallery.locator('figcaption').filter({ hasNot: page.locator('button') }).allTextContents(), expected);
+    assert.equal(await gallery.getByRole('button', { name: /^Bỏ ảnh / }).count(), expected.length);
+  };
+  await input.setInputFiles(file('shirt.png'));
+  await input.setInputFiles(file('retry-shirt.png'));
+  await assertPending(['shirt.png', 'retry-shirt.png']);
+  assert.equal(await input.inputValue(), '', 'reset file input after each selection');
+  await input.setInputFiles([]);
+  await assertPending(['shirt.png', 'retry-shirt.png']);
+  await gallery.getByRole('button', { name: 'Bỏ ảnh shirt.png', exact: true }).click();
+  await assertPending(['retry-shirt.png']);
+  await input.setInputFiles(file('shirt.png'));
+  await assertPending(['retry-shirt.png', 'shirt.png']);
+  await gallery.getByRole('button', { name: 'Đưa ảnh 2 lên trước', exact: true }).first().click();
+  await assertPending(['shirt.png', 'retry-shirt.png']);
+
+  // Validate the accumulated queue before sending any multipart request.
+  const uploads = () => requests.filter((item) => item.method === 'POST' && item.path === '/admin/products/101/images');
+  await input.setInputFiles(Array.from({ length: 9 }, (_, i) => file(`extra-${i}.png`)));
+  await gallery.getByRole('button', { name: 'Tải 11 ảnh', exact: true }).click();
+  await page.getByText('Mỗi lần tải tối đa 10 ảnh. Bỏ bớt ảnh để tiếp tục.', { exact: true }).waitFor();
+  assert.equal(uploads().length, 0);
+  for (let i = 0; i < 9; i++) await gallery.getByRole('button', { name: `Bỏ ảnh extra-${i}.png`, exact: true }).click();
+  await input.setInputFiles(file('invalid.txt', 16, 'text/plain'));
+  await gallery.getByRole('button', { name: 'Tải 3 ảnh', exact: true }).click();
+  await page.getByText('Ảnh "invalid.txt" không thuộc định dạng JPEG, PNG hoặc WebP được hỗ trợ.', { exact: true }).waitFor();
+  assert.equal(uploads().length, 0);
+  await gallery.getByRole('button', { name: 'Bỏ ảnh invalid.txt', exact: true }).click();
+  await input.setInputFiles(file('oversized.png', 1025));
+  await gallery.getByRole('button', { name: 'Tải 3 ảnh', exact: true }).click();
+  await page.getByText(/Ảnh "oversized.png" vượt giới hạn/).waitFor();
+  assert.equal(uploads().length, 0);
+  await gallery.getByRole('button', { name: 'Bỏ ảnh oversized.png', exact: true }).click();
+  await input.setInputFiles([file('large-a.png', 750), file('large-b.png', 750)]);
+  await gallery.getByRole('button', { name: 'Tải 4 ảnh', exact: true }).click();
+  await page.getByText('Tổng dung lượng ảnh vượt giới hạn một lần tải. Bỏ bớt ảnh để tiếp tục.', { exact: true }).waitFor();
+  assert.equal(uploads().length, 0);
+  await gallery.getByRole('button', { name: 'Bỏ ảnh large-a.png', exact: true }).click();
+  await gallery.getByRole('button', { name: 'Bỏ ảnh large-b.png', exact: true }).click();
+
+  // A failed upload keeps the queue for retry; in-flight edits remain disabled.
+  holdNextUpload = true;
+  failNextUpload = true;
+  const started = new Promise((resolve) => { notifyUploadStarted = resolve; });
+  await gallery.getByRole('button', { name: 'Tải 2 ảnh', exact: true }).click();
+  await started;
+  assert.equal(await input.isDisabled(), true);
+  for (const button of await gallery.getByRole('button').all()) assert.equal(await button.isDisabled(), true);
+  releaseUpload();
+  await page.getByText('storage temporarily unavailable', { exact: true }).waitFor();
+  await assertPending(['shirt.png', 'retry-shirt.png']);
+  assert.equal(await input.isEnabled(), true);
+  await gallery.getByRole('button', { name: 'Tải 2 ảnh', exact: true }).click();
+  await page.getByText('Đã tải ảnh Product.', { exact: true }).waitFor();
+  await assertPending([]);
+  assert.equal(uploads().length, 2);
+  assert.deepEqual([...uploads().at(-1).rawBody.matchAll(/filename="([^"]+)"/g)].map((match) => match[1]), ['shirt.png', 'retry-shirt.png']);
+  assert.equal(products.get(101).images.length, 4, 'upload preserves existing gallery images');
+  assert.equal(await gallery.getByRole('button', { name: /^Tải .*ảnh$/ }).isDisabled(), true);
+  await input.setInputFiles(file('shirt.png'));
+  await gallery.getByRole('button', { name: 'Bỏ ảnh shirt.png', exact: true }).click();
+  await assertPending([]);
+  await input.setInputFiles(file('shirt.png'));
+  await assertPending(['shirt.png']);
+  await gallery.getByRole('button', { name: 'Bỏ ảnh shirt.png', exact: true }).click();
+  assert.deepEqual(pageErrors, [], 'no uncaught runtime errors in image selection');
+  products = new Map([[101, clone(initialProduct)]]);
+  adminMeta.image_upload = originalLimits;
+  requests.length = 0;
+  process.stdout.write('Admin Product detail image selection: PASS\n');
+};
+
 try {
+  await verifyDetailImageSelection();
+  if (!process.argv.includes('--images-only')) {
   await page.goto('http://localhost:5182/admin/products', { waitUntil: 'domcontentloaded' });
   await page.getByRole('heading', { name: 'Sản phẩm', level: 1, exact: true }).waitFor();
   await page.getByText('TEE-101', { exact: true }).waitFor();
@@ -554,7 +643,8 @@ try {
   const uploaded = products.get(nextProductId - 1).images;
   assert.equal(uploaded.length, 2);
   assert.ok(uploaded[0].image_url.endsWith('retry-shirt.png'));
-  assert.equal(uploaded[0].is_primary, true);
+  assert.equal(uploaded[0].sort_order, 0);
+  assert.equal(Object.hasOwn(uploaded[0], 'is_primary'), false);
   assert.equal(uploaded[1].sort_order, 1);
 
   // Pending image retry does not depend on an in-flight metadata request or call Create again.
@@ -613,6 +703,7 @@ try {
   await page.getByRole('button', { name: 'Đóng form', exact: true }).click();
   assert.deepEqual(pageErrors, [], 'no uncaught runtime errors');
   process.stdout.write('Admin Product management browser regression: PASS\n');
+  }
 } catch (failure) {
   console.error(await page.locator('body').innerText());
   throw failure;

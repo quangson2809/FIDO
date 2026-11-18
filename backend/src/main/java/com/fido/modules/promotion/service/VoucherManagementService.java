@@ -64,30 +64,22 @@ public class VoucherManagementService {
     public VoucherDetailDto create(VoucherCreateRequest request) {
         if (request == null) bad("VOUCHER_CONFIGURATION_INVALID");
         String code = normalizeCode(request.code());
-        validateConfiguration(
-                request.discount_type(),
-                request.discount_value(),
-                request.minimum_order_value() == null ? 0L : request.minimum_order_value(),
-                request.maximum_discount(),
-                request.starts_at(),
-                request.ends_at(),
-                request.usage_limit());
+        Voucher voucher = new Voucher();
+        voucher.configure(
+                new Voucher.Configuration(
+                        request.discount_type(),
+                        request.discount_value(),
+                        request.minimum_order_value() == null ? 0L : request.minimum_order_value(),
+                        request.maximum_discount(),
+                        request.starts_at(),
+                        request.ends_at(),
+                        request.usage_limit()),
+                "DRAFT");
         if (vouchers.existsByCodeIgnoreCaseAndVoucherIdNot(code, 0L)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "VOUCHER_CODE_ALREADY_EXISTS");
         }
 
-        Voucher voucher = new Voucher();
         voucher.setCode(code);
-        voucher.setDiscountType(request.discount_type());
-        voucher.setDiscountValue(request.discount_value());
-        voucher.setMinimumOrderValue(
-                request.minimum_order_value() == null ? 0L : request.minimum_order_value());
-        voucher.setMaximumDiscount(request.maximum_discount());
-        voucher.setStartsAt(micros(request.starts_at()));
-        voucher.setEndsAt(micros(request.ends_at()));
-        voucher.setUsageLimit(request.usage_limit());
-        voucher.setUsageCount(0);
-        voucher.setStatus("DRAFT");
 
         Voucher saved = vouchers.save(voucher);
         audit.record(
@@ -116,33 +108,30 @@ public class VoucherManagementService {
             }
             voucher.setCode(code);
         }
-        if (request.isDiscountTypePresent()) voucher.setDiscountType(request.getDiscountType());
-        if (request.isDiscountValuePresent()) voucher.setDiscountValue(request.getDiscountValue());
-        if (request.isMinimumOrderValuePresent())
-            voucher.setMinimumOrderValue(request.getMinimumOrderValue());
-        if (request.isMaximumDiscountPresent())
-            voucher.setMaximumDiscount(request.getMaximumDiscount());
-        if (request.isStartsAtPresent()) voucher.setStartsAt(micros(request.getStartsAt()));
-        if (request.isEndsAtPresent()) voucher.setEndsAt(micros(request.getEndsAt()));
-        if (request.isUsageLimitPresent()) voucher.setUsageLimit(request.getUsageLimit());
-        if (request.isStatusPresent()) {
-            requireStatusTransition(voucher.getStatus(), request.getStatus());
-            voucher.setStatus(request.getStatus());
-        }
-
-        validateConfiguration(
-                voucher.getDiscountType(),
-                voucher.getDiscountValue(),
-                voucher.getMinimumOrderValue(),
-                voucher.getMaximumDiscount(),
-                voucher.getStartsAt(),
-                voucher.getEndsAt(),
-                voucher.getUsageLimit());
-        if (voucher.getUsageLimit() != null
-                && voucher.getUsageCount() != null
-                && voucher.getUsageLimit() < voucher.getUsageCount()) {
-            bad("VOUCHER_USAGE_LIMIT_INVALID");
-        }
+        voucher.configure(
+                new Voucher.Configuration(
+                        request.isDiscountTypePresent()
+                                ? request.getDiscountType()
+                                : voucher.getDiscountType(),
+                        request.isDiscountValuePresent()
+                                ? request.getDiscountValue()
+                                : voucher.getDiscountValue(),
+                        request.isMinimumOrderValuePresent()
+                                ? request.getMinimumOrderValue()
+                                : voucher.getMinimumOrderValue(),
+                        request.isMaximumDiscountPresent()
+                                ? request.getMaximumDiscount()
+                                : voucher.getMaximumDiscount(),
+                        request.isStartsAtPresent()
+                                ? micros(request.getStartsAt())
+                                : voucher.getStartsAt(),
+                        request.isEndsAtPresent()
+                                ? micros(request.getEndsAt())
+                                : voucher.getEndsAt(),
+                        request.isUsageLimitPresent()
+                                ? request.getUsageLimit()
+                                : voucher.getUsageLimit()),
+                request.isStatusPresent() ? request.getStatus() : voucher.getStatus());
 
         Voucher saved = vouchers.save(voucher);
         audit.record(
@@ -151,58 +140,6 @@ public class VoucherManagementService {
                         AuditEntityType.VOUCHER,
                         saved.getVoucherId().toString()));
         return dto(saved);
-    }
-
-    /**
-     * Nhận cấu hình cuối cùng sau create/PATCH; FIXED là VND, PERCENT là basis point tối đa 10.000.
-     * minimumOrderValue chưa có ship; cap, mốc thời gian và usageLimit có thể không giới hạn bằng
-     * null.
-     */
-    private static void validateConfiguration(
-            String discountType,
-            Long discountValue,
-            Long minimumOrderValue,
-            Long maximumDiscount,
-            Instant startsAt,
-            Instant endsAt,
-            Integer usageLimit) {
-        if (!"FIXED".equals(discountType) && !"PERCENT".equals(discountType)) {
-            bad("VOUCHER_CONFIGURATION_INVALID");
-        }
-        if (discountValue == null || discountValue <= 0L) {
-            bad("VOUCHER_CONFIGURATION_INVALID");
-        }
-        if ("PERCENT".equals(discountType) && discountValue > 10_000L) {
-            bad("VOUCHER_PERCENT_BPS_OUT_OF_RANGE");
-        }
-        if (minimumOrderValue == null
-                || minimumOrderValue < 0L
-                || (maximumDiscount != null && maximumDiscount < 0L)) {
-            bad("VOUCHER_CONFIGURATION_INVALID");
-        }
-        if (usageLimit != null && usageLimit < 1) {
-            bad("VOUCHER_USAGE_LIMIT_INVALID");
-        }
-        if (startsAt != null && endsAt != null && !startsAt.isBefore(endsAt)) {
-            bad("VOUCHER_WINDOW_INVALID");
-        }
-    }
-
-    private static void requireStatusTransition(String current, String next) {
-        if (current == null || next == null) bad("VOUCHER_STATUS_TRANSITION_INVALID");
-        if (current.equals(next)) return;
-        boolean allowed =
-                switch (current) {
-                    case "DRAFT" -> "ACTIVE".equals(next) || "INACTIVE".equals(next);
-                    case "ACTIVE" -> "INACTIVE".equals(next) || "EXPIRED".equals(next);
-                    case "INACTIVE" -> "ACTIVE".equals(next) || "EXPIRED".equals(next);
-                    case "EXPIRED" -> false;
-                    default -> false;
-                };
-        if (!allowed) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "VOUCHER_STATUS_TRANSITION_INVALID");
-        }
     }
 
     private static String normalizeCode(String code) {

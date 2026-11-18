@@ -164,12 +164,11 @@ class ProductImageConcurrencyTests extends CatalogHttpSupport {
     private void insertImage(long productId, String imageUrl, int sortOrder) {
         db.update(
                 """
-                INSERT INTO product_images(product_id,image_url,is_primary,sort_order)
-                VALUES (?,?,?,?)
+                INSERT INTO product_images(product_id,image_url,sort_order)
+                VALUES (?,?,?)
                 """,
                 productId,
                 imageUrl,
-                sortOrder == 0,
                 sortOrder);
     }
 
@@ -181,22 +180,18 @@ class ProductImageConcurrencyTests extends CatalogHttpSupport {
                         productId);
         long primaryCount =
                 db.queryForObject(
-                        "SELECT COUNT(*) FROM product_images WHERE product_id=? AND is_primary=TRUE",
+                        "SELECT COUNT(*) FROM product_images WHERE product_id=? AND sort_order=0",
                         Long.class,
                         productId);
         assertEquals(gallerySize == 0 ? 0L : 1L, primaryCount);
-        int mismatchCount =
-                db.queryForObject(
-                        """
-                        SELECT COUNT(*)
-                        FROM product_images
-                        WHERE product_id=?
-                          AND ((sort_order=0 AND is_primary=FALSE)
-                            OR (sort_order<>0 AND is_primary=TRUE))
-                        """,
-                        Integer.class,
+        List<Integer> actualOrder =
+                db.query(
+                        "SELECT sort_order FROM product_images WHERE product_id=? ORDER BY sort_order",
+                        (rs, row) -> rs.getInt(1),
                         productId);
-        assertEquals(0, mismatchCount);
+        assertEquals(
+                java.util.stream.IntStream.range(0, actualOrder.size()).boxed().toList(),
+                actualOrder);
     }
 
     private List<Long> storedIds(long productId) {

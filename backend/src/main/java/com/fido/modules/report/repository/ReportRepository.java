@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Tổng hợp từ số tiền chụp tại thời điểm đặt đơn; Payment/Shipping xác nhận thu COD, hoàn tiền và mốc
+ * Tổng hợp từ số tiền chụp tại thời điểm đặt đơn; Payment xác nhận thu COD, hoàn tiền và mốc
  * ngày. Catalog hiện tại chỉ bổ sung thông tin hiển thị.
  */
 @Repository
@@ -32,12 +32,8 @@ public class ReportRepository {
             """
             FROM orders o
             JOIN payments p ON p.order_id = o.id
-            JOIN shipping_infos s ON s.order_id = o.id
             WHERE o.status IN ('COMPLETED', 'RETURNED')
-              AND s.shipping_status = 'DELIVERED'
-              AND s.delivered_at >= ? AND s.delivered_at < ?
-              AND o.currency = 'VND'
-              AND p.currency = 'VND'
+              AND p.collected_at >= ? AND p.collected_at < ?
               AND p.amount = o.total_amount
               AND (
                   (o.status = 'COMPLETED'
@@ -54,7 +50,7 @@ public class ReportRepository {
             """;
 
     static final String DAILY_SALES_SQL =
-            "SELECT CAST(TIMESTAMPADD(HOUR, 7, s.delivered_at) AS DATE) AS local_day, "
+            "SELECT CAST(TIMESTAMPADD(HOUR, 7, p.collected_at) AS DATE) AS local_day, "
                     + SALES_COLUMNS
                     + SALES_COHORT
                     + " GROUP BY local_day ORDER BY local_day";
@@ -83,22 +79,14 @@ public class ReportRepository {
                        SUM(CASE WHEN o.status = 'RETURNED'
                            THEN oi.quantity ELSE 0 END) AS returned_units
                 FROM orders o
-                JOIN shipping_infos s ON s.order_id = o.id
+                JOIN payments pay ON pay.order_id = o.id
                 JOIN order_items oi ON oi.order_id = o.id
                 WHERE o.status IN ('COMPLETED', 'RETURNED')
-                  AND s.shipping_status = 'DELIVERED'
-                  AND s.delivered_at >= ? AND s.delivered_at < ?
+                  AND pay.collected_at >= ? AND pay.collected_at < ?
                 GROUP BY oi.product_id
             ) totals
             JOIN products p ON p.id = totals.product_id
-            LEFT JOIN (
-                SELECT product_id, image_url,
-                       ROW_NUMBER() OVER (
-                           PARTITION BY product_id
-                           ORDER BY is_primary DESC, sort_order ASC, id ASC
-                       ) AS image_rank
-                FROM product_images
-            ) image ON image.product_id = totals.product_id AND image.image_rank = 1
+            LEFT JOIN product_images image ON image.product_id = totals.product_id AND image.sort_order = 0
             ORDER BY net_units DESC, totals.completed_units DESC, totals.product_id ASC
             LIMIT ?
             """;

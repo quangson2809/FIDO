@@ -32,6 +32,7 @@ abstract class OrderHttpSupport {
     final HttpClient client = HttpClient.newHttpClient();
     final List<Long> accounts = new ArrayList<>();
     final List<Long> orderIds = new ArrayList<>();
+    final List<Long> voucherIds = new ArrayList<>();
     final List<CatalogFixture> fixtures = new ArrayList<>();
     final List<Long> customRoles = new ArrayList<>();
     final List<Long> createdPermissions = new ArrayList<>();
@@ -188,6 +189,11 @@ abstract class OrderHttpSupport {
     }
 
     long createOrder(User customer, CatalogFixture fixture, int quantity) throws Exception {
+        return createOrder(customer, fixture, quantity, null);
+    }
+
+    long createOrder(User customer, CatalogFixture fixture, int quantity, String voucherCode)
+            throws Exception {
         var added =
                 call(
                         "POST",
@@ -195,11 +201,8 @@ abstract class OrderHttpSupport {
                         customer.token(),
                         Map.of("product_id", fixture.productId(), "quantity", quantity));
         assertEquals(200, added.status(), added.body());
-        var created =
-                call(
-                        "POST",
-                        "/api/v1/orders",
-                        customer.token(),
+        var request =
+                new java.util.HashMap<String, Object>(
                         Map.of(
                                 "recipient_name",
                                 "Test Recipient",
@@ -213,6 +216,8 @@ abstract class OrderHttpSupport {
                                 "Dich Vong",
                                 "address_line",
                                 "Test address"));
+        if (voucherCode != null) request.put("voucher_code", voucherCode);
+        var created = call("POST", "/api/v1/orders", customer.token(), request);
         assertEquals(201, created.status(), created.body());
         long orderId = created.data().get("data").get("order_id").asLong();
         orderIds.add(orderId);
@@ -264,10 +269,10 @@ abstract class OrderHttpSupport {
             db.update("DELETE FROM order_voucher_snapshots WHERE order_id=?", orderId);
             db.update("DELETE FROM order_addresses WHERE order_id=?", orderId);
             db.update("DELETE FROM payments WHERE order_id=?", orderId);
-            db.update("DELETE FROM shipping_infos WHERE order_id=?", orderId);
             db.update("DELETE FROM order_items WHERE order_id=?", orderId);
             db.update("DELETE FROM orders WHERE id=?", orderId);
         }
+        for (Long voucherId : voucherIds) db.update("DELETE FROM vouchers WHERE id=?", voucherId);
         for (Long accountId : accounts) {
             db.update(
                     "DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE account_id=?)",

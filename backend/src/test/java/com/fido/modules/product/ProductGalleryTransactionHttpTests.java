@@ -44,7 +44,7 @@ class ProductGalleryTransactionHttpTests extends CatalogHttpSupport {
         String name = db.queryForObject("SELECT name FROM products WHERE id=?", String.class, id);
         var before =
                 db.queryForList(
-                        "SELECT id,image_url,sort_order,is_primary FROM product_images WHERE"
+                        "SELECT id,image_url,sort_order FROM product_images WHERE"
                                 + " product_id=? ORDER BY sort_order",
                         id);
         assertEquals(2, before.size());
@@ -75,7 +75,7 @@ class ProductGalleryTransactionHttpTests extends CatalogHttpSupport {
             assertEquals(
                     before,
                     db.queryForList(
-                            "SELECT id,image_url,sort_order,is_primary FROM product_images WHERE"
+                            "SELECT id,image_url,sort_order FROM product_images WHERE"
                                     + " product_id=? ORDER BY sort_order",
                             id));
         } finally {

@@ -1,5 +1,34 @@
 # 15 — Current Technical Decisions
 
+## 2026-11-18 — Remove ShippingInfo completely
+
+- Owner authorizes deleting shipping_infos, its entity/repository/DTO and all carrier/tracking/shipping-status fields without merging them into orders or adding replacement columns. Order retains the existing transition matrix, stock/payment/Voucher/audit transactions and permissions.
+- In the COD-only workflow, completing delivery and collecting COD is one atomic action. PAYMENTS.collected_at is the completion timestamp for order responses, the existing two-day return window and report periods, including after a full return. Do not substitute ORDERS.updated_at or add a separate delivery timestamp.
+- Order detail removes shipping_info. RecipientDto gains name from the existing ORDER_ADDRESSES.recipient_name snapshot, preserving the displayed recipient identity. Existing completed_at/returned_at response fields remain, derived from Payment collection/refund facts.
+- Fresh installs use the amended single V1 baseline and 29-table ERD/dictionary. Existing databases require a separate guarded manual upgrade: compare completion/collection timestamps and state consistency before removing the table; abort on mismatches rather than guessing or rewriting purchase history. No live database change is performed by this code task.
+- Server-generated COD collection/refund times use TIMESTAMP(6) precision so the first response and later database reads expose the same completion/refund instant. Focused verification covers Order actions, COD and refund replay/rollback, cancellation and stock ledger invariants, response contracts, report periods, seed, schema mapping and legacy upgrade guards. Preserve current architecture and handler registry; no replacement shipping module or service is introduced.
+
+## 2026-11-18 — One reusable Cart per Account
+
+- Owner authorizes removing carts.status and its lifecycle/check/index, adding UNIQUE(account_id), and reusing a Cart across purchases. This amendment supersedes earlier sole-OPEN/ambiguity selection rules and Cart completion behavior.
+- Missing read/clear returns empty without persistence; only the first add creates a Cart. Success deletes purchased lines and retains Cart identity; failure rolls back all Order/Payment/audit/Voucher/Cart writes. Pending Orders and Carts still do not reserve stock.
+- AccountMutationLockService remains the first lock, followed by the Cart write lock. The Account lock also serializes first creation. Cart consumption requires an existing transaction and is called through the cart module service. Entity code has no HTTP, repository or cross-module coordination.
+- Preserve Order idempotency and all frontend pending/lock controls. Replay is resolved before reading the reused Cart so an old key cannot consume new lines. No API endpoint or CartDto field is added.
+- Fresh installs use the single canonical V1. A separate [manual upgrade](operations/reusable-cart-upgrade.md) checks existing rows, keeps a sole nonempty Cart (or lowest ID when all empty), and deletes only redundant empty rows. Multiple nonempty Carts abort before mutation. No live database reset, automatic repair or arbitrary merge is authorized.
+- Focused tests cover read/clear without creation, SQL uniqueness, retained Cart ID, transaction rollback, idempotency replay, concurrent mutations and the exact upgrade SQL on isolated MySQL.
+
+## 2026-11-18 — Entity-owned business behavior
+
+- Follow-up review closes creation-only setters for Payment amount/order identity, GoodsReceipt number/warehouse/creator and Role code. Named factories initialize these facts; JPA retains protected no-argument constructors and field access. Role status accepts only ACTIVE/INACTIVE. Payment collection/refund preconditions have one implementation reused by the entity and application service; cross-entity eligibility and transaction boundaries stay in the service.
+- Remove unused legacy Order permission constants and recipientEditable policy; the recipient snapshot remains immutable after placement. Focused regressions cover public mutation surfaces and the three reproduced invariant bypasses.
+
+- Owner authorizes moving local business rules from services into the existing JPA entities. Preserve Modular Monolith, feature packages, handler registry, module contracts, schema, HTTP envelopes, permissions, transaction propagation and locking order.
+- Order owns its transition matrix and named state changes. Payment owns clean unpaid/collected predicates, COD collection and one full refund. The later ShippingInfo-removal amendment keeps dispatch/retry/failure/cancellation on Order. Cross-entity eligibility, inventory/voucher effects and audit remain in the owning application service/policy.
+- GoodsReceipt guards draft edits and confirmation/cancellation; the service retains source-line validation, committed-state replay and atomic stock posting. Voucher validates a complete configuration before applying it and owns status/time/minimum/quota eligibility. The guarded database quota update and balance/ledger commands remain unchanged.
+- CartItem owns positive quantity/overflow checks; the later reusable-Cart amendment removes Cart completion. ContentPage owns its existing status matrix, and Role protects the ACTIVE SUPERADMIN invariant. Multi-account/address/family rules remain services because a single entity lacks the required state.
+- Remove public setters for protected workflow facts. JPA continues field access; tests that deliberately model stored corrupt/terminal states use explicit reflection fixtures. A small common BusinessRuleException carries only rejection kind/code; ApiExceptionHandler maps it to the existing 400/409 envelope without introducing HTTP dependencies in entities.
+- The branch-specific backend workflow and `backend/scripts/verify-domain-behaviors.sh` run the same focused entity, API/security, transaction/rollback, retry and concurrency checks on isolated MySQL. No full backend/frontend suite is selected for this refactor.
+
 > This is the active decision summary for implementation against the owner-approved ERD v2. Historical implementation/audit reports are not target contracts. For business decisions, see the dated [P1 owner approval](refactor-v2/p1/P1-owner-approval-2026-10-23.md) and [Decision Log](refactor-v2/p1/P1-decision-log.md).
 
 ## 1. Architecture and stack
@@ -37,10 +66,10 @@
 ## 5. Cart, checkout, Order and vouchers
 
 - Persisted Cart and Order creation require authentication; Account scope comes from the security principal; guest Cart, checkout and merge are excluded.
-- Current Cart is the sole account-owned OPEN row. No OPEN row means empty read/create-on-mutation; more than one OPEN row fails closed with CART_SELECTION_AMBIGUOUS and no mutation/merge. No updated_at selection or one-active-Cart schema constraint is inferred; P3.8 serializes Account-scoped creation/mutations.
+- Each Account owns at most one reusable Cart, enforced by uq_carts_account. There is no Cart status or timestamp-based selection. Missing reads/clear do not write; first add creates; checkout consumes lines while retaining the Cart. Account-first locks and the Order transaction remain mandatory. See the dated 2026-11-18 amendment above.
 - Quote is stateless/advisory: no CHECKOUT_QUOTES, quote_id, stock reservation or Voucher use. Order placement reloads/reprices Product eligibility, price, stock, Voucher eligibility/quota and server-owned shipping inputs.
 - POST /orders requires Idempotency-Key; the stored key is Account-namespaced and the normalized semantic request gets a canonical SHA-256 fingerprint. Same committed key/payload replays; changed payload conflicts; another Account cannot discover the result. Details are normative in P1.6.
-- P1.6 placement atomically writes Order PENDING, OrderItems and immutable address/Product/Voucher/image snapshots, COD Payment UNPAID, ShippingInfo PENDING, applicable Voucher counter, Cart consumption and audit. It does not deduct stock. P1.7 requires stock deduction at PENDING→CONFIRMED and linked one-time reversal for eligible cancellation, with the Order/Inventory/audit write set atomic.
+- P1.6 placement atomically writes Order PENDING, OrderItems and immutable address/Product/Voucher/image snapshots, COD Payment UNPAID, applicable Voucher counter, Cart consumption and audit. It does not deduct stock. P1.7 requires stock deduction at PENDING→CONFIRMED and linked one-time reversal for eligible cancellation, with the Order/Inventory/audit write set atomic.
 - v1 vouchers are order-wide, non-stackable and use one global limit. Consume usage atomically with successful order placement and restore at most once on eligible cancellation. No catalog-targeting joins or per-account usage ledger.
 - Payment is COD-only with one Payment aggregate per Order. Collect COD only atomically with SHIPPING→COMPLETED after manual delivery verification; v1 allows one whole-order full offline refund paired with COMPLETED→RETURNED. Partial/multiple refunds, automated disbursement and detailed item-level return workflows require an approved scope change.
 
@@ -61,10 +90,10 @@
 ## 7. Order states, shipping and reporting
 
 - Enforce the normative [P1.7 Order/Payment/Shipping contract](refactor-v2/p1/P1.7-order-payment-contract.md) and its summary in `docs/06-business-rules-state-machines.md`; validate actor, preconditions, state, transaction and errors under lock. Duplicate collection/refund and illegal replays must not repeat side effects.
-- Shipping is manual; do not introduce carrier API, automatic tracking integration or a dedicated event/timeline table in v1. Order, Payment and ShippingInfo state changes plus required audit are atomic.
+- Shipping is manual; do not introduce carrier API, automatic tracking integration or a dedicated event/timeline table in v1. Order and Payment state changes plus required audit are atomic.
 - P3.13 cancellation applies an exact, source-linked reversal to each original `ORDER` inventory movement using a deterministic `order-cancel-reversal:<movement_id>` key, restores voucher quota under a guarded counter update, and writes the required audit records in the same transaction. The inventory reason code is fixed to `ORDER_CANCELLED`; free-form request text is not written to the ledger.
-- COD collection is one `SHIPPING → COMPLETED` command updating Order, Payment and ShippingInfo atomically. Full refund is only `COMPLETED → RETURNED` with `ORDER_AFTER_SALES` plus `ORDER_PAYMENT`; it records the full persisted Payment amount once and does not restock inventory or release the Voucher.
-- The target `ORDERS` table has no durable completion/return timestamp columns. Order detail and summary responses derive `completed_at` from `SHIPPING_INFOS.delivered_at` and `returned_at` from `PAYMENTS.refunded_at`, rather than relying on transient fields in the Java entity.
+- COD collection is one `SHIPPING → COMPLETED` command updating Order and Payment atomically. Full refund is only `COMPLETED → RETURNED` with `ORDER_AFTER_SALES` plus `ORDER_PAYMENT`; it records the full persisted Payment amount once and does not restock inventory or release the Voucher.
+- The target `ORDERS` table has no durable completion/return timestamp columns. Order detail and summary responses derive `completed_at` from `PAYMENTS.collected_at` and `returned_at` from `PAYMENTS.refunded_at`, rather than relying on transient fields in the Java entity.
 - Report query periods, bucket boundaries, zero-filled status metrics, source tables and deterministic Product ranking follow [P1.8](refactor-v2/p1/P1.8-operations-seed-contract.md). Money and Order/Payment/return semantics remain owned by P1.5/P1.7; use Asia/Ho_Chi_Minh inclusive business dates and adjust a whole-Order return in its original completion period. Current status counts use Order creation date.
 
 ### P3.14 — Audit read and Content Pages
@@ -76,10 +105,10 @@
 
 ### P3.15 — Report queries and integer-VND semantics
 
-- All report routes are read-only projections against the canonical target fields: `ORDERS.id/status/total_amount/currency/created_at`, `PAYMENTS.order_id/payment_status/amount/currency/refund_amount/collected_at/refunded_at`, `SHIPPING_INFOS.order_id/shipping_status/delivered_at`, `ORDER_ITEMS.order_id/product_id/quantity`, and current `PRODUCTS`/`PRODUCT_IMAGES` display fields. No legacy report columns or new persistence are used.
+- All report routes are read-only projections against the canonical target fields: `ORDERS.id/status/total_amount/created_at`, `PAYMENTS.order_id/payment_status/amount/refund_amount/collected_at/refunded_at`, `ORDER_ITEMS.order_id/product_id/quantity`, and current `PRODUCTS`/`PRODUCT_IMAGES` display fields. No legacy report columns or new persistence are used.
 - `REPORT_READ` is the endpoint capability; authorization is checked by the service using `PERMISSION_REPORT_READ` (with the existing SUPERADMIN override), not by additionally requiring the `ADMIN` role name.
-- Report date inputs are inclusive `Asia/Ho_Chi_Minh` calendar dates converted to the half-open UTC range `[startOfDay(from), startOfDay(to + 1))`. Sales and product performance use the immutable `SHIPPING_INFOS.delivered_at` completion cohort; status metrics use current `ORDERS.status` grouped by `ORDERS.created_at`.
-- Completed sales sum persisted `ORDERS.total_amount` once for current `COMPLETED` and `RETURNED` Orders whose shipping and COD Payment facts are consistent. The full `RETURNED` adjustment is included in that same original delivery period only when Payment is `REFUNDED` with `refund_amount = amount`; it is not moved to `refunded_at`. Net sales are completed sales minus that adjustment. No revenue is inferred from placed Order totals before collection.
+- Report date inputs are inclusive `Asia/Ho_Chi_Minh` calendar dates converted to the half-open UTC range `[startOfDay(from), startOfDay(to + 1))`. Sales and product performance use the immutable `PAYMENTS.collected_at` completion cohort; status metrics use current `ORDERS.status` grouped by `ORDERS.created_at`.
+- Completed sales sum persisted `ORDERS.total_amount` once for current `COMPLETED` and `RETURNED` Orders whose Order and COD Payment facts are consistent. The full `RETURNED` adjustment is included in that same original delivery period only when Payment is `REFUNDED` with `refund_amount = amount`; it is not moved to `refunded_at`. Net sales are completed sales minus that adjustment. No revenue is inferred from placed Order totals before collection.
 - API money fields are Java signed-BIGINT-compatible integers (`long`), not floating-point or decimal JSON values. Because MySQL returns `SUM(BIGINT)` as DECIMAL, aggregate projections convert with exact range checking; overflow or inconsistent net totals fail closed rather than round/truncate. Product performance preserves the approved `limit` response field, zero-filled Order-status buckets, whole-Order return semantics and deterministic ranking `net_units DESC, completed_units DESC, product_id ASC`.
 - Repository report methods contain only reads; report services run in read-only repeatable-read transactions. No audit mutation, content behavior, cache, snapshot table, query builder or report-owned domain state is added.
 
@@ -139,3 +168,29 @@ Owner-approved behavior and target schema are recorded; application/DTO/frontend
 - Gom lọc payload audit đọc/ghi vào một hàm; giữ khác biệt null/rỗng ở hai hợp đồng. Gom kiểm tra giới hạn số dư trong điều chỉnh/đảo điều chỉnh, giữ nguyên mã lỗi và thứ tự kiểm tra version/khóa.
 - Bỏ `Allocation.originalIndex`, hai constructor `CheckoutCalculation` không được gọi, helper `leafCategory`/`productsById` không có nơi dùng và ba hằng loại bút toán lỗi thời trong `OrderPolicy`. Nguồn loại bút toán đang dùng vẫn là `InventoryPolicy`.
 - Bỏ đường ghi `restoreDeliveryReturn`/`restoreOrderStock` không có caller trong source/test; không nối nghiệp vụ trả hàng vào hoàn kho. Giữ mã lịch sử `RETURN_RESTOCK` và các truy vấn ledger để đọc dữ liệu đã có. Không sửa migration/schema.
+
+
+## 2026-11-17 — Remove redundant persistence fields on demo1
+
+- Owner explicitly removes ten columns: `attributes.is_variant_defining`, `orders.placed_at/currency`, `shipping_infos.recipient_name/recipient_phone`, `product_images.is_primary`, `payments.currency/method`, `cart_items.added_at`, and `order_voucher_snapshots.discount_amount_snapshot`. This supersedes earlier dated decisions that retained these columns.
+- Preserve the single pre-release V1 baseline policy. Update the canonical SQL, ERD, dictionary, seed, entities, API contracts, frontend and affected tests together. Existing databases with the old V1 checksum require a separately controlled upgrade or a verified disposable reset; no reset of an existing/shared database is performed by this change.
+- `orders.created_at` is the one placement timestamp; account/status indexes now use it. `order_addresses` owns the immutable receiver snapshot. Shipping API fields remain available by projection from that snapshot.
+- Image position zero is the primary image for reads, gallery controls and reports. Gallery writes retain Product locks, contiguous ordering and the two-flush temporary-position strategy for the unique index. Image/attribute responses and write forms no longer expose deleted flags; selection still uses exact COLOR and SIZE-prefixed codes.
+- Whole integer VND and COD remain fixed application semantics. Keep amount equality, refund limits, state/actor/time, stock/ledger and idempotency checks; remove checks against constants that are no longer stored. `orders.discount_amount` remains the actual historical Voucher discount; code/type/value snapshots stay immutable.
+
+
+## 2026-11-17 — Customer admin query scope
+
+- Fix API #76/#77: a customer is a non-soft-deleted Account with an assigned `CUSTOMER` Role. The previous list only checked deletion and detail used unrestricted Account lookup, so staff-only Accounts leaked into the customer view.
+- Apply the same membership/deletion predicate to the paginated list/count and ID detail lookup. Use correlated EXISTS to avoid row multiplication from multiple roles. Non-customer and soft-deleted IDs return 404 before reading addresses/orders.
+- Membership classifies the target Account, independently of the viewer's `CUSTOMER_READ` permission, prior orders and Account login status. Customers without orders or with LOCKED/SUSPENDED status remain manageable; another role alongside CUSTOMER does not erase customer membership. Role status controls access separately from this classification.
+- FE already calls the correct customer endpoints. Preserve its request/response contract, existing permission boundary, order statistics and schema. Regression tests use staff-only fixtures (the shared registration helper otherwise also assigns CUSTOMER).
+
+
+## 2026-11-17 — Customer cancellation of pending orders
+
+- Owner approves the proposed customer self-cancellation scope: PENDING only, own Order, clean UNPAID/undispatched state and no prior stock movement. This supersedes the former exclusion of customer cancellation in API/P1.7 contracts. No schema/dependency change is required.
+- Add POST `/api/v1/me/orders/{orderId}/cancel` without a request body. A customer-scoped pessimistic Order query prevents access to foreign Orders; the same row lock used by administrator confirmation serializes competing transitions. Foreign/missing Orders return 404; state conflicts/repeats return 409.
+- OrderActionService keeps separate authorization/eligibility entry points and shares handler execution/audit. Reuse CancelOrderHandler and mandatory Voucher release. Admin permissions and cancellation of confirmed/preparing/failed-delivery Orders are preserved.
+- Customer detail exposes `allowed_actions`, evaluated with the same customer policy as execution. FE shows the control from this field, asks for confirmation, disables busy controls, refreshes after 409, and ignores late responses after changing Orders. History is read again on returning to the list.
+- Commit marker `[customer-cancel-focus]` selects the relevant backend lifecycle/security/stock/rollback/concurrency tests and the customer cancellation browser regression in CI, following existing focused-check conventions. Static compilation, formatting, frontend lint/build, API/architecture/render checks and canonical schema verification remain available. Other commits retain the default suites.

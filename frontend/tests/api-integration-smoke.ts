@@ -135,7 +135,6 @@ const server = createServer((request, response) => {
         code: 'MATERIAL',
         name: 'Material',
         is_required: false,
-        is_variant_defining: false,
         sort_order: 0,
         options: [],
       };
@@ -246,7 +245,7 @@ const server = createServer((request, response) => {
           discount: 10000,
           shipping_fee: 30000,
           total: 120000,
-          recipient: { phone: '0909000001', email: null, address: '1 Đinh Tiên Hoàng' },
+          recipient: { name: 'Test Recipient', phone: '0909000001', email: null, address: '1 Đinh Tiên Hoàng' },
           created_at: '2026-10-29T00:00:00Z',
         },
       });
@@ -401,14 +400,15 @@ const server = createServer((request, response) => {
     return;
   }
 
-  if (request.method === 'GET' && url.pathname === '/api/v1/me/orders/42') {
+  if ((request.method === 'GET' && url.pathname === '/api/v1/me/orders/42') || (request.method === 'POST' && url.pathname === '/api/v1/me/orders/42/cancel')) {
     requireBearer(request);
     writeJson(response, 200, {
       data: {
         order_id: 42,
         order_code: 'FIDO-42',
-        order_status: 'PENDING',
-        recipient: { phone: '0909000001', email: null, address: 'Hà Nội' },
+        order_status: request.method === 'POST' ? 'CANCELLED' : 'PENDING',
+        allowed_actions: request.method === 'POST' ? [] : ['CANCEL'],
+        recipient: { name: 'Test Recipient', phone: '0909000001', email: null, address: 'Hà Nội' },
         items: [],
         subtotal: 100000,
         discount: 0,
@@ -420,7 +420,6 @@ const server = createServer((request, response) => {
           amount_received: 0,
           amount_refunded: 0,
         },
-        shipping_info: null,
         completed_at: null,
         returned_at: null,
         created_at: '2026-10-07T00:00:00',
@@ -576,7 +575,6 @@ try {
     code: 'MATERIAL',
     name: 'Material',
     is_required: false,
-    is_variant_defining: false,
     sort_order: 0,
   };
   const createdAttribute = await adminCatalogMetaService.createAttribute(attributeInput);
@@ -585,7 +583,6 @@ try {
   const attributePatch = {
     name: 'Chất liệu',
     is_required: true,
-    is_variant_defining: false,
     sort_order: 1,
   };
   await adminCatalogMetaService.updateAttribute(1, attributePatch);
@@ -680,6 +677,10 @@ try {
 
   const orderDetail = await orderService.getOrder(42);
   assert.equal(orderDetail.order_code, 'FIDO-42');
+  assert.deepEqual(orderDetail.allowed_actions, ['CANCEL']);
+  const cancelled = await orderService.cancelOrder(42);
+  assert.equal(cancelled.order_status, 'CANCELLED');
+  assert.deepEqual(cancelled.allowed_actions, []);
 
   const policy = await contentService.getPublicPage('shipping-policy');
   assert.equal(policy.page_code, 'shipping-policy');

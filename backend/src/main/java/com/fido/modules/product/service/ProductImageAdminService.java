@@ -73,7 +73,6 @@ public class ProductImageAdminService {
             image.setProductId(productId);
             image.setImageUrl(stored.url());
             image.setSortOrder(nextSortOrder);
-            image.setIsPrimary(nextSortOrder == 0);
             nextSortOrder++;
             images.save(image);
         }
@@ -105,7 +104,7 @@ public class ProductImageAdminService {
                         .toList();
 
         product.touch();
-        persistGalleryOrderAndPrimary(remaining);
+        persistGalleryOrder(remaining);
         recordProductUpdate(actor, productId);
     }
 
@@ -131,7 +130,7 @@ public class ProductImageAdminService {
                                         !Objects.equals(
                                                 finalOrder.get(index).getSortOrder(), index));
         if (changed) product.touch();
-        persistGalleryOrderAndPrimary(finalOrder);
+        persistGalleryOrder(finalOrder);
         recordProductUpdate(actor, productId);
 
         return query.detailInternal(productId);
@@ -177,10 +176,7 @@ public class ProductImageAdminService {
                                                                 ordered.get(index).sort_order())
                                                         && Objects.equals(
                                                                 current.get(index).getImageUrl(),
-                                                                ordered.get(index).image_url())
-                                                        && Objects.equals(
-                                                                current.get(index).getIsPrimary(),
-                                                                index == 0));
+                                                                ordered.get(index).image_url()));
         if (unchanged) return;
         product.touch();
         current.forEach(images::delete);
@@ -190,7 +186,6 @@ public class ProductImageAdminService {
             image.setProductId(productId);
             image.setImageUrl(item.image_url());
             image.setSortOrder(item.sort_order());
-            image.setIsPrimary(item.sort_order() == 0);
             images.save(image);
         }
     }
@@ -198,8 +193,7 @@ public class ProductImageAdminService {
     private void assertGalleryInvariant(List<ProductImage> orderedImages) {
         for (int index = 0; index < orderedImages.size(); index++) {
             ProductImage image = orderedImages.get(index);
-            if (!Objects.equals(image.getSortOrder(), index)
-                    || !Objects.equals(image.getIsPrimary(), index == 0)) {
+            if (!Objects.equals(image.getSortOrder(), index)) {
                 // Không tự sửa gallery sai thứ tự/ảnh chính trong một lệnh quản trị ảnh.
                 throw new ResponseStatusException(
                         HttpStatus.CONFLICT, "Product image gallery requires an approved repair");
@@ -257,7 +251,7 @@ public class ProductImageAdminService {
                 .toList();
     }
 
-    private void persistGalleryOrderAndPrimary(List<ProductImage> orderedImages) {
+    private void persistGalleryOrder(List<ProductImage> orderedImages) {
         boolean alreadyNormalized = true;
         for (int index = 0; index < orderedImages.size(); index++) {
             if (!Objects.equals(orderedImages.get(index).getSortOrder(), index)) {
@@ -266,21 +260,7 @@ public class ProductImageAdminService {
             }
         }
 
-        if (alreadyNormalized) {
-            boolean primaryChanged = false;
-            for (int index = 0; index < orderedImages.size(); index++) {
-                ProductImage image = orderedImages.get(index);
-                boolean primary = index == 0;
-                if (!Objects.equals(image.getIsPrimary(), primary)) {
-                    image.setIsPrimary(primary);
-                    primaryChanged = true;
-                }
-            }
-            if (primaryChanged) {
-                images.flush();
-            }
-            return;
-        }
+        if (alreadyNormalized) return;
 
         long maxSortOrder =
                 orderedImages.stream()
@@ -301,14 +281,12 @@ public class ProductImageAdminService {
         for (int index = 0; index < orderedImages.size(); index++) {
             ProductImage image = orderedImages.get(index);
             image.setSortOrder((int) (temporaryBase + index));
-            image.setIsPrimary(false);
         }
         images.flush();
 
         for (int index = 0; index < orderedImages.size(); index++) {
             ProductImage image = orderedImages.get(index);
             image.setSortOrder(index);
-            image.setIsPrimary(index == 0);
         }
         images.flush();
     }

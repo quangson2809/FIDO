@@ -251,7 +251,7 @@ export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
           <section className="rounded-lg border border-[#E2E5DE] bg-white p-5">
             <h2 className="font-serif text-xl font-bold">Người nhận</h2>
             <dl className="mt-4 space-y-2 text-sm">
-              <div className="flex justify-between gap-4"><dt className="text-[#606863]">Họ tên</dt><dd>{order.shipping_info?.recipient_name ?? '—'}</dd></div>
+              <div className="flex justify-between gap-4"><dt className="text-[#606863]">Họ tên</dt><dd>{order.recipient.name ?? '—'}</dd></div>
               <div className="flex justify-between gap-4"><dt className="text-[#606863]">Điện thoại</dt><dd>{order.recipient.phone}</dd></div>
               <div className="flex justify-between gap-4"><dt className="text-[#606863]">Email</dt><dd>{order.recipient.email ?? '—'}</dd></div>
               <div className="flex justify-between gap-4"><dt className="text-[#606863]">Địa chỉ</dt><dd className="max-w-lg text-right">{order.recipient.address}</dd></div>

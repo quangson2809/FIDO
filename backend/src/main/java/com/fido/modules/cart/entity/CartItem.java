@@ -1,7 +1,10 @@
 package com.fido.modules.cart.entity;
 
+import com.fido.common.exception.BusinessRuleException;
+
 import jakarta.persistence.*;
 
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -33,22 +36,36 @@ public class CartItem {
     private Long productId;
 
     @Column(name = "quantity", nullable = false)
+    @Setter(AccessLevel.NONE)
     private Integer quantity;
-
-    @Column(
-            name = "added_at",
-            nullable = false,
-            columnDefinition = "TIMESTAMP(6)",
-            updatable = false)
-    private LocalDateTime addedAt;
 
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
     private LocalDateTime updatedAt;
 
+    public void changeQuantity(Integer quantity) {
+        requirePositive(quantity);
+        this.quantity = quantity;
+    }
+
+    public void increaseQuantity(Integer amount) {
+        requirePositive(amount);
+        requirePositive(quantity);
+        try {
+            quantity = Math.addExact(quantity, amount);
+        } catch (ArithmeticException overflow) {
+            throw BusinessRuleException.invalid("VALIDATION_ERROR");
+        }
+    }
+
+    private static void requirePositive(Integer quantity) {
+        if (quantity == null || quantity <= 0) {
+            throw BusinessRuleException.invalid("VALIDATION_ERROR");
+        }
+    }
+
     @PrePersist
     void onCreate() {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-        if (addedAt == null) addedAt = now;
         updatedAt = now;
     }
 

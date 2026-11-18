@@ -9,6 +9,7 @@ on:
       - demo1
       - feature/catalog-dynamic-sku-selection
       - refactor/backend-pattern-safe-v2
+      - refactor/domain-entity-behaviors
       - feature/backend-phase-0-discovery
       - feature/phase-2-3-image-persistence
       - fix/backend-confirmed-findings-20261007
@@ -25,6 +26,7 @@ on:
       - demo1
     paths:
       - "backend/**"
+      - "ops/sql/**"
       - "reference/**"
       - "docs/refactor-v2/p1/P1-exit-gate.md"
       - "docs/refactor-v2/p1/P1.9-contract-consistency-report.md"
@@ -37,6 +39,9 @@ permissions:
   contents: read
 
 env:
+  DOMAIN_ENTITY_FOCUSED: ${{ github.ref == 'refs/heads/refactor/domain-entity-behaviors' || github.head_ref == 'refactor/domain-entity-behaviors' }}
+  CUSTOMER_CANCEL_FOCUSED: ${{ contains(github.event.head_commit.message, '[customer-cancel-focus]') || contains(github.event.pull_request.title, '[customer-cancel-focus]') }}
+  SEED_CATALOG_FOCUSED: ${{ contains(github.event.head_commit.message, '[seed-catalog-focus]') || contains(github.event.pull_request.title, '[seed-catalog-focus]') }}
   REPORT_FOCUSED: ${{ contains(github.event.head_commit.message, '[admin-report-focus]') || contains(github.event.pull_request.title, '[admin-report-focus]') }}
 
 jobs:
@@ -115,7 +120,7 @@ jobs:
           exit 1
 
   backend:
-    if: ${{ !((github.event_name == 'push' && github.ref == 'refs/heads/feature/p3-1-account-rbac') || (github.event_name == 'pull_request' && github.head_ref == 'feature/p3-1-account-rbac')) }}
+    if: ${{ !contains(github.event.head_commit.message, '[product-images-focus]') && !contains(github.event.pull_request.title, '[product-images-focus]') && !((github.event_name == 'push' && github.ref == 'refs/heads/feature/p3-1-account-rbac') || (github.event_name == 'pull_request' && github.head_ref == 'feature/p3-1-account-rbac')) }}
     name: Build and test backend
     runs-on: ubuntu-latest
     services:
@@ -180,7 +185,29 @@ jobs:
           TEST_DB_USERNAME: root
           TEST_DB_PASSWORD: ci-only-password
         run: |
-          if [ "$REPORT_FOCUSED" = "true" ]; then
+          if [ "$DOMAIN_ENTITY_FOCUSED" = "true" ]; then
+            bash scripts/verify-order-without-shipping.sh
+          elif [ "$CUSTOMER_CANCEL_FOCUSED" = "true" ]; then
+            ./gradlew --no-daemon test --rerun-tasks \
+              --tests com.fido.common.ApiBaselineRouteContractTests \
+              --tests com.fido.modules.order.CustomerOrderCancellationHttpTests \
+              --tests com.fido.modules.order.OrderActionContractHttpTests \
+              --tests com.fido.modules.order.OrderActionTransactionHttpTests \
+              --tests com.fido.modules.order.OrderConcurrencyTests \
+              --tests com.fido.modules.order.OrderStockHttpTests \
+              --tests com.fido.modules.order.OrderAuthorizationHttpTests \
+              --tests com.fido.modules.order.OrderLifecycleHttpTests \
+              --tests com.fido.modules.order.service.lifecycle.OrderActionPolicyInvariantTests \
+              --tests com.fido.modules.order.service.lifecycle.OrderActionMatrixTests \
+              --tests com.fido.modules.order.service.lifecycle.OrderActionSchemaTests \
+              --tests com.fido.modules.order.service.lifecycle.OrderQueryServiceTests
+            ./gradlew --no-daemon checkJavaFormat
+          elif [ "$SEED_CATALOG_FOCUSED" = "true" ]; then
+            ./gradlew --no-daemon test --rerun-tasks \
+              --tests com.fido.config.devseed.DevDataSeedServiceTests \
+              --tests com.fido.persistence.DatabaseBaselineTests.developmentFixtureSeedsParentChildAttributesAndInventory
+            ./gradlew --no-daemon checkJavaFormat
+          elif [ "$REPORT_FOCUSED" = "true" ]; then
             ./gradlew --no-daemon test --rerun-tasks \
               --tests 'com.fido.modules.report.*' \
               --tests 'com.fido.modules.pricing.*' \

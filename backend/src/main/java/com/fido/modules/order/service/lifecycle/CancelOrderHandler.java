@@ -4,9 +4,7 @@ import com.fido.modules.inventory.service.stock.InventoryCommandService;
 import com.fido.modules.inventory.service.stock.InventoryCommandService.StockLine;
 import com.fido.modules.order.dto.request.OrderActionRequest;
 import com.fido.modules.order.entity.Order;
-import com.fido.modules.order.entity.ShippingInfo;
 import com.fido.modules.order.repository.OrderRepository;
-import com.fido.modules.order.repository.ShippingInfoRepository;
 import com.fido.modules.order.service.OrderPolicy;
 import com.fido.modules.promotion.service.VoucherRedemptionService;
 
@@ -17,19 +15,16 @@ import java.util.List;
 @Component
 class CancelOrderHandler implements OrderActionHandler {
     private final OrderRepository orders;
-    private final ShippingInfoRepository shippingInfos;
     private final InventoryCommandService inventory;
     private final OrderStockLineLoader stockLines;
     private final VoucherRedemptionService voucherRedemption;
 
     CancelOrderHandler(
             OrderRepository orders,
-            ShippingInfoRepository shippingInfos,
             InventoryCommandService inventory,
             OrderStockLineLoader stockLines,
             VoucherRedemptionService voucherRedemption) {
         this.orders = orders;
-        this.shippingInfos = shippingInfos;
         this.inventory = inventory;
         this.stockLines = stockLines;
         this.voucherRedemption = voucherRedemption;
@@ -40,8 +35,7 @@ class CancelOrderHandler implements OrderActionHandler {
     }
 
     @Override
-    public void execute(
-            Long actor, Order order, ShippingInfo shipping, OrderActionRequest request) {
+    public void execute(Long actor, Order order, OrderActionRequest request) {
         String fromOrderStatus = order.getOrderStatus();
         List<StockLine> lines = stockLines.loadForUpdate(order.getOrderId());
 
@@ -50,10 +44,8 @@ class CancelOrderHandler implements OrderActionHandler {
             inventory.restoreCancelledOrder(actor, order.getOrderId(), lines, "ORDER_CANCELLED");
         }
 
-        order.setOrderStatus(OrderPolicy.CANCELLED);
-        shipping.setShippingStatus("CANCELLED");
+        order.cancel();
         orders.save(order);
-        shippingInfos.save(shipping);
 
         // Chuyển trạng thái dưới khóa bảo đảm chỉ giải phóng lượt voucher một lần trong cùng giao
         // dịch.

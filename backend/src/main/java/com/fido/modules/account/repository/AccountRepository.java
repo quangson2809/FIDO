@@ -25,11 +25,26 @@ public interface AccountRepository extends Repository<Account, Long> {
             """
             select a from Account a
             where a.deletedAt is null
+              and exists (
+                  select ar from AccountRole ar join Role r on r.roleId=ar.roleId
+                  where ar.accountId=a.accountId and r.code='CUSTOMER'
+              )
               and (:q is null or a.phone like concat('%',:q,'%') or a.email like concat('%',:q,'%'))
             order by a.accountId
             """)
     org.springframework.data.domain.Page<Account> findCustomers(
             @Param("q") String q, org.springframework.data.domain.Pageable pageable);
+
+    @Query(
+            """
+            select a from Account a
+            where a.accountId=:id and a.deletedAt is null
+              and exists (
+                  select ar from AccountRole ar join Role r on r.roleId=ar.roleId
+                  where ar.accountId=a.accountId and r.code='CUSTOMER'
+              )
+            """)
+    Optional<Account> findCustomerById(@Param("id") Long id);
 
     Optional<Account> findByPhone(String phone);
 

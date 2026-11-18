@@ -16,9 +16,9 @@
 - **INV-PROD-02:** Parent and child Product rows are independently sellable. Each row owns its own Product ID, SKU, required integer-VND selling price and stock.
 - **INV-PROD-03:** NULL name/slug/description means the stored field is NULL; it does not implicitly inherit a parent value. No other field may acquire implicit inheritance.
 - **INV-ATTR-01:** Dynamic attributes support OPTION, TEXT, NUMBER and BOOLEAN. A value must match the authoritative Attribute type and exactly one compatible value is populated.
-- **INV-ATTR-02:** An OPTION value must reference an option belonging to the same Attribute. `is_variant_defining` is informational only: attributes do not generate child Products or define a composite sale identity.
+- **INV-ATTR-02:** An OPTION value must reference an option belonging to the same Attribute. Attributes do not generate child Products or define a composite sale identity.
 - **INV-IMG-01:** Order-time ORDER_ITEMS.image_url_snapshot must reference immutable retained object/version content. Never reconstruct historical Order images from the current Product gallery. Numeric retention duration and legal exceptions remain TBD; automatic purge is disabled pending approval.
-- **INV-IMG-02:** A Product gallery is empty or has exactly one primary image at sort_order 0. Non-empty gallery positions are unique and contiguous from zero; upload/remove/reorder update positions and is_primary atomically. The P1.9 owner amendment selects unique (product_id, sort_order) in the isolated clean-reset target DDL. The index prevents duplicates; per-Product transaction/locking still maintains contiguity and the primary-image invariant. A populated-database rollout requires an approved duplicate/gap/primary preflight and repair.
+- **INV-IMG-02:** A Product gallery is empty or has exactly one primary image at sort_order 0. Non-empty gallery positions are unique and contiguous from zero; upload/remove/reorder update positions atomically. The P1.9 owner amendment selects unique (product_id, sort_order) in the isolated clean-reset target DDL. The index prevents duplicates; per-Product transaction/locking still maintains contiguity and the primary-image invariant. A populated-database rollout requires an approved duplicate/gap/primary preflight and repair.
 - **INV-PROD-04:** SKU is globally unique and required for every Product row; selling_price is required whole-VND and belongs to that row. Neither parent nor child inherits SKU, price, stock, category, brand or descriptive fields.
 
 ## Cart, checkout and Order
@@ -44,7 +44,7 @@
 - **INV-VOUCHER-06:** Order snapshot stores normalized code, discount_type, raw discount_value (VND or bps according to type) and actual applied VND discount. Later Voucher edits never rewrite Order snapshots. Same logical Order retry cannot consume quota twice under P1.6 idempotency.
 - **INV-PAY-01:** COD only. Collection/refund actor and time are server-derived by an authorized command.
 - **INV-PAY-02:** One Payment aggregate per Order; at most one full refund per Order in v1. Partial/multiple refunds are out of target. Duplicate collection/refund is rejected and side effects are atomic.
-- **INV-SHIP-01:** Shipping is manual; no carrier API or automatic tracking integration. Use approved ShippingInfo state/actor matrix and preserve order-time receiver facts.
+- **INV-SHIP-01:** Manual dispatch/retry/failure is represented solely by Order status. COD collection time is completion time. No separate shipping persistence, carrier/tracking fields or carrier integration.
 
 ## Inventory, Supplier and Goods Receipt
 

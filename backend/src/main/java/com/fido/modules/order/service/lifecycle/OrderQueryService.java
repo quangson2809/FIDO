@@ -14,7 +14,6 @@ import com.fido.modules.order.repository.OrderAddressRepository;
 import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
-import com.fido.modules.order.repository.ShippingInfoRepository;
 import com.fido.modules.order.service.OrderPolicy;
 import com.fido.modules.order.service.OrderSpecifications;
 import com.fido.modules.order.service.OrderSummaryReadService;
@@ -41,7 +40,6 @@ public class OrderQueryService {
     private final OrderAddressRepository addresses;
     private final OrderItemRepository items;
     private final PaymentRepository payments;
-    private final ShippingInfoRepository shipping;
     private final OrderSummaryReadService summaryReader;
     private final OrderActionPolicy actionPolicy;
     private final OrderAuthorization authorization;
@@ -51,7 +49,6 @@ public class OrderQueryService {
             OrderAddressRepository addresses,
             OrderItemRepository items,
             PaymentRepository payments,
-            ShippingInfoRepository shipping,
             OrderSummaryReadService summaryReader,
             OrderActionPolicy actionPolicy,
             OrderAuthorization authorization) {
@@ -59,7 +56,6 @@ public class OrderQueryService {
         this.addresses = addresses;
         this.items = items;
         this.payments = payments;
-        this.shipping = shipping;
         this.summaryReader = summaryReader;
         this.actionPolicy = actionPolicy;
         this.authorization = authorization;
@@ -126,7 +122,6 @@ public class OrderQueryService {
     OrderCustomerDetailDto customerDetailInternal(Order order) {
         var orderItems = orderItems(order.getOrderId());
         Payment payment = payment(order.getOrderId());
-        var shippingInfo = shipping.findById(order.getOrderId()).orElse(null);
         OrderAddress address = address(order.getOrderId());
 
         return new OrderCustomerDetailDto(
@@ -140,17 +135,16 @@ public class OrderQueryService {
                 order.getShippingFee(),
                 order.getTotalAmount(),
                 OrderMapper.paymentPublic(payment),
-                OrderMapper.shipping(shippingInfo),
-                shippingInfo == null ? null : shippingInfo.getDeliveredAt(),
+                payment.getCollectedAt(),
                 payment.getRefundedAt(),
                 order.getCreatedAt(),
-                order.getUpdatedAt());
+                order.getUpdatedAt(),
+                actionPolicy.customerAllowedActions(order, payment));
     }
 
     OrderAdminDetailDto adminDetailInternal(Order order, Authentication authentication) {
         var orderItems = orderItems(order.getOrderId());
         Payment payment = payment(order.getOrderId());
-        var shippingInfo = shipping.findById(order.getOrderId()).orElse(null);
         OrderAddress address = address(order.getOrderId());
 
         return new OrderAdminDetailDto(
@@ -163,8 +157,7 @@ public class OrderQueryService {
                 order.getDiscountAmount(),
                 order.getShippingFee(),
                 order.getTotalAmount(),
-                OrderMapper.shipping(shippingInfo),
-                shippingInfo == null ? null : shippingInfo.getDeliveredAt(),
+                payment.getCollectedAt(),
                 payment.getRefundedAt(),
                 order.getCreatedAt(),
                 order.getUpdatedAt(),

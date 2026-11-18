@@ -24,3 +24,8 @@ This baseline is for a fresh, empty database only. It is not an upgrade script a
 ## Acceptance boundary
 
 A passing schema checker and fresh-MySQL test prove the baseline's structural/seed consistency only. They do not establish that every JPA entity, repository, service, API contract, authorization rule or concurrency behavior already passes. Those remain implementation and acceptance gates for P3.1 and later phases.
+
+
+### 2026-11-17 schema simplification
+
+V1 now omits the ten redundant columns approved in `docs/15-technical-decisions.md`. This changes the V1 checksum. A database already using the earlier V1 cannot simply restart against this revision: use a verified disposable dev/test database rebuilt from the new baseline, or prepare a separately reviewed data-preserving upgrade for persistent/shared data. Do not run Flyway repair merely to hide a schema mismatch. No persistent database reset is authorized by the source change.

@@ -59,7 +59,7 @@
 - OPTION/TEXT/NUMBER/BOOLEAN attributes are descriptive only; an option must belong to the same Attribute; metadata never auto-generates Products.
 - Cart and order placement require authentication; quote is stateless/advisory; server revalidates on placement and uses account-scoped idempotency.
 - Money uses whole VND, approved discount allocation, append-only inventory ledger, source-derived deduplication and atomic source/balance/ledger/audit effects.
-- v1 uses a global non-stacking order Voucher quota, COD, one operational warehouse, manual shipping and the approved Order/Payment/ShippingInfo state rules.
+- v1 uses a global non-stacking order Voucher quota, COD, one operational warehouse, manual shipping and the approved Order/Payment state rules.
 - Order-time image snapshots resolve to stable immutable object/version content. Numeric retention/anonymization requirements remain TBD.
 - Clean Schema Reset is only for a database verified as disposable local/development/test data. No reset is implied.
 

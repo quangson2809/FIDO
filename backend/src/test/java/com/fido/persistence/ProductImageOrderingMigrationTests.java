@@ -72,32 +72,28 @@ class ProductImageOrderingMigrationTests {
                     jdbc.queryForObject(
                             "SELECT id FROM products WHERE sku='P1-ORDER-B'", Long.class);
             jdbc.update(
-                    "INSERT INTO product_images(product_id,image_url,sort_order,is_primary) VALUES (?,?,?,?)",
+                    "INSERT INTO product_images(product_id,image_url,sort_order) VALUES (?,?,?)",
                     a,
                     "https://example.test/a-0.png",
-                    0,
-                    true);
+                    0);
             jdbc.update(
-                    "INSERT INTO product_images(product_id,image_url,sort_order,is_primary) VALUES (?,?,?,?)",
+                    "INSERT INTO product_images(product_id,image_url,sort_order) VALUES (?,?,?)",
                     a,
                     "https://example.test/a-1.png",
-                    1,
-                    false);
+                    1);
             assertThrows(
                     DataAccessException.class,
                     () ->
                             jdbc.update(
-                                    "INSERT INTO product_images(product_id,image_url,sort_order,is_primary) VALUES (?,?,?,?)",
+                                    "INSERT INTO product_images(product_id,image_url,sort_order) VALUES (?,?,?)",
                                     a,
                                     "https://example.test/a-duplicate.png",
-                                    1,
-                                    false));
+                                    1));
             jdbc.update(
-                    "INSERT INTO product_images(product_id,image_url,sort_order,is_primary) VALUES (?,?,?,?)",
+                    "INSERT INTO product_images(product_id,image_url,sort_order) VALUES (?,?,?)",
                     b,
                     "https://example.test/b-0.png",
-                    0,
-                    true);
+                    0);
             assertEquals(
                     2,
                     jdbc.queryForObject(

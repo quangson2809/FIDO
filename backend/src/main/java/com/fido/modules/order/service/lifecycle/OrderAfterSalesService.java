@@ -8,10 +8,8 @@ import com.fido.modules.order.dto.request.AfterSalesRequest;
 import com.fido.modules.order.dto.response.OrderAdminDetailDto;
 import com.fido.modules.order.entity.Order;
 import com.fido.modules.order.entity.Payment;
-import com.fido.modules.order.entity.ShippingInfo;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
-import com.fido.modules.order.repository.ShippingInfoRepository;
 import com.fido.modules.order.service.OrderPolicy;
 
 import org.springframework.http.HttpStatus;
@@ -23,8 +21,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
-import java.util.Objects;
 
 @Service
 @Transactional
@@ -36,19 +34,16 @@ public class OrderAfterSalesService {
 
     private final OrderRepository orders;
     private final PaymentRepository payments;
-    private final ShippingInfoRepository shippingInfos;
     private final OrderQueryService query;
     private final AuditWriteService audit;
 
     public OrderAfterSalesService(
             OrderRepository orders,
             PaymentRepository payments,
-            ShippingInfoRepository shippingInfos,
             OrderQueryService query,
             AuditWriteService audit) {
         this.orders = orders;
         this.payments = payments;
-        this.shippingInfos = shippingInfos;
         this.query = query;
         this.audit = audit;
     }
@@ -81,33 +76,10 @@ public class OrderAfterSalesService {
                                 () ->
                                         new ResponseStatusException(
                                                 HttpStatus.CONFLICT, "ORDER_PAYMENT_MISSING"));
-        ShippingInfo shipping =
-                shippingInfos
-                        .findById(orderId)
-                        .orElseThrow(
-                                () ->
-                                        new ResponseStatusException(
-                                                HttpStatus.CONFLICT,
-                                                "ORDER_SHIPPING_INFO_MISSING"));
 
-        if (OrderPolicy.REFUNDED.equals(payment.getPaymentStatus())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "PAYMENT_ALREADY_REFUNDED");
-        }
-        if (!OrderPolicy.canTransition(order.getOrderStatus(), OrderPolicy.RETURNED)
-                || !OrderPolicy.COMPLETED.equals(order.getOrderStatus())
-                || !OrderPolicy.PAID.equals(payment.getPaymentStatus())
-                || !"DELIVERED".equals(shipping.getShippingStatus())
-                || !"COD".equals(payment.getMethod())
-                || payment.getAmount() == null
-                || !payment.getAmount().equals(order.getTotalAmount())
-                || !Objects.equals(payment.getCurrency(), order.getCurrency())
-                || payment.getRefundAmount() == null
-                || payment.getRefundAmount() != 0L
-                || payment.getCollectedByAccountId() == null
-                || payment.getCollectedAt() == null
-                || payment.getRefundedByAccountId() != null
-                || payment.getRefundedAt() != null
-                || payment.getRefundReason() != null) {
+        payment.requireRefundable();
+        if (!OrderPolicy.COMPLETED.equals(order.getOrderStatus())
+                || !payment.getAmount().equals(order.getTotalAmount())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "ORDER_AFTER_SALES_NOT_ALLOWED");
         }
         if (actor == null || actor <= 0 || reason == null || reason.isBlank()) {
@@ -115,21 +87,16 @@ public class OrderAfterSalesService {
                     HttpStatus.BAD_REQUEST, "ORDER_REFUND_REASON_REQUIRED");
         }
 
-        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-        OrderPolicy.requireReturnWithinWindow(shipping.getDeliveredAt(), now);
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
+        OrderPolicy.requireReturnWithinWindow(payment.getCollectedAt(), now);
         String fromOrder = order.getOrderStatus();
         String fromPayment = payment.getPaymentStatus();
-        String fromShipping = shipping.getShippingStatus();
         long fullRefundAmount = payment.getAmount();
 
-        order.setOrderStatus(OrderPolicy.RETURNED);
+        order.acceptReturn();
         orders.save(order);
 
-        payment.setPaymentStatus(OrderPolicy.REFUNDED);
-        payment.setRefundAmount(fullRefundAmount);
-        payment.setRefundedByAccountId(actor);
-        payment.setRefundedAt(now);
-        payment.setRefundReason(reason.trim());
+        payment.refundFull(actor, reason, now);
         payments.save(payment);
 
         audit.record(
@@ -139,12 +106,10 @@ public class OrderAfterSalesService {
                         orderId.toString(),
                         Map.of(
                                 "status", fromOrder,
-                                "payment_status", fromPayment,
-                                "shipping_status", fromShipping),
+                                "payment_status", fromPayment),
                         Map.of(
                                 "status", order.getOrderStatus(),
-                                "payment_status", payment.getPaymentStatus(),
-                                "shipping_status", shipping.getShippingStatus())));
+                                "payment_status", payment.getPaymentStatus())));
         audit.record(
                 AuditWriteEvent.withChanges(
                         AuditAction.ORDER_REFUND,

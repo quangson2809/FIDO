@@ -46,7 +46,6 @@ class DatabaseBaselineTests {
                     "order_addresses",
                     "order_voucher_snapshots",
                     "payments",
-                    "shipping_infos",
                     "suppliers",
                     "goods_receipts",
                     "goods_receipt_items",
@@ -158,13 +157,7 @@ class DatabaseBaselineTests {
                             Set.of("attribute_id", "id", "label", "sort_order", "value")),
                     Map.entry(
                             "attributes",
-                            Set.of(
-                                    "code",
-                                    "id",
-                                    "is_required",
-                                    "is_variant_defining",
-                                    "name",
-                                    "sort_order")),
+                            Set.of("code", "id", "is_required", "name", "sort_order")),
                     Map.entry(
                             "audit_logs",
                             Set.of(
@@ -180,16 +173,8 @@ class DatabaseBaselineTests {
                     Map.entry("brands", Set.of("id", "name", "slug", "status")),
                     Map.entry(
                             "cart_items",
-                            Set.of(
-                                    "added_at",
-                                    "cart_id",
-                                    "id",
-                                    "product_id",
-                                    "quantity",
-                                    "updated_at")),
-                    Map.entry(
-                            "carts",
-                            Set.of("account_id", "created_at", "id", "status", "updated_at")),
+                            Set.of("cart_id", "id", "product_id", "quantity", "updated_at")),
+                    Map.entry("carts", Set.of("account_id", "created_at", "id", "updated_at")),
                     Map.entry(
                             "categories",
                             Set.of(
@@ -281,7 +266,6 @@ class DatabaseBaselineTests {
                     Map.entry(
                             "order_voucher_snapshots",
                             Set.of(
-                                    "discount_amount_snapshot",
                                     "discount_type_snapshot",
                                     "discount_value_snapshot",
                                     "order_id",
@@ -291,12 +275,10 @@ class DatabaseBaselineTests {
                             Set.of(
                                     "account_id",
                                     "created_at",
-                                    "currency",
                                     "discount_amount",
                                     "id",
                                     "idempotency_key",
                                     "order_number",
-                                    "placed_at",
                                     "request_fingerprint",
                                     "shipping_fee",
                                     "status",
@@ -311,8 +293,6 @@ class DatabaseBaselineTests {
                                     "collected_at",
                                     "collected_by_account_id",
                                     "created_at",
-                                    "currency",
-                                    "method",
                                     "order_id",
                                     "payment_status",
                                     "refund_amount",
@@ -326,13 +306,7 @@ class DatabaseBaselineTests {
                             Set.of("attribute_id", "option_id", "product_id")),
                     Map.entry(
                             "product_images",
-                            Set.of(
-                                    "created_at",
-                                    "id",
-                                    "image_url",
-                                    "is_primary",
-                                    "product_id",
-                                    "sort_order")),
+                            Set.of("created_at", "id", "image_url", "product_id", "sort_order")),
                     Map.entry(
                             "products",
                             Set.of(
@@ -352,18 +326,6 @@ class DatabaseBaselineTests {
                                     "updated_at")),
                     Map.entry("role_permissions", Set.of("permission_id", "role_id")),
                     Map.entry("roles", Set.of("code", "description", "id", "name", "status")),
-                    Map.entry(
-                            "shipping_infos",
-                            Set.of(
-                                    "carrier_name",
-                                    "delivered_at",
-                                    "order_id",
-                                    "recipient_name",
-                                    "recipient_phone",
-                                    "shipped_at",
-                                    "shipping_status",
-                                    "tracking_number",
-                                    "updated_at")),
                     Map.entry(
                             "suppliers",
                             Set.of(
@@ -440,19 +402,19 @@ class DatabaseBaselineTests {
     }
 
     @Test
-    void canonicalBaselineCreatesAllFortyThreeForeignKeysWithoutDanglingTargets() {
+    void canonicalBaselineCreatesAllApprovedForeignKeysWithoutDanglingTargets() {
         var dataSource = newTestDataSource("foreign-keys");
 
         try {
             installSchema(dataSource);
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
             assertEquals(
-                    43,
+                    42,
                     jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.REFERENTIAL_CONSTRAINTS "
                                     + "WHERE CONSTRAINT_SCHEMA = DATABASE()",
                             Integer.class),
-                    "All 43 approved ERD relationships must be installed as foreign keys");
+                    "All 42 approved ERD relationships must be installed as foreign keys");
             assertEquals(
                     0,
                     jdbc.queryForObject(

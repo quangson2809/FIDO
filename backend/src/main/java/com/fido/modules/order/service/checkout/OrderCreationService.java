@@ -14,15 +14,12 @@ import com.fido.modules.order.entity.OrderAddress;
 import com.fido.modules.order.entity.OrderItem;
 import com.fido.modules.order.entity.OrderVoucherSnapshot;
 import com.fido.modules.order.entity.Payment;
-import com.fido.modules.order.entity.ShippingInfo;
 import com.fido.modules.order.mapper.OrderMapper;
 import com.fido.modules.order.repository.OrderAddressRepository;
 import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.OrderVoucherSnapshotRepository;
 import com.fido.modules.order.repository.PaymentRepository;
-import com.fido.modules.order.repository.ShippingInfoRepository;
-import com.fido.modules.order.service.OrderPolicy;
 import com.fido.modules.product.service.query.OrderProductSnapshotService;
 import com.fido.modules.promotion.service.VoucherRedemptionService;
 
@@ -57,7 +54,6 @@ public class OrderCreationService {
     private final OrderAddressRepository addresses;
     private final OrderVoucherSnapshotRepository voucherSnapshots;
     private final PaymentRepository payments;
-    private final ShippingInfoRepository shippingInfos;
     private final AuditWriteService audit;
     private final VoucherRedemptionService vouchers;
     private final CheckoutRequestNormalizer normalizer;
@@ -73,7 +69,6 @@ public class OrderCreationService {
             OrderAddressRepository addresses,
             OrderVoucherSnapshotRepository voucherSnapshots,
             PaymentRepository payments,
-            ShippingInfoRepository shippingInfos,
             AuditWriteService audit,
             VoucherRedemptionService vouchers,
             CheckoutRequestNormalizer normalizer,
@@ -86,7 +81,6 @@ public class OrderCreationService {
         this.addresses = addresses;
         this.voucherSnapshots = voucherSnapshots;
         this.payments = payments;
-        this.shippingInfos = shippingInfos;
         this.audit = audit;
         this.vouchers = vouchers;
         this.normalizer = normalizer;
@@ -137,15 +131,14 @@ public class OrderCreationService {
                                 .map(CheckoutCartView.Item::productId)
                                 .collect(Collectors.toSet()));
 
-        // Lưu trọn bộ đơn PENDING, snapshot, COD và vận chuyển; bước đặt đơn chưa trừ tồn kho.
+        // Lưu trọn bộ đơn PENDING, snapshot và COD; bước đặt đơn chưa trừ tồn kho.
         Order order = persistOrder(accountId, storedKey, fingerprint, calculation);
         persistOrderItems(order.getOrderId(), calculation, attributeSnapshots);
         OrderAddress address = persistAddress(order.getOrderId(), normalized);
         persistVoucherSnapshot(order.getOrderId(), calculation);
         Payment payment = persistInitialPayment(order.getOrderId(), calculation.total());
-        persistInitialShipping(order.getOrderId(), normalized);
         vouchers.consume(calculation.voucher());
-        cart.completeForOrder(accountId);
+        cart.consumeItemsForOrder(accountId);
         audit.record(
                 AuditWriteEvent.of(
                         AuditAction.ORDER_CREATE,
@@ -189,9 +182,7 @@ public class OrderCreationService {
         order.setDiscountAmount(calculation.discount());
         order.setShippingFee(calculation.shippingFee());
         order.setTotalAmount(calculation.total());
-        order.setCurrency("VND");
         order.setVoucherId(calculation.voucher().voucherId());
-        order.setOrderStatus(OrderPolicy.PENDING);
         return orders.save(order);
     }
 
@@ -249,29 +240,11 @@ public class OrderCreationService {
         snapshot.setVoucherCodeSnapshot(discount.code());
         snapshot.setDiscountTypeSnapshot(discount.discountType());
         snapshot.setDiscountValueSnapshot(discount.discountValue());
-        snapshot.setDiscountAmountSnapshot(calculation.discount());
         voucherSnapshots.save(snapshot);
     }
 
     private Payment persistInitialPayment(Long orderId, long total) {
-        Payment payment = new Payment();
-        payment.setOrderId(orderId);
-        payment.setMethod("COD");
-        payment.setPaymentStatus(OrderPolicy.UNPAID);
-        payment.setAmount(total);
-        payment.setCurrency("VND");
-        payment.setRefundAmount(0L);
-        return payments.save(payment);
-    }
-
-    private void persistInitialShipping(
-            Long orderId, CheckoutRequestNormalizer.Normalized request) {
-        ShippingInfo shipping = new ShippingInfo();
-        shipping.setOrderId(orderId);
-        shipping.setRecipientName(request.recipientName());
-        shipping.setRecipientPhone(request.recipientPhone());
-        shipping.setShippingStatus("PENDING");
-        shippingInfos.save(shipping);
+        return payments.save(Payment.unpaid(orderId, total));
     }
 
     private String requireIdempotencyKey(List<String> values) {

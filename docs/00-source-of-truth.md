@@ -6,7 +6,7 @@ The [ERD v2 reconstruction index](refactor-v2/README.md) organizes target assets
 
 Use the following artifacts as the current development contract, in this order:
 
-1. **Owner decisions:** [P1 owner approval](refactor-v2/p1/P1-owner-approval-2026-10-23.md), the [P1.9 owner amendment](refactor-v2/p1/P1-owner-amendment-2026-10-25.md), and approved rows in [P1 Decision Log](refactor-v2/p1/P1-decision-log.md).
+1. **Owner decisions:** the [2026-11-18 ShippingInfo removal](15-technical-decisions.md#2026-11-18--remove-shippinginfo-completely) supersedes separate shipping persistence/DTO/state rules; the [2026-11-18 reusable Cart amendment](15-technical-decisions.md#2026-11-18--one-reusable-cart-per-account) supersedes Cart lifecycle/selection rules; the [2026-11-17 schema simplification](15-technical-decisions.md#2026-11-17--remove-redundant-persistence-fields-on-demo1) supersedes rules for its ten removed columns; [P1 owner approval](refactor-v2/p1/P1-owner-approval-2026-10-23.md), the [P1.9 owner amendment](refactor-v2/p1/P1-owner-amendment-2026-10-25.md), and approved rows in [P1 Decision Log](refactor-v2/p1/P1-decision-log.md) apply elsewhere.
 2. **Logical data model:** [Owner-approved ERD v2](refactor-v2/target/erd-v2-approved.mmd).
 3. **Physical data contract:** [P1 Data Dictionary](refactor-v2/p1/P1-data-dictionary.csv), the single schema-and-seed baseline `backend/src/main/resources/db/migration/V1__fido_target_schema.sql`.
 4. **HTTP and wire contracts:** [API Contract](04-api-contract.md) and [DTO Contract](05-dto-contract.md).
@@ -20,7 +20,7 @@ The older decision questionnaire is superseded by the dated owner approval and l
 
 ## 2. Frozen target profile
 
-- The target logical model is the revised **30-table option-only catalog ERD v2**.
+- The target logical model is the revised **29-table option-only catalog ERD v2**.
 - A sellable catalog record is a row in `PRODUCTS`. Parent and child Products are explicit, independently sellable records. v1 permits one parent-child level; each row owns its SKU, required selling price and stock. NULL never means “inherit from parent.”
 - Catalog metadata uses `ATTRIBUTES`, `ATTRIBUTE_OPTIONS` and `PRODUCT_ATTRIBUTE_VALUES`. Every Product attribute value references one predefined Option owned by its Attribute. The current contract has no AttributeType registry or TEXT/NUMBER/BOOLEAN typed-value paths. Attribute metadata is descriptive and never creates Product records automatically.
 - `CART_ITEMS`, `ORDER_ITEMS`, `GOODS_RECEIPT_ITEMS`, `INVENTORIES` and `INVENTORY_TRANSACTIONS` refer to Product IDs. Stock balance is keyed by warehouse and Product.

@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.util.ReflectionTestUtils.setField;
 
 import com.fido.modules.order.entity.Order;
 import com.fido.modules.order.entity.OrderItem;
@@ -16,7 +17,6 @@ import com.fido.modules.order.repository.OrderAddressRepository;
 import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
-import com.fido.modules.order.repository.ShippingInfoRepository;
 import com.fido.modules.order.service.OrderPolicy;
 import com.fido.modules.order.service.OrderSummaryReadService;
 
@@ -39,7 +39,6 @@ class OrderQueryServiceTests {
     @Mock private OrderAddressRepository addresses;
     @Mock private OrderItemRepository items;
     @Mock private PaymentRepository payments;
-    @Mock private ShippingInfoRepository shipping;
     @Mock private OrderActionPolicy actionPolicy;
     @Mock private OrderAuthorization authorization;
 
@@ -53,8 +52,7 @@ class OrderQueryServiceTests {
                         addresses,
                         items,
                         payments,
-                        shipping,
-                        new OrderSummaryReadService(items, payments, shipping),
+                        new OrderSummaryReadService(items, payments),
                         actionPolicy,
                         authorization);
     }
@@ -110,7 +108,7 @@ class OrderQueryServiceTests {
         order.setOrderId(orderId);
         order.setCustomerAccountId(10L);
         order.setOrderCode(orderCode);
-        order.setOrderStatus(OrderPolicy.PENDING);
+        setField(order, "orderStatus", OrderPolicy.PENDING);
         order.setTotalAmount(total);
         return order;
     }
@@ -124,9 +122,8 @@ class OrderQueryServiceTests {
     }
 
     private Payment payment(Long orderId, String status) {
-        Payment payment = new Payment();
-        payment.setOrderId(orderId);
-        payment.setPaymentStatus(status);
+        Payment payment = Payment.unpaid(orderId, 100L);
+        setField(payment, "paymentStatus", status);
         return payment;
     }
 }

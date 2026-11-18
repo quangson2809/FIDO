@@ -1,5 +1,7 @@
 package com.fido.modules.content.entity;
 
+import com.fido.common.exception.BusinessRuleException;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -10,6 +12,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -47,10 +50,29 @@ public class ContentPage {
     private Long updatedByAccountId;
 
     @Column(name = "status", nullable = false, length = 20)
+    @Setter(AccessLevel.NONE)
     private String status = "DRAFT";
 
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
     private LocalDateTime updatedAt;
+
+    public void changeStatus(String next) {
+        String current = status;
+        if (current.equals(next)) {
+            return;
+        }
+        boolean allowed =
+                switch (current) {
+                    case "DRAFT" -> "PUBLISHED".equals(next) || "ARCHIVED".equals(next);
+                    case "PUBLISHED" -> "DRAFT".equals(next) || "ARCHIVED".equals(next);
+                    case "ARCHIVED" -> "DRAFT".equals(next);
+                    default -> false;
+                };
+        if (!allowed) {
+            throw BusinessRuleException.conflict("CONTENT_STATUS_TRANSITION_NOT_ALLOWED");
+        }
+        status = next;
+    }
 
     @PrePersist
     void onCreate() {

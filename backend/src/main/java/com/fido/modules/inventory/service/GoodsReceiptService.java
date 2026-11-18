@@ -67,12 +67,9 @@ public class GoodsReceiptService {
         var requestedItems = createItems(request.items());
         validateItems(requestedItems);
 
-        GoodsReceipt receipt = new GoodsReceipt();
-        receipt.setReceiptCode(generateReceiptCode());
-        receipt.setSupplierId(request.supplier_id());
-        receipt.setWarehouseId(warehouseId);
-        receipt.setReceiptStatus(InventoryPolicy.RECEIPT_DRAFT);
-        receipt.setCreatedByAccountId(actor);
+        GoodsReceipt receipt =
+                GoodsReceipt.draft(
+                        generateReceiptCode(), request.supplier_id(), warehouseId, actor);
         receipts.save(receipt);
         saveItems(receipt.getReceiptId(), requestedItems);
 
@@ -94,7 +91,7 @@ public class GoodsReceiptService {
     public GoodsReceiptDetailDto update(
             Long actor, Long receiptId, GoodsReceiptPatchRequest request) {
         GoodsReceipt receipt = receiptForUpdate(receiptId);
-        requireDraft(receipt);
+        receipt.requireEditable();
         List<GoodsReceiptItem> beforeItems =
                 items.findAllByReceiptIdOrderByReceiptItemIdAsc(receiptId);
         Map<String, Object> before =
@@ -102,7 +99,7 @@ public class GoodsReceiptService {
 
         if (request.getSupplierId() != null) {
             requireActiveSupplier(request.getSupplierId());
-            receipt.setSupplierId(request.getSupplierId());
+            receipt.changeSupplier(request.getSupplierId());
         }
 
         if (request.isItemsPresent()) {
@@ -146,9 +143,7 @@ public class GoodsReceiptService {
         if (InventoryPolicy.RECEIPT_CONFIRMED.equals(current.getReceiptStatus())) {
             return query.detailInternal(current);
         }
-        if (!InventoryPolicy.RECEIPT_DRAFT.equals(current.getReceiptStatus())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "GOODS_RECEIPT_INVALID_STATE");
-        }
+        current.requireEditable();
 
         List<GoodsReceiptItem> receiptItems =
                 items.findAllByReceiptIdOrderByReceiptItemIdAsc(receiptId);
@@ -162,10 +157,7 @@ public class GoodsReceiptService {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         // Đổi trạng thái dưới khóa phiếu; nếu ghi kho hoặc audit lỗi, cả trạng thái và dòng kho đều
         // rollback.
-        current.setReceiptStatus(InventoryPolicy.RECEIPT_CONFIRMED);
-        current.setConfirmedByAccountId(actor);
-        current.setConfirmedAt(now);
-        current.setUpdatedAt(now);
+        current.confirm(actor, now);
 
         var stockLines =
                 receiptItems.stream()
@@ -199,16 +191,13 @@ public class GoodsReceiptService {
         if (InventoryPolicy.RECEIPT_CANCELLED.equals(current.getReceiptStatus())) {
             return query.detailInternal(current);
         }
-        if (!InventoryPolicy.RECEIPT_DRAFT.equals(current.getReceiptStatus())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "GOODS_RECEIPT_INVALID_STATE");
-        }
+        current.requireEditable();
 
         List<GoodsReceiptItem> currentItems =
                 items.findAllByReceiptIdOrderByReceiptItemIdAsc(receiptId);
         Map<String, Object> before =
                 snapshot(current.getReceiptStatus(), current.getWarehouseId(), currentItems);
-        current.setReceiptStatus(InventoryPolicy.RECEIPT_CANCELLED);
-        current.setUpdatedAt(LocalDateTime.now(ZoneOffset.UTC));
+        current.cancel(LocalDateTime.now(ZoneOffset.UTC));
         audit.record(
                 AuditWriteEvent.withChanges(
                         AuditAction.GOODS_RECEIPT_CANCEL,
@@ -322,12 +311,6 @@ public class GoodsReceiptService {
     private GoodsReceipt receiptForUpdate(Long receiptId) {
         return receipts.findByIdForUpdate(receiptId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-    }
-
-    private void requireDraft(GoodsReceipt receipt) {
-        if (!InventoryPolicy.RECEIPT_DRAFT.equals(receipt.getReceiptStatus())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "GOODS_RECEIPT_INVALID_STATE");
-        }
     }
 
     private String generateReceiptCode() {

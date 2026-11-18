@@ -6,12 +6,10 @@ import com.fido.modules.order.dto.response.OrderSummaryDto;
 import com.fido.modules.order.dto.response.PaymentAdminDto;
 import com.fido.modules.order.dto.response.PaymentPublicDto;
 import com.fido.modules.order.dto.response.RecipientDto;
-import com.fido.modules.order.dto.response.ShippingInfoDto;
 import com.fido.modules.order.entity.Order;
 import com.fido.modules.order.entity.OrderAddress;
 import com.fido.modules.order.entity.OrderItem;
 import com.fido.modules.order.entity.Payment;
-import com.fido.modules.order.entity.ShippingInfo;
 
 public final class OrderMapper {
     private OrderMapper() {}
@@ -24,7 +22,8 @@ public final class OrderMapper {
                         address.getWard(),
                         address.getDistrict(),
                         address.getProvince());
-        return new RecipientDto(address.getRecipientPhone(), null, formattedAddress);
+        return new RecipientDto(
+                address.getRecipientName(), address.getRecipientPhone(), null, formattedAddress);
     }
 
     public static OrderItemDto item(OrderItem item) {
@@ -61,20 +60,7 @@ public final class OrderMapper {
                 payment.getRefundedAt());
     }
 
-    public static ShippingInfoDto shipping(ShippingInfo shipping) {
-        if (shipping == null) return null;
-        return new ShippingInfoDto(
-                shipping.getShippingStatus(),
-                shipping.getRecipientName(),
-                shipping.getRecipientPhone(),
-                shipping.getCarrierName(),
-                shipping.getTrackingNumber(),
-                shipping.getShippedAt(),
-                shipping.getDeliveredAt());
-    }
-
-    public static OrderSummaryDto summary(
-            Order order, Payment payment, String imageUrl, ShippingInfo shipping) {
+    public static OrderSummaryDto summary(Order order, Payment payment, String imageUrl) {
         return new OrderSummaryDto(
                 order.getOrderId(),
                 order.getOrderCode(),
@@ -83,7 +69,7 @@ public final class OrderMapper {
                 imageUrl,
                 order.getTotalAmount(),
                 order.getCreatedAt(),
-                shipping == null ? null : shipping.getDeliveredAt(),
+                payment.getCollectedAt(),
                 payment.getRefundedAt());
     }
 

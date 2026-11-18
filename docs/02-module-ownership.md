@@ -2,7 +2,7 @@
 
 ## 1. Ownership map
 
-Package ownership remains Modular Monolith + Package by Feature + layered architecture. Persistence ownership follows the revised 30-table option-only target ERD.
+Package ownership remains Modular Monolith + Package by Feature + layered architecture. Persistence ownership follows the revised 29-table option-only target ERD.
 
 | Module | Business responsibility | Target tables owned |
 |---|---|---|
@@ -10,13 +10,13 @@ Package ownership remains Modular Monolith + Package by Feature + layered archit
 | `product` | Public/admin catalog, category/brand, Product parent-child hierarchy, Product images and option-backed descriptive attributes | `CATEGORIES`, `BRANDS`, `PRODUCTS`, `PRODUCT_IMAGES`, `ATTRIBUTES`, `ATTRIBUTE_OPTIONS`, `PRODUCT_ATTRIBUTE_VALUES` |
 | `cart` | Authenticated Cart and Cart lines | `CARTS`, `CART_ITEMS` |
 | `promotion` | Voucher definition, eligibility and global usage count | `VOUCHERS` |
-| `order` | Stateless checkout quote orchestration, order placement/state transitions, COD Payment, manual shipping and in-scope after-sales commands | `ORDERS`, `ORDER_ITEMS`, `ORDER_ADDRESSES`, `ORDER_VOUCHER_SNAPSHOTS`, `PAYMENTS`, `SHIPPING_INFOS` |
+| `order` | Stateless checkout quote orchestration, order placement/state transitions, COD Payment, manual shipping and in-scope after-sales commands | `ORDERS`, `ORDER_ITEMS`, `ORDER_ADDRESSES`, `ORDER_VOUCHER_SNAPSHOTS`, `PAYMENTS` |
 | `inventory` | Supplier/procurement, GoodsReceipt, warehouse-scoped Product stock and append-only ledger | `SUPPLIERS`, `GOODS_RECEIPTS`, `GOODS_RECEIPT_ITEMS`, `WAREHOUSES`, `INVENTORIES`, `INVENTORY_TRANSACTIONS` |
 | `audit` | Append-only records of important administrative and business operations | `AUDIT_LOGS` |
 | `report` | Sales and Order-state reporting; query-only aggregation | No dedicated target table |
 | `content` | Public content and admin content lifecycle | `CONTENT_PAGES` |
 
-The table sets above cover all 30 approved target tables. A target schema addition needs explicit owner approval and an ERD/dictionary/API amendment.
+The table sets above cover all 29 approved target tables. A target schema addition needs explicit owner approval and an ERD/dictionary/API amendment.
 
 ## 2. API responsibility by domain
 
@@ -24,7 +24,7 @@ The table sets above cover all 30 approved target tables. A target schema additi
 - `product`: public/admin Product catalog, categories, brands and catalog metadata read routes.
 - `cart`: authenticated Cart read/mutation routes; each line is identified by `product_id`.
 - `promotion`: voucher management and voucher eligibility/usage behavior invoked by quote/order flows. It does not own Order transactions.
-- `order`: quote, order placement, Order reads/commands, COD Payment and manual ShippingInfo.
+- `order`: quote, order placement, Order reads/commands, COD Payment and manual dispatch.
 - `inventory`: Supplier, GoodsReceipt, stock/ledger reads and adjustments.
 - `audit`: audit query API and audit records called by the owning transaction.
 - `report`: report query API over target Order/Payment data.

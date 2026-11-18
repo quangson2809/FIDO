@@ -5,7 +5,7 @@ import { isColorOrSize, familyAttributes, matchingFamilyMembers, memberSelection
 
 const value = (attribute: number, code: string, option: number, label: string): ProductAttributeValueDto => ({
   attribute_id: attribute, attribute_code: code, attribute_name: code,
-  attribute_value_id: option, value: label, label, is_variant_defining: true, sort_order: attribute,
+  attribute_value_id: option, value: label, label, sort_order: attribute,
 });
 const color = (option: number, label: string) => value(1, 'COLOR', option, label);
 const size = (option: number, label: string) => value(2, 'SIZE', option, label);

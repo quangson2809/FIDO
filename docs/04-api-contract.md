@@ -46,17 +46,17 @@ Account contract rules:
 | GET | `/catalog/products` | Public | Parent-only Product search/list: ACTIVE non-deleted rows with no parent; pagination counts matching parents. q/category/brand/price use parent fields. Attribute Option filters must all match one ACTIVE non-deleted Product in the family (parent or child), using EXISTS without expanding summary members. |
 | GET | `/catalog/products/{productId}` | Public | Row-owned Product detail with Option values, gallery and ACTIVE-only `family`; every member includes `available_quantity` (operational warehouse stock, missing balance = 0) and `purchasable` (ACTIVE and quantity > 0). Public family excludes non-public parents/siblings; no variant generation or DB schema change. |
 | GET | `/catalog/meta` | Public | Product-facing metadata definitions/options, with deterministic ordering. |
-| GET | `/cart` | JWT | Read the sole account-owned `OPEN` Cart. If none exists, return `CartDto(id=null, items=[], subtotal=0)` without writing. Multiple OPEN rows return `409 CART_SELECTION_AMBIGUOUS`; do not merge/select arbitrarily. |
-| POST | `/cart/items` | JWT | Request `product_id, quantity>0`. Add quantity to an existing same-Product line or insert if absent; create an OPEN Cart atomically if none exists. Product must be ACTIVE/non-deleted. Cart does not reserve stock. |
+| GET | `/cart` | JWT | Read the Account-owned reusable Cart. If absent, return CartDto(cart_id=null, items=[], subtotal=0) without writing. |
+| POST | `/cart/items` | JWT | Request product_id, quantity>0. Add to an existing same-Product line or insert if absent; create the Account Cart atomically only when absent. Product must be ACTIVE/non-deleted. Cart does not reserve stock. |
 | PATCH | `/cart/items/{cartItemId}` | JWT | Replace the selected current Cart line quantity with the supplied positive SQL INT exactly; do not increment. |
-| DELETE | `/cart/items/{cartItemId}` | JWT | Remove the line only from the sole current OPEN Cart. An absent/foreign/non-current line returns `404 CART_ITEM_NOT_FOUND`; multiple OPEN rows fail closed. |
-| DELETE | `/cart` | JWT | Clear all lines of the sole current OPEN Cart but preserve the Cart row/status; if none exists return empty view without creating one. Multiple OPEN rows return `409 CART_SELECTION_AMBIGUOUS`. |
+| DELETE | `/cart/items/{cartItemId}` | JWT | Remove an Account-owned Cart line. An absent/foreign line returns 404 CART_ITEM_NOT_FOUND. Keep the Cart row even when its final line is removed. |
+| DELETE | `/cart` | JWT | Clear the Account Cart lines and preserve its row/ID; if absent, return an empty view without creating one. |
 | POST | `/checkout/quote` | JWT | Body: recipient/address fields plus optional `voucher_code`; calculate the current Cart using current server state. Stateless/advisory only; no `quote_id`, persistence, reservation or mutation. |
 | POST | `/orders` | JWT | Same recipient/address/Voucher fields as quote plus required `Idempotency-Key` header. Revalidate/reprice current Cart; no `quote_id`, client lines or totals. First commit returns `201 Created`; same-key/same-payload replay preserves the original response and adds `Idempotency-Replayed: true`. |
 
 A Cart line identifies one Product row. Use `product_id` consistently through Cart, quote, order line, receiving and inventory requests. Product parent/child structure is explicit; metadata never creates Products.
 
-The schema has no one-active-Cart unique constraint and no Cart merge. P1.6 specifies fail-closed resolution: zero OPEN rows yields an empty read/create-on-mutation; exactly one OPEN row is current; multiple OPEN rows return `409 CART_SELECTION_AMBIGUOUS` without writes. Do not infer selection from `updated_at`. P3.8 must serialize Account-scoped Cart creation/mutations. See [P1.6](refactor-v2/p1/P1.6-cart-checkout-contract.md).
+UNIQUE(carts.account_id) enforces at most one Cart per Account. Account-first and Cart row locks serialize mutations and checkout. Successful placement consumes the purchased lines in the Order transaction and retains the Cart for later purchases; failure rolls back all writes. See [P1.6](refactor-v2/p1/P1.6-cart-checkout-contract.md) and the [existing-data upgrade](operations/reusable-cart-upgrade.md).
 
 Order creation revalidates Product status, price, stock, Voucher eligibility/quota and server-owned shipping inputs. `Idempotency-Key` is required on `POST /orders`; derive its stored namespace from authenticated Account and persist the canonical semantic request's SHA-256 fingerprint with the Order. Same key/payload replays a committed Order; changed payload returns `409 IDEMPOTENCY_PAYLOAD_MISMATCH`; concurrent losers roll back then replay/conflict after reading the winner. Exact canonicalization and response semantics are normative in [P1.6](refactor-v2/p1/P1.6-cart-checkout-contract.md).
 
@@ -99,15 +99,16 @@ An optional voucher code on quote/order is evaluated against pre-discount mercha
 
 | Method | Route | Access |
 |---|---|---|
+| POST | `/me/orders/{orderId}/cancel` | JWT; owns Order; PENDING only; no request body; returns customer detail with `allowed_actions` |
 | GET | `/admin/orders` | JWT + `ORDER_READ` |
 | GET | `/admin/orders/{orderId}` | JWT + `ORDER_READ` |
 | POST | `/admin/orders/{orderId}/actions` | JWT + `ORDER_EDIT`; `CONFIRM`, `START_PREPARING`, `DISPATCH`, `MARK_DELIVERY_FAILED`, `RETRY_DELIVERY`, `CANCEL` |
 | POST | `/admin/orders/{orderId}/payment-actions` | JWT + `ORDER_PAYMENT`; `COMPLETE_DELIVERY_AND_COLLECT_COD` only |
 | POST | `/admin/orders/{orderId}/after-sales` | JWT + `ORDER_AFTER_SALES` + `ORDER_PAYMENT`; `RETURN_AND_REFUND_FULL` only |
 
-The normative actor, precondition, state, side-effect and error matrix is [P1.7 Order/Payment Contract](refactor-v2/p1/P1.7-order-payment-contract.md). A new Order starts `PENDING`, its Payment starts COD/`UNPAID`, and its ShippingInfo starts `PENDING`. **No Inventory deduction is posted at placement**; `PENDING → CONFIRMED` rechecks and deducts stock atomically. Order-state mutation must use explicit action commands, not generic status PATCH. Manual COD collection is atomic with delivery completion; return is limited to one whole-order offline full refund.
+The normative actor, precondition, state, side-effect and error matrix is [P1.7 Order/Payment Contract](refactor-v2/p1/P1.7-order-payment-contract.md). A new Order starts `PENDING`, its Payment starts COD/`UNPAID`, with completion time derived from PAYMENTS.collected_at. **No Inventory deduction is posted at placement**; `PENDING → CONFIRMED` rechecks and deducts stock atomically. Order-state mutation must use explicit action commands, not generic status PATCH. Manual COD collection is atomic with delivery completion; return is limited to one whole-order offline full refund.
 
-`PATCH /api/v1/me/orders/{orderId}/recipient` is legacy-only and is not part of the target v1 API: the placed `ORDER_ADDRESSES` snapshot is immutable. No customer-side cancellation route, partial/multiple refund, item-level return/exchange flow, payment gateway, carrier API or dedicated Order timeline is included. Snapshot reads must use order-time Product, SKU, attribute, image, address, money and Voucher facts, not current catalog/address-book/Voucher values.
+`PATCH /api/v1/me/orders/{orderId}/recipient` is legacy-only and is not part of the target v1 API: the placed `ORDER_ADDRESSES` snapshot is immutable. Customer cancellation is limited to the owned PENDING Order through the explicit command above. No partial/multiple refund, item-level return/exchange flow, payment gateway, carrier API or dedicated Order timeline is included. Snapshot reads must use order-time Product, SKU, attribute, image, address, money and Voucher facts, not current catalog/address-book/Voucher values.
 
 ### Supplier, receiving and inventory
 
@@ -148,7 +149,7 @@ POST `/api/v1/admin/inventory/adjustments` requires non-zero `quantity_delta`, c
   - `GET /admin/reports/product-performance?from=...&to=...&limit=...` returns Product-level completed, returned and net units; limit defaults to 10 and is constrained to 1–100.
   - Reporting uses Asia/Ho_Chi_Minh date boundaries and current Order state/approved completion/return accounting rules; currency amounts are integer VND and ranking/tie-break rules must be deterministic.
 - Content: public `GET /content-pages/{slug}` returns only `PUBLISHED`; missing, `DRAFT` and `ARCHIVED` return the same 404 behavior. Admin reads require `CONTENT_READ`; create/update/status changes require `CONTENT_WRITE`. The `DRAFT/PUBLISHED/ARCHIVED` transition matrix, slug validation, public/admin DTO exposure and atomic audit rules are normative in [P1.8](refactor-v2/p1/P1.8-operations-seed-contract.md). Ordinary removal archives a page; no hard-delete/purge route is introduced.
-- Customers: `GET /admin/customers` and `GET /admin/customers/{customerId}`; customer records derive from authenticated Accounts and their linked Orders, not synthetic guest identities.
+- Customers: `GET /admin/customers` and `GET /admin/customers/{customerId}`; list and detail include only non-soft-deleted Accounts assigned the `CUSTOMER` Role. Staff-only/unassigned Accounts are excluded even when they have Orders; detail returns 404 outside this scope. Customers without Orders and locked/suspended customers remain visible. Multiple Role assignments do not duplicate customer rows or pagination totals. Customer records derive from real Accounts and their linked Orders, not synthetic guest identities.
 
 ## 3. Wire and persistence invariants
 
@@ -167,8 +168,17 @@ The target Product model is row-based, not variant-based. Every Product has a ge
 Attribute filter query parameters:
 - **attribute_filters[ATTRIBUTE_CODE]=value** selects Products by a predefined Option machine value owned by that Attribute. Different Attribute predicates combine with AND.
 - TEXT/NUMBER/BOOLEAN typed operators (including **attribute_min** and **attribute_max**) are not supported. Unknown Attribute codes, unknown or mismatched Option values, duplicate keys and malformed filters return HTTP 400.
-- is_variant_defining never changes filtering into Product generation.
+- Attribute metadata never changes filtering into Product generation.
 
 Image gallery writes are Product-scoped and atomic. Positions are contiguous from zero; position zero is the single primary image whenever the gallery is non-empty. Order-time image snapshots refer to stable immutable object/version content; numeric retention and legal deletion exceptions remain P1.8 decisions.
 
 Admin Attribute/Option write routes use CATALOG_WRITE: POST/PATCH /admin/catalog/attributes and /admin/catalog/attributes/{attributeId}, plus POST/PATCH /admin/catalog/attributes/{attributeId}/options and /admin/catalog/attributes/{attributeId}/options/{optionId}. Every Attribute owns predefined Options; there is no AttributeType registry. Attribute/Option DELETE routes remain undefined until P1.8 resolves lifecycle.
+
+
+### 2026-11-17 — Customer cancellation
+
+`POST /api/v1/me/orders/{orderId}/cancel` has no request body. Resolve the actor from JWT, lock the Order scoped to that owner, then recheck PENDING + clean UNPAID Payment + PENDING Shipping + no stock movement. Missing/foreign Orders return 404; ineligible/repeated cancellation returns 409. Set Order/Shipping to CANCELLED, release a consumed Voucher use once and write actor-bound audit atomically. Pending cancellation never changes inventory. A racing administrator confirmation and customer cancellation serialize on the same Order lock; only one transition wins.
+
+Customer detail includes `allowed_actions: ["CANCEL"]` only when eligible, otherwise `[]`. This is a UI hint; the POST revalidates current state. Customer cancellation does not grant administrative Order actions.
+
+Order detail/confirmation recipient includes name from ORDER_ADDRESSES. shipping_info and carrier/tracking request fields are removed by the 2026-11-18 owner amendment. completed_at derives from PAYMENTS.collected_at; returned_at derives from PAYMENTS.refunded_at.
