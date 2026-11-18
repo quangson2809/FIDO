@@ -1,5 +1,14 @@
 # 15 — Current Technical Decisions
 
+## 2026-11-18 — Entity-owned business behavior
+
+- Owner authorizes moving local business rules from services into the existing JPA entities. Preserve Modular Monolith, feature packages, handler registry, module contracts, schema, HTTP envelopes, permissions, transaction propagation and locking order.
+- Order owns its transition matrix and named state changes. Payment owns clean unpaid/collected predicates, COD collection and one full refund; ShippingInfo owns manual dispatch/retry/failure/delivery/cancellation facts. Cross-entity eligibility, inventory/voucher effects and audit remain in the owning application service/policy.
+- GoodsReceipt guards draft edits and confirmation/cancellation; the service retains source-line validation, committed-state replay and atomic stock posting. Voucher validates a complete configuration before applying it and owns status/time/minimum/quota eligibility. The guarded database quota update and balance/ledger commands remain unchanged.
+- CartItem owns positive quantity/overflow checks, Cart owns completion, ContentPage owns its existing status matrix, and Role protects the ACTIVE SUPERADMIN invariant. Multi-account/address/family rules remain services because a single entity lacks the required state.
+- Remove public setters for protected workflow facts. JPA continues field access; tests that deliberately model stored corrupt/terminal states use explicit reflection fixtures. A small common BusinessRuleException carries only rejection kind/code; ApiExceptionHandler maps it to the existing 400/409 envelope without introducing HTTP dependencies in entities.
+- The branch-specific backend workflow and `backend/scripts/verify-domain-behaviors.sh` run the same focused entity, API/security, transaction/rollback, retry and concurrency checks on isolated MySQL. No full backend/frontend suite is selected for this refactor.
+
 > This is the active decision summary for implementation against the owner-approved ERD v2. Historical implementation/audit reports are not target contracts. For business decisions, see the dated [P1 owner approval](refactor-v2/p1/P1-owner-approval-2026-10-23.md) and [Decision Log](refactor-v2/p1/P1-decision-log.md).
 
 ## 1. Architecture and stack

@@ -5,7 +5,6 @@ import com.fido.modules.order.dto.request.OrderActionRequest;
 import com.fido.modules.order.entity.Order;
 import com.fido.modules.order.entity.ShippingInfo;
 import com.fido.modules.order.repository.OrderRepository;
-import com.fido.modules.order.service.OrderPolicy;
 
 import org.springframework.stereotype.Component;
 
@@ -36,7 +35,7 @@ class StartPreparingOrderHandler implements OrderActionHandler {
         inventory.requireConfirmedOrderMovements(
                 order.getOrderId(), stockLines.loadForUpdate(order.getOrderId()));
 
-        order.setOrderStatus(OrderPolicy.PREPARING);
+        order.startPreparing();
         orders.save(order);
     }
 }

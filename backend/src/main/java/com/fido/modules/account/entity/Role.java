@@ -1,7 +1,10 @@
 package com.fido.modules.account.entity;
 
+import com.fido.common.exception.BusinessRuleException;
+
 import jakarta.persistence.*;
 
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -30,5 +33,13 @@ public class Role {
     private String description;
 
     @Column(name = "status", nullable = false, length = 20)
+    @Setter(AccessLevel.NONE)
     private String status = "ACTIVE";
+
+    public void changeStatus(String status) {
+        if ("SUPERADMIN".equals(code) && !"ACTIVE".equals(status)) {
+            throw BusinessRuleException.conflict("SYSTEM_ROLE_PROTECTED");
+        }
+        this.status = status;
+    }
 }

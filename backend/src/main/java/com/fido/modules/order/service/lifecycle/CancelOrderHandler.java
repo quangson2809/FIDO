@@ -50,8 +50,8 @@ class CancelOrderHandler implements OrderActionHandler {
             inventory.restoreCancelledOrder(actor, order.getOrderId(), lines, "ORDER_CANCELLED");
         }
 
-        order.setOrderStatus(OrderPolicy.CANCELLED);
-        shipping.setShippingStatus("CANCELLED");
+        order.cancel();
+        shipping.cancel();
         orders.save(order);
         shippingInfos.save(shipping);
 

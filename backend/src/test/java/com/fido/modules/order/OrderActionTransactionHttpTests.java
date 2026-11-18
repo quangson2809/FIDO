@@ -20,6 +20,85 @@ class OrderActionTransactionHttpTests extends OrderHttpSupport {
     @MockitoSpyBean AuditWriteService auditWriter;
 
     @ParameterizedTest
+    @ValueSource(strings = {"COLLECT", "REFUND"})
+    void paymentAuditFailureRollsBackAllWorkflowFactsBeforeRetry(String operation)
+            throws Exception {
+        User customer = user();
+        User root = superadmin();
+        CatalogFixture product = createVariant(5, 100000, null);
+        long orderId = createOrder(customer, product, 2);
+        assertEquals(200, action(root, orderId, "CONFIRM").status());
+        assertEquals(200, action(root, orderId, "START_PREPARING").status());
+        assertEquals(200, action(root, orderId, "DISPATCH").status());
+        String basePath = "/api/v1/admin/orders/" + orderId;
+        boolean refund = operation.equals("REFUND");
+        if (refund) {
+            assertEquals(
+                    200,
+                    call(
+                                    "POST",
+                                    basePath + "/payment-actions",
+                                    root.token(),
+                                    Map.of("action", "COMPLETE_DELIVERY_AND_COLLECT_COD"))
+                            .status());
+        }
+        String path = basePath + (refund ? "/after-sales" : "/payment-actions");
+        Map<String, String> command =
+                refund
+                        ? Map.of("action", "RETURN_AND_REFUND_FULL", "reason", "Accepted return")
+                        : Map.of("action", "COMPLETE_DELIVERY_AND_COLLECT_COD");
+        var orderBefore =
+                db.queryForMap("SELECT status, updated_at FROM orders WHERE id=?", orderId);
+        var paymentBefore = db.queryForMap("SELECT * FROM payments WHERE order_id=?", orderId);
+        var shippingBefore =
+                db.queryForMap("SELECT * FROM shipping_infos WHERE order_id=?", orderId);
+        int auditsBefore = db.queryForObject("SELECT COUNT(*) FROM audit_logs", Integer.class);
+        int ledgerBefore =
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM inventory_transactions WHERE product_id=?",
+                        Integer.class,
+                        product.productId());
+        AuditWriteService target = AopTestUtils.getUltimateTargetObject(auditWriter);
+        AuditAction failureAction =
+                refund ? AuditAction.ORDER_REFUND : AuditAction.ORDER_COD_COLLECT;
+        try {
+            doThrow(new IllegalStateException("Injected payment audit failure"))
+                    .when(target)
+                    .record(argThat(event -> event.action() == failureAction));
+            var failed = call("POST", path, root.token(), command);
+            assertEquals(500, failed.status(), failed.body());
+            assertEquals(
+                    orderBefore,
+                    db.queryForMap("SELECT status, updated_at FROM orders WHERE id=?", orderId));
+            assertEquals(
+                    paymentBefore,
+                    db.queryForMap("SELECT * FROM payments WHERE order_id=?", orderId));
+            assertEquals(
+                    shippingBefore,
+                    db.queryForMap("SELECT * FROM shipping_infos WHERE order_id=?", orderId));
+            assertEquals(
+                    auditsBefore,
+                    db.queryForObject("SELECT COUNT(*) FROM audit_logs", Integer.class));
+            reset(target);
+            var retry = call("POST", path, root.token(), command);
+            assertEquals(200, retry.status(), retry.body());
+            assertEquals(409, call("POST", path, root.token(), command).status());
+            assertEquals(
+                    auditsBefore + 2,
+                    db.queryForObject("SELECT COUNT(*) FROM audit_logs", Integer.class));
+            assertEquals(3, stock(product.productId()));
+            assertEquals(
+                    ledgerBefore,
+                    db.queryForObject(
+                            "SELECT COUNT(*) FROM inventory_transactions WHERE product_id=?",
+                            Integer.class,
+                            product.productId()));
+        } finally {
+            reset(target);
+        }
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"CONFIRM", "CANCEL"})
     void auditFailureRollsBackStateStockLedgerAndVoucherBeforeSuccessfulRetry(String command)
             throws Exception {

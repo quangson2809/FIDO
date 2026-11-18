@@ -108,14 +108,17 @@ class VoucherQuotaContractTests {
         Voucher voucher = new Voucher();
         voucher.setVoucherId(5L);
         voucher.setCode("SPRING");
-        voucher.setDiscountType("FIXED");
-        voucher.setDiscountValue(1_000L);
-        voucher.setMinimumOrderValue(0L);
-        voucher.setUsageLimit(usageLimit);
         voucher.setUsageCount(usageCount);
-        voucher.setStatus("ACTIVE");
-        voucher.setStartsAt(Instant.now().minusSeconds(60));
-        voucher.setEndsAt(Instant.now().plusSeconds(3600));
+        voucher.configure(
+                new Voucher.Configuration(
+                        "FIXED",
+                        1_000L,
+                        0L,
+                        null,
+                        Instant.now().minusSeconds(60),
+                        Instant.now().plusSeconds(3600),
+                        usageLimit),
+                "ACTIVE");
         return voucher;
     }
 }

@@ -1,7 +1,10 @@
 package com.fido.modules.inventory.entity;
 
+import com.fido.common.exception.BusinessRuleException;
+
 import jakarta.persistence.*;
 
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -20,6 +23,9 @@ import java.time.ZoneOffset;
 @Setter
 @NoArgsConstructor
 public class GoodsReceipt {
+    public static final String DRAFT = "DRAFT";
+    public static final String CONFIRMED = "CONFIRMED";
+    public static final String CANCELLED = "CANCELLED";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,21 +36,25 @@ public class GoodsReceipt {
     private String receiptCode;
 
     @Column(name = "supplier_id", nullable = false)
+    @Setter(AccessLevel.NONE)
     private Long supplierId;
 
     @Column(name = "warehouse_id", nullable = false)
     private Long warehouseId;
 
     @Column(name = "status", nullable = false, length = 20)
+    @Setter(AccessLevel.NONE)
     private String receiptStatus = "DRAFT";
 
     @Column(name = "created_by", nullable = false)
     private Long createdByAccountId;
 
     @Column(name = "confirmed_by")
+    @Setter(AccessLevel.NONE)
     private Long confirmedByAccountId;
 
     @Column(name = "confirmed_at", columnDefinition = "TIMESTAMP(6)")
+    @Setter(AccessLevel.NONE)
     private LocalDateTime confirmedAt;
 
     @Column(
@@ -56,6 +66,38 @@ public class GoodsReceipt {
 
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
     private LocalDateTime updatedAt;
+
+    public void requireEditable() {
+        if (!DRAFT.equals(receiptStatus)) {
+            throw BusinessRuleException.conflict("GOODS_RECEIPT_INVALID_STATE");
+        }
+    }
+
+    public void changeSupplier(Long supplierId) {
+        requireEditable();
+        if (supplierId == null || supplierId <= 0) {
+            throw BusinessRuleException.invalid("VALIDATION_ERROR");
+        }
+        this.supplierId = supplierId;
+    }
+
+    public void confirm(Long actor, LocalDateTime now) {
+        requireEditable();
+        if (actor == null || actor <= 0 || now == null) {
+            throw BusinessRuleException.invalid("VALIDATION_ERROR");
+        }
+        receiptStatus = CONFIRMED;
+        confirmedByAccountId = actor;
+        confirmedAt = now;
+        updatedAt = now;
+    }
+
+    public void cancel(LocalDateTime now) {
+        requireEditable();
+        if (now == null) throw BusinessRuleException.invalid("VALIDATION_ERROR");
+        receiptStatus = CANCELLED;
+        updatedAt = now;
+    }
 
     @PrePersist
     void onCreate() {

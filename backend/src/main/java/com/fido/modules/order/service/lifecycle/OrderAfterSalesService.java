@@ -94,17 +94,10 @@ public class OrderAfterSalesService {
         }
         if (!OrderPolicy.canTransition(order.getOrderStatus(), OrderPolicy.RETURNED)
                 || !OrderPolicy.COMPLETED.equals(order.getOrderStatus())
-                || !OrderPolicy.PAID.equals(payment.getPaymentStatus())
+                || !payment.isCollected()
                 || !"DELIVERED".equals(shipping.getShippingStatus())
                 || payment.getAmount() == null
-                || !payment.getAmount().equals(order.getTotalAmount())
-                || payment.getRefundAmount() == null
-                || payment.getRefundAmount() != 0L
-                || payment.getCollectedByAccountId() == null
-                || payment.getCollectedAt() == null
-                || payment.getRefundedByAccountId() != null
-                || payment.getRefundedAt() != null
-                || payment.getRefundReason() != null) {
+                || !payment.getAmount().equals(order.getTotalAmount())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "ORDER_AFTER_SALES_NOT_ALLOWED");
         }
         if (actor == null || actor <= 0 || reason == null || reason.isBlank()) {
@@ -119,14 +112,10 @@ public class OrderAfterSalesService {
         String fromShipping = shipping.getShippingStatus();
         long fullRefundAmount = payment.getAmount();
 
-        order.setOrderStatus(OrderPolicy.RETURNED);
+        order.acceptReturn();
         orders.save(order);
 
-        payment.setPaymentStatus(OrderPolicy.REFUNDED);
-        payment.setRefundAmount(fullRefundAmount);
-        payment.setRefundedByAccountId(actor);
-        payment.setRefundedAt(now);
-        payment.setRefundReason(reason.trim());
+        payment.refundFull(actor, reason, now);
         payments.save(payment);
 
         audit.record(

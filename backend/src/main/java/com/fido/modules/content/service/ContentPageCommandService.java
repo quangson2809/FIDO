@@ -50,7 +50,6 @@ public class ContentPageCommandService {
         page.setSlug(slug);
         page.setTitle(title);
         page.setContent(content);
-        page.setStatus("DRAFT");
         page.setUpdatedByAccountId(actor);
 
         try {
@@ -103,7 +102,7 @@ public class ContentPageCommandService {
                         : requireContent(request.getContent());
         String nextStatus = request.getStatus() == null ? previousStatus : request.getStatus();
 
-        requireStatusTransition(previousStatus, nextStatus);
+        page.changeStatus(nextStatus);
         boolean titleChanged = !nextTitle.equals(page.getTitle());
         boolean contentChanged = !nextContent.equals(page.getContent());
         boolean statusChanged = !nextStatus.equals(previousStatus);
@@ -113,7 +112,6 @@ public class ContentPageCommandService {
 
         page.setTitle(nextTitle);
         page.setContent(nextContent);
-        page.setStatus(nextStatus);
         page.setUpdatedByAccountId(actor);
         pages.save(page);
         pages.flush();
@@ -174,23 +172,6 @@ public class ContentPageCommandService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CONTENT_BODY_REQUIRED");
         }
         return input;
-    }
-
-    private void requireStatusTransition(String current, String next) {
-        if (current.equals(next)) {
-            return;
-        }
-        boolean allowed =
-                switch (current) {
-                    case "DRAFT" -> "PUBLISHED".equals(next) || "ARCHIVED".equals(next);
-                    case "PUBLISHED" -> "DRAFT".equals(next) || "ARCHIVED".equals(next);
-                    case "ARCHIVED" -> "DRAFT".equals(next);
-                    default -> false;
-                };
-        if (!allowed) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "CONTENT_STATUS_TRANSITION_NOT_ALLOWED");
-        }
     }
 
     private void requireActor(Long actor) {

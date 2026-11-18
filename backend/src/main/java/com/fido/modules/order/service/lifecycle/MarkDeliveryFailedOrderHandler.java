@@ -5,7 +5,6 @@ import com.fido.modules.order.entity.Order;
 import com.fido.modules.order.entity.ShippingInfo;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.ShippingInfoRepository;
-import com.fido.modules.order.service.OrderPolicy;
 
 import org.springframework.stereotype.Component;
 
@@ -29,8 +28,8 @@ class MarkDeliveryFailedOrderHandler implements OrderActionHandler {
     public void execute(
             Long actor, Order order, ShippingInfo shipping, OrderActionRequest request) {
 
-        order.setOrderStatus(OrderPolicy.DELIVERY_FAILED);
-        shipping.setShippingStatus("FAILED");
+        order.markDeliveryFailed();
+        shipping.markFailed();
         orders.save(order);
         shippingInfos.save(shipping);
     }

@@ -131,7 +131,7 @@ class CleanTargetEntityMappingTests {
                                             .replace("-", "")
                                             .substring(0, 12));
                     role.setName("Mapping Verification");
-                    role.setStatus("ACTIVE");
+                    role.changeStatus("ACTIVE");
                     session.persist(role);
 
                     Permission permission = new Permission();

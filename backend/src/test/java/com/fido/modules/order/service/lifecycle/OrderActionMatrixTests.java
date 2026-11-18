@@ -2,6 +2,7 @@ package com.fido.modules.order.service.lifecycle;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.util.ReflectionTestUtils.setField;
 
 import com.fido.modules.inventory.service.InventoryMovementQueryService;
 import com.fido.modules.inventory.service.InventoryMovementQueryService.OrderStockState;
@@ -58,14 +59,13 @@ class OrderActionMatrixTests {
         var policy = new OrderActionPolicy(movements, shippingRepository);
         var order = new Order();
         order.setOrderId(1L);
-        order.setOrderStatus(status);
+        setField(order, "orderStatus", status);
         order.setTotalAmount(100L);
         var payment = new Payment();
         payment.setAmount(100L);
-        payment.setPaymentStatus("UNPAID");
-        payment.setRefundAmount(0L);
+        setField(payment, "paymentStatus", "UNPAID");
         var shipping = new ShippingInfo();
-        shipping.setShippingStatus(shippingStatus);
+        setField(shipping, "shippingStatus", shippingStatus);
         when(shippingRepository.findById(1L)).thenReturn(Optional.of(shipping));
         when(movements.orderStockState(1L))
                 .thenReturn(new OrderStockState(deducted, restored, false));

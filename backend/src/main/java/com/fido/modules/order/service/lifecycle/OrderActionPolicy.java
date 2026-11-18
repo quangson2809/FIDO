@@ -95,7 +95,7 @@ public class OrderActionPolicy {
                 || stock == null
                 || !OrderPolicy.canTransition(order.getOrderStatus(), action.targetStatus())
                 || !Objects.equals(payment.getAmount(), order.getTotalAmount())
-                || !isCleanUnpaidPayment(payment)) {
+                || !payment.isUncollected()) {
             return false;
         }
 
@@ -138,16 +138,5 @@ public class OrderActionPolicy {
                                     && "FAILED".equals(shippingStatus)
                                     && deductedNotRestored);
         };
-    }
-
-    /** UNPAID chưa đủ: dữ liệu người/thời điểm thu, hoàn tiền cũng phải còn trống. */
-    private static boolean isCleanUnpaidPayment(Payment payment) {
-        return OrderPolicy.UNPAID.equals(payment.getPaymentStatus())
-                && Objects.equals(payment.getRefundAmount(), 0L)
-                && payment.getCollectedByAccountId() == null
-                && payment.getCollectedAt() == null
-                && payment.getRefundedByAccountId() == null
-                && payment.getRefundedAt() == null
-                && payment.getRefundReason() == null;
     }
 }

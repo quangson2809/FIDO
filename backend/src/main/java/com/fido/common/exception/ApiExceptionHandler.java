@@ -127,6 +127,9 @@ public class ApiExceptionHandler {
     }
 
     private int status(Exception exception) {
+        if (exception instanceof BusinessRuleException business) {
+            return business.kind() == BusinessRuleException.Kind.INVALID_INPUT ? 400 : 409;
+        }
         if (exception instanceof InvalidPaginationException
                 || exception instanceof HttpMessageNotReadableException
                 || exception instanceof TypeMismatchException) {
@@ -169,6 +172,10 @@ public class ApiExceptionHandler {
             return "RESOURCE_NOT_FOUND";
         }
         if (status == 409) {
+            if (exception instanceof BusinessRuleException business
+                    && PUBLIC_CODES.contains(business.getMessage())) {
+                return business.getMessage();
+            }
             if (exception instanceof ResponseStatusException responseStatus) {
                 String reason = responseStatus.getReason();
                 if (reason != null && PUBLIC_CODES.contains(reason)) return reason;

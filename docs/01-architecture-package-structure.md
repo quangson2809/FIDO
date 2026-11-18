@@ -47,9 +47,9 @@ Create only packages that have real code. Empty placeholders should use `package
 | Layer | Responsibility | Must not do |
 |---|---|---|
 | Controller | Route, HTTP binding, request validation, auth context, response DTO | business state machine, DB access |
-| Service | Business rules, orchestration, authorization rule, transaction boundary | expose persistence entity to API |
+| Service | Cross-entity business rules, orchestration, authorization rule, transaction boundary | expose persistence entity to API |
 | Repository | Query/persistence | choose business transition/permission |
-| Entity | DB/JPA model | act as API DTO |
+| Entity | DB/JPA model and local business invariants/state changes | act as API DTO; query repositories, invoke services or decide HTTP responses |
 | DTO | External contract | contain persistence behavior |
 | Mapper | Deterministic transformation | decide business rules |
 

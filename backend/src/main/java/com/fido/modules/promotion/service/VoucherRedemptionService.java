@@ -93,10 +93,10 @@ public class VoucherRedemptionService {
                         .orElseThrow(() -> rejected("VOUCHER_NOT_FOUND"));
         // So thời gian hiện tại với cửa sổ voucher: gồm startsAt, không gồm endsAt.
         Instant now = Instant.now();
-        requireRedeemable(voucher, now);
+        voucher.requireRedeemable(now);
 
         long subtotal = pricing.sumAmounts(lines.stream().map(Line::amount).toList());
-        if (subtotal < voucher.getMinimumOrderValue()) {
+        if (!voucher.meetsMinimumOrder(subtotal)) {
             throw rejected("VOUCHER_MINIMUM_ORDER_NOT_MET");
         }
         long amount =
@@ -129,8 +129,8 @@ public class VoucherRedemptionService {
                 vouchers.lockById(discount.voucherId())
                         .orElseThrow(() -> rejected("VOUCHER_NOT_FOUND"));
         Instant now = Instant.now();
-        requireRedeemable(voucher, now);
-        if (discount.subtotal() < voucher.getMinimumOrderValue()) {
+        voucher.requireRedeemable(now);
+        if (!voucher.meetsMinimumOrder(discount.subtotal())) {
             throw rejected("VOUCHER_NOT_ELIGIBLE");
         }
 
@@ -159,18 +159,6 @@ public class VoucherRedemptionService {
         }
         voucher.setUsageCount(before - 1);
         auditQuotaChange(AuditAction.VOUCHER_QUOTA_RELEASE, voucherId, before, before - 1);
-    }
-
-    private static void requireRedeemable(Voucher voucher, Instant now) {
-        if (!"ACTIVE".equals(voucher.getStatus())
-                || (voucher.getStartsAt() != null && now.isBefore(voucher.getStartsAt()))
-                || (voucher.getEndsAt() != null && !now.isBefore(voucher.getEndsAt()))) {
-            throw rejected("VOUCHER_NOT_ELIGIBLE");
-        }
-        if (voucher.getUsageLimit() != null
-                && valueOrZero(voucher.getUsageCount()) >= voucher.getUsageLimit()) {
-            throw rejected("VOUCHER_USAGE_LIMIT_REACHED");
-        }
     }
 
     private void auditQuotaChange(AuditAction action, Long voucherId, int before, int after) {

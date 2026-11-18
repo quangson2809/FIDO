@@ -6,7 +6,6 @@ import com.fido.modules.order.entity.Order;
 import com.fido.modules.order.entity.ShippingInfo;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.ShippingInfoRepository;
-import com.fido.modules.order.service.OrderPolicy;
 
 import org.springframework.stereotype.Component;
 
@@ -43,20 +42,12 @@ class ShipOrderHandler implements OrderActionHandler {
         inventory.requireConfirmedOrderMovements(
                 order.getOrderId(), stockLines.loadForUpdate(order.getOrderId()));
 
-        order.setOrderStatus(OrderPolicy.SHIPPING);
-        shipping.setShippingStatus("SHIPPED");
-        shipping.setShippedAt(LocalDateTime.now(ZoneOffset.UTC));
-        applyManualTracking(shipping, request);
+        order.dispatch();
+        shipping.dispatch(
+                LocalDateTime.now(ZoneOffset.UTC),
+                request.carrier_name(),
+                request.tracking_number());
         orders.save(order);
         shippingInfos.save(shipping);
-    }
-
-    private void applyManualTracking(ShippingInfo shipping, OrderActionRequest request) {
-        if (request.carrier_name() != null && !request.carrier_name().isBlank()) {
-            shipping.setCarrierName(request.carrier_name().trim());
-        }
-        if (request.tracking_number() != null && !request.tracking_number().isBlank()) {
-            shipping.setTrackingNumber(request.tracking_number().trim());
-        }
     }
 }

@@ -5,7 +5,6 @@ import com.fido.modules.order.dto.request.OrderActionRequest;
 import com.fido.modules.order.entity.Order;
 import com.fido.modules.order.entity.ShippingInfo;
 import com.fido.modules.order.repository.OrderRepository;
-import com.fido.modules.order.service.OrderPolicy;
 
 import org.springframework.stereotype.Component;
 
@@ -39,7 +38,7 @@ class ConfirmOrderHandler implements OrderActionHandler {
                 stockLines.loadForUpdate(order.getOrderId()),
                 "ORDER_CONFIRM");
 
-        order.setOrderStatus(OrderPolicy.CONFIRMED);
+        order.confirm();
         orders.save(order);
     }
 }

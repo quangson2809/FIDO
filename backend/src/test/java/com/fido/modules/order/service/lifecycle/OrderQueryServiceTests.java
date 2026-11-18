@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.util.ReflectionTestUtils.setField;
 
 import com.fido.modules.order.entity.Order;
 import com.fido.modules.order.entity.OrderItem;
@@ -110,7 +111,7 @@ class OrderQueryServiceTests {
         order.setOrderId(orderId);
         order.setCustomerAccountId(10L);
         order.setOrderCode(orderCode);
-        order.setOrderStatus(OrderPolicy.PENDING);
+        setField(order, "orderStatus", OrderPolicy.PENDING);
         order.setTotalAmount(total);
         return order;
     }
@@ -126,7 +127,7 @@ class OrderQueryServiceTests {
     private Payment payment(Long orderId, String status) {
         Payment payment = new Payment();
         payment.setOrderId(orderId);
-        payment.setPaymentStatus(status);
+        setField(payment, "paymentStatus", status);
         return payment;
     }
 }

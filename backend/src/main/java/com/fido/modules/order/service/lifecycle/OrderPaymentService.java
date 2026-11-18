@@ -95,17 +95,10 @@ public class OrderPaymentService {
         if (actor == null
                 || actor <= 0
                 || !OrderPolicy.SHIPPING.equals(order.getOrderStatus())
-                || !OrderPolicy.UNPAID.equals(payment.getPaymentStatus())
+                || !payment.isUncollected()
                 || !"SHIPPED".equals(shipping.getShippingStatus())
                 || payment.getAmount() == null
                 || !payment.getAmount().equals(order.getTotalAmount())
-                || payment.getRefundAmount() == null
-                || payment.getRefundAmount() != 0L
-                || payment.getCollectedByAccountId() != null
-                || payment.getCollectedAt() != null
-                || payment.getRefundedByAccountId() != null
-                || payment.getRefundedAt() != null
-                || payment.getRefundReason() != null
                 || shipping.getDeliveredAt() != null) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "ORDER_COD_COLLECTION_NOT_ALLOWED");
@@ -117,12 +110,9 @@ public class OrderPaymentService {
         String beforeShippingStatus = shipping.getShippingStatus();
         long collectionAmount = payment.getAmount();
 
-        order.setOrderStatus(OrderPolicy.COMPLETED);
-        shipping.setShippingStatus("DELIVERED");
-        shipping.setDeliveredAt(now);
-        payment.setPaymentStatus(OrderPolicy.PAID);
-        payment.setCollectedByAccountId(actor);
-        payment.setCollectedAt(now);
+        order.complete();
+        shipping.markDelivered(now);
+        payment.collectCod(actor, now);
 
         orders.save(order);
         shippingInfos.save(shipping);

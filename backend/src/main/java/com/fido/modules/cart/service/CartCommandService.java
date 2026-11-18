@@ -50,26 +50,20 @@ public class CartCommandService {
         if (cart == null) {
             cart = new Cart();
             cart.setAccountId(accountId);
-            cart.setStatus("OPEN");
             cart = carts.save(cart);
         }
 
         final Cart activeCart = cart;
         CartItem item =
                 items.findByCartIdAndProductId(activeCart.getCartId(), request.product_id())
-                        .orElseGet(
-                                () -> {
-                                    CartItem created = new CartItem();
-                                    created.setCartId(activeCart.getCartId());
-                                    created.setProductId(request.product_id());
-                                    created.setQuantity(0);
-                                    return created;
-                                });
-
-        try {
-            item.setQuantity(Math.addExact(item.getQuantity(), request.quantity()));
-        } catch (ArithmeticException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR");
+                        .orElse(null);
+        if (item == null) {
+            item = new CartItem();
+            item.setCartId(activeCart.getCartId());
+            item.setProductId(request.product_id());
+            item.changeQuantity(request.quantity());
+        } else {
+            item.increaseQuantity(request.quantity());
         }
         items.save(item);
         touch(activeCart);
@@ -85,7 +79,7 @@ public class CartCommandService {
 
         CartItem item = ownedItem(cart.getCartId(), cartItemId);
         requireActiveProduct(item.getProductId());
-        item.setQuantity(request.quantity());
+        item.changeQuantity(request.quantity());
         items.save(item);
         touch(cart);
         return query.toDto(cart);
@@ -121,7 +115,7 @@ public class CartCommandService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "CART_EMPTY");
         }
         items.deleteByCartId(cart.getCartId());
-        cart.setStatus("COMPLETED");
+        cart.complete();
         touch(cart);
     }
 

@@ -22,7 +22,6 @@ import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.OrderVoucherSnapshotRepository;
 import com.fido.modules.order.repository.PaymentRepository;
 import com.fido.modules.order.repository.ShippingInfoRepository;
-import com.fido.modules.order.service.OrderPolicy;
 import com.fido.modules.product.service.query.OrderProductSnapshotService;
 import com.fido.modules.promotion.service.VoucherRedemptionService;
 
@@ -190,7 +189,6 @@ public class OrderCreationService {
         order.setShippingFee(calculation.shippingFee());
         order.setTotalAmount(calculation.total());
         order.setVoucherId(calculation.voucher().voucherId());
-        order.setOrderStatus(OrderPolicy.PENDING);
         return orders.save(order);
     }
 
@@ -254,16 +252,13 @@ public class OrderCreationService {
     private Payment persistInitialPayment(Long orderId, long total) {
         Payment payment = new Payment();
         payment.setOrderId(orderId);
-        payment.setPaymentStatus(OrderPolicy.UNPAID);
         payment.setAmount(total);
-        payment.setRefundAmount(0L);
         return payments.save(payment);
     }
 
     private void persistInitialShipping(Long orderId) {
         ShippingInfo shipping = new ShippingInfo();
         shipping.setOrderId(orderId);
-        shipping.setShippingStatus("PENDING");
         shippingInfos.save(shipping);
     }
 
