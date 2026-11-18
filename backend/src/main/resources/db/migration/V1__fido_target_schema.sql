@@ -352,22 +352,6 @@ CREATE TABLE payments (
     )
 );
 
-CREATE TABLE shipping_infos (
-    order_id        BIGINT       NOT NULL,
-    carrier_name    VARCHAR(150) NULL,
-    tracking_number VARCHAR(120) NULL,
-    shipping_status VARCHAR(20)  NOT NULL DEFAULT 'PENDING',
-    shipped_at      TIMESTAMP(6) NULL,
-    delivered_at    TIMESTAMP(6) NULL,
-    updated_at      TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-
-    CONSTRAINT pk_shipping_infos PRIMARY KEY (order_id),
-    CONSTRAINT fk_shipping_infos_order FOREIGN KEY (order_id) REFERENCES orders (id),
-    CONSTRAINT ck_shipping_infos_status CHECK (
-        shipping_status IN ('PENDING', 'SHIPPED', 'DELIVERED', 'FAILED', 'CANCELLED')
-    )
-);
-
 CREATE TABLE suppliers (
     id         BIGINT       NOT NULL AUTO_INCREMENT,
     code       VARCHAR(80)  NOT NULL,

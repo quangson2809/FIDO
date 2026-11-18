@@ -9,26 +9,21 @@ import static org.springframework.test.util.ReflectionTestUtils.setField;
 import com.fido.modules.inventory.service.InventoryMovementQueryService;
 import com.fido.modules.order.entity.Order;
 import com.fido.modules.order.entity.Payment;
-import com.fido.modules.order.entity.ShippingInfo;
-import com.fido.modules.order.repository.ShippingInfoRepository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Optional;
 
 /** Kiểm tra điều kiện COD dùng chung; OrderActionMatrixTests kiểm tra đủ sáu hành động. */
 class OrderActionPolicyInvariantTests {
     private final InventoryMovementQueryService movements =
             mock(InventoryMovementQueryService.class);
-    private final ShippingInfoRepository shippingInfos = mock(ShippingInfoRepository.class);
-    private final OrderActionPolicy policy = new OrderActionPolicy(movements, shippingInfos);
+    private final OrderActionPolicy policy = new OrderActionPolicy(movements);
 
     private Order order;
     private Payment payment;
-    private ShippingInfo shipping;
 
     @BeforeEach
     void setUp() {
@@ -38,10 +33,6 @@ class OrderActionPolicyInvariantTests {
 
         payment = Payment.unpaid(13L, 250000L);
 
-        shipping = new ShippingInfo();
-        shipping.setOrderId(13L);
-
-        when(shippingInfos.findById(13L)).thenReturn(Optional.of(shipping));
         when(movements.orderStockState(13L))
                 .thenReturn(new InventoryMovementQueryService.OrderStockState(false, false, false));
     }
@@ -83,12 +74,11 @@ class OrderActionPolicyInvariantTests {
     @Test
     void cancelledOrderCannotBeCancelledAgain() {
         order.cancel();
-        shipping.cancel();
 
         ResponseStatusException error =
                 assertThrows(
                         ResponseStatusException.class,
-                        () -> policy.requireExecutable(order, payment, shipping, "CANCEL"));
+                        () -> policy.requireExecutable(order, payment, "CANCEL"));
         assertEquals(409, error.getStatusCode().value());
         assertEquals("ORDER_TRANSITION_ALREADY_APPLIED", error.getReason());
     }
@@ -98,7 +88,7 @@ class OrderActionPolicyInvariantTests {
         ResponseStatusException error =
                 assertThrows(
                         ResponseStatusException.class,
-                        () -> policy.requireExecutable(order, payment, shipping, action));
+                        () -> policy.requireExecutable(order, payment, action));
         assertEquals(409, error.getStatusCode().value());
     }
 }

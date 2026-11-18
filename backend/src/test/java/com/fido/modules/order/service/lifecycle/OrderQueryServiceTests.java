@@ -17,7 +17,6 @@ import com.fido.modules.order.repository.OrderAddressRepository;
 import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.PaymentRepository;
-import com.fido.modules.order.repository.ShippingInfoRepository;
 import com.fido.modules.order.service.OrderPolicy;
 import com.fido.modules.order.service.OrderSummaryReadService;
 
@@ -40,7 +39,6 @@ class OrderQueryServiceTests {
     @Mock private OrderAddressRepository addresses;
     @Mock private OrderItemRepository items;
     @Mock private PaymentRepository payments;
-    @Mock private ShippingInfoRepository shipping;
     @Mock private OrderActionPolicy actionPolicy;
     @Mock private OrderAuthorization authorization;
 
@@ -54,8 +52,7 @@ class OrderQueryServiceTests {
                         addresses,
                         items,
                         payments,
-                        shipping,
-                        new OrderSummaryReadService(items, payments, shipping),
+                        new OrderSummaryReadService(items, payments),
                         actionPolicy,
                         authorization);
     }

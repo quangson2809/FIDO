@@ -14,7 +14,6 @@ public record OrderCustomerDetailDto(
         Long shipping_fee,
         Long total,
         PaymentPublicDto payment,
-        ShippingInfoDto shipping_info,
         LocalDateTime completed_at,
         LocalDateTime returned_at,
         LocalDateTime created_at,

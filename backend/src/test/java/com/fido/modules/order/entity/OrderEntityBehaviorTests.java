@@ -35,26 +35,16 @@ class OrderEntityBehaviorTests {
     @Test
     void deliveryRetryAndFullReturnFollowTheExistingLifecycle() {
         Order order = new Order();
-        ShippingInfo shipping = new ShippingInfo();
         order.confirm();
         order.startPreparing();
         order.dispatch();
-        shipping.dispatch(NOW, " carrier ", " tracking ");
         order.markDeliveryFailed();
-        shipping.markFailed();
         order.dispatch();
-        shipping.dispatch(NOW.plusDays(1), null, " ");
-        assertEquals("carrier", shipping.getCarrierName());
-        assertEquals("tracking", shipping.getTrackingNumber());
-        assertEquals(NOW.plusDays(1), shipping.getShippedAt());
         order.complete();
-        shipping.markDelivered(NOW.plusDays(1).plusHours(1));
         order.acceptReturn();
         assertEquals("RETURNED", order.getOrderStatus());
-        assertEquals("DELIVERED", shipping.getShippingStatus());
         assertThrows(BusinessRuleException.class, order::cancel);
         assertThrows(BusinessRuleException.class, order::confirm);
-        assertThrows(BusinessRuleException.class, () -> shipping.dispatch(NOW, null, null));
     }
 
     @ParameterizedTest
@@ -69,14 +59,10 @@ class OrderEntityBehaviorTests {
     }
 
     @Test
-    void forbiddenOrderAndShippingTransitionsDoNotMutateState() {
+    void forbiddenOrderTransitionsDoNotMutateState() {
         Order order = new Order();
-        ShippingInfo shipping = new ShippingInfo();
         assertThrows(BusinessRuleException.class, order::complete);
-        assertThrows(BusinessRuleException.class, () -> shipping.markDelivered(NOW));
         assertEquals("PENDING", order.getOrderStatus());
-        assertEquals("PENDING", shipping.getShippingStatus());
-        assertNull(shipping.getDeliveredAt());
         order.confirm();
         order.startPreparing();
         order.dispatch();
@@ -105,6 +91,7 @@ class OrderEntityBehaviorTests {
         assertThrows(BusinessRuleException.class, () -> payment.refundFull(9L, "again", NOW));
         assertThrows(BusinessRuleException.class, () -> payment.collectCod(9L, NOW));
         assertEquals(7L, payment.getCollectedByAccountId());
+        assertEquals(NOW, payment.getCollectedAt());
         assertEquals(8L, payment.getRefundedByAccountId());
     }
 

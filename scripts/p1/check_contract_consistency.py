@@ -289,6 +289,8 @@ def main():
             issues.append("Missing critical constraint: " + label)
     if "status" in sql.get("carts", {}):
         issues.append("Reusable Cart must not have a lifecycle status column")
+    if "shipping_infos" in sql:
+        issues.append("ShippingInfo persistence was removed by the owner amendment")
     # Validate every physical FK target, column mapping, and dependency order.
     create_position = {table: index for index, table in enumerate(create_order)}
     sql_relationships = Counter()

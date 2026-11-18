@@ -21,7 +21,6 @@ import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.OrderVoucherSnapshotRepository;
 import com.fido.modules.order.repository.PaymentRepository;
-import com.fido.modules.order.repository.ShippingInfoRepository;
 import com.fido.modules.pricing.PricingCalculator;
 import com.fido.modules.product.service.query.OrderProductSnapshotService;
 import com.fido.modules.promotion.service.VoucherRedemptionService;
@@ -46,7 +45,6 @@ class OrderCreationImageSnapshotTests {
         OrderVoucherSnapshotRepository voucherSnapshots =
                 mock(OrderVoucherSnapshotRepository.class);
         PaymentRepository payments = mock(PaymentRepository.class);
-        ShippingInfoRepository shippingInfos = mock(ShippingInfoRepository.class);
         AuditWriteService audit = mock(AuditWriteService.class);
         VoucherRedemptionService vouchers = mock(VoucherRedemptionService.class);
         CheckoutRequestNormalizer normalizer = mock(CheckoutRequestNormalizer.class);
@@ -62,7 +60,6 @@ class OrderCreationImageSnapshotTests {
                         addresses,
                         voucherSnapshots,
                         payments,
-                        shippingInfos,
                         audit,
                         vouchers,
                         normalizer,

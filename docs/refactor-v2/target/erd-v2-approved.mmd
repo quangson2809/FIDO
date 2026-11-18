@@ -215,15 +215,6 @@ erDiagram
         timestamp updated_at
     }
 
-    SHIPPING_INFOS {
-        bigint order_id PK,FK
-        varchar carrier_name
-        varchar tracking_number
-        varchar shipping_status
-        timestamp shipped_at
-        timestamp delivered_at
-        timestamp updated_at
-    }
 
     SUPPLIERS {
         bigint id PK
@@ -337,7 +328,6 @@ erDiagram
     ORDERS ||--|| ORDER_ADDRESSES : delivery_snapshot
     ORDERS ||--o| ORDER_VOUCHER_SNAPSHOTS : voucher_snapshot
     ORDERS ||--|| PAYMENTS : cod_payment
-    ORDERS ||--o| SHIPPING_INFOS : manual_shipping
 
     SUPPLIERS o|--o{ GOODS_RECEIPTS : supplies
     ACCOUNTS o|--o{ PAYMENTS : collects

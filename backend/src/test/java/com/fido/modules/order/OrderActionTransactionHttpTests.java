@@ -50,8 +50,6 @@ class OrderActionTransactionHttpTests extends OrderHttpSupport {
         var orderBefore =
                 db.queryForMap("SELECT status, updated_at FROM orders WHERE id=?", orderId);
         var paymentBefore = db.queryForMap("SELECT * FROM payments WHERE order_id=?", orderId);
-        var shippingBefore =
-                db.queryForMap("SELECT * FROM shipping_infos WHERE order_id=?", orderId);
         int auditsBefore = db.queryForObject("SELECT COUNT(*) FROM audit_logs", Integer.class);
         int ledgerBefore =
                 db.queryForObject(
@@ -73,9 +71,6 @@ class OrderActionTransactionHttpTests extends OrderHttpSupport {
             assertEquals(
                     paymentBefore,
                     db.queryForMap("SELECT * FROM payments WHERE order_id=?", orderId));
-            assertEquals(
-                    shippingBefore,
-                    db.queryForMap("SELECT * FROM shipping_infos WHERE order_id=?", orderId));
             assertEquals(
                     auditsBefore,
                     db.queryForObject("SELECT COUNT(*) FROM audit_logs", Integer.class));
@@ -171,12 +166,6 @@ class OrderActionTransactionHttpTests extends OrderHttpSupport {
                     cancel ? "CONFIRMED" : "PENDING",
                     db.queryForObject(
                             "SELECT status FROM orders WHERE id=?", String.class, orderId));
-            assertEquals(
-                    "PENDING",
-                    db.queryForObject(
-                            "SELECT shipping_status FROM shipping_infos WHERE order_id=?",
-                            String.class,
-                            orderId));
             assertEquals(quantityBefore, stock(product.productId()));
             assertEquals(
                     versionBefore,

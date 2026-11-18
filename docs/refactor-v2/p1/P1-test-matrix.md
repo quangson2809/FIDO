@@ -52,7 +52,7 @@
 | T-STOCK-12 | Inject failure after balance update, ledger insert or audit | Full rollback; source state, balance/version and ledger remain consistent. | Failure-injection integration test |
 | T-STOCK-13 | Reconcile all warehouse/Product pairs | quantity_on_hand equals ledger delta sum; version equals committed balance-movement count from zero baseline. | MySQL reconciliation test |
 | T-TX-01 | Inject failure midway through write set | No partial Order/items/Payment/Cart/stock/ledger/voucher/audit state. | Failure-injection rollback test on MySQL. |
-| T-STATE-01 | Order/Payment/ShippingInfo/GoodsReceipt | Approved status/actor matrix only; invalid transitions and duplicate COD collection/refund rejected. | API authorization and state-machine tests. |
+| T-STATE-01 | Order/Payment/GoodsReceipt | Approved status/actor matrix only; invalid transitions and duplicate COD collection/refund rejected. | API authorization and state-machine tests. |
 | T-SNAP-01 | Product/address/voucher/image changed after order | Order-time snapshots remain stable; image snapshot resolves immutable object/version content. | Persistence and storage-version integration. |
 | T-REPORT-01 | Reporting and content | Approved money formulas/timezone apply; public reads expose published content only; audit excludes secrets/needless PII. | Query/API/time-boundary/redaction tests. |
 | T-FE-01 | Frontend contract and responsive workflows | API client/types/screens use Product IDs, stateless quote, integer-VND values and target state literals. | Lint/type-check/build and smoke checks at 375/768/1024/1440. |

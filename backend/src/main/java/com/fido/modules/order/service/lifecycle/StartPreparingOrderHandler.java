@@ -3,7 +3,6 @@ package com.fido.modules.order.service.lifecycle;
 import com.fido.modules.inventory.service.stock.InventoryCommandService;
 import com.fido.modules.order.dto.request.OrderActionRequest;
 import com.fido.modules.order.entity.Order;
-import com.fido.modules.order.entity.ShippingInfo;
 import com.fido.modules.order.repository.OrderRepository;
 
 import org.springframework.stereotype.Component;
@@ -30,8 +29,7 @@ class StartPreparingOrderHandler implements OrderActionHandler {
     }
 
     @Override
-    public void execute(
-            Long actor, Order order, ShippingInfo shipping, OrderActionRequest request) {
+    public void execute(Long actor, Order order, OrderActionRequest request) {
         inventory.requireConfirmedOrderMovements(
                 order.getOrderId(), stockLines.loadForUpdate(order.getOrderId()));
 

@@ -1,11 +1,11 @@
 # 10 — Testing Strategy and ERD v2 Acceptance Matrix
 
-This is the target testing plan for the revised 30-table option-only catalog ERD v2. Historical P0/Phase reports record results on their original code revisions only; they do not prove the target runtime has passed.
+This is the target testing plan for the revised 29-table option-only catalog ERD v2. Historical P0/Phase reports record results on their original code revisions only; they do not prove the target runtime has passed.
 
 ## 1. Test levels
 
 ### Unit
-- Order, COD Payment, ShippingInfo and GoodsReceipt transition/actor policy.
+- Order, COD Payment and GoodsReceipt transition/actor policy.
 - Product parent/child depth and cycle validation.
 - Option-only Attribute equality filtering, same-Attribute Option ownership and rejection of typed filters.
 - Public Product-family stock projection: zero for absent inventory, positive per Product ID in the operational warehouse, purchasable false at zero and no parent-stock inheritance.
@@ -43,7 +43,7 @@ This is the target testing plan for the revised 30-table option-only catalog ERD
 | T-07 | Integer-VND totals reconcile; HALF-UP and largest-remainder allocation are deterministic with ascending Product-ID tie-break. |
 | T-08 | Inventory balance/ledger remains consistent under last-stock race, receipt double-confirm, same source event with different request keys, cancellation reversal, eligible return restock and adjustment. |
 | T-09 | Voucher global quota cannot be exceeded under concurrent final-use requests; eligible cancellation restores use at most once. No catalog targeting or per-account usage ledger is introduced. |
-| T-10 | Approved Order/Payment/ShippingInfo state and actor transitions pass; duplicate COD collection/refund is rejected; one full refund maximum in v1. |
+| T-10 | Approved Order/Payment state and actor transitions pass; duplicate COD collection/refund is rejected; one full refund maximum in v1. |
 | T-11 | Injected order/receipt/cancellation failures roll back source state, balance, ledger, voucher/Payment changes and audit atomically. |
 | T-12 | Product/image changes do not rewrite a placed Order's image snapshot; snapshot points to immutable versioned content for the applicable retention window. |
 | T-13 | Report calculations, timezone/date boundaries, content publication and audit redaction match the target contracts. |

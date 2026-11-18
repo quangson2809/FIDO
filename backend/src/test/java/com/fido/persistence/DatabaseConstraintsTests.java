@@ -95,7 +95,6 @@ class DatabaseConstraintsTests {
         rejects("INSERT INTO account_roles(account_id,role_id) VALUES (1,101)");
         rejects("INSERT INTO role_permissions(role_id,permission_id) VALUES (101,1001)");
         rejects("INSERT INTO payments(order_id,payment_status,amount) VALUES (1,'UNPAID',30900)");
-        rejects("INSERT INTO shipping_infos(order_id,shipping_status) VALUES (1,'PENDING')");
         rejects(
                 "INSERT INTO product_images(product_id,image_url,sort_order)"
                         + " VALUES (1,'https://example.invalid/duplicate.png',0)");

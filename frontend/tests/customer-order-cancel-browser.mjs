@@ -18,10 +18,9 @@ async function check(name, action, width = 1280) {
   const state = { status: 'PENDING', allowed: ['CANCEL'], mode: 'success', posts: [], reads: 0, release: () => {} };
   const detail = (id = 1) => ({
     order_id: id, order_code: `FIDO-${id}`, order_status: id === 1 ? state.status : 'PENDING',
-    recipient: { phone: '0901234567', email: null, address: 'Hà Nội' }, items: [],
+    recipient: { name: 'Test', phone: '0901234567', email: null, address: 'Hà Nội' }, items: [],
     subtotal: 100000, discount: 1000, shipping_fee: 30000, total: 129000,
     payment: { payment_status: 'UNPAID', amount_due: 129000, amount_received: 0, amount_refunded: 0 },
-    shipping_info: { shipping_status: id === 1 && state.status === 'CANCELLED' ? 'CANCELLED' : 'PENDING', recipient_name: 'Test', recipient_phone: '0901234567', carrier_name: null, tracking_number: null, shipped_at: null, delivered_at: null },
     completed_at: null, returned_at: null, created_at: date, updated_at: date,
     allowed_actions: id === 1 ? state.allowed : ['CANCEL'],
   });

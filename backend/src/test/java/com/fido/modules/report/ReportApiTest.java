@@ -28,7 +28,6 @@ class ReportApiTest extends OperationsHttpSupport {
             db.update("DELETE FROM order_items WHERE order_id=?", id);
             db.update("DELETE FROM order_addresses WHERE order_id=?", id);
             db.update("DELETE FROM payments WHERE order_id=?", id);
-            db.update("DELETE FROM shipping_infos WHERE order_id=?", id);
             db.update("DELETE FROM orders WHERE id=?", id);
         }
         if (productId != null) db.update("DELETE FROM products WHERE id=?", productId);
@@ -116,31 +115,17 @@ class ReportApiTest extends OperationsHttpSupport {
                 """,
                 id);
 
-        String deliveredAt = delivered;
-        String shippingStatus =
-                deliveredAt != null
-                        ? "DELIVERED"
-                        : "SHIPPING".equals(status) ? "SHIPPED" : "PENDING";
-        db.update(
-                """
-                INSERT INTO shipping_infos(
-                    order_id,carrier_name,tracking_number,shipping_status,shipped_at,delivered_at,updated_at
-                ) VALUES (?,NULL,NULL,?,?,?,CURRENT_TIMESTAMP(6))
-                """,
-                id,
-                shippingStatus,
-                deliveredAt,
-                deliveredAt);
+        String completedAt = delivered;
 
         String paymentStatus = "RETURNED".equals(status) ? "REFUNDED" : paid ? "PAID" : "UNPAID";
         String collectedAt =
                 paid || "RETURNED".equals(status)
-                        ? (deliveredAt != null ? deliveredAt : created)
+                        ? (completedAt != null ? completedAt : created)
                         : null;
         Long collectedBy = paid || "RETURNED".equals(status) ? reportActorId : null;
         Long refundAmount = "RETURNED".equals(status) ? total : 0L;
         Long refundedBy = "RETURNED".equals(status) ? reportActorId : null;
-        String refundedAt = "RETURNED".equals(status) ? deliveredAt : null;
+        String refundedAt = "RETURNED".equals(status) ? completedAt : null;
         db.update(
                 """
                 INSERT INTO payments(

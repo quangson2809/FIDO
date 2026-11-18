@@ -14,14 +14,12 @@ import com.fido.modules.order.entity.OrderAddress;
 import com.fido.modules.order.entity.OrderItem;
 import com.fido.modules.order.entity.OrderVoucherSnapshot;
 import com.fido.modules.order.entity.Payment;
-import com.fido.modules.order.entity.ShippingInfo;
 import com.fido.modules.order.mapper.OrderMapper;
 import com.fido.modules.order.repository.OrderAddressRepository;
 import com.fido.modules.order.repository.OrderItemRepository;
 import com.fido.modules.order.repository.OrderRepository;
 import com.fido.modules.order.repository.OrderVoucherSnapshotRepository;
 import com.fido.modules.order.repository.PaymentRepository;
-import com.fido.modules.order.repository.ShippingInfoRepository;
 import com.fido.modules.product.service.query.OrderProductSnapshotService;
 import com.fido.modules.promotion.service.VoucherRedemptionService;
 
@@ -56,7 +54,6 @@ public class OrderCreationService {
     private final OrderAddressRepository addresses;
     private final OrderVoucherSnapshotRepository voucherSnapshots;
     private final PaymentRepository payments;
-    private final ShippingInfoRepository shippingInfos;
     private final AuditWriteService audit;
     private final VoucherRedemptionService vouchers;
     private final CheckoutRequestNormalizer normalizer;
@@ -72,7 +69,6 @@ public class OrderCreationService {
             OrderAddressRepository addresses,
             OrderVoucherSnapshotRepository voucherSnapshots,
             PaymentRepository payments,
-            ShippingInfoRepository shippingInfos,
             AuditWriteService audit,
             VoucherRedemptionService vouchers,
             CheckoutRequestNormalizer normalizer,
@@ -85,7 +81,6 @@ public class OrderCreationService {
         this.addresses = addresses;
         this.voucherSnapshots = voucherSnapshots;
         this.payments = payments;
-        this.shippingInfos = shippingInfos;
         this.audit = audit;
         this.vouchers = vouchers;
         this.normalizer = normalizer;
@@ -136,13 +131,12 @@ public class OrderCreationService {
                                 .map(CheckoutCartView.Item::productId)
                                 .collect(Collectors.toSet()));
 
-        // Lưu trọn bộ đơn PENDING, snapshot, COD và vận chuyển; bước đặt đơn chưa trừ tồn kho.
+        // Lưu trọn bộ đơn PENDING, snapshot và COD; bước đặt đơn chưa trừ tồn kho.
         Order order = persistOrder(accountId, storedKey, fingerprint, calculation);
         persistOrderItems(order.getOrderId(), calculation, attributeSnapshots);
         OrderAddress address = persistAddress(order.getOrderId(), normalized);
         persistVoucherSnapshot(order.getOrderId(), calculation);
         Payment payment = persistInitialPayment(order.getOrderId(), calculation.total());
-        persistInitialShipping(order.getOrderId());
         vouchers.consume(calculation.voucher());
         cart.consumeItemsForOrder(accountId);
         audit.record(
@@ -251,12 +245,6 @@ public class OrderCreationService {
 
     private Payment persistInitialPayment(Long orderId, long total) {
         return payments.save(Payment.unpaid(orderId, total));
-    }
-
-    private void persistInitialShipping(Long orderId) {
-        ShippingInfo shipping = new ShippingInfo();
-        shipping.setOrderId(orderId);
-        shippingInfos.save(shipping);
     }
 
     private String requireIdempotencyKey(List<String> values) {

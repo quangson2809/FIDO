@@ -53,7 +53,7 @@ public final class OrderPolicy {
     }
 
     /**
-     * completedAt nhận thời điểm đã giao trong ShippingInfo; now là giờ UTC hiện tại.
+     * completedAt nhận thời điểm thu COD trong Payment; now là giờ UTC hiện tại.
      * Chỉ chấp nhận thời điểm trả từ lúc giao đến hết hai ngày sau đó.
      */
     public static void requireReturnWithinWindow(LocalDateTime completedAt, LocalDateTime now) {

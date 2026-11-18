@@ -46,7 +46,6 @@ class DatabaseBaselineTests {
                     "order_addresses",
                     "order_voucher_snapshots",
                     "payments",
-                    "shipping_infos",
                     "suppliers",
                     "goods_receipts",
                     "goods_receipt_items",
@@ -328,16 +327,6 @@ class DatabaseBaselineTests {
                     Map.entry("role_permissions", Set.of("permission_id", "role_id")),
                     Map.entry("roles", Set.of("code", "description", "id", "name", "status")),
                     Map.entry(
-                            "shipping_infos",
-                            Set.of(
-                                    "carrier_name",
-                                    "delivered_at",
-                                    "order_id",
-                                    "shipped_at",
-                                    "shipping_status",
-                                    "tracking_number",
-                                    "updated_at")),
-                    Map.entry(
                             "suppliers",
                             Set.of(
                                     "code",
@@ -413,19 +402,19 @@ class DatabaseBaselineTests {
     }
 
     @Test
-    void canonicalBaselineCreatesAllFortyThreeForeignKeysWithoutDanglingTargets() {
+    void canonicalBaselineCreatesAllApprovedForeignKeysWithoutDanglingTargets() {
         var dataSource = newTestDataSource("foreign-keys");
 
         try {
             installSchema(dataSource);
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
             assertEquals(
-                    43,
+                    42,
                     jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.REFERENTIAL_CONSTRAINTS "
                                     + "WHERE CONSTRAINT_SCHEMA = DATABASE()",
                             Integer.class),
-                    "All 43 approved ERD relationships must be installed as foreign keys");
+                    "All 42 approved ERD relationships must be installed as foreign keys");
             assertEquals(
                     0,
                     jdbc.queryForObject(

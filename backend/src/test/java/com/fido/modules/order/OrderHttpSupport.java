@@ -269,7 +269,6 @@ abstract class OrderHttpSupport {
             db.update("DELETE FROM order_voucher_snapshots WHERE order_id=?", orderId);
             db.update("DELETE FROM order_addresses WHERE order_id=?", orderId);
             db.update("DELETE FROM payments WHERE order_id=?", orderId);
-            db.update("DELETE FROM shipping_infos WHERE order_id=?", orderId);
             db.update("DELETE FROM order_items WHERE order_id=?", orderId);
             db.update("DELETE FROM orders WHERE id=?", orderId);
         }

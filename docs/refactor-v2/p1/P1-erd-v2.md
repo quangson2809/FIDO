@@ -1,5 +1,6 @@
 # P1 — ERD v2 Target and Status
 
+> The 2026-11-18 owner amendment in docs/15-technical-decisions.md supersedes ShippingInfo and the former 30-table inventory. Current ERD/V1/dictionary contain 29 tables; older gate measurements below describe their original revision.
 **Status: PARTIAL — owner-approved target contract; runtime alignment and acceptance remain open.**
 
 ## Canonical sources
