@@ -158,7 +158,7 @@ try {
     0,
     'checkout never persists a new address',
   );
-  // Detail hides order/payment status and progress while preserving SKU and purchase facts.
+  // Detail shows the localized Order state; payment status/progress stay hidden.
   const labels = {
     PENDING: 'Chờ xác nhận',
     CONFIRMED: 'Đã xác nhận',
@@ -174,7 +174,7 @@ try {
     await go('/orders/1');
     await page.getByRole('heading', { name: 'FIDO-001', exact: true }).waitFor();
     const detailText = await page.locator('#storefront-main').innerText();
-    assert.ok(!detailText.includes(label), `order detail hides ${status}`);
+    assert.ok(detailText.includes(label), `order detail shows localized ${status}`);
     assert.ok(!detailText.includes(status), `order detail hides raw ${status}`);
     assert.equal(await page.getByRole('heading', { name: 'Tiến trình đơn hàng' }).count(), 0);
     assert.equal(await page.getByText('Trạng thái thanh toán', { exact: true }).count(), 0);
@@ -402,8 +402,10 @@ try {
       if (name === 'order') {
         await page.getByText('SKU ' + product.sku + ' · Số lượng 1', { exact: true }).waitFor();
         const text = await page.locator('#storefront-main').innerText();
-        for (const label of [...Object.values(labels), 'Chưa thanh toán', 'Đã thanh toán', 'Đã hoàn tiền'])
-          assert.ok(!text.includes(label), `order detail hides ${label} at ${width}px`);
+        assert.ok(text.includes(labels[fixture.state.orderStatus]), `order detail shows its localized state at ${width}px`);
+        assert.ok(!text.includes(fixture.state.orderStatus), `order detail hides its raw state at ${width}px`);
+        for (const label of ['Chưa thanh toán', 'Đã thanh toán', 'Đã hoàn tiền'])
+          assert.ok(!text.includes(label), `order detail hides payment ${label} at ${width}px`);
         assert.equal(await page.getByRole('heading', { name: 'Tiến trình đơn hàng' }).count(), 0);
       }
       if (name === 'policies')
@@ -612,7 +614,7 @@ try {
   await staleSession.close();
   assert.deepEqual(errors, []);
   console.log(
-    'Storefront browser: PASS — cart keyboard/quantity/delete/failure recovery, saved/new addresses, validation/voucher/expiry, order detail hides statuses and retains SKU, order-list status labels, empty/retry/network recovery, gallery/fallback, login and fail-closed session retry, continuous purchase/lost response journey, 10 pages × 4 viewports, touch/contrast/reduced motion, no unexpected console errors.',
+    'Storefront browser: PASS — cart keyboard/quantity/delete/failure recovery, saved/new addresses, validation/voucher/expiry, localized order detail state and SKU, hidden payment status, order-list status labels, empty/retry/network recovery, gallery/fallback, login and fail-closed session retry, continuous purchase/lost response journey, 10 pages × 4 viewports, touch/contrast/reduced motion, no unexpected console errors.',
   );
 } finally {
   await browser.close();
