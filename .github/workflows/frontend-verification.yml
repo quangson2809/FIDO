@@ -115,6 +115,7 @@ jobs:
           if [ "$ORDER_MODEL_FOCUSED" = "true" ]; then
             node tests/customer-order-cancel-browser.mjs
             node tests/checkout-flow.mjs
+            node tests/storefront-browser.mjs
           elif [ "$CUSTOMER_CANCEL_FOCUSED" = "true" ]; then
             npm run test:order-cancel-browser
           elif [ "$IMAGE_FOCUSED" = "true" ]; then
