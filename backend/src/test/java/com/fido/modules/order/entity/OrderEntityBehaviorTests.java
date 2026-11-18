@@ -12,6 +12,24 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.time.LocalDateTime;
 
 class OrderEntityBehaviorTests {
+    @Test
+    void collectedAmountAndOrderIdentityCannotBeReassignedByPublicApi() throws Exception {
+        Payment payment = Payment.unpaid(1L, 100L);
+        payment.collectCod(7L, NOW);
+        assertThrows(
+                NoSuchMethodException.class,
+                () -> Payment.class.getMethod("setAmount", Long.class));
+        assertThrows(
+                NoSuchMethodException.class,
+                () -> Payment.class.getMethod("setOrderId", Long.class));
+        assertFalse(
+                java.lang.reflect.Modifier.isPublic(
+                        Payment.class.getDeclaredConstructor().getModifiers()));
+        payment.refundFull(8L, "return", NOW);
+        assertEquals(100L, payment.getRefundAmount());
+        assertEquals(1L, payment.getOrderId());
+    }
+
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 11, 18, 0, 0);
 
     @Test
@@ -68,8 +86,7 @@ class OrderEntityBehaviorTests {
 
     @Test
     void collectionAndRefundKeepAllPaymentFactsTogetherAndRejectRepeats() {
-        Payment payment = new Payment();
-        payment.setAmount(123_456L);
+        Payment payment = Payment.unpaid(1L, 123_456L);
         assertTrue(payment.isUncollected());
         assertThrows(BusinessRuleException.class, () -> payment.refundFull(7L, "reason", NOW));
         payment.collectCod(7L, NOW);
@@ -102,8 +119,7 @@ class OrderEntityBehaviorTests {
                 "refundAmount"
             })
     void dirtyUnpaidFactsCannotBeOverwrittenByCollection(String field) {
-        Payment payment = new Payment();
-        payment.setAmount(100L);
+        Payment payment = Payment.unpaid(1L, 100L);
         Object value = field.endsWith("At") ? NOW : field.equals("refundReason") ? "reason" : 1L;
         ReflectionTestUtils.setField(payment, field, value);
         assertFalse(payment.isUncollected());

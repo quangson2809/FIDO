@@ -21,7 +21,7 @@ import java.time.ZoneOffset;
                         columnNames = {"receipt_number"}))
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class GoodsReceipt {
     public static final String DRAFT = "DRAFT";
     public static final String CONFIRMED = "CONFIRMED";
@@ -33,6 +33,7 @@ public class GoodsReceipt {
     private Long receiptId;
 
     @Column(name = "receipt_number", nullable = false, length = 40)
+    @Setter(AccessLevel.NONE)
     private String receiptCode;
 
     @Column(name = "supplier_id", nullable = false)
@@ -40,6 +41,7 @@ public class GoodsReceipt {
     private Long supplierId;
 
     @Column(name = "warehouse_id", nullable = false)
+    @Setter(AccessLevel.NONE)
     private Long warehouseId;
 
     @Column(name = "status", nullable = false, length = 20)
@@ -47,6 +49,7 @@ public class GoodsReceipt {
     private String receiptStatus = "DRAFT";
 
     @Column(name = "created_by", nullable = false)
+    @Setter(AccessLevel.NONE)
     private Long createdByAccountId;
 
     @Column(name = "confirmed_by")
@@ -66,6 +69,23 @@ public class GoodsReceipt {
 
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
     private LocalDateTime updatedAt;
+
+    public static GoodsReceipt draft(String code, Long supplierId, Long warehouseId, Long actor) {
+        if (code == null
+                || code.isBlank()
+                || warehouseId == null
+                || warehouseId <= 0
+                || actor == null
+                || actor <= 0) {
+            throw BusinessRuleException.invalid("VALIDATION_ERROR");
+        }
+        GoodsReceipt receipt = new GoodsReceipt();
+        receipt.changeSupplier(supplierId);
+        receipt.receiptCode = code;
+        receipt.warehouseId = warehouseId;
+        receipt.createdByAccountId = actor;
+        return receipt;
+    }
 
     public void requireEditable() {
         if (!DRAFT.equals(receiptStatus)) {

@@ -250,10 +250,7 @@ public class OrderCreationService {
     }
 
     private Payment persistInitialPayment(Long orderId, long total) {
-        Payment payment = new Payment();
-        payment.setOrderId(orderId);
-        payment.setAmount(total);
-        return payments.save(payment);
+        return payments.save(Payment.unpaid(orderId, total));
     }
 
     private void persistInitialShipping(Long orderId) {

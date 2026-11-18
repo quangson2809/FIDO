@@ -67,11 +67,9 @@ public class GoodsReceiptService {
         var requestedItems = createItems(request.items());
         validateItems(requestedItems);
 
-        GoodsReceipt receipt = new GoodsReceipt();
-        receipt.setReceiptCode(generateReceiptCode());
-        receipt.changeSupplier(request.supplier_id());
-        receipt.setWarehouseId(warehouseId);
-        receipt.setCreatedByAccountId(actor);
+        GoodsReceipt receipt =
+                GoodsReceipt.draft(
+                        generateReceiptCode(), request.supplier_id(), warehouseId, actor);
         receipts.save(receipt);
         saveItems(receipt.getReceiptId(), requestedItems);
 

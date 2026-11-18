@@ -84,20 +84,12 @@ public class OrderPaymentService {
                                                 HttpStatus.CONFLICT,
                                                 "ORDER_SHIPPING_INFO_MISSING"));
 
-        if (OrderPolicy.REFUNDED.equals(payment.getPaymentStatus())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "PAYMENT_ALREADY_REFUNDED");
-        }
-        if (OrderPolicy.PAID.equals(payment.getPaymentStatus())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "PAYMENT_ALREADY_COLLECTED");
-        }
-        // Đối chiếu cả trạng thái, số tiền, tiền tệ và dấu vết thu/hoàn; UNPAID đơn lẻ chưa chứng
-        // minh đủ điều kiện thu.
+        payment.requireCollectible();
+        // Eligibility across Order and Shipping stays in the application service.
         if (actor == null
                 || actor <= 0
                 || !OrderPolicy.SHIPPING.equals(order.getOrderStatus())
-                || !payment.isUncollected()
                 || !"SHIPPED".equals(shipping.getShippingStatus())
-                || payment.getAmount() == null
                 || !payment.getAmount().equals(order.getTotalAmount())
                 || shipping.getDeliveredAt() != null) {
             throw new ResponseStatusException(

@@ -16,7 +16,7 @@ import java.util.Objects;
 @Table(name = "payments")
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Payment {
     public static final String UNPAID = "UNPAID";
     public static final String PAID = "PAID";
@@ -24,6 +24,7 @@ public class Payment {
 
     @Id
     @Column(name = "order_id", nullable = false)
+    @Setter(AccessLevel.NONE)
     private Long orderId;
 
     @Column(name = "payment_status", nullable = false, length = 20)
@@ -31,6 +32,7 @@ public class Payment {
     private String paymentStatus = "UNPAID";
 
     @Column(name = "amount", nullable = false)
+    @Setter(AccessLevel.NONE)
     private Long amount;
 
     @Column(name = "refund_amount", nullable = false)
@@ -67,6 +69,16 @@ public class Payment {
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
     private LocalDateTime updatedAt;
 
+    public static Payment unpaid(Long orderId, Long amount) {
+        if (orderId == null || orderId <= 0 || amount == null || amount < 0) {
+            throw BusinessRuleException.invalid("VALIDATION_ERROR");
+        }
+        Payment payment = new Payment();
+        payment.orderId = orderId;
+        payment.amount = amount;
+        return payment;
+    }
+
     public boolean isUncollected() {
         return UNPAID.equals(paymentStatus)
                 && Objects.equals(refundAmount, 0L)
@@ -87,14 +99,21 @@ public class Payment {
                 && refundReason == null;
     }
 
-    public void collectCod(Long actor, LocalDateTime now) {
+    public void requireCollectible() {
         if (REFUNDED.equals(paymentStatus)) {
             throw BusinessRuleException.conflict("PAYMENT_ALREADY_REFUNDED");
         }
         if (PAID.equals(paymentStatus)) {
             throw BusinessRuleException.conflict("PAYMENT_ALREADY_COLLECTED");
         }
-        if (!isUncollected() || amount == null || actor == null || actor <= 0 || now == null) {
+        if (!isUncollected() || amount == null) {
+            throw BusinessRuleException.conflict("ORDER_COD_COLLECTION_NOT_ALLOWED");
+        }
+    }
+
+    public void collectCod(Long actor, LocalDateTime now) {
+        requireCollectible();
+        if (actor == null || actor <= 0 || now == null) {
             throw BusinessRuleException.conflict("ORDER_COD_COLLECTION_NOT_ALLOWED");
         }
         paymentStatus = PAID;
@@ -102,13 +121,17 @@ public class Payment {
         collectedAt = now;
     }
 
-    public void refundFull(Long actor, String reason, LocalDateTime now) {
+    public void requireRefundable() {
         if (REFUNDED.equals(paymentStatus)) {
             throw BusinessRuleException.conflict("PAYMENT_ALREADY_REFUNDED");
         }
         if (!isCollected() || amount == null) {
             throw BusinessRuleException.conflict("ORDER_AFTER_SALES_NOT_ALLOWED");
         }
+    }
+
+    public void refundFull(Long actor, String reason, LocalDateTime now) {
+        requireRefundable();
         if (actor == null || actor <= 0 || reason == null || reason.isBlank() || now == null) {
             throw BusinessRuleException.invalid("ORDER_REFUND_REASON_REQUIRED");
         }

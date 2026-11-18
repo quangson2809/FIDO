@@ -80,11 +80,7 @@ public class RbacCommandService {
     public RoleDetailDto createRole(Long actor, RoleCreateRequest request) {
         lockSuperadminRole();
 
-        Role role = new Role();
-        role.setCode(request.code());
-        role.setName(request.name());
-        role.setDescription(request.description());
-        role.changeStatus("ACTIVE");
+        Role role = Role.create(request.code(), request.name(), request.description());
 
         roles.save(role);
         replacePermissions(role, request.permission_ids());

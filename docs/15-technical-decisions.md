@@ -2,6 +2,9 @@
 
 ## 2026-11-18 — Entity-owned business behavior
 
+- Follow-up review closes creation-only setters for Payment amount/order identity, GoodsReceipt number/warehouse/creator and Role code. Named factories initialize these facts; JPA retains protected no-argument constructors and field access. Role status accepts only ACTIVE/INACTIVE. Payment collection/refund preconditions have one implementation reused by the entity and application service; cross-entity eligibility and transaction boundaries stay in the service.
+- Remove unused legacy Order permission constants and recipientEditable policy; the recipient snapshot remains immutable after placement. Focused regressions cover public mutation surfaces and the three reproduced invariant bypasses.
+
 - Owner authorizes moving local business rules from services into the existing JPA entities. Preserve Modular Monolith, feature packages, handler registry, module contracts, schema, HTTP envelopes, permissions, transaction propagation and locking order.
 - Order owns its transition matrix and named state changes. Payment owns clean unpaid/collected predicates, COD collection and one full refund; ShippingInfo owns manual dispatch/retry/failure/delivery/cancellation facts. Cross-entity eligibility, inventory/voucher effects and audit remain in the owning application service/policy.
 - GoodsReceipt guards draft edits and confirmation/cancellation; the service retains source-line validation, committed-state replay and atomic stock posting. Voucher validates a complete configuration before applying it and owns status/time/minimum/quota eligibility. The guarded database quota update and balance/ledger commands remain unchanged.

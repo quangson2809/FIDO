@@ -26,9 +26,6 @@ public final class OrderPolicy {
 
     public static final String ORDER_READ = "ORDER_READ";
     public static final String ORDER_EDIT = "ORDER_EDIT";
-    public static final String ORDER_PROCESS = "ORDER_PROCESS";
-    public static final String ORDER_FULFILLMENT = "ORDER_FULFILLMENT";
-    public static final String ORDER_EXCEPTION = "ORDER_EXCEPTION";
     public static final String ORDER_PAYMENT = "ORDER_PAYMENT";
     public static final String ORDER_AFTER_SALES = "ORDER_AFTER_SALES";
 
@@ -66,9 +63,5 @@ public final class OrderPolicy {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Return is outside the two-day window");
         }
-    }
-
-    public static boolean recipientEditable(String status) {
-        return Set.of(PENDING, CONFIRMED, PREPARING).contains(status);
     }
 }

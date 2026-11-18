@@ -61,8 +61,7 @@ class OrderActionMatrixTests {
         order.setOrderId(1L);
         setField(order, "orderStatus", status);
         order.setTotalAmount(100L);
-        var payment = new Payment();
-        payment.setAmount(100L);
+        var payment = Payment.unpaid(1L, 100L);
         setField(payment, "paymentStatus", "UNPAID");
         var shipping = new ShippingInfo();
         setField(shipping, "shippingStatus", shippingStatus);

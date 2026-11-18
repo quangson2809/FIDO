@@ -125,8 +125,7 @@ class OrderQueryServiceTests {
     }
 
     private Payment payment(Long orderId, String status) {
-        Payment payment = new Payment();
-        payment.setOrderId(orderId);
+        Payment payment = Payment.unpaid(orderId, 100L);
         setField(payment, "paymentStatus", status);
         return payment;
     }

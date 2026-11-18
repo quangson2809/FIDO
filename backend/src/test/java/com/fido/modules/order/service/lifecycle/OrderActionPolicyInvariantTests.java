@@ -36,9 +36,7 @@ class OrderActionPolicyInvariantTests {
         order.setOrderId(13L);
         order.setTotalAmount(250000L);
 
-        payment = new Payment();
-        payment.setOrderId(13L);
-        payment.setAmount(250000L);
+        payment = Payment.unpaid(13L, 250000L);
 
         shipping = new ShippingInfo();
         shipping.setOrderId(13L);
@@ -62,7 +60,7 @@ class OrderActionPolicyInvariantTests {
 
     @Test
     void mismatchBetweenPaymentAndOrderAmountDeniesActions() {
-        payment.setAmount(249999L);
+        setField(payment, "amount", 249999L);
         assertDenied("CONFIRM");
         assertDenied("CANCEL");
     }

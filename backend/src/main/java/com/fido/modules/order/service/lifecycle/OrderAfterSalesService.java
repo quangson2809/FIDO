@@ -89,14 +89,9 @@ public class OrderAfterSalesService {
                                                 HttpStatus.CONFLICT,
                                                 "ORDER_SHIPPING_INFO_MISSING"));
 
-        if (OrderPolicy.REFUNDED.equals(payment.getPaymentStatus())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "PAYMENT_ALREADY_REFUNDED");
-        }
-        if (!OrderPolicy.canTransition(order.getOrderStatus(), OrderPolicy.RETURNED)
-                || !OrderPolicy.COMPLETED.equals(order.getOrderStatus())
-                || !payment.isCollected()
+        payment.requireRefundable();
+        if (!OrderPolicy.COMPLETED.equals(order.getOrderStatus())
                 || !"DELIVERED".equals(shipping.getShippingStatus())
-                || payment.getAmount() == null
                 || !payment.getAmount().equals(order.getTotalAmount())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "ORDER_AFTER_SALES_NOT_ALLOWED");
         }
