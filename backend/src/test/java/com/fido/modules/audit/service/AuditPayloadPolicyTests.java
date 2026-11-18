@@ -49,7 +49,7 @@ class AuditPayloadPolicyTests {
                 Map.of(
                         "status", "CONFIRMED",
                         "total_amount", 200_000L,
-                        "shipping_status", Map.of("token", "secret"),
+                        "payment_status", Map.of("token", "secret"),
                         "email", "private@example.test",
                         "reason", "unrestricted free text");
 

@@ -1,6 +1,6 @@
 # 06 — Business Rules & State Machines
 
-> **Owner-approved target contract (2026-10-23):** the revised 30-table option-only catalog ERD v2 and DB-01..DB-12 defaults are approved except where a specific artifact records an unresolved approval conflict below. This document defines target behavior; runtime enforcement and acceptance tests remain pending. Inventory balance, source/sign, receipt, concurrency and reconciliation details are governed by [P1.4 Inventory Contract](refactor-v2/p1/P1.4-inventory-contract.md). Do not introduce persistence outside the approved target without an explicit owner amendment.
+> **Owner-approved target contract (2026-10-23):** the revised 29-table option-only catalog ERD v2 and DB-01..DB-12 defaults are approved except where a specific artifact records an unresolved approval conflict below. This document defines target behavior; runtime enforcement and acceptance tests remain pending. Inventory balance, source/sign, receipt, concurrency and reconciliation details are governed by [P1.4 Inventory Contract](refactor-v2/p1/P1.4-inventory-contract.md). Do not introduce persistence outside the approved target without an explicit owner amendment.
 
 ## 1. Target status/type literals and approval caveats
 
@@ -10,12 +10,11 @@
 | RBAC and system permissions | Role: `ACTIVE`/`INACTIVE`; Permission has no status | The `SUPERADMIN` Role must stay `ACTIVE` and retain every current Permission. New Permission creation grants it to `SUPERADMIN` in the same transaction. At least one non-soft-deleted `ACTIVE` Account must retain that Role; role/account/grant changes and audit enforce this invariant atomically. Seed Permission rows are protected. Custom Permission may be deleted only when no non-SUPERADMIN Role uses it; remove its SUPERADMIN grant atomically with deletion. |
 | Role, Category, Brand, Supplier, Warehouse | `ACTIVE`, `INACTIVE` | Disabling does not erase historical references or bypass FK policy. The server resolves the one operational warehouse in v1. |
 | Product | `DRAFT`, `ACTIVE`, `INACTIVE`, `ARCHIVED` | Only eligible active Products sell; parent/child depth is one level; each Product owns its SKU, required selling price and stock. |
-| Cart | `OPEN`, `CHECKOUT`, `COMPLETED`, `ABANDONED` | Authenticated owner only. Order placement mutates Cart atomically; Cart never reserves stock. |
+| Cart | No lifecycle status; one reusable Cart per Account | Authenticated owner only. Order placement deletes purchased lines and retains the Cart in the same transaction; failure restores lines. Cart never reserves stock. |
 | Voucher | `DRAFT`, `ACTIVE`, `INACTIVE`, `EXPIRED` | Only ACTIVE is potentially redeemable; additionally require UTC `starts_at ≤ now < ends_at` for non-null bounds, subtotal before discount and excluding shipping ≥ minimum_order_value, and remaining global quota. One non-stacking order-wide Voucher only; no Product/Category targeting or per-account quota ledger. Consume once at successful Order placement; P1.7 specifies that eligible cancellation from PENDING, CONFIRMED, PREPARING or DELIVERY_FAILED releases that consumed use once, atomically with cancellation. Refund/return does not release quota by default. See P1.5. |
 | Voucher type | `PERCENT`, `FIXED` | FIXED `discount_value` is VND; PERCENT is integer basis points (100 bps=1%). Compute one order-wide discount, HALF_UP the percentage amount, apply optional VND cap and subtotal bound, then largest-remainder allocation with ascending Product ID tie-break. See P1.5. |
 | Order | `PENDING`, `CONFIRMED`, `PREPARING`, `SHIPPING`, `COMPLETED`, `DELIVERY_FAILED`, `CANCELLED`, `RETURNED` | P1.7 defines actor and transition matrix. Placement creates PENDING without stock deduction; confirmation deducts; eligible cancellation reverses; completion collects COD; RETURNED is combined with one full refund. |
 | COD Payment | `UNPAID`, `PAID`, `REFUNDED` | One Payment per Order. Collection is atomic with delivery completion; v1 allows one full refund only, manually attested with whole-order return. |
-| ShippingInfo | `PENDING`, `SHIPPED`, `DELIVERED`, `FAILED`, `CANCELLED` | Manual status aligned with Order transitions; retry is allowed only after FAILED; no carrier API or event timeline. |
 | GoodsReceipt | `DRAFT`, `CONFIRMED`, `CANCELLED` | Only DRAFT is editable. CONFIRMED posts stock once; confirmed receipt lines are immutable. |
 | Inventory movement | `OPENING`, `GOODS_RECEIPT`, `ORDER`, `ORDER_CANCEL_REVERSAL`, `RETURN_RESTOCK`, `ADJUSTMENT` | Source-linked, signed movement; append-only ledger; deterministic locking and source-derived duplicate prevention. |
 
@@ -39,14 +38,14 @@ CANCELLED   CANCELLED    CANCELLED   DELIVERY_FAILED -> SHIPPING
 
 | From | To | Key precondition/effect |
 |---|---|---|
-| Initial placement | PENDING | P1.6 creates immutable snapshots, COD Payment UNPAID and ShippingInfo PENDING; no stock reservation or deduction at placement. |
+| Initial placement | PENDING | P1.6 creates immutable snapshots, COD Payment UNPAID PENDING; no stock reservation or deduction at placement. |
 | PENDING | CONFIRMED | Authorized operator; recheck stock and deduct once atomically with Order state, balance, ledger and audit. |
 | CONFIRMED | PREPARING | Authorized operator; stock deduction already exists; no further stock effect. |
-| PREPARING | SHIPPING | Authorized manual dispatch; ShippingInfo becomes SHIPPED in the same transaction. |
+| PREPARING | SHIPPING | Authorized manual dispatch; Order status becomes SHIPPING in the same transaction. |
 | SHIPPING | DELIVERY_FAILED | Authorized manual failure; Payment remains UNPAID; no stock reversal or Voucher release. |
 | DELIVERY_FAILED | SHIPPING | Authorized manual retry; no second stock deduction. |
-| PENDING / CONFIRMED / PREPARING / DELIVERY_FAILED | CANCELLED | Payment must be UNPAID and dispatch must not be active. Reverse each existing stock deduction exactly once, if present; release an applicable consumed Voucher once; set ShippingInfo CANCELLED; audit atomically. |
-| SHIPPING | COMPLETED | Only the combined manual-delivery/COD-collection command; Order, ShippingInfo DELIVERED, Payment PAID and audit commit together. |
+| PENDING / CONFIRMED / PREPARING / DELIVERY_FAILED | CANCELLED | Payment must be UNPAID and dispatch must not be active. Reverse each existing stock deduction exactly once, if present; release an applicable consumed Voucher once; audit atomically. |
+| SHIPPING | COMPLETED | Only the combined manual-delivery/COD-collection command; Order DELIVERED, Payment PAID and audit commit together. |
 | COMPLETED | RETURNED | Only a verified whole-order return with a manually completed full COD refund; Order and Payment REFUNDED plus audit commit together. No automatic restock. |
 | CANCELLED / RETURNED | — | Terminal. |
 
@@ -55,7 +54,6 @@ All other transitions are rejected. Cancellation is not allowed directly from SH
 ## 3. Payment, shipping and receipt state machines
 
 - **COD Payment:** `UNPAID → PAID → REFUNDED`. Payment collection is permitted only as part of the atomic `SHIPPING → COMPLETED` command after physical delivery and COD collection are manually verified. `PAID → REFUNDED` is a staff-attested offline full refund combined with `COMPLETED → RETURNED`. One full refund maximum; no gateway, partial or multiple-refund flow.
-- **ShippingInfo:** create as `PENDING`; manual dispatch sets `SHIPPED`; failed delivery sets `FAILED`; authorized retry returns it to `SHIPPED`; completion sets `DELIVERED` together with COD collection; eligible cancellation sets `CANCELLED`. Current status/last-transition fields are not a delivery-attempt timeline.
 - **Transaction/retry rules:** lock and re-read the Order before checking transition preconditions. Payment collection/refund and each source-linked Inventory movement must not occur twice on retry. A repeated committed operation receives a stable conflict instead of duplicating effects. Every successful state change and required AuditLog commit or roll back as a unit. Exact contracts are in [P1.7](refactor-v2/p1/P1.7-order-payment-contract.md).
 - **GoodsReceipt:** `DRAFT → CONFIRMED`, or `DRAFT → CANCELLED`. CONFIRM requires at least one valid line and atomically records one positive movement per line, balance/version, confirmed actor/time and audit; repeated confirm cannot post twice. CANCEL is DRAFT-only and has no stock effect. Confirmed/cancelled receipts and confirmed lines are immutable; corrections use an authorized new movement. Full lock/source/deduplication rules are P1.4.
 
@@ -92,4 +90,4 @@ Guest checkout, persisted guest carts, online gateways, automatic shipping integ
 
 ## 2026-11-17 — Customer self-cancellation
 
-The authenticated owner may cancel only an owned PENDING Order whose Payment is clean UNPAID, ShippingInfo remains PENDING, and no deduction/reversal exists. All later states are operator-managed. Check after acquiring the Order lock; cancelling and administrator confirmation cannot both succeed. Cancellation writes Order/Shipping status, Voucher release and audit atomically; no inventory mutation occurs for PENDING. Repeated cancellation conflicts without repeating side effects.
+The authenticated owner may cancel only an owned PENDING Order whose Payment is clean UNPAID remains PENDING, and no deduction/reversal exists. All later states are operator-managed. Check after acquiring the Order lock; cancelling and administrator confirmation cannot both succeed. Cancellation writes Order/Shipping status, Voucher release and audit atomically; no inventory mutation occurs for PENDING. Repeated cancellation conflicts without repeating side effects.

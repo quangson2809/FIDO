@@ -59,7 +59,6 @@ class SchemaMappingTests {
                     Map.entry("order_addresses", "order"),
                     Map.entry("order_voucher_snapshots", "order"),
                     Map.entry("payments", "order"),
-                    Map.entry("shipping_infos", "order"),
                     Map.entry("suppliers", "inventory"),
                     Map.entry("warehouses", "inventory"),
                     Map.entry("goods_receipts", "inventory"),
@@ -98,7 +97,7 @@ class SchemaMappingTests {
             assertNotNull(em.find(type, key), "Cannot read canonical fixture for " + table);
         }
         assertEquals(OWNERS.keySet(), mapped);
-        assertEquals(30, mapped.size());
+        assertEquals(29, mapped.size());
 
         try (Connection connection = dataSource.getConnection()) {
             Set<String> actualTables = new HashSet<>();
@@ -118,7 +117,7 @@ class SchemaMappingTests {
             assertEquals(
                     OWNERS.keySet(),
                     actualTables,
-                    "The database must contain exactly the approved 30 target tables.");
+                    "The database must contain exactly the approved 29 target tables.");
 
             for (EntityType<?> entity : em.getMetamodel().getEntities()) {
                 String table = entity.getJavaType().getAnnotation(Table.class).name();

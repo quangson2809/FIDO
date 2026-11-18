@@ -36,7 +36,7 @@ Cross-module writes must go through the owning module service. Validation and mu
 ### Inventory, payment and lifecycle
 - Inventory balance must never be negative. Every successful movement has the matching source, balance update, ledger row and required audit in one transaction.
 - Prevent repeated receipt confirmation, duplicate source movements, repeated stock reversal, duplicate COD collection and duplicate refund.
-- Apply the approved actor/state matrix to Order, Payment, ShippingInfo and GoodsReceipt transitions.
+- Apply the approved actor/state matrix to Order, Payment and GoodsReceipt transitions.
 - Do not hard-delete placed Orders, Payment facts, ledger entries, snapshots or audit history through ordinary catalog/account deletion.
 
 ## 3. HTTP error convention

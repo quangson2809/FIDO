@@ -23,7 +23,7 @@ Read backend/AGENTS.md, docs/00-source-of-truth.md, docs/01-architecture-package
 - Authenticated Cart/order placement; stateless/advisory quote; order-time repricing; account-scoped idempotency with canonical SHA-256 fingerprint.
 - Integer VND; approved HALF-UP order discount then largest-remainder line allocation, Product-ID tie-break.
 - Product stock, source state, append-only ledger and audit must commit atomically; use source-derived duplicate prevention and deterministic locks.
-- Global order-wide non-stacking voucher quota; COD; one operational warehouse; manual shipping; approved Order/Payment/ShippingInfo state matrix.
+- Global order-wide non-stacking voucher quota; COD; one operational warehouse; manual shipping; approved Order/Payment state matrix.
 - Clean Schema Reset is permitted only against a verified disposable local/development/test database. Never reset production, staging, shared integration or persistent business data.
 
 **Decision handling**

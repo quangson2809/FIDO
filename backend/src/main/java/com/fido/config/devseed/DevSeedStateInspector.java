@@ -46,11 +46,6 @@ public class DevSeedStateInspector {
                             "order_id IN (1001001,1001002,1001003,1001004,1001005,"
                                     + "1001006,1001101,1001102,1001103)",
                             9),
-                    probe(
-                            "shipping_infos",
-                            "order_id IN (1001001,1001002,1001003,1001004,1001005,"
-                                    + "1001006,1001101,1001102,1001103)",
-                            9),
                     probe("suppliers", "id BETWEEN 1020001 AND 1020002", 2),
                     probe("warehouses", "id = 1021001", 1),
                     probe("goods_receipts", "id BETWEEN 1010001 AND 1010003", 3),

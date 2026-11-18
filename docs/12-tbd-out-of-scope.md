@@ -12,7 +12,7 @@ Until these rules are approved, do not implement scheduled purging of audit hist
 
 ## 2. Implementation contracts still requiring acceptance evidence
 
-- P1.6 now specifies fail-closed current-Cart resolution: zero OPEN rows yields an empty read/create-on-mutation; exactly one is current; multiple OPEN rows return CART_SELECTION_AMBIGUOUS with no mutation or merge. The approved schema still has no one-active-Cart unique constraint. P3.8 runtime enforcement and concurrency tests remain pending.
+- The 2026-11-18 owner amendment replaces Cart lifecycle selection with one reusable Cart per Account, enforced by UNIQUE(account_id). Runtime retains Account/Cart locks and transactional line consumption. Existing-data upgrade preserves a sole nonempty Cart, removes only redundant empty Carts, and stops on multiple nonempty Carts; see docs/operations/reusable-cart-upgrade.md.
 
 These items are engineering acceptance gates, not open choices about the approved database model:
 
@@ -23,11 +23,11 @@ These items are engineering acceptance gates, not open choices about the approve
 - Product/Attribute Option validation, including same-Attribute ownership, one-Option-per-Attribute and the rule that metadata never creates Products.
 - Product hierarchy validation, independent parent/child sellability, row-owned SKU/price/stock and no implicit NULL inheritance.
 - Inventory source/sign/deduplication, deterministic locking, append-only reversal and atomic source/balance/ledger/audit behavior.
-- Voucher usage concurrency, Order/Payment/Shipping transition enforcement, authorization and historical snapshot stability; P1.7 defines the target contract, while P3.10 runtime evidence remains pending.
+- Voucher usage concurrency, Order/Payment transition enforcement, authorization and historical snapshot stability; P1.7 defines the target contract, while P3.10 runtime evidence remains pending.
 - Explicit APIs for authoring Attribute/AttributeOption metadata must be designed and approved before implementing those write operations. The current metadata-read routes do not by themselves define such CRUD contracts.
 - P1.6 specifies the required Idempotency-Key HTTP header, Account-scoped stored key namespace, canonical SHA-256 fingerprint, replay response, changed-payload conflict and concurrent-loser behavior. P3.9 implementation/runtime acceptance remains pending.
-- P1.7 specifies the Order, Payment and ShippingInfo state/actor matrix; confirmation-time stock deduction, one-time cancellation compensation/Voucher release, immutable snapshots, manual COD collection, and one whole-order full refund only. P3.10 implementation/runtime acceptance remains pending.
-- P1.8 specifies audit actor/event/correlation/redaction/atomicity, content/report UC, the 30-table deletion lifecycle and existing role/permission seed manifest. P2.1 seed SQL, P3.0 audit-write and P3.11 audit-read/content/report runtime acceptance remain pending. DB-12 numeric retention/anonymization decisions remain blocked.
+- P1.7 specifies the Order, Payment state/actor matrix; confirmation-time stock deduction, one-time cancellation compensation/Voucher release, immutable snapshots, manual COD collection, and one whole-order full refund only. P3.10 implementation/runtime acceptance remains pending.
+- P1.8 specifies audit actor/event/correlation/redaction/atomicity, content/report UC, the 29-table deletion lifecycle and existing role/permission seed manifest. P2.1 seed SQL, P3.0 audit-write and P3.11 audit-read/content/report runtime acceptance remain pending. DB-12 numeric retention/anonymization decisions remain blocked.
 
 ## 3. Out of scope for the current target
 
@@ -38,7 +38,7 @@ Unless the owner formally amends the ERD/API scope, do not add:
 - A detailed item-level return/exchange workflow, persisted return inspection/quantities, or separate return/refund event persistence. Order status alone cannot establish return sellability or trigger restocking.
 - Automatic creation of saleable Product rows from attribute combinations.
 - Persisted checkout quotes, stock reservations, voucher Product/Category targeting, or a per-account voucher usage ledger.
-- New event/timeline tables, content revision tables, report snapshots, audit-retention columns, or other tables absent from the approved 30-table ERD.
+- New event/timeline tables, content revision tables, report snapshots, audit-retention columns, or other tables absent from the approved 29-table ERD.
 
 ## 4. Clean Schema Reset boundary
 

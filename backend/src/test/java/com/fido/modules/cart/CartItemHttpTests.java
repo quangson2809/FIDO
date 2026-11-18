@@ -48,6 +48,7 @@ class CartItemHttpTests extends CartHttpSupport {
                         Map.of("product_id", active.productId(), "quantity", 2));
 
         assertEquals(200, added.status(), added.body());
+        long cartId = added.data().get("data").get("cart_id").asLong();
 
         long cartItemId = added.data().get("data").get("items").get(0).get("cart_item_id").asLong();
 
@@ -173,7 +174,22 @@ class CartItemHttpTests extends CartHttpSupport {
         assertEquals(200, deleted.status());
         assertEquals(0, deleted.data().get("data").get("items").size());
         assertEquals(0, deleted.data().get("data").get("subtotal").asInt());
+        assertEquals(cartId, deleted.data().get("data").get("cart_id").asLong());
 
-        assertEquals(200, call("DELETE", "/api/v1/cart", owner.token(), null).status());
+        var cleared = call("DELETE", "/api/v1/cart", owner.token(), null);
+        assertEquals(200, cleared.status(), cleared.body());
+        assertEquals(cartId, cleared.data().get("data").get("cart_id").asLong());
+        var next =
+                call(
+                        "POST",
+                        "/api/v1/cart/items",
+                        owner.token(),
+                        Map.of("product_id", active.productId(), "quantity", 1));
+        assertEquals(200, next.status(), next.body());
+        assertEquals(cartId, next.data().get("data").get("cart_id").asLong());
+        cleared = call("DELETE", "/api/v1/cart", owner.token(), null);
+        assertEquals(200, cleared.status(), cleared.body());
+        assertEquals(cartId, cleared.data().get("data").get("cart_id").asLong());
+        assertEquals(0, cleared.data().get("data").get("items").size());
     }
 }

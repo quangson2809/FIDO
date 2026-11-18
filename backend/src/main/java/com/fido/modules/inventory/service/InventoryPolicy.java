@@ -1,5 +1,7 @@
 package com.fido.modules.inventory.service;
 
+import com.fido.modules.inventory.entity.GoodsReceipt;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -9,9 +11,9 @@ import java.util.regex.Pattern;
 public final class InventoryPolicy {
     public static final String SUPPLIER_ACTIVE = "ACTIVE";
     public static final String SUPPLIER_INACTIVE = "INACTIVE";
-    public static final String RECEIPT_DRAFT = "DRAFT";
-    public static final String RECEIPT_CONFIRMED = "CONFIRMED";
-    public static final String RECEIPT_CANCELLED = "CANCELLED";
+    public static final String RECEIPT_DRAFT = GoodsReceipt.DRAFT;
+    public static final String RECEIPT_CONFIRMED = GoodsReceipt.CONFIRMED;
+    public static final String RECEIPT_CANCELLED = GoodsReceipt.CANCELLED;
 
     // Giá trị transaction_type phải khớp ràng buộc của schema V1.
     public static final String OPENING = "OPENING";

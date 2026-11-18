@@ -4,13 +4,13 @@
 
 This document describes the approved target model only. The canonical source for exact columns, keys and relationships is [ERD v2](refactor-v2/target/erd-v2-approved.mmd); the physical contract is [P1 Data Dictionary](refactor-v2/p1/P1-data-dictionary.csv). Do not infer target fields from implementation classes.
 
-## 2. Target table inventory — 30 tables
+## 2. Target table inventory — 29 tables
 
 | Domain | Tables |
 |---|---|
 | Account and RBAC | `ACCOUNTS`, `ADDRESSES`, `ROLES`, `PERMISSIONS`, `ACCOUNT_ROLES`, `ROLE_PERMISSIONS` |
 | Catalog | `CATEGORIES`, `BRANDS`, `PRODUCTS`, `ATTRIBUTES`, `ATTRIBUTE_OPTIONS`, `PRODUCT_ATTRIBUTE_VALUES`, `PRODUCT_IMAGES` |
-| Cart, vouchers and orders | `CARTS`, `CART_ITEMS`, `VOUCHERS`, `ORDERS`, `ORDER_ITEMS`, `ORDER_ADDRESSES`, `ORDER_VOUCHER_SNAPSHOTS`, `PAYMENTS`, `SHIPPING_INFOS` |
+| Cart, vouchers and orders | `CARTS`, `CART_ITEMS`, `VOUCHERS`, `ORDERS`, `ORDER_ITEMS`, `ORDER_ADDRESSES`, `ORDER_VOUCHER_SNAPSHOTS`, `PAYMENTS` |
 | Procurement and inventory | `SUPPLIERS`, `GOODS_RECEIPTS`, `GOODS_RECEIPT_ITEMS`, `WAREHOUSES`, `INVENTORIES`, `INVENTORY_TRANSACTIONS` |
 | Audit and content | `AUDIT_LOGS`, `CONTENT_PAGES` |
 
@@ -28,7 +28,7 @@ The inventory above is the complete logical target table set. Schema additions r
 
 ## 4. Cart, order and money
 
-- A Cart belongs to an authenticated account. `CART_ITEMS.product_id` identifies a Product and `quantity` must be positive.
+- Each authenticated Account has at most one reusable Cart, enforced by UNIQUE(account_id). Cart has no status. Reads do not create a missing Cart; the first add does. Successful placement deletes purchased CartItems and retains the Cart row/ID; failed placement rolls back the lines. CART_ITEMS.product_id identifies a Product and quantity must be positive.
 - `CART_ITEMS`, `ORDER_ITEMS` and `GOODS_RECEIPT_ITEMS` reference Products directly.
 - Order placement creates the Order, line snapshots, address snapshot, optional voucher snapshot, COD Payment, cart mutation, inventory effects and required audit as one atomic write set.
 - Product, SKU/name/attribute, image, address and voucher facts needed to interpret a placed Order are recorded at order time. Later source edits must not rewrite historical order facts.
@@ -36,7 +36,9 @@ The inventory above is the complete logical target table set. Schema additions r
 - A checkout quote is stateless and advisory. It has no persisted quote record, stock reservation or voucher quota side effect. Order placement reloads/reprices current server-side state and atomically consumes one Voucher use with the Order/snapshot if eligible.
 - Idempotency is scoped to the authenticated account and uses a canonical SHA-256 fingerprint of the semantic request. Same-key/same-payload retries replay the committed result; changed payloads conflict. A different account cannot access another account's result.
 
-- `orders.created_at` is the order placement time. `order_addresses` is the sole stored recipient snapshot; shipping responses project its name/phone. `orders.discount_amount` is the authoritative actual Voucher discount. COD and integer VND are fixed application semantics; Payment/Order rows do not store method/currency constants. Cart lines retain `updated_at` only.
+- `orders.created_at` is the order placement time. `order_addresses` is the sole stored recipient snapshot; recipient responses project its name/phone. `orders.discount_amount` is the authoritative actual Voucher discount. COD and integer VND are fixed application semantics; Payment/Order rows do not store method/currency constants. Cart lines retain `updated_at` only.
+
+- There is no ShippingInfo table or separate shipping status. The COD completion/return/report timestamp is PAYMENTS.collected_at; recipient.name comes from the existing order address snapshot. No replacement Order columns are introduced.
 
 ## 5. Inventory and procurement
 

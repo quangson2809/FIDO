@@ -30,7 +30,6 @@ class CustomerQueryApiTest extends OperationsHttpSupport {
             db.update("DELETE FROM order_items WHERE order_id=?", id);
             db.update("DELETE FROM order_addresses WHERE order_id=?", id);
             db.update("DELETE FROM order_voucher_snapshots WHERE order_id=?", id);
-            db.update("DELETE FROM shipping_infos WHERE order_id=?", id);
             db.update("DELETE FROM payments WHERE order_id=?", id);
             db.update("DELETE FROM orders WHERE id=?", id);
         }
@@ -105,12 +104,6 @@ class CustomerQueryApiTest extends OperationsHttpSupport {
                 INSERT INTO order_addresses(
                     order_id,recipient_name,recipient_phone,province,district,ward,address_line)
                 VALUES (?,'Customer Test','0901234567','Hà Nội','Cầu Giấy','Dịch Vọng','Customer address')
-                """,
-                id);
-        db.update(
-                """
-                INSERT INTO shipping_infos(order_id,shipping_status,updated_at)
-                VALUES (?,'PENDING',CURRENT_TIMESTAMP(6))
                 """,
                 id);
         return id;

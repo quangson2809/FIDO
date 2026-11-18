@@ -274,6 +274,7 @@ def main():
     normalized = re.sub(r"\s+", " ", SQL.read_text(encoding="utf-8").lower())
     critical = {
         "active phone unique": "unique (phone_active_key)",
+        "one reusable Cart per Account": "constraint uq_carts_account unique (account_id)",
         "receipt warehouse FK": "foreign key (warehouse_id) references warehouses (id)",
         "inventory composite PK": "primary key (warehouse_id, product_id)",
         "attribute option ownership": "foreign key (option_id, attribute_id) references attribute_options (id, attribute_id)",
@@ -286,6 +287,10 @@ def main():
     for label, fragment in critical.items():
         if fragment not in normalized:
             issues.append("Missing critical constraint: " + label)
+    if "status" in sql.get("carts", {}):
+        issues.append("Reusable Cart must not have a lifecycle status column")
+    if "shipping_infos" in sql:
+        issues.append("ShippingInfo persistence was removed by the owner amendment")
     # Validate every physical FK target, column mapping, and dependency order.
     create_position = {table: index for index, table in enumerate(create_order)}
     sql_relationships = Counter()

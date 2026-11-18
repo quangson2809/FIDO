@@ -1,11 +1,11 @@
 # 10 — Testing Strategy and ERD v2 Acceptance Matrix
 
-This is the target testing plan for the revised 30-table option-only catalog ERD v2. Historical P0/Phase reports record results on their original code revisions only; they do not prove the target runtime has passed.
+This is the target testing plan for the revised 29-table option-only catalog ERD v2. Historical P0/Phase reports record results on their original code revisions only; they do not prove the target runtime has passed.
 
 ## 1. Test levels
 
 ### Unit
-- Order, COD Payment, ShippingInfo and GoodsReceipt transition/actor policy.
+- Order, COD Payment and GoodsReceipt transition/actor policy.
 - Product parent/child depth and cycle validation.
 - Option-only Attribute equality filtering, same-Attribute Option ownership and rejection of typed filters.
 - Public Product-family stock projection: zero for absent inventory, positive per Product ID in the operational warehouse, purchasable false at zero and no parent-stock inheritance.
@@ -37,13 +37,13 @@ This is the target testing plan for the revised 30-table option-only catalog ERD
 | T-01 | Parent/child Products have independent IDs, SKUs, required prices and stock; depth > 1, self-parent and cycles are rejected. |
 | T-02 | Attributes are option-only; valid `attribute_value_ids` resolve to owning Attributes; unknown Options, multiple selected Options for one Attribute and missing required Options on activation are rejected; attributes never generate Products. |
 | T-03 | Duplicate Product SKU and duplicate active phone are rejected; a phone becomes reusable after Account soft deletion. |
-| T-04 | Authenticated Cart lines use product_id; non-positive quantity and foreign Cart/item ownership are rejected. If multiple Cart rows exist, the current-Cart selection policy must be explicitly agreed and tested; do not infer one-active-Cart uniqueness or a merge from the schema. |
+| T-04 | Account Cart is unique and reusable. Test no-write empty reads/clear, first creation, Product-ID quantities/ownership, UK rejection, same-ID purchases, rollback, replay preserving newly added lines, and concurrent add/update/checkout. |
 | T-05 | Quote is stateless/advisory: no quote row/ID, stock reservation, voucher use or Order side effect. Order placement re-reads and reprices current data. |
 | T-06 | Same Account-scoped idempotency key and same semantic payload replays the committed Order; changed payload conflicts; cross-Account access is isolated; concurrent duplicates commit once. |
 | T-07 | Integer-VND totals reconcile; HALF-UP and largest-remainder allocation are deterministic with ascending Product-ID tie-break. |
 | T-08 | Inventory balance/ledger remains consistent under last-stock race, receipt double-confirm, same source event with different request keys, cancellation reversal, eligible return restock and adjustment. |
 | T-09 | Voucher global quota cannot be exceeded under concurrent final-use requests; eligible cancellation restores use at most once. No catalog targeting or per-account usage ledger is introduced. |
-| T-10 | Approved Order/Payment/ShippingInfo state and actor transitions pass; duplicate COD collection/refund is rejected; one full refund maximum in v1. |
+| T-10 | Approved Order/Payment state and actor transitions pass; duplicate COD collection/refund is rejected; one full refund maximum in v1. |
 | T-11 | Injected order/receipt/cancellation failures roll back source state, balance, ledger, voucher/Payment changes and audit atomically. |
 | T-12 | Product/image changes do not rewrite a placed Order's image snapshot; snapshot points to immutable versioned content for the applicable retention window. |
 | T-13 | Report calculations, timezone/date boundaries, content publication and audit redaction match the target contracts. |

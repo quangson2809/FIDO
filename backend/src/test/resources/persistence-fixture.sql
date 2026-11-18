@@ -39,8 +39,8 @@ VALUES (1,1,1);
 INSERT INTO product_images(id,product_id,image_url,sort_order,created_at)
 VALUES (1,1,'https://example.invalid/test.png',0,CURRENT_TIMESTAMP(6));
 
-INSERT INTO carts(id,account_id,status,created_at,updated_at)
-VALUES (1,1,'OPEN',CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6));
+INSERT INTO carts(id,account_id,created_at,updated_at)
+VALUES (1,1,CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6));
 INSERT INTO cart_items(id,cart_id,product_id,quantity,updated_at)
 VALUES (1,1,1,1,CURRENT_TIMESTAMP(6));
 
@@ -65,7 +65,6 @@ INSERT INTO order_voucher_snapshots(order_id,voucher_code_snapshot,discount_type
 INSERT INTO payments(order_id,payment_status,amount,collected_by_account_id,collected_at,refund_amount,refunded_by_account_id,refunded_at,refund_reason,created_at,updated_at) VALUES (
     1,'UNPAID',30900,NULL,NULL,0,NULL,NULL,NULL,CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6)
 );
-INSERT INTO shipping_infos(order_id,carrier_name,tracking_number,shipping_status,shipped_at,delivered_at,updated_at) VALUES (1,NULL,NULL,'PENDING',NULL,NULL,CURRENT_TIMESTAMP(6));
 
 INSERT INTO suppliers(id,code,name,phone,email,status,created_at,updated_at)
 VALUES (1,'FIXTURE-SUPPLIER','Fixture supplier',NULL,NULL,'ACTIVE',CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6));

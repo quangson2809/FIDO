@@ -195,15 +195,13 @@ CREATE UNIQUE INDEX uq_product_images_product_order ON product_images (product_i
 CREATE TABLE carts (
     id         BIGINT       NOT NULL AUTO_INCREMENT,
     account_id BIGINT       NOT NULL,
-    status     VARCHAR(20)  NOT NULL DEFAULT 'OPEN',
     created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 
     CONSTRAINT pk_carts PRIMARY KEY (id),
     CONSTRAINT fk_carts_account FOREIGN KEY (account_id) REFERENCES accounts (id),
-    CONSTRAINT ck_carts_status CHECK (status IN ('OPEN', 'CHECKOUT', 'COMPLETED', 'ABANDONED'))
+    CONSTRAINT uq_carts_account UNIQUE (account_id)
 );
-CREATE INDEX ix_carts_account_status ON carts (account_id, status);
 
 CREATE TABLE cart_items (
     id         BIGINT       NOT NULL AUTO_INCREMENT,
@@ -351,22 +349,6 @@ CREATE TABLE payments (
     CONSTRAINT ck_payments_refund_metadata CHECK (
         (refund_amount = 0 AND refunded_by_account_id IS NULL AND refunded_at IS NULL)
         OR (refund_amount > 0 AND refunded_by_account_id IS NOT NULL AND refunded_at IS NOT NULL)
-    )
-);
-
-CREATE TABLE shipping_infos (
-    order_id        BIGINT       NOT NULL,
-    carrier_name    VARCHAR(150) NULL,
-    tracking_number VARCHAR(120) NULL,
-    shipping_status VARCHAR(20)  NOT NULL DEFAULT 'PENDING',
-    shipped_at      TIMESTAMP(6) NULL,
-    delivered_at    TIMESTAMP(6) NULL,
-    updated_at      TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-
-    CONSTRAINT pk_shipping_infos PRIMARY KEY (order_id),
-    CONSTRAINT fk_shipping_infos_order FOREIGN KEY (order_id) REFERENCES orders (id),
-    CONSTRAINT ck_shipping_infos_status CHECK (
-        shipping_status IN ('PENDING', 'SHIPPED', 'DELIVERED', 'FAILED', 'CANCELLED')
     )
 );
 

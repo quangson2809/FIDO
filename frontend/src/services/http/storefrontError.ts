@@ -6,7 +6,6 @@ const customerErrorMessages: Readonly<Record<string, string>> = {
   ACCOUNT_NOT_ACTIVE: 'Tài khoản hiện không thể sử dụng. Vui lòng liên hệ hỗ trợ.',
   PHONE_ALREADY_IN_USE: 'Số điện thoại này đã được đăng ký. Vui lòng đăng nhập hoặc dùng số khác.',
   VALIDATION_ERROR: 'Thông tin chưa hợp lệ. Vui lòng kiểm tra các trường đã nhập.',
-  CART_SELECTION_AMBIGUOUS: 'Chưa thể xác định giỏ hàng. Vui lòng tải lại giỏ hàng trước khi tiếp tục.',
   CART_ITEM_NOT_FOUND: 'Sản phẩm không còn trong giỏ hàng. Vui lòng tải lại giỏ hàng.',
   PRODUCT_NOT_AVAILABLE: 'Sản phẩm hiện không thể mua. Vui lòng chọn sản phẩm khác.',
   CONFLICT: 'Dữ liệu đã thay đổi hoặc thao tác chưa phù hợp. Vui lòng kiểm tra lại trước khi tiếp tục.',

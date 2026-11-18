@@ -66,7 +66,7 @@ class OrderActionContractHttpTests extends OrderHttpSupport {
                                 "POST",
                                 "/api/v1/admin/orders/" + orderId + "/actions",
                                 root.token(),
-                                Map.of("action", "DISPATCH", "carrier_name", "FIDO"))
+                                Map.of("action", "DISPATCH"))
                         .status());
 
         var failed =
@@ -78,9 +78,6 @@ class OrderActionContractHttpTests extends OrderHttpSupport {
 
         assertEquals(200, failed.status(), failed.body());
         assertEquals("DELIVERY_FAILED", failed.data().get("data").get("order_status").asText());
-        assertEquals(
-                "FAILED",
-                failed.data().get("data").get("shipping_info").get("shipping_status").asText());
         assertEquals(4, stock(fixture.productId()));
         assertEquals(1, movementCount(orderId, "ORDER"));
         assertEquals(0, movementCount(orderId, "ORDER_CANCEL_REVERSAL"));

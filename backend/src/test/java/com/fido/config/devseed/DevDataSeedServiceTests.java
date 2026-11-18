@@ -51,7 +51,6 @@ class DevDataSeedServiceTests extends OperationsHttpSupport {
                     "order_addresses",
                     "order_voucher_snapshots",
                     "payments",
-                    "shipping_infos",
                     "suppliers",
                     "warehouses",
                     "goods_receipts",
@@ -71,8 +70,6 @@ class DevDataSeedServiceTests extends OperationsHttpSupport {
         delete("DELETE FROM inventory_transactions WHERE id BETWEEN 1040001 AND 1040999");
         delete("DELETE FROM goods_receipt_items WHERE id BETWEEN 1030001 AND 1030003");
         delete("DELETE FROM goods_receipts WHERE id BETWEEN 1010001 AND 1010003");
-        delete(
-                "DELETE FROM shipping_infos WHERE order_id IN (1001001,1001002,1001003,1001004,1001005,1001006,1001101,1001102,1001103)");
         delete(
                 "DELETE FROM payments WHERE order_id IN (1001001,1001002,1001003,1001004,1001005,1001006,1001101,1001102,1001103)");
         delete(
@@ -124,7 +121,6 @@ class DevDataSeedServiceTests extends OperationsHttpSupport {
         assertEquals(9, firstCounts.get("order_items"));
         assertEquals(9, firstCounts.get("order_addresses"));
         assertEquals(9, firstCounts.get("payments"));
-        assertEquals(9, firstCounts.get("shipping_infos"));
         assertEquals(75, firstCounts.get("inventories"));
         assertEquals(83, firstCounts.get("inventory_transactions"));
 
@@ -212,13 +208,11 @@ class DevDataSeedServiceTests extends OperationsHttpSupport {
                         """
                         SELECT COUNT(*) FROM orders o
                         JOIN payments p ON p.order_id=o.id
-                        JOIN shipping_infos s ON s.order_id=o.id
                         WHERE o.id=1001102 AND o.status='RETURNED'
                           AND p.payment_status='REFUNDED'
                           AND p.refund_amount=p.amount
-                          AND s.shipping_status='DELIVERED'
-                          AND s.delivered_at IS NOT NULL
-                          AND p.refunded_at > s.delivered_at
+                          AND p.collected_at IS NOT NULL
+                          AND p.refunded_at > p.collected_at
                         """,
                         Integer.class),
                 "returned demo order must show the whole COD refund against its original delivery");

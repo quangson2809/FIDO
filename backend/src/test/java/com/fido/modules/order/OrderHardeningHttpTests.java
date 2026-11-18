@@ -38,11 +38,6 @@ class OrderHardeningHttpTests extends OrderHttpSupport {
         LocalDateTime deliveredAt = LocalDateTime.now(ZoneOffset.UTC).minusDays(2).minusSeconds(5);
         db.update("UPDATE orders SET status='COMPLETED' WHERE id=?", orderId);
         db.update(
-                "UPDATE shipping_infos SET shipping_status='DELIVERED', shipped_at=?, delivered_at=? WHERE order_id=?",
-                deliveredAt,
-                deliveredAt,
-                orderId);
-        db.update(
                 "UPDATE payments SET payment_status='PAID', collected_by_account_id=?, collected_at=? WHERE order_id=?",
                 root.accountId(),
                 deliveredAt,

@@ -31,9 +31,6 @@ public class DevSeedOrderData {
                             199000L,
                             "PENDING",
                             "2026-09-05 02:00:00",
-                            "PENDING",
-                            null,
-                            null,
                             "UNPAID",
                             null,
                             null,
@@ -46,9 +43,6 @@ public class DevSeedOrderData {
                             259000L,
                             "CONFIRMED",
                             "2026-09-08 02:00:00",
-                            "PENDING",
-                            null,
-                            null,
                             "UNPAID",
                             null,
                             null,
@@ -61,9 +55,6 @@ public class DevSeedOrderData {
                             459000L,
                             "SHIPPING",
                             "2026-09-09 02:00:00",
-                            "SHIPPED",
-                            "2026-09-09 04:00:00",
-                            null,
                             "UNPAID",
                             null,
                             null,
@@ -76,9 +67,6 @@ public class DevSeedOrderData {
                             499000L,
                             "COMPLETED",
                             "2026-09-10 02:00:00",
-                            "DELIVERED",
-                            "2026-09-10 04:00:00",
-                            "2026-09-10 05:00:00",
                             "PAID",
                             "2026-09-10 05:00:00",
                             null,
@@ -91,9 +79,6 @@ public class DevSeedOrderData {
                             199000L,
                             "DELIVERY_FAILED",
                             "2026-09-11 02:00:00",
-                            "FAILED",
-                            "2026-09-11 04:00:00",
-                            null,
                             "UNPAID",
                             null,
                             null,
@@ -106,9 +91,6 @@ public class DevSeedOrderData {
                             529000L,
                             "COMPLETED",
                             "2026-09-12 02:00:00",
-                            "DELIVERED",
-                            "2026-09-14 06:00:00",
-                            "2026-09-14 07:00:00",
                             "PAID",
                             "2026-09-14 07:00:00",
                             null,
@@ -121,9 +103,6 @@ public class DevSeedOrderData {
                             329000L,
                             "COMPLETED",
                             "2026-09-10 01:00:00",
-                            "DELIVERED",
-                            "2026-09-15 06:00:00",
-                            "2026-09-15 07:00:00",
                             "PAID",
                             "2026-09-15 07:00:00",
                             null,
@@ -136,9 +115,6 @@ public class DevSeedOrderData {
                             459000L,
                             "RETURNED",
                             "2026-09-11 01:00:00",
-                            "DELIVERED",
-                            "2026-09-12 06:00:00",
-                            "2026-09-12 07:00:00",
                             "REFUNDED",
                             "2026-09-12 07:00:00",
                             "2026-09-13 08:00:00",
@@ -151,9 +127,6 @@ public class DevSeedOrderData {
                             199000L,
                             "CANCELLED",
                             "2026-09-26 02:00:00",
-                            "CANCELLED",
-                            null,
-                            null,
                             "UNPAID",
                             null,
                             null,
@@ -176,9 +149,9 @@ public class DevSeedOrderData {
     private void seedCarts() {
         jdbc.update(
                 """
-                INSERT INTO carts(id,account_id,status,created_at,updated_at) VALUES
-                (980001,900002,'OPEN','2026-09-05 00:00:00','2026-09-05 00:00:00'),
-                (980002,900008,'OPEN','2026-09-05 00:00:00','2026-09-05 00:00:00')
+                INSERT INTO carts(id,account_id,created_at,updated_at) VALUES
+                (980001,900002,'2026-09-05 00:00:00','2026-09-05 00:00:00'),
+                (980002,900008,'2026-09-05 00:00:00','2026-09-05 00:00:00')
                 """);
         jdbc.update(
                 """
@@ -300,22 +273,6 @@ public class DevSeedOrderData {
                     order.refundReason(),
                     order.createdAt(),
                     order.createdAt());
-
-            jdbc.update(
-                    """
-                    INSERT INTO shipping_infos(
-                        order_id,carrier_name,tracking_number,shipping_status,shipped_at,delivered_at,updated_at
-                    ) VALUES (?,?,?,?,?,?,?)
-                    """,
-                    order.orderId(),
-                    order.shippedAt() == null ? null : "FIDO Local",
-                    order.shippedAt() == null ? null : "DEV-" + order.orderId(),
-                    order.shippingStatus(),
-                    order.shippedAt(),
-                    order.deliveredAt(),
-                    order.deliveredAt() == null
-                            ? (order.shippedAt() == null ? order.createdAt() : order.shippedAt())
-                            : order.deliveredAt());
         }
     }
 
@@ -340,9 +297,6 @@ public class DevSeedOrderData {
             long unitPrice,
             String orderStatus,
             String createdAt,
-            String shippingStatus,
-            String shippedAt,
-            String deliveredAt,
             String paymentStatus,
             String collectedAt,
             String refundedAt,

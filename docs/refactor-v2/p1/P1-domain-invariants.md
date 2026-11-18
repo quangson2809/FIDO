@@ -44,7 +44,7 @@
 - **INV-VOUCHER-06:** Order snapshot stores normalized code, discount_type, raw discount_value (VND or bps according to type) and actual applied VND discount. Later Voucher edits never rewrite Order snapshots. Same logical Order retry cannot consume quota twice under P1.6 idempotency.
 - **INV-PAY-01:** COD only. Collection/refund actor and time are server-derived by an authorized command.
 - **INV-PAY-02:** One Payment aggregate per Order; at most one full refund per Order in v1. Partial/multiple refunds are out of target. Duplicate collection/refund is rejected and side effects are atomic.
-- **INV-SHIP-01:** Shipping is manual; no carrier API or automatic tracking integration. Use approved ShippingInfo state/actor matrix and preserve order-time receiver facts.
+- **INV-SHIP-01:** Manual dispatch/retry/failure is represented solely by Order status. COD collection time is completion time. No separate shipping persistence, carrier/tracking fields or carrier integration.
 
 ## Inventory, Supplier and Goods Receipt
 

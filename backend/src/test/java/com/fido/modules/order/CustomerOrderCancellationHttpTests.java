@@ -74,7 +74,6 @@ class CustomerOrderCancellationHttpTests extends OrderHttpSupport {
         assertEquals(200, cancelled.status(), cancelled.body());
         var data = cancelled.data().get("data");
         assertEquals("CANCELLED", data.get("order_status").asText());
-        assertEquals("CANCELLED", data.get("shipping_info").get("shipping_status").asText());
         assertEquals("UNPAID", data.get("payment").get("payment_status").asText());
         assertEquals(0, data.get("allowed_actions").size());
         assertFalse(data.has("customer_account_id"));
@@ -161,10 +160,9 @@ class CustomerOrderCancellationHttpTests extends OrderHttpSupport {
             strings = {
                 "UPDATE payments SET payment_status='PAID' WHERE order_id=?",
                 "UPDATE payments SET amount=amount+1 WHERE order_id=?",
-                "UPDATE payments SET collected_at=CURRENT_TIMESTAMP(6) WHERE order_id=?",
-                "UPDATE shipping_infos SET shipping_status='SHIPPED' WHERE order_id=?"
+                "UPDATE payments SET collected_at=CURRENT_TIMESTAMP(6) WHERE order_id=?"
             })
-    void invalidPaymentOrShippingFactsFailClosed(String mutation) throws Exception {
+    void invalidPaymentFactsFailClosed(String mutation) throws Exception {
         User customer = user();
         var product = createVariant(5, 100000, null);
         long id = createOrder(customer, product, 1);
@@ -206,12 +204,6 @@ class CustomerOrderCancellationHttpTests extends OrderHttpSupport {
             assertEquals(
                     "PENDING",
                     db.queryForObject("SELECT status FROM orders WHERE id=?", String.class, id));
-            assertEquals(
-                    "PENDING",
-                    db.queryForObject(
-                            "SELECT shipping_status FROM shipping_infos WHERE order_id=?",
-                            String.class,
-                            id));
             assertEquals(1, uses(code));
             assertEquals(0, cancellations(id));
             assertNoStockMovement(id, product);

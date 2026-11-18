@@ -136,7 +136,7 @@ export function storefrontFixture() {
     order_code: 'FIDO-001',
     order_status: state.orderStatus,
     allowed_actions: state.orderStatus === 'PENDING' && state.paymentStatus === 'UNPAID' ? ['CANCEL'] : [],
-    recipient: { phone: profile.account.phone, email: profile.account.email, address: 'Nghệ An' },
+    recipient: { name: profile.account.full_name, phone: profile.account.phone, email: profile.account.email, address: 'Nghệ An' },
     items: [{
       ...checkoutItem(),
       order_item_id: 1,
@@ -154,7 +154,6 @@ export function storefrontFixture() {
       amount_received: 0,
       amount_refunded: 0,
     },
-    shipping_info: null,
     completed_at: null,
     returned_at: null,
     created_at: date,

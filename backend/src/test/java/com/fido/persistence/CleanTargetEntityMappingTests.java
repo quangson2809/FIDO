@@ -123,15 +123,15 @@ class CleanTargetEntityMappingTests {
                     account.setStatus("ACTIVE");
                     session.persist(account);
 
-                    Role role = new Role();
-                    role.setCode(
-                            "P31_MAPPING_"
-                                    + UUID.randomUUID()
-                                            .toString()
-                                            .replace("-", "")
-                                            .substring(0, 12));
-                    role.setName("Mapping Verification");
-                    role.setStatus("ACTIVE");
+                    Role role =
+                            Role.create(
+                                    "P31_MAPPING_"
+                                            + UUID.randomUUID()
+                                                    .toString()
+                                                    .replace("-", "")
+                                                    .substring(0, 12),
+                                    "Mapping Verification",
+                                    null);
                     session.persist(role);
 
                     Permission permission = new Permission();

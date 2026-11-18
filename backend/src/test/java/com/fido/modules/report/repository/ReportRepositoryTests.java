@@ -44,16 +44,23 @@ class ReportRepositoryTests {
                         "SELECT id FROM orders WHERE order_number=?",
                         Long.class,
                         "RPT-" + suffix.substring(0, 24));
-        String shippingStatus = delivered != null ? "DELIVERED" : "SHIPPED";
+        boolean returned = "RETURNED".equals(status);
+        boolean collected = delivered != null;
         jdbc.update(
                 """
-                INSERT INTO shipping_infos(order_id,shipping_status,shipped_at,delivered_at,updated_at)
-                VALUES (?,?,?,?,CURRENT_TIMESTAMP(6))
+                INSERT INTO payments(order_id,payment_status,amount,collected_by_account_id,collected_at,
+                    refund_amount,refunded_by_account_id,refunded_at,refund_reason)
+                VALUES (?,?,?,?,?,?,?,?,?)
                 """,
                 orderId,
-                shippingStatus,
+                returned ? "REFUNDED" : collected ? "PAID" : "UNPAID",
+                100L,
+                collected ? 1L : null,
                 delivered,
-                delivered);
+                returned ? 100L : 0L,
+                returned ? 1L : null,
+                returned ? delivered : null,
+                returned ? "Accepted return" : null);
         return orderId;
     }
 

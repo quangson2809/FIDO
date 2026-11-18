@@ -10,7 +10,10 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
 @Entity
-@Table(name = "carts")
+@Table(
+        name = "carts",
+        uniqueConstraints =
+                @UniqueConstraint(name = "uq_carts_account", columnNames = "account_id"))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -23,9 +26,6 @@ public class Cart {
 
     @Column(name = "account_id", nullable = false)
     private Long accountId;
-
-    @Column(name = "status", nullable = false, length = 20)
-    private String status = "OPEN";
 
     @Column(
             name = "created_at",

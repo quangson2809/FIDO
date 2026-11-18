@@ -40,7 +40,7 @@ The table groups are Account/RBAC, Catalog, Cart/Voucher/Order, Procurement/Inve
 ### Payment, shipping, lifecycle
 - One COD Payment aggregate per Order and manual shipping.
 - At most one full refund per Order in v1; partial/multiple refunds and detailed item-level return workflows are out of scope.
-- Use the approved Order, Payment, ShippingInfo and GoodsReceipt state/actor matrix.
+- Use the approved Order, Payment and GoodsReceipt state/actor matrix.
 - Business/history foreign keys use RESTRICT by default. Preserve posted Order/Payment/ledger/audit history; cascade only approved disposable working data.
 
 ## 4. Physical and implementation gates
