@@ -101,7 +101,7 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
     event.preventDefault();
     const parent = optionalId(parentFilterInput);
     if (parent === undefined) {
-      setError('Vui lòng chọn sản phẩm đại diện hợp lệ để lọc danh sách.');
+      setError('Bộ lọc Product cha phải là số nguyên dương.');
       return;
     }
     setPage(1);
@@ -269,12 +269,12 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
       <QueryFeedback
         loading={list.loading}
         error={
-          list.error ? getApiErrorMessage(list.error, 'Không thể tải danh sách sản phẩm. Vui lòng thử lại.') : null
+          list.error ? getApiErrorMessage(list.error, 'Không thể tải danh sách Product.') : null
         }
         onRetry={list.reload}
       />
       {!list.loading && !list.error && products.length === 0 && (
-        <p className="admin-state">Không có sản phẩm phù hợp.</p>
+        <p className="admin-state">Không có Product phù hợp.</p>
       )}
       {products.length > 0 && (
         <AdminProductTable

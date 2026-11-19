@@ -152,7 +152,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
           setError(
             getApiErrorMessage(
               detailResult.reason,
-              'Không thể tải chi tiết sản phẩm. Vui lòng thử lại.',
+              'Không thể tải chi tiết Product quản trị.',
             ),
           );
         }
@@ -193,7 +193,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
   }, [productId, validId, revision, populateForm]);
 
   const orderedImages = useMemo(() => sortProductImages(product?.images ?? []), [product]);
-  if (!validId) return <div className="admin-state" role="alert">Không tìm thấy sản phẩm cần mở. Vui lòng chọn lại từ danh sách.</div>;
+  if (!validId) return <div className="admin-state" role="alert">Mã Product không hợp lệ.</div>;
 
   const saveProduct = async () => {
     if (!canWrite || !product || busy) return;
@@ -208,7 +208,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
     const price = Number(sellingPrice);
     const cost = costPrice.trim() ? Number(costPrice) : null;
     if (parent === undefined) {
-      setError('Vui lòng chọn sản phẩm đại diện hợp lệ hoặc để trống.');
+      setError('Product cha ID phải là số nguyên dương hoặc để trống.');
       return;
     }
     if (
@@ -218,7 +218,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
           (item) => item.category_id === category && item.status === 'ACTIVE',
         ))
     ) {
-      setError('Danh mục đã chọn không còn hoạt động. Vui lòng chọn lại.');
+      setError('Danh mục không hợp lệ hoặc không còn ACTIVE.');
       return;
     }
     if (
@@ -228,7 +228,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
           (item) => item.brand_id === brand && item.status === 'ACTIVE',
         ))
     ) {
-      setError('Thương hiệu đã chọn không còn hoạt động. Vui lòng chọn lại.');
+      setError('Thương hiệu không hợp lệ hoặc không còn ACTIVE.');
       return;
     }
     if (
@@ -241,7 +241,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
       price < 0 ||
       (cost !== null && (!Number.isSafeInteger(cost) || cost < 0))
     ) {
-      setError('Vui lòng kiểm tra mã, tên, đường dẫn và giá sản phẩm. Giá phải là số nguyên từ 0 đồng trở lên.');
+      setError('Kiểm tra SKU, tên, slug và giá VND nguyên không âm.');
       return;
     }
 
@@ -296,7 +296,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
       setImageFiles([]);
       showToast('Đã cập nhật Product.');
     } catch (requestError: unknown) {
-      setError(getApiErrorMessage(requestError, 'Không thể cập nhật sản phẩm. Vui lòng thử lại.'));
+      setError(getApiErrorMessage(requestError, 'Không thể cập nhật Product.'));
     } finally {
       setBusy(false);
     }
@@ -324,7 +324,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
       setImageFiles([]);
       showToast('Đã tải ảnh Product.');
     } catch (requestError: unknown) {
-      setError(getApiErrorMessage(requestError, 'Không thể tải ảnh sản phẩm. Vui lòng thử lại.'));
+      setError(getApiErrorMessage(requestError, 'Không thể tải ảnh Product.'));
     } finally {
       setBusy(false);
     }
@@ -359,7 +359,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
       populateForm(detail, adminMeta);
       showToast('Đã xóa ảnh Product.');
     } catch (requestError: unknown) {
-      setError(getApiErrorMessage(requestError, 'Không thể xóa ảnh sản phẩm. Vui lòng thử lại.'));
+      setError(getApiErrorMessage(requestError, 'Không thể xóa ảnh Product.'));
     } finally {
       setBusy(false);
     }
@@ -375,7 +375,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
       showToast('Đã xóa Product ' + product.sku + '.');
       onNavigateTab('products', 'Sản phẩm');
     } catch (requestError: unknown) {
-      setError(getApiErrorMessage(requestError, 'Không thể xóa sản phẩm. Vui lòng kiểm tra sản phẩm có đang được sử dụng hay không.'));
+      setError(getApiErrorMessage(requestError, 'Không thể xóa Product.'));
     } finally {
       setBusy(false);
     }
@@ -387,7 +387,7 @@ export const AdminProductDetailView: React.FC<Props> = ({
   if (!product) {
     return (
       <div className="admin-state" role="alert">
-        <p>{error ?? 'Không tìm thấy sản phẩm.'}</p>
+        <p>{error ?? 'Không tìm thấy Product.'}</p>
         <button type="button" onClick={() => setRevision((value) => value + 1)} className="admin-secondary">
           Thử lại
         </button>

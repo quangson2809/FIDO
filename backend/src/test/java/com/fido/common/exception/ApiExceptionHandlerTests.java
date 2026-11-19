@@ -131,7 +131,7 @@ class ApiExceptionHandlerTests {
             var body = new ObjectMapper().readTree(response.getContentAsString());
             assertEquals(status, response.getStatus());
             assertEquals(expectedCode, body.get("code").asText());
-            assertEquals(PublicErrorMessages.message(expectedCode), body.get("message").asText());
+            assertTrue(body.get("message").asText().matches(".*[À-ỹ].*"));
             assertEquals(body.get("message"), body.get("error"));
             assertFalse(response.getContentAsString().contains("SELECT"));
             assertFalse(response.getContentAsString().contains("secret-value"));

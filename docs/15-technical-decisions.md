@@ -195,10 +195,9 @@ Owner-approved behavior and target schema are recorded; application/DTO/frontend
 - Customer detail exposes `allowed_actions`, evaluated with the same customer policy as execution. FE shows the control from this field, asks for confirmation, disables busy controls, refreshes after 409, and ignores late responses after changing Orders. History is read again on returning to the list.
 - Commit marker `[customer-cancel-focus]` selects the relevant backend lifecycle/security/stock/rollback/concurrency tests and the customer cancellation browser regression in CI, following existing focused-check conventions. Static compilation, formatting, frontend lint/build, API/architecture/render checks and canonical schema verification remain available. Other commits retain the default suites.
 
-## 2026-11-19 — Thông báo lỗi công khai bằng tiếng Việt
+## 2026-11-19 — Thông báo lỗi công khai bằng tiếng Việt tại BE
 
-- `contracts/error-messages.vi.json` là danh mục mã và thông báo dùng chung cho BE/FE; Gradle đóng gói danh mục vào tài nguyên ứng dụng.
-- `message` và `error` trả lời bằng tiếng Việt theo chức năng; giữ các khóa phản hồi, trạng thái HTTP và mã máy để giao diện xử lý. Không đưa SQL, tên lớp, tên trường nội bộ hay nguyên nhân gốc vào thông báo.
-- Bỏ handler riêng checkout/voucher trả nguyên `reason`; các lỗi này đi qua handler chung. Mã nghiệp vụ đã công khai được giữ cả với lỗi đầu vào.
-- Lỗi qua `/error` cũng dùng cùng bộ dịch; FE chỉ hiển thị mã được nhận diện, lỗi lạ dùng hướng dẫn dự phòng theo chức năng. Form quản trị bỏ mã quyền và tên trạng thái kỹ thuật khỏi câu lỗi.
-- Không thay đổi quy tắc nghiệp vụ, giao dịch, schema hoặc dữ liệu đang chạy.
+- Nội dung `message` và `error` được dịch tại `ApiExceptionHandler` hiện có. Mã lỗi và trạng thái HTTP phục vụ xử lý được tách khỏi câu thông báo cho người dùng.
+- Lỗi không được nhận diện và lỗi kỹ thuật dùng câu tiếng Việt an toàn, không trả SQL, stack trace hay nguyên nhân gốc. Checkout/voucher dùng cùng cơ chế BE; `/error` cũng trả thông báo an toàn.
+- Chỉ BE sở hữu thông báo trả về; không thêm danh mục JSON dùng chung, phụ thuộc đóng gói, cơ chế dịch hoặc thay đổi cách hiển thị của FE.
+- Hoàn lại phần FE đã mở rộng trong PR #60 theo yêu cầu làm gọn phạm vi. Không thay đổi nghiệp vụ, schema hoặc transaction.
