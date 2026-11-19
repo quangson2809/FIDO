@@ -10,9 +10,10 @@ import com.fido.modules.account.entity.Role;
 import com.fido.modules.account.repository.AccountRepository;
 import com.fido.modules.account.repository.PermissionRepository;
 import com.fido.modules.account.repository.RoleRepository;
-import com.fido.modules.account.service.identity.AccountPrincipal;
 import com.fido.modules.account.service.identity.AccountUserDetailsService;
 import com.fido.modules.account.service.identity.PhoneNumberCanonicalizer;
+
+import jakarta.persistence.EntityManager;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,6 +43,7 @@ class SpringAuthenticationTests {
     @Mock private AccountRepository accounts;
     @Mock private RoleRepository roles;
     @Mock private PermissionRepository permissions;
+    @Mock private EntityManager entityManager;
     private final SecurityConfig security = new SecurityConfig();
     private final BCryptPasswordEncoder passwords = new BCryptPasswordEncoder(4);
     private AccountUserDetailsService users;
@@ -51,7 +53,11 @@ class SpringAuthenticationTests {
     void setUp() {
         users =
                 new AccountUserDetailsService(
-                        accounts, roles, permissions, new PhoneNumberCanonicalizer());
+                        accounts,
+                        roles,
+                        permissions,
+                        new PhoneNumberCanonicalizer(),
+                        entityManager);
         account = new Account();
         account.setAccountId(7L);
         account.setPhone("+84900000000");
@@ -64,8 +70,7 @@ class SpringAuthenticationTests {
     }
 
     @Test
-    void providerAuthenticatesAndErasesOnlyThePrincipalCredentials() {
-        String originalHash = account.getPasswordHash();
+    void providerUsesTheAccountAsUserDetailsAndErasesItsDetachedCredentials() {
         when(accounts.findByPhoneInAndNotDeleted(List.of("+84900000000", "0900000000")))
                 .thenReturn(List.of(account));
         var result =
@@ -74,14 +79,13 @@ class SpringAuthenticationTests {
                                 UsernamePasswordAuthenticationToken.unauthenticated(
                                         "0900000000", "test-password"));
         assertTrue(result.isAuthenticated());
-        var principal = (AccountPrincipal) result.getPrincipal();
-        assertEquals(7L, principal.accountId());
+        var principal = assertInstanceOf(Account.class, result.getPrincipal());
+        assertSame(account, principal);
+        assertEquals(7L, principal.getAccountId());
+        assertEquals("+84900000000", principal.getUsername());
         assertNull(result.getCredentials());
         assertNull(principal.getPassword());
-        assertEquals(
-                originalHash,
-                account.getPasswordHash(),
-                "credential erasure must not dirty the JPA entity");
+        verify(entityManager).detach(account);
     }
 
     @ParameterizedTest
@@ -139,7 +143,8 @@ class SpringAuthenticationTests {
                         .toList();
         assertTrue(names.containsAll(List.of("ROLE_CUSTOMER", "PERMISSION_ORDER_READ")));
         assertFalse(names.contains("ROLE_SUPERADMIN"));
-        assertNotNull(account.getPasswordHash());
+        assertNull(account.getPassword());
+        verify(entityManager).detach(account);
     }
 
     @Test

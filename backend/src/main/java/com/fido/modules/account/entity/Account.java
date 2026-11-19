@@ -1,20 +1,28 @@
 package com.fido.modules.account.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.springframework.security.core.CredentialsContainer;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 
 @Entity
 @Table(name = "accounts")
 @Getter
 @Setter
 @NoArgsConstructor
-public class Account {
+public class Account implements UserDetails, CredentialsContainer {
+    private static final long serialVersionUID = 1L;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,6 +32,7 @@ public class Account {
     @Column(name = "full_name", nullable = false, length = 150)
     private String fullName;
 
+    @JsonIgnore
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
@@ -56,6 +65,34 @@ public class Account {
 
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
     private LocalDateTime updatedAt;
+
+    @Transient private List<GrantedAuthority> authorities = List.of();
+
+    @Override
+    public String getUsername() {
+        return phone;
+    }
+
+    @Override
+    @JsonIgnore
+    public String getPassword() {
+        return passwordHash;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return isActive();
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return !"LOCKED".equals(status);
+    }
+
+    @Override
+    public void eraseCredentials() {
+        passwordHash = null;
+    }
 
     public boolean isActive() {
         return "ACTIVE".equals(status) && deletedAt == null;

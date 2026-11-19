@@ -3,13 +3,21 @@ package com.fido.modules.account;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fido.modules.account.service.identity.AccountUserDetailsService;
+
+import jakarta.persistence.EntityManager;
+
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.util.Collections;
@@ -21,6 +29,40 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 class AuthenticationProfileHttpTests extends AccountHttpSupport {
+
+    @Autowired AccountUserDetailsService users;
+
+    @Autowired EntityManager entityManager;
+
+    @Autowired PlatformTransactionManager transactions;
+
+    @Test
+    void erasingUserDetailsCredentialsCannotChangeTheStoredPassword() throws Exception {
+        String phone = phone();
+        long accountId = register(phone);
+        String originalHash =
+                db.queryForObject(
+                        "SELECT password_hash FROM accounts WHERE id=?", String.class, accountId);
+
+        new TransactionTemplate(transactions)
+                .executeWithoutResult(
+                        transaction -> {
+                            var account = users.loadUserByUsername(phone);
+                            assertFalse(entityManager.contains(account));
+                            assertEquals(originalHash, account.getPassword());
+                            assertFalse(json.writeValueAsString(account).contains("password"));
+                            account.eraseCredentials();
+                            entityManager.flush();
+                            assertNull(account.getPassword());
+                        });
+
+        String token = login(phone);
+        assertEquals(200, call("GET", "/api/v1/me", token, null).status());
+        assertEquals(
+                originalHash,
+                db.queryForObject(
+                        "SELECT password_hash FROM accounts WHERE id=?", String.class, accountId));
+    }
 
     @Test
     void legacyIdentifierAliasIsRejected() throws Exception {
