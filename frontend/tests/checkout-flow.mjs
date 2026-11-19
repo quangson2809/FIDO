@@ -127,7 +127,7 @@ await page.route('**/api/v1/**', async (route) => {
       await new Promise((resolve) => {
         releaseOrder = resolve;
       });
-    if (rejectOrder) return send({ message: 'Không thể tạo đơn thử nghiệm' }, 409);
+    if (rejectOrder) return send({ message: 'java.sql.SQLException: private-checkout-detail' }, 409);
     orders++;
     const subtotal = quantity * price;
     const total = subtotal + 30000;
@@ -233,7 +233,8 @@ try {
   await loadQuote();
   await openDialog();
   await confirm().click();
-  await page.getByRole('alert').filter({ hasText: 'Không thể tạo đơn thử nghiệm' }).waitFor();
+  await page.getByRole('alert').filter({ hasText: 'Chưa xác nhận được đơn hàng. Vui lòng kiểm tra danh sách đơn hàng trước khi thử lại.' }).waitFor();
+  assert.equal(await page.getByText('private-checkout-detail', { exact: false }).count(), 0, 'checkout must hide private server detail');
   assert.equal(orders, 1);
   assert.equal(orderRequests, 2);
   assert.equal(quantity, 2);
