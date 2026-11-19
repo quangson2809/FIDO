@@ -237,7 +237,7 @@ export const CheckoutScreen: React.FC = () => {
         setError(
           getStorefrontErrorMessage(
             requestError,
-            'Chưa nhận được xác nhận đặt hàng. Hãy xác minh lại yêu cầu đã gửi trước khi tạo đơn khác.',
+            'Chưa xác nhận được đơn hàng. Vui lòng kiểm tra danh sách đơn hàng trước khi thử lại.',
           ),
         );
       }

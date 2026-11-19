@@ -35,3 +35,5 @@ frontend/.browser-evidence/
 frontend/.selection-dist/
 
 frontend/.report-dist/
+
+frontend/.errors-dist/

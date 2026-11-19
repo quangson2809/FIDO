@@ -47,7 +47,7 @@ public class CatalogProductReadService {
         products.findAllByProductIdIn(ids).forEach(p -> byId.put(p.getProductId(), p));
         for (Long id : ids) {
             if (!byId.containsKey(id) || byId.get(id).isDeleted()) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found");
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "PRODUCT_NOT_FOUND");
             }
         }
 

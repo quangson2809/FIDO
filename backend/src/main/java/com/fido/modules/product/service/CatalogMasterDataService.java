@@ -90,8 +90,7 @@ public class CatalogMasterDataService {
     @PreAuthorize(WRITE)
     public CategoryDto updateCategory(Long actor, Long categoryId, CategoryPatchRequest request) {
         if (!request.hasChanges()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "Category patch must contain a change");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CATEGORY_CHANGE_REQUIRED");
         }
         Category category = references.categoryForUpdate(categoryId);
         if (request.isParentPresent()) {
@@ -124,10 +123,10 @@ public class CatalogMasterDataService {
         Category category = references.category(categoryId);
         if (categories.existsByParentCategoryId(categoryId)
                 || products.existsByCategoryId(categoryId)) {
-            conflict("Category is still referenced");
+            conflict("CATEGORY_IN_USE");
         }
         categories.delete(category);
-        flushOrConflict("Category is still referenced");
+        flushOrConflict("CATEGORY_IN_USE");
         audit.record(
                 AuditWriteEvent.of(
                         AuditAction.CATEGORY_DELETE,
@@ -160,8 +159,7 @@ public class CatalogMasterDataService {
     @PreAuthorize(WRITE)
     public BrandDto updateBrand(Long actor, Long brandId, BrandPatchRequest request) {
         if (!request.hasChanges()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "Brand patch must contain a change");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "BRAND_CHANGE_REQUIRED");
         }
         Brand brand = references.brand(brandId);
         if (request.isNamePresent()) {
@@ -187,10 +185,10 @@ public class CatalogMasterDataService {
     public void deleteBrand(Long actor, Long brandId) {
         Brand brand = references.brand(brandId);
         if (products.existsByBrandId(brandId)) {
-            conflict("Brand is still referenced");
+            conflict("BRAND_IN_USE");
         }
         brands.delete(brand);
-        flushOrConflict("Brand is still referenced");
+        flushOrConflict("BRAND_IN_USE");
         audit.record(
                 AuditWriteEvent.of(
                         AuditAction.BRAND_DELETE, AuditEntityType.BRAND, brandId.toString()));
@@ -198,14 +196,14 @@ public class CatalogMasterDataService {
 
     private void validateParent(Long categoryId, Long parentId) {
         if (parentId == null) return;
-        if (Objects.equals(categoryId, parentId)) conflict("Category cannot be its own parent");
+        if (Objects.equals(categoryId, parentId)) conflict("CATEGORY_PARENT_INVALID");
 
         Category parent = references.category(parentId);
         Set<Long> seen = new HashSet<>();
         Long cursor = parent.getCategoryId();
         while (cursor != null) {
             if (!seen.add(cursor) || Objects.equals(cursor, categoryId)) {
-                conflict("Category hierarchy contains a cycle");
+                conflict("CATEGORY_HIERARCHY_INVALID");
             }
             cursor = references.category(cursor).getParentCategoryId();
         }
@@ -216,7 +214,7 @@ public class CatalogMasterDataService {
                 categoryId == null
                         ? categories.existsBySlug(slug)
                         : categories.existsBySlugAndCategoryIdNot(slug, categoryId);
-        if (exists) conflict("Category slug already exists");
+        if (exists) conflict("CATEGORY_ADDRESS_ALREADY_EXISTS");
     }
 
     private void requireBrandSlugAvailable(String slug, Long brandId) {
@@ -224,7 +222,7 @@ public class CatalogMasterDataService {
                 brandId == null
                         ? brands.existsBySlug(slug)
                         : brands.existsBySlugAndBrandIdNot(slug, brandId);
-        if (exists) conflict("Brand slug already exists");
+        if (exists) conflict("BRAND_ADDRESS_ALREADY_EXISTS");
     }
 
     private void flushOrConflict(String message) {
@@ -243,7 +241,7 @@ public class CatalogMasterDataService {
         normalized = normalized.replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT);
         normalized = normalized.replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
         if (normalized.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Name cannot produce a slug");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CATALOG_NAME_INVALID");
         }
         return normalized.length() > 180
                 ? normalized.substring(0, 180).replaceAll("-+$", "")

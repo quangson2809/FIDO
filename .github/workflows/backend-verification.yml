@@ -26,6 +26,7 @@ on:
       - demo1
     paths:
       - "backend/**"
+      - "contracts/**"
       - "ops/sql/**"
       - "reference/**"
       - "docs/refactor-v2/p1/P1-exit-gate.md"
@@ -39,6 +40,7 @@ permissions:
   contents: read
 
 env:
+  VIETNAMESE_ERRORS_FOCUSED: ${{ contains(github.event.head_commit.message, '[vietnamese-errors-focus]') || contains(github.event.pull_request.title, '[vietnamese-errors-focus]') }}
   DOMAIN_ENTITY_FOCUSED: ${{ github.ref == 'refs/heads/refactor/domain-entity-behaviors' || github.head_ref == 'refactor/domain-entity-behaviors' }}
   CUSTOMER_CANCEL_FOCUSED: ${{ contains(github.event.head_commit.message, '[customer-cancel-focus]') || contains(github.event.pull_request.title, '[customer-cancel-focus]') }}
   SEED_CATALOG_FOCUSED: ${{ contains(github.event.head_commit.message, '[seed-catalog-focus]') || contains(github.event.pull_request.title, '[seed-catalog-focus]') }}
@@ -185,7 +187,23 @@ jobs:
           TEST_DB_USERNAME: root
           TEST_DB_PASSWORD: ci-only-password
         run: |
-          if [ "$DOMAIN_ENTITY_FOCUSED" = "true" ]; then
+          if [ "$VIETNAMESE_ERRORS_FOCUSED" = "true" ]; then
+            ./gradlew --no-daemon test --rerun-tasks \
+              --tests 'com.fido.common.exception.*' \
+              --tests com.fido.modules.account.AuthenticationProfileHttpTests \
+              --tests com.fido.modules.order.OrderActionContractHttpTests \
+              --tests com.fido.modules.order.CheckoutCartTransactionTests \
+              --tests com.fido.modules.promotion.service.VoucherManagementContractTests \
+              --tests com.fido.modules.content.ContentPageApiTest \
+              --tests com.fido.modules.inventory.InventoryAdjustmentHttpTests \
+              --tests com.fido.modules.product.ProductCoreHttpTests \
+              --tests com.fido.modules.product.ProductAttributeValueHttpTests \
+              --tests com.fido.modules.product.DynamicCatalogHttpTests \
+              --tests com.fido.modules.product.ProductImageUploadHttpTests \
+              --tests com.fido.modules.product.service.ProductImageUploadServiceTests \
+              --tests com.fido.modules.product.service.ProductImageAdminServiceTests
+            ./gradlew --no-daemon checkJavaFormat
+          elif [ "$DOMAIN_ENTITY_FOCUSED" = "true" ]; then
             bash scripts/verify-order-without-shipping.sh
           elif [ "$CUSTOMER_CANCEL_FOCUSED" = "true" ]; then
             ./gradlew --no-daemon test --rerun-tasks \

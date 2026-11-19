@@ -584,8 +584,8 @@ assert.match(
 );
 assert.equal(
   getStorefrontErrorMessage(new ApiClientError('Vui lòng giảm số lượng.', 409), 'Thử lại.'),
-  'Vui lòng giảm số lượng.',
-  'preserve actionable, nontechnical validation feedback',
+  'Thử lại.',
+  'unknown messages must use the functional fallback, even when they look friendly',
 );
 console.log('Storefront URL, structured recipient and safe error models: PASS');
 

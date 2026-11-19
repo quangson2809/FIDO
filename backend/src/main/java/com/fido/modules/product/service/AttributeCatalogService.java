@@ -57,7 +57,7 @@ public class AttributeCatalogService {
         attributes.lockMetadataForUpdate();
         String code = request.code().trim();
         String name = request.name().trim();
-        if (attributes.existsByCode(code)) throw conflict("Attribute code already exists");
+        if (attributes.existsByCode(code)) throw conflict("ATTRIBUTE_CODE_ALREADY_EXISTS");
 
         Attribute attribute = new Attribute();
         attribute.setCode(code);
@@ -70,7 +70,7 @@ public class AttributeCatalogService {
         if (attribute.isRequired()
                 && productValues.existsActiveProductMissingAttributeValue(
                         attribute.getAttributeId())) {
-            throw conflict("Required Attribute is missing from an ACTIVE Product");
+            throw conflict("PRODUCT_REQUIRED_ATTRIBUTE_MISSING");
         }
         audit.record(
                 AuditWriteEvent.of(
@@ -82,7 +82,7 @@ public class AttributeCatalogService {
 
     @PreAuthorize(WRITE)
     public AttributeDto updateAttribute(Long attributeId, AttributePatchRequest request) {
-        if (!request.hasChanges()) throw badRequest("Attribute patch must contain a change");
+        if (!request.hasChanges()) throw badRequest("ATTRIBUTE_CHANGE_REQUIRED");
         attributes.lockMetadataForUpdate();
         Attribute attribute = requireAttribute(attributeId);
         if (request.isNamePresent()) attribute.setName(request.getName().trim());
@@ -91,7 +91,7 @@ public class AttributeCatalogService {
             if (required
                     && !attribute.isRequired()
                     && productValues.existsActiveProductMissingAttributeValue(attributeId)) {
-                throw conflict("Required Attribute is missing from an ACTIVE Product");
+                throw conflict("PRODUCT_REQUIRED_ATTRIBUTE_MISSING");
             }
             attribute.setRequired(required);
         }
@@ -113,7 +113,7 @@ public class AttributeCatalogService {
         String value = request.value().trim();
         String label = request.label().trim();
         if (options.existsByAttributeIdAndValue(attributeId, value)) {
-            throw conflict("Option value already exists for this Attribute");
+            throw conflict("ATTRIBUTE_OPTION_ALREADY_EXISTS");
         }
         AttributeOption option = new AttributeOption();
         option.setAttributeId(attributeId);
@@ -135,7 +135,7 @@ public class AttributeCatalogService {
     public AttributeOptionDto updateOption(
             Long attributeId, Long optionId, AttributeOptionPatchRequest request) {
         requireAttribute(attributeId);
-        if (!request.hasChanges()) throw badRequest("Attribute option patch must contain a change");
+        if (!request.hasChanges()) throw badRequest("ATTRIBUTE_OPTION_CHANGE_REQUIRED");
         AttributeOption option =
                 options.findByAttributeIdAndAttributeOptionId(attributeId, optionId)
                         .orElseThrow(AttributeCatalogService::notFound);
@@ -169,8 +169,7 @@ public class AttributeCatalogService {
     }
 
     private static ResponseStatusException notFound() {
-        return new ResponseStatusException(
-                HttpStatus.NOT_FOUND, "Attribute resource was not found");
+        return new ResponseStatusException(HttpStatus.NOT_FOUND, "ATTRIBUTE_NOT_FOUND");
     }
 
     private static ResponseStatusException badRequest(String message) {

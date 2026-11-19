@@ -14,7 +14,8 @@
     "test:browser": "node tests/admin-ux.mjs && node tests/admin-product-management-browser.mjs && node tests/admin-attributes-browser.mjs && node tests/catalog-browser.mjs && node tests/product-detail-cart-contract.mjs && node tests/checkout-flow.mjs && node tests/storefront-browser.mjs && node tests/storefront-recovery.mjs && node tests/audit-followup-browser.mjs && node tests/product-summary-browser.mjs && node tests/header-mega-menu-browser.mjs && node tests/report-browser-smoke.mjs && node tests/homepage-artwork-browser.mjs && node tests/shopping-discovery-browser.mjs && node tests/shopping-journey-browser.mjs && node tests/customer-order-cancel-browser.mjs",
     "test:selection": "vite build --ssr tests/product-family-selection.ts --outDir .selection-dist && node .selection-dist/product-family-selection.js",
     "test:reports": "vite build --ssr tests/report-calculation-smoke.ts --outDir .report-dist && node .report-dist/report-calculation-smoke.js",
-    "test:order-cancel-browser": "node tests/customer-order-cancel-browser.mjs"
+    "test:order-cancel-browser": "node tests/customer-order-cancel-browser.mjs",
+    "test:errors": "vite build --ssr tests/error-messages-smoke.tsx --outDir .errors-dist && node .errors-dist/error-messages-smoke.js"
   },
   "dependencies": {
     "axios": "^1.17.0",

@@ -51,6 +51,6 @@ public class PhoneNumberCanonicalizer {
     }
 
     private static ResponseStatusException invalidPhone() {
-        return new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid phone format");
+        return new ResponseStatusException(HttpStatus.BAD_REQUEST, "PHONE_INVALID");
     }
 }

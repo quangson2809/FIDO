@@ -228,7 +228,7 @@ await page.route('**/api/v1/**', async (route) => {
     }
     if (path === '/admin/products/1' && request.method() === 'PATCH') {
       productPatchAttempts += 1;
-      if (productPatchAttempts === 1) return send({ message: 'Lỗi lưu thử nghiệm' }, 500);
+      if (productPatchAttempts === 1) return send({ message: 'java.sql.SQLException: private-save-detail' }, 500);
       product = { ...product, ...request.postDataJSON() };
       return send({ data: product });
     }
@@ -236,7 +236,7 @@ await page.route('**/api/v1/**', async (route) => {
       receipt = { ...receipt, receipt_status: 'CONFIRMED' };
       return send({ data: receipt });
     }
-    return send({ message: 'Lỗi lưu thử nghiệm' }, 500);
+    return send({ message: 'java.sql.SQLException: private-save-detail' }, 500);
   }
   if (path === '/admin/vouchers') return send(pagination([voucher]));
   if (path === '/me') return send({ data: me });
@@ -483,7 +483,8 @@ try {
   await withConfirm(() => page.getByRole('button', { name: /Đơn hàng/ }).click(), 'dismiss');
   assert.match(page.url(), /admin\/content/);
   await page.getByRole('button', { name: 'Lưu nội dung' }).click();
-  await page.getByText('Lỗi lưu thử nghiệm', { exact: false }).waitFor();
+  await page.getByText('Không thể cập nhật nội dung.', { exact: false }).waitFor();
+  assert.equal(await page.getByText('private-save-detail', { exact: false }).count(), 0, 'private server messages stay hidden');
   assert.equal(await page.getByRole('textbox', { name: 'Tiêu đề' }).inputValue(), 'Bản chưa lưu');
   await withConfirm(() => page.getByRole('button', { name: /Đơn hàng/ }).click(), 'accept');
   await page.waitForURL('**/admin/orders');
@@ -505,7 +506,7 @@ try {
   assert.equal(await page.getByLabel('Product ID dòng 1', { exact: true }).count(), 0);
   await page.getByLabel('Chọn nhà cung cấp', { exact: true }).selectOption('1');
   await page.getByRole('button', { name: 'Tạo bản nháp', exact: true }).click();
-  await page.getByRole('alert').filter({ hasText: 'Chọn nhà cung cấp ACTIVE và SKU' }).waitFor();
+  await page.getByRole('alert').filter({ hasText: 'Vui lòng chọn nhà cung cấp đang hoạt động và sản phẩm cho mỗi dòng.' }).waitFor();
   await page.getByRole('button', { name: 'Chọn SKU dòng 1', exact: true }).click();
   const skuPicker = page.getByRole('dialog', { name: 'Chọn sản phẩm theo SKU' });
   await skuPicker.getByRole('button', { name: /TEE-L-WHITE/ }).waitFor();

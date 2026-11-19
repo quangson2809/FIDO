@@ -46,16 +46,14 @@ public class ProductAttributeValueValidator {
         List<ProductAttributeValue> result = new ArrayList<>();
 
         for (Long optionId : ids) {
-            if (optionId == null || optionId <= 0)
-                throw badRequest("Each attribute_value_id must be a positive ID");
-            if (!seenOptionIds.add(optionId))
-                throw badRequest("Duplicate attribute_value_id is not allowed");
+            if (optionId == null || optionId <= 0) throw badRequest("ATTRIBUTE_VALUE_INVALID");
+            if (!seenOptionIds.add(optionId)) throw badRequest("ATTRIBUTE_VALUE_DUPLICATE");
             AttributeOption option =
                     options.findById(optionId)
-                            .orElseThrow(() -> badRequest("Unknown attribute_value_id"));
+                            .orElseThrow(() -> badRequest("ATTRIBUTE_VALUE_NOT_FOUND"));
             Long attributeId = option.getAttributeId();
             if (!seenAttributeIds.add(attributeId)) {
-                throw badRequest("Only one option may be selected for each Attribute");
+                throw badRequest("ATTRIBUTE_MULTIPLE_VALUES");
             }
             attributes
                     .findById(attributeId)
@@ -74,7 +72,7 @@ public class ProductAttributeValueValidator {
             for (Attribute attribute : attributes.findAllByOrderBySortOrderAscAttributeIdAsc()) {
                 if (attribute.isRequired()
                         && !seenAttributeIds.contains(attribute.getAttributeId())) {
-                    throw badRequest("An ACTIVE Product must supply every required Attribute");
+                    throw badRequest("PRODUCT_ATTRIBUTES_REQUIRED");
                 }
             }
         }
