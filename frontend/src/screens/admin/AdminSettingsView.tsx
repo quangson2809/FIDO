@@ -42,7 +42,7 @@ export const AdminSettingsView: React.FC<{
         if (result.length > 0) setSelectedId((current) => current ?? result[0].page_id);
         setError(null);
       } catch (requestError: unknown) {
-        if (active) setError(getApiErrorMessage(requestError, 'Không thể tải danh sách trang nội dung. Vui lòng thử lại.'));
+        if (active) setError(getApiErrorMessage(requestError, 'Không thể tải content pages.'));
       } finally {
         if (active) setLoading(false);
       }

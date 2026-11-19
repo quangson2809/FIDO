@@ -1,9 +1,4 @@
 import axios from 'axios';
-import messages from '../../../../contracts/error-messages.vi.json';
-
-const publicMessages: Readonly<Record<string, string>> = messages;
-const knownMessage = (code: string | undefined): string | undefined =>
-  code && Object.hasOwn(publicMessages, code) ? publicMessages[code] : undefined;
 
 const objectProperty = (value: unknown, key: string): unknown => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
@@ -38,37 +33,34 @@ export const normalizeApiError = (error: unknown): ApiClientError => {
   if (axios.isAxiosError(error)) {
     const payload = error.response?.data;
     const status = error.response?.status ?? numericStatus(objectProperty(payload, 'status'));
-    const code = nonBlank(objectProperty(payload, 'code')) ??
-      (knownMessage(nonBlank(objectProperty(payload, 'message')))
-        ? nonBlank(objectProperty(payload, 'message')) : undefined);
-    const message = (status && status < 500 ? knownMessage(code) : undefined) ??
-      (status ? messages.REQUEST_REJECTED : 'Không thể kết nối. Vui lòng kiểm tra kết nối mạng và thử lại.');
-    return new ApiClientError(message, status, nonBlank(objectProperty(payload, 'path')), error, code);
+    const message =
+      nonBlank(objectProperty(payload, 'message')) ??
+      nonBlank(objectProperty(payload, 'error')) ??
+      (status ? `Yêu cầu API thất bại (${status}).` : nonBlank(error.message)) ??
+      'Không thể kết nối tới API.';
+
+    return new ApiClientError(message, status, nonBlank(objectProperty(payload, 'path')), error, nonBlank(objectProperty(payload, 'code')));
   }
 
   if (error instanceof Error) {
     return new ApiClientError(
-      messages.REQUEST_REJECTED,
+      error.message || 'Đã xảy ra lỗi không xác định.',
       undefined,
       undefined,
       error,
     );
   }
 
-  return new ApiClientError(messages.REQUEST_REJECTED, undefined, undefined, error);
+  return new ApiClientError('Đã xảy ra lỗi không xác định.', undefined, undefined, error);
 };
 
 export const getApiErrorMessage = (error: unknown, fallback: string): string => {
   const normalized = normalizeApiError(error);
-  if (!normalized.status || normalized.status >= 500) return fallback;
-  if (normalized.status === 401) {
-    return normalized.code === 'INVALID_CREDENTIALS'
-      ? messages.INVALID_CREDENTIALS : messages.UNAUTHENTICATED;
+  const message = normalized.message.trim();
+
+  if (!message || /^Yêu cầu API thất bại \(\d+\)\.$/.test(message)) {
+    return normalized.status ? `${fallback} (HTTP ${normalized.status})` : fallback;
   }
-  if (normalized.status === 403) {
-    return normalized.code === 'ACCOUNT_NOT_ACTIVE'
-      ? messages.ACCOUNT_NOT_ACTIVE : messages.FORBIDDEN;
-  }
-  if (normalized.status === 404) return knownMessage(normalized.code) ?? messages.RESOURCE_NOT_FOUND;
-  return knownMessage(normalized.code) ?? knownMessage(normalized.message.trim()) ?? fallback;
+
+  return message;
 };

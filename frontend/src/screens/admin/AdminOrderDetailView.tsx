@@ -113,7 +113,7 @@ export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
       applyOrder(await adminOrderService.paymentAction(order.order_id, 'COMPLETE_DELIVERY_AND_COLLECT_COD'));
       showToast('Đã hoàn tất giao hàng và ghi nhận thu COD.');
     } catch (requestError: unknown) {
-      setError(getApiErrorMessage(requestError, 'Không thể hoàn tất giao hàng và ghi nhận thu tiền. Vui lòng kiểm tra trạng thái đơn hàng.'));
+      setError(getApiErrorMessage(requestError, 'Không thể hoàn tất giao hàng và thu COD.'));
     } finally { setBusy(false); }
   };
 

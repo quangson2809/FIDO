@@ -56,7 +56,7 @@ export function VoucherForm({
       input.discount_value <= 0 ||
       (input.discount_type === 'PERCENT' && input.discount_value > 10000)
     ) {
-      setError('Mức giảm phải là số tiền nguyên lớn hơn 0 đồng hoặc tỷ lệ từ 0,01% đến 100%.');
+      setError('Giá trị giảm phải là số tiền VND nguyên dương hoặc tỷ lệ từ 0,01% đến 100%.');
       return;
     }
     if (input.starts_at && input.ends_at && new Date(input.ends_at) <= new Date(input.starts_at)) {

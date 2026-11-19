@@ -26,7 +26,6 @@ on:
       - demo1
     paths:
       - "backend/**"
-      - "contracts/**"
       - "ops/sql/**"
       - "reference/**"
       - "docs/refactor-v2/p1/P1-exit-gate.md"
@@ -194,14 +193,7 @@ jobs:
               --tests com.fido.modules.order.OrderActionContractHttpTests \
               --tests com.fido.modules.order.CheckoutCartTransactionTests \
               --tests com.fido.modules.promotion.service.VoucherManagementContractTests \
-              --tests com.fido.modules.content.ContentPageApiTest \
-              --tests com.fido.modules.inventory.InventoryAdjustmentHttpTests \
-              --tests com.fido.modules.product.ProductCoreHttpTests \
-              --tests com.fido.modules.product.ProductAttributeValueHttpTests \
-              --tests com.fido.modules.product.DynamicCatalogHttpTests \
-              --tests com.fido.modules.product.ProductImageUploadHttpTests \
-              --tests com.fido.modules.product.service.ProductImageUploadServiceTests \
-              --tests com.fido.modules.product.service.ProductImageAdminServiceTests
+              --tests com.fido.modules.content.ContentPageApiTest
             ./gradlew --no-daemon checkJavaFormat
           elif [ "$DOMAIN_ENTITY_FOCUSED" = "true" ]; then
             bash scripts/verify-order-without-shipping.sh

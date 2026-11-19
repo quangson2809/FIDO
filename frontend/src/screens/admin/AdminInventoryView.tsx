@@ -90,7 +90,7 @@ export const AdminInventoryView: React.FC<{
       selected.version < 0 ||
       !sourceOperationId
     ) {
-      setError('Vui lòng nhập số lượng tăng hoặc giảm khác 0. Số lượng tồn kho sau điều chỉnh không được âm.');
+      setError('Nhập số nguyên khác 0, số lượng sau điều chỉnh không âm và kiểm tra lại phiên bản tồn kho.');
       return;
     }
     if (
@@ -121,7 +121,7 @@ export const AdminInventoryView: React.FC<{
       setError(
         getApiErrorMessage(
           requestError,
-          'Không thể điều chỉnh tồn kho. Vui lòng tải lại số lượng hiện có và kiểm tra lý do điều chỉnh.',
+          'Không thể điều chỉnh tồn kho. Kiểm tra quyền, Product ID, mã lý do, phiên bản kho và số lượng khả dụng.',
         ),
       );
     } finally {
