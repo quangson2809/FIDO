@@ -5,6 +5,8 @@ import com.fido.modules.account.repository.AccountRepository;
 import com.fido.modules.account.repository.PermissionRepository;
 import com.fido.modules.account.repository.RoleRepository;
 
+import jakarta.persistence.EntityManager;
+
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -21,34 +23,37 @@ public class AccountUserDetailsService implements UserDetailsService {
     private final RoleRepository roles;
     private final PermissionRepository permissions;
     private final PhoneNumberCanonicalizer phones;
+    private final EntityManager entityManager;
 
     public AccountUserDetailsService(
             AccountRepository accounts,
             RoleRepository roles,
             PermissionRepository permissions,
-            PhoneNumberCanonicalizer phones) {
+            PhoneNumberCanonicalizer phones,
+            EntityManager entityManager) {
         this.accounts = accounts;
         this.roles = roles;
         this.permissions = permissions;
         this.phones = phones;
+        this.entityManager = entityManager;
     }
 
     @Override
-    public AccountPrincipal loadUserByUsername(String phone) {
+    public Account loadUserByUsername(String phone) {
         var matches = accounts.findByPhoneInAndNotDeleted(phones.lookupValues(phone));
         if (matches.size() != 1) throw missingAccount();
         return principal(matches.get(0));
     }
 
     /** JWT dùng accountId, không dùng số điện thoại; luôn đọc lại quyền và trạng thái hiện tại. */
-    public AccountPrincipal loadByAccountId(Long accountId) {
+    public Account loadByAccountId(Long accountId) {
         return accounts.findById(accountId)
                 .filter(account -> account.getDeletedAt() == null)
                 .map(this::principal)
                 .orElseThrow(AccountUserDetailsService::missingAccount);
     }
 
-    private AccountPrincipal principal(Account account) {
+    private Account principal(Account account) {
         String[] authorities =
                 Stream.concat(
                                 roles.findAssignedToAccount(account.getAccountId()).stream()
@@ -57,7 +62,10 @@ public class AccountUserDetailsService implements UserDetailsService {
                                         .map(permission -> "PERMISSION_" + permission.getCode()))
                         .distinct()
                         .toArray(String[]::new);
-        return new AccountPrincipal(account, AuthorityUtils.createAuthorityList(authorities));
+        // Spring xóa credentials sau xác thực; tách entity trước để không ghi thay đổi vào DB.
+        entityManager.detach(account);
+        account.setAuthorities(AuthorityUtils.createAuthorityList(authorities));
+        return account;
     }
 
     private static UsernameNotFoundException missingAccount() {

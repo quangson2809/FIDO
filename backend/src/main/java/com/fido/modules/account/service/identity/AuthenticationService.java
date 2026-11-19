@@ -108,8 +108,7 @@ public class AuthenticationService {
                 authenticationManager.authenticate(
                         UsernamePasswordAuthenticationToken.unauthenticated(
                                 phone, request.password()));
-        var principal = (AccountPrincipal) authentication.getPrincipal();
-        Account account = accounts.findById(principal.accountId()).orElseThrow();
+        var account = (Account) authentication.getPrincipal();
         return tokens.issue(AccountMapper.account(account));
     }
 }
