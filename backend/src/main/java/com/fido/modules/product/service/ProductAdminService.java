@@ -213,7 +213,7 @@ public class ProductAdminService {
         Product product = families.lockProductForUpdate(productId, null);
         if (products.findChildrenForValidation(productId).stream()
                 .anyMatch(child -> !child.isDeleted())) {
-            conflict("A parent product with children cannot be deleted");
+            conflict("PRODUCT_HAS_CHILDREN");
         }
         product.setDeletedAt(LocalDateTime.now(ZoneOffset.UTC));
         products.save(product);

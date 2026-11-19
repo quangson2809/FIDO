@@ -146,19 +146,16 @@ public class ProductImageAdminService {
         var sortOrders = new HashSet<Integer>();
         for (ProductImageInput item : requested) {
             if (!ProductImageUrlPolicy.isValid(item.image_url())) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST, "Image URL must be a valid HTTPS URI");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "IMAGE_ADDRESS_INVALID");
             }
             Integer sortOrder = item.sort_order();
             if (sortOrder == null || sortOrder < 0 || !sortOrders.add(sortOrder)) {
-                throw new ResponseStatusException(
-                        HttpStatus.CONFLICT, "Image sort order must be unique and non-negative");
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "IMAGE_ORDER_INVALID");
             }
         }
         for (int expected = 0; expected < requested.size(); expected++) {
             if (!sortOrders.contains(expected)) {
-                throw new ResponseStatusException(
-                        HttpStatus.CONFLICT, "Image sort order must be contiguous");
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "IMAGE_ORDER_INCOMPLETE");
             }
         }
         List<ProductImage> current = images.findAllByProductIdForUpdate(productId);
@@ -195,8 +192,7 @@ public class ProductImageAdminService {
             ProductImage image = orderedImages.get(index);
             if (!Objects.equals(image.getSortOrder(), index)) {
                 // Không tự sửa gallery sai thứ tự/ảnh chính trong một lệnh quản trị ảnh.
-                throw new ResponseStatusException(
-                        HttpStatus.CONFLICT, "Product image gallery requires an approved repair");
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "IMAGE_GALLERY_UNAVAILABLE");
             }
         }
     }

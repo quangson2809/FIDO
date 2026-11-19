@@ -105,4 +105,75 @@ class ApiExceptionHandlerTests {
         assertEquals("INTERNAL_ERROR", body.get("code").asText());
         assertFalse(response.getContentAsString().contains("private data"));
     }
+
+    @ParameterizedTest
+    @CsvSource({
+        "400, VALIDATION_ERROR", "404, RESOURCE_NOT_FOUND", "409, CONFLICT",
+        "413, UPLOAD_TOO_LARGE", "415, UNSUPPORTED_CONTENT", "429, TOO_MANY_REQUESTS",
+        "500, INTERNAL_ERROR", "502, INTERNAL_ERROR"
+    })
+    void unknownReasonsNeverEscapeForAnyApi(int status, String expectedCode) throws Exception {
+        for (String path :
+                new String[] {
+                    "/api/v1/checkout/quote",
+                    "/api/v1/orders",
+                    "/api/v1/admin/vouchers",
+                    "/api/v1/admin/products"
+                }) {
+            var response = new MockHttpServletResponse();
+            new ApiExceptionHandler()
+                    .handle(
+                            new org.springframework.web.server.ResponseStatusException(
+                                    org.springframework.http.HttpStatus.valueOf(status),
+                                    "java.sql.SQLException SELECT password_hash FROM accounts secret-value"),
+                            new MockHttpServletRequest("POST", path),
+                            response);
+            var body = new ObjectMapper().readTree(response.getContentAsString());
+            assertEquals(status, response.getStatus());
+            assertEquals(expectedCode, body.get("code").asText());
+            assertEquals(PublicErrorMessages.message(expectedCode), body.get("message").asText());
+            assertEquals(body.get("message"), body.get("error"));
+            assertFalse(response.getContentAsString().contains("SELECT"));
+            assertFalse(response.getContentAsString().contains("secret-value"));
+        }
+    }
+
+    @Test
+    void businessCodeSurvivesTranslationWithVietnameseGuidance() throws Exception {
+        var response = new MockHttpServletResponse();
+        new ApiExceptionHandler()
+                .handle(
+                        BusinessRuleException.invalid("VOUCHER_PERCENT_BPS_OUT_OF_RANGE"),
+                        new MockHttpServletRequest("POST", "/api/v1/admin/vouchers"),
+                        response);
+        var body = new ObjectMapper().readTree(response.getContentAsString());
+        assertEquals(400, response.getStatus());
+        assertEquals("VOUCHER_PERCENT_BPS_OUT_OF_RANGE", body.get("code").asText());
+        assertEquals(
+                "Tỷ lệ giảm giá phải lớn hơn 0% và không vượt quá 100%.",
+                body.get("message").asText());
+    }
+
+    @Test
+    void databaseAndFallbackErrorsDoNotExposePrivateDetails() throws Exception {
+        var response = new MockHttpServletResponse();
+        var request = new MockHttpServletRequest("POST", "/api/v1/orders");
+        new ApiExceptionHandler()
+                .handle(
+                        new org.springframework.dao.DataIntegrityViolationException(
+                                "INSERT INTO orders private-value",
+                                new java.sql.SQLException("password_hash private-value")),
+                        request,
+                        response);
+        assertEquals(409, response.getStatus());
+        assertFalse(response.getContentAsString().contains("private-value"));
+        request.setAttribute(jakarta.servlet.RequestDispatcher.ERROR_STATUS_CODE, 500);
+        request.setAttribute(jakarta.servlet.RequestDispatcher.ERROR_MESSAGE, "private-value");
+        var fallback = new MockHttpServletResponse();
+        new com.fido.config.web.PublicErrorController(new ApiExceptionHandler())
+                .error(request, fallback);
+        assertEquals(500, fallback.getStatus());
+        assertFalse(fallback.getContentAsString().contains("private-value"));
+        assertTrue(fallback.getContentAsString().contains("Chưa thể hoàn tất thao tác"));
+    }
 }

@@ -43,7 +43,7 @@ export const buildProductAttributeValueIds = (
 
     if (!normalized) {
       if (required) errors.push(
-        'Thuộc tính "' + attribute.name + '" là bắt buộc khi sản phẩm ở trạng thái ACTIVE.',
+        'Thuộc tính "' + attribute.name + '" cần được chọn trước khi cho phép bán sản phẩm.',
       );
       continue;
     }
@@ -63,7 +63,7 @@ export const buildProductAttributeValueIds = (
     if (value && !attributes.some((attribute) => String(attribute.id) === attributeId)
         && !currentValues.some((current) => String(current.attribute_id) === attributeId
           && String(current.attribute_value_id) === value)) {
-      errors.push('Metadata thuộc tính #' + attributeId + ' chưa có. Hãy tải lại trước khi lưu.');
+      errors.push('Thông tin thuộc tính chưa được tải đầy đủ. Vui lòng tải lại trước khi lưu.');
     }
   }
 

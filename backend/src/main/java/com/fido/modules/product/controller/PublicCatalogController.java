@@ -72,7 +72,7 @@ public class PublicCatalogController {
                             || values.get(0) == null
                             || values.get(0).isBlank()) {
                         throw new ResponseStatusException(
-                                HttpStatus.BAD_REQUEST, "Invalid Attribute filter");
+                                HttpStatus.BAD_REQUEST, "PRODUCT_FILTER_INVALID");
                     }
                     result.put(match.group(1), values.get(0));
                 });

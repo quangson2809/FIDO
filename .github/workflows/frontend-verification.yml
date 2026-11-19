@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - "frontend/**"
+      - "contracts/**"
       - ".github/workflows/frontend-verification.yml"
   pull_request:
     branches:
@@ -13,6 +14,7 @@ on:
       - feature/customer-shopping-journey-ux-improvements
     paths:
       - "frontend/**"
+      - "contracts/**"
       - ".github/workflows/frontend-verification.yml"
   workflow_dispatch:
 
@@ -20,6 +22,7 @@ permissions:
   contents: read
 
 env:
+  VIETNAMESE_ERRORS_FOCUSED: ${{ contains(github.event.head_commit.message, '[vietnamese-errors-focus]') || contains(github.event.pull_request.title, '[vietnamese-errors-focus]') }}
   ORDER_MODEL_FOCUSED: ${{ github.ref == 'refs/heads/refactor/domain-entity-behaviors' || github.head_ref == 'refactor/domain-entity-behaviors' }}
   CUSTOMER_CANCEL_FOCUSED: ${{ contains(github.event.head_commit.message, '[customer-cancel-focus]') || contains(github.event.pull_request.title, '[customer-cancel-focus]') }}
   IMAGE_FOCUSED: ${{ contains(github.event.head_commit.message, '[product-images-focus]') || contains(github.event.pull_request.title, '[product-images-focus]') }}
@@ -91,12 +94,12 @@ jobs:
         run: npm run test:architecture
 
       - name: Product color and size selection
-        if: env.REPORT_FOCUSED != 'true' && env.IMAGE_FOCUSED != 'true' && env.CUSTOMER_CANCEL_FOCUSED != 'true' && env.ORDER_MODEL_FOCUSED != 'true'
+        if: env.REPORT_FOCUSED != 'true' && env.IMAGE_FOCUSED != 'true' && env.CUSTOMER_CANCEL_FOCUSED != 'true' && env.ORDER_MODEL_FOCUSED != 'true' && env.VIETNAMESE_ERRORS_FOCUSED != 'true'
         working-directory: frontend
         run: npm run test:selection
 
       - name: Frontend render smoke
-        if: env.REPORT_FOCUSED != 'true' && env.IMAGE_FOCUSED != 'true' && env.ORDER_MODEL_FOCUSED != 'true'
+        if: env.REPORT_FOCUSED != 'true' && env.IMAGE_FOCUSED != 'true' && env.ORDER_MODEL_FOCUSED != 'true' && env.VIETNAMESE_ERRORS_FOCUSED != 'true'
         working-directory: frontend
         run: npm run test:render
 
@@ -105,6 +108,10 @@ jobs:
         working-directory: frontend
         run: npm run test:reports
 
+      - name: Vietnamese public error messages
+        working-directory: frontend
+        run: npm run test:errors
+
       - name: Install Chromium for browser verification
         working-directory: frontend
         run: npx playwright install --with-deps chromium
@@ -112,7 +119,11 @@ jobs:
       - name: Customer browser journeys and responsive checks
         working-directory: frontend
         run: |
-          if [ "$ORDER_MODEL_FOCUSED" = "true" ]; then
+          if [ "$VIETNAMESE_ERRORS_FOCUSED" = "true" ]; then
+            node tests/admin-ux.mjs
+            node tests/storefront-recovery.mjs
+            node tests/checkout-flow.mjs
+          elif [ "$ORDER_MODEL_FOCUSED" = "true" ]; then
             node tests/customer-order-cancel-browser.mjs
             node tests/checkout-flow.mjs
             node tests/storefront-browser.mjs

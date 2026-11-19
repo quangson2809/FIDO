@@ -130,14 +130,14 @@ public class PublicCatalogQueryService {
                                     () ->
                                             new ResponseStatusException(
                                                     HttpStatus.BAD_REQUEST,
-                                                    "Unknown Attribute filter code"));
+                                                    "PRODUCT_FILTER_ATTRIBUTE_NOT_FOUND"));
             AttributeOption option =
                     options.findByAttributeIdAndValue(attribute.getAttributeId(), filter.getValue())
                             .orElseThrow(
                                     () ->
                                             new ResponseStatusException(
                                                     HttpStatus.BAD_REQUEST,
-                                                    "Unknown Option for Attribute filter"));
+                                                    "PRODUCT_FILTER_OPTION_NOT_FOUND"));
             selected.put(attribute.getAttributeId(), option.getAttributeOptionId());
         }
         return selected;
@@ -149,7 +149,8 @@ public class PublicCatalogQueryService {
         if ((min != null && min < 0)
                 || (max != null && max < 0)
                 || (min != null && max != null && min > max)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid price range");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "PRODUCT_PRICE_RANGE_INVALID");
         }
     }
 

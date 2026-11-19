@@ -103,8 +103,7 @@ public class ReportService {
     public ProductPerformanceDto productPerformance(LocalDate from, LocalDate to, int limit) {
         var range = ReportRange.of(from, to);
         if (limit < 1 || limit > 100) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "Limit must be between 1 and 100");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "REPORT_LIMIT_INVALID");
         }
         return new ProductPerformanceDto(
                 from, to, limit, reports.topProducts(range.startUtc(), range.endUtc(), limit));
@@ -156,7 +155,7 @@ public class ReportService {
     private static <T> Map<LocalDate, T> periods(
             ReportRange range, ReportGranularity granularity, T initial) {
         if (granularity == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Granularity is required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "REPORT_PERIOD_REQUIRED");
         }
         Map<LocalDate, T> periods = new LinkedHashMap<>();
         LocalDate last = granularity.periodStart(range.to());

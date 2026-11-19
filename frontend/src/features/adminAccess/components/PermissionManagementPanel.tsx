@@ -54,7 +54,7 @@ export const PermissionManagementPanel: React.FC<{
       await refreshAccess();
       showToast('Đã tạo permission.');
     } catch (requestError: unknown) {
-      setError(getApiErrorMessage(requestError, 'Không thể tạo permission.'));
+      setError(getApiErrorMessage(requestError, 'Không thể tạo quyền truy cập. Vui lòng kiểm tra thông tin và thử lại.'));
     } finally {
       onBusyChange(false);
     }
@@ -79,7 +79,7 @@ export const PermissionManagementPanel: React.FC<{
       await refreshAccess();
       showToast('Đã cập nhật permission.');
     } catch (requestError: unknown) {
-      setError(getApiErrorMessage(requestError, 'Không thể cập nhật permission.'));
+      setError(getApiErrorMessage(requestError, 'Không thể cập nhật quyền truy cập. Vui lòng thử lại.'));
     } finally {
       onBusyChange(false);
     }
@@ -101,7 +101,7 @@ export const PermissionManagementPanel: React.FC<{
       await refreshAccess();
       showToast('Đã xóa permission.');
     } catch (requestError: unknown) {
-      setError(getApiErrorMessage(requestError, 'Không thể xóa permission.'));
+      setError(getApiErrorMessage(requestError, 'Không thể xóa quyền truy cập. Vui lòng kiểm tra quyền có đang được sử dụng hay không.'));
     } finally {
       onBusyChange(false);
     }

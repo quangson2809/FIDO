@@ -73,10 +73,10 @@ public class ProductImageUploadService {
         List<MultipartFile> files = imageFiles == null ? List.of() : Arrays.asList(imageFiles);
 
         if (files.isEmpty()) {
-            throw badRequest("At least one image file is required");
+            throw badRequest("IMAGE_REQUIRED");
         }
         if (files.size() > maxFilesPerRequest) {
-            throw badRequest("Too many image files in one upload request");
+            throw badRequest("IMAGE_COUNT_EXCEEDED");
         }
 
         for (MultipartFile file : files) {
@@ -104,21 +104,21 @@ public class ProductImageUploadService {
      */
     private void validate(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw badRequest("Image file must not be empty");
+            throw badRequest("IMAGE_EMPTY");
         }
 
         if (file.getSize() > maxImageBytes) {
-            throw badRequest("Image file exceeds configured upload limit");
+            throw badRequest("IMAGE_TOO_LARGE");
         }
 
         String declaredContentType = normalizeContentType(file.getContentType());
         if (!SUPPORTED_CONTENT_TYPES.contains(declaredContentType)) {
-            throw badRequest("Unsupported image format");
+            throw badRequest("IMAGE_FORMAT_UNSUPPORTED");
         }
 
         String detectedContentType = detectContentType(file);
         if (!declaredContentType.equals(detectedContentType)) {
-            throw badRequest("Image content does not match declared MIME type");
+            throw badRequest("IMAGE_CONTENT_INVALID");
         }
     }
 
@@ -153,7 +153,7 @@ public class ProductImageUploadService {
         try (InputStream input = file.getInputStream()) {
             return input.readNBytes(SIGNATURE_BYTES);
         } catch (IOException exception) {
-            throw badRequest("Image file could not be read");
+            throw badRequest("IMAGE_UNREADABLE");
         }
     }
 

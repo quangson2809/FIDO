@@ -113,7 +113,7 @@ export const AdminInwardView: React.FC<{
     const parsedSupplier = Number(supplierId);
     const normalized = normalizedItems();
     if (!Number.isSafeInteger(parsedSupplier) || parsedSupplier <= 0 || !normalized) {
-      setError('Chọn nhà cung cấp ACTIVE và SKU cho mỗi dòng, nhập số lượng nhận và giá vốn hợp lệ; không được trùng SKU.');
+      setError('Vui lòng chọn nhà cung cấp đang hoạt động và sản phẩm cho mỗi dòng. Kiểm tra số lượng, giá vốn và bỏ các sản phẩm bị trùng.');
       return;
     }
     setSaving(true);
@@ -126,7 +126,7 @@ export const AdminInwardView: React.FC<{
       list.reload();
       showToast(selected ? 'Đã cập nhật phiếu nhập DRAFT.' : 'Đã tạo phiếu nhập DRAFT.');
     } catch (requestError: unknown) {
-      setError(getApiErrorMessage(requestError, 'Không thể lưu phiếu nhập. Kiểm tra trạng thái DRAFT, nhà cung cấp và SKU đã chọn.'));
+      setError(getApiErrorMessage(requestError, 'Không thể lưu phiếu nhập. Vui lòng kiểm tra phiếu còn ở dạng nháp, nhà cung cấp và sản phẩm đã chọn.'));
     } finally {
       setSaving(false);
     }
@@ -148,7 +148,7 @@ export const AdminInwardView: React.FC<{
       list.reload();
       showToast(action === 'CONFIRM' ? 'Đã xác nhận nhập kho.' : 'Đã hủy phiếu nhập.');
     } catch (requestError: unknown) {
-      setError(getApiErrorMessage(requestError, 'Không thể thao tác. Chỉ phiếu DRAFT mới có thể xác nhận hoặc hủy.'));
+      setError(getApiErrorMessage(requestError, 'Chỉ phiếu nhập còn ở dạng nháp mới có thể xác nhận hoặc hủy. Vui lòng tải lại phiếu.'));
     } finally { setSaving(false); }
   };
 

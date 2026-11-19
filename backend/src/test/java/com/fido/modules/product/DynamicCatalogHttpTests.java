@@ -499,10 +499,10 @@ class DynamicCatalogHttpTests extends CatalogHttpSupport {
         long child = created(create(w, f.productId(), f.categoryId(), "ACTIVE", List.of(second)));
         var duplicate = create(w, f.productId(), f.categoryId(), "ACTIVE", List.of(second));
         assertEquals(409, duplicate.status(), duplicate.body());
-        assertEquals("CONFLICT", duplicate.data().get("code").asText());
+        assertEquals("PRODUCT_FAMILY_COMBINATION_DUPLICATE", duplicate.data().get("code").asText());
         var missing = create(w, f.productId(), f.categoryId(), "ACTIVE", List.of());
         assertEquals(409, missing.status(), missing.body());
-        assertEquals("CONFLICT", missing.data().get("code").asText());
+        assertEquals("PRODUCT_FAMILY_ATTRIBUTES_INCONSISTENT", missing.data().get("code").asText());
         assertEquals(
                 1,
                 db.queryForObject(

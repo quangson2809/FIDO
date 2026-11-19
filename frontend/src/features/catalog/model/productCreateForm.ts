@@ -43,15 +43,15 @@ export const buildProductCreate = (
 ): { payload: ProductCreateInput | null; errors: ProductCreateErrors } => {
   const errors: ProductCreateErrors = {};
   const sku = form.sku.trim();
-  if (!sku || sku.length > 100) errors.sku = 'Nhập SKU, tối đa 100 ký tự.';
+  if (!sku || sku.length > 100) errors.sku = 'Vui lòng nhập mã sản phẩm, tối đa 100 ký tự.';
   const price = Number(form.sellingPrice);
   const cost = form.costPrice.trim() ? Number(form.costPrice) : null;
   if (!form.sellingPrice.trim() || !Number.isSafeInteger(price) || price < 0)
-    errors.sellingPrice = 'Nhập giá bán VND nguyên, không âm (bắt buộc cả khi lưu nháp).';
+    errors.sellingPrice = 'Vui lòng nhập giá bán là số nguyên từ 0 đồng trở lên, kể cả khi lưu nháp.';
   if (cost !== null && (!Number.isSafeInteger(cost) || cost < 0))
-    errors.costPrice = 'Giá vốn phải là số VND nguyên, không âm.';
+    errors.costPrice = 'Giá vốn phải là số nguyên từ 0 đồng trở lên.';
   if (form.name.length > 255) errors.name = 'Tên tối đa 255 ký tự.';
-  if (form.slug.length > 200) errors.slug = 'Slug tối đa 200 ký tự.';
+  if (form.slug.length > 200) errors.slug = 'Đường dẫn sản phẩm không được dài quá 200 ký tự.';
   const id = (key: 'categoryId' | 'brandId' | 'parentProductId'): number | null => {
     if (!form[key].trim()) return null;
     const value = Number(form[key]);
@@ -116,9 +116,9 @@ export const buildProductCreate = (
 export const productCreateServerError = (code: string | undefined): [string, string] | null => {
   switch (code) {
     case 'PRODUCT_SKU_ALREADY_EXISTS':
-      return ['sku', 'SKU đã tồn tại. Chọn SKU khác hoặc mở sản phẩm đang có.'];
+      return ['sku', 'Mã sản phẩm đã được sử dụng. Vui lòng chọn mã khác hoặc mở sản phẩm đang có.'];
     case 'PRODUCT_PARENT_INVALID':
-      return ['parentProductId', 'Chọn sản phẩm cha cấp gốc; quan hệ chỉ có một cấp con.'];
+      return ['parentProductId', 'Vui lòng chọn sản phẩm đại diện không thuộc nhóm khác.'];
     case 'PRODUCT_PARENT_NOT_FOUND':
       return ['parentProductId', 'Sản phẩm cha không còn tồn tại. Chọn lại sản phẩm cha.'];
     case 'PRODUCT_CATEGORY_INACTIVE':

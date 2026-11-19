@@ -20,14 +20,13 @@ public final class CatalogPolicy {
 
     public static void requireProductStatus(String status) {
         if (!PRODUCT_STATUSES.contains(status)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid product status");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PRODUCT_STATUS_INVALID");
         }
     }
 
     public static void requireMasterDataStatus(String status) {
         if (!MASTER_DATA_STATUSES.contains(status)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "Invalid category or brand status");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CATALOG_STATUS_INVALID");
         }
     }
 }

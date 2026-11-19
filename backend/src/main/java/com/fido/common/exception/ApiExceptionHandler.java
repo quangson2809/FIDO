@@ -10,7 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.ErrorResponse;
@@ -26,40 +26,12 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /** Giữ cấu trúc lỗi HTTP thống nhất; chỉ trả mã công khai, giữ thông tin chẩn đoán ở máy chủ. */
 @ControllerAdvice
 public class ApiExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
-    private static final Set<String> PUBLIC_CODES =
-            Set.of(
-                    "INVALID_CREDENTIALS",
-                    "UNAUTHENTICATED",
-                    "FORBIDDEN",
-                    "ACCOUNT_NOT_ACTIVE",
-                    "VALIDATION_ERROR",
-                    "RESOURCE_NOT_FOUND",
-                    "PHONE_ALREADY_IN_USE",
-                    "ROLE_CODE_ALREADY_EXISTS",
-                    "PERMISSION_CODE_ALREADY_EXISTS",
-                    "LAST_SUPERADMIN_REQUIRED",
-                    "ROLE_IN_USE",
-                    "PERMISSION_IN_USE",
-                    "SYSTEM_ROLE_PROTECTED",
-                    "SYSTEM_PERMISSION_PROTECTED",
-                    "ACCOUNT_STATE_CONFLICT",
-                    "CART_ITEM_NOT_FOUND",
-                    "PRODUCT_NOT_AVAILABLE",
-                    "PRODUCT_SKU_ALREADY_EXISTS",
-                    "PRODUCT_PARENT_INVALID",
-                    "PRODUCT_PARENT_NOT_FOUND",
-                    "PRODUCT_CATEGORY_INACTIVE",
-                    "PRODUCT_BRAND_INACTIVE",
-                    "PRODUCT_CATEGORY_NOT_FOUND",
-                    "PRODUCT_BRAND_NOT_FOUND");
-
     private final ObjectMapper json;
 
     public ApiExceptionHandler() {
@@ -105,19 +77,31 @@ public class ApiExceptionHandler {
         writeError(request, response, status, code);
     }
 
+    /** Lỗi do bộ lọc hoặc máy chủ chuyển tiếp cũng dùng cùng thông báo công khai. */
+    public void writeHttpError(HttpServletRequest request, HttpServletResponse response, int status)
+            throws IOException {
+        writeError(
+                request,
+                response,
+                status,
+                errorCode(
+                        new ResponseStatusException(HttpStatusCode.valueOf(status)),
+                        request,
+                        status));
+    }
+
     private void writeError(
             HttpServletRequest request, HttpServletResponse response, int status, String code)
             throws IOException {
         if (response.isCommitted()) {
             return;
         }
-        HttpStatus httpStatus = HttpStatus.resolve(status);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", Instant.now().toString());
         body.put("status", status);
-        body.put("error", httpStatus == null ? "Request Rejected" : httpStatus.getReasonPhrase());
+        body.put("error", PublicErrorMessages.message(code));
         body.put("code", code);
-        body.put("message", publicMessage(code, status));
+        body.put("message", PublicErrorMessages.message(code));
         body.put("path", request.getRequestURI());
         response.setStatus(status);
         response.setContentType("application/json");
@@ -162,72 +146,24 @@ public class ApiExceptionHandler {
             }
             return "FORBIDDEN";
         }
-        if (status == 400) return "VALIDATION_ERROR";
-        if (status == 404) {
-            if (exception instanceof ResponseStatusException responseStatus) {
-                String reason = responseStatus.getReason();
-                if (reason != null && PUBLIC_CODES.contains(reason)) return reason;
-            }
-            return "RESOURCE_NOT_FOUND";
+        if (status < 500) {
+            String code =
+                    exception instanceof BusinessRuleException business
+                            ? business.getMessage()
+                            : exception instanceof ResponseStatusException responseStatus
+                                    ? responseStatus.getReason()
+                                    : null;
+            if (PublicErrorMessages.contains(code)) return code;
         }
-        if (status == 409) {
-            if (exception instanceof BusinessRuleException business
-                    && PUBLIC_CODES.contains(business.getMessage())) {
-                return business.getMessage();
-            }
-            if (exception instanceof ResponseStatusException responseStatus) {
-                String reason = responseStatus.getReason();
-                if (reason != null && PUBLIC_CODES.contains(reason)) return reason;
-            }
-            if (path.equals("/api/v1/auth/register")) return "PHONE_ALREADY_IN_USE";
-            if (request.getMethod().equals("POST") && path.equals("/api/v1/admin/roles")) {
-                return "ROLE_CODE_ALREADY_EXISTS";
-            }
-            if (request.getMethod().equals("POST") && path.equals("/api/v1/admin/permissions")) {
-                return "PERMISSION_CODE_ALREADY_EXISTS";
-            }
-            return "CONFLICT";
-        }
+        if (status == 400 || status == 422) return "VALIDATION_ERROR";
+        if (status == 404) return "RESOURCE_NOT_FOUND";
+        if (status == 405) return "METHOD_NOT_ALLOWED";
+        if (status == 413) return "UPLOAD_TOO_LARGE";
+        if (status == 415) return "UNSUPPORTED_CONTENT";
+        if (status == 429) return "TOO_MANY_REQUESTS";
+        if (status == 409) return "CONFLICT";
         if (status >= 500) return "INTERNAL_ERROR";
         return "REQUEST_REJECTED";
-    }
-
-    private String publicMessage(String code, int status) {
-        return switch (code) {
-            case "INVALID_CREDENTIALS" -> "Phone or password is invalid.";
-            case "UNAUTHENTICATED" -> "Authentication is required or the access token is invalid.";
-            case "FORBIDDEN" -> "Access to the requested operation was denied.";
-            case "ACCOUNT_NOT_ACTIVE" -> "Account is not active.";
-            case "VALIDATION_ERROR" -> "Request validation or format is invalid.";
-            case "RESOURCE_NOT_FOUND" -> "Requested resource was not found.";
-            case "PHONE_ALREADY_IN_USE" -> "Phone number is already in use.";
-            case "ROLE_CODE_ALREADY_EXISTS" -> "Role code already exists.";
-            case "PERMISSION_CODE_ALREADY_EXISTS" -> "Permission code already exists.";
-            case "LAST_SUPERADMIN_REQUIRED" -> "At least one active SUPERADMIN must remain.";
-            case "ROLE_IN_USE" -> "Role is still assigned to an account.";
-            case "PERMISSION_IN_USE" -> "Permission is still granted to a business role.";
-            case "SYSTEM_ROLE_PROTECTED" -> "The requested system role mutation is protected.";
-            case "SYSTEM_PERMISSION_PROTECTED" -> "The requested system permission is protected.";
-            case "ACCOUNT_STATE_CONFLICT" ->
-                    "The account state transition conflicts with current state.";
-            case "CART_ITEM_NOT_FOUND" -> "Cart item was not found in the account's cart.";
-            case "PRODUCT_NOT_AVAILABLE" -> "Product is not available for sale.";
-            case "PRODUCT_CATEGORY_NOT_FOUND" -> "Selected category was not found.";
-            case "PRODUCT_BRAND_NOT_FOUND" -> "Selected brand was not found.";
-            case "PRODUCT_SKU_ALREADY_EXISTS" -> "Product SKU already exists.";
-            case "PRODUCT_PARENT_INVALID" ->
-                    "Product parent must preserve a single-level hierarchy.";
-            case "PRODUCT_PARENT_NOT_FOUND" -> "Product parent was not found.";
-            case "PRODUCT_CATEGORY_INACTIVE" -> "Selected category is inactive.";
-            case "PRODUCT_BRAND_INACTIVE" -> "Selected brand is inactive.";
-            case "CONFLICT" -> "Operation conflicts with the current resource state.";
-            case "INTERNAL_ERROR" -> "Unexpected server failure while processing request.";
-            case "NOT_IMPLEMENTED" -> "Requested operation is not implemented.";
-            default ->
-                    status >= 500
-                            ? "Unexpected server failure while processing request."
-                            : "Request was rejected.";
-        };
     }
 
     private String diagnosticMessage(Exception exception, int status) {

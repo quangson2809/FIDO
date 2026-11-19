@@ -1,4 +1,4 @@
-import type { ApiClientError } from '../../services/http/apiError';
+import { getApiErrorMessage, type ApiClientError } from '../../services/http/apiError';
 
 export function QueryFeedback({
   loading,
@@ -27,7 +27,7 @@ export function QueryFeedback({
             ? 'Bạn không có quyền thực hiện thao tác này.'
             : 'Không thể hoàn thành yêu cầu.'}
         </strong>
-        <p>{typeof error === 'string' ? error : error.message}</p>
+        <p>{typeof error === 'string' ? error : getApiErrorMessage(error, 'Chưa thể tải nội dung. Vui lòng thử lại sau.')}</p>
         {onRetry && (
           <button type="button" onClick={onRetry} className="admin-secondary">
             Thử lại

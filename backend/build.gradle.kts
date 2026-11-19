@@ -109,3 +109,8 @@ tasks.withType<Test> {
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
     workingDir = projectDir
 }
+
+// Cùng danh mục thông báo với giao diện, tránh khác nội dung giữa hai phía.
+tasks.processResources {
+    from("../contracts/error-messages.vi.json")
+}

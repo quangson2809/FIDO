@@ -19,7 +19,7 @@ record ReportRange(LocalDate from, LocalDate to, LocalDateTime startUtc, LocalDa
      */
     static ReportRange of(LocalDate from, LocalDate to) {
         if (from == null || to == null || from.isAfter(to)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid report date range");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "REPORT_DATE_RANGE_INVALID");
         }
         try {
             return new ReportRange(
@@ -32,7 +32,7 @@ record ReportRange(LocalDate from, LocalDate to, LocalDateTime startUtc, LocalDa
                             .toLocalDateTime());
         } catch (DateTimeException exception) {
             throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "Invalid report date range", exception);
+                    HttpStatus.BAD_REQUEST, "REPORT_DATE_RANGE_INVALID", exception);
         }
     }
 }

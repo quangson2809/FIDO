@@ -60,8 +60,7 @@ public final class OrderPolicy {
         if (completedAt == null
                 || now.isBefore(completedAt)
                 || now.isAfter(completedAt.plusDays(2))) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Return is outside the two-day window");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "ORDER_RETURN_WINDOW_EXPIRED");
         }
     }
 }

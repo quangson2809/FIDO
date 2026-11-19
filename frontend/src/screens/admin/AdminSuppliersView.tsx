@@ -75,7 +75,7 @@ export const AdminSuppliersView: React.FC<{
       resetForm();
       showToast(editingId === null ? 'Đã tạo nhà cung cấp.' : 'Đã cập nhật nhà cung cấp.');
     } catch (requestError: unknown) {
-      setError(getApiErrorMessage(requestError, 'Không thể lưu nhà cung cấp. Kiểm tra dữ liệu và quyền INVENTORY_WRITE.'));
+      setError(getApiErrorMessage(requestError, 'Không thể lưu nhà cung cấp. Vui lòng kiểm tra thông tin đã nhập hoặc liên hệ người quản trị để được hỗ trợ.'));
     } finally {
       setSaving(false);
     }
