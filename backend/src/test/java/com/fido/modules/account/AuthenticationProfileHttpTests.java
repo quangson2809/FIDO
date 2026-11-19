@@ -79,8 +79,9 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
                         "/api/v1/auth/login",
                         null,
                         Map.of("phone", knownPhone, "password", PASSWORD));
-        assertEquals(403, inactive.status(), inactive.body());
-        assertEquals("ACCOUNT_NOT_ACTIVE", inactive.data().get("code").asText());
+        assertEquals(401, inactive.status(), inactive.body());
+        assertEquals("INVALID_CREDENTIALS", inactive.data().get("code").asText());
+        assertEquals(wrong.data().get("message").asText(), inactive.data().get("message").asText());
         assertFalse(inactive.body().contains("SUSPENDED"));
     }
 
@@ -232,7 +233,7 @@ class AuthenticationProfileHttpTests extends AccountHttpSupport {
         db.update("UPDATE accounts SET status='LOCKED' WHERE id=?", accountId);
 
         assertEquals(
-                403,
+                401,
                 call(
                                 "POST",
                                 "/api/v1/auth/login",

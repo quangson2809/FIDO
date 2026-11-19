@@ -201,3 +201,12 @@ Owner-approved behavior and target schema are recorded; application/DTO/frontend
 - Lỗi không được nhận diện và lỗi kỹ thuật dùng câu tiếng Việt an toàn, không trả SQL, stack trace hay nguyên nhân gốc. Checkout/voucher dùng cùng cơ chế BE; `/error` cũng trả thông báo an toàn.
 - Chỉ BE sở hữu thông báo trả về; không thêm danh mục JSON dùng chung, phụ thuộc đóng gói, cơ chế dịch hoặc thay đổi cách hiển thị của FE.
 - Hoàn lại phần FE đã mở rộng trong PR #60 theo yêu cầu làm gọn phạm vi. Không thay đổi nghiệp vụ, schema hoặc transaction.
+
+## 2026-11-19 — Tận dụng luồng xác thực chuẩn Spring Security
+
+- Đăng nhập dùng `AuthenticationManager` / `DaoAuthenticationProvider`; bỏ so mật khẩu, dummy hash và kiểm tra trạng thái tự làm trong `AuthenticationService`. Lỗi credentials hoặc trạng thái tài khoản cùng trả `401 INVALID_CREDENTIALS`; lỗi hạ tầng vẫn trả lỗi máy chủ an toàn.
+- `AccountUserDetailsService` chỉ tải dữ liệu theo điện thoại hoặc accountId, đọc role/permission ACTIVE. `AccountPrincipal` kế thừa `User` của Spring, chỉ bổ sung accountId và sao chép dữ liệu; không đưa Spring Security vào entity, không để xóa credentials làm đổi mật khẩu trong entity JPA.
+- Resource Server tiếp tục kiểm JWT bằng decoder hiện có và `JwtAuthenticationConverter` chuẩn. Authorities/trạng thái luôn đọc từ DB, không lấy claim quyền và không cache UserDetails. Giữ kiểm tra issuer, thời hạn, iat/exp và subject accountId.
+- Quyền admin do `@PreAuthorize` tại các entry service thực thi; URL chỉ yêu cầu authenticated và các URL ngoài danh sách vẫn denyAll. Bỏ lambda duyệt prefix quyền, bỏ `OrderAuthorization` và metadata permission trùng cho sáu action ORDER_EDIT; lọc allowed_actions bằng AuthorityAuthorizationManager.
+- Entry point và access-denied handler dùng bộ xử lý Bearer chuẩn của Spring để có header giao thức, sau đó ghi JSON tiếng Việt hiện có. AccessDeniedException từ method security được chuyển lại cho ExceptionTranslationFilter. Audit dùng AuthenticationTrustResolver để nhận diện anonymous; nguồn actor từ JWT và transaction giữ nguyên.
+- CORS không bật credentials vì mô hình API dùng Bearer header, không dùng cookie/session xác thực. Không đổi FE, schema, quy tắc phân quyền hay nghiệp vụ đơn hàng/kho.

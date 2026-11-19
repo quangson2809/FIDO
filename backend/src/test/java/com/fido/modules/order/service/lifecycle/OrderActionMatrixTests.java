@@ -16,7 +16,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Arrays;
@@ -45,7 +44,7 @@ class OrderActionMatrixTests {
         "CONFIRMED,false,false,-",
         "PREPARING,true,true,-"
     })
-    void visibilityExecutionAndAuthorizationAgree(
+    void visibilityAndExecutionAgree(
             String status, boolean deducted, boolean restored, String expected) {
         var movements = mock(InventoryMovementQueryService.class);
         var policy = new OrderActionPolicy(movements);
@@ -60,17 +59,7 @@ class OrderActionMatrixTests {
         List<String> allowed =
                 expected.equals("-") ? List.of() : Arrays.asList(expected.split(";"));
         assertEquals(allowed, policy.allowedActions(order, payment));
-        var authorization = new OrderAuthorization();
-        var editor = new TestingAuthenticationToken("editor", "unused", "PERMISSION_ORDER_EDIT");
-        var reader = new TestingAuthenticationToken("reader", "unused", "PERMISSION_ORDER_READ");
-        var legacy =
-                new TestingAuthenticationToken("legacy", "unused", "PERMISSION_ORDER_FULFILLMENT");
-        assertEquals(allowed, authorization.filterAllowed(editor, allowed));
-        assertEquals(List.of(), authorization.filterAllowed(reader, allowed));
-        assertEquals(List.of(), authorization.filterAllowed(legacy, allowed));
         for (String action : ACTIONS) {
-            assertTrue(authorization.canExecute(editor, action));
-            assertFalse(authorization.canExecute(reader, action));
             if (allowed.contains(action))
                 assertDoesNotThrow(() -> policy.requireExecutable(order, payment, action));
             else
@@ -114,21 +103,12 @@ class OrderActionMatrixTests {
                 "UNKNOWN",
                 "COMPLETE_DELIVERY_AND_COLLECT_COD"
             })
-    void malformedActionRetainsRequestRejectionAndAuthorizationBehavior(String action) {
+    void malformedActionRetainsRequestRejection(String action) {
         try (var factory = Validation.buildDefaultValidatorFactory()) {
             assertFalse(
                     factory.getValidator()
                             .validate(new OrderActionRequest(action, null))
                             .isEmpty());
         }
-        var auth = new OrderAuthorization();
-        assertFalse(
-                auth.canExecute(
-                        new TestingAuthenticationToken("editor", "unused", "PERMISSION_ORDER_EDIT"),
-                        action));
-        assertTrue(
-                auth.canExecute(
-                        new TestingAuthenticationToken("root", "unused", "ROLE_SUPERADMIN"),
-                        action));
     }
 }

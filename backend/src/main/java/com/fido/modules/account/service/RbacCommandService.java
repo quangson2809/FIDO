@@ -81,7 +81,10 @@ public class RbacCommandService {
         lockSuperadminRole();
 
         Role role = Role.create(request.code(), request.name(), request.description());
-
+        // Các lệnh RBAC cùng khóa SUPERADMIN; kiểm tra mã trong vùng khóa trước khi ghi.
+        if (roles.findByCode(role.getCode()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "ROLE_CODE_ALREADY_EXISTS");
+        }
         roles.save(role);
         replacePermissions(role, request.permission_ids());
 
@@ -191,6 +194,10 @@ public class RbacCommandService {
         permission.setName(request.name());
         permission.setDescription(request.description());
 
+        if (permissions.existsByCode(permission.getCode())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "PERMISSION_CODE_ALREADY_EXISTS");
+        }
         permissions.save(permission);
         entityManager.flush();
 

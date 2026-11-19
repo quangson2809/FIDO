@@ -1,6 +1,7 @@
 package com.fido.modules.audit.service;
 
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authentication.AuthenticationTrustResolver;
+import org.springframework.security.authentication.AuthenticationTrustResolverImpl;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -8,13 +9,12 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class AuditActorResolver {
+    private final AuthenticationTrustResolver trust = new AuthenticationTrustResolverImpl();
 
     /** Chặn ghi sự kiện hệ thống với actor null nếu request đang có người dùng đăng nhập. */
     public void requireSystemContext() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null
-                && authentication.isAuthenticated()
-                && !(authentication instanceof AnonymousAuthenticationToken)) {
+        if (trust.isAuthenticated(authentication)) {
             throw new IllegalStateException(
                     "A system audit event cannot be emitted with an authenticated principal");
         }

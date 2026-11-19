@@ -65,7 +65,7 @@ public class OrderActionService {
      * trong phản hồi.
      * Khóa và đọc lại đơn trước khi kiểm tra điều kiện, chạy handler và ghi audit cùng giao dịch.
      */
-    @PreAuthorize("@orderAuthorization.canExecute(authentication, #request.action())")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPERADMIN','PERMISSION_ORDER_EDIT')")
     public OrderAdminDetailDto executeAction(
             Long actor, Long orderId, OrderActionRequest request, Authentication authentication) {
         Order order =

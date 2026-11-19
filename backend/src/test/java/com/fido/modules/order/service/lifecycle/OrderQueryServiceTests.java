@@ -40,7 +40,6 @@ class OrderQueryServiceTests {
     @Mock private OrderItemRepository items;
     @Mock private PaymentRepository payments;
     @Mock private OrderActionPolicy actionPolicy;
-    @Mock private OrderAuthorization authorization;
 
     private OrderQueryService service;
 
@@ -53,8 +52,7 @@ class OrderQueryServiceTests {
                         items,
                         payments,
                         new OrderSummaryReadService(items, payments),
-                        actionPolicy,
-                        authorization);
+                        actionPolicy);
     }
 
     @Test
@@ -101,6 +99,31 @@ class OrderQueryServiceTests {
                         () -> service.customerOrders(10L, null, 1, 20));
 
         assertEquals("Order payment is missing", error.getMessage());
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({
+        "ROLE_SUPERADMIN,true", "PERMISSION_ORDER_EDIT,true",
+        "PERMISSION_ORDER_READ,false", "PERMISSION_ORDER_FULFILLMENT,false"
+    })
+    void detailOnlyOffersActionsToAnAuthorizedEditor(String authority, boolean canEdit) {
+        Order order = order(1L, "ORD-1", 100_000L);
+        Payment payment = payment(1L, "UNPAID");
+        when(orders.findById(1L)).thenReturn(java.util.Optional.of(order));
+        when(payments.findById(1L)).thenReturn(java.util.Optional.of(payment));
+        when(addresses.findById(1L))
+                .thenReturn(
+                        java.util.Optional.of(new com.fido.modules.order.entity.OrderAddress()));
+        when(items.findAllByOrderIdOrderByOrderItemIdAsc(1L)).thenReturn(List.of());
+        if (canEdit)
+            when(actionPolicy.allowedActions(order, payment))
+                    .thenReturn(List.of("CONFIRM", "CANCEL"));
+        var auth =
+                new org.springframework.security.authentication.TestingAuthenticationToken(
+                        "actor", null, authority);
+        assertEquals(
+                canEdit ? List.of("CONFIRM", "CANCEL") : List.of(),
+                service.adminDetail(1L, auth).allowed_actions());
     }
 
     private Order order(Long orderId, String orderCode, long total) {

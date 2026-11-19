@@ -21,6 +21,7 @@ import com.fido.modules.order.service.OrderSummaryReadService;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authorization.AuthorityAuthorizationManager;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,7 +43,9 @@ public class OrderQueryService {
     private final PaymentRepository payments;
     private final OrderSummaryReadService summaryReader;
     private final OrderActionPolicy actionPolicy;
-    private final OrderAuthorization authorization;
+    private static final AuthorityAuthorizationManager<Object> ORDER_EDITOR =
+            AuthorityAuthorizationManager.hasAnyAuthority(
+                    "ROLE_SUPERADMIN", "PERMISSION_ORDER_EDIT");
 
     public OrderQueryService(
             OrderRepository orders,
@@ -50,15 +53,13 @@ public class OrderQueryService {
             OrderItemRepository items,
             PaymentRepository payments,
             OrderSummaryReadService summaryReader,
-            OrderActionPolicy actionPolicy,
-            OrderAuthorization authorization) {
+            OrderActionPolicy actionPolicy) {
         this.orders = orders;
         this.addresses = addresses;
         this.items = items;
         this.payments = payments;
         this.summaryReader = summaryReader;
         this.actionPolicy = actionPolicy;
-        this.authorization = authorization;
     }
 
     public ApiListResponse<OrderSummaryDto> customerOrders(
@@ -166,8 +167,16 @@ public class OrderQueryService {
                 OrderMapper.paymentAdmin(payment),
                 // Nút hiển thị phải vừa hợp lệ theo trạng thái vừa thuộc quyền của người quản trị
                 // hiện tại.
-                authorization.filterAllowed(
-                        authentication, actionPolicy.allowedActions(order, payment)));
+                allowedActions(order, payment, authentication));
+    }
+
+    private List<String> allowedActions(
+            Order order, Payment payment, Authentication authentication) {
+        if (authentication == null) return List.of();
+        var decision = ORDER_EDITOR.authorize(() -> authentication, order);
+        return decision != null && decision.isGranted()
+                ? actionPolicy.allowedActions(order, payment)
+                : List.of();
     }
 
     private OrderAddress address(Long orderId) {

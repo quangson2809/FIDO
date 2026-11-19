@@ -176,4 +176,35 @@ class ApiExceptionHandlerTests {
         assertFalse(fallback.getContentAsString().contains("private-value"));
         assertTrue(fallback.getContentAsString().contains("Chưa thể hoàn tất thao tác"));
     }
+
+    @Test
+    void springCredentialFailuresAre401WhileAuthenticationInfrastructureFailuresRemain500()
+            throws Exception {
+        var request = new MockHttpServletRequest("POST", "/api/v1/auth/login");
+        for (Exception failure :
+                new Exception[] {
+                    new org.springframework.security.authentication.BadCredentialsException(
+                            "private-password"),
+                    new org.springframework.security.authentication.DisabledException(
+                            "private-status"),
+                    new org.springframework.security.authentication.LockedException(
+                            "private-status")
+                }) {
+            var response = new MockHttpServletResponse();
+            new ApiExceptionHandler().handle(failure, request, response);
+            var body = new ObjectMapper().readTree(response.getContentAsString());
+            assertEquals(401, response.getStatus());
+            assertEquals("INVALID_CREDENTIALS", body.get("code").asText());
+            assertFalse(response.getContentAsString().contains("private-"));
+        }
+        var unavailable = new MockHttpServletResponse();
+        new ApiExceptionHandler()
+                .handle(
+                        new org.springframework.security.authentication
+                                .InternalAuthenticationServiceException("private-database"),
+                        request,
+                        unavailable);
+        assertEquals(500, unavailable.getStatus());
+        assertFalse(unavailable.getContentAsString().contains("private-database"));
+    }
 }
