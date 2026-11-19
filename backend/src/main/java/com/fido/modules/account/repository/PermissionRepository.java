@@ -14,6 +14,8 @@ public interface PermissionRepository extends Repository<Permission, Long> {
 
     Permission save(Permission entity);
 
+    boolean existsByCode(String code);
+
     List<Permission> findAllByOrderByPermissionIdAsc();
 
     void delete(Permission permission);
