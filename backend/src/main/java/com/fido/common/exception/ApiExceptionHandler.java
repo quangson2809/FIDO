@@ -13,6 +13,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AccountStatusException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -47,6 +50,8 @@ public class ApiExceptionHandler {
     public void handle(
             Exception exception, HttpServletRequest request, HttpServletResponse response)
             throws IOException {
+        // Phân quyền do ExceptionTranslationFilter và AccessDeniedHandler của Spring xử lý.
+        if (exception instanceof AccessDeniedException denied) throw denied;
         int status = status(exception);
         String diagnosticMessage = diagnosticMessage(exception, status);
         Object route = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
@@ -124,8 +129,10 @@ public class ApiExceptionHandler {
                 || exception instanceof DataIntegrityViolationException) {
             return 409;
         }
-        if (exception instanceof AccessDeniedException) {
-            return 403;
+        if (exception instanceof BadCredentialsException
+                || exception instanceof UsernameNotFoundException
+                || exception instanceof AccountStatusException) {
+            return 401;
         }
         if (exception instanceof ErrorResponse error) {
             return error.getStatusCode().value();
@@ -141,13 +148,7 @@ public class ApiExceptionHandler {
         if (status == 401) {
             return path.equals("/api/v1/auth/login") ? "INVALID_CREDENTIALS" : "UNAUTHENTICATED";
         }
-        if (status == 403) {
-            if (exception instanceof ResponseStatusException responseStatus
-                    && "ACCOUNT_NOT_ACTIVE".equals(responseStatus.getReason())) {
-                return "ACCOUNT_NOT_ACTIVE";
-            }
-            return "FORBIDDEN";
-        }
+        if (status == 403) return "FORBIDDEN";
         if (status < 500) {
             String code =
                     exception instanceof BusinessRuleException business
@@ -177,8 +178,6 @@ public class ApiExceptionHandler {
                     "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.";
             case "FORBIDDEN" ->
                     "Bạn không có quyền thực hiện thao tác này. Vui lòng liên hệ người quản trị nếu cần hỗ trợ.";
-            case "ACCOUNT_NOT_ACTIVE" ->
-                    "Tài khoản hiện không thể sử dụng. Vui lòng liên hệ hỗ trợ.";
             case "VALIDATION_ERROR" ->
                     "Thông tin chưa hợp lệ. Vui lòng kiểm tra các trường đã nhập.";
             case "RESOURCE_NOT_FOUND" ->

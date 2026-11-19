@@ -1,6 +1,7 @@
 package com.fido.modules.account;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -96,6 +97,30 @@ class AccountAuthorizationHttpTests extends AccountHttpSupport {
         grant(accountId, "SUPERADMIN");
 
         assertEquals(200, call("GET", "/api/v1/admin/access-control", token, null).status());
+    }
+
+    @Test
+    void methodSecurityDenialUsesTheBearerHandlerAndCannotBypassAdminPermissions()
+            throws Exception {
+        String phone = phone();
+        register(phone);
+        String token = login(phone);
+        for (String path : List.of("/api/v1/admin/access-control", "/api/v1/admin/catalog/meta")) {
+            var request =
+                    java.net.http.HttpRequest.newBuilder(
+                                    java.net.URI.create("http://localhost:" + port + path))
+                            .header("Authorization", "Bearer " + token)
+                            .GET()
+                            .build();
+            var response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+            assertEquals(403, response.statusCode());
+            assertTrue(
+                    response.headers()
+                            .firstValue("WWW-Authenticate")
+                            .orElse("")
+                            .startsWith("Bearer"));
+            assertEquals("FORBIDDEN", json.readTree(response.body()).get("code").asText());
+        }
     }
 
     private String tokenWithUntrustedAuthorities(long accountId) {

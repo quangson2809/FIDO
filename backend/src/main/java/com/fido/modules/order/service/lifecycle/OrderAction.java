@@ -7,29 +7,22 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 public enum OrderAction {
-    CONFIRM(OrderPolicy.CONFIRMED, OrderPolicy.ORDER_EDIT, AuditAction.ORDER_CONFIRM),
-    START_PREPARING(OrderPolicy.PREPARING, OrderPolicy.ORDER_EDIT, AuditAction.ORDER_PREPARE),
-    DISPATCH(OrderPolicy.SHIPPING, OrderPolicy.ORDER_EDIT, AuditAction.ORDER_SHIP),
-    MARK_DELIVERY_FAILED(
-            OrderPolicy.DELIVERY_FAILED, OrderPolicy.ORDER_EDIT, AuditAction.ORDER_DELIVERY_FAILED),
-    RETRY_DELIVERY(OrderPolicy.SHIPPING, OrderPolicy.ORDER_EDIT, AuditAction.ORDER_RETRY_DELIVERY),
-    CANCEL(OrderPolicy.CANCELLED, OrderPolicy.ORDER_EDIT, AuditAction.ORDER_CANCEL);
+    CONFIRM(OrderPolicy.CONFIRMED, AuditAction.ORDER_CONFIRM),
+    START_PREPARING(OrderPolicy.PREPARING, AuditAction.ORDER_PREPARE),
+    DISPATCH(OrderPolicy.SHIPPING, AuditAction.ORDER_SHIP),
+    MARK_DELIVERY_FAILED(OrderPolicy.DELIVERY_FAILED, AuditAction.ORDER_DELIVERY_FAILED),
+    RETRY_DELIVERY(OrderPolicy.SHIPPING, AuditAction.ORDER_RETRY_DELIVERY),
+    CANCEL(OrderPolicy.CANCELLED, AuditAction.ORDER_CANCEL);
     private final String targetStatus;
-    private final String permission;
     private final AuditAction auditAction;
 
-    OrderAction(String targetStatus, String permission, AuditAction auditAction) {
+    OrderAction(String targetStatus, AuditAction auditAction) {
         this.targetStatus = targetStatus;
-        this.permission = permission;
         this.auditAction = auditAction;
     }
 
     public String targetStatus() {
         return targetStatus;
-    }
-
-    public String permission() {
-        return permission;
     }
 
     public AuditAction auditAction() {

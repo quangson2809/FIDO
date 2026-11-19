@@ -13,14 +13,14 @@ import com.fido.modules.account.repository.AccountRoleRepository;
 import com.fido.modules.account.repository.RoleRepository;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.UUID;
 
 @Service
 public class AuthenticationService {
@@ -31,7 +31,7 @@ public class AuthenticationService {
     private final PasswordEncoder passwords;
     private final TokenService tokens;
     private final PhoneNumberCanonicalizer phoneNumbers;
-    private final String dummyHash;
+    private final AuthenticationManager authenticationManager;
 
     public AuthenticationService(
             AccountRepository accounts,
@@ -39,14 +39,15 @@ public class AuthenticationService {
             RoleRepository roles,
             PasswordEncoder passwords,
             TokenService tokens,
-            PhoneNumberCanonicalizer phoneNumbers) {
+            PhoneNumberCanonicalizer phoneNumbers,
+            AuthenticationManager authenticationManager) {
         this.accounts = accounts;
         this.accountRoles = accountRoles;
         this.roles = roles;
         this.passwords = passwords;
         this.tokens = tokens;
         this.phoneNumbers = phoneNumbers;
-        this.dummyHash = passwords.encode(UUID.randomUUID().toString());
+        this.authenticationManager = authenticationManager;
     }
 
     /**
@@ -99,39 +100,16 @@ public class AuthenticationService {
         return passwords.encode(raw);
     }
 
-    /**
-     * request chứa điện thoại/mật khẩu từ body; tra cả dạng chuẩn và dạng nội địa cũ.
-     * Nếu không tìm được đúng một tài khoản thì vẫn so hash giả để giảm khác biệt thời gian phản hồi.
-     */
+    /** Chuẩn hóa đầu vào; Spring xác thực credentials và trạng thái, service cấp JWT sau khi thành công. */
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         String phone = phoneNumbers.canonicalize(request.phone());
-        List<Account> candidates =
-                accounts.findByPhoneInAndNotDeleted(phoneNumbers.lookupValues(phone));
-        Account account = candidates.size() == 1 ? candidates.get(0) : null;
-
-        boolean matches = false;
-        try {
-            matches =
-                    passwords.matches(
-                            request.password(),
-                            account == null ? dummyHash : account.getPasswordHash());
-        } catch (IllegalArgumentException ignored) {
-            // Hash lưu sai định dạng vẫn được xử lý như đăng nhập sai ở bước dưới.
-        }
-
-        // Số điện thoại không tồn tại, trùng dạng cũ và sai mật khẩu cùng trả 401 để tránh lộ danh
-        // tính.
-        if (account == null || !matches) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS");
-        }
-
-        // Tài khoản không ACTIVE không nhận token; không tiết lộ trạng thái cụ thể cho người đăng
-        // nhập.
-        if (!account.isActive()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "ACCOUNT_NOT_ACTIVE");
-        }
-
+        var authentication =
+                authenticationManager.authenticate(
+                        UsernamePasswordAuthenticationToken.unauthenticated(
+                                phone, request.password()));
+        var principal = (AccountPrincipal) authentication.getPrincipal();
+        Account account = accounts.findById(principal.accountId()).orElseThrow();
         return tokens.issue(AccountMapper.account(account));
     }
 }

@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
-/** Nhận ID từ danh tính đã xác thực; kiểm tra truy cập dùng findActiveAccess, màn quản trị dùng findAccess. */
+/** Nhận ID từ danh tính đã xác thực; dữ liệu màn quản trị dùng findAccess. */
 @Service
 @Transactional(readOnly = true)
 public class AccountAccessService {
@@ -52,7 +52,7 @@ public class AccountAccessService {
                         });
     }
 
-    /** Mỗi request bảo vệ đều đọc lại trạng thái DB để token cũ không vượt qua việc khóa tài khoản. */
+    /** Dữ liệu hồ sơ chỉ trả cho tài khoản còn hoạt động. */
     public Optional<StaffAccountDetailDto> findActiveAccess(Long accountId) {
         return findAccess(accountId).filter(detail -> "ACTIVE".equals(detail.account().status()));
     }
