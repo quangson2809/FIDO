@@ -12,8 +12,6 @@ import com.fido.modules.account.service.StaffQueryService;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -53,15 +51,13 @@ public class StaffController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<StaffAccountDetailDto> create(
-            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody StaffCreateRequest request) {
-        return ApiResponse.of(service.create(Long.valueOf(jwt.getSubject()), request));
+            @Valid @RequestBody StaffCreateRequest request) {
+        return ApiResponse.of(service.create(request));
     }
 
     @PatchMapping("/{accountId}")
     public ApiResponse<StaffAccountDetailDto> update(
-            @AuthenticationPrincipal Jwt jwt,
-            @PathVariable Long accountId,
-            @Valid @RequestBody StaffPatchRequest request) {
-        return ApiResponse.of(service.update(Long.valueOf(jwt.getSubject()), accountId, request));
+            @PathVariable Long accountId, @Valid @RequestBody StaffPatchRequest request) {
+        return ApiResponse.of(service.update(accountId, request));
     }
 }

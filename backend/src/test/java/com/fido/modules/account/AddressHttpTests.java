@@ -2,14 +2,29 @@ package com.fido.modules.account;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fido.modules.account.dto.request.AddressRequest;
+import com.fido.modules.account.service.ProfileCommandService;
+
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 class AddressHttpTests extends AccountHttpSupport {
+    @Autowired ProfileCommandService commands;
+
+    @Autowired PlatformTransactionManager transactions;
+
     private static Map<String, Object> address(String line) {
         return Map.of(
                 "recipient_name",
@@ -145,5 +160,211 @@ class AddressHttpTests extends AccountHttpSupport {
                         "SELECT COUNT(*) FROM addresses WHERE account_id=(SELECT id FROM accounts WHERE phone=?) AND is_default=TRUE",
                         Integer.class,
                         phone));
+    }
+
+    @Test
+    void switchingDefaultPreservesPatchedFieldsAndReturnsTheCurrentDatabaseState()
+            throws Exception {
+        String phone = phone();
+        long accountId = register(phone);
+        String token = login(phone);
+        createAddress(token, "First");
+        long secondId = createAddress(token, "Second");
+
+        var response =
+                call(
+                        "PATCH",
+                        "/api/v1/me/addresses/" + secondId,
+                        token,
+                        Map.of("is_default", true, "address_line", "Updated second"));
+
+        assertEquals(200, response.status(), response.body());
+        assertTrue(response.data().get("data").get("is_default").asBoolean());
+        assertEquals("Updated second", response.data().get("data").get("address_line").asText());
+        assertDefaultAddress(accountId, secondId);
+        assertEquals(
+                "Updated second",
+                db.queryForObject(
+                        "SELECT address_line FROM addresses WHERE id=?", String.class, secondId));
+    }
+
+    @Test
+    void unsettingAndDeletingDefaultsPromotesTheLatestRemainingAddress() throws Exception {
+        String phone = phone();
+        long accountId = register(phone);
+        String token = login(phone);
+        long firstId = createAddress(token, "First");
+        long secondId = createAddress(token, "Second");
+        long thirdId = createAddress(token, "Third");
+        db.update(
+                "UPDATE addresses SET updated_at='2020-01-01 00:00:00' WHERE id IN (?,?)",
+                secondId,
+                thirdId);
+
+        var unset =
+                call(
+                        "PATCH",
+                        "/api/v1/me/addresses/" + firstId,
+                        token,
+                        Map.of("is_default", false));
+        assertEquals(200, unset.status(), unset.body());
+        assertFalse(unset.data().get("data").get("is_default").asBoolean());
+        assertDefaultAddress(accountId, thirdId);
+
+        assertEquals(204, call("DELETE", "/api/v1/me/addresses/" + thirdId, token, null).status());
+        assertDefaultAddress(accountId, firstId);
+        assertEquals(204, call("DELETE", "/api/v1/me/addresses/" + firstId, token, null).status());
+        assertDefaultAddress(accountId, secondId);
+        assertEquals(204, call("DELETE", "/api/v1/me/addresses/" + secondId, token, null).status());
+        assertEquals(
+                0,
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM addresses WHERE account_id=?",
+                        Integer.class,
+                        accountId));
+    }
+
+    @Test
+    void repairingMultipleDefaultsKeepsTheLatestExistingDefaultAndTheRequestedPatch()
+            throws Exception {
+        String phone = phone();
+        long accountId = register(phone);
+        String token = login(phone);
+        long firstId = createAddress(token, "First");
+        long secondId = createAddress(token, "Second");
+        long thirdId = createAddress(token, "Third");
+        db.update(
+                "UPDATE addresses SET is_default=TRUE, updated_at='2020-01-01 00:00:00' WHERE id=?",
+                firstId);
+        db.update(
+                "UPDATE addresses SET is_default=TRUE, updated_at='2021-01-01 00:00:00' WHERE id=?",
+                secondId);
+        db.update("UPDATE addresses SET updated_at='2025-01-01 00:00:00' WHERE id=?", thirdId);
+
+        var response =
+                call(
+                        "PATCH",
+                        "/api/v1/me/addresses/" + thirdId,
+                        token,
+                        Map.of("address_line", "Updated third"));
+
+        assertEquals(200, response.status(), response.body());
+        assertFalse(response.data().get("data").get("is_default").asBoolean());
+        assertEquals("Updated third", response.data().get("data").get("address_line").asText());
+        assertDefaultAddress(accountId, secondId);
+    }
+
+    @Test
+    void failedTransactionRollsBackDefaultSwitchAndAddressFields() throws Exception {
+        String phone = phone();
+        long accountId = register(phone);
+        String token = login(phone);
+        long firstId = createAddress(token, "First");
+        long secondId = createAddress(token, "Second");
+        var patch = new AddressRequest();
+        patch.setAddress_line("Must roll back");
+        patch.setIs_default(true);
+
+        assertThrows(
+                IllegalStateException.class,
+                () ->
+                        new TransactionTemplate(transactions)
+                                .executeWithoutResult(
+                                        transaction -> {
+                                            assertTrue(
+                                                    commands.updateAddress(
+                                                                    accountId, secondId, patch)
+                                                            .is_default());
+                                            throw new IllegalStateException("intentional rollback");
+                                        }));
+
+        assertDefaultAddress(accountId, firstId);
+        assertEquals(
+                "Second",
+                db.queryForObject(
+                        "SELECT address_line FROM addresses WHERE id=?", String.class, secondId));
+    }
+
+    @Test
+    void concurrentDefaultSwitchesKeepExactlyOneDefaultAndBothFieldUpdates() throws Exception {
+        String phone = phone();
+        long accountId = register(phone);
+        String token = login(phone);
+        long firstId = createAddress(token, "First");
+        long secondId = createAddress(token, "Second");
+        var executor = Executors.newFixedThreadPool(2);
+        var start = new CountDownLatch(1);
+
+        try {
+            var first =
+                    executor.submit(
+                            () -> {
+                                start.await();
+                                return call(
+                                        "PATCH",
+                                        "/api/v1/me/addresses/" + firstId,
+                                        token,
+                                        Map.of(
+                                                "is_default",
+                                                true,
+                                                "address_line",
+                                                "Updated first"));
+                            });
+            var second =
+                    executor.submit(
+                            () -> {
+                                start.await();
+                                return call(
+                                        "PATCH",
+                                        "/api/v1/me/addresses/" + secondId,
+                                        token,
+                                        Map.of(
+                                                "is_default",
+                                                true,
+                                                "address_line",
+                                                "Updated second"));
+                            });
+            start.countDown();
+
+            for (var result :
+                    List.of(first.get(30, TimeUnit.SECONDS), second.get(30, TimeUnit.SECONDS))) {
+                assertEquals(200, result.status(), result.body());
+            }
+            assertEquals(
+                    1,
+                    db.queryForObject(
+                            "SELECT COUNT(*) FROM addresses WHERE account_id=? AND is_default=TRUE",
+                            Integer.class,
+                            accountId));
+            assertEquals(
+                    "Updated first",
+                    db.queryForObject(
+                            "SELECT address_line FROM addresses WHERE id=?",
+                            String.class,
+                            firstId));
+            assertEquals(
+                    "Updated second",
+                    db.queryForObject(
+                            "SELECT address_line FROM addresses WHERE id=?",
+                            String.class,
+                            secondId));
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    private long createAddress(String token, String line) throws Exception {
+        var response = call("POST", "/api/v1/me/addresses", token, address(line));
+        assertEquals(201, response.status(), response.body());
+        return response.data().get("data").get("id").asLong();
+    }
+
+    private void assertDefaultAddress(long accountId, long addressId) {
+        assertEquals(
+                List.of(addressId),
+                db.queryForList(
+                        "SELECT id FROM addresses WHERE account_id=? AND is_default=TRUE",
+                        Long.class,
+                        accountId));
     }
 }

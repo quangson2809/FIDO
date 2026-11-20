@@ -1,9 +1,11 @@
 package com.fido.modules.account.mapper;
 
 import com.fido.modules.account.dto.response.AccountDto;
+import com.fido.modules.account.dto.response.AddressDto;
 import com.fido.modules.account.dto.response.PermissionDto;
 import com.fido.modules.account.dto.response.RoleDto;
 import com.fido.modules.account.entity.Account;
+import com.fido.modules.account.entity.Address;
 import com.fido.modules.account.entity.Permission;
 import com.fido.modules.account.entity.Role;
 
@@ -29,6 +31,18 @@ public final class AccountMapper {
                 value.getName(),
                 value.getDescription(),
                 value.getStatus());
+    }
+
+    public static AddressDto address(Address value) {
+        return new AddressDto(
+                value.getId(),
+                value.getRecipientName(),
+                value.getRecipientPhone(),
+                value.getProvince(),
+                value.getDistrict(),
+                value.getWard(),
+                value.getAddressLine(),
+                value.isDefault());
     }
 
     public static PermissionDto permission(Permission value) {

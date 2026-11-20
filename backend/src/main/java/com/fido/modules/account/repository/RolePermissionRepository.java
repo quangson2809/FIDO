@@ -22,6 +22,4 @@ public interface RolePermissionRepository extends Repository<RolePermission, Rol
     void deleteByRoleId(Long roleId);
 
     void deleteByRoleIdAndPermissionId(Long roleId, Long permissionId);
-
-    boolean existsByPermissionId(Long permissionId);
 }

@@ -77,7 +77,7 @@ public class RbacCommandService {
         this.entityManager = entityManager;
     }
 
-    public RoleDetailDto createRole(Long actor, RoleCreateRequest request) {
+    public RoleDetailDto createRole(RoleCreateRequest request) {
         lockSuperadminRole();
 
         Role role = Role.create(request.code(), request.name(), request.description());
@@ -108,7 +108,7 @@ public class RbacCommandService {
         return detail(role);
     }
 
-    public RoleDetailDto updateRole(Long actor, Long roleId, RolePatchRequest request) {
+    public RoleDetailDto updateRole(Long roleId, RolePatchRequest request) {
         lockSuperadminRole();
         Role role = role(roleId);
         Map<String, Object> before =
@@ -153,7 +153,7 @@ public class RbacCommandService {
         return detail(role);
     }
 
-    public void deleteRole(Long actor, Long roleId) {
+    public void deleteRole(Long roleId) {
         lockSuperadminRole();
         Role role = role(roleId);
 
@@ -186,7 +186,7 @@ public class RbacCommandService {
                         Map.of()));
     }
 
-    public PermissionDto createPermission(Long actor, PermissionCreateRequest request) {
+    public PermissionDto createPermission(PermissionCreateRequest request) {
         Role superadmin = lockSuperadminRole();
 
         Permission permission = new Permission();
@@ -219,8 +219,7 @@ public class RbacCommandService {
         return AccountMapper.permission(permission);
     }
 
-    public PermissionDto updatePermission(
-            Long actor, Long permissionId, PermissionPatchRequest request) {
+    public PermissionDto updatePermission(Long permissionId, PermissionPatchRequest request) {
         lockSuperadminRole();
         Permission permission = permission(permissionId);
         Map<String, Object> before = Map.of("code", permission.getCode(), "active", true);
@@ -244,7 +243,7 @@ public class RbacCommandService {
         return AccountMapper.permission(permission);
     }
 
-    public void deletePermission(Long actor, Long permissionId) {
+    public void deletePermission(Long permissionId) {
         Role superadmin = lockSuperadminRole();
         Permission permission = permission(permissionId);
         Map<String, Object> before = Map.of("code", permission.getCode(), "active", true);

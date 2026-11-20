@@ -106,7 +106,7 @@ class SuperadminAssignmentConcurrencyTests extends AccountHttpSupport {
 
         try {
             start.await();
-            staff.update(actorId, targetId, request);
+            staff.update(targetId, request);
             return 200;
         } catch (ResponseStatusException exception) {
             return exception.getStatusCode().value();

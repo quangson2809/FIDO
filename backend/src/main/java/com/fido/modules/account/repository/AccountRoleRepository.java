@@ -23,8 +23,6 @@ public interface AccountRoleRepository extends Repository<AccountRole, AccountRo
 
     boolean existsByRoleId(Long roleId);
 
-    long countByRoleId(Long roleId);
-
     @Query(
             """
             select count(ar)
