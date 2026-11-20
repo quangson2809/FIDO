@@ -16,6 +16,8 @@ public interface AccountRepository extends Repository<Account, Long> {
 
     Account save(Account entity);
 
+    Account saveAndFlush(Account entity);
+
     @org.springframework.data.jpa.repository.Lock(
             jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from Account a where a.accountId = :id")
@@ -46,8 +48,6 @@ public interface AccountRepository extends Repository<Account, Long> {
             """)
     Optional<Account> findCustomerById(@Param("id") Long id);
 
-    Optional<Account> findByPhone(String phone);
-
     @Query("select a from Account a where a.phone in :phones and a.deletedAt is null")
     List<Account> findByPhoneInAndNotDeleted(@Param("phones") Collection<String> phones);
 
@@ -65,15 +65,6 @@ public interface AccountRepository extends Repository<Account, Long> {
             """)
     boolean existsByPhoneInAndNotDeleted(@Param("phones") Collection<String> phones);
 
-    /** Tra cả lịch sử xóa mềm khi nghiệp vụ cần đối chiếu danh tính cũ. */
-    boolean existsByPhoneIn(Collection<String> phones);
-
-    /**
-     * Loại trừ tài khoản đang sửa nhưng vẫn xét lịch sử; kiểm tra số điện thoại còn trống dùng truy
-     * vấn chưa xóa.
-     */
-    boolean existsByPhoneInAndAccountIdNot(Collection<String> phones, Long accountId);
-
     @Query(
             """
             select case when count(a) > 0 then true else false end
@@ -82,10 +73,6 @@ public interface AccountRepository extends Repository<Account, Long> {
             """)
     boolean existsByPhoneInAndNotDeletedAndAccountIdNot(
             @Param("phones") Collection<String> phones, @Param("accountId") Long accountId);
-
-    boolean existsByPhone(String phone);
-
-    boolean existsByPhoneAndAccountIdNot(String phone, Long accountId);
 
     @Query(
             """

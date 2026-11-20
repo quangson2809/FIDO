@@ -193,10 +193,7 @@ jobs:
               --tests 'com.fido.common.exception.*' \
               --tests com.fido.common.ArchitectureBoundaryTests \
               --tests com.fido.common.ApiBaselineRouteContractTests \
-              --tests com.fido.modules.account.AuthenticationProfileHttpTests \
-              --tests com.fido.modules.account.AccountAuthorizationHttpTests \
-              --tests com.fido.modules.account.RbacHttpTests \
-              --tests com.fido.modules.account.RbacTransactionTests \
+              --tests 'com.fido.modules.account.*' \
               --tests com.fido.modules.order.OrderAuthorizationHttpTests \
               --tests com.fido.modules.order.CustomerOrderCancellationHttpTests \
               --tests com.fido.modules.order.OrderActionContractHttpTests \

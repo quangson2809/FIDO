@@ -141,7 +141,7 @@ class StaffHttpTests extends AccountHttpSupport {
                                 Map.of("status", "LOCKED"))
                         .status());
         assertEquals(
-                403,
+                401,
                 call(
                                 "POST",
                                 "/api/v1/auth/login",

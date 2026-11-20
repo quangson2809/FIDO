@@ -11,8 +11,6 @@ import com.fido.modules.account.repository.AccountRepository;
 import com.fido.modules.account.repository.AddressRepository;
 import com.fido.modules.account.service.identity.AccountMutationLockService;
 
-import jakarta.persistence.EntityManager;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,17 +25,14 @@ public class ProfileCommandService {
     private final AccountRepository accounts;
     private final AddressRepository addresses;
     private final AccountMutationLockService accountLocks;
-    private final EntityManager entityManager;
 
     public ProfileCommandService(
             AccountRepository accounts,
             AddressRepository addresses,
-            AccountMutationLockService accountLocks,
-            EntityManager entityManager) {
+            AccountMutationLockService accountLocks) {
         this.accounts = accounts;
         this.addresses = addresses;
         this.accountLocks = accountLocks;
-        this.entityManager = entityManager;
     }
 
     public AccountDto update(Long actor, ProfilePatch request) {
@@ -47,9 +42,7 @@ public class ProfileCommandService {
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
         if (request.full_name() != null) account.setFullName(request.full_name().trim());
         if (request.email() != null) account.setEmail(request.email());
-        accounts.save(account);
-        entityManager.flush();
-        return AccountMapper.account(account);
+        return AccountMapper.account(accounts.saveAndFlush(account));
     }
 
     public AddressDto addAddress(Long actor, AddressRequest request) {
@@ -59,12 +52,12 @@ public class ProfileCommandService {
         List<Address> existing = addresses.findByAccountIdOrderByIdAsc(actor);
         ensureExactlyOneDefault(existing);
         boolean makeDefault = existing.isEmpty() || Boolean.TRUE.equals(request.is_default());
-        if (makeDefault) clearDefault(existing);
+        if (makeDefault && !existing.isEmpty()) addresses.clearDefaultsExcept(actor, null);
         Address address = new Address();
         address.setAccountId(account.getAccountId());
         applyAllFields(address, request);
         address.setDefault(makeDefault);
-        return toDto(addresses.save(address));
+        return AccountMapper.address(addresses.save(address));
     }
 
     /**
@@ -78,28 +71,24 @@ public class ProfileCommandService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "EMPTY_PATCH");
         Address address = ownedAddress(actor, addressId);
         List<Address> currentAddresses = addresses.findByAccountIdOrderByIdAsc(actor);
-        ensureExactlyOneDefault(currentAddresses);
+        if (ensureExactlyOneDefault(currentAddresses)) address = ownedAddress(actor, addressId);
         if (!address.hasStructuredAddress()) {
             requireCompleteAddress(request);
             applyAllFields(address, request);
         } else applyPresentFields(address, request);
+        Address saved = addresses.saveAndFlush(address);
         if (request.defaultPresent()) {
             if (Boolean.TRUE.equals(request.is_default())) {
-                clearDefault(addresses.findByAccountIdOrderByIdAsc(actor));
-                address.setDefault(true);
-            } else if (address.isDefault()) {
-                List<Address> all = addresses.findByAccountIdOrderByIdAsc(actor);
-                boolean hasAnotherAddress =
-                        all.stream().anyMatch(a -> !a.getId().equals(address.getId()));
-                if (hasAnotherAddress) {
-                    promoteMostRecentOther(actor, address.getId());
-                }
-                // Địa chỉ duy nhất phải tiếp tục là mặc định dù request yêu cầu bỏ chọn.
+                addresses.clearDefaultsExcept(actor, null);
+                addresses.markDefault(actor, addressId);
+                return AccountMapper.address(ownedAddress(actor, addressId));
+            } else if (saved.isDefault() && currentAddresses.size() > 1) {
+                promoteMostRecentOther(actor, addressId);
+                return AccountMapper.address(ownedAddress(actor, addressId));
             }
+            // Địa chỉ duy nhất phải tiếp tục là mặc định dù request yêu cầu bỏ chọn.
         }
-        Address saved = addresses.save(address);
-        entityManager.flush();
-        return toDto(saved);
+        return AccountMapper.address(saved);
     }
 
     public void deleteAddress(Long actor, Long addressId) {
@@ -107,10 +96,10 @@ public class ProfileCommandService {
         requireActiveOwner(actor);
         Address address = ownedAddress(actor, addressId);
         List<Address> all = addresses.findByAccountIdOrderByIdAsc(actor);
-        ensureExactlyOneDefault(all);
+        if (ensureExactlyOneDefault(all)) address = ownedAddress(actor, addressId);
         boolean wasDefault = address.isDefault();
         addresses.delete(address);
-        entityManager.flush();
+        addresses.flush();
         if (wasDefault) promoteMostRecentOther(actor, addressId);
     }
 
@@ -130,13 +119,13 @@ public class ProfileCommandService {
      * Sửa dữ liệu cũ thiếu/thừa mặc định dưới khóa tài khoản. Ưu tiên địa chỉ đã mặc định, rồi thời
      * gian sửa và ID mới nhất; không tự điền địa chỉ thiếu.
      */
-    private void ensureExactlyOneDefault(List<Address> all) {
+    private boolean ensureExactlyOneDefault(List<Address> all) {
         if (all.isEmpty()) {
-            return;
+            return false;
         }
         List<Address> currentDefaults = all.stream().filter(Address::isDefault).toList();
         if (currentDefaults.size() == 1) {
-            return;
+            return false;
         }
         List<Address> candidates = currentDefaults.isEmpty() ? all : currentDefaults;
         Comparator<Address> latestFirst =
@@ -146,39 +135,13 @@ public class ProfileCommandService {
                         .thenComparing(Address::getId, Comparator.reverseOrder());
         Address winner = candidates.stream().min(latestFirst).orElseThrow();
 
-        // Dữ liệu cũ có thể thiếu trường bắt buộc; chỉ cập nhật cột mặc định bằng SQL để không
-        // lưu lại entity thiếu dữ liệu.
-        entityManager.flush();
-        entityManager
-                .createNativeQuery(
-                        "UPDATE addresses SET is_default = FALSE, updated_at = CURRENT_TIMESTAMP(6) "
-                                + "WHERE account_id = ? AND is_default = TRUE AND id <> ?")
-                .setParameter(1, winner.getAccountId())
-                .setParameter(2, winner.getId())
-                .executeUpdate();
-        entityManager
-                .createNativeQuery(
-                        "UPDATE addresses SET is_default = TRUE, updated_at = CURRENT_TIMESTAMP(6) "
-                                + "WHERE account_id = ? AND id = ? AND is_default = FALSE")
-                .setParameter(1, winner.getAccountId())
-                .setParameter(2, winner.getId())
-                .executeUpdate();
-        all.forEach(entityManager::refresh);
+        setSoleDefault(winner.getAccountId(), winner.getId());
+        return true;
     }
 
-    private void clearDefault(List<Address> all) {
-        if (all.isEmpty()) {
-            return;
-        }
-        Long accountId = all.get(0).getAccountId();
-        entityManager.flush();
-        entityManager
-                .createNativeQuery(
-                        "UPDATE addresses SET is_default = FALSE, updated_at = CURRENT_TIMESTAMP(6) "
-                                + "WHERE account_id = ? AND is_default = TRUE")
-                .setParameter(1, accountId)
-                .executeUpdate();
-        all.forEach(entityManager::refresh);
+    private void setSoleDefault(Long accountId, Long addressId) {
+        addresses.clearDefaultsExcept(accountId, addressId);
+        addresses.markDefault(accountId, addressId);
     }
 
     /**
@@ -187,31 +150,9 @@ public class ProfileCommandService {
      * trường.
      */
     private void promoteMostRecentOther(Long actor, Long excludedId) {
-        Long promotedId =
-                addresses.findByAccountIdMostRecentlyUpdated(actor).stream()
-                        .filter(address -> !address.getId().equals(excludedId))
-                        .map(Address::getId)
-                        .findFirst()
-                        .orElse(null);
-        if (promotedId == null) {
-            return;
-        }
-        entityManager.flush();
-        entityManager
-                .createNativeQuery(
-                        "UPDATE addresses SET is_default = FALSE, updated_at = CURRENT_TIMESTAMP(6) "
-                                + "WHERE account_id = ? AND is_default = TRUE AND id <> ?")
-                .setParameter(1, actor)
-                .setParameter(2, promotedId)
-                .executeUpdate();
-        entityManager
-                .createNativeQuery(
-                        "UPDATE addresses SET is_default = TRUE, updated_at = CURRENT_TIMESTAMP(6) "
-                                + "WHERE account_id = ? AND id = ? AND is_default = FALSE")
-                .setParameter(1, actor)
-                .setParameter(2, promotedId)
-                .executeUpdate();
-        addresses.findByAccountIdOrderByIdAsc(actor).forEach(entityManager::refresh);
+        addresses
+                .findFirstByAccountIdAndIdNotOrderByUpdatedAtDescIdDesc(actor, excludedId)
+                .ifPresent(address -> setSoleDefault(actor, address.getId()));
     }
 
     private static void requireCompleteAddress(AddressRequest r) {
@@ -235,17 +176,5 @@ public class ProfileCommandService {
         if (r.districtPresent()) a.setDistrict(r.district().trim());
         if (r.wardPresent()) a.setWard(r.ward().trim());
         if (r.addressLinePresent()) a.setAddressLine(r.address_line().trim());
-    }
-
-    public static AddressDto toDto(Address a) {
-        return new AddressDto(
-                a.getId(),
-                a.getRecipientName(),
-                a.getRecipientPhone(),
-                a.getProvince(),
-                a.getDistrict(),
-                a.getWard(),
-                a.getAddressLine(),
-                a.isDefault());
     }
 }

@@ -211,3 +211,11 @@ Owner-approved behavior and target schema are recorded; application/DTO/frontend
 - Quyền admin do `@PreAuthorize` tại các entry service thực thi; URL chỉ yêu cầu authenticated và các URL ngoài danh sách vẫn denyAll. Bỏ lambda duyệt prefix quyền, bỏ `OrderAuthorization` và metadata permission trùng cho sáu action ORDER_EDIT; lọc allowed_actions bằng AuthorityAuthorizationManager.
 - Entry point và access-denied handler dùng bộ xử lý Bearer chuẩn của Spring để có header giao thức, sau đó ghi JSON tiếng Việt hiện có. AccessDeniedException từ method security được chuyển lại cho ExceptionTranslationFilter. Audit dùng AuthenticationTrustResolver để nhận diện anonymous; nguồn actor từ JWT và transaction giữ nguyên.
 - CORS không bật credentials vì mô hình API dùng Bearer header, không dùng cookie/session xác thực. Không đổi FE, schema, quy tắc phân quyền hay nghiệp vụ đơn hàng/kho.
+
+## 2026-11-20 — Dọn mã tài khoản và tách persistence địa chỉ
+
+- Bỏ tám tham số actor không được dùng trong lệnh nhân sự/RBAC và phần lấy JWT chỉ để truyền các tham số đó. Audit tiếp tục lấy người thực hiện từ SecurityContext; ID chủ sở hữu hồ sơ/địa chỉ vẫn lấy từ principal đã xác thực.
+- Bỏ bảy phương thức repository không có nơi gọi. Không mở API xóa tài khoản hoặc thay đổi dữ liệu lịch sử.
+- ProfileCommandService giữ transaction, khóa tài khoản, kiểm tra sở hữu và quy tắc chọn một địa chỉ mặc định. AddressRepository sở hữu bulk update với @Modifying: flush trước cập nhật, clear persistence context sau cập nhật; service đọc lại địa chỉ cần trả về. Bỏ SQL trực tiếp, EntityManager và refresh cả danh sách khỏi service; dùng saveAndFlush chuẩn của Spring Data khi cần phản hồi sau flush.
+- Giữ sửa dữ liệu cũ thiếu/thừa mặc định, ưu tiên địa chỉ đã mặc định rồi updated_at/id giảm dần; không tự điền trường địa chỉ thiếu. Chọn địa chỉ kế tiếp bằng truy vấn giới hạn một dòng. Mapping địa chỉ chuyển về AccountMapper hiện có.
+- Đồng bộ test đăng nhập nhân sự bị khóa với hợp đồng 401 INVALID_CREDENTIALS. Nhóm CI Spring Security chạy toàn bộ test module account, cùng các test bảo mật/kiến trúc/audit liên quan; không chạy toàn bộ backend. Bổ sung kiểm tra địa chỉ về phản hồi sau bulk update, chọn mặc định thay thế, sửa dữ liệu cũ, rollback và cập nhật đồng thời.

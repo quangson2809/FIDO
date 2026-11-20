@@ -14,8 +14,6 @@ import com.fido.modules.account.service.RbacQueryService;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -52,45 +50,38 @@ public class RbacController {
 
     @PostMapping("/roles")
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<RoleDetailDto> role(
-            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody RoleCreateRequest request) {
-        return ApiResponse.of(service.createRole(Long.valueOf(jwt.getSubject()), request));
+    public ApiResponse<RoleDetailDto> role(@Valid @RequestBody RoleCreateRequest request) {
+        return ApiResponse.of(service.createRole(request));
     }
 
     @PatchMapping("/roles/{roleId}")
     public ApiResponse<RoleDetailDto> updateRole(
-            @AuthenticationPrincipal Jwt jwt,
-            @PathVariable Long roleId,
-            @Valid @RequestBody RolePatchRequest request) {
-        return ApiResponse.of(service.updateRole(Long.valueOf(jwt.getSubject()), roleId, request));
+            @PathVariable Long roleId, @Valid @RequestBody RolePatchRequest request) {
+        return ApiResponse.of(service.updateRole(roleId, request));
     }
 
     @DeleteMapping("/roles/{roleId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteRole(@AuthenticationPrincipal Jwt jwt, @PathVariable Long roleId) {
-        service.deleteRole(Long.valueOf(jwt.getSubject()), roleId);
+    public void deleteRole(@PathVariable Long roleId) {
+        service.deleteRole(roleId);
     }
 
     @PostMapping("/permissions")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<PermissionDto> permission(
-            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody PermissionCreateRequest request) {
-        return ApiResponse.of(service.createPermission(Long.valueOf(jwt.getSubject()), request));
+            @Valid @RequestBody PermissionCreateRequest request) {
+        return ApiResponse.of(service.createPermission(request));
     }
 
     @PatchMapping("/permissions/{permissionId}")
     public ApiResponse<PermissionDto> updatePermission(
-            @AuthenticationPrincipal Jwt jwt,
-            @PathVariable Long permissionId,
-            @Valid @RequestBody PermissionPatchRequest request) {
-        return ApiResponse.of(
-                service.updatePermission(Long.valueOf(jwt.getSubject()), permissionId, request));
+            @PathVariable Long permissionId, @Valid @RequestBody PermissionPatchRequest request) {
+        return ApiResponse.of(service.updatePermission(permissionId, request));
     }
 
     @DeleteMapping("/permissions/{permissionId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deletePermission(
-            @AuthenticationPrincipal Jwt jwt, @PathVariable Long permissionId) {
-        service.deletePermission(Long.valueOf(jwt.getSubject()), permissionId);
+    public void deletePermission(@PathVariable Long permissionId) {
+        service.deletePermission(permissionId);
     }
 }

@@ -63,7 +63,7 @@ public class StaffCommandService {
         this.em = em;
     }
 
-    public StaffAccountDetailDto create(Long actor, StaffCreateRequest request) {
+    public StaffAccountDetailDto create(StaffCreateRequest request) {
         lockSuperadminRole();
         String phone = phoneNumbers.canonicalize(request.phone());
         requireCreatePhoneAvailable(phone);
@@ -103,11 +103,11 @@ public class StaffCommandService {
     }
 
     /**
-     * actor từ JWT, accountId từ URL là nhân sự được sửa; request có thể đổi thông tin, trạng thái và
+     * accountId từ URL là nhân sự được sửa; request có thể đổi thông tin, trạng thái và
      * tập role.
      * Tính trạng thái/role cuối trước khi ghi để bảo vệ quản trị viên ACTIVE cuối cùng.
      */
-    public StaffAccountDetailDto update(Long actor, Long accountId, StaffPatchRequest request) {
+    public StaffAccountDetailDto update(Long accountId, StaffPatchRequest request) {
         Role superadminRole = lockSuperadminRole();
 
         requireStaff(accountId);

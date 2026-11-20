@@ -68,7 +68,7 @@ public class CustomerQueryService {
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         var addressDtos =
                 addresses.findByAccountIdOrderByIdAsc(id).stream()
-                        .map(ProfileCommandService::toDto)
+                        .map(AccountMapper::address)
                         .toList();
         return new CustomerDetailDto(
                 AccountMapper.account(account), addressDtos, orders.summaries(id));

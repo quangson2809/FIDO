@@ -50,7 +50,7 @@ class RbacTransactionTests {
                     DataIntegrityViolationException.class,
                     () ->
                             service.createPermission(
-                                    -999L, new PermissionCreateRequest(code, "Rollback test")));
+                                    new PermissionCreateRequest(code, "Rollback test")));
 
             assertEquals(
                     0,
@@ -80,6 +80,6 @@ class RbacTransactionTests {
                 AccessDeniedException.class,
                 () ->
                         service.createPermission(
-                                1L, new PermissionCreateRequest("test.denied", "Denied")));
+                                new PermissionCreateRequest("test.denied", "Denied")));
     }
 }

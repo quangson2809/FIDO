@@ -1,6 +1,7 @@
 package com.fido.modules.account.service;
 
 import com.fido.modules.account.dto.response.MeDto;
+import com.fido.modules.account.mapper.AccountMapper;
 import com.fido.modules.account.repository.AddressRepository;
 import com.fido.modules.account.service.identity.AccountAccessService;
 
@@ -26,7 +27,7 @@ public class ProfileQueryService {
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
         var addressDtos =
                 addresses.findByAccountIdOrderByIdAsc(actor).stream()
-                        .map(ProfileCommandService::toDto)
+                        .map(AccountMapper::address)
                         .toList();
         return new MeDto(detail.account(), addressDtos, detail.roles(), detail.permissions());
     }
