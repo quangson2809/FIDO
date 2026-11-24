@@ -14,8 +14,8 @@ class OrderHardeningHttpTests extends OrderHttpSupport {
         User customer = user();
         User admin = plainAdmin();
         assertEquals(401, call("GET", "/api/v1/admin/unmapped", null, null).status());
-        assertEquals(403, call("GET", "/api/v1/admin/unmapped", customer.token(), null).status());
-        assertEquals(403, call("GET", "/api/v1/admin/unmapped", admin.token(), null).status());
+        assertEquals(404, call("GET", "/api/v1/admin/unmapped", customer.token(), null).status());
+        assertEquals(404, call("GET", "/api/v1/admin/unmapped", admin.token(), null).status());
 
         User reader = employeeWithPermission("ORDER_READ");
         db.update(

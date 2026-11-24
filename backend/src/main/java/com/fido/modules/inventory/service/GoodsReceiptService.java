@@ -219,7 +219,22 @@ public class GoodsReceiptService {
                 "status", status,
                 "warehouse_id", warehouseId,
                 "item_count", rows.size(),
-                "total_quantity", totalQuantity);
+                "total_quantity", totalQuantity,
+                "item_changes",
+                        rows.stream()
+                                .sorted(
+                                        java.util.Comparator.comparing(
+                                                GoodsReceiptItem::getProductId))
+                                .map(
+                                        item ->
+                                                Map.of(
+                                                        "product_id",
+                                                        item.getProductId(),
+                                                        "quantity",
+                                                        item.getQuantity(),
+                                                        "unit_cost",
+                                                        item.getUnitCost()))
+                                .toList());
     }
 
     private void saveItems(Long receiptId, List<ReceiptItemInput> requested) {

@@ -15,6 +15,8 @@ import type {
 const imageOrEmpty = (value?: string | null): string => resolveImageUrl(value) ?? '';
 
 const summaryToView = (product: ProductSummaryDto): CatalogProductView => ({
+  matchedProductId: product.matched_product_id,
+  matchedSku: product.matched_sku,
   id: String(product.product_id),
   product_id: product.product_id,
   sku: product.sku,

@@ -17,6 +17,8 @@ const toCartItems = (cart: CartDto): CartViewItem[] =>
     price: item.unit_price,
     lineTotal: item.line_total,
     availableQuantity: item.available_quantity,
+    purchasable: item.purchasable ?? item.available_quantity >= item.quantity,
+    unavailableReason: item.unavailable_reason ?? null,
     imageUrl: resolveImageUrl(item.image_url ?? item.thumbnail) ?? '',
     quantity: item.quantity,
   }));

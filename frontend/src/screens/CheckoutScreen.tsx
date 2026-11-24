@@ -194,7 +194,7 @@ export const CheckoutScreen: React.FC = () => {
       uncertainOrder ??
       (quote
         ? {
-            request: { ...request },
+            request: { ...request, confirmation_token: quote.confirmation_token },
             quote,
             idempotencyKey: createIdempotencyKey(),
           }
@@ -224,6 +224,13 @@ export const CheckoutScreen: React.FC = () => {
       });
     } catch (requestError: unknown) {
       const status = normalizeApiError(requestError).status;
+      if (status === 409 && normalizeApiError(requestError).code === 'CHECKOUT_RECONFIRMATION_REQUIRED') {
+        const refreshed = await checkoutService.quote(submission.request).catch(() => null);
+        setUncertainOrder(null); setConfirmationOpen(false);
+        setQuote(refreshed); setQuotedRequestKey(refreshed ? currentRequestKey : null);
+        setError('Giá hoặc ưu đãi đã thay đổi. Chưa tạo đơn. Vui lòng xem báo giá mới và xác nhận lại.');
+        return;
+      }
       if (status === undefined || status >= 500) {
         // A retry must reuse the same key and exact request to avoid duplicate orders.
         setUncertainOrder(submission);

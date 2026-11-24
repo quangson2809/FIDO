@@ -20,18 +20,24 @@ public class CatalogProductReadService {
     private final ProductRepository products;
     private final InventoryAvailabilityService inventory;
     private final ProductImageReadService images;
+    private final CatalogReferenceService references;
 
     public CatalogProductReadService(
             ProductRepository products,
             InventoryAvailabilityService inventory,
-            ProductImageReadService images) {
+            ProductImageReadService images,
+            CatalogReferenceService references) {
         this.products = products;
         this.inventory = inventory;
         this.images = images;
+        this.references = references;
     }
 
     public ProductView get(Long productId) {
-        return getAll(java.util.List.of(productId)).get(productId);
+        ProductView view = getAll(java.util.List.of(productId)).get(productId);
+        if ("DELETED".equals(view.status()))
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "PRODUCT_NOT_FOUND");
+        return view;
     }
 
     /**
@@ -45,17 +51,21 @@ public class CatalogProductReadService {
 
         Map<Long, Product> byId = new HashMap<>();
         products.findAllByProductIdIn(ids).forEach(p -> byId.put(p.getProductId(), p));
-        for (Long id : ids) {
-            if (!byId.containsKey(id) || byId.get(id).isDeleted()) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "PRODUCT_NOT_FOUND");
-            }
-        }
+        var visibility = references.visibility();
 
         Map<Long, String> imageById = images.representativeByProductIds(ids);
         Map<Long, Integer> stockById = inventory.availableQuantities(ids);
         Map<Long, ProductView> result = new HashMap<>();
         for (Long id : ids) {
             Product product = byId.get(id);
+            if (product == null) {
+                result.put(
+                        id,
+                        new ProductView(
+                                id, "Sản phẩm không còn bán", null, null, 0L, "DELETED", 0, false));
+                continue;
+            }
+            boolean visible = visibility.allows(product);
             int available = stockById.getOrDefault(id, 0);
             result.put(
                     id,
@@ -65,9 +75,11 @@ public class CatalogProductReadService {
                             product.getSku(),
                             imageById.get(id),
                             product.getSellingPrice(),
-                            product.getStatus(),
+                            product.isDeleted()
+                                    ? "DELETED"
+                                    : visible ? product.getStatus() : "INACTIVE",
                             available,
-                            "ACTIVE".equals(product.getStatus()) && available > 0));
+                            visible && available > 0));
         }
         return Map.copyOf(result);
     }

@@ -15,5 +15,6 @@ export interface VoucherDetail extends VoucherInput {
   id: number;
   usage_count: number;
   status: VoucherStatus;
+  effective_status?: VoucherStatus | 'SCHEDULED' | 'EXHAUSTED';
 }
-export type VoucherPatchInput = VoucherInput & { status: VoucherStatus };
+export type VoucherPatchInput = Partial<VoucherInput> & { status: VoucherStatus };

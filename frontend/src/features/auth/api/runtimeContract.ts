@@ -90,6 +90,7 @@ const parseAccount = (value: unknown, endpoint: string, fieldPath: string): Acco
   // The canonical backend now names the identifier "id"; account_id remains the app's view-model key.
   return {
     account_id: expectInteger(account.id, endpoint, `${fieldPath}.id`),
+    email_verified: account.email_verified === true,
     full_name:
       account.full_name === null || account.full_name === undefined
         ? null

@@ -46,6 +46,10 @@ class PublicCatalogQueryServiceTests {
 
     @BeforeEach
     void setUp() {
+        when(references.visibility())
+                .thenReturn(
+                        new CatalogReferenceService.Visibility(
+                                java.util.Set.of(), java.util.Set.of()));
         // Dùng bộ đọc family thật để test bắt được lỗi ghép dữ liệu, không chỉ xác nhận mock.
         var familyReader =
                 new PublicCatalogFamilyReadService(

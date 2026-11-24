@@ -1,3 +1,4 @@
+import { Modal } from '../../shared/admin/Modal';
 import { ListSearch } from '../../shared/admin/ListSearch';
 import { useDirtyForm } from '../../shared/admin/dirtyFormContext';
 import React, { useEffect, useState } from 'react';
@@ -11,6 +12,8 @@ export const AdminSettingsView: React.FC<{
 }> = ({ showToast, canWrite }) => {
   const [search, setSearch] = useState('');
   const [preview, setPreview] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [draft, setDraft] = useState({ page_code: '', title: '', content: '' });
   const [pages, setPages] = useState<ContentPageSummaryDto[]>([]);
   const [detail, setDetail] = useState<ContentPageDto | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -24,7 +27,7 @@ export const AdminSettingsView: React.FC<{
 
   const selectedPage = detail;
   const canDiscard = useDirtyForm(
-    Boolean(selectedPage && (title !== selectedPage.title || content !== selectedPage.content)),
+    Boolean(selectedPage && (title !== selectedPage.title || content !== selectedPage.content)) || Boolean(creating && (draft.page_code || draft.title || draft.content)),
   );
   const selectPage = (page: ContentPageSummaryDto) => {
     if (page.page_id === selectedId) return;
@@ -94,6 +97,26 @@ export const AdminSettingsView: React.FC<{
     }
   };
 
+  const changeStatus = async (status: ContentPageSummaryDto['status']) => {
+    if (!detail || saving || !canWrite || !canDiscard()) return;
+    const selected = detail.page_id;
+    setSaving(true); setError(null);
+    try {
+      const updated = await contentService.updatePage(selected, { status });
+      setDetail(updated); setTitle(updated.title); setContent(updated.content);
+      setPages(current => current.map(page => page.page_id === selected ? updated : page));
+      showToast(status === 'PUBLISHED' ? 'Đã công bố nội dung.' : status === 'ARCHIVED' ? 'Đã lưu trữ nội dung.' : 'Đã gỡ công bố, chuyển về bản nháp.');
+    } catch (cause: unknown) { setError(getApiErrorMessage(cause, 'Không thể đổi trạng thái nội dung.')); }
+    finally { setSaving(false); }
+  };
+
+  const createDraft = async (event: React.FormEvent) => {
+    event.preventDefault(); if (saving || !canWrite) return; setSaving(true); setError(null);
+    try { const created = await contentService.createPage(draft); setPages(current => [...current, created]); setSelectedId(created.page_id); setCreating(false); setDraft({ page_code: '', title: '', content: '' }); showToast('Đã tạo bản nháp.'); }
+    catch (cause: unknown) { setError(getApiErrorMessage(cause, 'Không thể tạo bản nháp.')); }
+    finally { setSaving(false); }
+  };
+
   const filteredPages = pages.filter((page) =>
     `${page.title} ${page.page_code}`
       .toLocaleLowerCase('vi-VN')
@@ -109,6 +132,15 @@ export const AdminSettingsView: React.FC<{
           Chỉnh sửa các trang chính sách và nội dung hiển thị tại cửa hàng.
         </p>
       </header>
+      {canWrite && <button type="button" className="admin-primary" disabled={saving} onClick={() => { if (canDiscard()) setCreating(true); }}>Tạo bản nháp nội dung</button>}
+      {creating && <Modal title="Soạn bản nháp nội dung" busy={saving} onClose={() => { if (!saving && canDiscard()) setCreating(false); }}>
+        <form onSubmit={createDraft} className="space-y-3"><fieldset disabled={saving} className="space-y-3">
+          <label>Mã đường dẫn<input className="field-input" required maxLength={180} pattern="[a-z0-9]+(-[a-z0-9]+)*" value={draft.page_code} onChange={e => setDraft(current => ({ ...current, page_code: e.target.value }))} /></label>
+          <label>Tiêu đề bản nháp<input className="field-input" required maxLength={255} value={draft.title} onChange={e => setDraft(current => ({ ...current, title: e.target.value }))} /></label>
+          <label>Nội dung bản nháp<textarea className="field-input" required rows={8} value={draft.content} onChange={e => setDraft(current => ({ ...current, content: e.target.value }))} /></label>
+          {error && <p role="alert">{error}</p>}<button type="submit" className="admin-primary">Lưu bản nháp</button>
+        </fieldset></form>
+      </Modal>}
       <button
         type="button"
         aria-pressed={preview}
@@ -175,6 +207,15 @@ export const AdminSettingsView: React.FC<{
           <form onSubmit={save} className="border border-[#E8E9E3] bg-white p-5">
             <fieldset disabled={saving || detailLoading || !detail} className="contents">
               {detailLoading && <p role="status">Đang tải nội dung trang...</p>}
+              {detail && <div className="mb-4 flex flex-wrap items-center gap-3">
+                <p>Trạng thái: {detail.status === 'PUBLISHED' ? 'Đã công bố' : detail.status === 'ARCHIVED' ? 'Đã lưu trữ' : 'Bản nháp'}</p>
+                {canWrite && <>
+                  {detail.status === 'DRAFT' && <button type="button" className="admin-primary" onClick={() => void changeStatus('PUBLISHED')}>Công bố</button>}
+                  {detail.status === 'PUBLISHED' && <button type="button" className="admin-secondary" onClick={() => void changeStatus('DRAFT')}>Gỡ công bố</button>}
+                  {detail.status !== 'ARCHIVED' && <button type="button" className="admin-secondary" onClick={() => void changeStatus('ARCHIVED')}>Lưu trữ</button>}
+                  {detail.status === 'ARCHIVED' && <button type="button" className="admin-secondary" onClick={() => void changeStatus('DRAFT')}>Khôi phục bản nháp</button>}
+                </>}
+              </div>}
               <label className="block text-xs font-semibold">
                 Tiêu đề
                 <input

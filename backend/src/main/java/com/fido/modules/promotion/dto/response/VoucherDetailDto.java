@@ -14,4 +14,5 @@ public record VoucherDetailDto(
         Instant ends_at,
         Integer usage_limit,
         Integer usage_count,
-        String status) {}
+        String status,
+        String effective_status) {}

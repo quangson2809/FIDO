@@ -192,10 +192,18 @@ def norm(value):
 def main():
     issues = []
     schema_sql_files = sorted(path.resolve() for path in DB_RESOURCES.rglob("*.sql"))
-    if schema_sql_files != [SQL.resolve()]:
+    # Preserve the original V1 ERD/dictionary checks and explicitly enumerate only the
+    # owner-requested additive operational migrations. Unknown installers still fail.
+    approved_migrations = [SQL.resolve()] + [
+        (SQL.parent / name).resolve() for name in (
+            "V2__operational_accounts.sql", "V3__physical_return_receipts.sql",
+            "V4__stocktakes_and_receipt_corrections.sql",
+        )
+    ]
+    if schema_sql_files != sorted(approved_migrations):
         observed = [path.relative_to(ROOT).as_posix() for path in schema_sql_files]
         issues.append(
-            "Expected exactly one database-installation SQL under backend/src/main/resources/db: "
+            "Expected the canonical V1 plus the approved V2–V4 operational migrations: "
             + repr(observed)
         )
 

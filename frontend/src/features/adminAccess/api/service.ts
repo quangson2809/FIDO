@@ -36,6 +36,9 @@ const staffDetail = (member: WireStaffDetail, endpoint: string): StaffAccountDet
 });
 
 export const adminAccessService = {
+  async changeCustomerStatus(id: number, status: 'ACTIVE' | 'LOCKED', reason: string): Promise<void> {
+    await apiClient.patch('/admin/customers/' + id + '/status', { status, reason });
+  },
   async getCustomers(query?: {
     q?: string;
     page?: number;

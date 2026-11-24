@@ -40,7 +40,8 @@ class CancelOrderHandler implements OrderActionHandler {
         List<StockLine> lines = stockLines.loadForUpdate(order.getOrderId());
 
         // Đơn PENDING chưa trừ kho; các trạng thái đã xác nhận phải đảo bút toán gốc khi hủy.
-        if (!OrderPolicy.PENDING.equals(fromOrderStatus)) {
+        if (!OrderPolicy.PENDING.equals(fromOrderStatus)
+                && !"DELIVERY_FAILED".equals(fromOrderStatus)) {
             inventory.restoreCancelledOrder(actor, order.getOrderId(), lines, "ORDER_CANCELLED");
         }
 

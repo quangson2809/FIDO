@@ -43,6 +43,23 @@ class ApiBaselineRouteContractTests {
                     new Route("GET", "/api/v1/content-pages/{pageCode}"));
     private static final Set<Route> APPROVED_ROUTE_ADDITIONS =
             Set.of(
+                    new Route("GET", "/api/v1/admin/reports/operations"),
+                    new Route("POST", "/api/v1/admin/stocktakes/{id}/actions"),
+                    new Route("POST", "/api/v1/auth/email/verify"),
+                    new Route("POST", "/api/v1/auth/password-reset/confirm"),
+                    new Route("GET", "/api/v1/admin/stocktakes"),
+                    new Route("PATCH", "/api/v1/admin/customers/{customerId}/status"),
+                    new Route("POST", "/api/v1/admin/stocktakes"),
+                    new Route("POST", "/api/v1/auth/password-reset/request"),
+                    new Route("GET", "/api/v1/admin/orders/{orderId}/return-receipts"),
+                    new Route("POST", "/api/v1/me/password"),
+                    new Route("POST", "/api/v1/admin/orders/{orderId}/return-receipts"),
+                    new Route("GET", "/api/v1/admin/reports/operations/orders"),
+                    new Route("GET", "/api/v1/admin/orders/{orderId}/history"),
+                    new Route("POST", "/api/v1/me/email/verification"),
+                    new Route("GET", "/api/v1/admin/goods-receipts/{receiptId}/corrections"),
+                    new Route("POST", "/api/v1/admin/goods-receipts/{receiptId}/corrections"),
+                    new Route("GET", "/api/v1/admin/reports/operations/slow-moving"),
                     new Route("DELETE", "/api/v1/admin/products/{productId}"),
                     new Route("POST", "/api/v1/me/orders/{orderId}/cancel"));
     private static final Set<Route> APPROVED_REFINEMENT_ROUTES =

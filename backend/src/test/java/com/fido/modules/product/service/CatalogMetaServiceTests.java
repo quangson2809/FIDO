@@ -9,6 +9,8 @@ import com.fido.modules.product.dto.response.AdminCatalogMetaDtoV2;
 import com.fido.modules.product.dto.response.CatalogMetaDto;
 import com.fido.modules.product.entity.Attribute;
 import com.fido.modules.product.entity.AttributeOption;
+import com.fido.modules.product.entity.Brand;
+import com.fido.modules.product.entity.Category;
 import com.fido.modules.product.repository.AttributeOptionRepository;
 import com.fido.modules.product.repository.AttributeRepository;
 import com.fido.modules.product.repository.BrandRepository;
@@ -65,6 +67,42 @@ class CatalogMetaServiceTests {
                 adminMeta.attributes().get(1).options().stream().map(o -> o.id()).toList());
         assertEquals(List.of(11L, 12L), publicMeta.attributes().stream().map(a -> a.id()).toList());
         assertEquals(1, publicMeta.attributes().get(0).options().size());
+    }
+
+    @Test
+    void publicMetadataHidesInactiveAncestorsAndBrandsButAdminCanReactivateThem() {
+        Category inactive = new Category();
+        inactive.setCategoryId(1L);
+        inactive.setStatus("INACTIVE");
+        Category child = new Category();
+        child.setCategoryId(2L);
+        child.setParentCategoryId(1L);
+        child.setStatus("ACTIVE");
+        Category visible = new Category();
+        visible.setCategoryId(3L);
+        visible.setStatus("ACTIVE");
+        Brand hiddenBrand = new Brand();
+        hiddenBrand.setBrandId(4L);
+        hiddenBrand.setStatus("INACTIVE");
+        Brand visibleBrand = new Brand();
+        visibleBrand.setBrandId(5L);
+        visibleBrand.setStatus("ACTIVE");
+        when(categories.findAllByOrderByCategoryIdAsc())
+                .thenReturn(List.of(inactive, child, visible));
+        when(brands.findAllByOrderByBrandIdAsc()).thenReturn(List.of(hiddenBrand, visibleBrand));
+
+        assertEquals(
+                List.of(3L),
+                service.publicMeta().categories().stream().map(c -> c.category_id()).toList());
+        assertEquals(
+                List.of(5L),
+                service.publicMeta().brands().stream().map(b -> b.brand_id()).toList());
+        assertEquals(
+                List.of(1L, 2L, 3L),
+                service.adminMeta().categories().stream().map(c -> c.category_id()).toList());
+        assertEquals(
+                List.of(4L, 5L),
+                service.adminMeta().brands().stream().map(b -> b.brand_id()).toList());
     }
 
     private static Attribute attribute(Long id, String code, int order) {

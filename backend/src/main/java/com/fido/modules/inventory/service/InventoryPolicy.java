@@ -44,6 +44,13 @@ public final class InventoryPolicy {
         return reasonCode != null && ADJUSTMENT_REASON_CODES.contains(reasonCode);
     }
 
+    public static boolean isAdjustmentDirectionValid(String reasonCode, int delta) {
+        return isAdjustmentReasonCode(reasonCode)
+                && delta != 0
+                && (!Set.of("DAMAGE", "LOSS").contains(reasonCode) || delta < 0)
+                && (!"FOUND".equals(reasonCode) || delta > 0);
+    }
+
     public static boolean isReversalReasonCode(String reasonCode) {
         return reasonCode != null && REVERSAL_REASON_CODES.contains(reasonCode);
     }

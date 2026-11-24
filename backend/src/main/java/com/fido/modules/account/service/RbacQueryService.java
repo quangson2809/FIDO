@@ -39,7 +39,10 @@ public class RbacQueryService {
 
     public AccessControlDto accessControl() {
         List<Role> allRoles = roles.findAllByOrderByRoleIdAsc();
-        List<Permission> allPermissions = permissions.findAllByOrderByPermissionIdAsc();
+        List<Permission> allPermissions =
+                permissions.findAllByOrderByPermissionIdAsc().stream()
+                        .filter(p -> SupportedPermissions.CODES.contains(p.getCode()))
+                        .toList();
 
         Map<Long, Set<Long>> permissionIdsByRole = permissionIdsByRole(allRoles);
 
@@ -54,6 +57,7 @@ public class RbacQueryService {
 
     public List<PermissionDto> permissions() {
         return permissions.findAllByOrderByPermissionIdAsc().stream()
+                .filter(p -> SupportedPermissions.CODES.contains(p.getCode()))
                 .map(AccountMapper::permission)
                 .toList();
     }

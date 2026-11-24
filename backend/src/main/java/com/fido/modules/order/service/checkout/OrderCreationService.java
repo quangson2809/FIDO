@@ -121,8 +121,13 @@ public class OrderCreationService {
         // Giữ khóa tài khoản và giỏ đến hết giao dịch để toàn bộ dữ liệu tạo đơn cùng commit hoặc
         // rollback.
         cart.lockForCheckout(accountId);
+        productSnapshots.lockForOrder(cart.productIdsForCheckout(accountId));
         CheckoutCalculation calculation =
                 checkout.calculateForOrder(accountId, normalized.voucherCode());
+        if (!CheckoutConsent.token(calculation).equals(request.confirmation_token())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "CHECKOUT_RECONFIRMATION_REQUIRED");
+        }
 
         // Chụp thuộc tính theo Product ID từ DB để đơn cũ không đổi khi catalog được chỉnh sau này.
         Map<Long, String> attributeSnapshots =

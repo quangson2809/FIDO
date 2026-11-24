@@ -57,7 +57,9 @@ public class PublicCatalogFamilyReadService {
                 requested.getParentProductId() == null
                         ? requested.getProductId()
                         : requested.getParentProductId();
-        List<Product> family = activeFamily(requested, rootId);
+        var visibility = references.visibility();
+        List<Product> family =
+                activeFamily(requested, rootId).stream().filter(visibility::allows).toList();
         List<Long> ids = family.stream().map(Product::getProductId).toList();
 
         // Đọc ảnh, thuộc tính và tồn kho theo lô cho cả family để tránh truy vấn từng Product.

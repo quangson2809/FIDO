@@ -51,13 +51,13 @@ class CleanMigrationTests {
                         .cleanDisabled(false)
                         .load();
         try {
-            assertEquals(1, flyway.migrate().migrationsExecuted);
+            assertEquals(4, flyway.migrate().migrationsExecuted);
             var jdbc = new JdbcTemplate(dataSource);
             jdbc.update(
                     "INSERT INTO categories(name,slug,status) VALUES ('baseline-before-clean','baseline-before-clean','ACTIVE')");
 
             flyway.clean();
-            assertEquals(1, flyway.migrate().migrationsExecuted);
+            assertEquals(4, flyway.migrate().migrationsExecuted);
             flyway.validate();
             assertEquals(
                     1,
@@ -75,7 +75,7 @@ class CleanMigrationTests {
                             WHERE p.code='REPORT_READ' AND r.code='SUPERADMIN'
                             """,
                             Integer.class));
-            assertEquals("1", flyway.info().current().getVersion().getVersion());
+            assertEquals("4", flyway.info().current().getVersion().getVersion());
             assertEquals(0, flyway.info().pending().length);
             assertEquals(0, flyway.migrate().migrationsExecuted);
             assertEquals(

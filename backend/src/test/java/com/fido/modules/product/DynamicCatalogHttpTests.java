@@ -150,7 +150,15 @@ class DynamicCatalogHttpTests extends CatalogHttpSupport {
         assertEquals(0, total(list + filter(color, "WHITE") + filter(size, "L")));
         assertEquals(0, total(list + filter(color, "RED")));
         assertEquals(1, total(list + filter(color, "BLACK") + filter(size, "M")));
-        assertEquals(0, total(list + "&min_price=110000"), "price remains parent-owned");
+        assertEquals(1, total(list + "&min_price=110000"), "price can match an eligible child");
+        var matching =
+                call(
+                        "GET",
+                        list + "&min_price=110000" + filter(color, "WHITE") + filter(size, "M"),
+                        null,
+                        null);
+        assertEquals(whiteM, matching.data().get("data").get(0).get("matched_product_id").asLong());
+        assertTrue(matching.data().get("data").get(0).get("selling_price").asLong() >= 110000);
         long second = created(create(w, null, f.categoryId(), "ACTIVE", List.of()));
         assertEquals(2, total(list + "&page_size=1"));
         var page = call("GET", list + "&page=2&page_size=1", null, null);

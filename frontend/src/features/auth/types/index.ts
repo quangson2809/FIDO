@@ -1,4 +1,5 @@
 export interface AccountDto {
+  email_verified?: boolean;
   account_id: number;
   full_name: string | null;
   phone: string;

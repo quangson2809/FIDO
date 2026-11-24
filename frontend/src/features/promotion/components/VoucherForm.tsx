@@ -67,7 +67,7 @@ export function VoucherForm({
     setBusy(true);
     setError(null);
     try {
-      if (voucher) await voucherService.update(voucher.id, { ...input, status });
+      if (voucher) await voucherService.update(voucher.id, voucher.status === 'DRAFT' ? { ...input, status } : { status });
       else await voucherService.create(input);
       onSaved();
     } catch (requestError: unknown) {
@@ -95,7 +95,7 @@ export function VoucherForm({
             {error}
           </p>
         )}
-        <fieldset disabled={busy || !canWrite} className="grid gap-4 sm:grid-cols-2">
+        <fieldset disabled={busy || !canWrite || (voucher != null && voucher.status !== 'DRAFT')} className="grid gap-4 sm:grid-cols-2">
           <label>
             Mã voucher
             <input
@@ -209,6 +209,9 @@ export function VoucherForm({
               }
             />
           </label>
+        </fieldset>
+        {voucher && voucher.status !== 'DRAFT' && <p className="text-sm">Điều kiện đã phát hành được giữ nguyên. Tạo mã mới để đổi ưu đãi.</p>}
+        <fieldset disabled={busy || !canWrite}>
           {voucher && (
             <label>
               Trạng thái

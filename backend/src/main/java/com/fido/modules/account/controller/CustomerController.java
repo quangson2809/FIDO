@@ -16,9 +16,27 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/admin/customers")
 public class CustomerController {
     private final CustomerQueryService service;
+    private final com.fido.modules.account.service.CustomerCommandService commands;
 
-    public CustomerController(CustomerQueryService service) {
+    public CustomerController(
+            CustomerQueryService service,
+            com.fido.modules.account.service.CustomerCommandService commands) {
+        this.commands = commands;
         this.service = service;
+    }
+
+    public record StatusRequest(
+            @jakarta.validation.constraints.NotBlank String status,
+            @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max = 500)
+                    String reason) {}
+
+    @org.springframework.web.bind.annotation.PatchMapping("/{customerId}/status")
+    public ApiResponse<com.fido.modules.account.dto.response.AccountDto> changeStatus(
+            @PathVariable Long customerId,
+            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody
+                    StatusRequest request) {
+        return ApiResponse.of(
+                commands.changeStatus(customerId, request.status(), request.reason()));
     }
 
     @GetMapping

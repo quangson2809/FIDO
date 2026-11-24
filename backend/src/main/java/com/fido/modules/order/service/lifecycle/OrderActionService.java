@@ -111,7 +111,8 @@ public class OrderActionService {
                 order,
                 fromOrderStatus,
                 order.getOrderStatus(),
-                orderAction == OrderAction.CANCEL ? payment.getPaymentStatus() : null);
+                orderAction == OrderAction.CANCEL ? payment.getPaymentStatus() : null,
+                request.reason());
     }
 
     private void auditTransition(
@@ -119,11 +120,13 @@ public class OrderActionService {
             Order order,
             String fromOrderStatus,
             String toOrderStatus,
-            String paymentStatus) {
+            String paymentStatus,
+            String reason) {
         Map<String, Object> before = new LinkedHashMap<>();
         before.put("status", fromOrderStatus);
         Map<String, Object> after = new LinkedHashMap<>();
         after.put("status", toOrderStatus);
+        if (reason != null && !reason.isBlank()) after.put("reason", reason.trim());
         if (paymentStatus != null) {
             before.put("payment_status", paymentStatus);
             after.put("payment_status", paymentStatus);

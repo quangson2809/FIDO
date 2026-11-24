@@ -1,0 +1,14 @@
+erDiagram
+    ACCOUNTS ||--o{ ACCOUNT_RECOVERY_TOKENS : owns
+    ORDERS ||--o{ ORDER_RETURN_RECEIPTS : source
+    ORDER_RETURN_RECEIPTS ||--|{ ORDER_RETURN_RECEIPT_ITEMS : contains
+    ORDER_ITEMS ||--o{ ORDER_RETURN_RECEIPT_ITEMS : inspected_source
+    WAREHOUSES ||--o{ STOCKTAKES : counted
+    STOCKTAKES ||--|{ STOCKTAKE_ITEMS : contains
+    PRODUCTS ||--o{ STOCKTAKE_ITEMS : counted_source
+    GOODS_RECEIPTS ||--o{ GOODS_RECEIPT_CORRECTIONS : immutable_source
+    GOODS_RECEIPT_CORRECTIONS ||--|{ GOODS_RECEIPT_CORRECTION_ITEMS : contains
+    GOODS_RECEIPT_ITEMS ||--o{ GOODS_RECEIPT_CORRECTION_ITEMS : corrected_source
+    ACCOUNTS ||--o{ STOCKTAKES : actor_and_confirmer
+    ACCOUNTS ||--o{ ORDER_RETURN_RECEIPTS : receiver
+    ACCOUNTS ||--o{ GOODS_RECEIPT_CORRECTIONS : actor

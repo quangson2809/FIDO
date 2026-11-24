@@ -26,6 +26,7 @@ export interface ContentPageCreateInput {
 }
 
 export interface ContentPagePatchInput {
+  status?: ContentPageSummaryDto['status'];
   title?: string;
   content?: string;
 }

@@ -31,7 +31,7 @@ class RbacTransactionTests {
     @Autowired JdbcTemplate jdbc;
 
     @Test
-    void failedAuditRollsBackPermissionAndSuperadminGrant() {
+    void failedAuditRollsBackRoleAndItsGrants() {
         Jwt jwt =
                 Jwt.withTokenValue("test-token")
                         .header("alg", "HS256")
@@ -49,13 +49,20 @@ class RbacTransactionTests {
             assertThrows(
                     DataIntegrityViolationException.class,
                     () ->
-                            service.createPermission(
-                                    new PermissionCreateRequest(code, "Rollback test")));
+                            service.createRole(
+                                    new com.fido.modules.account.dto.request.RoleCreateRequest(
+                                            code,
+                                            "Rollback test",
+                                            null,
+                                            List.of(
+                                                    jdbc.queryForObject(
+                                                            "SELECT id FROM permissions WHERE code='CATALOG_READ'",
+                                                            Long.class)))));
 
             assertEquals(
                     0,
                     jdbc.queryForObject(
-                            "SELECT COUNT(*) FROM permissions WHERE code=?", Integer.class, code));
+                            "SELECT COUNT(*) FROM roles WHERE code=?", Integer.class, code));
 
             assertEquals(
                     0,
@@ -63,7 +70,7 @@ class RbacTransactionTests {
                             """
                         SELECT COUNT(*)
                         FROM role_permissions rp
-                        JOIN permissions p ON p.id=rp.permission_id
+                        JOIN roles p ON p.id=rp.role_id
                         WHERE p.code=?
                         """,
                             Integer.class,

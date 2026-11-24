@@ -28,7 +28,7 @@ public class InventoryProductAccessService {
         Product product =
                 products.findById(productId)
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        rejectDeleted(product);
+        // Retired catalog rows remain valid sources for historical stock obligations.
     }
 
     /** Giữ khóa Product đến khi giao dịch thay đổi kho của bên gọi kết thúc. */
@@ -37,12 +37,6 @@ public class InventoryProductAccessService {
                 products.findByIdForUpdate(productId)
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         entityManager.refresh(product, LockModeType.PESSIMISTIC_WRITE);
-        rejectDeleted(product);
-    }
-
-    private void rejectDeleted(Product product) {
-        if (product.getDeletedAt() != null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-        }
+        // Retired catalog rows remain valid sources for historical stock obligations.
     }
 }

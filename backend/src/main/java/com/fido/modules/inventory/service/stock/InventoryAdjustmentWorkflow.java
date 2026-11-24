@@ -140,7 +140,10 @@ class InventoryAdjustmentWorkflow {
                                                 HttpStatus.NOT_FOUND,
                                                 "INVENTORY_MOVEMENT_NOT_FOUND"));
         if (!InventoryPolicy.ADJUSTMENT.equals(source.getTransactionType())
-                || source.getReversesTransactionId() != null) {
+                || source.getReversesTransactionId() != null
+                || source.getGoodsReceiptItemId() != null
+                || source.getOrderItemId() != null
+                || !source.getIdempotencyKey().startsWith("adjustment:")) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "INVENTORY_UNSUPPORTED_MOVEMENT_TYPE");
         }
@@ -222,7 +225,7 @@ class InventoryAdjustmentWorkflow {
                 || productId == null
                 || productId <= 0
                 || quantityDelta == 0
-                || !InventoryPolicy.isAdjustmentReasonCode(reasonCode)
+                || !InventoryPolicy.isAdjustmentDirectionValid(reasonCode, quantityDelta)
                 || !InventoryPolicy.isValidSourceOperationId(sourceOperationId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "INVENTORY_INVALID_MOVEMENT");
         }

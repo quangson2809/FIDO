@@ -38,6 +38,15 @@ class CleanTargetEntityMappingTests {
         try (Connection connection = dataSource.getConnection()) {
             ScriptUtils.executeSqlScript(
                     connection, new ClassPathResource("db/migration/V1__fido_target_schema.sql"));
+            ScriptUtils.executeSqlScript(
+                    connection, new ClassPathResource("db/migration/V2__operational_accounts.sql"));
+            ScriptUtils.executeSqlScript(
+                    connection,
+                    new ClassPathResource("db/migration/V3__physical_return_receipts.sql"));
+            ScriptUtils.executeSqlScript(
+                    connection,
+                    new ClassPathResource(
+                            "db/migration/V4__stocktakes_and_receipt_corrections.sql"));
         } catch (SQLException failure) {
             throw new IllegalStateException("Canonical FIDO database baseline failed", failure);
         }

@@ -16,12 +16,12 @@ class OrderAuditPrivacyHttpTests extends OrderHttpSupport {
     @Autowired ObjectMapper json;
 
     @Test
-    void cancellationReasonDoesNotLeakIntoAuditPayload() throws Exception {
+    void cancellationReasonPersistsWithPrivateFieldsRedacted() throws Exception {
         User customer = user();
         User root = superadmin();
         CatalogFixture product = createVariant(5, 100000, null);
         long orderId = createOrder(customer, product, 1);
-        String reason = "cancel-private-marker-" + UUID.randomUUID();
+        String reason = "Không nhận được hàng, liên hệ private@example.test hoặc 0901234567";
 
         var cancelled =
                 call(
@@ -32,7 +32,9 @@ class OrderAuditPrivacyHttpTests extends OrderHttpSupport {
         assertEquals(200, cancelled.status(), cancelled.body());
 
         String afterData = auditAfterData(orderId, "ORDER_CANCEL");
-        assertFalse(afterData.contains(reason));
+        assertTrue(afterData.contains("Không nhận được hàng"));
+        assertFalse(afterData.contains("private@example.test"));
+        assertFalse(afterData.contains("0901234567"));
         assertFalse(afterData.contains("reason_code"));
         assertTrue(afterData.contains("CANCELLED"));
         assertEquals(5, stock(product.productId()));

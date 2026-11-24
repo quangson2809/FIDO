@@ -16,10 +16,13 @@ export const voucherService = {
     ).data;
   },
   async update(id: number, input: VoucherPatchInput) {
+    const fields = ['code', 'discount_type', 'discount_value', 'minimum_order_value', 'maximum_discount', 'starts_at', 'ends_at', 'usage_limit', 'status'] as const;
+    const payload: Record<string, unknown> = {};
+    for (const field of fields) if (Object.hasOwn(input, field) && input[field] !== undefined) payload[field] = input[field];
     return (
       await apiClient.patch<ApiResponse<VoucherDetail>>(
         `/admin/vouchers/${id}`,
-        { ...voucherRequestFields(input), status: input.status },
+        payload,
       )
     ).data;
   },

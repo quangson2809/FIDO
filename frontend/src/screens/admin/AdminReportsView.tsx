@@ -1,3 +1,4 @@
+import { OperationalReportPanel } from '../../features/report/components/OperationalReportPanel';
 import { useSearchParams } from 'react-router-dom';
 import { useAuthSession } from '../../features/auth/session/useAuthSession';
 import { canAccessAdminModule } from '../../features/auth/session/adminAccessPolicy';
@@ -82,6 +83,7 @@ export function AdminReportsView() {
           canReadCatalog={canAccessAdminModule('products', profile, permissionCodes)}
         />
       )}
+      {filters.valid && <OperationalReportPanel key={`operations/${filters.from}/${filters.to}`} from={filters.from} to={filters.to} canReadOrders={canAccessAdminModule('orders', profile, permissionCodes)} canReadCatalog={canAccessAdminModule('products', profile, permissionCodes)} />}
     </section>
   );
 }

@@ -1,3 +1,4 @@
+import { AccountSecurityPanel } from '../features/auth/components/AccountSecurityPanel';
 import { StorefrontIcon } from '../components/StorefrontIcon';
 import { LogoutButton } from '../shared/ui/storefront/LogoutButton';
 import { QueryFeedback } from '../shared/ui/storefront/QueryFeedback';
@@ -482,6 +483,7 @@ export const ProfileScreen: React.FC = () => {
             </div>
           </section>
         </div>
+        {profile && <AccountSecurityPanel email={profile.account.email} verified={profile.account.email_verified === true} />}
       </section>
     </div>
   );

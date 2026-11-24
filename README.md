@@ -239,3 +239,7 @@ The frontend CI workflow runs the same smoke, lint, typecheck and production-bui
 - Frontend DTOs remain handwritten. Runtime validation is applied selectively at high-impact trust boundaries; `POST /auth/login` and `GET /me` are validated before token/session/RBAC state is accepted. No OpenAPI client generation is introduced.
 - Product image upload/reorder/delete use the dedicated backend image APIs; frontend code does not call the external image provider directly.
 - Frontend permission checks are for navigation/UX only. Authorization must continue to be enforced by backend Spring Security.
+
+## Operational workflows
+
+See [operational API and runbook](docs/operations/operational-api.md) for price confirmation, physical returns, stocktakes, receipt corrections, customer security, content lifecycle and operational reports. Schema upgrades use additive Flyway V2–V4; preserve V1 and existing data. SMTP delivery requires deployment configuration described in that runbook.

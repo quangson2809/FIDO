@@ -1,3 +1,6 @@
+import { useAuthSession } from '../../features/auth/session/useAuthSession';
+import { canWriteAdminModule } from '../../features/auth/session/adminAccessPolicy';
+import { getApiErrorMessage } from '../../services/http/apiError';
 import { formatVietnamDateTime } from '../../shared/time/formatVietnamDateTime';
 import { statusLabel } from '../../shared/admin/statusLabels';
 import { useRemoteQuery } from '../../shared/hooks/useRemoteQuery';
@@ -137,6 +140,15 @@ function CustomerDetail({ customerId, onClose }: { customerId: number; onClose: 
     useCallback(() => adminAccessService.getCustomer(customerId), [customerId]),
   );
   const detail = query.data;
+  const { profile, permissionCodes } = useAuthSession();
+  const canWrite = canWriteAdminModule('customers', profile, permissionCodes);
+  const [reason, setReason] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null);
+  const change = async (status: 'ACTIVE' | 'LOCKED') => {
+    if (busy || !reason.trim()) return; setBusy(true); setError(null);
+    try { await adminAccessService.changeCustomerStatus(customerId, status, reason.trim()); setReason(''); query.reload(); }
+    catch (cause: unknown) { setError(getApiErrorMessage(cause, 'Không thể đổi trạng thái khách hàng.')); }
+    finally { setBusy(false); }
+  };
   return (
     <Modal title="Hồ sơ khách hàng" onClose={onClose}>
       <QueryFeedback loading={query.loading} error={query.error} onRetry={query.reload} />
@@ -144,6 +156,9 @@ function CustomerDetail({ customerId, onClose }: { customerId: number; onClose: 
         <div className="space-y-4">
           <h3>{detail.account.phone}</h3>
           <p>{detail.account.email ?? 'Không có email'}</p>
+          <p>Trạng thái: {statusLabel(detail.account.status)}</p>
+          {error && <p role="alert">{error}</p>}
+          {canWrite && <fieldset disabled={busy} className="space-y-3"><label>Lý do khóa / mở khóa<textarea className="field-input" required maxLength={500} value={reason} onChange={e => setReason(e.target.value)} /></label><button type="button" className="admin-secondary" disabled={!reason.trim() || !['ACTIVE', 'LOCKED'].includes(detail.account.status)} onClick={() => void change(detail.account.status === 'LOCKED' ? 'ACTIVE' : 'LOCKED')}>{busy ? 'Đang xử lý…' : detail.account.status === 'LOCKED' ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}</button></fieldset>}
           <h3>Địa chỉ</h3>
           {detail.addresses.length ? (
             detail.addresses.map((address) => (

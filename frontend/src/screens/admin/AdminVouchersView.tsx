@@ -91,7 +91,7 @@ export function AdminVouchersView({
                   <td className="p-3">
                     {v.usage_count} / {v.usage_limit ?? '∞'}
                   </td>
-                  <td className="p-3">{voucherStatusLabel[v.status]}</td>
+                  <td className="p-3">{v.effective_status === 'EXHAUSTED' ? 'Hết lượt sử dụng' : v.effective_status === 'SCHEDULED' ? 'Chưa đến thời gian' : voucherStatusLabel[v.effective_status ?? v.status]}</td>
                   <td className="p-3">
                     <button className="underline" onClick={() => setEditing({ voucher: v })}>
                       {canWrite ? 'Xem / Sửa' : 'Chi tiết'}

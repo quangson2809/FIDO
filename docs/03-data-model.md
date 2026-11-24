@@ -1,5 +1,7 @@
 # 03 — Target Data Model and Persistence Contract
 
+> **2026-11-23/24 operational owner amendment:** [operational contract](operations/operational-api.md) supersedes earlier exclusions/rules for the explicitly requested operational features, including physical receipts, stocktakes, linked corrections, price consent, verified-email recovery, customer status and report metrics. Base V1 remains unchanged; additive V2–V4 migrations extend it to 36 business tables. See [schema extension](operations/operational-schema.mmd).
+
 ## 1. Authority and scope
 
 This document describes the approved target model only. The canonical source for exact columns, keys and relationships is [ERD v2](refactor-v2/target/erd-v2-approved.mmd); the physical contract is [P1 Data Dictionary](refactor-v2/p1/P1-data-dictionary.csv). Do not infer target fields from implementation classes.

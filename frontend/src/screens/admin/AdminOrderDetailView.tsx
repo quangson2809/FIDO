@@ -1,3 +1,4 @@
+import { OrderOperationsPanel } from '../../features/orders/components/OrderOperationsPanel';
 import { StatusBadge } from '../../shared/admin/StatusBadge';
 import { OrderProgress } from '../../features/orders/components/OrderProgress';
 import { useToast } from '../../shared/ui/toast/useToast';
@@ -355,10 +356,12 @@ export const AdminOrderDetailView: React.FC<Props> = ({ orderId, onBack }) => {
                   Nhập lý do trả hàng và chỉ xác nhận khi đã hoàn tiền toàn bộ. Hệ thống kiểm tra thời hạn 2 ngày kể từ khi giao hàng; không tự động nhập lại kho.
                 </p>
               )}
-            </section>
+
+    </section>
           )}
         </aside>
       </div>
+              {order && <OrderOperationsPanel key={`${order.order_id}/${order.order_status}`} order={order} canReceive={can('INVENTORY_WRITE')} />}
     </div>
   );
 };

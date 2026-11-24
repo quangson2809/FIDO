@@ -111,6 +111,20 @@ public class Voucher {
                 && !next.startsAt().isBefore(next.endsAt())) {
             throw BusinessRuleException.invalid("VOUCHER_WINDOW_INVALID");
         }
+        Configuration normalized =
+                new Configuration(
+                        next.discountType(),
+                        next.discountValue(),
+                        next.minimumOrderValue(),
+                        next.maximumDiscount(),
+                        next.startsAt() == null
+                                ? null
+                                : next.startsAt().truncatedTo(ChronoUnit.MICROS),
+                        next.endsAt() == null ? null : next.endsAt().truncatedTo(ChronoUnit.MICROS),
+                        next.usageLimit());
+        if (!"DRAFT".equals(status) && !configuration().equals(normalized)) {
+            throw BusinessRuleException.conflict("VOUCHER_ISSUED_TERMS_IMMUTABLE");
+        }
         discountType = next.discountType();
         discountValue = next.discountValue();
         minimumOrderValue = next.minimumOrderValue();
@@ -119,6 +133,25 @@ public class Voucher {
         endsAt = next.endsAt() == null ? null : next.endsAt().truncatedTo(ChronoUnit.MICROS);
         usageLimit = next.usageLimit();
         status = nextStatus;
+    }
+
+    public Configuration configuration() {
+        return new Configuration(
+                discountType,
+                discountValue,
+                minimumOrderValue,
+                maximumDiscount,
+                startsAt,
+                endsAt,
+                usageLimit);
+    }
+
+    public String effectiveStatus(Instant now) {
+        if (!"ACTIVE".equals(status)) return status;
+        if (endsAt != null && !now.isBefore(endsAt)) return "EXPIRED";
+        if (usageLimit != null && usageCount >= usageLimit) return "EXHAUSTED";
+        if (startsAt != null && now.isBefore(startsAt)) return "SCHEDULED";
+        return "ACTIVE";
     }
 
     public void requireRedeemable(Instant now) {

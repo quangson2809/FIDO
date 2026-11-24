@@ -95,8 +95,8 @@ class OrderStockHttpTests extends OrderHttpSupport {
 
         assertEquals(200, action(root, orderId, "MARK_DELIVERY_FAILED").status());
         assertEquals(200, action(root, orderId, "CANCEL").status());
-        assertEquals(5, stock(product.productId()));
-        assertEquals(1, movementCount(orderId, "ORDER_CANCEL_REVERSAL"));
+        assertEquals(4, stock(product.productId()));
+        assertEquals(0, movementCount(orderId, "ORDER_CANCEL_REVERSAL"));
         assertEquals(0, movementCount(orderId, "RETURN_RESTOCK"));
         assertEquals(409, action(root, orderId, "CANCEL").status());
     }

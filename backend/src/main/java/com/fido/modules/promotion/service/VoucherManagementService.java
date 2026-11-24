@@ -100,7 +100,12 @@ public class VoucherManagementService {
                                         new ResponseStatusException(
                                                 HttpStatus.NOT_FOUND, "VOUCHER_NOT_FOUND"));
 
+        var before = auditFacts(voucher);
         if (request.isCodePresent()) {
+            if (!"DRAFT".equals(voucher.getStatus())
+                    && !voucher.getCode().equals(normalizeCode(request.getCode())))
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT, "VOUCHER_ISSUED_TERMS_IMMUTABLE");
             String code = normalizeCode(request.getCode());
             if (vouchers.existsByCodeIgnoreCaseAndVoucherIdNot(code, id)) {
                 throw new ResponseStatusException(
@@ -135,11 +140,27 @@ public class VoucherManagementService {
 
         Voucher saved = vouchers.save(voucher);
         audit.record(
-                AuditWriteEvent.of(
+                AuditWriteEvent.withChanges(
                         AuditAction.VOUCHER_UPDATE,
                         AuditEntityType.VOUCHER,
-                        saved.getVoucherId().toString()));
+                        saved.getVoucherId().toString(),
+                        before,
+                        auditFacts(saved)));
         return dto(saved);
+    }
+
+    private static java.util.Map<String, Object> auditFacts(Voucher v) {
+        var facts = new java.util.LinkedHashMap<String, Object>();
+        facts.put("code", v.getCode());
+        facts.put("status", v.getStatus());
+        facts.put("discount_type", v.getDiscountType());
+        facts.put("discount_value", v.getDiscountValue());
+        facts.put("minimum_order_value", v.getMinimumOrderValue());
+        facts.put("maximum_discount", v.getMaximumDiscount());
+        facts.put("starts_at", v.getStartsAt());
+        facts.put("ends_at", v.getEndsAt());
+        facts.put("usage_limit", v.getUsageLimit());
+        return facts;
     }
 
     private static String normalizeCode(String code) {
@@ -165,7 +186,8 @@ public class VoucherManagementService {
                 voucher.getEndsAt(),
                 voucher.getUsageLimit(),
                 voucher.getUsageCount(),
-                voucher.getStatus());
+                voucher.getStatus(),
+                voucher.effectiveStatus(Instant.now()));
     }
 
     private static void bad(String reason) {

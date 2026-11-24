@@ -26,6 +26,7 @@ export const CartDrawer: React.FC = () => {
     setIsCartOpen(false);
   };
   const removalTrigger = useRef<HTMLButtonElement | null>(null);
+  const unavailable = cartItems.some(item => !item.purchasable);
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleCheckout = () => {
@@ -211,6 +212,7 @@ export const CartDrawer: React.FC = () => {
                           </div>
                         </div>
                       )}
+                      {!item.purchasable && <p role="status" className="mt-2 text-sm text-amber-800">{item.unavailableReason === 'PRODUCT_NOT_AVAILABLE' ? 'Sản phẩm đã ngừng bán. Vui lòng xóa khỏi giỏ để mua các mặt hàng còn lại.' : 'Không đủ tồn kho. Hãy giảm số lượng hoặc xóa sản phẩm.'}</p>}
                       <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#424844]">
                         {item.sku && (
                           <span className="border border-[#D9DDD6] bg-white px-2 py-1">
@@ -297,7 +299,7 @@ export const CartDrawer: React.FC = () => {
           </div>
           <button
             type="button"
-            disabled={cartItems.length === 0 || isCartBusy || Boolean(cartError)}
+            disabled={cartItems.length === 0 || unavailable || isCartBusy || Boolean(cartError)}
             onClick={handleCheckout}
             className="mt-4 flex w-full items-center justify-center gap-2 bg-[#0B2419] py-3.5 text-xs font-bold uppercase tracking-[0.18em] text-white transition hover:bg-[#1B5038] disabled:cursor-not-allowed disabled:opacity-40"
           >

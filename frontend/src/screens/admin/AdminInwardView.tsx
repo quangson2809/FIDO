@@ -1,3 +1,4 @@
+import { ReceiptCorrectionPanel } from '../../features/inventory/components/ReceiptCorrectionPanel';
 import { StatusBadge } from '../../shared/admin/StatusBadge';
 import { useSearchParams } from 'react-router-dom';
 import { Pagination } from '../../shared/admin/Pagination';
@@ -265,6 +266,7 @@ export const AdminInwardView: React.FC<{
             <button type="button" disabled={saving} onClick={() => void runAction('CONFIRM')} className="bg-[#0B2419] px-3 py-2 text-xs font-bold uppercase text-white disabled:opacity-40">Xác nhận nhập kho</button>
             <button type="button" disabled={saving} onClick={() => void runAction('CANCEL')} className="border border-red-300 px-3 py-2 text-xs font-bold uppercase text-red-700 disabled:opacity-40">Hủy phiếu</button>
           </div>}
+          {selected?.receipt_status === 'CONFIRMED' && <ReceiptCorrectionPanel key={selected.receipt_id} receipt={selected} canWrite={canWrite} onChanged={list.reload} />}
         </aside>
       </div>
       {pickingRow !== null && <ProductPicker

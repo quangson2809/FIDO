@@ -21,6 +21,22 @@ public class InventoryMovementQueryService {
                 hasMovement(orderId, InventoryPolicy.DELIVERY_RETURN_IN));
     }
 
+    public long cancellationRestoredQuantity(Long orderItemId) {
+        return transactions
+                .findAllByOrderItemIdInAndTransactionType(
+                        java.util.List.of(orderItemId), InventoryPolicy.ORDER_CANCEL_IN)
+                .stream()
+                .mapToLong(t -> t.getQuantityDelta())
+                .sum();
+    }
+
+    public boolean hasOrderDeduction(Long orderItemId, int quantity) {
+        var original =
+                transactions.findAllByOrderItemIdInAndTransactionType(
+                        java.util.List.of(orderItemId), InventoryPolicy.ORDER_CONFIRM_OUT);
+        return original.size() == 1 && original.get(0).getQuantityDelta() == -quantity;
+    }
+
     private boolean hasMovement(Long orderId, String transactionType) {
         return transactions.countByOrderIdAndTransactionType(orderId, transactionType) > 0L;
     }

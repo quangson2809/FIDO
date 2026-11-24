@@ -61,6 +61,8 @@ export interface ImageUploadLimits {
 export interface AdminCatalogMetaDto {
   attributes: AttributeDto[];
   image_upload?: ImageUploadLimits;
+  categories: CategoryDto[];
+  brands: BrandDto[];
 }
 
 export interface ProductImageDto {
@@ -80,6 +82,8 @@ export interface ProductImageOrderInput {
 }
 
 export interface ProductSummaryDto {
+  matched_product_id?: number | null;
+  matched_sku?: string | null;
   product_id: number;
   parent_product_id: number | null;
   sku: string;
@@ -274,6 +278,8 @@ export interface AttributeOptionPatchInput {
 }
 
 export interface CatalogProductView {
+  matchedProductId?: number | null;
+  matchedSku?: string | null;
   id: string;
   product_id: number;
   sku: string;

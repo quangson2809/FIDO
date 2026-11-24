@@ -56,7 +56,7 @@ public class CatalogReferenceService {
 
     public Product publicProduct(Long productId) {
         Product product = product(productId);
-        if (!"ACTIVE".equals(product.getStatus())) throw notFound();
+        if (!visibility().allows(product)) throw notFound();
         return product;
     }
 
@@ -97,6 +97,38 @@ public class CatalogReferenceService {
             pending.addAll(children.getOrDefault(id, List.of()));
         }
         return Set.copyOf(result);
+    }
+
+    public Visibility visibility() {
+        List<Category> all = categories.findAllByOrderByCategoryIdAsc();
+        Set<Long> hiddenCategories =
+                all.stream()
+                        .filter(c -> !"ACTIVE".equals(c.getStatus()))
+                        .map(Category::getCategoryId)
+                        .collect(Collectors.toCollection(HashSet::new));
+        boolean changed;
+        do {
+            changed = false;
+            for (Category c : all) {
+                if (hiddenCategories.contains(c.getParentCategoryId()))
+                    changed |= hiddenCategories.add(c.getCategoryId());
+            }
+        } while (changed);
+        Set<Long> hiddenBrands =
+                brands.findAllByOrderByBrandIdAsc().stream()
+                        .filter(b -> !"ACTIVE".equals(b.getStatus()))
+                        .map(Brand::getBrandId)
+                        .collect(Collectors.toSet());
+        return new Visibility(Set.copyOf(hiddenCategories), Set.copyOf(hiddenBrands));
+    }
+
+    public record Visibility(Set<Long> hiddenCategories, Set<Long> hiddenBrands) {
+        public boolean allows(Product p) {
+            return !p.isDeleted()
+                    && "ACTIVE".equals(p.getStatus())
+                    && (p.getCategoryId() == null || !hiddenCategories.contains(p.getCategoryId()))
+                    && (p.getBrandId() == null || !hiddenBrands.contains(p.getBrandId()));
+        }
     }
 
     public Brand brand(Long brandId) {

@@ -18,18 +18,21 @@ public class InventoryCommandService {
     private final InventoryAdjustmentWorkflow adjustments;
     private final InventoryOrderWorkflow orders;
     private final InventoryProductAccessService productAccess;
+    private final InventoryCorrectionWorkflow corrections;
 
     public InventoryCommandService(
             InventoryReceiptWorkflow receipts,
             InventoryOpeningWorkflow opening,
             InventoryAdjustmentWorkflow adjustments,
             InventoryOrderWorkflow orders,
-            InventoryProductAccessService productAccess) {
+            InventoryProductAccessService productAccess,
+            InventoryCorrectionWorkflow corrections) {
         this.receipts = receipts;
         this.opening = opening;
         this.adjustments = adjustments;
         this.orders = orders;
         this.productAccess = productAccess;
+        this.corrections = corrections;
     }
 
     public void receiveGoods(Long actor, Long receiptId, Long warehouseId, List<StockLine> lines) {
@@ -81,6 +84,26 @@ public class InventoryCommandService {
     public void restoreCancelledOrder(
             Long actor, Long orderId, List<StockLine> lines, String reason) {
         orders.restoreCancelledOrder(actor, orderId, lines, reason);
+    }
+
+    public void postCountDifference(Long actor, Long countId, Long productId, int delta) {
+        corrections.post(
+                actor, productId, delta, "stocktake:" + countId + ":product:" + productId, null);
+    }
+
+    public void postReceiptCorrection(
+            Long actor, Long correctionId, Long itemId, Long productId, int delta) {
+        corrections.post(
+                actor,
+                productId,
+                delta,
+                "receipt-correction:" + correctionId + ":item:" + itemId,
+                itemId);
+    }
+
+    public void receiveReturnedStock(
+            Long actor, Long orderId, Long receiptId, List<StockLine> sellableLines) {
+        orders.receiveReturn(actor, orderId, receiptId, sellableLines);
     }
 
     public void requireTrackedProduct(Long productId) {

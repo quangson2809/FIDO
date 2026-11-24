@@ -93,6 +93,7 @@ public class CatalogMasterDataService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CATEGORY_CHANGE_REQUIRED");
         }
         Category category = references.categoryForUpdate(categoryId);
+        String oldStatus = category.getStatus();
         if (request.isParentPresent()) {
             validateParent(categoryId, request.getParentCategoryId());
             category.setParentCategoryId(request.getParentCategoryId());
@@ -111,10 +112,12 @@ public class CatalogMasterDataService {
         categories.save(category);
         flushOrConflict("Category violates a uniqueness or reference constraint");
         audit.record(
-                AuditWriteEvent.of(
+                AuditWriteEvent.withChanges(
                         AuditAction.CATEGORY_UPDATE,
                         AuditEntityType.CATEGORY,
-                        categoryId.toString()));
+                        categoryId.toString(),
+                        java.util.Map.of("status", oldStatus),
+                        java.util.Map.of("status", category.getStatus())));
         return CatalogMapper.category(category);
     }
 
@@ -162,6 +165,7 @@ public class CatalogMasterDataService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "BRAND_CHANGE_REQUIRED");
         }
         Brand brand = references.brand(brandId);
+        String oldStatus = brand.getStatus();
         if (request.isNamePresent()) {
             String name = request.getName().trim();
             String slug = slug(name);
@@ -176,8 +180,12 @@ public class CatalogMasterDataService {
         brands.save(brand);
         flushOrConflict("Brand violates a uniqueness or reference constraint");
         audit.record(
-                AuditWriteEvent.of(
-                        AuditAction.BRAND_UPDATE, AuditEntityType.BRAND, brandId.toString()));
+                AuditWriteEvent.withChanges(
+                        AuditAction.BRAND_UPDATE,
+                        AuditEntityType.BRAND,
+                        brandId.toString(),
+                        java.util.Map.of("status", oldStatus),
+                        java.util.Map.of("status", brand.getStatus())));
         return CatalogMapper.brand(brand);
     }
 

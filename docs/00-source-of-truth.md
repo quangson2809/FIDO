@@ -1,5 +1,7 @@
 # FIDO — Source of Truth
 
+> **2026-11-23/24 operational owner amendment:** [operational contract](operations/operational-api.md) supersedes earlier exclusions/rules for the explicitly requested operational features, including physical receipts, stocktakes, linked corrections, price consent, verified-email recovery, customer status and report metrics. Base V1 remains unchanged; additive V2–V4 migrations extend it to 36 business tables. See [schema extension](operations/operational-schema.mmd).
+
 ## 1. Authority order
 
 The [ERD v2 reconstruction index](refactor-v2/README.md) organizes target assets, P0 evidence and the ordered P1.1–P1.9 package. Archived reports are evidence only; they do not outrank current contracts.

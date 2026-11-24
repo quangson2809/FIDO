@@ -7,6 +7,8 @@ import { useAuthSession } from '../../features/auth/session/useAuthSession';
 import { QueryFeedback } from '../../shared/ui/storefront/QueryFeedback';
 import { ADMIN_DETAIL_PATHS, ADMIN_PATHS, APP_PATHS, toAdminChildPath } from '../../routes/paths';
 
+const AccountRecoveryScreen = lazy(() => import('../../screens/AccountRecoveryScreen').then(module => ({ default: module.AccountRecoveryScreen })));
+
 const HomeScreen = lazy(() =>
   import('../../screens/HomeScreen').then((module) => ({ default: module.HomeScreen })),
 );
@@ -220,6 +222,7 @@ export const AppRoutes: React.FC = () => (
         <Route path={APP_PATHS.about} element={<AboutScreen />} />
         <Route path={APP_PATHS.policy} element={<PolicyScreen />} />
         <Route path={APP_PATHS.auth} element={<AuthScreen />} />
+        <Route path="/account-recovery" element={<AccountRecoveryScreen />} />
 
         <Route
           path={APP_PATHS.checkout}

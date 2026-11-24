@@ -95,6 +95,7 @@ public class CartQueryService {
         var calculation =
                 pricing.calculate(
                         rawItems.stream()
+                                .filter(item -> canPurchase(item))
                                 .map(
                                         item ->
                                                 new PricingCalculator.LineInput(
@@ -117,9 +118,15 @@ public class CartQueryService {
                                         new ResolvedCartItem(
                                                 item.item(),
                                                 item.product(),
-                                                grossByProduct.get(item.item().getProductId())))
+                                                grossByProduct.getOrDefault(
+                                                        item.item().getProductId(), 0L)))
                         .toList();
         return new ResolvedCart(pricedItems, calculation.subtotal());
+    }
+
+    private boolean canPurchase(ResolvedCartItem item) {
+        return item.product().purchasable()
+                && item.product().availableQuantity() >= item.item().getQuantity();
     }
 
     private ResolvedCartItem resolve(CartItem item, CatalogProductReadService.ProductView product) {
@@ -142,7 +149,11 @@ public class CartQueryService {
                 product.sku(),
                 product.unitPrice(),
                 resolved.lineTotal(),
-                product.availableQuantity());
+                product.availableQuantity(),
+                canPurchase(resolved),
+                !"ACTIVE".equals(product.status())
+                        ? "PRODUCT_NOT_AVAILABLE"
+                        : canPurchase(resolved) ? null : "INVENTORY_INSUFFICIENT_STOCK");
     }
 
     private CheckoutCartView.Item toCheckoutItem(ResolvedCartItem resolved) {

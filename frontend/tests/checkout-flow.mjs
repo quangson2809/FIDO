@@ -45,6 +45,7 @@ const cart = () => ({
   subtotal: quantity * price,
 });
 const quote = () => ({
+  confirmation_token: `consent-${price}-${quantity}`,
   items: [item()],
   subtotal: quantity * price,
   discount_amount: 0,
@@ -115,7 +116,7 @@ await page.route('**/api/v1/**', async (route) => {
     const orderBody = request.postDataJSON();
     assert.deepEqual(
       Object.keys(orderBody).sort(),
-      ['address_line', 'district', 'province', 'recipient_name', 'recipient_phone', 'voucher_code', 'ward'],
+      ['address_line', 'confirmation_token', 'district', 'province', 'recipient_name', 'recipient_phone', 'voucher_code', 'ward'],
     );
     assert.equal(orderBody.recipient_phone, '0900000000');
     assert.ok(orderBody.address_line);
@@ -128,6 +129,8 @@ await page.route('**/api/v1/**', async (route) => {
         releaseOrder = resolve;
       });
     if (rejectOrder) return send({ message: 'Không thể tạo đơn thử nghiệm' }, 409);
+    if (orderBody.confirmation_token !== quote().confirmation_token)
+      return send({ code: 'CHECKOUT_RECONFIRMATION_REQUIRED', message: 'Giá đã thay đổi. Chưa tạo đơn.' }, 409);
     orders++;
     const subtotal = quantity * price;
     const total = subtotal + 30000;
@@ -216,14 +219,19 @@ try {
   await page.getByRole('button', { name: 'Quay lại chỉnh sửa' }).click();
   assert.equal(orders, 0);
 
-  // The quote is advisory: order creation may return a different backend-confirmed total.
+  // Changed payable facts require a second explicit confirmation before any Order exists.
   price = 120000;
   await openDialog();
+  await confirm().click();
+  await page.getByText('Giá hoặc ưu đãi đã thay đổi.', { exact: false }).waitFor();
+  assert.equal(orders, 0);
+  assert.equal(quantity, 2);
+  await openDialog();
+  assert.match(await dialog.innerText(), /270\.000/);
   await confirm().click();
   await page.waitForURL('**/checkout/success/1');
   assert.equal(orders, 1);
   assert.equal(quantity, 0);
-  await page.getByText(/Tổng thanh toán khi nhận hàng: 270\.000/).waitFor();
 
   // A rejected creation must retain the cart and require a new quote.
   quantity = 2;
@@ -235,7 +243,7 @@ try {
   await confirm().click();
   await page.getByRole('alert').filter({ hasText: 'Không thể tạo đơn thử nghiệm' }).waitFor();
   assert.equal(orders, 1);
-  assert.equal(orderRequests, 2);
+  assert.equal(orderRequests, 3);
   assert.equal(quantity, 2);
   assert.equal(await dialog.count(), 0);
 
@@ -280,7 +288,7 @@ try {
   await dialog.getByRole('button', { name: 'Đang tạo đơn...', exact: true }).waitFor();
   await page.waitForTimeout(100);
   assert.equal(orders, 1, 'order is not counted until backend creation succeeds');
-  assert.equal(orderRequests, 3, 'synchronous double click sends one request');
+  assert.equal(orderRequests, 4, 'synchronous double click sends one request');
   await page.keyboard.press('Escape');
   assert.equal(await dialog.count(), 1, 'cannot dismiss while submitting');
   releaseOrder();
@@ -303,8 +311,8 @@ try {
   await confirm().click();
   await page.waitForURL('**/checkout/success/3');
   assert.equal(orders, 3);
-  assert.equal(orderRequests, 4);
-  assert.equal(new Set(idempotencyKeys).size, 4, 'each distinct submission must use a fresh key');
+  assert.equal(orderRequests, 5);
+  assert.equal(new Set(idempotencyKeys).size, 5, 'each distinct submission must use a fresh key');
   assert.match(await page.getByRole('button', { name: /^Giỏ hàng \(/ }).innerText(), /0$/);
   await page
     .getByText('Đơn đã được tạo. Chưa thể tải lại giỏ hàng; vui lòng tải lại trang khi có kết nối.')

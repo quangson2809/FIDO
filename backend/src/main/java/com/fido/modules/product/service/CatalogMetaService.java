@@ -61,17 +61,39 @@ public class CatalogMetaService {
     }
 
     public CatalogMetaDto publicMeta() {
+        var allCategories = categories.findAllByOrderByCategoryIdAsc();
+        var hidden = new java.util.HashSet<Long>();
+        allCategories.stream()
+                .filter(c -> !"ACTIVE".equals(c.getStatus()))
+                .forEach(c -> hidden.add(c.getCategoryId()));
+        boolean changed;
+        do {
+            changed = false;
+            for (var c : allCategories)
+                if (hidden.contains(c.getParentCategoryId()))
+                    changed |= hidden.add(c.getCategoryId());
+        } while (changed);
         List<CategoryDto> categoryDtos =
-                categories.findAllByOrderByCategoryIdAsc().stream()
+                allCategories.stream()
+                        .filter(c -> !hidden.contains(c.getCategoryId()))
                         .map(CatalogMapper::category)
                         .toList();
         List<BrandDto> brandDtos =
-                brands.findAllByOrderByBrandIdAsc().stream().map(CatalogMapper::brand).toList();
+                brands.findAllByOrderByBrandIdAsc().stream()
+                        .filter(b -> "ACTIVE".equals(b.getStatus()))
+                        .map(CatalogMapper::brand)
+                        .toList();
         return new CatalogMetaDto(categoryDtos, brandDtos, attributeMetadata());
     }
 
     public AdminCatalogMetaDtoV2 adminMeta() {
-        return new AdminCatalogMetaDtoV2(attributeMetadata(), imageUploadLimits);
+        return new AdminCatalogMetaDtoV2(
+                attributeMetadata(),
+                imageUploadLimits,
+                categories.findAllByOrderByCategoryIdAsc().stream()
+                        .map(CatalogMapper::category)
+                        .toList(),
+                brands.findAllByOrderByBrandIdAsc().stream().map(CatalogMapper::brand).toList());
     }
 
     private List<AttributeDto> attributeMetadata() {

@@ -9,7 +9,18 @@ public record CheckoutQuoteDto(
         Long discount_amount,
         Long shipping_fee,
         Long total_amount,
-        VoucherDto voucher) {
+        VoucherDto voucher,
+        String confirmation_token) {
+
+    public CheckoutQuoteDto(
+            List<CheckoutItemDto> items,
+            Long subtotal,
+            Long discount_amount,
+            Long shipping_fee,
+            Long total_amount,
+            VoucherDto voucher) {
+        this(items, subtotal, discount_amount, shipping_fee, total_amount, voucher, null);
+    }
 
     public CheckoutQuoteDto {
         items = List.copyOf(items);

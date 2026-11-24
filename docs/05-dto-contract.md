@@ -1,5 +1,7 @@
 # 05 — Target JSON, DTO and Request/Response Contract
 
+> **2026-11-23/24 operational owner amendment:** [operational contract](operations/operational-api.md) supersedes earlier exclusions/rules for the explicitly requested operational features, including physical receipts, stocktakes, linked corrections, price consent, verified-email recovery, customer status and report metrics. Base V1 remains unchanged; additive V2–V4 migrations extend it to 36 business tables. See [schema extension](operations/operational-schema.mmd).
+
 ## 1. General rules
 
 - JSON properties use `snake_case`; controller DTOs are explicit and are not serialized JPA entities.

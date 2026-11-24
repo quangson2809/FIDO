@@ -1,5 +1,7 @@
 # 04 — Target HTTP API Contract (ERD v2)
 
+> **2026-11-23/24 operational owner amendment:** [operational contract](operations/operational-api.md) supersedes earlier exclusions/rules for the explicitly requested operational features, including physical receipts, stocktakes, linked corrections, price consent, verified-email recovery, customer status and report metrics. Base V1 remains unchanged; additive V2–V4 migrations extend it to 36 business tables. See [schema extension](operations/operational-schema.mmd).
+
 ## 1. Contract boundary
 
 This file defines the target HTTP surface for the approved ERD v2. It is not a copy of the repository's former route/DTO inventory. Current controllers and the P1 mapping files are implementation evidence only; they do not keep a route in the target contract when its persistence concept is no longer part of the approved model.

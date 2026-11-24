@@ -1,3 +1,4 @@
+import { StocktakePanel } from '../../features/inventory/components/StocktakePanel';
 import { Link, useLocation } from 'react-router-dom';
 import { formatVietnamDateTime } from '../../shared/time/formatVietnamDateTime';
 import { statusLabel } from '../../shared/admin/statusLabels';
@@ -82,6 +83,10 @@ export const AdminInventoryView: React.FC<{
     event.preventDefault();
     if (!canWrite || !selected || saving) return;
     const parsedDelta = Number(delta);
+    if ((['DAMAGE', 'LOSS'].includes(reasonCode) && parsedDelta > 0) || (reasonCode === 'FOUND' && parsedDelta < 0)) {
+      setError('Hư hỏng và thất thoát phải giảm kho; tìm thấy hàng phải tăng kho.');
+      return;
+    }
     if (
       !Number.isSafeInteger(parsedDelta) ||
       parsedDelta === 0 ||
@@ -393,7 +398,9 @@ export const AdminInventoryView: React.FC<{
             </button>
           </div>
         )}
-      </section>
+
+    </section>
+        {!historyMode && <StocktakePanel rows={rows} canWrite={canWrite} onChanged={list.reload} />}
     </div>
   );
 };

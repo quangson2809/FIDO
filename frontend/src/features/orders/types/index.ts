@@ -95,6 +95,7 @@ export interface CheckoutRequest {
   ward: string;
   address_line: string;
   voucher_code: string | null;
+  confirmation_token?: string;
 }
 
 export interface CheckoutItemDto {
@@ -115,6 +116,7 @@ export interface VoucherDto {
 }
 
 export interface CheckoutQuoteDto {
+  confirmation_token?: string;
   items: CheckoutItemDto[];
   subtotal: number;
   discount_amount: number;

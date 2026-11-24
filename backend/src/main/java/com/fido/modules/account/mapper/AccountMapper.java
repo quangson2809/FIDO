@@ -21,7 +21,8 @@ public final class AccountMapper {
                 value.getEmail(),
                 value.getStatus(),
                 value.getCreatedAt(),
-                value.getUpdatedAt());
+                value.getUpdatedAt(),
+                value.getEmailVerifiedAt() != null);
     }
 
     public static RoleDto role(Role value) {

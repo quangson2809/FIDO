@@ -67,7 +67,7 @@ export function ProductSummaryCard({
       <button
         type="button"
         aria-label={`Xem chi tiết: ${product.name}`}
-        onClick={() => onOpenProduct(product.id)}
+        onClick={() => onOpenProduct(String(product.matchedProductId ?? product.id))}
         className="product-summary-open"
       >
         <span className="product-summary-photo">
@@ -93,6 +93,7 @@ export function ProductSummaryCard({
         <span className="product-summary-footer">
           <span className="product-summary-price" title="Giá bán của sản phẩm">
             <span>{product.selling_price.toLocaleString('vi-VN')} đ</span>
+            {product.matchedProductId != null && <small className="block text-xs">Giá phiên bản phù hợp · {product.matchedSku}</small>}
           </span>
           <span className="product-summary-sku" title={product.sku}>
             SKU {product.sku}
@@ -143,7 +144,7 @@ export function ProductSummaryCard({
               ×
             </button>
           </header>
-          <ProductSummaryDetails productId={product.product_id} />
+          <ProductSummaryDetails productId={product.matchedProductId ?? product.product_id} />
         </StorefrontDialog>
       )}
     </article>

@@ -42,5 +42,9 @@ public interface OrderItemRepository extends Repository<OrderItem, Long> {
             """)
     List<OrderItem> findFirstItemsByOrderIdIn(@Param("orderIds") List<Long> orderIds);
 
+    @Query(
+            "select count(i) > 0 from OrderItem i, Order o where i.orderId = o.orderId and i.productId = :productId and o.orderStatus in ('PENDING','CONFIRMED','PREPARING','SHIPPING','DELIVERY_FAILED')")
+    boolean hasOpenProductObligations(@Param("productId") Long productId);
+
     OrderItem save(OrderItem entity);
 }

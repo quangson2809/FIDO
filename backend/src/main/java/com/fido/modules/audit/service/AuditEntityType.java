@@ -7,6 +7,8 @@ package com.fido.modules.audit.service;
 public enum AuditEntityType {
     AUDIT_LOG,
     ACCOUNT,
+    STOCKTAKE,
+    GOODS_RECEIPT_CORRECTION,
     ADDRESS,
     ACCOUNT_ROLE,
     ROLE,

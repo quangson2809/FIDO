@@ -96,6 +96,8 @@ public class StaffCommandService {
                                 "ACTIVE",
                                 "active",
                                 true,
+                                "role_ids",
+                                selectedRoles.stream().map(Role::getRoleId).sorted().toList(),
                                 "role_count",
                                 selectedRoles.size())));
 
@@ -119,6 +121,11 @@ public class StaffCommandService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
 
+        var oldRoleIds =
+                assignments.findAllByAccountIdIn(List.of(accountId)).stream()
+                        .map(AccountRole::getRoleId)
+                        .sorted()
+                        .toList();
         int oldRoleCount =
                 access.findAccess(accountId).map(detail -> detail.roles().size()).orElse(0);
         String oldStatus = account.getStatus();
@@ -158,6 +165,8 @@ public class StaffCommandService {
                                 oldStatus,
                                 "active",
                                 oldActive,
+                                "role_ids",
+                                oldRoleIds,
                                 "role_count",
                                 oldRoleCount),
                         Map.of(
@@ -165,6 +174,11 @@ public class StaffCommandService {
                                 account.getStatus(),
                                 "active",
                                 account.isActive(),
+                                "role_ids",
+                                assignments.findAllByAccountIdIn(List.of(accountId)).stream()
+                                        .map(AccountRole::getRoleId)
+                                        .sorted()
+                                        .toList(),
                                 "role_count",
                                 newRoleCount)));
 

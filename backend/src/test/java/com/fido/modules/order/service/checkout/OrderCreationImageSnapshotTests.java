@@ -97,7 +97,8 @@ class OrderCreationImageSnapshotTests {
                         "District",
                         "Ward",
                         "Address line",
-                        null);
+                        null,
+                        CheckoutConsent.token(calculation));
 
         when(normalizer.normalize(
                         "Receiver",

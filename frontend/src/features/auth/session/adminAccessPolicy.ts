@@ -30,6 +30,7 @@ type AdminPermissionCode =
   | 'CUSTOMER_READ';
 
 type AdminWritePermissionCode =
+  | 'CUSTOMER_WRITE'
   | 'VOUCHER_WRITE'
   | 'CATALOG_WRITE'
   | 'INVENTORY_WRITE'
@@ -52,6 +53,7 @@ const readPermissionByModule: Partial<Record<AdminModuleKey, AdminPermissionCode
 };
 
 const writePermissionByModule: Partial<Record<AdminModuleKey, AdminWritePermissionCode>> = {
+  customers: 'CUSTOMER_WRITE',
   vouchers: 'VOUCHER_WRITE',
   products: 'CATALOG_WRITE',
   categories: 'CATALOG_WRITE',

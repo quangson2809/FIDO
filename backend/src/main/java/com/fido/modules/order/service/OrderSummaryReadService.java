@@ -32,6 +32,10 @@ public class OrderSummaryReadService {
      * orders là trang đơn vừa truy vấn; đọc Payment và ảnh snapshot theo lô cho các ID này.
      * Ảnh xem trước lấy từ OrderItem đầu tiên, không đọc ảnh catalog hiện tại.
      */
+    public boolean hasOpenProductObligations(Long productId) {
+        return items.hasOpenProductObligations(productId);
+    }
+
     public List<OrderSummaryDto> summaries(List<Order> orders) {
         if (orders.isEmpty()) {
             return List.of();

@@ -1,9 +1,11 @@
 package com.fido.modules.product.service.query;
 
 import com.fido.modules.product.repository.ProductAttributeValueRepository;
+import com.fido.modules.product.repository.ProductRepository;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -22,10 +24,28 @@ import java.util.Map;
 public class OrderProductSnapshotService {
     private final ObjectMapper json;
     private final ProductAttributeValueRepository values;
+    private final ProductRepository products;
 
-    public OrderProductSnapshotService(ObjectMapper json, ProductAttributeValueRepository values) {
+    public OrderProductSnapshotService(
+            ObjectMapper json, ProductAttributeValueRepository values, ProductRepository products) {
+        this.products = products;
         this.json = json;
         this.values = values;
+    }
+
+    /** Giữ giá Product ổn định trong giao dịch kiểm tra đồng ý và tạo đơn. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void lockForOrder(Collection<Long> productIds) {
+        for (Long id : productIds.stream().distinct().sorted().toList()) {
+            var product =
+                    products.findByIdForUpdate(id)
+                            .orElseThrow(
+                                    () ->
+                                            new ResponseStatusException(
+                                                    HttpStatus.CONFLICT, "PRODUCT_NOT_AVAILABLE"));
+            if (product.isDeleted())
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "PRODUCT_NOT_AVAILABLE");
+        }
     }
 
     /**

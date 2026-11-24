@@ -109,8 +109,16 @@ class DevDataSeedServiceTests extends OperationsHttpSupport {
         seeder.seed();
 
         assertEquals(firstCounts, tableCounts());
-        assertEquals(8, firstCounts.get("accounts"));
-        assertEquals(8, firstCounts.get("account_roles"));
+        assertEquals(
+                8,
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM accounts WHERE id BETWEEN 900001 AND 900008",
+                        Integer.class));
+        assertEquals(
+                8,
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM account_roles WHERE account_id BETWEEN 900001 AND 900008",
+                        Integer.class));
         assertEquals(12, firstCounts.get("categories"));
         assertEquals(22, firstCounts.get("brands"));
         assertEquals(13, firstCounts.get("attributes"));

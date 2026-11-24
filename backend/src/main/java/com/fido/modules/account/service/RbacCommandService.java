@@ -102,6 +102,11 @@ public class RbacCommandService {
                                 role.getStatus(),
                                 "active",
                                 "ACTIVE".equals(role.getStatus()),
+                                "permission_ids",
+                                permissions.findByRole(role.getRoleId()).stream()
+                                        .map(Permission::getPermissionId)
+                                        .sorted()
+                                        .toList(),
                                 "permission_count",
                                 permissions.findByRole(role.getRoleId()).size())));
 
@@ -119,6 +124,11 @@ public class RbacCommandService {
                         role.getStatus(),
                         "active",
                         "ACTIVE".equals(role.getStatus()),
+                        "permission_ids",
+                        permissions.findByRole(roleId).stream()
+                                .map(Permission::getPermissionId)
+                                .sorted()
+                                .toList(),
                         "permission_count",
                         permissions.findByRole(roleId).size());
 
@@ -147,6 +157,11 @@ public class RbacCommandService {
                                 role.getStatus(),
                                 "active",
                                 "ACTIVE".equals(role.getStatus()),
+                                "permission_ids",
+                                permissions.findByRole(roleId).stream()
+                                        .map(Permission::getPermissionId)
+                                        .sorted()
+                                        .toList(),
                                 "permission_count",
                                 permissions.findByRole(roleId).size())));
 
@@ -165,6 +180,11 @@ public class RbacCommandService {
                         role.getStatus(),
                         "active",
                         "ACTIVE".equals(role.getStatus()),
+                        "permission_ids",
+                        permissions.findByRole(roleId).stream()
+                                .map(Permission::getPermissionId)
+                                .sorted()
+                                .toList(),
                         "permission_count",
                         permissions.findByRole(roleId).size());
         if (SYSTEM_ROLE_CODES.contains(role.getCode())) {
@@ -189,8 +209,12 @@ public class RbacCommandService {
     public PermissionDto createPermission(PermissionCreateRequest request) {
         Role superadmin = lockSuperadminRole();
 
+        if (!SupportedPermissions.CODES.contains(
+                request.code().trim().toUpperCase(java.util.Locale.ROOT))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PERMISSION_UNSUPPORTED");
+        }
         Permission permission = new Permission();
-        permission.setCode(request.code());
+        permission.setCode(request.code().trim().toUpperCase(java.util.Locale.ROOT));
         permission.setName(request.name());
         permission.setDescription(request.description());
 
@@ -248,7 +272,7 @@ public class RbacCommandService {
         Permission permission = permission(permissionId);
         Map<String, Object> before = Map.of("code", permission.getCode(), "active", true);
 
-        if (SYSTEM_PERMISSION_CODES.contains(permission.getCode())) {
+        if (SupportedPermissions.CODES.contains(permission.getCode())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "SYSTEM_PERMISSION_PROTECTED");
         }
 
@@ -291,7 +315,14 @@ public class RbacCommandService {
         if (uniquePermissionIds.size() != permissionIds.size()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         }
-        uniquePermissionIds.forEach(this::permission);
+        uniquePermissionIds.forEach(
+                id -> {
+                    Permission p = permission(id);
+                    if (!"SUPERADMIN".equals(role.getCode())
+                            && !SupportedPermissions.CODES.contains(p.getCode()))
+                        throw new ResponseStatusException(
+                                HttpStatus.BAD_REQUEST, "PERMISSION_UNSUPPORTED");
+                });
 
         if ("SUPERADMIN".equals(role.getCode())) {
             Set<Long> catalogueIds =

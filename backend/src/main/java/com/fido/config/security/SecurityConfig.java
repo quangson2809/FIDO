@@ -55,6 +55,12 @@ public class SecurityConfig {
                         // hiện tại.
                         principal.eraseCredentials();
                         checker.check(principal);
+                        Object versionClaim = jwt.getClaim("account_version");
+                        long version =
+                                versionClaim instanceof Number number ? number.longValue() : 0L;
+                        if (version != principal.getAuthVersion())
+                            throw new OAuth2AuthenticationException(
+                                    new OAuth2Error("invalid_token"));
                         return principal.getAuthorities();
                     } catch (UsernameNotFoundException | AccountStatusException failure) {
                         throw new OAuth2AuthenticationException(
@@ -105,7 +111,10 @@ public class SecurityConfig {
                                         .requestMatchers(
                                                 HttpMethod.POST,
                                                 "/api/v1/auth/register",
-                                                "/api/v1/auth/login")
+                                                "/api/v1/auth/login",
+                                                "/api/v1/auth/password-reset/request",
+                                                "/api/v1/auth/password-reset/confirm",
+                                                "/api/v1/auth/email/verify")
                                         .permitAll()
                                         .requestMatchers(
                                                 HttpMethod.GET,

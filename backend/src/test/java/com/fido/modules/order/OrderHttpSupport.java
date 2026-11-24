@@ -45,6 +45,9 @@ abstract class OrderHttpSupport {
     record CatalogFixture(long categoryId, long productId, long warehouseId, String sku) {}
 
     Result call(String method, String path, String token, Object body) throws Exception {
+        if ("POST".equalsIgnoreCase(method) && "/api/v1/orders".equals(path) && body != null) {
+            body = withConsent(token, body);
+        }
         var builder =
                 HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
                         .header("Accept", "application/json")
@@ -63,6 +66,17 @@ abstract class OrderHttpSupport {
                 response.statusCode(),
                 response.body().isBlank() ? null : json.readTree(response.body()),
                 response.body());
+    }
+
+    Object withConsent(String token, Object body) throws Exception {
+        var tree = json.valueToTree(body);
+        if (!tree.isObject() || tree.has("confirmation_token")) return body;
+        var quote = call("POST", "/api/v1/checkout/quote", token, body);
+        if (quote.status() != 200) return body;
+        var accepted = (tools.jackson.databind.node.ObjectNode) tree;
+        accepted.put(
+                "confirmation_token", quote.data().get("data").get("confirmation_token").asText());
+        return accepted;
     }
 
     User user() throws Exception {

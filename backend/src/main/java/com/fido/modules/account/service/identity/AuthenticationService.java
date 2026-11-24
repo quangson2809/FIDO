@@ -109,6 +109,6 @@ public class AuthenticationService {
                         UsernamePasswordAuthenticationToken.unauthenticated(
                                 phone, request.password()));
         var account = (Account) authentication.getPrincipal();
-        return tokens.issue(AccountMapper.account(account));
+        return tokens.issue(AccountMapper.account(account), account.getAuthVersion());
     }
 }

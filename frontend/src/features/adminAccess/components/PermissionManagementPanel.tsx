@@ -23,7 +23,6 @@ export const PermissionManagementPanel: React.FC<{
 }> = ({ access, busy, onBusyChange, refreshAccess, showToast }) => {
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [draft, setDraft] = useState<PermissionDraft>(emptyPermission);
   const [editingPermission, setEditingPermission] = useState<PermissionDto | null>(null);
   const [editingDraft, setEditingDraft] = useState<PermissionDraft>(emptyPermission);
 
@@ -33,31 +32,10 @@ export const PermissionManagementPanel: React.FC<{
         editingDraft.name !== editingPermission.name),
   );
   const canDiscard = useDirtyForm(
-    editDirty || JSON.stringify(draft) !== JSON.stringify(emptyPermission),
+    editDirty,
   );
   const closeEdit = () => {
     if (!busy && canDiscard()) setEditingPermission(null);
-  };
-
-  const createPermission = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (busy || !draft.code.trim() || !draft.name.trim()) return;
-
-    onBusyChange(true);
-    setError(null);
-    try {
-      await adminAccessService.createPermission({
-        code: draft.code.trim(),
-        name: draft.name.trim(),
-      });
-      setDraft(emptyPermission);
-      await refreshAccess();
-      showToast('Đã tạo permission.');
-    } catch (requestError: unknown) {
-      setError(getApiErrorMessage(requestError, 'Không thể tạo permission.'));
-    } finally {
-      onBusyChange(false);
-    }
   };
 
   const startEdit = (permission: PermissionDto) => {
@@ -122,32 +100,8 @@ export const PermissionManagementPanel: React.FC<{
         <div className="mt-4 border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
       )}
 
-      <form onSubmit={createPermission} className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-        <fieldset disabled={busy} className="contents">
-          <input
-            aria-label="Mã quyền"
-            value={draft.code}
-            onChange={(event) => setDraft((current) => ({ ...current, code: event.target.value }))}
-            placeholder="Mã quyền"
-            maxLength={120}
-            className="border border-[#D9DDD6] px-3 py-2 text-sm"
-          />
-          <input
-            aria-label="Tên quyền"
-            value={draft.name}
-            onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
-            placeholder="Tên quyền"
-            maxLength={200}
-            className="border border-[#D9DDD6] px-3 py-2 text-sm"
-          />
-          <button
-            disabled={busy}
-            className="bg-[#0B2419] px-4 py-2 text-xs font-bold uppercase text-white disabled:opacity-40"
-          >
-            Thêm
-          </button>
-        </fieldset>
-      </form>
+      <p className="mt-3 text-sm">Quyền gắn với các thao tác được hệ thống hỗ trợ. Tạo vai trò và chọn quyền ở bảng vai trò; không tạo mã quyền tùy ý.</p>
+
 
       <ListSearch label="Tìm quyền" value={search} onChange={setSearch} count={filtered.length} />
       {filtered.length === 0 && (

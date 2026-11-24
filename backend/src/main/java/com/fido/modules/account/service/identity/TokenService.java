@@ -39,12 +39,17 @@ public class TokenService {
      * issuer và ttl lấy cấu hình máy chủ, ttl tính bằng giây; quyền không được lấy từ dữ liệu client.
      */
     public LoginResponse issue(AccountDto account) {
+        return issue(account, 0L);
+    }
+
+    public LoginResponse issue(AccountDto account, long authVersion) {
         Instant now = Instant.now();
 
         var claims =
                 JwtClaimsSet.builder()
                         .issuer(issuer)
                         .subject(account.id().toString())
+                        .claim("account_version", authVersion)
                         .issuedAt(now)
                         .expiresAt(now.plusSeconds(ttl))
                         .build();

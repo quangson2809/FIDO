@@ -22,6 +22,11 @@ public class InventoryAvailabilityService {
         this.operationalWarehouse = operationalWarehouse;
     }
 
+    public boolean hasStockForRetirement(Long productId) {
+        return inventories.findAllByProductIdIn(java.util.List.of(productId)).stream()
+                .anyMatch(i -> i.getQuantityOnHand() > 0);
+    }
+
     public int availableQuantity(Long productId) {
         return balance(productId).quantityOnHand();
     }

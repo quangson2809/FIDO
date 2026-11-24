@@ -23,7 +23,11 @@ class OrderProductSnapshotServiceTests {
     private final ProductAttributeValueRepository values =
             mock(ProductAttributeValueRepository.class);
     private final OrderProductSnapshotService snapshots =
-            new OrderProductSnapshotService(new ObjectMapper(), values);
+            new OrderProductSnapshotService(
+                    new ObjectMapper(),
+                    values,
+                    org.mockito.Mockito.mock(
+                            com.fido.modules.product.repository.ProductRepository.class));
 
     @Test
     void emptySelectionDoesNotQueryAndProductsWithoutOptionsKeepEmptyJsonArray() {

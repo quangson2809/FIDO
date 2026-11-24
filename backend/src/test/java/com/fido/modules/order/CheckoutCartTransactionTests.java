@@ -85,7 +85,10 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
                         .header("Authorization", "Bearer " + customer.token())
                         .header("Content-Type", "application/json")
                         .header("Idempotency-Key", "reused-cart-replay")
-                        .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(REQUEST)))
+                        .POST(
+                                HttpRequest.BodyPublishers.ofString(
+                                        json.writeValueAsString(
+                                                withConsent(customer.token(), REQUEST))))
                         .build();
         var first = client.send(request, HttpResponse.BodyHandlers.ofString());
         assertEquals(201, first.statusCode(), first.body());
@@ -147,6 +150,10 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
                 new JwtAuthenticationToken(
                         jwt, List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER"))));
         SecurityContextHolder.setContext(auditContext);
+        String consent =
+                json.valueToTree(withConsent(customer.token(), REQUEST))
+                        .get("confirmation_token")
+                        .asText();
         try {
             assertThrows(
                     DataIntegrityViolationException.class,
@@ -163,7 +170,8 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
                                                                 "Cau Giay",
                                                                 "Dich Vong",
                                                                 "Test address",
-                                                                null),
+                                                                null,
+                                                                consent),
                                                         List.of("rollback-after-order-write"));
                                                 assertEquals(
                                                         0,
@@ -226,8 +234,14 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
                                         "/api/v1/cart/items",
                                         customer.token(),
                                         Map.of("product_id", variant.productId(), "quantity", 2)));
-        assertEquals(201, results.get(0).status(), results.get(0).body());
-        long orderId = remember(results.get(0));
+        Result placed = results.get(0);
+        if (placed.status() == 409) {
+            assertEquals("CHECKOUT_RECONFIRMATION_REQUIRED", placed.data().get("code").asText());
+            assertEquals(3, cartQuantity(customer));
+            placed = place(customer);
+        }
+        assertEquals(201, placed.status(), placed.body());
+        long orderId = remember(placed);
         assertEquals(200, results.get(1).status(), results.get(1).body());
         int purchased = orderedQuantity(orderId);
         assertTrue(purchased == 1 || purchased == 3);
@@ -251,8 +265,14 @@ class CheckoutCartTransactionTests extends OrderHttpSupport {
                                         "/api/v1/cart/items/" + itemId,
                                         customer.token(),
                                         Map.of("quantity", 3)));
-        assertEquals(201, results.get(0).status(), results.get(0).body());
-        long orderId = remember(results.get(0));
+        Result placed = results.get(0);
+        if (placed.status() == 409) {
+            assertEquals("CHECKOUT_RECONFIRMATION_REQUIRED", placed.data().get("code").asText());
+            assertEquals(3, cartQuantity(customer));
+            placed = place(customer);
+        }
+        assertEquals(201, placed.status(), placed.body());
+        long orderId = remember(placed);
         int updatedStatus = results.get(1).status();
         assertTrue(updatedStatus == 200 || updatedStatus == 404, results.get(1).body());
         assertEquals(updatedStatus == 200 ? 3 : 1, orderedQuantity(orderId));

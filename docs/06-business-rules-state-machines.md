@@ -1,5 +1,7 @@
 # 06 — Business Rules & State Machines
 
+> **2026-11-23/24 operational owner amendment:** [operational contract](operations/operational-api.md) supersedes earlier exclusions/rules for the explicitly requested operational features, including physical receipts, stocktakes, linked corrections, price consent, verified-email recovery, customer status and report metrics. Base V1 remains unchanged; additive V2–V4 migrations extend it to 36 business tables. See [schema extension](operations/operational-schema.mmd).
+
 > **Owner-approved target contract (2026-10-23):** the revised 29-table option-only catalog ERD v2 and DB-01..DB-12 defaults are approved except where a specific artifact records an unresolved approval conflict below. This document defines target behavior; runtime enforcement and acceptance tests remain pending. Inventory balance, source/sign, receipt, concurrency and reconciliation details are governed by [P1.4 Inventory Contract](refactor-v2/p1/P1.4-inventory-contract.md). Do not introduce persistence outside the approved target without an explicit owner amendment.
 
 ## 1. Target status/type literals and approval caveats

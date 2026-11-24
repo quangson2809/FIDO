@@ -216,6 +216,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ adminOnly = false }) => 
                   ? 'Đăng nhập'
                   : 'Tạo tài khoản'}
           </button>
+          {mode === 'login' && <a href="/account-recovery" className="block py-3 text-sm underline">Quên mật khẩu?</a>}
         </form>
 
         {adminOnly && (

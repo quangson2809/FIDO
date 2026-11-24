@@ -9,6 +9,8 @@ export interface CartItemDto {
   unit_price: number;
   line_total: number;
   available_quantity: number;
+  purchasable?: boolean;
+  unavailable_reason?: string | null;
 }
 
 export interface CartDto {
@@ -36,6 +38,8 @@ export interface CartViewItem {
   price: number;
   lineTotal: number;
   availableQuantity: number;
+  purchasable: boolean;
+  unavailableReason: string | null;
   imageUrl: string;
   quantity: number;
 }

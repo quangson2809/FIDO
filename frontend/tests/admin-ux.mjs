@@ -264,7 +264,7 @@ await page.route('**/api/v1/**', async (route) => {
     return send(pagination([{ ...order, payment_status: order.payment.payment_status }]));
   if (path === '/catalog/meta') return send({ data: metadata });
   if (path === '/admin/catalog/meta') return send({
-    data: { attributes: metadata.attributes },
+    data: metadata,
   });
   if (path === '/admin/customers/1') return send({ message: 'Không tải được hồ sơ' }, 500);
   if (path === '/admin/customers') {
@@ -447,6 +447,9 @@ try {
   await page.getByRole('row').filter({ hasText: 'TEE-M-BLACK' }).getByRole('button', { name: 'Điều chỉnh', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Số lượng điều chỉnh', exact: true }).fill('2');
   await page.getByLabel('Mã lý do điều chỉnh').selectOption('DAMAGE');
+  await page.getByRole('button', { name: 'Xác nhận', exact: true }).click();
+  await page.getByText('Hư hỏng và thất thoát phải giảm kho; tìm thấy hàng phải tăng kho.', { exact: true }).waitFor();
+  await page.getByRole('spinbutton', { name: 'Số lượng điều chỉnh', exact: true }).fill('-2');
   await withConfirm(() => page.getByRole('button', { name: 'Xác nhận', exact: true }).click(), 'accept');
   await page.getByText('Đã điều chỉnh tồn kho.', { exact: true }).waitFor();
   const adjustment = writes.filter((entry) => entry.path === '/admin/inventory/adjustments').at(-1)?.body;
@@ -455,7 +458,7 @@ try {
     'expected_version', 'product_id', 'quantity_delta', 'reason_code', 'source_operation_id',
   ]);
   assert.equal(adjustment.product_id, 1);
-  assert.equal(adjustment.quantity_delta, 2);
+  assert.equal(adjustment.quantity_delta, -2);
   assert.equal(adjustment.reason_code, 'DAMAGE');
   assert.equal(adjustment.expected_version, 0);
   assert.match(adjustment.source_operation_id, /^[A-Za-z0-9._:-]{1,80}$/);
@@ -466,8 +469,8 @@ try {
   await page.locator('main').getByRole('button', { name: 'Thương hiệu', exact: true }).click();
   await page.getByLabel('Tìm thương hiệu', { exact: true }).waitFor();
   assert.match(page.url(), /catalog\/brands/);
-  assert.equal(reads.slice(beforeMasterData).filter((read) => read.path === '/admin/catalog/meta').length, 0,
-    'Category/Brand screens must load independently of Attribute metadata');
+  assert.ok(reads.slice(beforeMasterData).some((read) => read.path === '/admin/catalog/meta'),
+    'Category/Brand management must retain inactive rows through authorized admin metadata');
   await page.goBack();
   await page.getByLabel('Tìm danh mục', { exact: true }).waitFor();
   assert.match(page.url(), /catalog\/categories/);
@@ -687,14 +690,13 @@ try {
   await goto('/admin/vouchers');
   await page.getByRole('button', { name: 'Xem / Sửa', exact: true }).click();
   const voucherEditor = page.getByRole('dialog');
-  await voucherEditor.getByRole('combobox', { name: 'Loại giảm', exact: true }).selectOption('PERCENT');
-  await voucherEditor.getByLabel('Giá trị giảm (%)', { exact: true }).fill('12.50');
+  assert.equal(await voucherEditor.getByRole('combobox', { name: 'Loại giảm', exact: true }).isDisabled(), true);
+  assert.equal(await voucherEditor.getByLabel('Giá trị giảm (VND)', { exact: true }).isDisabled(), true);
   await voucherEditor.getByRole('combobox', { name: 'Trạng thái', exact: true }).selectOption('INACTIVE');
   await voucherEditor.getByRole('button', { name: 'Lưu voucher', exact: true }).click();
   await page.getByText('Đã lưu voucher.', { exact: true }).waitFor();
   assert.deepEqual(writes.filter((entry) => entry.path === '/admin/vouchers/27').at(-1).body,
-    { code: 'SAVE10K', discount_type: 'PERCENT', discount_value: 1250, minimum_order_value: 0,
-      maximum_discount: null, starts_at: null, ends_at: null, usage_limit: null, status: 'INACTIVE' });
+    { status: 'INACTIVE' });
   await page.getByRole('button', { name: 'Tạo voucher', exact: true }).click();
   await voucherEditor.getByLabel('Mã voucher', { exact: true }).fill('NEW10K');
   await voucherEditor.getByLabel('Giá trị giảm (VND)', { exact: true }).fill('10000');

@@ -114,10 +114,20 @@ class SchemaMappingTests {
                     if (!name.equals("flyway_schema_history")) actualTables.add(name);
                 }
             }
+            Set<String> operationalTables = new HashSet<>(OWNERS.keySet());
+            operationalTables.addAll(
+                    Set.of(
+                            "account_recovery_tokens",
+                            "order_return_receipts",
+                            "order_return_receipt_items",
+                            "stocktakes",
+                            "stocktake_items",
+                            "goods_receipt_corrections",
+                            "goods_receipt_correction_items"));
             assertEquals(
-                    OWNERS.keySet(),
+                    operationalTables,
                     actualTables,
-                    "The database must contain exactly the approved 29 target tables.");
+                    "Canonical baseline plus the explicit owner-requested operational extension");
 
             for (EntityType<?> entity : em.getMetamodel().getEntities()) {
                 String table = entity.getJavaType().getAnnotation(Table.class).name();

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { catalogService } from '../../features/catalog/api/service';
 import { adminCatalogMetaService } from '../../features/catalog/api/adminCatalogMetaService';
-import type { CatalogMetaDto } from '../../features/catalog/types';
+import type { AdminCatalogMetaDto } from '../../features/catalog/types';
 import { getApiErrorMessage } from '../../services/http/apiError';
 
 type Tab = 'categories' | 'brands';
@@ -22,7 +21,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
 }) => {
   const [metadataSearch, setMetadataSearch] = useState('');
   const [categoryLevel, setCategoryLevel] = useState<'all' | 'root' | 'child'>('all');
-  const [publicMeta, setPublicMeta] = useState<CatalogMetaDto | null>(null);
+  const [metadata, setMetadata] = useState<AdminCatalogMetaDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,8 +34,8 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const catalog = await catalogService.getMeta();
-      setPublicMeta(catalog);
+      const catalog = await adminCatalogMetaService.getMeta();
+      setMetadata(catalog);
       setError(null);
     } catch (failure: unknown) {
       setError(getApiErrorMessage(failure, 'Không thể tải danh mục và thương hiệu.'));
@@ -122,8 +121,26 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
     }
   };
 
-  const categories = publicMeta?.categories ?? [];
-  const brands = publicMeta?.brands ?? [];
+  const changeStatus = async (kind: Tab, id: number, status: 'ACTIVE' | 'INACTIVE', label: string) => {
+    if (!canWrite || busy || !window.confirm(status === 'INACTIVE'
+      ? `Ngừng hiển thị và chặn mua mới các sản phẩm thuộc ${label}? Danh mục con cũng bị ảnh hưởng.`
+      : `Kích hoạt lại ${label}? Các sản phẩm đáp ứng điều kiện bán sẽ xuất hiện trở lại.`)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      if (kind === 'categories') await adminCatalogMetaService.updateCategory(id, { status });
+      else await adminCatalogMetaService.updateBrand(id, { status });
+      await load();
+      showToast('Đã cập nhật trạng thái hiển thị và bán hàng.');
+    } catch (failure: unknown) {
+      setError(getApiErrorMessage(failure, 'Không thể cập nhật trạng thái.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const categories = metadata?.categories ?? [];
+  const brands = metadata?.brands ?? [];
   const normalizedMetadataSearch = metadataSearch.trim().toLocaleLowerCase();
   const filteredCategories = categories.filter((category) => {
     const matchesSearch = `${category.name} ${category.slug ?? ''}`
@@ -137,7 +154,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
     `${brand.name} ${brand.slug ?? ''}`.toLocaleLowerCase().includes(normalizedMetadataSearch),
   );
 
-  if (loading && !publicMeta) {
+  if (loading && !metadata) {
     return (
       <div className="rounded-lg border border-[#E2E5DE] bg-white p-10 text-center text-sm">
         Đang tải danh mục và thương hiệu...
@@ -165,6 +182,11 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
           Làm mới
         </button>
       </header>
+
+      <p className="text-sm text-[#606863]">
+        Ngừng hoạt động (INACTIVE) sẽ ẩn và chặn mua mới các sản phẩm liên quan, kể cả danh mục con.
+        Đơn cũ và nghiệp vụ kho vẫn được xử lý. Kích hoạt lại để tiếp tục hiển thị và bán hàng.
+      </p>
 
       {error && (
         <div role="alert" className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -217,7 +239,7 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
                 disabled={busy}
               >
                 <option value="">Danh mục gốc</option>
-                {categories.map((category) => (
+                {categories.filter(category => category.status === 'ACTIVE').map((category) => (
                   <option key={category.category_id} value={category.category_id}>
                     {category.name}
                   </option>
@@ -270,11 +292,12 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
                   <td className="px-4 py-3 font-semibold">{category.name}</td>
                   <td className="px-4 py-3 text-xs text-[#606863]">
                     {category.parent_category_id === null ? 'Danh mục gốc' : `Danh mục cha #${category.parent_category_id}`}
-                    <span className="ml-2">{category.status}</span>
+                    <span className="ml-2">{category.status === 'ACTIVE' ? 'Đang hoạt động' : 'Ngừng hiển thị / bán'}</span>
                   </td>
                   <td className="px-4 py-3 text-right">
                     {canWrite && (
-                      <div className="flex justify-end gap-2">
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <button type="button" disabled={busy} className="admin-secondary" onClick={() => void changeStatus('categories', category.category_id, category.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE', category.name)}>{category.status === 'ACTIVE' ? 'Ngừng hiển thị / bán' : 'Kích hoạt lại'}</button>
                         <button type="button" disabled={busy} className="admin-secondary" onClick={() => {
                           setRenameTarget({ kind: 'categories', id: category.category_id, name: category.name });
                           setRenameValue(category.name);
@@ -315,10 +338,11 @@ export const AdminCatalogMetaView: React.FC<Props> = ({
               {filteredBrands.map((brand) => (
                 <tr key={brand.brand_id}>
                   <td className="px-4 py-3 font-semibold">{brand.name}</td>
-                  <td className="px-4 py-3 text-xs text-[#606863]">{brand.status}</td>
+                  <td className="px-4 py-3 text-xs text-[#606863]">{brand.status === 'ACTIVE' ? 'Đang hoạt động' : 'Ngừng hiển thị / bán'}</td>
                   <td className="px-4 py-3 text-right">
                     {canWrite && (
-                      <div className="flex justify-end gap-2">
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <button type="button" disabled={busy} className="admin-secondary" onClick={() => void changeStatus('brands', brand.brand_id, brand.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE', brand.name)}>{brand.status === 'ACTIVE' ? 'Ngừng hiển thị / bán' : 'Kích hoạt lại'}</button>
                         <button type="button" disabled={busy} className="admin-secondary" onClick={() => {
                           setRenameTarget({ kind: 'brands', id: brand.brand_id, name: brand.name });
                           setRenameValue(brand.name);

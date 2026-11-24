@@ -54,7 +54,15 @@ class AuditPayloadPolicyTests {
                         "reason", "unrestricted free text");
 
         var visible = policy.redactForRead(AuditAction.ORDER_CONFIRM.name(), source);
-        assertEquals(Map.of("status", "CONFIRMED", "total_amount", 200_000L), visible);
+        assertEquals(
+                Map.of(
+                        "status",
+                        "CONFIRMED",
+                        "total_amount",
+                        200_000L,
+                        "reason",
+                        "unrestricted free text"),
+                visible);
         assertThrows(UnsupportedOperationException.class, () -> visible.put("email", "new value"));
         assertEquals(
                 json.readTree(json.writeValueAsString(visible)),

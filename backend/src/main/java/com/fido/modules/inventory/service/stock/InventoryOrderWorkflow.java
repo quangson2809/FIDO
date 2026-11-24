@@ -244,6 +244,50 @@ class InventoryOrderWorkflow {
         }
     }
 
+    void receiveReturn(Long actor, Long orderId, Long receiptId, List<StockLine> sellableLines) {
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        for (StockLine line : sortByProductAndSourceId(sellableLines)) {
+            var original =
+                    transactions.findAllByOrderItemIdInAndTransactionType(
+                            List.of(line.orderItemId()), InventoryPolicy.ORDER_CONFIRM_OUT);
+            if (original.size() != 1
+                    || !original.get(0).getProductId().equals(line.productId())
+                    || -((long) original.get(0).getQuantityDelta()) < line.quantity())
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "RETURN_SOURCE_INVALID");
+            long restored =
+                    transactions
+                                    .findAllByOrderItemIdInAndTransactionType(
+                                            List.of(line.orderItemId()),
+                                            InventoryPolicy.DELIVERY_RETURN_IN)
+                                    .stream()
+                                    .mapToLong(t -> t.getQuantityDelta())
+                                    .sum()
+                            + transactions
+                                    .findAllByOrderItemIdInAndTransactionType(
+                                            List.of(line.orderItemId()),
+                                            InventoryPolicy.ORDER_CANCEL_IN)
+                                    .stream()
+                                    .mapToLong(t -> t.getQuantityDelta())
+                                    .sum();
+            if (restored + line.quantity() > -((long) original.get(0).getQuantityDelta()))
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "RETURN_QUANTITY_EXCEEDED");
+            posting.post(
+                    new InventoryMovement(
+                            actor,
+                            original.get(0).getWarehouseId(),
+                            line.productId(),
+                            line.quantity(),
+                            InventoryPolicy.DELIVERY_RETURN_IN,
+                            line.orderItemId(),
+                            null,
+                            null,
+                            "RETURN_RECEIVED_SELLABLE"),
+                    now,
+                    "return-receipt:" + receiptId + ":item:" + line.orderItemId(),
+                    "RETURN_ALREADY_RECEIVED");
+        }
+    }
+
     private String orderCancellationReversalKey(Long originalTransactionId) {
         return "order-cancel-reversal:" + originalTransactionId;
     }

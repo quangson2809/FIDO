@@ -81,7 +81,8 @@ public class PublicCatalogQueryService {
                         filter.categoryId() == null
                                 ? List.of()
                                 : references.categoryIdsIncludingDescendants(filter.categoryId()),
-                        selectedOptions);
+                        selectedOptions,
+                        references.visibility());
         var page = products.findAll(specification, pagination.toPageable());
         List<Product> roots = page.getContent();
         List<Long> ids = roots.stream().map(Product::getProductId).toList();
@@ -105,6 +106,38 @@ public class PublicCatalogQueryService {
                                                         ? null
                                                         : brandsById.get(product.getBrandId())))
                         .toList();
+        if (!ids.isEmpty()
+                && (!selectedOptions.isEmpty()
+                        || filter.minPrice() != null
+                        || filter.maxPrice() != null)) {
+            Map<Long, Product> matched = new java.util.HashMap<>();
+            products.findAll(
+                            CatalogSpecifications.matchingMembers(
+                                    ids, filter, selectedOptions, references.visibility()),
+                            org.springframework.data.domain.Sort.by("sellingPrice")
+                                    .ascending()
+                                    .and(org.springframework.data.domain.Sort.by("productId")))
+                    .forEach(
+                            p ->
+                                    matched.putIfAbsent(
+                                            p.getParentProductId() == null
+                                                    ? p.getProductId()
+                                                    : p.getParentProductId(),
+                                            p));
+            data =
+                    data.stream()
+                            .map(
+                                    summary -> {
+                                        Product match =
+                                                java.util.Objects.requireNonNull(
+                                                        matched.get(summary.product_id()));
+                                        return summary.withMatch(
+                                                match.getProductId(),
+                                                match.getSku(),
+                                                match.getSellingPrice());
+                                    })
+                            .toList();
+        }
         return ApiListResponse.of(data, pagination.meta(page.getTotalElements()));
     }
 

@@ -66,6 +66,31 @@ public class Account implements UserDetails, CredentialsContainer {
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
     private LocalDateTime updatedAt;
 
+    @Column(name = "auth_version", nullable = false)
+    private Long authVersion = 0L;
+
+    @Column(name = "email_verified_at", columnDefinition = "TIMESTAMP(6)")
+    private LocalDateTime emailVerifiedAt;
+
+    @JsonIgnore
+    @Column(
+            name = "verified_email_key",
+            insertable = false,
+            updatable = false,
+            length = 254,
+            unique = true)
+    private String verifiedEmailKey;
+
+    public void setEmail(String next) {
+        String normalized = next == null ? null : next.trim().toLowerCase(java.util.Locale.ROOT);
+        if (!java.util.Objects.equals(email, normalized)) emailVerifiedAt = null;
+        email = normalized;
+    }
+
+    public void revokeAccessTokens() {
+        authVersion = Math.addExact(authVersion, 1L);
+    }
+
     @Transient private List<GrantedAuthority> authorities = List.of();
 
     @Override

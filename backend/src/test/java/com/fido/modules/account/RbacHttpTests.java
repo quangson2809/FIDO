@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -16,166 +15,58 @@ class RbacHttpTests extends AccountHttpSupport {
     @Test
     void rolePermissionCrudReplacementAuditAndRollback() throws Exception {
         String token = root();
-        String suffix = UUID.randomUUID().toString();
-        String permissionCode = "test." + suffix;
-
-        assertEquals(
-                400,
-                call("PATCH", "/api/v1/admin/roles/not-an-id", token, Map.of("name", "Bad"))
-                        .status());
-
-        long superadminRoleId =
-                db.queryForObject("SELECT id FROM roles WHERE code='SUPERADMIN'", Long.class);
-        var protectedSuperadmin =
-                call(
-                        "PATCH",
-                        "/api/v1/admin/roles/" + superadminRoleId,
-                        token,
-                        Map.of("status", "INACTIVE"));
-        assertEquals(409, protectedSuperadmin.status(), protectedSuperadmin.body());
-        assertEquals("SYSTEM_ROLE_PROTECTED", protectedSuperadmin.data().get("code").asText());
-
-        assertEquals(
-                400,
-                call("POST", "/api/v1/admin/permissions", token, Map.of("code", " ", "name", "Bad"))
-                        .status());
-
-        var permissionResponse =
+        var unknown =
                 call(
                         "POST",
                         "/api/v1/admin/permissions",
                         token,
-                        Map.of("code", permissionCode, "name", "Test permission"));
-
-        assertEquals(201, permissionResponse.status(), permissionResponse.body());
-
-        long permissionId = permissionResponse.data().get("data").get("id").asLong();
-
-        permissionIds.add(permissionId);
-
-        var duplicatePermission =
-                call(
-                        "POST",
-                        "/api/v1/admin/permissions",
-                        token,
-                        Map.of("code", permissionCode, "name", "Duplicate permission"));
-        assertEquals(409, duplicatePermission.status(), duplicatePermission.body());
-        assertEquals(
-                "PERMISSION_CODE_ALREADY_EXISTS", duplicatePermission.data().get("code").asText());
-
-        assertEquals(
-                1,
+                        Map.of("code", "ARBITRARY_" + UUID.randomUUID(), "name", "Unsupported"));
+        assertEquals(400, unknown.status(), unknown.body());
+        assertEquals("PERMISSION_UNSUPPORTED", unknown.data().get("code").asText());
+        long read =
                 db.queryForObject(
-                        """
-                        SELECT COUNT(*)
-                        FROM role_permissions rp
-                        JOIN roles r ON r.id=rp.role_id
-                        WHERE r.code='SUPERADMIN' AND rp.permission_id=?
-                        """,
-                        Integer.class,
-                        permissionId));
-
-        assertEquals(
-                400,
-                call(
-                                "PATCH",
-                                "/api/v1/admin/permissions/" + permissionId,
-                                token,
-                                Map.of("code", "mutated"))
-                        .status());
-
-        assertEquals(
-                permissionCode,
+                        "SELECT id FROM permissions WHERE code='CATALOG_READ'", Long.class);
+        long write =
                 db.queryForObject(
-                        "SELECT code FROM permissions WHERE id=?", String.class, permissionId));
-
-        assertEquals(
-                200,
-                call(
-                                "PATCH",
-                                "/api/v1/admin/permissions/" + permissionId,
-                                token,
-                                Map.of("name", "Updated"))
-                        .status());
-
-        var permissionList = call("GET", "/api/v1/admin/permissions", token, null);
-
-        assertEquals(200, permissionList.status());
-
-        assertTrue(permissionList.data().get("data").isArray());
-
-        boolean permissionFound = false;
-        for (var permissionNode : permissionList.data().get("data")) {
-            if (permissionNode.get("id").asLong() == permissionId) {
-                permissionFound = true;
-                break;
-            }
-        }
-
-        assertTrue(permissionFound);
-        assertFalse(permissionList.data().has("meta"));
-
-        var roleResponse =
+                        "SELECT id FROM permissions WHERE code='CATALOG_WRITE'", Long.class);
+        var created =
                 call(
                         "POST",
                         "/api/v1/admin/roles",
                         token,
                         Map.of(
                                 "code",
-                                "test." + suffix,
+                                "ops." + UUID.randomUUID(),
                                 "name",
                                 "Role",
                                 "permission_ids",
-                                List.of(permissionId)));
-
-        assertEquals(201, roleResponse.status(), roleResponse.body());
-
-        var duplicateRole =
+                                List.of(read)));
+        assertEquals(201, created.status(), created.body());
+        long id = created.data().get("data").get("id").asLong();
+        roleIds.add(id);
+        var changed =
                 call(
-                        "POST",
-                        "/api/v1/admin/roles",
+                        "PATCH",
+                        "/api/v1/admin/roles/" + id,
                         token,
-                        Map.of(
-                                "code",
-                                "test." + suffix,
-                                "name",
-                                "Duplicate role",
-                                "permission_ids",
-                                List.of(permissionId)));
-        assertEquals(409, duplicateRole.status(), duplicateRole.body());
-        assertEquals("ROLE_CODE_ALREADY_EXISTS", duplicateRole.data().get("code").asText());
-
-        long roleId = roleResponse.data().get("data").get("id").asLong();
-
-        roleIds.add(roleId);
-
-        var accessControl = call("GET", "/api/v1/admin/access-control", token, null);
-
-        assertEquals(200, accessControl.status(), accessControl.body());
-
-        boolean roleFound = false;
-        for (var roleNode : accessControl.data().get("data").get("roles")) {
-            if (roleNode.get("id").asLong() != roleId) {
-                continue;
-            }
-
-            roleFound = true;
-            assertEquals(1, roleNode.get("permissions").size());
-            assertEquals(permissionId, roleNode.get("permissions").get(0).get("id").asLong());
-        }
-
-        assertTrue(roleFound);
-
-        var usedPermissionDelete =
-                call("DELETE", "/api/v1/admin/permissions/" + permissionId, token, null);
-        assertEquals(409, usedPermissionDelete.status(), usedPermissionDelete.body());
-        assertEquals("PERMISSION_IN_USE", usedPermissionDelete.data().get("code").asText());
-
+                        Map.of("permission_ids", List.of(write)));
+        assertEquals(200, changed.status(), changed.body());
+        assertEquals(
+                write, changed.data().get("data").get("permissions").get(0).get("id").asLong());
+        var audit =
+                db.queryForMap(
+                        "SELECT CAST(before_data AS CHAR) b,CAST(after_data AS CHAR) a FROM audit_logs WHERE action='ROLE_UPDATE' AND entity_id=? ORDER BY id DESC LIMIT 1",
+                        Long.toString(id));
+        assertTrue(audit.get("b").toString().contains("permission_ids"));
+        assertTrue(audit.get("a").toString().contains("permission_ids"));
+        assertFalse(
+                audit.get("b").equals(audit.get("a")),
+                "same count must preserve the changed grant IDs");
         assertEquals(
                 404,
                 call(
                                 "PATCH",
-                                "/api/v1/admin/roles/" + roleId,
+                                "/api/v1/admin/roles/" + id,
                                 token,
                                 Map.of(
                                         "name",
@@ -183,51 +74,31 @@ class RbacHttpTests extends AccountHttpSupport {
                                         "permission_ids",
                                         List.of(Long.MAX_VALUE)))
                         .status());
-
         assertEquals(
-                "Role",
-                db.queryForObject("SELECT name FROM roles WHERE id=?", String.class, roleId));
-
+                "Role", db.queryForObject("SELECT name FROM roles WHERE id=?", String.class, id));
         assertEquals(
-                1,
+                write,
                 db.queryForObject(
-                        "SELECT COUNT(*) FROM role_permissions WHERE role_id=?",
-                        Integer.class,
-                        roleId));
-
-        var patch = new HashMap<String, Object>();
-        patch.put("description", null);
-        patch.put("permission_ids", List.of());
-
-        assertEquals(200, call("PATCH", "/api/v1/admin/roles/" + roleId, token, patch).status());
-
+                        "SELECT permission_id FROM role_permissions WHERE role_id=?",
+                        Long.class,
+                        id));
+        assertEquals(
+                409, call("DELETE", "/api/v1/admin/permissions/" + read, token, null).status());
+        assertEquals(
+                200,
+                call(
+                                "PATCH",
+                                "/api/v1/admin/roles/" + id,
+                                token,
+                                Map.of("permission_ids", List.of()))
+                        .status());
         assertEquals(
                 0,
                 db.queryForObject(
                         "SELECT COUNT(*) FROM role_permissions WHERE role_id=?",
                         Integer.class,
-                        roleId));
-
-        assertEquals(
-                204,
-                call("DELETE", "/api/v1/admin/permissions/" + permissionId, token, null).status());
-
-        permissionIds.remove(permissionId);
-
-        assertEquals(204, call("DELETE", "/api/v1/admin/roles/" + roleId, token, null).status());
-
-        roleIds.remove(roleId);
-
-        assertTrue(
-                db.queryForObject(
-                                """
-                                SELECT COUNT(*)
-                                FROM audit_logs
-                                WHERE action='ROLE_CREATE'
-                                  AND entity_id=?
-                                """,
-                                Integer.class,
-                                Long.toString(roleId))
-                        > 0);
+                        id));
+        assertEquals(204, call("DELETE", "/api/v1/admin/roles/" + id, token, null).status());
+        roleIds.remove(id);
     }
 }

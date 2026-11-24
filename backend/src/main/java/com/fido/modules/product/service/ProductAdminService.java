@@ -44,6 +44,8 @@ public class ProductAdminService {
     private final AdminCatalogQueryService query;
     private final AuditWriteService audit;
     private final EntityManager em;
+    private final com.fido.modules.inventory.service.InventoryAvailabilityService stock;
+    private final com.fido.modules.order.service.OrderSummaryReadService orderObligations;
 
     public ProductAdminService(
             ProductRepository products,
@@ -54,7 +56,9 @@ public class ProductAdminService {
             CatalogReferenceService references,
             AdminCatalogQueryService query,
             AuditWriteService audit,
-            EntityManager em) {
+            EntityManager em,
+            com.fido.modules.inventory.service.InventoryAvailabilityService stock,
+            com.fido.modules.order.service.OrderSummaryReadService orderObligations) {
         this.products = products;
         this.families = families;
         this.gallery = gallery;
@@ -64,6 +68,8 @@ public class ProductAdminService {
         this.query = query;
         this.audit = audit;
         this.em = em;
+        this.stock = stock;
+        this.orderObligations = orderObligations;
     }
 
     /**
@@ -131,6 +137,16 @@ public class ProductAdminService {
                 families.lockProductForUpdate(
                         productId,
                         request.isParentProductIdPresent() ? request.getParentProductId() : null);
+        var before = new java.util.LinkedHashMap<String, Object>();
+        before.put("price", product.getSellingPrice());
+        before.put("status", product.getStatus());
+        before.put("parent_product_id", product.getParentProductId());
+        before.put(
+                "attribute_value_ids",
+                productAttributeValues.findForFamilyValidation(List.of(productId)).stream()
+                        .map(ProductAttributeValue::getOptionId)
+                        .sorted()
+                        .toList());
         Long oldRootId =
                 product.getParentProductId() == null ? productId : product.getParentProductId();
 
@@ -202,8 +218,18 @@ public class ProductAdminService {
         flushOrConflict();
 
         audit.record(
-                AuditWriteEvent.of(
-                        AuditAction.PRODUCT_UPDATE, AuditEntityType.PRODUCT, productId.toString()));
+                AuditWriteEvent.withChanges(
+                        AuditAction.PRODUCT_UPDATE,
+                        AuditEntityType.PRODUCT,
+                        productId.toString(),
+                        before,
+                        java.util.Map.of(
+                                "price",
+                                product.getSellingPrice(),
+                                "status",
+                                product.getStatus(),
+                                "attribute_value_ids",
+                                resultingValueIds.stream().sorted().toList())));
         return query.detailInternal(productId);
     }
 
@@ -215,6 +241,9 @@ public class ProductAdminService {
                 .anyMatch(child -> !child.isDeleted())) {
             conflict("PRODUCT_HAS_CHILDREN");
         }
+        if (stock.hasStockForRetirement(productId)) conflict("PRODUCT_HAS_STOCK");
+        if (orderObligations.hasOpenProductObligations(productId))
+            conflict("PRODUCT_HAS_OPEN_ORDERS");
         product.setDeletedAt(LocalDateTime.now(ZoneOffset.UTC));
         products.save(product);
         em.flush();

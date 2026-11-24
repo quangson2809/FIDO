@@ -1,5 +1,7 @@
 # 07 — Transactions, Concurrency and Idempotency
 
+> **2026-11-23/24 operational owner amendment:** [operational contract](operations/operational-api.md) supersedes earlier exclusions/rules for the explicitly requested operational features, including physical receipts, stocktakes, linked corrections, price consent, verified-email recovery, customer status and report metrics. Base V1 remains unchanged; additive V2–V4 migrations extend it to 36 business tables. See [schema extension](operations/operational-schema.mmd).
+
 ## 1. General transaction rules
 
 - Each business command has one owning module service. Cross-module writes call the owner module service; they do not bypass it through another module's Repository.

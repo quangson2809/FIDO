@@ -149,7 +149,7 @@ public class ApiExceptionHandler {
             return path.equals("/api/v1/auth/login") ? "INVALID_CREDENTIALS" : "UNAUTHENTICATED";
         }
         if (status == 403) return "FORBIDDEN";
-        if (status < 500) {
+        if (status < 500 || status == 503) {
             String code =
                     exception instanceof BusinessRuleException business
                             ? business.getMessage()
@@ -172,6 +172,46 @@ public class ApiExceptionHandler {
     private String publicMessage(String code) {
         if (code == null) return null;
         return switch (code) {
+            case "CHECKOUT_RECONFIRMATION_REQUIRED" ->
+                    "Giá hoặc ưu đãi đã thay đổi. Chưa tạo đơn. Vui lòng xem và xác nhận lại báo giá mới.";
+            case "PRODUCT_HAS_STOCK" ->
+                    "Sản phẩm còn tồn kho. Hãy ngừng bán và xử lý tồn trước khi kết thúc quản lý.";
+            case "PRODUCT_HAS_OPEN_ORDERS" ->
+                    "Sản phẩm còn liên quan đơn đang xử lý. Hãy ngừng bán để chặn mua mới và tiếp tục xử lý đơn cũ.";
+            case "PERMISSION_UNSUPPORTED" ->
+                    "Mã quyền không gắn với thao tác được hệ thống hỗ trợ. Hãy chọn quyền từ danh mục hiện có.";
+            case "VOUCHER_ISSUED_TERMS_IMMUTABLE" ->
+                    "Điều kiện mã đã phát hành được giữ nguyên. Chỉ bật/tắt hoặc tạo mã mới để đổi ưu đãi.";
+            case "CURRENT_PASSWORD_INVALID" -> "Mật khẩu hiện tại chưa đúng.";
+            case "RECOVERY_LINK_INVALID" ->
+                    "Liên kết không hợp lệ, đã sử dụng hoặc hết hạn. Vui lòng yêu cầu liên kết mới.";
+            case "EMAIL_REQUIRED" -> "Hãy lưu địa chỉ email trong hồ sơ trước khi xác minh.";
+            case "EMAIL_ALREADY_VERIFIED" -> "Email này đã được xác minh.";
+            case "EMAIL_DELIVERY_NOT_CONFIGURED" ->
+                    "Chức năng gửi email chưa được cấu hình. Vui lòng liên hệ người quản trị.";
+            case "PRIVILEGED_ACCOUNT_USE_STAFF_MANAGEMENT" ->
+                    "Tài khoản này có vai trò quản trị. Hãy xử lý trong mục quản lý nhân sự.";
+            case "RETURN_ORDER_STATE_INVALID" ->
+                    "Chỉ tiếp nhận hàng quay về của đơn đã hủy hoặc đã ghi nhận trả hàng.";
+            case "RETURN_SOURCE_INVALID", "RETURN_QUANTITY_EXCEEDED", "RETURN_ALREADY_RECEIVED" ->
+                    "Số nhận vượt phần hàng còn chờ tiếp nhận hoặc nguồn hàng không phù hợp. Hãy kiểm tra lịch sử nhận và số hàng thực tế.";
+            case "RETURN_IDEMPOTENCY_CONFLICT",
+                            "STOCKTAKE_IDEMPOTENCY_CONFLICT",
+                            "CORRECTION_IDEMPOTENCY_CONFLICT" ->
+                    "Yêu cầu này đã được dùng với nội dung khác. Hãy kiểm tra chứng từ đã ghi trước khi thao tác tiếp.";
+            case "STOCKTAKE_STATE_CONFLICT" ->
+                    "Kiểm kê này đã được xác nhận hoặc hủy. Không thể ghi lại lần nữa.";
+            case "STOCKTAKE_NOT_FOUND", "RECEIPT_NOT_FOUND", "CUSTOMER_NOT_FOUND" ->
+                    "Không tìm thấy dữ liệu cần xử lý.";
+            case "STOCKTAKE_DUPLICATE_PRODUCT", "STOCKTAKE_ACTION_INVALID" ->
+                    "Danh sách kiểm kê hoặc thao tác chưa hợp lệ.";
+            case "CORRECTION_REQUIRES_CONFIRMED_RECEIPT", "CORRECTION_SOURCE_INVALID" ->
+                    "Điều chỉnh phải gắn đúng dòng của phiếu nhập đã xác nhận.";
+            case "CORRECTION_STALE_SOURCE" ->
+                    "Phiếu đã có điều chỉnh mới. Hãy tải lại và đối chiếu trước khi sửa.";
+            case "CORRECTION_NO_CHANGES" ->
+                    "Chưa có thay đổi về số lượng hoặc giá vốn để ghi điều chỉnh.";
+            case "REPORT_STATUS_INVALID" -> "Trạng thái lọc báo cáo chưa hợp lệ.";
             case "INVALID_CREDENTIALS" ->
                     "Số điện thoại hoặc mật khẩu chưa đúng. Vui lòng kiểm tra lại.";
             case "UNAUTHENTICATED" ->

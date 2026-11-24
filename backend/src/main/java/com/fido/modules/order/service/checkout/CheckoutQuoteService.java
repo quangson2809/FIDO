@@ -63,6 +63,7 @@ public class CheckoutQuoteService {
                 calculation.discount(),
                 calculation.shippingFee(),
                 calculation.total(),
-                voucher);
+                voucher,
+                CheckoutConsent.token(calculation));
     }
 }

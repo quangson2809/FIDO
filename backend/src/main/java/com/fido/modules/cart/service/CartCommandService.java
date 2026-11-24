@@ -125,6 +125,18 @@ public class CartCommandService {
         currentForMutation(accountId);
     }
 
+    @Transactional(propagation = Propagation.MANDATORY)
+    public java.util.List<Long> productIdsForCheckout(Long accountId) {
+        Cart cart = currentForMutation(accountId);
+        return cart == null
+                ? java.util.List.of()
+                : items.findAllByCartIdOrderByCartItemIdAsc(cart.getCartId()).stream()
+                        .map(CartItem::getProductId)
+                        .distinct()
+                        .sorted()
+                        .toList();
+    }
+
     /**
      * accountId do controller lấy từ JWT; khóa tài khoản trước cả khi chưa tồn tại giỏ.
      * UNIQUE(account_id) bảo đảm mỗi tài khoản có tối đa một giỏ dùng lại.

@@ -94,6 +94,11 @@ async function fixture(
       };
       const money = options.empty ? 0 : from === '2026-09-01' ? 990000 : 123000;
       const statusCounts = options.empty ? Object.fromEntries(statuses.map((s) => [s, 0])) : counts;
+      if (path.endsWith('/operations'))
+        return send({ ...common, placed_orders: options.empty ? 0 : 2, average_order_value: options.empty ? 0 : 61500,
+          status_rates_bps: { CANCELLED: 0, DELIVERY_FAILED: 0, RETURNED: 0 }, slow_moving_from: from, slow_moving_to: to, slow_moving_products: 0 });
+      if (path.includes('/operations/'))
+        return route.fulfill({ status: 200, json: { data: [], meta: { page: 1, page_size: 10, total: 0, total_pages: 0 } } });
       if (path.endsWith('/overview'))
         return send({
           from,
@@ -255,9 +260,9 @@ try {
   assert.equal(await page.locator('.report-table').isVisible(), true);
   app.options.error = true;
   await page.getByRole('button', { name: '7 ngày', exact: true }).click();
-  await page.getByText('Không thể hoàn thành yêu cầu.', { exact: true }).waitFor();
+  await page.getByText('Không thể hoàn thành yêu cầu.', { exact: true }).first().waitFor();
   app.options.error = false;
-  await page.getByRole('button', { name: 'Thử lại', exact: true }).click();
+  await page.getByRole('button', { name: 'Thử lại', exact: true }).first().click();
   await page.getByText('Doanh số theo kỳ hoàn tất', { exact: true }).waitFor();
   app.options.empty = true;
   await page.getByRole('button', { name: '30 ngày', exact: true }).click();
