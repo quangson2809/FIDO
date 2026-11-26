@@ -186,6 +186,14 @@ public class ApiExceptionHandler {
             case "RECOVERY_LINK_INVALID" ->
                     "Liên kết không hợp lệ, đã sử dụng hoặc hết hạn. Vui lòng yêu cầu liên kết mới.";
             case "EMAIL_REQUIRED" -> "Hãy lưu địa chỉ email trong hồ sơ trước khi xác minh.";
+            case "OTP_MISSING" -> "Chưa có mã xác nhận. Vui lòng yêu cầu gửi mã về email.";
+            case "OTP_EXPIRED" -> "Mã xác nhận đã hết hạn sau 2 phút. Vui lòng yêu cầu mã mới.";
+            case "OTP_INVALID" -> "Mã xác nhận không đúng hoặc đã sử dụng. Vui lòng kiểm tra lại.";
+            case "PASSWORDS_DO_NOT_MATCH" -> "Hai mật khẩu mới chưa khớp. Vui lòng nhập lại.";
+            case "RECOVERY_ACCOUNT_NOT_FOUND" -> "Không tìm thấy tài khoản đang hoạt động với email này.";
+            case "RECOVERY_EMAIL_AMBIGUOUS" ->
+                    "Email đang được nhiều tài khoản sử dụng. Vui lòng cập nhật email riêng trong hồ sơ.";
+            case "EMAIL_DELIVERY_FAILED" -> "Chưa gửi được email xác nhận. Vui lòng thử lại sau.";
             case "EMAIL_ALREADY_VERIFIED" -> "Email này đã được xác minh.";
             case "EMAIL_DELIVERY_NOT_CONFIGURED" ->
                     "Chức năng gửi email chưa được cấu hình. Vui lòng liên hệ người quản trị.";
@@ -215,7 +223,7 @@ public class ApiExceptionHandler {
             case "INVALID_CREDENTIALS" ->
                     "Số điện thoại hoặc mật khẩu chưa đúng. Vui lòng kiểm tra lại.";
             case "UNAUTHENTICATED" ->
-                    "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.";
+                    "Vui lòng đăng nhập hoặc đăng nhập lại để tiếp tục.";
             case "FORBIDDEN" ->
                     "Bạn không có quyền thực hiện thao tác này. Vui lòng liên hệ người quản trị nếu cần hỗ trợ.";
             case "VALIDATION_ERROR" ->

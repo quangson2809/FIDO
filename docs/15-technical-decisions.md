@@ -230,3 +230,11 @@ Owner-approved behavior and target schema are recorded; application/DTO/frontend
 - Recovery token verification expiry is 24h, reset expiry 15min, one email per account/purpose per 60s; 256-bit opaque tokens are hashed and purpose/email-bound, single-use under Account locks. Email changes clear verification; password changes/reset and customer lock/unlock advance JWT auth_version. SMTP must be configured outside Git and remains the one external delivery prerequisite.
 - AOV is the whole-VND HALF_UP average of all placed-order totals in the selected period. Status rates use the same denominator. Slow-moving uses current stock and the explicitly labelled trailing 10 local calendar days; this avoids presenting current balances as historical stock.
 - Admin catalog metadata retains complete Category/Brand arrays, including INACTIVE rows, so stop/reactivate remains operable after public metadata is filtered. Public metadata continues to expose only visible entries. Stocktake drafts retain the version observed when each physical count is entered, including across frontend inventory pagination.
+
+## 2026-11-27 — OTP chỉ dùng cho đổi và lấy lại mật khẩu
+
+- Theo yêu cầu chủ dự án, đăng nhập tiếp tục dùng điện thoại và mật khẩu. OTP email gồm 6 số, hiệu lực 2 phút, chỉ xác nhận quyền đổi/lấy lại mật khẩu; thay thế luồng liên kết email trước đây.
+- Giữ controller → service → repository trong module account. AccountSecurityService điều phối mã và đổi mật khẩu; EmailService chỉ gửi SimpleMailMessage qua JavaMailSender do Spring Boot cấu hình; OtpStorageService giữ mã trong ConcurrentHashMap.
+- Bước lưu mật khẩu bắt buộc nhận OTP, kiểm tra tài khoản/email/thời hạn và tiêu thụ mã một lần. Đổi trong hồ sơ lấy account ID từ JWT. Quên mật khẩu nhận email nhưng từ chối email trùng nhiều tài khoản đang hoạt động.
+- Tái sử dụng hashPassword và auth_version hiện có. Đồng bộ FE, route contract, thông báo tiếng Việt, mẫu biến môi trường và test. Không thêm/sửa bảng hay cột; không thêm OTP đăng nhập, Redis, liên kết khôi phục hay cơ chế xác thực mới.
+- Kiểm tra có chọn lọc bằng nhãn [otp-focus]: OTP API/mail/storage, đăng nhập Spring, route và kiến trúc; FE lint/build/API/render/architecture và hai hành trình mật khẩu ở 375/1440px. SMTP thực cần thông tin môi trường của người vận hành.

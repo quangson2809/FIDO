@@ -4,7 +4,7 @@ Base: demo1 c5018491defcd85d73e93483040382480901dae0. Source: [owner request](20
 
 ## Confirmed owner policies
 
-- Recovery uses a link sent to a verified email; never phone knowledge alone. Real delivery requires configured email infrastructure. Changing the email invalidates verification.
+- 2026-11-27 owner amendment: password change/recovery requires a six-digit email OTP valid for two minutes. Login stays phone + password. This supersedes the earlier verified-email link flow; see [current OTP API](operational-api.md#accounts-and-permissions).
 - INACTIVE categories (including their descendants) and brands hide/block new purchases of related Products, without preventing historical order or inventory operations.
 - Issued Voucher terms are immutable; operators may enable/disable. Different terms require a new Voucher. Old Order snapshots never change.
 - Slow-moving means positive stock and no completed sale in the last 10 days. Status rates use current statuses of Orders placed in the selected period; returned Orders count separately.
@@ -26,7 +26,7 @@ Base: demo1 c5018491defcd85d73e93483040382480901dae0. Source: [owner request](20
 | O11 | Supported permissions only | account, frontend | Flexible Roles but grants only map to implemented capabilities |
 | O12 | Content lifecycle | content, frontend | Draft/preview/publish/unpublish/archive, authorization and responsive actions |
 | O13 | Useful audit diffs | audit and command owners | Exact grant/price/term/item differences, bounded allowlist, private data redaction |
-| O14 | Change password and email recovery | account, frontend | Current-password verification, hashed single-use expiring recovery tokens, verified email, enumeration-safe responses |
+| O14 | Change password and email recovery | account, frontend | Two-minute email OTP, owner-bound password change, one-time consumption and JWT revocation |
 | O15 | Lock/unlock customer | account, audit, frontend | Scoped authorization, reason/actor/time, immediate token rejection, order history preserved |
 | O16 | Correct confirmed receipt | inventory, frontend | Linked append-only correction, original immutable, stock/value deltas, dedupe/rollback |
 | O17 | Physical stocktake | inventory, frontend | Saved count/variance/reason/confirmation; version conflict; one posting |
@@ -51,7 +51,7 @@ Implementation is complete for O01–O18. Real SMTP delivery for O14 remains a d
 | O11 | [RbacHttpTests](../../backend/src/test/java/com/fido/modules/account/RbacHttpTests.java) and [RbacTransactionTests](../../backend/src/test/java/com/fido/modules/account/RbacTransactionTests.java) verify supported grants, flexible Roles, exact grant diffs and audit rollback. |
 | O12 | OperationalManagementHttpTests and the operational browser regression cover draft creation, safe preview, publication, withdrawal, archive and authorization. |
 | O13 | [AuditPayloadPolicyTests](../../backend/src/test/java/com/fido/modules/audit/service/AuditPayloadPolicyTests.java), RBAC tests, receipt tests and Order privacy tests verify meaningful allowlisted diffs while excluding credentials/private fields. Category/Brand status changes also retain before/after status. |
-| O14–O15 | OperationalCompletionHttpTests verifies current-password proof, immediate JWT revocation, verified-email-only recovery, hashed/single-use/expired/email-bound links, customer lock/unlock and preserved Orders. Operational browser regression exercises both password journeys, email verification and customer status forms. Mail transport is mocked in tests; no real provider delivery is claimed. |
+| O14–O15 | PasswordOtpHttpTests covers OTP ownership, expiry, resend/failure, one-time consumption, password validation and JWT revocation. EmailServiceTests checks the Spring mail message; OtpStorageServiceTests checks concurrent consumption. OperationalCompletionHttpTests retains customer status/history coverage. The operational browser test exercises both OTP password journeys at 375/1440px; --password-only selects this scope. SMTP delivery is mocked; real provider delivery remains a runtime prerequisite. |
 | O16–O17 | InventoryOperationalHttpTests verifies append-only correction chains, exact stock/value deltas, unchanged original receipts, insufficient-stock/stale-source rejection, saved physical counts, concurrent confirmation/corrections, intervening stock changes and audit rollback. Operational browser regression covers cost-only follow-up correction and counts retained across inventory pages. |
 | O18 | OperationalManagementHttpTests verifies AOV/status denominators, source Order drilldown and the 10-day slow-moving boundary. Operational and [report browser regressions](../../frontend/tests/report-browser-smoke.mjs) exercise metrics, source links and responsive/error states. |
 

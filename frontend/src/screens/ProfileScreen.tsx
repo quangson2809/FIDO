@@ -483,7 +483,7 @@ export const ProfileScreen: React.FC = () => {
             </div>
           </section>
         </div>
-        {profile && <AccountSecurityPanel email={profile.account.email} verified={profile.account.email_verified === true} />}
+        {profile && <AccountSecurityPanel email={profile.account.email} />}
       </section>
     </div>
   );

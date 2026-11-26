@@ -18,7 +18,7 @@ public interface AccountRepository extends Repository<Account, Long> {
 
     Account saveAndFlush(Account entity);
 
-    Optional<Account> findByEmail(String email);
+    List<Account> findByEmailAndStatusAndDeletedAtIsNull(String email, String status);
 
     @org.springframework.data.jpa.repository.Lock(
             jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)

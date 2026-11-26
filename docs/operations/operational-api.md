@@ -54,10 +54,21 @@ The count form retains each selected Product's version from when its count was f
 
 ## Accounts and permissions
 
-- `POST /me/password`: `current_password`, `new_password`; 204 on success. Current password required; 8–128 characters within BCrypt's 72-byte limit. Password change increments `auth_version` and invalidates outstanding recovery links and existing JWTs. Re-login obtains a new version claim.
-- `POST /me/email/verification`: 202, authenticated owner, sends only to the saved email. Existing email is not implicitly verified. Changing email clears verification; only one non-deleted account may verify a given normalized email.
-- `POST /auth/email/verify`: `{token}`, 204. `POST /auth/password-reset/request`: `{email}`, 202 with no account-existence disclosure. Only ACTIVE accounts with that verified email receive a reset link. `POST /auth/password-reset/confirm`: `{token,new_password}`, 204.
-- Recovery capabilities use 256 random bits, URL-safe encoding and SHA-256 storage, single use, purpose/email binding, account-first locks and expiration (verification 24 hours, reset 15 minutes). Issuing a newer link replaces the prior purpose link; per-account issuance cooldown is 60 seconds. Tokens appear only in the email link fragment, which the client removes before submitting via POST. No tokens/passwords/hashes enter audit.
+Owner amendment, 2026-11-27: OTP is used only to prove account ownership before changing or recovering a password. Login stays phone + password.
+
+| Method | Route | Request | Access / result |
+|---|---|---|---|
+| POST | `/email/send-otp` | `{email}` (legacy `?email=...` also accepted) | Public; 202 after SMTP send succeeds |
+| POST | `/auth/email/verify-otp` | `{email,otp}` | Public; 204 when the code is valid |
+| POST | `/auth/password-reset/confirm` | `{email,otp,password,confirm_password}` | Public; 204 after replacing the password |
+| POST | `/me/password` | `{otp,password,confirm_password}` | JWT owner; 204 after replacing their password |
+
+- OTPs have six digits and expire after two minutes. They live only in the existing in-memory storage, bound to account ID and normalized saved email. A successful resend replaces the old code; a failed send leaves the previous code intact.
+- Verification alone does not grant authority to change a password. The final password command must include the OTP and checks it again, then consumes it once. No email-verification flag or login OTP is introduced.
+- Public email recovery rejects missing/inactive accounts and ambiguous email matches instead of selecting an arbitrary account. Profile change derives the target account from JWT, never a body email.
+- Both commands reuse the existing password hashing/validation, advance `auth_version`, and audit the password change in its transaction. Public recovery records a system audit event; authenticated callers retain their actual actor. No password or OTP is audited.
+- No database schema change is needed. Existing historical recovery tables/columns are left in place; the old link-based endpoints and UI are replaced by this OTP contract. Restarting the server discards pending codes.
+
 - `PATCH /admin/customers/{customerId}/status`: `{status:"LOCKED"|"ACTIVE",reason}`; CUSTOMER_WRITE or SUPERADMIN. Reason required; audit records actor/time. Targets must be customers and not privileged ADMIN/SUPERADMIN accounts (those continue through protected staff management). Lock/unlock revokes old JWTs; historical Orders stay intact. CUSTOMER_WRITE is seeded for SUPERADMIN only; no employee grant matrix is invented.
 - Roles remain flexible. Permission creation/grants reject codes absent from SupportedPermissions, and selection lists expose supported capabilities. Existing supported Permission rows are protected; legacy unused custom rows can be removed through the existing safe deletion flow. Role/staff audit captures exact permission/role ID sets.
 
@@ -77,4 +88,4 @@ All additions require REPORT_READ or SUPERADMIN; no PII is exposed.
 
 ## SMTP configuration and deployment
 
-Actual delivery needs runtime `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT` (STARTTLS, normally 587), `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, `MAIL_FROM`, and HTTPS `APP_PUBLIC_URL`. Supply credentials securely in deployment/environment settings; never in chat or Git. TLS verification and mandatory STARTTLS remain enabled. Without a sender, both known and unknown reset requests receive the same explicit service-unavailable response. Tests replace only the mail delivery adapter; real provider delivery remains a deployment prerequisite.
+Actual delivery uses `MAIL_HOST`, `MAIL_PORT` (STARTTLS, default 587), `MAIL_USERNAME`, and `MAIL_PASSWORD` in the process environment or backend `.env`. Spring Boot configures one JavaMailSender; the authenticated username is the From address. SMTP authentication, mandatory STARTTLS, hostname verification and connection/read/write timeouts are configured. Missing sender identity returns `503 EMAIL_DELIVERY_NOT_CONFIGURED`; transport failure returns `502 EMAIL_DELIVERY_FAILED`. Real provider delivery still requires valid runtime SMTP credentials and is not claimed by mocked transport tests.

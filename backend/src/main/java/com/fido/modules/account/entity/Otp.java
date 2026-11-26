@@ -1,14 +1,9 @@
 package com.fido.modules.account.entity;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import java.time.Instant;
 
-import java.time.LocalDateTime;
-
-@Data
-@AllArgsConstructor
-public class Otp {
-    private String email;
-    private String otp;
-    private LocalDateTime expirationTime;
+public record Otp(long accountId, String email, String code, Instant expiresAt) {
+    public boolean isExpired(Instant now) {
+        return !expiresAt.isAfter(now);
+    }
 }

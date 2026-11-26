@@ -8,15 +8,12 @@ import com.fido.modules.audit.service.*;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import java.util.*;
 import java.util.concurrent.*;
 
 class OperationalCompletionHttpTests extends OrderHttpSupport {
-    @MockitoBean AccountMailService mail;
     @MockitoSpyBean AuditWriteService audit;
     private static final Map<String, Object> CHECKOUT =
             Map.of(
@@ -383,142 +380,7 @@ class OperationalCompletionHttpTests extends OrderHttpSupport {
         }
     }
 
-    @Test
-    void passwordChangeRequiresCurrentPasswordAndRevokesOldTokens() throws Exception {
-        var customer = user();
-        String phone =
-                db.queryForObject(
-                        "SELECT phone FROM accounts WHERE id=?",
-                        String.class,
-                        customer.accountId());
-        assertEquals(
-                400,
-                call(
-                                "POST",
-                                "/api/v1/me/password",
-                                customer.token(),
-                                Map.of(
-                                        "current_password",
-                                        "incorrect",
-                                        "new_password",
-                                        "New-password-456"))
-                        .status());
-        assertEquals(200, call("GET", "/api/v1/me", customer.token(), null).status());
-        assertEquals(
-                204,
-                call(
-                                "POST",
-                                "/api/v1/me/password",
-                                customer.token(),
-                                Map.of(
-                                        "current_password",
-                                        PASSWORD,
-                                        "new_password",
-                                        "New-password-456"))
-                        .status());
-        assertEquals(401, call("GET", "/api/v1/me", customer.token(), null).status());
-        assertEquals(
-                401,
-                call(
-                                "POST",
-                                "/api/v1/auth/login",
-                                null,
-                                Map.of("phone", phone, "password", PASSWORD))
-                        .status());
-        assertEquals(
-                200,
-                call(
-                                "POST",
-                                "/api/v1/auth/login",
-                                null,
-                                Map.of("phone", phone, "password", "New-password-456"))
-                        .status());
-    }
 
-    @Test
-    void recoveryRequiresVerifiedEmailWithHashedSingleUseCapabilities() throws Exception {
-        var customer = user();
-        String email = "recovery-" + UUID.randomUUID() + "@example.test";
-        assertEquals(
-                200,
-                call("PATCH", "/api/v1/me", customer.token(), Map.of("email", email)).status());
-        assertEquals(
-                202,
-                call("POST", "/api/v1/auth/password-reset/request", null, Map.of("email", email))
-                        .status());
-        verify(mail, never()).sendLink(anyString(), eq("PASSWORD_RESET"), anyString());
-        assertEquals(
-                202,
-                call("POST", "/api/v1/me/email/verification", customer.token(), null).status());
-        var verification = ArgumentCaptor.forClass(String.class);
-        verify(mail).sendLink(eq(email), eq("EMAIL_VERIFY"), verification.capture());
-        assertEquals(
-                204,
-                call(
-                                "POST",
-                                "/api/v1/auth/email/verify",
-                                null,
-                                Map.of("token", verification.getValue()))
-                        .status());
-        assertEquals(
-                400,
-                call(
-                                "POST",
-                                "/api/v1/auth/email/verify",
-                                null,
-                                Map.of("token", verification.getValue()))
-                        .status());
-        assertEquals(
-                202,
-                call("POST", "/api/v1/auth/password-reset/request", null, Map.of("email", email))
-                        .status());
-        var resetToken = ArgumentCaptor.forClass(String.class);
-        verify(mail).sendLink(eq(email), eq("PASSWORD_RESET"), resetToken.capture());
-        String stored =
-                db.queryForObject(
-                        "SELECT token_hash FROM account_recovery_tokens WHERE account_id=? AND purpose='PASSWORD_RESET'",
-                        String.class,
-                        customer.accountId());
-        assertNotEquals(resetToken.getValue(), stored);
-        assertEquals(64, stored.length());
-        assertEquals(
-                400,
-                call(
-                                "POST",
-                                "/api/v1/auth/password-reset/confirm",
-                                null,
-                                Map.of(
-                                        "token",
-                                        "x".repeat(43),
-                                        "new_password",
-                                        "Recovered-password-1"))
-                        .status());
-        assertEquals(
-                204,
-                call(
-                                "POST",
-                                "/api/v1/auth/password-reset/confirm",
-                                null,
-                                Map.of(
-                                        "token",
-                                        resetToken.getValue(),
-                                        "new_password",
-                                        "Recovered-password-1"))
-                        .status());
-        assertEquals(401, call("GET", "/api/v1/me", customer.token(), null).status());
-        assertEquals(
-                400,
-                call(
-                                "POST",
-                                "/api/v1/auth/password-reset/confirm",
-                                null,
-                                Map.of(
-                                        "token",
-                                        resetToken.getValue(),
-                                        "new_password",
-                                        "Recovered-password-2"))
-                        .status());
-    }
 
     @Test
     void lockingCustomerPreservesOrdersAndUnlockDoesNotReviveOldTokens() throws Exception {
@@ -562,55 +424,5 @@ class OperationalCompletionHttpTests extends OrderHttpSupport {
                         .status());
     }
 
-    @Test
-    void changedEmailAndExpiredRecoveryLinkCannotTakeOverAnAccount() throws Exception {
-        var customer = user();
-        String email = "expiry-" + UUID.randomUUID() + "@example.test";
-        assertEquals(
-                200,
-                call("PATCH", "/api/v1/me", customer.token(), Map.of("email", email)).status());
-        assertEquals(
-                202,
-                call("POST", "/api/v1/me/email/verification", customer.token(), null).status());
-        var verification = ArgumentCaptor.forClass(String.class);
-        verify(mail).sendLink(eq(email), eq("EMAIL_VERIFY"), verification.capture());
-        assertEquals(
-                200,
-                call("PATCH", "/api/v1/me", customer.token(), Map.of("email", "changed-" + email))
-                        .status());
-        assertEquals(
-                400,
-                call(
-                                "POST",
-                                "/api/v1/auth/email/verify",
-                                null,
-                                Map.of("token", verification.getValue()))
-                        .status());
-        db.update(
-                "UPDATE accounts SET email=?,email_verified_at=CURRENT_TIMESTAMP WHERE id=?",
-                email,
-                customer.accountId());
-        assertEquals(
-                202,
-                call("POST", "/api/v1/auth/password-reset/request", null, Map.of("email", email))
-                        .status());
-        var token = ArgumentCaptor.forClass(String.class);
-        verify(mail).sendLink(eq(email), eq("PASSWORD_RESET"), token.capture());
-        db.update(
-                "UPDATE account_recovery_tokens SET created_at=DATE_SUB(CURRENT_TIMESTAMP,INTERVAL 2 HOUR),expires_at=DATE_SUB(CURRENT_TIMESTAMP,INTERVAL 1 MINUTE) WHERE account_id=? AND purpose='PASSWORD_RESET'",
-                customer.accountId());
-        assertEquals(
-                400,
-                call(
-                                "POST",
-                                "/api/v1/auth/password-reset/confirm",
-                                null,
-                                Map.of(
-                                        "token",
-                                        token.getValue(),
-                                        "new_password",
-                                        "Must-not-apply-456"))
-                        .status());
-        assertEquals(200, call("GET", "/api/v1/me", customer.token(), null).status());
-    }
+
 }

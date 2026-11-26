@@ -1,8 +1,11 @@
 import { apiClient } from '../../../services/http/apiClient';
+
 export const securityService = {
-  changePassword: (current_password: string, new_password: string) => apiClient.post<void>('/me/password', { current_password, new_password }),
-  requestVerification: () => apiClient.post<void>('/me/email/verification'),
-  verifyEmail: (token: string) => apiClient.post<void>('/auth/email/verify', { token }),
-  requestReset: (email: string) => apiClient.post<void>('/auth/password-reset/request', { email }),
-  reset: (token: string, new_password: string) => apiClient.post<void>('/auth/password-reset/confirm', { token, new_password }),
+  sendOtp: (email: string) => apiClient.post<void>('/email/send-otp', { email }),
+  verifyOtp: (email: string, otp: string) =>
+    apiClient.post<void>('/auth/email/verify-otp', { email, otp }),
+  changePassword: (otp: string, password: string, confirm_password: string) =>
+    apiClient.post<void>('/me/password', { otp, password, confirm_password }),
+  reset: (email: string, otp: string, password: string, confirm_password: string) =>
+    apiClient.post<void>('/auth/password-reset/confirm', { email, otp, password, confirm_password }),
 };

@@ -2,29 +2,27 @@ package com.fido.modules.account.service.identity;
 
 import com.fido.modules.account.entity.Account;
 import com.fido.modules.account.entity.Otp;
-import com.fido.modules.account.repository.AccountRecoveryRepository;
 import com.fido.modules.account.repository.AccountRepository;
-import com.fido.modules.audit.service.*;
+import com.fido.modules.audit.service.AuditAction;
+import com.fido.modules.audit.service.AuditEntityType;
+import com.fido.modules.audit.service.AuditWriteEvent;
+import com.fido.modules.audit.service.AuditWriteService;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.Base64;
+import java.util.Locale;
 
 @Service
-@Transactional
 public class AccountSecurityService {
     private final AccountRepository accounts;
-    private final AccountRecoveryRepository recovery;
-    private final PasswordEncoder passwords;
+    private final AuthenticationService authentication;
     private final EmailService mail;
     private final OtpStorageService storage;
     private final AuditWriteService audit;
@@ -32,72 +30,118 @@ public class AccountSecurityService {
 
     public AccountSecurityService(
             AccountRepository accounts,
-            AccountRecoveryRepository recovery,
-            PasswordEncoder passwords,
+            AuthenticationService authentication,
             EmailService mail,
             OtpStorageService storage,
             AuditWriteService audit) {
         this.accounts = accounts;
-        this.recovery = recovery;
-        this.passwords = passwords;
+        this.authentication = authentication;
         this.mail = mail;
         this.storage = storage;
         this.audit = audit;
     }
 
-    public void verification(String email) {
-       Account account = accounts.findByEmail(email).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-
-        if (email == null || email.isBlank())
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "EMAIL_REQUIRED");
-
-        mail.sendOtp(email);
-        audit.record(
-                AuditWriteEvent.of(
-                        AuditAction.ACCOUNT_EMAIL_VERIFY,
-                        AuditEntityType.ACCOUNT,
-                        Long.toString(account.getAccountId())));
+    public void sendOtp(String email) {
+        String normalized = normalizeEmail(email);
+        Account account = requireEmailAccount(normalized);
+        String code = String.format(Locale.ROOT, "%06d", random.nextInt(1_000_000));
+        // Chỉ thay mã đang lưu khi gửi email thành công.
+        mail.sendOtp(normalized, code);
+        storage.storeOtp(
+                new Otp(account.getAccountId(), normalized, code, Instant.now().plusSeconds(120)));
     }
 
+    public void verifyOtp(String email, String code) {
+        String normalized = normalizeEmail(email);
+        Account account = requireEmailAccount(normalized);
+        requireOtp(account, normalized, code);
+    }
 
-    public void verify(String email, String otp) {
-        Otp otpDetail  = storage.getOtp(email);
-
-        if (otpDetail == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OTP_MISSING");
-
-        if(otpDetail.getExpirationTime().isBefore(LocalDateTime.now())){
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OTP_EXPIRED");
+    @Transactional
+    public void resetPassword(
+            String email, String code, String password, String confirmPassword) {
+        String normalized = normalizeEmail(email);
+        Account identified = requireEmailAccount(normalized);
+        Account account = lockedAccount(identified.getAccountId());
+        if (!normalized.equals(account.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OTP_INVALID");
         }
+        replacePassword(account, code, password, confirmPassword);
+    }
 
-        if(!otpDetail.getOtp().equals(otp)){
+    @Transactional
+    public void changePassword(
+            long actor, String code, String password, String confirmPassword) {
+        replacePassword(lockedAccount(actor), code, password, confirmPassword);
+    }
+
+    private void replacePassword(
+            Account account, String code, String password, String confirmPassword) {
+        if (password == null || !password.equals(confirmPassword)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PASSWORDS_DO_NOT_MATCH");
+        }
+        String hash = authentication.hashPassword(password);
+        String email = normalizeEmail(account.getEmail());
+        Otp otp = requireOtp(account, email, code);
+        // So sánh và xóa cùng lúc để một mã không đổi mật khẩu thành công hai lần.
+        if (!storage.removeOtp(email, otp)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OTP_INVALID");
         }
 
-        storage.removeOtp(email);
-
-        Account account = accounts.findByEmail(email).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "ACCOUNT_NOT_FOUND"));
-        audit.record(
-            AuditWriteEvent.of(
-                AuditAction.ACCOUNT_EMAIL_VERIFY,
-                AuditEntityType.ACCOUNT,
-                Long.toString(account.getAccountId())));
-    }
-
-    public void changePassword(String email,String password,String confirmPassword) {
-        if(!password.equals(confirmPassword)){
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PASSWORDS_DO_NOT_MATCH");
-        }
-
-        Account account = accounts.findByEmail(email.trim().toLowerCase(java.util.Locale.ROOT))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "ACCOUNT_NOT_FOUND"));
-
-        account.setPasswordHash(passwords.encode(password));
+        account.setPasswordHash(hash);
+        account.revokeAccessTokens();
         accounts.save(account);
-        audit.record(
+        var event =
                 AuditWriteEvent.of(
                         AuditAction.ACCOUNT_PASSWORD_RESET,
                         AuditEntityType.ACCOUNT,
-                        Long.toString(account.getAccountId())));
+                        Long.toString(account.getAccountId()));
+        if (SecurityContextHolder.getContext().getAuthentication()
+                instanceof JwtAuthenticationToken) {
+            audit.record(event);
+        } else {
+            audit.recordSystemEvent(event);
+        }
     }
 
+    private Otp requireOtp(Account account, String email, String code) {
+        Otp otp = storage.getOtp(email);
+        if (otp == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OTP_MISSING");
+        }
+        if (otp.isExpired(Instant.now())) {
+            storage.removeOtp(email, otp);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OTP_EXPIRED");
+        }
+        if (otp.accountId() != account.getAccountId() || !otp.code().equals(code)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OTP_INVALID");
+        }
+        return otp;
+    }
+
+    private Account requireEmailAccount(String email) {
+        var matches = accounts.findByEmailAndStatusAndDeletedAtIsNull(email, "ACTIVE");
+        if (matches.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "RECOVERY_ACCOUNT_NOT_FOUND");
+        }
+        if (matches.size() != 1) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "RECOVERY_EMAIL_AMBIGUOUS");
+        }
+        return matches.get(0);
+    }
+
+    private Account lockedAccount(long id) {
+        return accounts.findByIdForUpdate(id)
+                .filter(Account::isActive)
+                .orElseThrow(
+                        () -> new ResponseStatusException(
+                                HttpStatus.BAD_REQUEST, "RECOVERY_ACCOUNT_NOT_FOUND"));
+    }
+
+    private String normalizeEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "EMAIL_REQUIRED");
+        }
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
 }

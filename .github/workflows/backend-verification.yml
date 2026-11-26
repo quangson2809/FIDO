@@ -19,6 +19,7 @@ on:
       - feature/customer-shopping-journey-ux-improvements
       - feature/admin-dashboard-analytics
       - feature/client-storefront-ui-ux-improvements
+      - feature/demo1-operational-completion
       - "fix/**"
   pull_request:
     branches:
@@ -39,6 +40,7 @@ permissions:
   contents: read
 
 env:
+  OTP_FOCUSED: ${{ contains(github.event.head_commit.message, '[otp-focus]') || contains(github.event.pull_request.title, '[otp-focus]') }}
   SPRING_SECURITY_FOCUSED: ${{ contains(github.event.head_commit.message, '[spring-security-focus]') || contains(github.event.pull_request.title, '[spring-security-focus]') }}
   VIETNAMESE_ERRORS_FOCUSED: ${{ contains(github.event.head_commit.message, '[vietnamese-errors-focus]') || contains(github.event.pull_request.title, '[vietnamese-errors-focus]') }}
   DOMAIN_ENTITY_FOCUSED: ${{ github.ref == 'refs/heads/refactor/domain-entity-behaviors' || github.head_ref == 'refactor/domain-entity-behaviors' }}
@@ -187,7 +189,17 @@ jobs:
           TEST_DB_USERNAME: root
           TEST_DB_PASSWORD: ci-only-password
         run: |
-          if [ "$SPRING_SECURITY_FOCUSED" = "true" ]; then
+          if [ "$OTP_FOCUSED" = "true" ]; then
+            ./gradlew --no-daemon test --rerun-tasks \
+              --tests com.fido.modules.account.PasswordOtpHttpTests \
+              --tests com.fido.modules.account.OtpStorageServiceTests \
+              --tests com.fido.modules.account.EmailServiceTests \
+              --tests com.fido.modules.account.AuthenticationProfileHttpTests \
+              --tests com.fido.config.security.SpringAuthenticationTests \
+              --tests com.fido.common.ApiBaselineRouteContractTests \
+              --tests com.fido.common.ArchitectureBoundaryTests
+            ./gradlew --no-daemon checkJavaFormat
+          elif [ "$SPRING_SECURITY_FOCUSED" = "true" ]; then
             ./gradlew --no-daemon test --rerun-tasks \
               --tests 'com.fido.config.security.*' \
               --tests 'com.fido.common.exception.*' \
@@ -245,6 +257,16 @@ jobs:
           else
             ./gradlew --no-daemon compileJava test check --rerun-tasks
           fi
+      - name: Show Java formatting corrections
+        if: failure() && env.OTP_FOCUSED == 'true'
+        working-directory: backend
+        run: |
+          ./gradlew --no-daemon formatJava
+          python3 - <<'PY'
+          import json, pathlib, subprocess
+          paths = subprocess.check_output(["git", "diff", "--name-only", "--", "src"], text=True).splitlines()
+          print("JAVA_FORMAT_CORRECTIONS=" + json.dumps({path: pathlib.Path(path).read_text() for path in paths if path.endswith(".java")}))
+          PY
       - name: Keep MySQL test reports
         if: always() && steps.mysql-tests.outcome != 'skipped'
         uses: actions/upload-artifact@v4

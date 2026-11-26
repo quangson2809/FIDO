@@ -65,7 +65,8 @@ const axiosClient = axios.create({
 
 const isPublicAuthRequest = (url: string | undefined): boolean => {
   const pathname = (url ?? '').split(/[?#]/, 1)[0] ?? '';
-  return /(?:^|\/)auth\/(?:login|register)\/?$/.test(pathname);
+  return /(?:^|\/)auth\/(?:login|register|email\/verify-otp|password-reset\/confirm)\/?$/.test(pathname)
+    || /(?:^|\/)email\/send-otp\/?$/.test(pathname);
 };
 
 axiosClient.interceptors.request.use((config) => {

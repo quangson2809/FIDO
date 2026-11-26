@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
 import { storefrontFixture, me, date, meta } from './helpers/storefrontFixture.mjs';
+const passwordOnly = process.argv.includes('--password-only');
 const server = await createServer({ server: { port: 5196, strictPort: true } });
 await server.listen();
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE_PATH, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
@@ -15,6 +16,7 @@ try {
     await page.addInitScript(() => sessionStorage.setItem('fido.accessToken', 'fixture'));
     const fixture = storefrontFixture(); fixture.state.quantity = 1;
     const profile = { ...structuredClone(me), roles: [{ id: 1, code: 'SUPERADMIN', name: 'Quản trị', description: null, status: 'ACTIVE' }] };
+    profile.account.email = 'owner@example.test';
     const metadata = structuredClone(meta);
     const customer = { ...structuredClone(me.account), id: 2 };
     const receipt = { receipt_id: 1, receipt_code: 'GR-OPS', supplier_id: 1, warehouse_id: 1, receipt_status: 'CONFIRMED', confirmed_at: date, created_at: date, updated_at: date, created_by_account_id: 1, confirmed_by_account_id: 1, items: [{ receipt_item_id: 1, product_id: 1, quantity_received: 2, unit_cost: 1000 }] };
@@ -34,11 +36,19 @@ try {
       const send = (body, status = 200) => route.fulfill({ status, json: body });
       if (method === 'OPTIONS') return send({});
       if (path === '/me') return send({ data: profile });
-      if (path === '/me/email/verification') { verificationRequests++; return route.fulfill({ status: 202, body: '' }); }
+      if (path === '/email/send-otp') {
+        assert.equal(request.headers().authorization, undefined, 'OTP delivery must not inherit a stale JWT');
+        assert.ok([profile.account.email, 'owner@example.test'].includes(data.email));
+        verificationRequests++;
+        return route.fulfill({ status: 202, body: '' });
+      }
       if (path === '/me/password') {
         passwordChanges++;
-        assert.equal(data.new_password, 'New-password-123');
-        if (data.current_password !== 'Current-password-123') return send({ code: 'CURRENT_PASSWORD_INVALID', message: 'Mật khẩu hiện tại chưa đúng.' }, 400);
+        assert.equal(request.headers().authorization, 'Bearer fixture');
+        assert.equal(data.password, 'New-password-123');
+        assert.equal(data.confirm_password, data.password);
+        assert.equal('email' in data, false, 'Profile change derives the owner from JWT');
+        if (data.otp !== '012345') return send({ code: 'OTP_INVALID', message: 'Mã xác nhận không đúng.' }, 400);
         return route.fulfill({ status: 204, body: '' });
       }
       if (path === '/admin/catalog/meta') return send({ data: metadata });
@@ -103,11 +113,19 @@ try {
         return send({ data: count ? [count] : [] });
       }
       if (path === '/admin/stocktakes/1/actions') { assert.equal(data.action, 'CONFIRM'); count.status = 'CONFIRMED'; count.confirmed_by = 1; count.confirmed_at = date; return send({ data: count }); }
-      if (path === '/auth/password-reset/request') { assert.equal(data.email, 'verified@example.test'); return route.fulfill({ status: 202, body: '' }); }
-      if (path === '/auth/email/verify') { assert.equal(data.token, 'a'.repeat(43)); return route.fulfill({ status: 204, body: '' }); }
-      if (path === '/auth/password-reset/confirm') { assert.equal(data.token, 'b'.repeat(43)); assert.equal(data.new_password, 'Reset-password-123'); passwordResets++; return route.fulfill({ status: 204, body: '' }); }
+      if (path === '/auth/password-reset/confirm') {
+        assert.equal(request.headers().authorization, undefined);
+        assert.equal(data.email, 'owner@example.test');
+        assert.equal(data.password, 'Reset-password-123');
+        assert.equal(data.confirm_password, data.password);
+        passwordResets++;
+        if (data.otp === '999999') return send({ code: 'OTP_EXPIRED', message: 'Mã xác nhận đã hết hạn sau 2 phút.' }, 400);
+        assert.equal(data.otp, '012345');
+        return route.fulfill({ status: 204, body: '' });
+      }
       return fixture.handler(route);
     });
+    if (!passwordOnly) {
     await page.goto('http://localhost:5196/products');
     await page.getByRole('button', { name: /^Giỏ hàng \(/ }).click();
     await page.getByText('Sản phẩm đã ngừng bán.', { exact: false }).waitFor();
@@ -185,28 +203,44 @@ try {
     await page.getByLabel('Kết quả kiểm tra / lý do tiếp nhận').fill('Hàng lỗi, cách ly'); await page.getByRole('button', { name: 'Xác nhận hàng thực nhận', exact: true }).click();
     await page.getByText('Dòng #1: nhận 1, bán lại 0, cách ly 1', { exact: true }).waitFor();
     await page.getByRole('heading', { name: 'Lịch sử xử lý đơn', exact: true }).waitFor(); assert.equal(received.length, 1);
+    }
     await page.goto('http://localhost:5196/account');
-    await page.getByRole('button', { name: 'Gửi liên kết xác minh email', exact: true }).click();
-    await page.getByRole('status').filter({ hasText: 'Đã yêu cầu gửi liên kết xác minh.' }).waitFor(); assert.equal(verificationRequests, 1);
-    await page.getByLabel('Mật khẩu hiện tại', { exact: true }).fill('Wrong-password-123');
+    await page.getByRole('button', { name: 'Gửi mã OTP', exact: true }).click();
+    await page.getByRole('status').filter({ hasText: 'Đã gửi mã OTP' }).waitFor();
+    assert.equal(verificationRequests, 1);
+    await page.getByLabel('Mã OTP', { exact: true }).fill('000000');
     await page.getByLabel('Mật khẩu mới', { exact: true }).fill('New-password-123');
+    await page.getByLabel('Nhập lại mật khẩu mới', { exact: true }).fill('Different-password-123');
+    await page.getByRole('button', { name: 'Đổi mật khẩu', exact: true }).click();
+    await page.getByRole('alert').filter({ hasText: 'Hai mật khẩu mới chưa khớp.' }).waitFor();
+    assert.equal(passwordChanges, 0);
     await page.getByLabel('Nhập lại mật khẩu mới', { exact: true }).fill('New-password-123');
     await page.getByRole('button', { name: 'Đổi mật khẩu', exact: true }).click();
-    await page.getByRole('alert').filter({ hasText: 'Mật khẩu hiện tại chưa đúng.' }).waitFor();
-    await page.getByLabel('Mật khẩu hiện tại', { exact: true }).fill('Current-password-123');
+    await page.getByRole('alert').filter({ hasText: 'Mã xác nhận không đúng.' }).waitFor();
+    await page.getByLabel('Mã OTP', { exact: true }).fill('012345');
     await page.getByRole('button', { name: 'Đổi mật khẩu', exact: true }).click();
-    await page.waitForURL('**/login'); assert.equal(passwordChanges, 2);
+    await page.waitForURL('**/login');
+    assert.equal(passwordChanges, 2);
     assert.equal(await page.evaluate(() => sessionStorage.getItem('fido.accessToken')), null);
-    await page.goto('http://localhost:5196/account-recovery'); await page.getByLabel('Email đã xác minh').fill('verified@example.test'); await page.getByRole('button', { name: 'Gửi liên kết khôi phục', exact: true }).click(); await page.getByRole('status').filter({ hasText: 'Nếu email đã được xác minh' }).waitFor();
-    await page.goto('http://localhost:5196/account-recovery#purpose=EMAIL_VERIFY&token=' + 'a'.repeat(43)); await page.getByRole('button', { name: 'Xác nhận email', exact: true }).waitFor(); assert.equal(new URL(page.url()).hash, '');
-    await page.getByRole('button', { name: 'Xác nhận email', exact: true }).click(); await page.getByRole('status').filter({ hasText: 'Đã xác minh email.' }).waitFor();
-    await page.goto('http://localhost:5196/account-recovery#purpose=PASSWORD_RESET&token=' + 'b'.repeat(43));
+    await page.evaluate(() => sessionStorage.setItem('fido.accessToken', 'expired-token'));
+    await page.goto('http://localhost:5196/account-recovery');
+    await page.getByLabel('Email tài khoản', { exact: true }).fill('owner@example.test');
+    await page.getByRole('button', { name: 'Gửi mã OTP', exact: true }).click();
+    await page.getByRole('status').filter({ hasText: 'Đã gửi mã OTP' }).waitFor();
+    await page.getByLabel('Mã OTP', { exact: true }).fill('999999');
     await page.getByLabel('Mật khẩu mới', { exact: true }).fill('Reset-password-123');
     await page.getByLabel('Nhập lại mật khẩu mới', { exact: true }).fill('Reset-password-123');
     await page.getByRole('button', { name: 'Đặt mật khẩu mới', exact: true }).click();
-    await page.getByRole('status').filter({ hasText: 'Đã đổi mật khẩu.' }).waitFor(); assert.equal(passwordResets, 1);
+    await page.getByRole('alert').filter({ hasText: 'Mã xác nhận đã hết hạn' }).waitFor();
+    await page.getByRole('button', { name: 'Gửi lại mã OTP', exact: true }).click();
+    await page.getByRole('status').filter({ hasText: 'Đã gửi mã OTP' }).waitFor();
+    await page.getByLabel('Mã OTP', { exact: true }).fill('012345');
+    await page.getByRole('button', { name: 'Đặt mật khẩu mới', exact: true }).click();
+    await page.getByRole('status').filter({ hasText: 'Đã đổi mật khẩu.' }).waitFor();
+    assert.equal(passwordResets, 2);
+    assert.equal(verificationRequests, 3);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, `no horizontal overflow at ${width}`);
     assert.deepEqual(errors, []); await page.close();
   }
-  console.log('Operational browser PASS: unavailable Cart recovery, pre-creation price consent, content lifecycle, Category/Brand reactivation, customer lock/unlock, receipt correction chain, report drilldown, counts across inventory pages, physical returns/history, password change and verified-email recovery at 375/1440px.');
+  console.log('Operational browser PASS: unavailable Cart recovery, pre-creation price consent, content lifecycle, Category/Brand reactivation, customer lock/unlock, receipt correction chain, report drilldown, counts across inventory pages, physical returns/history, password change and email OTP recovery at 375/1440px.');
 } finally { await browser.close(); await server.close(); }
