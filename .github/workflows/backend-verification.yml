@@ -197,6 +197,7 @@ jobs:
               --tests com.fido.modules.account.AuthenticationProfileHttpTests \
               --tests com.fido.config.security.SpringAuthenticationTests \
               --tests com.fido.common.ApiBaselineRouteContractTests \
+              --tests com.fido.common.exception.ApiExceptionHandlerTests \
               --tests com.fido.common.ArchitectureBoundaryTests
             ./gradlew --no-daemon checkJavaFormat
           elif [ "$SPRING_SECURITY_FOCUSED" = "true" ]; then
@@ -257,16 +258,6 @@ jobs:
           else
             ./gradlew --no-daemon compileJava test check --rerun-tasks
           fi
-      - name: Show Java formatting corrections
-        if: failure() && env.OTP_FOCUSED == 'true'
-        working-directory: backend
-        run: |
-          ./gradlew --no-daemon formatJava
-          python3 - <<'PY'
-          import json, pathlib, subprocess
-          paths = subprocess.check_output(["git", "diff", "--name-only", "--", "src"], text=True).splitlines()
-          print("JAVA_FORMAT_CORRECTIONS=" + json.dumps({path: pathlib.Path("..", path).read_text() for path in paths if path.endswith(".java")}))
-          PY
       - name: Keep MySQL test reports
         if: always() && steps.mysql-tests.outcome != 'skipped'
         uses: actions/upload-artifact@v4

@@ -42,15 +42,19 @@ class PasswordOtpHttpTests extends AccountHttpSupport {
         var owner = identity();
         String code = issue(owner);
         assertTrue(code.matches("[0-9]{6}"));
-        long ttl = Duration.between(Instant.now(), storage.getOtp(owner.email()).expiresAt()).getSeconds();
+        long ttl =
+                Duration.between(Instant.now(), storage.getOtp(owner.email()).expiresAt())
+                        .getSeconds();
         assertTrue(ttl >= 115 && ttl <= 120);
         assertEquals(
                 204,
-                call("POST", "/api/v1/auth/email/verify-otp", null,
-                        Map.of("email", owner.email(), "otp", code)).status());
-        assertEquals(
-                400,
-                reset(owner, wrong(code), "Changed-password-123").status());
+                call(
+                                "POST",
+                                "/api/v1/auth/email/verify-otp",
+                                null,
+                                Map.of("email", owner.email(), "otp", code))
+                        .status());
+        assertEquals(400, reset(owner, wrong(code), "Changed-password-123").status());
         assertEquals(200, call("GET", "/api/v1/me", owner.token(), null).status());
         assertEquals(204, reset(owner, code, "Changed-password-123").status());
         assertNull(storage.getOtp(owner.email()));
@@ -58,12 +62,20 @@ class PasswordOtpHttpTests extends AccountHttpSupport {
         assertEquals(400, reset(owner, code, "Second-password-123").status());
         assertEquals(
                 401,
-                call("POST", "/api/v1/auth/login", null,
-                        Map.of("phone", owner.phone(), "password", PASSWORD)).status());
+                call(
+                                "POST",
+                                "/api/v1/auth/login",
+                                null,
+                                Map.of("phone", owner.phone(), "password", PASSWORD))
+                        .status());
         assertEquals(
                 200,
-                call("POST", "/api/v1/auth/login", null,
-                        Map.of("phone", owner.phone(), "password", "Changed-password-123")).status());
+                call(
+                                "POST",
+                                "/api/v1/auth/login",
+                                null,
+                                Map.of("phone", owner.phone(), "password", "Changed-password-123"))
+                        .status());
     }
 
     @Test
@@ -73,22 +85,41 @@ class PasswordOtpHttpTests extends AccountHttpSupport {
         String otherCode = issue(other);
         assertEquals(
                 400,
-                call("POST", "/api/v1/me/password", owner.token(),
-                        passwordBody(otherCode, "Changed-password-123")).status());
+                call(
+                                "POST",
+                                "/api/v1/me/password",
+                                owner.token(),
+                                passwordBody(otherCode, "Changed-password-123"))
+                        .status());
         assertEquals(
                 401,
-                call("POST", "/api/v1/me/password", null,
-                        passwordBody(otherCode, "Changed-password-123")).status());
+                call(
+                                "POST",
+                                "/api/v1/me/password",
+                                null,
+                                passwordBody(otherCode, "Changed-password-123"))
+                        .status());
         String code = issue(owner);
         assertEquals(
                 400,
-                call("POST", "/api/v1/me/password", owner.token(),
-                        Map.of("password", "Changed-password-123",
-                                "confirm_password", "Changed-password-123")).status());
+                call(
+                                "POST",
+                                "/api/v1/me/password",
+                                owner.token(),
+                                Map.of(
+                                        "password",
+                                        "Changed-password-123",
+                                        "confirm_password",
+                                        "Changed-password-123"))
+                        .status());
         assertEquals(
                 204,
-                call("POST", "/api/v1/me/password", owner.token(),
-                        passwordBody(code, "Changed-password-123")).status());
+                call(
+                                "POST",
+                                "/api/v1/me/password",
+                                owner.token(),
+                                passwordBody(code, "Changed-password-123"))
+                        .status());
         assertEquals(401, call("GET", "/api/v1/me", owner.token(), null).status());
         assertEquals(200, call("GET", "/api/v1/me", other.token(), null).status());
         assertEquals(204, reset(other, otherCode, "Other-password-123").status());
@@ -104,7 +135,8 @@ class PasswordOtpHttpTests extends AccountHttpSupport {
         assertNotSame(previous, current);
         assertFalse(storage.removeOtp(owner.email(), previous));
         assertEquals(next, storage.getOtp(owner.email()).code());
-        if (!first.equals(next)) assertEquals(400, reset(owner, first, "Changed-password-123").status());
+        if (!first.equals(next))
+            assertEquals(400, reset(owner, first, "Changed-password-123").status());
         storage.storeOtp(new Otp(owner.id(), owner.email(), next, Instant.now().minusSeconds(1)));
         var expired = reset(owner, next, "Changed-password-123");
         assertEquals(400, expired.status());
@@ -117,9 +149,9 @@ class PasswordOtpHttpTests extends AccountHttpSupport {
         var owner = identity();
         String code = issue(owner);
         doThrow(new ResponseStatusException(HttpStatus.BAD_GATEWAY, "EMAIL_DELIVERY_FAILED"))
-                .when(mail).sendOtp(eq(owner.email()), anyString());
-        var failed = call("POST", "/api/v1/email/send-otp", null,
-                Map.of("email", owner.email()));
+                .when(mail)
+                .sendOtp(eq(owner.email()), anyString());
+        var failed = call("POST", "/api/v1/email/send-otp", null, Map.of("email", owner.email()));
         assertEquals(502, failed.status());
         assertEquals("EMAIL_DELIVERY_FAILED", failed.data().get("code").asText());
         assertEquals(code, storage.getOtp(owner.email()).code());
@@ -131,16 +163,30 @@ class PasswordOtpHttpTests extends AccountHttpSupport {
         var owner = identity();
         assertEquals(
                 400,
-                call("POST", "/api/v1/email/send-otp", null,
-                        Map.of("email", "invalid")).status());
+                call("POST", "/api/v1/email/send-otp", null, Map.of("email", "invalid")).status());
         assertEquals(
                 404,
-                call("POST", "/api/v1/email/send-otp", null,
-                        Map.of("email", "missing-" + UUID.randomUUID() + "@example.test")).status());
+                call(
+                                "POST",
+                                "/api/v1/email/send-otp",
+                                null,
+                                Map.of("email", "missing-" + UUID.randomUUID() + "@example.test"))
+                        .status());
         String code = issue(owner);
-        var mismatch = call("POST", "/api/v1/auth/password-reset/confirm", null,
-                Map.of("email", owner.email(), "otp", code,
-                        "password", "Changed-password-123", "confirm_password", "Different-password-123"));
+        var mismatch =
+                call(
+                        "POST",
+                        "/api/v1/auth/password-reset/confirm",
+                        null,
+                        Map.of(
+                                "email",
+                                owner.email(),
+                                "otp",
+                                code,
+                                "password",
+                                "Changed-password-123",
+                                "confirm_password",
+                                "Different-password-123"));
         assertEquals(400, mismatch.status());
         assertEquals("PASSWORDS_DO_NOT_MATCH", mismatch.data().get("code").asText());
         assertNotNull(storage.getOtp(owner.email()));
@@ -168,13 +214,13 @@ class PasswordOtpHttpTests extends AccountHttpSupport {
         db.update("UPDATE accounts SET email=? WHERE id=?", owner.email(), other.id());
         assertEquals(
                 409,
-                call("POST", "/api/v1/email/send-otp", null,
-                        Map.of("email", owner.email())).status());
+                call("POST", "/api/v1/email/send-otp", null, Map.of("email", owner.email()))
+                        .status());
         db.update("UPDATE accounts SET status='LOCKED' WHERE id IN (?,?)", owner.id(), other.id());
         assertEquals(
                 404,
-                call("POST", "/api/v1/email/send-otp", null,
-                        Map.of("email", owner.email())).status());
+                call("POST", "/api/v1/email/send-otp", null, Map.of("email", owner.email()))
+                        .status());
         verifyNoInteractions(mail);
     }
 
@@ -187,8 +233,12 @@ class PasswordOtpHttpTests extends AccountHttpSupport {
     }
 
     private String issue(Identity owner) throws Exception {
-        var sent = call("POST", "/api/v1/email/send-otp", null,
-                Map.of("email", owner.email().toUpperCase(Locale.ROOT)));
+        var sent =
+                call(
+                        "POST",
+                        "/api/v1/email/send-otp",
+                        null,
+                        Map.of("email", owner.email().toUpperCase(Locale.ROOT)));
         assertEquals(202, sent.status(), sent.body());
         var code = ArgumentCaptor.forClass(String.class);
         verify(mail, atLeastOnce()).sendOtp(eq(owner.email()), code.capture());
@@ -196,9 +246,19 @@ class PasswordOtpHttpTests extends AccountHttpSupport {
     }
 
     private Result reset(Identity owner, String code, String password) throws Exception {
-        return call("POST", "/api/v1/auth/password-reset/confirm", null,
-                Map.of("email", owner.email(), "otp", code,
-                        "password", password, "confirm_password", password));
+        return call(
+                "POST",
+                "/api/v1/auth/password-reset/confirm",
+                null,
+                Map.of(
+                        "email",
+                        owner.email(),
+                        "otp",
+                        code,
+                        "password",
+                        password,
+                        "confirm_password",
+                        password));
     }
 
     private Map<String, String> passwordBody(String code, String password) {

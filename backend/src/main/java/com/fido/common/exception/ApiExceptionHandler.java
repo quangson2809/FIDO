@@ -190,7 +190,8 @@ public class ApiExceptionHandler {
             case "OTP_EXPIRED" -> "Mã xác nhận đã hết hạn sau 2 phút. Vui lòng yêu cầu mã mới.";
             case "OTP_INVALID" -> "Mã xác nhận không đúng hoặc đã sử dụng. Vui lòng kiểm tra lại.";
             case "PASSWORDS_DO_NOT_MATCH" -> "Hai mật khẩu mới chưa khớp. Vui lòng nhập lại.";
-            case "RECOVERY_ACCOUNT_NOT_FOUND" -> "Không tìm thấy tài khoản đang hoạt động với email này.";
+            case "RECOVERY_ACCOUNT_NOT_FOUND" ->
+                    "Không tìm thấy tài khoản đang hoạt động với email này.";
             case "RECOVERY_EMAIL_AMBIGUOUS" ->
                     "Email đang được nhiều tài khoản sử dụng. Vui lòng cập nhật email riêng trong hồ sơ.";
             case "EMAIL_DELIVERY_FAILED" -> "Chưa gửi được email xác nhận. Vui lòng thử lại sau.";
@@ -222,8 +223,7 @@ public class ApiExceptionHandler {
             case "REPORT_STATUS_INVALID" -> "Trạng thái lọc báo cáo chưa hợp lệ.";
             case "INVALID_CREDENTIALS" ->
                     "Số điện thoại hoặc mật khẩu chưa đúng. Vui lòng kiểm tra lại.";
-            case "UNAUTHENTICATED" ->
-                    "Vui lòng đăng nhập hoặc đăng nhập lại để tiếp tục.";
+            case "UNAUTHENTICATED" -> "Vui lòng đăng nhập hoặc đăng nhập lại để tiếp tục.";
             case "FORBIDDEN" ->
                     "Bạn không có quyền thực hiện thao tác này. Vui lòng liên hệ người quản trị nếu cần hỗ trợ.";
             case "VALIDATION_ERROR" ->

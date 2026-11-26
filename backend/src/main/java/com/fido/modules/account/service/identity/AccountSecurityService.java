@@ -58,8 +58,7 @@ public class AccountSecurityService {
     }
 
     @Transactional
-    public void resetPassword(
-            String email, String code, String password, String confirmPassword) {
+    public void resetPassword(String email, String code, String password, String confirmPassword) {
         String normalized = normalizeEmail(email);
         Account identified = requireEmailAccount(normalized);
         Account account = lockedAccount(identified.getAccountId());
@@ -70,8 +69,7 @@ public class AccountSecurityService {
     }
 
     @Transactional
-    public void changePassword(
-            long actor, String code, String password, String confirmPassword) {
+    public void changePassword(long actor, String code, String password, String confirmPassword) {
         replacePassword(lockedAccount(actor), code, password, confirmPassword);
     }
 
@@ -134,8 +132,9 @@ public class AccountSecurityService {
         return accounts.findByIdForUpdate(id)
                 .filter(Account::isActive)
                 .orElseThrow(
-                        () -> new ResponseStatusException(
-                                HttpStatus.BAD_REQUEST, "RECOVERY_ACCOUNT_NOT_FOUND"));
+                        () ->
+                                new ResponseStatusException(
+                                        HttpStatus.BAD_REQUEST, "RECOVERY_ACCOUNT_NOT_FOUND"));
     }
 
     private String normalizeEmail(String email) {

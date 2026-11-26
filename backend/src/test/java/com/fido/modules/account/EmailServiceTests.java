@@ -29,15 +29,21 @@ class EmailServiceTests {
     @Test
     void missingConfigurationAndTransportFailureHaveSafeErrors() {
         var sender = mock(JavaMailSender.class);
-        var missing = assertThrows(ResponseStatusException.class,
-                () -> new EmailService(sender, "").sendOtp("owner@example.test", "012345"));
+        var missing =
+                assertThrows(
+                        ResponseStatusException.class,
+                        () -> new EmailService(sender, "").sendOtp("owner@example.test", "012345"));
         assertEquals(503, missing.getStatusCode().value());
         verifyNoInteractions(sender);
         doThrow(new MailSendException("provider failure"))
-                .when(sender).send(any(SimpleMailMessage.class));
-        var failure = assertThrows(ResponseStatusException.class,
-                () -> new EmailService(sender, "mailer@example.test")
-                        .sendOtp("owner@example.test", "012345"));
+                .when(sender)
+                .send(any(SimpleMailMessage.class));
+        var failure =
+                assertThrows(
+                        ResponseStatusException.class,
+                        () ->
+                                new EmailService(sender, "mailer@example.test")
+                                        .sendOtp("owner@example.test", "012345"));
         assertEquals(502, failure.getStatusCode().value());
         assertEquals("EMAIL_DELIVERY_FAILED", failure.getReason());
     }

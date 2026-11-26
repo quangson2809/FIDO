@@ -380,8 +380,6 @@ class OperationalCompletionHttpTests extends OrderHttpSupport {
         }
     }
 
-
-
     @Test
     void lockingCustomerPreservesOrdersAndUnlockDoesNotReviveOldTokens() throws Exception {
         var root = superadmin();
@@ -423,6 +421,4 @@ class OperationalCompletionHttpTests extends OrderHttpSupport {
                                 Map.of("status", "LOCKED", "reason", "Không khóa quản trị ở đây"))
                         .status());
     }
-
-
 }

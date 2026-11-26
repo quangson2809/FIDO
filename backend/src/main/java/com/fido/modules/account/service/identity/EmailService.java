@@ -13,8 +13,7 @@ public class EmailService {
     private final JavaMailSender sender;
     private final String from;
 
-    public EmailService(
-            JavaMailSender sender, @Value("${spring.mail.username:}") String from) {
+    public EmailService(JavaMailSender sender, @Value("${spring.mail.username:}") String from) {
         this.sender = sender;
         this.from = from;
     }

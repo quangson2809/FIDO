@@ -21,14 +21,18 @@ class OtpStorageServiceTests {
         var start = new CountDownLatch(1);
         var threads = Executors.newFixedThreadPool(2);
         try {
-            var first = threads.submit(() -> {
-                start.await();
-                return storage.removeOtp(otp.email(), otp);
-            });
-            var second = threads.submit(() -> {
-                start.await();
-                return storage.removeOtp(otp.email(), otp);
-            });
+            var first =
+                    threads.submit(
+                            () -> {
+                                start.await();
+                                return storage.removeOtp(otp.email(), otp);
+                            });
+            var second =
+                    threads.submit(
+                            () -> {
+                                start.await();
+                                return storage.removeOtp(otp.email(), otp);
+                            });
             start.countDown();
             assertNotEquals(first.get(5, TimeUnit.SECONDS), second.get(5, TimeUnit.SECONDS));
             assertNull(storage.getOtp(otp.email()));
