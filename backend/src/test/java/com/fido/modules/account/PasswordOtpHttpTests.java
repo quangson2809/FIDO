@@ -118,10 +118,10 @@ class PasswordOtpHttpTests extends AccountHttpSupport {
         String code = issue(owner);
         doThrow(new ResponseStatusException(HttpStatus.BAD_GATEWAY, "EMAIL_DELIVERY_FAILED"))
                 .when(mail).sendOtp(eq(owner.email()), anyString());
-        assertEquals(
-                502,
-                call("POST", "/api/v1/email/send-otp", null,
-                        Map.of("email", owner.email())).status());
+        var failed = call("POST", "/api/v1/email/send-otp", null,
+                Map.of("email", owner.email()));
+        assertEquals(502, failed.status());
+        assertEquals("EMAIL_DELIVERY_FAILED", failed.data().get("code").asText());
         assertEquals(code, storage.getOtp(owner.email()).code());
         assertEquals(204, reset(owner, code, "Changed-password-123").status());
     }

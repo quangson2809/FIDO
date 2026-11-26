@@ -265,7 +265,7 @@ jobs:
           python3 - <<'PY'
           import json, pathlib, subprocess
           paths = subprocess.check_output(["git", "diff", "--name-only", "--", "src"], text=True).splitlines()
-          print("JAVA_FORMAT_CORRECTIONS=" + json.dumps({path: pathlib.Path(path).read_text() for path in paths if path.endswith(".java")}))
+          print("JAVA_FORMAT_CORRECTIONS=" + json.dumps({path: pathlib.Path("..", path).read_text() for path in paths if path.endswith(".java")}))
           PY
       - name: Keep MySQL test reports
         if: always() && steps.mysql-tests.outcome != 'skipped'

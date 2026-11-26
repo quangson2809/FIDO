@@ -149,7 +149,7 @@ public class ApiExceptionHandler {
             return path.equals("/api/v1/auth/login") ? "INVALID_CREDENTIALS" : "UNAUTHENTICATED";
         }
         if (status == 403) return "FORBIDDEN";
-        if (status < 500 || status == 503) {
+        if (status < 500 || status == 502 || status == 503) {
             String code =
                     exception instanceof BusinessRuleException business
                             ? business.getMessage()
@@ -185,7 +185,7 @@ public class ApiExceptionHandler {
             case "CURRENT_PASSWORD_INVALID" -> "Mật khẩu hiện tại chưa đúng.";
             case "RECOVERY_LINK_INVALID" ->
                     "Liên kết không hợp lệ, đã sử dụng hoặc hết hạn. Vui lòng yêu cầu liên kết mới.";
-            case "EMAIL_REQUIRED" -> "Hãy lưu địa chỉ email trong hồ sơ trước khi xác minh.";
+            case "EMAIL_REQUIRED" -> "Vui lòng nhập email đã lưu trong hồ sơ tài khoản.";
             case "OTP_MISSING" -> "Chưa có mã xác nhận. Vui lòng yêu cầu gửi mã về email.";
             case "OTP_EXPIRED" -> "Mã xác nhận đã hết hạn sau 2 phút. Vui lòng yêu cầu mã mới.";
             case "OTP_INVALID" -> "Mã xác nhận không đúng hoặc đã sử dụng. Vui lòng kiểm tra lại.";
