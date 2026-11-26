@@ -19,49 +19,29 @@ public class AccountSecurityController {
         this.security = security;
     }
 
+
     public record PasswordChange(
-            @NotNull @Size(max = 128) String current_password,
-            @NotNull @Size(min = 8, max = 128) String new_password) {}
-
-    public record EmailRequest(@NotBlank @Email @Size(max = 254) String email) {}
-
-    public record TokenRequest(@NotBlank @Size(max = 43) String token) {}
-
-    public record ResetRequest(
-            @NotBlank @Size(max = 43) String token,
-            @NotNull @Size(min = 8, max = 128) String new_password) {}
+            @NotNull String email,
+            @NotNull @Size(min = 8, max = 128) String password,
+            @NotNull @Size(min = 8, max = 128) String confirmPassword) {}
 
     @PostMapping("/me/password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void change(
-            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody PasswordChange request) {
+    public void reset(@Valid @RequestBody PasswordChange request) {
         security.changePassword(
-                Long.parseLong(jwt.getSubject()),
-                request.current_password(),
-                request.new_password());
+                request.email(), request.password(), request.confirmPassword());
     }
 
-    @PostMapping("/me/email/verification")
+    @PostMapping("/email/send-otp")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public void requestVerification(@AuthenticationPrincipal Jwt jwt) {
-        security.requestVerification(Long.parseLong(jwt.getSubject()));
+    public void verification(@RequestParam String email) {
+        security.verification(email);
     }
 
-    @PostMapping("/auth/email/verify")
+    @PostMapping("/auth/email/verify-otp")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void verify(@Valid @RequestBody TokenRequest request) {
-        security.verify(request.token());
+    public void verify(@RequestParam String email, @RequestParam String otp) {
+        security.verify( email, otp);
     }
 
-    @PostMapping("/auth/password-reset/request")
-    @ResponseStatus(HttpStatus.ACCEPTED)
-    public void requestReset(@Valid @RequestBody EmailRequest request) {
-        security.requestReset(request.email());
-    }
-
-    @PostMapping("/auth/password-reset/confirm")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void reset(@Valid @RequestBody ResetRequest request) {
-        security.reset(request.token(), request.new_password());
-    }
 }

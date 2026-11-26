@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import com.fido.modules.account.service.identity.AccountMailService;
 import com.fido.modules.audit.service.*;
 
 import org.junit.jupiter.api.AfterEach;

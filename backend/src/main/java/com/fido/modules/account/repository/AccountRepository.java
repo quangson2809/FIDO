@@ -18,6 +18,8 @@ public interface AccountRepository extends Repository<Account, Long> {
 
     Account saveAndFlush(Account entity);
 
+    Optional<Account> findByEmail(String email);
+
     @org.springframework.data.jpa.repository.Lock(
             jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from Account a where a.accountId = :id")
