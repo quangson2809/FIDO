@@ -54,11 +54,11 @@ The count form retains each selected Product's version from when its count was f
 
 ## Accounts and permissions
 
-Owner amendment, 2026-11-27: OTP is used only to prove account ownership before changing or recovering a password. Login stays phone + password.
+Owner amendments, 2026-11-27/28: OTP is used only to prove account ownership before changing or recovering a password. Login stays phone + password.
 
 | Method | Route | Request | Access / result |
 |---|---|---|---|
-| POST | `/email/send-otp` | `{email}` (legacy `?email=...` also accepted) | Public; 202 after SMTP send succeeds |
+| POST | `/email/send-otp` | `{email}` in JSON body only | Public; 202 after SMTP send succeeds |
 | POST | `/auth/email/verify-otp` | `{email,otp}` | Public; 204 when the code is valid |
 | POST | `/auth/password-reset/confirm` | `{email,otp,password,confirm_password}` | Public; 204 after replacing the password |
 | POST | `/me/password` | `{otp,password,confirm_password}` | JWT owner; 204 after replacing their password |

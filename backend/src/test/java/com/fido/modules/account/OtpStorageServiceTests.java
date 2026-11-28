@@ -25,17 +25,17 @@ class OtpStorageServiceTests {
                     threads.submit(
                             () -> {
                                 start.await();
-                                return storage.removeOtp(otp.email(), otp);
+                                return storage.removeOtp(otp.getEmail(), otp);
                             });
             var second =
                     threads.submit(
                             () -> {
                                 start.await();
-                                return storage.removeOtp(otp.email(), otp);
+                                return storage.removeOtp(otp.getEmail(), otp);
                             });
             start.countDown();
             assertNotEquals(first.get(5, TimeUnit.SECONDS), second.get(5, TimeUnit.SECONDS));
-            assertNull(storage.getOtp(otp.email()));
+            assertNull(storage.getOtp(otp.getEmail()));
         } finally {
             threads.shutdownNow();
         }

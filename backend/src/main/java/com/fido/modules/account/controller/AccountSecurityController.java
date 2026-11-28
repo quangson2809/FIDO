@@ -14,7 +14,6 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -46,10 +45,8 @@ public class AccountSecurityController {
 
     @PostMapping("/email/send-otp")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public void sendOtp(
-            @Valid @RequestBody(required = false) EmailRequest request,
-            @RequestParam(required = false) String email) {
-        security.sendOtp(request == null ? email : request.email());
+    public void sendOtp(@Valid @RequestBody EmailRequest request) {
+        security.sendOtp(request.email());
     }
 
     @PostMapping("/auth/email/verify-otp")
@@ -60,9 +57,14 @@ public class AccountSecurityController {
 
     @PostMapping("/auth/password-reset/confirm")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void reset(@Valid @RequestBody PasswordReset request) {
+    public void reset(
+            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody PasswordReset request) {
         security.resetPassword(
-                request.email(), request.otp(), request.password(), request.confirm_password());
+                request.email(),
+                request.otp(),
+                request.password(),
+                request.confirm_password(),
+                jwt != null);
     }
 
     @PostMapping("/me/password")

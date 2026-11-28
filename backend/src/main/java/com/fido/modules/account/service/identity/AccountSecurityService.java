@@ -9,8 +9,6 @@ import com.fido.modules.audit.service.AuditWriteEvent;
 import com.fido.modules.audit.service.AuditWriteService;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -58,23 +56,28 @@ public class AccountSecurityService {
     }
 
     @Transactional
-    public void resetPassword(String email, String code, String password, String confirmPassword) {
-        String normalized = normalizeEmail(email);
-        Account identified = requireEmailAccount(normalized);
-        Account account = lockedAccount(identified.getAccountId());
-        if (!normalized.equals(account.getEmail())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OTP_INVALID");
-        }
-        replacePassword(account, code, password, confirmPassword);
+    public void resetPassword(
+            String email,
+            String code,
+            String password,
+            String confirmPassword,
+            boolean authenticated) {
+        Account account = requireEmailAccount(normalizeEmail(email));
+        replacePassword(account, code, password, confirmPassword, authenticated);
     }
 
     @Transactional
     public void changePassword(long actor, String code, String password, String confirmPassword) {
-        replacePassword(lockedAccount(actor), code, password, confirmPassword);
+        Account account = requireActiveAccount(actor);
+        replacePassword(account, code, password, confirmPassword, true);
     }
 
     private void replacePassword(
-            Account account, String code, String password, String confirmPassword) {
+            Account account,
+            String code,
+            String password,
+            String confirmPassword,
+            boolean authenticated) {
         if (password == null || !password.equals(confirmPassword)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PASSWORDS_DO_NOT_MATCH");
         }
@@ -94,8 +97,7 @@ public class AccountSecurityService {
                         AuditAction.ACCOUNT_PASSWORD_RESET,
                         AuditEntityType.ACCOUNT,
                         Long.toString(account.getAccountId()));
-        if (SecurityContextHolder.getContext().getAuthentication()
-                instanceof JwtAuthenticationToken) {
+        if (authenticated) {
             audit.record(event);
         } else {
             audit.recordSystemEvent(event);
@@ -111,7 +113,7 @@ public class AccountSecurityService {
             storage.removeOtp(email, otp);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OTP_EXPIRED");
         }
-        if (otp.accountId() != account.getAccountId() || !otp.code().equals(code)) {
+        if (otp.getAccountId() != account.getAccountId() || !otp.getCode().equals(code)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OTP_INVALID");
         }
         return otp;
@@ -128,8 +130,8 @@ public class AccountSecurityService {
         return matches.get(0);
     }
 
-    private Account lockedAccount(long id) {
-        return accounts.findByIdForUpdate(id)
+    private Account requireActiveAccount(long id) {
+        return accounts.findById(id)
                 .filter(Account::isActive)
                 .orElseThrow(
                         () ->

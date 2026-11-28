@@ -234,7 +234,15 @@ Owner-approved behavior and target schema are recorded; application/DTO/frontend
 ## 2026-11-27 — OTP chỉ dùng cho đổi và lấy lại mật khẩu
 
 - Theo yêu cầu chủ dự án, đăng nhập tiếp tục dùng điện thoại và mật khẩu. OTP email gồm 6 số, hiệu lực 2 phút, chỉ xác nhận quyền đổi/lấy lại mật khẩu; thay thế luồng liên kết email trước đây.
-- Giữ controller → service → repository trong module account. AccountSecurityService điều phối mã và đổi mật khẩu; EmailService chỉ gửi SimpleMailMessage qua JavaMailSender do Spring Boot cấu hình; OtpStorageService giữ mã trong ConcurrentHashMap.
+- Giữ controller → service → repository trong module account. AccountSecurityService điều phối mã và đổi mật khẩu; EmailService chỉ gửi SimpleMailMessage qua JavaMailSender do Spring Boot cấu hình; OtpStorageService giữ mã trong Map/HashMap.
 - Bước lưu mật khẩu bắt buộc nhận OTP, kiểm tra tài khoản/email/thời hạn và tiêu thụ mã một lần. Đổi trong hồ sơ lấy account ID từ JWT. Quên mật khẩu nhận email nhưng từ chối email trùng nhiều tài khoản đang hoạt động.
 - Tái sử dụng hashPassword và auth_version hiện có. Đồng bộ FE, route contract, thông báo tiếng Việt, mẫu biến môi trường và test. Không thêm/sửa bảng hay cột; không thêm OTP đăng nhập, Redis, liên kết khôi phục hay cơ chế xác thực mới.
 - Kiểm tra có chọn lọc bằng nhãn [otp-focus]: OTP API/mail/storage, đăng nhập Spring, route và kiến trúc; FE lint/build/API/render/architecture và hai hành trình mật khẩu ở 375/1440px. SMTP thực cần thông tin môi trường của người vận hành.
+
+## 2026-11-28 — Đơn giản hóa phần mail và OTP
+
+- Theo yêu cầu chủ dự án, bỏ lockedAccount và việc đọc tài khoản bằng khóa PESSIMISTIC_WRITE trong luồng mật khẩu. Service dùng findById hoặc tìm theo email, kiểm tra tài khoản hoạt động rồi xử lý OTP và lưu mật khẩu.
+- Gửi OTP chỉ nhận một EmailRequest trong JSON body. Bỏ RequestParam, body tùy chọn và nhánh tương thích query cũ; FE đã gửi đúng JSON nên giữ nguyên cách gọi.
+- OTP là lớp Java thông thường với getter/constructor Lombok. OtpStorageService giữ Map/HashMap và ba phương thức lưu, lấy, xóa; bỏ quét toàn bộ mã hết hạn khi gửi. Các thao tác Map được thực hiện lần lượt bằng synchronized của Java để mã không bị tiêu thụ hai lần.
+- Controller lấy principal qua AuthenticationPrincipal; service không tự đọc SecurityContextHolder hay kiểm tra kiểu JwtAuthenticationToken. Giữ cơ chế ghi audit và đổi mật khẩu sẵn có của dự án.
+- Giữ OTP sáu số, hạn hai phút, kiểm tra đúng tài khoản, gửi lại và lỗi SMTP. Không thêm thư viện, công nghệ lưu trữ, bảng hoặc cột. Bỏ hàm FE verifyOtp không có nơi gọi.

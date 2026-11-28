@@ -43,7 +43,7 @@ class PasswordOtpHttpTests extends AccountHttpSupport {
         String code = issue(owner);
         assertTrue(code.matches("[0-9]{6}"));
         long ttl =
-                Duration.between(Instant.now(), storage.getOtp(owner.email()).expiresAt())
+                Duration.between(Instant.now(), storage.getOtp(owner.email()).getExpiresAt())
                         .getSeconds();
         assertTrue(ttl >= 115 && ttl <= 120);
         assertEquals(
@@ -76,6 +76,47 @@ class PasswordOtpHttpTests extends AccountHttpSupport {
                                 null,
                                 Map.of("phone", owner.phone(), "password", "Changed-password-123"))
                         .status());
+    }
+
+    @Test
+    void sendOtpRequiresJsonBodyInsteadOfQueryFallback() throws Exception {
+        var owner = identity();
+        assertEquals(
+                400,
+                call("POST", "/api/v1/email/send-otp?email=" + owner.email(), null, null).status());
+        verifyNoInteractions(mail);
+        assertTrue(issue(owner).matches("[0-9]{6}"));
+    }
+
+    @Test
+    void publicRecoveryAlsoWorksWhenCallerHasAValidJwt() throws Exception {
+        var owner = identity();
+        var caller = identity();
+        String code = issue(owner);
+        assertEquals(
+                204,
+                call(
+                                "POST",
+                                "/api/v1/auth/password-reset/confirm",
+                                caller.token(),
+                                Map.of(
+                                        "email",
+                                        owner.email(),
+                                        "otp",
+                                        code,
+                                        "password",
+                                        "Changed-password-123",
+                                        "confirm_password",
+                                        "Changed-password-123"))
+                        .status());
+        assertEquals(200, call("GET", "/api/v1/me", caller.token(), null).status());
+        assertEquals(
+                1,
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM audit_logs WHERE action='ACCOUNT_PASSWORD_RESET' AND entity_id=? AND actor_account_id=?",
+                        Integer.class,
+                        Long.toString(owner.id()),
+                        caller.id()));
     }
 
     @Test
@@ -134,7 +175,7 @@ class PasswordOtpHttpTests extends AccountHttpSupport {
         Otp current = storage.getOtp(owner.email());
         assertNotSame(previous, current);
         assertFalse(storage.removeOtp(owner.email(), previous));
-        assertEquals(next, storage.getOtp(owner.email()).code());
+        assertEquals(next, storage.getOtp(owner.email()).getCode());
         if (!first.equals(next))
             assertEquals(400, reset(owner, first, "Changed-password-123").status());
         storage.storeOtp(new Otp(owner.id(), owner.email(), next, Instant.now().minusSeconds(1)));
@@ -154,7 +195,7 @@ class PasswordOtpHttpTests extends AccountHttpSupport {
         var failed = call("POST", "/api/v1/email/send-otp", null, Map.of("email", owner.email()));
         assertEquals(502, failed.status());
         assertEquals("EMAIL_DELIVERY_FAILED", failed.data().get("code").asText());
-        assertEquals(code, storage.getOtp(owner.email()).code());
+        assertEquals(code, storage.getOtp(owner.email()).getCode());
         assertEquals(204, reset(owner, code, "Changed-password-123").status());
     }
 
