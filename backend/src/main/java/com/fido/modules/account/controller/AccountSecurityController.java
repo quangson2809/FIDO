@@ -57,8 +57,7 @@ public class AccountSecurityController {
 
     @PostMapping("/auth/password-reset/confirm")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void reset(
-            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody PasswordReset request) {
+    public void reset(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody PasswordReset request) {
         security.resetPassword(
                 request.email(),
                 request.otp(),
